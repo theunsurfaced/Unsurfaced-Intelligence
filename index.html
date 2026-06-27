@@ -1221,7 +1221,10 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   </div>
   <div class="uai-hub-top">
     <span class="uai-eyebrow">Unsurfaced<span class="uai-tm">™</span> Intelligence</span>
-    <img id="uai-hub-logo" class="uai-hub-logo" alt="Unsurfaced™">
+    <span style="display:flex;align-items:center;gap:14px">
+      <img id="uai-hub-logo" class="uai-hub-logo" alt="Unsurfaced™">
+      <button class="uai-back" style="position:static" onclick="lgSignOut()">Sign out</button>
+    </span>
   </div>
   <div class="uai-hub-head">
     <h1 class="uai-h1">Three ways<br>to move.</h1>
@@ -5593,7 +5596,10 @@ function mineExit() {
   document.body.style.overflow = 'hidden';
 }
 function mineSignOut() {
-  if (sbEnabled()) return mineExit();
+  // Connected mode: a true sign-out ends the Supabase session and returns the
+  // user to the login gate (the professional pattern), not just closing MINE.
+  if (sbEnabled()) { mineExit(); return lgSignOut(); }
+  // localStorage mode: clear the in-memory MINE role and close the overlay.
   if (mineSession.role === 'responder') mineSession.responderId = null;
   if (mineSession.role === 'partner') mineSession.partnerId = null;
   mineSession.role = null; mineSave(); mineExit();
@@ -5610,7 +5616,8 @@ function mineBar() {
       + '<button class="mine-id-b" onclick="mineRoute(\'p-profile\')">Profile</button>'
       + '<button class="mine-id-b" onclick="mineSignOut()">Sign out</button>';
   } else if (mineSession.role === 'admin') {
-    html = '<span class="mine-id-r" style="color:var(--accent4)">Research Ops · Master</span>';
+    html = '<span class="mine-id-r" style="color:var(--accent4)">Research Ops · Master</span>'
+      + '<button class="mine-id-b" onclick="mineSignOut()">Sign out</button>';
   } else {
     html = '<span class="mine-id-r">' + (mineSession.role === 'partner' ? 'Partner' : 'Responder') + '</span>';
   }
