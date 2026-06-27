@@ -2146,11 +2146,51 @@ function _userFromSb(u) {
 }
 async function _sbAuthInit() {
   try {
+    // Listen for auth events BEFORE reading the session, so a recovery link
+    // (which arrives as a URL fragment supabase-js parses on load) is caught.
+    _sb.auth.onAuthStateChange((evt, sess) => {
+      if (evt === 'PASSWORD_RECOVERY') {
+        // The recovery link signed the user into a temporary recovery session.
+        // Do NOT enter the app — show the "set new password" form. The new
+        // password is committed by lgResetPassword() → updateUser().
+        _showRecoveryPanel();
+        return;
+      }
+      if (sess && sess.user) _currentUser = _userFromSb(sess.user);
+    });
     const { data } = await _sb.auth.getSession();
+    // If the URL is a recovery callback, the event above handles it — don't
+    // fall through to _authShowApp and skip the password change.
+    if (_isRecoveryUrl()) { _showRecoveryPanel(); return; }
     if (data && data.session) { _currentUser = _userFromSb(data.session.user); _authShowApp(); }
     else { _authShowGate(); }
-    _sb.auth.onAuthStateChange((_e, sess) => { if (sess && sess.user) _currentUser = _userFromSb(sess.user); });
   } catch (e) { _authShowGate(); }
+}
+
+// True when the page was opened from a Supabase recovery email link.
+function _isRecoveryUrl() {
+  try {
+    const h = (window.location.hash || '') + ' ' + (window.location.search || '');
+    return /type=recovery/.test(h);
+  } catch (e) { return false; }
+}
+
+// Reveal the login gate and switch to the "set new password" panel.
+function _showRecoveryPanel() {
+  _authShowGate();
+  try {
+    document.querySelectorAll('.lg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lg-panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById('lg-panel-reset');
+    if (panel) panel.classList.add('active');
+    // In connected mode there is no 6-digit code — hide that field and its label.
+    const codeField = document.getElementById('lg-reset-code');
+    if (codeField) { codeField.value = 'supabase'; codeField.closest('.lg-field') && (codeField.closest('.lg-field').style.display = 'none'); }
+    const codeDisp = document.getElementById('lg-reset-code-display');
+    if (codeDisp) codeDisp.style.display = 'none';
+    const msg = document.getElementById('lg-reset-msg');
+    if (msg) msg.textContent = 'Choose a new password for your account.';
+  } catch (e) {}
 }
 async function _sbLogin() {
   _lgClearError();
@@ -2180,16 +2220,43 @@ async function _sbSignup() {
   _lgSetLoading('lg-signup-btn', false);
   if (error) return _lgSetError(error.message || 'Sign up failed');
   if (data.session) { _currentUser = _userFromSb(data.user); _authShowApp(); showToast('Welcome to Unsurfaced ✓'); }
-  else { _lgSetError('Account created — check your email to confirm, then sign in.'); lgSwitch('signin'); }
+  else { _lgSetError('Account created. Check your email to confirm, then sign in. (Tip: to skip this, turn off “Confirm email” in Supabase → Authentication.)'); lgSwitch('login'); }
 }
 async function _sbSendReset() {
   const email = (document.getElementById('lg-forgot-email') && document.getElementById('lg-forgot-email').value || '').trim();
   if (!email || !_lgValidEmail(email)) return _lgSetError('Enter a valid email address');
   _lgSetLoading('lg-forgot-btn', true);
-  const { error } = await _sb.auth.resetPasswordForEmail(email);
+  const { error } = await _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname + '#type=recovery' });
   _lgSetLoading('lg-forgot-btn', false);
   if (error) return _lgSetError(error.message);
-  showToast('Password reset email sent'); lgSwitch('signin');
+  showToast('Password reset email sent'); lgSwitch('login');
+}
+
+// Connected-mode password reset: the user arrived via the recovery link (so a
+// recovery session is active) and is on the "set new password" panel. Validate
+// the two password fields and commit the change with updateUser().
+async function _sbResetPassword() {
+  _lgClearError();
+  const newPw     = (document.getElementById('lg-new-password') && document.getElementById('lg-new-password').value || '');
+  const confirmPw = (document.getElementById('lg-confirm-password') && document.getElementById('lg-confirm-password').value || '');
+  if (!newPw || newPw.length < 8) return _lgSetError('Password must be at least 8 characters');
+  if (newPw !== confirmPw)        return _lgSetError('Passwords do not match');
+  _lgSetLoading('lg-reset-btn', true);
+  try {
+    const { error } = await _sb.auth.updateUser({ password: newPw });
+    _lgSetLoading('lg-reset-btn', false);
+    if (error) return _lgSetError(error.message || 'Could not update password');
+    // Password is changed and a real session now exists — clean the recovery
+    // hash from the URL and enter the app.
+    try { history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    const { data } = await _sb.auth.getUser();
+    if (data && data.user) _currentUser = _userFromSb(data.user);
+    _authShowApp();
+    showToast('Password updated ✓');
+  } catch (e) {
+    _lgSetLoading('lg-reset-btn', false);
+    _lgSetError('Could not update password — please try again');
+  }
 }
 
 // ── MINE data adapter (Supabase) ────────────────────────────────────────────
@@ -6475,6 +6542,7 @@ function lgSendReset() {
 
 // ── Forgot Password — Step 2: verify code + set new password ─────
 function lgResetPassword() {
+  if (sbEnabled()) return _sbResetPassword();
   _lgClearError();
   const code     = (document.getElementById('lg-reset-code')?.value     || '').trim();
   const newPw    = (document.getElementById('lg-new-password')?.value    || '');
