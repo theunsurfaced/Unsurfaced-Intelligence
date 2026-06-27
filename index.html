@@ -5277,6 +5277,9 @@ function goHub(){
   if(h){ h.classList.add('show'); h.setAttribute('aria-hidden','false'); }
   document.body.style.overflow='hidden';
   window.scrollTo(0,0);
+  // Keep the Research Ops link correct whenever the hub is shown — it is
+  // revealed only for confirmed admins, hidden for everyone else.
+  if (typeof _syncAdminUI === 'function') _syncAdminUI();
 }
 function enterSpace(name){
   _uaiHide();
@@ -6239,10 +6242,23 @@ function _authShowApp() {
 // hidden in markup by default; this reveals it only when the backend's
 // is_admin() returns true for the signed-in user. In localStorage mode
 // (no backend) it stays hidden, since there are no real roles there.
+//
+// is_admin() needs the auth session token attached (it reads auth.uid()
+// server-side). Right after login that token can lag by a tick, so we confirm
+// a session exists first and retry once before giving up — otherwise a valid
+// admin would intermittently not see the link.
 async function _syncAdminUI() {
   const link = document.getElementById('mine-research-ops-link');
   if (!link) return;
-  const ok = await _isAdmin();
+  if (!sbEnabled()) { link.style.display = 'none'; return; }
+  let ok = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { data } = await _sb.auth.getSession();
+      if (data && data.session) { ok = await _isAdmin(); if (ok) break; }
+    } catch (e) {}
+    if (!ok && attempt === 0) await new Promise(r => setTimeout(r, 400));
+  }
   link.style.display = ok ? '' : 'none';
 }
 
