@@ -2074,9 +2074,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 // paid model with NO change to this client.
 // Paste your Supabase values here to switch MINE + auth to the real backend.
 // Leave blank to keep the app fully client-side (localStorage), as before.
-const SUPABASE_URL      = '';   // <-- your Supabase Project URL
-const SUPABASE_ANON_KEY = '';   // <-- your Supabase anon / publishable key
-const API_BASE = ''; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
+const SUPABASE_URL      = 'sb_publishable_p_C40aqzTopYhr-VW0o9bA_OT44we0B';   // <-- your Supabase Project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmhhZmtxdW5na2xtbnJmZGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjI5NDgsImV4cCI6MjA5NzgzODk0OH0.2PufodDCcrV1PaOe4L1ke0Oy2u5OynY-u6jK5YNAGtw';   // <-- your Supabase anon / publishable key
+const API_BASE = 'https://unsurfaced-api.office-173.workers.dev/'; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
 
 // POST a JSON action to the proxy (used for /deep today; /synthesize later).
 async function api(action, payload) {
