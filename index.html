@@ -5232,7 +5232,12 @@ let _resetEmail      = '';  // tracks email during forgot-password flow
 
 // ── Init — check for existing session ────────────────────────────
 function _authInit() {
-  if (sbEnabled()) return _sbAuthInit();
+  if (sbEnabled()) {
+    // Connected mode is authoritative. Remove any stale local session left over
+    // from an earlier local-only run so it can never silently re-log a user in.
+    try { localStorage.removeItem(_AUTH_KEY); sessionStorage.removeItem(_AUTH_KEY); } catch (e) {}
+    return _sbAuthInit();
+  }
   // Check localStorage first (remember me), then sessionStorage (session-only)
   try {
     const ls = localStorage.getItem(_AUTH_KEY);
@@ -6517,10 +6522,19 @@ function lgResetPassword() {
 
 // ── Sign Out ──────────────────────────────────────────────────────
 function lgSignOut() {
-  if (sbEnabled()) { _sb.auth.signOut().finally(function(){ window.location.reload(); }); return; }
-  localStorage.removeItem(_AUTH_KEY);
-  sessionStorage.removeItem(_AUTH_KEY);
+  // Clear the in-memory user immediately so nothing re-renders as signed-in.
   _currentUser = null;
+  // Clear local session keys in BOTH stores. This is unconditional: even in
+  // connected mode a browser may hold a stale localStorage session from an
+  // earlier local-only run, which could otherwise re-hydrate on reload. We keep
+  // the accounts registry and last-email (those aren't an active session).
+  try { localStorage.removeItem(_AUTH_KEY); sessionStorage.removeItem(_AUTH_KEY); } catch (e) {}
+  // End the real Supabase session (token + its own storage), then reload to the
+  // login gate. The reload guarantees a clean slate regardless of mode.
+  if (sbEnabled()) {
+    _sb.auth.signOut().catch(function(){}).finally(function(){ window.location.reload(); });
+    return;
+  }
   window.location.reload();
 }
 
