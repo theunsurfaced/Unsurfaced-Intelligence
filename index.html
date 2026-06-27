@@ -1293,7 +1293,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
         <button class="uai-door2-btn" onclick="openMine('partner')">Request access →</button>
       </div>
     </div>
-    <p class="uai-note">Real voices become cited, actionable findings — every insight has a receipt. <button class="uai-link" onclick="openMine('admin')">Research Ops →</button></p>
+    <p class="uai-note">Real voices become cited, actionable findings — every insight has a receipt. <button class="uai-link" id="mine-research-ops-link" onclick="openMine('admin')" style="display:none">Research Ops →</button></p>
   </div>
 </div>
 
@@ -2074,9 +2074,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 // paid model with NO change to this client.
 // Paste your Supabase values here to switch MINE + auth to the real backend.
 // Leave blank to keep the app fully client-side (localStorage), as before.
-const SUPABASE_URL      = 'https://uxbhafkqungklmnrfdhp.supabase.co';   // <-- your Supabase Project URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmhhZmtxdW5na2xtbnJmZGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjI5NDgsImV4cCI6MjA5NzgzODk0OH0.2PufodDCcrV1PaOe4L1ke0Oy2u5OynY-u6jK5YNAGtw';   // <-- your Supabase anon / publishable key
-const API_BASE = 'https://api.unsurfaced-intelligence.com'; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
+const SUPABASE_URL      = '';   // <-- your Supabase Project URL
+const SUPABASE_ANON_KEY = '';   // <-- your Supabase anon / publishable key
+const API_BASE = ''; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
 
 // POST a JSON action to the proxy (used for /deep today; /synthesize later).
 async function api(action, payload) {
@@ -2247,7 +2247,23 @@ async function mineHydrate(role) {
   }
 }
 
+// Ask the database whether the signed-in user is an admin. RLS-backed:
+// is_admin() reads the caller's own app_user.role server-side, so this can't
+// be spoofed from the client. Returns false when signed out or on any error.
+async function _isAdmin() {
+  if (!sbEnabled()) return false;
+  try { const { data, error } = await _sb.rpc('is_admin'); return !error && data === true; }
+  catch (e) { return false; }
+}
+
 async function _sbOpenMine(role) {
+  // Admin is privileged: confirm against the backend before showing Research Ops.
+  // A non-admin who reaches here (e.g. by clicking a stale link) is redirected
+  // to their own responder journey instead of the master view.
+  if (role === 'admin' && !(await _isAdmin())) {
+    showToast('Research Ops is for administrators only');
+    role = 'responder';
+  }
   const o = document.getElementById('mine-app'); if (o) { o.classList.add('show'); o.setAttribute('aria-hidden', 'false'); }
   document.body.style.overflow = 'hidden';
   const stage = document.getElementById('mine-stage'); if (stage) stage.innerHTML = '<p class="mr-p">Loading…</p>';
@@ -6199,11 +6215,23 @@ function _authShowApp() {
   const g = document.getElementById('login-gate');
   if (g) g.classList.add('hidden');
   _renderNavUser();
+  _syncAdminUI();
   // Pre-warm Excavate behind the hub so it's ready on entry, then land the
   // user on the ecosystem front door (PLAY · EXCAVATE · MINE).
   _fiInitPending = true;
   initFeaturedInsights();
   goHub();
+}
+
+// Show the Research Ops entry point only to confirmed admins. The link is
+// hidden in markup by default; this reveals it only when the backend's
+// is_admin() returns true for the signed-in user. In localStorage mode
+// (no backend) it stays hidden, since there are no real roles there.
+async function _syncAdminUI() {
+  const link = document.getElementById('mine-research-ops-link');
+  if (!link) return;
+  const ok = await _isAdmin();
+  link.style.display = ok ? '' : 'none';
 }
 
 // ── Tab / panel switching ─────────────────────────────────────────
