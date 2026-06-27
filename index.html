@@ -2077,9 +2077,12 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 // paid model with NO change to this client.
 // Paste your Supabase values here to switch MINE + auth to the real backend.
 // Leave blank to keep the app fully client-side (localStorage), as before.
-const SUPABASE_URL      = '';   // <-- your Supabase Project URL
-const SUPABASE_ANON_KEY = '';   // <-- your Supabase anon / publishable key
-const API_BASE = ''; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
+// NOTE: The SUPABASE_URL and anon key are designed to be public in frontend
+// code (the anon key is row-level-security-scoped). Real secrets live only in
+// your Cloudflare Worker — never put a service_role key here.
+const SUPABASE_URL      = 'https://uxbhafkqungklmnrfdhp.supabase.co';   // <-- your Supabase Project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmhhZmtxdW5na2xtbnJmZGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjI5NDgsImV4cCI6MjA5NzgzODk0OH0.2PufodDCcrV1PaOe4L1ke0Oy2u5OynY-u6jK5YNAGtw';   // <-- your Supabase anon / publishable key
+const API_BASE = 'https://api.unsurfaced-intelligence.com'; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
 
 // POST a JSON action to the proxy (used for /deep today; /synthesize later).
 async function api(action, payload) {
