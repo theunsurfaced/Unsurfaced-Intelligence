@@ -1,0 +1,34 @@
+{
+  "registry": {
+    "SEAM:LEADERBOARD": {
+      "file": "arcade/pop-a-shot/index.html",
+      "purpose": "spec-3 leaderboard mount in showCard()"
+    },
+    "SEAM:SIGNUP_ENDPOINT": {
+      "file": "arcade/pop-a-shot/index.html",
+      "purpose": "beta email capture -> join flow"
+    },
+    "SEAM:CAMERA_MODE": {
+      "file": "arcade/pop-a-shot/index.html",
+      "purpose": "MediaPipe hand-tracking mode gate"
+    },
+    "SEAM:REVEAL_3D": {
+      "file": "arcade/claw/index.html",
+      "purpose": "hi-res prize object mount in reveal"
+    },
+    "SEAM:SIGNUP_ENDPOINT@claw": {
+      "file": "arcade/claw/index.html",
+      "tag": "SEAM:SIGNUP_ENDPOINT",
+      "purpose": "win email capture; PLAY/EXCAVATE/MINE crossover attach"
+    }
+  },
+  "planned": [
+    "SEAM:MODEL_POOL",
+    "SEAM:KNOWLEDGE_INGEST",
+    "SEAM:ACTIVITY_LOG",
+    "SEAM:OPS_AUTH",
+    "SEAM:GUARD_SYNC",
+    "SEAM:PROMPT_SYNC"
+  ],
+  "note": "planned seams live in /worker; they enter registry as they ship"
+}

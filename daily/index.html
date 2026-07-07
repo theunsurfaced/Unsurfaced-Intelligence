@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsurfaced Daily — Cultural Intelligence</title>
+<!--
+  CSP: script-src includes the supabase-js CDN; connect-src includes
+  *.supabase.co AND the Worker domain. Replace WORKER_DOMAIN before ship.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://player.vimeo.com https://www.tiktok.com https://www.instagram.com https://platform.twitter.com; connect-src 'self' https://*.supabase.co https://WORKER_DOMAIN;">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0A0A0A; --matte: #1A1A1A; --ivory: #FAF7F2; --cream: #F5F0E8;
+    --paper: #EDE7DA; --red: #C41230; --mute: #8A8A86; --mute-warm: #6B6455; --line: #2A2A2A;
+    --serif: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+    --sans: 'Space Mono', monospace;
+  --body: 'Syne', system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--ink); color: var(--ivory); font-family: var(--serif); min-height: 100vh; }
+  .masthead {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 28px 6vw 14px; border-bottom: 1px solid rgba(250,247,242,0.25);
+  }
+  .masthead .brand { font-family: var(--sans); font-weight: bold; letter-spacing: 3px; font-size: 13px; }
+  .masthead .folio { font-family: var(--sans); letter-spacing: 2px; font-size: 11px; opacity: 0.7; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 6vw 96px; }
+  .kicker { font-family: var(--sans); font-weight: bold; letter-spacing: 5px; font-size: 12px; color: var(--red); margin-bottom: 14px; }
+  h1, h2 { font-style: italic; font-weight: bold; line-height: 1.05; }
+  h1 { font-size: clamp(34px, 6vw, 58px); margin-bottom: 18px; }
+  h2 { font-size: clamp(24px, 3.6vw, 34px); margin-bottom: 12px; }
+  .standfirst { font-style: italic; font-size: 19px; color: var(--cream); line-height: 1.5; margin-bottom: 14px; }
+  .take { font-family: var(--body); font-size: 15px; color: var(--mute); line-height: 1.7; }
+  article { padding: 44px 0; border-bottom: 1px solid rgba(250,247,242,0.14); }
+  article.paper { background: var(--paper); color: var(--ink); margin: 0 -6vw; padding: 44px 6vw; }
+  article.paper .standfirst { color: var(--ink); }
+  article.paper .take { color: var(--mute-warm); }
+  .credit { font-family: var(--sans); font-size: 11px; letter-spacing: 2px; color: var(--mute); margin-top: 20px; }
+  .credit a { color: inherit; }
+  .empty { padding: 96px 0; text-align: center; }
+  .empty p { font-style: italic; color: var(--mute); margin-top: 12px; }
+  #grain {
+    position: fixed; inset: 0; pointer-events: none; opacity: 0.05; mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* ── OPS (the newsroom floor) ── */
+  #ops { display: none; max-width: 1000px; margin: 0 auto; padding: 34px 4vw 120px; }
+  #ops label { display: block; font-family: var(--sans); font-size: 10px; letter-spacing: 2px; color: var(--mute); margin: 12px 0 4px; }
+  #ops input, #ops textarea, #ops select {
+    width: 100%; background: var(--matte); color: var(--cream); border: 1px solid var(--line);
+    padding: 10px 12px; font-family: var(--sans); font-size: 13px;
+  }
+  #ops textarea { min-height: 70px; resize: vertical; line-height: 1.5; }
+  #ops button {
+    background: var(--red); color: var(--ivory); border: 0; padding: 9px 16px; margin: 10px 8px 0 0;
+    font-family: var(--sans); font-weight: bold; letter-spacing: 2px; font-size: 10.5px; cursor: pointer;
+  }
+  #ops button.ghost { background: transparent; border: 1px solid var(--line); color: var(--mute); }
+  #ops button:disabled { opacity: .4; cursor: default; }
+  .panel { border: 1px solid var(--line); padding: 20px 22px; margin: 18px 0; background: rgba(26,26,26,.45); }
+  .panel h3 { font-style: italic; font-size: 20px; margin-bottom: 4px; }
+  .panel .hint { font-family: var(--body); font-size: 12px; color: var(--mute-warm); line-height: 1.6; }
+  .chips { font-family: var(--sans); font-size: 11px; letter-spacing: 1px; color: var(--mute); margin: 8px 0 2px; }
+  .chips b { color: var(--ivory); }
+  .chips .ready { color: #5FA870; font-weight: bold; }
+  .item-card { border: 1px solid var(--line); margin: 14px 0; padding: 16px 18px; background: var(--matte); }
+  .item-card .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .badge { font-family: var(--sans); font-size: 9.5px; letter-spacing: 2px; font-weight: bold; padding: 3px 8px; border: 1px solid var(--line); color: var(--mute); }
+  .badge.draft { color: var(--cream); } .badge.in_review { color: #C9A227; border-color: #C9A227; }
+  .badge.approved { color: #5FA870; border-color: #5FA870; } .badge.published { color: var(--ink); background: var(--ivory); }
+  .badge.rejected { color: var(--red); border-color: var(--red); }
+  .flagline { font-family: var(--sans); font-size: 10.5px; color: #C9A227; margin-top: 8px; letter-spacing: 1px; }
+  .srcline { font-family: var(--sans); font-size: 10.5px; color: var(--mute-warm); margin-top: 8px; letter-spacing: 1px; word-break: break-all; }
+  .statusmsg { font-family: var(--sans); font-size: 11px; letter-spacing: 1px; color: var(--mute-warm); margin-top: 10px; min-height: 15px; }
+  .grp-head { font-family: var(--sans); font-weight: bold; letter-spacing: 4px; font-size: 11px; color: var(--red); margin: 30px 0 4px; }
+  .tabs { margin-top: 6px; }
+  .tabs button.tab { background: transparent; border: 1px solid var(--line); color: var(--mute); }
+  .tabs button.tab.on { border-color: var(--red); color: var(--ivory); }
+</style>
+</head>
+<body>
+<div id="grain"></div>
+<header class="masthead">
+  <span class="brand">UNSURFACED — CULTURAL INTELLIGENCE</span>
+  <span class="folio" id="folio">DAILY</span>
+</header>
+
+<main id="magazine">
+  <div class="empty">
+    <div class="kicker">THE SIGNAL</div>
+    <h1>Surfacing today's issue.</h1>
+    <p id="status">Loading…</p>
+  </div>
+</main>
+
+<section id="ops">
+  <div id="ops-gate">
+    <div class="panel" id="ops-login">
+      <div class="kicker">OPS</div>
+      <h3>The newsroom floor.</h3>
+      <p class="hint">Editors only. The lock is in the database, not this page.</p>
+      <label>EMAIL</label><input id="li-email" type="email" autocomplete="username">
+      <label>PASSWORD</label><input id="li-pass" type="password" autocomplete="current-password">
+      <button id="li-btn">SIGN IN</button>
+      <button class="ghost" id="li-forgot">FORGOT PASSWORD</button>
+      <div class="statusmsg" id="li-msg"></div>
+    </div>
+    <div class="panel" id="ops-recovery" style="display:none">
+      <div class="kicker">RECOVERY</div>
+      <h3>Set a new password.</h3>
+      <label>NEW PASSWORD</label><input id="rc-pass" type="password" autocomplete="new-password">
+      <button id="rc-btn">SET PASSWORD</button>
+      <div class="statusmsg" id="rc-msg"></div>
+    </div>
+  </div>
+
+  <div id="ops-board" style="display:none">
+    <div class="row" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
+      <div>
+        <div class="kicker">OPS — TODAY'S ISSUE</div>
+        <div class="chips" id="ops-counts"></div>
+      </div>
+      <div>
+        <button id="ops-refresh" class="ghost">REFRESH</button>
+        <button id="ops-publish">PUBLISH EDITION</button>
+        <button id="ops-signout" class="ghost">SIGN OUT</button>
+      </div>
+    </div>
+    <div class="statusmsg" id="ops-msg"></div>
+
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab on" id="tab-signal">RAW SIGNAL</button>
+        <button class="tab" id="tab-finished">FINISHED TAKE</button>
+      </div>
+      <div id="mode-signal">
+        <p class="hint">Steer today's pull and seed proprietary candidates. Everything still passes dedup and the review gate.</p>
+        <label>TOPICS (COMMA-SEPARATED — BECOME EXTRA QUERY SEEDS)</label>
+        <input id="sig-topics" placeholder="sneaker resale, stadium pricing">
+        <label>PROPRIETARY CANDIDATES (ONE PER LINE: URL | TITLE | SNIPPET)</label>
+        <textarea id="sig-cands" placeholder="https://example.com/story | Headline here | Optional snippet"></textarea>
+        <label>NOTES (OPTIONAL, FOR THE RECORD)</label>
+        <input id="sig-notes">
+        <button id="sig-submit">SUBMIT SIGNAL</button>
+        <div class="statusmsg" id="sig-msg"></div>
+      </div>
+      <div id="mode-finished" style="display:none">
+        <p class="hint">A take already written to the bar. Enters as a near-final draft; still needs approval to publish.</p>
+        <label>KICKER</label>
+        <select id="ft-kicker"><option>THE SIGNAL</option><option>DISPATCH</option><option>FIELD NOTE</option><option>PULL QUOTE</option><option>THE LEDGER</option><option>THE SHIFT</option></select>
+        <label>HEADLINE (THE ARGUMENT, UNDER 12 WORDS)</label><input id="ft-headline">
+        <label>STANDFIRST (THE EVIDENCE, ONE SENTENCE)</label><textarea id="ft-standfirst"></textarea>
+        <label>TAKE (THE JUDGMENT, 2-3 SENTENCES)</label><textarea id="ft-take"></textarea>
+        <label>SOURCE NAME</label><input id="ft-srcname">
+        <label>SOURCE URL</label><input id="ft-srcurl">
+        <button id="ft-submit">SUBMIT AS DRAFT</button>
+        <div class="statusmsg" id="ft-msg"></div>
+      </div>
+    </div>
+
+    <div id="ops-items"></div>
+  </div>
+</section>
+
+<script>
+// ── CONFIG (straight ASCII quotes ONLY — edit on GitHub, never a rich editor) ──
+var CONFIG = {
+  API_BASE: "",            // e.g. "https://daily-api.unsurfaced.com"
+  SUPABASE_URL: "",        // e.g. "https://xyz.supabase.co"
+  SUPABASE_ANON_KEY: ""    // public by design; RLS-scoped
+};
+
+var STATUS_ORDER = ["in_review", "draft", "approved", "rejected", "published"];
+var TRANSITIONS = {
+  draft:     [["in_review", "SEND TO REVIEW"]],
+  in_review: [["approved", "APPROVE"], ["rejected", "REJECT"], ["draft", "SEND BACK"]],
+  approved:  [["published", "PUBLISH ITEM"], ["draft", "PULL BACK"]],
+  rejected:  [["draft", "REVIVE"]],
+  published: []
+};
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+  });
+}
+function el(id) { return document.getElementById(id); }
+
+/* ══════════════ PUBLIC MAGAZINE ══════════════ */
+(function () {
+  var mag = el("magazine");
+  var statusEl = el("status");
+
+  if (!CONFIG.API_BASE) {
+    statusEl.textContent = "Backend not configured. The engine is being installed — Issue 001 is coming.";
+    return;
+  }
+  fetch(CONFIG.API_BASE + "/api/edition/today")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.edition || !data.items || !data.items.length) {
+        statusEl.textContent = "Today's issue is still at the printer. Check back shortly.";
+        return;
+      }
+      var d = new Date(data.edition.date + "T12:00:00");
+      var mon = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][d.getMonth()];
+      el("folio").textContent =
+        "ISSUE " + String(data.edition.issue_no).padStart(3, "0") + " \u00B7 VOL 1 \u00B7 " + mon + " " + String(d.getDate()).padStart(2, "0");
+      mag.innerHTML = data.items.map(renderItem).join("");
+    })
+    .catch(function () { statusEl.textContent = "The signal is temporarily unreachable."; });
+
+  function renderItem(item, i) {
+    var paper = i % 3 === 1 ? " class=\"paper\"" : "";
+    return "<article" + paper + ">" +
+      "<div class=\"kicker\">" + esc(item.kicker || "THE SIGNAL") + "</div>" +
+      (i === 0 ? "<h1>" + esc(item.headline) + "</h1>" : "<h2>" + esc(item.headline) + "</h2>") +
+      (item.standfirst ? "<p class=\"standfirst\">" + esc(item.standfirst) + "</p>" : "") +
+      "<p class=\"take\">" + esc(item.take) + "</p>" +
+      (item.embed_html ? "<div class=\"embed\">" + item.embed_html + "</div>" : "") +
+      "<p class=\"credit\">SOURCE \u00B7 " +
+        (item.source_url
+          ? "<a href=\"" + esc(item.source_url) + "\" target=\"_blank\" rel=\"noopener\">" + esc((item.source_name || "LINK").toUpperCase()) + "</a>"
+          : esc((item.source_name || "").toUpperCase())) +
+      "</p></article>";
+  }
+})();
+
+/* ══════════════ OPS — the newsroom floor ══════════════ */
+var sb = null, opsInited = false;
+
+function route() {
+  var isOps = location.hash.indexOf("#ops") === 0;
+  el("magazine").style.display = isOps ? "none" : "";
+  el("ops").style.display = isOps ? "block" : "none";
+  if (isOps && !opsInited) initOps();
+}
+window.addEventListener("hashchange", route);
+
+function initOps() {
+  opsInited = true;
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
+    el("li-msg").textContent = "SUPABASE NOT CONFIGURED IN CONFIG.";
+    return;
+  }
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+  s.onload = function () {
+    sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    sb.auth.onAuthStateChange(function (event) {
+      if (event === "PASSWORD_RECOVERY") {
+        el("ops-login").style.display = "none";
+        el("ops-recovery").style.display = "block";
+      }
+    });
+    wireAuth();
+    sb.auth.getSession().then(function (r) {
+      if (r.data && r.data.session) enterBoard();
+    });
+  };
+  s.onerror = function () { el("li-msg").textContent = "COULD NOT LOAD SUPABASE-JS (CHECK CSP script-src)."; };
+  document.head.appendChild(s);
+}
+
+function wireAuth() {
+  el("li-btn").onclick = function () {
+    el("li-msg").textContent = "SIGNING IN\u2026";
+    sb.auth.signInWithPassword({ email: el("li-email").value.trim(), password: el("li-pass").value })
+      .then(function (r) {
+        if (r.error) { el("li-msg").textContent = r.error.message.toUpperCase(); return; }
+        enterBoard();
+      });
+  };
+  el("li-forgot").onclick = function () {
+    var email = el("li-email").value.trim();
+    if (!email) { el("li-msg").textContent = "ENTER YOUR EMAIL FIRST."; return; }
+    sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname + "#ops" })
+      .then(function (r) {
+        el("li-msg").textContent = r.error ? r.error.message.toUpperCase() : "RECOVERY EMAIL SENT.";
+      });
+  };
+  el("rc-btn").onclick = function () {
+    sb.auth.updateUser({ password: el("rc-pass").value }).then(function (r) {
+      if (r.error) { el("rc-msg").textContent = r.error.message.toUpperCase(); return; }
+      el("rc-msg").textContent = "PASSWORD SET.";
+      el("ops-recovery").style.display = "none";
+      el("ops-login").style.display = "block";
+      enterBoard();
+    });
+  };
+  el("ops-signout").onclick = hardSignOut;
+}
+
+// Hard sign-out (lesson: end the session AND purge auth keys unconditionally, then reload).
+function hardSignOut() {
+  var done = function () {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf("sb-") === 0) kill.push(k);
+      }
+      kill.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+    try { sessionStorage.clear(); } catch (e) {}
+    location.hash = "";
+    location.reload();
+  };
+  try { sb.auth.signOut().then(done, done); } catch (e) { done(); }
+}
+
+function enterBoard() {
+  // UI gate only — RLS is the real lock. my_role() is the DB-enforced check.
+  sb.rpc("my_role").then(function (r) {
+    var role = r.data;
+    if (role !== "editor" && role !== "admin") {
+      el("li-msg").textContent = "SIGNED IN, BUT THIS ACCOUNT IS NOT AN EDITOR.";
+      return;
+    }
+    el("ops-gate").style.display = "none";
+    el("ops-board").style.display = "block";
+    wireBoard();
+    refreshBoard();
+  });
+}
+
+/* ── board data ── */
+var todayEdition = null;
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function getOrCreateEdition() {
+  return sb.from("editions").select("*").eq("date", todayStr()).limit(1)
+    .then(function (r) {
+      if (r.error) throw r.error;
+      if (r.data.length) return r.data[0];
+      return sb.rpc("next_issue_no").then(function (n) {
+        if (n.error) throw n.error;
+        return sb.from("editions").insert({ issue_no: n.data, date: todayStr(), status: "building" }).select()
+          .then(function (ins) {
+            if (ins.error) {
+              // unique-date race: someone else opened it — refetch
+              return sb.from("editions").select("*").eq("date", todayStr()).limit(1)
+                .then(function (rf) { if (rf.error || !rf.data.length) throw (rf.error || new Error("edition race")); return rf.data[0]; });
+            }
+            return ins.data[0];
+          });
+      });
+    });
+}
+
+function refreshBoard() {
+  el("ops-msg").textContent = "LOADING\u2026";
+  getOrCreateEdition().then(function (ed) {
+    todayEdition = ed;
+    return Promise.all([
+      sb.from("items").select("*").eq("edition_id", ed.id).order("created_at", { ascending: true }),
+      sb.rpc("ops_queue_counts")
+    ]);
+  }).then(function (rs) {
+    var items = rs[0].data || [];
+    var counts = rs[1].data || [];
+    renderCounts(counts);
+    renderItems(items);
+    el("ops-msg").textContent = "ISSUE " + String(todayEdition.issue_no).padStart(3, "0") +
+      " \u00B7 " + todayEdition.date + " \u00B7 " + todayEdition.status.toUpperCase();
+  }).catch(function (e) {
+    el("ops-msg").textContent = "LOAD FAILED: " + String(e.message || e).toUpperCase();
+  });
+}
+
+function renderCounts(counts) {
+  var map = {};
+  counts.forEach(function (c) { map[c.status] = c.n; });
+  var ready = map.approved || 0;
+  el("ops-counts").innerHTML =
+    "<span class=\"ready\">PUBLISH-READY " + ready + "</span> \u00B7 " +
+    STATUS_ORDER.map(function (s) { return s.toUpperCase().replace("_", " ") + " <b>" + (map[s] || 0) + "</b>"; }).join(" \u00B7 ");
+}
+
+function renderItems(items) {
+  var wrap = el("ops-items");
+  if (!items.length) {
+    wrap.innerHTML = "<div class=\"panel\"><p class=\"hint\">No items yet today. The cron drafts into this issue; finished takes land here too.</p></div>";
+    return;
+  }
+  var html = "";
+  STATUS_ORDER.forEach(function (st) {
+    var group = items.filter(function (i) { return i.status === st; });
+    if (!group.length) return;
+    html += "<div class=\"grp-head\">" + st.toUpperCase().replace("_", " ") + " \u00B7 " + group.length + "</div>";
+    group.forEach(function (i) { html += itemCard(i); });
+  });
+  wrap.innerHTML = html;
+  items.forEach(function (i) { wireItem(i); });
+}
+
+function itemCard(i) {
+  var canEdit = i.status !== "published";
+  var ro = canEdit ? "" : " readonly disabled";
+  var btns = (TRANSITIONS[i.status] || []).map(function (t) {
+    return "<button data-item=\"" + i.id + "\" data-to=\"" + t[0] + "\">" + t[1] + "</button>";
+  }).join("");
+  return "<div class=\"item-card\" id=\"card-" + i.id + "\">" +
+    "<div class=\"row\"><span class=\"badge " + esc(i.status) + "\">" + esc(i.status.toUpperCase().replace("_", " ")) + "</span>" +
+    "<span class=\"badge\">" + esc((i.source || "engine").toUpperCase()) + "</span></div>" +
+    "<label>KICKER</label><input id=\"f-kicker-" + i.id + "\" value=\"" + esc(i.kicker || "") + "\"" + ro + ">" +
+    "<label>HEADLINE</label><input id=\"f-headline-" + i.id + "\" value=\"" + esc(i.headline || "") + "\"" + ro + ">" +
+    "<label>STANDFIRST</label><textarea id=\"f-standfirst-" + i.id + "\"" + ro + ">" + esc(i.standfirst || "") + "</textarea>" +
+    "<label>TAKE</label><textarea id=\"f-take-" + i.id + "\"" + ro + ">" + esc(i.take || "") + "</textarea>" +
+    "<div class=\"srcline\">SOURCE \u00B7 " + esc(i.source_name || "\u2014") + " \u00B7 " + esc(i.source_url || "") + "</div>" +
+    (i.review_note ? "<div class=\"flagline\">NOTE \u00B7 " + esc(i.review_note) + "</div>" : "") +
+    (canEdit ? "<button class=\"ghost\" data-save=\"" + i.id + "\">SAVE EDITS</button>" : "") + btns +
+    "<div class=\"statusmsg\" id=\"msg-" + i.id + "\"></div>" +
+    "</div>";
+}
+
+function wireItem(i) {
+  var card = el("card-" + i.id);
+  if (!card) return;
+  var saveBtn = card.querySelector("[data-save]");
+  if (saveBtn) saveBtn.onclick = function () {
+    sb.from("items").update({
+      kicker: el("f-kicker-" + i.id).value,
+      headline: el("f-headline-" + i.id).value,
+      standfirst: el("f-standfirst-" + i.id).value,
+      take: el("f-take-" + i.id).value
+    }).eq("id", i.id).then(function (r) {
+      el("msg-" + i.id).textContent = r.error ? r.error.message.toUpperCase() : "SAVED.";
+    });
+  };
+  card.querySelectorAll("[data-to]").forEach(function (b) {
+    b.onclick = function () {
+      var to = b.getAttribute("data-to");
+      var patch = { status: to };
+      if (to === "rejected") {
+        var note = prompt("Rejection note (required — the review gate explains itself):");
+        if (!note) return;
+        patch.review_note = note;
+      }
+      sb.from("items").update(patch).eq("id", i.id).then(function (r) {
+        if (r.error) { el("msg-" + i.id).textContent = r.error.message.toUpperCase(); return; }
+        refreshBoard();
+      });
+    };
+  });
+}
+
+/* ── board actions ── */
+function wireBoard() {
+  el("ops-refresh").onclick = refreshBoard;
+
+  el("ops-publish").onclick = function () {
+    if (!todayEdition) return;
+    if (!confirm("Publish the edition? All APPROVED items go live; drafts and review items stay back.")) return;
+    el("ops-msg").textContent = "PUBLISHING\u2026";
+    sb.from("items").update({ status: "published" })
+      .eq("edition_id", todayEdition.id).eq("status", "approved")
+      .then(function (r) {
+        if (r.error) throw r.error;
+        return sb.from("editions").update({ status: "published" }).eq("id", todayEdition.id);
+      })
+      .then(function (r) {
+        if (r.error) throw r.error;
+        refreshBoard();
+      })
+      .catch(function (e) { el("ops-msg").textContent = "PUBLISH FAILED: " + String(e.message || e).toUpperCase(); });
+  };
+
+  el("tab-signal").onclick = function () { setTab("signal"); };
+  el("tab-finished").onclick = function () { setTab("finished"); };
+
+  el("sig-submit").onclick = function () {
+    var topics = el("sig-topics").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+    var candidates = el("sig-cands").value.split("\n").map(function (line) {
+      var parts = line.split("|").map(function (s) { return s.trim(); });
+      if (!parts[0]) return null;
+      return { url: parts[0], title: parts[1] || parts[0], snippet: parts[2] || "" };
+    }).filter(Boolean);
+    if (!topics.length && !candidates.length) { el("sig-msg").textContent = "NOTHING TO SUBMIT."; return; }
+    sb.auth.getUser().then(function (u) {
+      return sb.from("dev_submissions").insert({
+        mode: "signal",
+        payload: { topics: topics, candidates: candidates, notes: el("sig-notes").value || null },
+        submitted_by: u.data.user ? u.data.user.id : null
+      });
+    }).then(function (r) {
+      if (r.error) { el("sig-msg").textContent = r.error.message.toUpperCase(); return; }
+      el("sig-msg").textContent = "SIGNAL SUBMITTED \u2014 STEERS THE NEXT RUN.";
+      el("sig-topics").value = ""; el("sig-cands").value = ""; el("sig-notes").value = "";
+    });
+  };
+
+  el("ft-submit").onclick = function () {
+    var headline = el("ft-headline").value.trim();
+    var take = el("ft-take").value.trim();
+    if (!headline || !take) { el("ft-msg").textContent = "HEADLINE AND TAKE ARE REQUIRED."; return; }
+    el("ft-msg").textContent = "SUBMITTING\u2026";
+    getOrCreateEdition().then(function (ed) {
+      return sb.from("items").insert({
+        edition_id: ed.id, status: "draft", source: "dev",
+        kicker: el("ft-kicker").value, headline: headline,
+        standfirst: el("ft-standfirst").value.trim(),
+        take: take,
+        source_name: el("ft-srcname").value.trim() || null,
+        source_url: el("ft-srcurl").value.trim() || null
+      });
+    }).then(function (r) {
+      if (r.error) { el("ft-msg").textContent = r.error.message.toUpperCase(); return; }
+      el("ft-msg").textContent = "DRAFT CREATED \u2014 IN THE QUEUE.";
+      ["ft-headline", "ft-standfirst", "ft-take", "ft-srcname", "ft-srcurl"].forEach(function (id) { el(id).value = ""; });
+      refreshBoard();
+    }).catch(function (e) { el("ft-msg").textContent = String(e.message || e).toUpperCase(); });
+  };
+}
+
+function setTab(which) {
+  el("tab-signal").className = "tab" + (which === "signal" ? " on" : "");
+  el("tab-finished").className = "tab" + (which === "finished" ? " on" : "");
+  el("mode-signal").style.display = which === "signal" ? "block" : "none";
+  el("mode-finished").style.display = which === "finished" ? "block" : "none";
+}
+
+route();
+</script>
+</body>
+</html>

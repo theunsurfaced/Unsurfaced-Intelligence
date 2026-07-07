@@ -1,0 +1,16 @@
+name: Ritual Gate
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run the ritual gate
+        run: python3 tools/ritual_gate.py

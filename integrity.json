@@ -1,0 +1,47 @@
+{
+  "surfaces": {
+    "index.html": {
+      "version": "home-v2.1",
+      "bytes": 13578928
+    },
+    "daily/index.html": {
+      "version": "daily-v1.1",
+      "bytes": 25622
+    },
+    "intelligence/index.html": {
+      "version": "intel-v2.0",
+      "bytes": 515996
+    },
+    "arcade/index.html": {
+      "version": "hub-v1.1",
+      "bytes": 59250
+    },
+    "arcade/rps/index.html": {
+      "version": "rps-3-9",
+      "bytes": 6882003
+    },
+    "arcade/claw/index.html": {
+      "version": "claw-2-4",
+      "bytes": 4174506
+    },
+    "arcade/pop-a-shot/index.html": {
+      "version": "pop-1-3",
+      "bytes": 4171182
+    }
+  },
+  "payloads": {
+    "glb-hand": "14b4ec43ef1fe475ddb598d0da375d4c642d92b617ae4f96613b30585883f031",
+    "glb-brain": "8e2549910bf1a266a69743c9a5080e414d1e2f99651011e89681aa364a06714b"
+  },
+  "fonts": {
+    "black-ops-one": {
+      "sha256": "a93852d6c50aaa75f3f667c3b59aa8e0127effb85395f5dfe7cd06f50fd968b7",
+      "carriers": [
+        "arcade/index.html",
+        "arcade/rps/index.html",
+        "arcade/claw/index.html",
+        "arcade/pop-a-shot/index.html"
+      ]
+    }
+  }
+}
