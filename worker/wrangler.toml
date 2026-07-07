@@ -1,5 +1,9 @@
 # UNSURFACED(TM) API — Cloudflare Worker config
-# Existing worker `unsurfaced-api` moves here; Cloudflare build root = /worker
+# NOTE: deployment is currently DASHBOARD-MANAGED (paste index.js + Deploy).
+# Flipping to git-builds requires the binding IDs below filled in first —
+# a git build deploys ONLY what this file declares, and would otherwise
+# strip the live AI / MEDIA / RATE_LIMIT bindings. Fill, verify, then set
+# Cloudflare build root = /worker.
 name = "unsurfaced-api"
 main = "src/index.js"
 compatibility_date = "2026-07-01"
@@ -8,18 +12,24 @@ routes = [
   { pattern = "api.unsurfaced-intelligence.com", custom_domain = true }
 ]
 
-# ── Bindings required by the ecosystem plan (Part 5.3) ──────────────
-# 1. KV: model-pool budget counter + response cache.
-#    Create in dashboard (Workers > KV), paste the id:
+# ── Live bindings (declare before any git-build flip) ───────────────
+# [ai]
+# binding = "AI"                       # Workers AI (PLAY / EXCAVATE / MINE)
+#
+# [[r2_buckets]]
+# binding = "MEDIA"                    # generated images + study media
+# bucket_name = "<paste-bucket-name>"
+#
 # [[kv_namespaces]]
-# binding = "ECOSYSTEM_KV"
+# binding = "RATE_LIMIT"               # per-user AI limits + arcade replay guard (arc:*)
 # id = "<paste-kv-namespace-id>"
 
-# 2. Cron: DAILY cycle + nightly activity rollup.
+# ── Cron (uncomment at build step 5: DAILY pipeline + nightly rollup) ─
 # [triggers]
-# crons = ["0 6 * * *", "30 4 * * *"]   # DAILY pipeline 06:00 UTC; rollup 04:30 UTC
+# crons = ["0 6 * * *", "30 4 * * *"]
 
-# ── Secrets (set via `wrangler secret put`, NEVER in this file) ─────
-#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENROUTER_API_KEY,
-#   ANTHROPIC_API_KEY, LEADERBOARD_HMAC_SECRET
-# Vars like ALLOWED_ORIGINS stay in the dashboard as today.
+# ── Secrets (dashboard → Variables and Secrets, NEVER in this file) ──
+#   SUPABASE_URL (var), SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY,
+#   ALLOWED_ORIGINS (var), EMAIL_FROM (var), APP_URL (var),
+#   LEADERBOARD_HMAC_SECRET   <- NEW in Phase 3 (arcade session tokens)

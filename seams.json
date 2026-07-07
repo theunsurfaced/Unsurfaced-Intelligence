@@ -20,12 +20,15 @@
       "file": "arcade/claw/index.html",
       "tag": "SEAM:SIGNUP_ENDPOINT",
       "purpose": "win email capture; PLAY/EXCAVATE/MINE crossover attach"
+    },
+    "SEAM:ACTIVITY_LOG": {
+      "file": "worker/src/index.js",
+      "purpose": "logEvent() \u2014 every endpoint records activity (0007)"
     }
   },
   "planned": [
     "SEAM:MODEL_POOL",
     "SEAM:KNOWLEDGE_INGEST",
-    "SEAM:ACTIVITY_LOG",
     "SEAM:OPS_AUTH",
     "SEAM:GUARD_SYNC",
     "SEAM:PROMPT_SYNC"

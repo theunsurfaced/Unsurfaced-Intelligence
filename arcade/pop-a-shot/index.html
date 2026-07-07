@@ -132,6 +132,19 @@ button.soon{cursor:pointer;background:none}
 #primer .row .soon{font-family:var(--arcade);font-size:8px;letter-spacing:.14em;
   color:var(--red);border:1px solid var(--red);border-radius:3px;padding:2px 6px}
 @media(prefers-reduced-motion:reduce){#primer .row .glyph b{animation:none}}
+
+/* SEAM:LEADERBOARD — board styles */
+#boardWrap{margin:14px 0 4px;text-align:left}
+#boardWrap .bd-eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--red,#C41230);margin-bottom:8px}
+#boardWrap .bd-row{display:flex;align-items:baseline;gap:10px;font-family:'Space Mono',monospace;
+  font-size:13px;line-height:1.9;color:var(--ivory,#FAF7F2)}
+#boardWrap .bd-row .rk{color:var(--red,#C41230);min-width:2.2em;text-align:right}
+#boardWrap .bd-row .hd{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#boardWrap .bd-row .sc{color:rgba(250,247,242,.75)}
+#boardWrap .bd-row.you{background:rgba(196,18,48,.14);outline:1px solid rgba(196,18,48,.4);
+  padding:0 8px;margin:2px -8px}
+#boardWrap .bd-empty{font-family:'Space Mono',monospace;font-size:12px;color:rgba(250,247,242,.55)}
 </style>
 </head>
 <body>
@@ -186,11 +199,15 @@ button.soon{cursor:pointer;background:none}
     <div class="eyebrow" id="revealEyebrow">Final Score</div>
     <h3 class="score" id="revealName">0</h3>
     <p id="revealMeta">—</p>
+    <div id="boardWrap" style="display:none"></div>
     <div class="signup">
-      <div class="beta-note">Sign up to stay informed — be first in line as the arcade grows.</div>
+      <div class="beta-note">Join the leaderboard. Your email stays private — the board shows your name and rank.</div>
+      <input id="signupHandle" type="text" placeholder="profile name" maxlength="20"
+             autocomplete="nickname" aria-label="Profile name for the leaderboard"
+             style="margin-bottom:8px">
       <input id="signupEmail" type="email" placeholder="you@email.com"
-             autocomplete="email" aria-label="Email for beta updates">
-      <button class="ok" id="signupGo">Notify Me</button>
+             autocomplete="email" aria-label="Email (kept private)">
+      <button class="ok" id="signupGo">Join the Board</button>
       <button class="skip" id="signupSkip">Skip — run it back</button>
     </div>
     <button class="ok" id="revealOk" style="display:none">Keep playing</button>
@@ -372,8 +389,59 @@ function setTally(){
     ? `streak ×${state.streak} · running hot` : `best streak ${state.best}`;
 }
 
-const SIGNUPS = [];   // SEAM:SIGNUP_ENDPOINT — POST to Supabase/API here when the
-                      // beta backend lands; entries: { email, score, at }
+const SIGNUPS = [];   // retained for offline fallback
+// SEAM:SIGNUP_ENDPOINT — live: joins post to the arcade spine (Worker).
+const ARCADE_API = 'https://api.unsurfaced-intelligence.com';
+function arcPlayer(){ try { return JSON.parse(localStorage.getItem('arcade_player')||'null'); } catch { return null; } }
+function arcSavePlayer(p){ try { localStorage.setItem('arcade_player', JSON.stringify(p)); } catch {} }
+let arcToken = null, arcSubmitted = false, arcLastRank = null;
+async function arcApi(path, opts){
+  const r = await fetch(ARCADE_API + path, Object.assign({
+    headers: { 'Content-Type': 'application/json' } }, opts || {}));
+  return r.json();
+}
+async function arcNewSession(){
+  arcSubmitted = false; arcLastRank = null;
+  try { const r = await arcApi('/arcade/session?game=pop'); arcToken = r.ok ? r.token : null; }
+  catch { arcToken = null; }
+}
+async function arcSubmitScore(){
+  const p = arcPlayer();
+  if (!p || !arcToken || arcSubmitted) return null;
+  arcSubmitted = true;
+  try {
+    const r = await arcApi('/arcade/score', { method:'POST', body: JSON.stringify({
+      token: arcToken, player_id: p.id, game: 'pop', score: state.score,
+      meta: { streak: state.best, shots: state.shots, makes: state.makes } }) });
+    arcLastRank = (r && r.rank) || null;
+    return r;
+  } catch { return null; }
+}
+function arcEsc(s){ return String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+async function arcRenderBoard(){
+  const wrap = $('boardWrap'); if (!wrap) return;
+  const p = arcPlayer();
+  try {
+    const r = await arcApi('/arcade/board?game=pop' + (p ? '&player_id=' + encodeURIComponent(p.id) : ''));
+    if (!r.ok) return;
+    const top = r.top || [];
+    let html = '<div class="bd-eyebrow">Leaderboard · ' + arcEsc(r.season) + '</div>';
+    if (!top.length) html += '<div class="bd-empty">No scores yet this week — yours starts the board.</div>';
+    const inTop = p && top.some(row => row.handle === p.handle);
+    top.forEach(row => {
+      const you = p && row.handle === p.handle;
+      html += '<div class="bd-row' + (you ? ' you' : '') + '"><span class="rk">' + row.rank +
+              '</span><span class="hd">' + arcEsc(row.handle) +
+              '</span><span class="sc">' + row.score + '</span></div>';
+    });
+    const you = r.you || arcLastRank;
+    if (p && you && !inTop)
+      html += '<div class="bd-row you"><span class="rk">' + you.rank +
+              '</span><span class="hd">' + arcEsc(p.handle) +
+              '</span><span class="sc">' + you.score + '</span></div>';
+    wrap.innerHTML = html; wrap.style.display = 'block';
+  } catch { /* board is a bonus, never an error state */ }
+}
 function flavorLine(){
   if (state.best >= 6)  return 'the Hand was feeling it';
   if (state.best >= 3)  return 'the Hand ran hot';
@@ -383,9 +451,13 @@ function flavorLine(){
 }
 function showCard(){
   state.mode = 'over';
-  // SEAM:LEADERBOARD — spec 3 landing zone: score submission + ranked board
-  // mount in this card (a shot game wants a leaderboard).
-  $('revealEyebrow').textContent = 'Final Score · Beta';
+  // SEAM:LEADERBOARD — spec 3 mounted: score submission + ranked board.
+  const joined = !!arcPlayer();
+  document.querySelector('#reveal .signup').style.display = joined ? 'none' : '';
+  $('revealOk').style.display = joined ? '' : 'none';
+  $('boardWrap').style.display = 'none';
+  (async () => { await arcSubmitScore(); await arcRenderBoard(); })();
+  $('revealEyebrow').textContent = joined ? 'Final Score' : 'Final Score · Join the Board';
   $('revealName').textContent = String(state.score);
   $('revealMeta').textContent = `best streak ${state.best} · ${flavorLine()}`;
   $('reveal').classList.add('on', 'win');
@@ -394,7 +466,8 @@ function closeCard(){
   $('reveal').classList.remove('on', 'win');
   const em = $('signupEmail'), go = $('signupGo');
   em.value = ''; em.classList.remove('err');
-  go.disabled = false; go.textContent = 'Notify Me';
+  const _hd = $('signupHandle'); if (_hd){ _hd.value = ''; _hd.classList.remove('err'); }
+  go.disabled = false; go.textContent = 'Join the Board';
   newGame();
 }
 function newGame(){
@@ -411,16 +484,40 @@ function newGame(){
 $('signupSkip').addEventListener('click', closeCard);
 $('signupGo').addEventListener('click', ()=>{
   const em = $('signupEmail'), v = em.value.trim();
+  const hd = $('signupHandle'), hv = hd.value.trim();
+  if (!/^[A-Za-z0-9_ ]{3,20}$/.test(hv)){ hd.classList.add('err'); hd.focus(); return; }
+  hd.classList.remove('err');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){
     em.classList.add('err'); em.focus(); return;
   }
   em.classList.remove('err');
   SIGNUPS.push({ email: v, score: state.score, at: Date.now() });
-  // SEAM:SIGNUP_ENDPOINT — replace the local hold above with the real POST
+  // SEAM:SIGNUP_ENDPOINT — live POST to the arcade spine
   const go = $('signupGo');
-  go.disabled = true; go.textContent = "You're on the list ✓";
-  blip(660, .1); setTimeout(()=>blip(880, .14), 90);
-  setTimeout(closeCard, 950);
+  go.disabled = true; go.textContent = 'Joining…';
+  (async () => {
+    try {
+      const r = await arcApi('/arcade/join', { method:'POST',
+        body: JSON.stringify({ handle: hv, email: v }) });
+      if (r.ok){
+        arcSavePlayer({ id: r.player_id, handle: r.handle });
+        go.textContent = "You're on the board ✓";
+        blip(660, .1); setTimeout(()=>blip(880, .14), 90);
+        await arcSubmitScore(); await arcRenderBoard();
+        document.querySelector('#reveal .signup').style.display = 'none';
+        $('revealOk').style.display = '';
+      } else if (r.error === 'handle_taken' || r.error === 'handle_unavailable'){
+        go.disabled = false; go.textContent = 'Join the Board';
+        hd.classList.add('err'); hd.focus();
+      } else {
+        go.disabled = false; go.textContent = 'Join the Board';
+        em.classList.add('err');
+      }
+    } catch {
+      go.disabled = false; go.textContent = "You're on the list ✓ (offline)";
+      setTimeout(closeCard, 950);
+    }
+  })();
 });
 $('signupEmail').addEventListener('keydown', e=>{
   if (e.key === 'Enter') $('signupGo').click();
@@ -1042,7 +1139,7 @@ function canShoot(){
       && handBall && handBall.seatT >= 1;
 }
 function startClockIfNeeded(){
-  if (state.mode === 'attract'){ state.mode = 'play'; }
+  if (state.mode === 'attract'){ state.mode = 'play'; arcNewSession(); }
 }
 function shoot(p, ang){
   if (!canShoot()) return;
