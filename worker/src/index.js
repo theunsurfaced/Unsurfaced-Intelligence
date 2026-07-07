@@ -47,6 +47,7 @@ export default {
       if (path === '/' || path === '/health') return json({ ok: true, service: 'unsurfaced-api' }, 200, origin, env);
       if (request.method === 'GET' && path.startsWith('/media/')) return serveMedia(path, env, origin);
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
+      if (path.startsWith('/arcade/')) return arcadeRouter(path, request, env, origin);
 
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
@@ -600,3 +601,160 @@ function json(data, status, origin, env) {
   return new Response(JSON.stringify(data), { status, headers: h });
 }
 async function safeJson(request) { try { return await request.json(); } catch { return {}; } }
+
+
+/* ------------------------- ARCADE SPINE -------------------------- */
+/* Leaderboard backend for RPS / CLAW / POP. Public routes (players are
+ * anonymous; identity = handle + private email in arcade_players).
+ * Requires secret: LEADERBOARD_HMAC_SECRET. Reuses RATE_LIMIT KV for
+ * replay protection (keys prefixed arc:). Tables from migration 0005;
+ * events from 0007. Board reads go through leaderboard_public only.  */
+
+const ARCADE = {
+  GAMES: { rps: { max: 50 },                       // best streak cap
+           claw: { max: 5, minGrabMs: 3000 },      // wins per session cap
+           pop:  { max: 240, perSec: 4 } },        // 60s * 3pt heaters + slack
+  SESSION_MIN_S: 5, SESSION_MAX_S: 1800,
+  HANDLE_RE: /^[A-Za-z0-9_ ]{3,20}$/,
+  HANDLE_BLOCK: ['admin','unsurfaced','moderator','fuck','shit','bitch','cunt','nigg','fag','rape','hitler','nazi'],
+};
+
+async function arcadeRouter(path, request, env, origin) {
+  const body = request.method === 'POST' ? await safeJson(request) : {};
+  const url = new URL(request.url);
+  switch (path) {
+    case '/arcade/join':    return arcadeJoin(body, env, origin);
+    case '/arcade/session': return arcadeSession(url, env, origin);
+    case '/arcade/score':   return arcadeScore(body, env, origin);
+    case '/arcade/board':   return arcadeBoard(url, env, origin);
+    default: return json({ ok: false, error: 'not_found' }, 404, origin, env);
+  }
+}
+
+/* POST /arcade/join { handle, email } -> { ok, player_id, handle }
+ * Email is stored and never surfaced anywhere public (migration 0005). */
+async function arcadeJoin(body, env, origin) {
+  const handle = String(body.handle || '').trim();
+  const email  = String(body.email  || '').trim().toLowerCase();
+  if (!ARCADE.HANDLE_RE.test(handle))
+    return json({ ok: false, error: 'bad_handle', hint: '3-20 chars: letters, numbers, spaces, _' }, 400, origin, env);
+  const lower = handle.toLowerCase();
+  if (ARCADE.HANDLE_BLOCK.some(w => lower.includes(w)))
+    return json({ ok: false, error: 'handle_unavailable' }, 400, origin, env);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return json({ ok: false, error: 'bad_email' }, 400, origin, env);
+  try {
+    const rows = await sbRest(env, 'arcade_players', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: { handle, email }
+    });
+    const p = rows && rows[0];
+    logEvent(env, 'arcade', null, 'player_joined', null, {});
+    return json({ ok: true, player_id: p.id, handle: p.handle }, 200, origin, env);
+  } catch (e) {
+    if (String(e.message).includes('409')) return json({ ok: false, error: 'handle_taken' }, 409, origin, env);
+    throw e;
+  }
+}
+
+/* GET /arcade/session?game=pop -> { ok, token }  (HMAC, embeds game+iat+jti) */
+async function arcadeSession(url, env, origin) {
+  const game = url.searchParams.get('game');
+  if (!ARCADE.GAMES[game]) return json({ ok: false, error: 'bad_game' }, 400, origin, env);
+  const payload = { g: game, iat: Date.now(), jti: crypto.randomUUID() };
+  const token = btoa(JSON.stringify(payload)) + '.' + await arcSign(env, JSON.stringify(payload));
+  return json({ ok: true, token }, 200, origin, env);
+}
+
+/* POST /arcade/score { token, player_id, game, score, meta } -> { ok, rank } */
+async function arcadeScore(body, env, origin) {
+  const { token, player_id, game, score } = body;
+  const meta = (body.meta && typeof body.meta === 'object') ? body.meta : {};
+  const spec = ARCADE.GAMES[game];
+  if (!spec || !token || !player_id) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+
+  // 1. Token: signature, game match, age window
+  const dot = token.lastIndexOf('.');
+  if (dot < 0) return json({ ok: false, error: 'bad_token' }, 400, origin, env);
+  const rawB64 = token.slice(0, dot), sig = token.slice(dot + 1);
+  let payload; try { payload = JSON.parse(atob(rawB64)); } catch { return json({ ok: false, error: 'bad_token' }, 400, origin, env); }
+  if (await arcSign(env, JSON.stringify(payload)) !== sig) return json({ ok: false, error: 'bad_sig' }, 403, origin, env);
+  if (payload.g !== game) return json({ ok: false, error: 'game_mismatch' }, 400, origin, env);
+  const ageS = (Date.now() - payload.iat) / 1000;
+  if (ageS < ARCADE.SESSION_MIN_S || ageS > ARCADE.SESSION_MAX_S)
+    return json({ ok: false, error: 'session_window' }, 400, origin, env);
+
+  // 2. Replay: one submission per token (RATE_LIMIT KV, arc: prefix)
+  if (env.RATE_LIMIT) {
+    const k = 'arc:jti:' + payload.jti;
+    if (await env.RATE_LIMIT.get(k)) return json({ ok: false, error: 'replay' }, 409, origin, env);
+    await env.RATE_LIMIT.put(k, '1', { expirationTtl: 86400 });
+  }
+
+  // 3. Plausibility: caps per game; pop also capped by real elapsed time
+  const s = Number(score);
+  let valid = Number.isInteger(s) && s >= 0 && s <= spec.max;
+  if (game === 'pop' && s > Math.ceil(Math.min(ageS, 75) * spec.perSec)) valid = false;
+  if (game === 'claw' && meta.grab_ms != null && Number(meta.grab_ms) < spec.minGrabMs) valid = false;
+
+  // 4. Insert (service role; anon has no path to these tables)
+  await sbRest(env, 'arcade_scores', {
+    method: 'POST',
+    body: { player_id, game, score: s, meta, season: arcSeason(), valid }
+  });
+  logEvent(env, 'arcade', game, valid ? 'score_submitted' : 'score_rejected', payload.jti, { score: s });
+  if (!valid) return json({ ok: false, error: 'implausible' }, 422, origin, env);
+
+  const rank = await arcRank(env, game, player_id);
+  return json({ ok: true, rank }, 200, origin, env);
+}
+
+/* GET /arcade/board?game=pop&player_id=... -> { ok, season, top, you } */
+async function arcadeBoard(url, env, origin) {
+  const game = url.searchParams.get('game');
+  if (!ARCADE.GAMES[game]) return json({ ok: false, error: 'bad_game' }, 400, origin, env);
+  const season = arcSeason();
+  const top = await sbRest(env, `leaderboard_public?game=eq.${game}&season=eq.${season}&order=rank.asc&limit=10`);
+  let you = null;
+  const pid = url.searchParams.get('player_id');
+  if (pid) you = await arcRank(env, game, pid);
+  return json({ ok: true, season, top: top || [], you }, 200, origin, env);
+}
+
+async function arcRank(env, game, playerId) {
+  try {
+    const p = await sbRest(env, `arcade_players?id=eq.${playerId}&select=handle`);
+    const handle = p && p[0] && p[0].handle;
+    if (!handle) return null;
+    const rows = await sbRest(env,
+      `leaderboard_public?game=eq.${game}&season=eq.${arcSeason()}&handle=eq.${encodeURIComponent(handle)}`);
+    return (rows && rows[0]) || null;
+  } catch { return null; }
+}
+
+function arcSeason() {  // ISO week, e.g. 2026-W28 — weekly seasons per spec
+  const d = new Date(); const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear();
+  const week = Math.ceil((((t - Date.UTC(y, 0, 1)) / 86400000) + 1) / 7);
+  return `${y}-W${String(week).padStart(2, '0')}`;
+}
+
+async function arcSign(env, raw) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LEADERBOARD_HMAC_SECRET || 'dev-only'),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(raw));
+  return btoa(String.fromCharCode(...new Uint8Array(mac))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* SEAM:ACTIVITY_LOG — the one function every endpoint calls to record an
+ * event (migration 0007). Fire-and-forget: analytics never block product. */
+function logEvent(env, platform, space, event, sessionId, meta) {
+  try {
+    sbRest(env, 'activity_events', {
+      method: 'POST',
+      body: { platform, space, event, session_id: sessionId, meta: meta || {} }
+    }).catch(() => {});
+  } catch { /* never throw from telemetry */ }
+}

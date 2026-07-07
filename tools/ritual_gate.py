@@ -22,6 +22,7 @@ def load(f):
     return open(f, encoding="utf-8", errors="replace").read()
 
 surfaces = sorted(glob.glob("*.html") + glob.glob("*/index.html") + glob.glob("*/*/index.html"))
+worker_js = sorted(glob.glob("worker/src/*.js"))
 manifest = json.load(open("integrity.json"))
 seams = json.load(open("seams.json"))
 
@@ -35,7 +36,12 @@ for f in surfaces:
         n += 1
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as t:
             t.write(body); path = t.name
-        r = subprocess.run(["node", "--check", path], capture_output=True, text=True)
+        try:
+            r = subprocess.run(["node", "--check", path], capture_output=True, text=True)
+        except FileNotFoundError:
+            os.unlink(path)
+            print("  js      Node.js not installed locally - JS checks deferred to CI")
+            break
         os.unlink(path)
         if r.returncode != 0:
             FAIL.append(f"[js] {f} script#{n}: {r.stderr.strip().splitlines()[0][:140]}")
@@ -83,9 +89,19 @@ for f in surfaces:
             FAIL.append(f"[quote] {f}: curly quote in JSON/importmap block")
 print("  quotes  scanned")
 
-# ── 6. Seam registry ─────────────────────────────────────────────────────
+# ── 5b. Worker syntax ────────────────────────────────────────────────────
+for f in worker_js:
+    try:
+        r = subprocess.run(["node", "--check", f], capture_output=True, text=True)
+        if r.returncode != 0:
+            FAIL.append(f"[js] {f}: {r.stderr.strip().splitlines()[0][:140]}")
+        print(f"  js      {f}: checked")
+    except FileNotFoundError:
+        print("  js      worker: Node.js not installed locally - deferred to CI")
+
+# ── 6. Seam registry (surfaces + worker source) ──────────────────────────
 found = {}  # (file, tag) presence
-for f in surfaces:
+for f in surfaces + worker_js:
     for tag in set(re.findall(r"SEAM:[A-Z_0-9]+", load(f))):
         found.setdefault(tag, set()).add(f)
 for key, entry in seams["registry"].items():
