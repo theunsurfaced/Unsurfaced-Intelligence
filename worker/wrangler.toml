@@ -1,0 +1,25 @@
+# UNSURFACED(TM) API — Cloudflare Worker config
+# Existing worker `unsurfaced-api` moves here; Cloudflare build root = /worker
+name = "unsurfaced-api"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+routes = [
+  { pattern = "api.unsurfaced-intelligence.com", custom_domain = true }
+]
+
+# ── Bindings required by the ecosystem plan (Part 5.3) ──────────────
+# 1. KV: model-pool budget counter + response cache.
+#    Create in dashboard (Workers > KV), paste the id:
+# [[kv_namespaces]]
+# binding = "ECOSYSTEM_KV"
+# id = "<paste-kv-namespace-id>"
+
+# 2. Cron: DAILY cycle + nightly activity rollup.
+# [triggers]
+# crons = ["0 6 * * *", "30 4 * * *"]   # DAILY pipeline 06:00 UTC; rollup 04:30 UTC
+
+# ── Secrets (set via `wrangler secret put`, NEVER in this file) ─────
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENROUTER_API_KEY,
+#   ANTHROPIC_API_KEY, LEADERBOARD_HMAC_SECRET
+# Vars like ALLOWED_ORIGINS stay in the dashboard as today.
