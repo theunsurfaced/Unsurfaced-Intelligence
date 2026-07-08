@@ -95,6 +95,21 @@
   .tabs { margin-top: 6px; }
   .tabs button.tab { background: transparent; border: 1px solid var(--line); color: var(--mute); }
   .tabs button.tab.on { border-color: var(--red); color: var(--ivory); }
+
+/* SEAM:PREVIEW — the in-house reader. Sources open here, in English, without leaving. */
+.pvwrap{position:fixed;inset:0;background:rgba(10,10,10,.82);backdrop-filter:blur(3px);z-index:80;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:6vh 16px 8vh}
+.pvwrap.on{display:flex}
+.pv{background:var(--cream,#F5F0E8);color:#141414;max-width:760px;width:100%;border:1px solid rgba(20,20,20,.25);box-shadow:0 30px 90px rgba(0,0,0,.55);padding:34px clamp(22px,5vw,52px) 40px;position:relative}
+.pv-close{position:absolute;top:14px;right:16px;font-family:'Space Mono',monospace;font-size:13px;letter-spacing:.1em;background:none;border:1px solid rgba(20,20,20,.35);color:#141414;padding:4px 10px;cursor:pointer}
+.pv-close:hover{background:#141414;color:#F5F0E8}
+.pv-kicker{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:#C41230;margin-bottom:14px}
+.pv h1{font-size:clamp(24px,4.4vw,38px);line-height:1.08;margin:0 0 14px}
+.pv img.pv-img{width:100%;max-height:420px;object-fit:cover;border:1px solid rgba(20,20,20,.2);margin:6px 0 18px;display:block}
+.pv p{font-size:15.5px;line-height:1.68;margin:0 0 14px}
+.pv-foot{margin-top:22px;padding-top:14px;border-top:1px solid rgba(20,20,20,.2);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#555;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.pv-foot a{color:#C41230;text-decoration:none;border-bottom:1px solid rgba(196,18,48,.35)}
+.pv-load{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#555;padding:26px 0}
+.credit a.ext{color:inherit;text-decoration:none;border-bottom:none;opacity:.75}
 </style>
 </head>
 <body>
@@ -237,24 +252,29 @@ function el(id) { return document.getElementById(id); }
     var l = String(item.lang || "").trim().toLowerCase();
     return !!l && l !== "english" && l !== "en";
   }
-  function transUrl(u) {
-    return "https://translate.google.com/translate?sl=auto&tl=en&u=" + encodeURIComponent(u);
-  }
   function keyVisual(item) {
-    if (!item.image_url || !/^https?:\/\//.test(item.image_url)) return "";
-    return "<figure class=\"keyvis\"><img src=\"" + esc(item.image_url) +
-      "\" alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\"" +
+    var has = item.image_url && /^https?:\/\//.test(item.image_url);
+    if (has) {
+      return "<figure class=\"keyvis\"><img src=\"" + esc(item.image_url) +
+        "\" alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\"" +
+        " onerror=\"this.closest(&quot;figure&quot;).style.display=&quot;none&quot;\"></figure>";
+    }
+    if (!item.source_url) return "";
+    // No wire image: ask the source itself, lazily, after render.
+    return "<figure class=\"keyvis\" style=\"display:none\" data-lazyimg=\"" + esc(item.source_url) +
+      "\"><img alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\"" +
       " onerror=\"this.closest(&quot;figure&quot;).style.display=&quot;none&quot;\"></figure>";
   }
   function creditLine(item) {
     var name = esc((item.source_name || "LINK").toUpperCase());
     if (!item.source_url) return "SOURCE \u00B7 " + esc((item.source_name || "").toUpperCase());
-    var a = "<a href=\"" + esc(item.source_url) + "\" target=\"_blank\" rel=\"noopener\">" + name + "</a>";
-    if (!isForeign(item)) return "SOURCE \u00B7 " + a;
+    var u = esc(item.source_url);
+    var a = "<a href=\"" + u + "\" data-pv=\"en\">" + name + "</a>";
+    var ext = " <a class=\"ext\" href=\"" + u + "\" target=\"_blank\" rel=\"noopener\" title=\"Open at source\">\u2934</a>";
+    if (!isForeign(item)) return "SOURCE \u00B7 " + a + ext;
     var lang = esc(String(item.lang).toUpperCase());
     return "SOURCE \u00B7 " + a + " <span class=\"langtag\">\u00B7 " + lang + "</span> \u00B7 " +
-      "<a class=\"trans\" href=\"" + esc(transUrl(item.source_url)) +
-      "\" target=\"_blank\" rel=\"noopener\">READ IN ENGLISH \u2934</a>";
+      "<a class=\"trans\" href=\"" + u + "\" data-pv=\"en\">READ IN ENGLISH</a>" + ext;
   }
   function renderItem(item, i) {
     var paper = i % 3 === 1 ? " class=\"paper\"" : "";
@@ -565,6 +585,75 @@ function setTab(which) {
 }
 
 route();
+</script>
+<script>
+/* SEAM:PREVIEW — reader overlay + lazy key visuals. English-first by trade. */
+(function () {
+  var API = (window.CONFIG && CONFIG.API_BASE) || "";
+  function make() {
+    var w = document.createElement("div");
+    w.className = "pvwrap"; w.id = "pvwrap";
+    w.innerHTML = '<div class="pv" role="dialog" aria-modal="true">' +
+      '<button class="pv-close" id="pvClose">CLOSE \u2715</button>' +
+      '<div class="pv-kicker" id="pvKicker">SOURCE PREVIEW</div>' +
+      '<div id="pvBody"><div class="pv-load">SURFACING\u2026</div></div>' +
+      '<div class="pv-foot" id="pvFoot"></div></div>';
+    document.body.appendChild(w);
+    w.addEventListener("click", function (e) { if (e.target === w) close(); });
+    document.getElementById("pvClose").addEventListener("click", close);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+    return w;
+  }
+  function wrap() { return document.getElementById("pvwrap") || make(); }
+  function close() { var w = document.getElementById("pvwrap"); if (w) { w.classList.remove("on"); document.body.style.overflow = ""; } }
+  function esc2(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function open(url) {
+    var w = wrap();
+    w.classList.add("on"); document.body.style.overflow = "hidden";
+    document.getElementById("pvKicker").textContent = "SOURCE PREVIEW";
+    document.getElementById("pvBody").innerHTML = '<div class="pv-load">SURFACING\u2026</div>';
+    document.getElementById("pvFoot").innerHTML = "";
+    if (!API) { window.open(url, "_blank", "noopener"); close(); return; }
+    fetch(API + "/preview?lang=en&url=" + encodeURIComponent(url))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok || !d.paragraphs || !d.paragraphs.length) { window.open(url, "_blank", "noopener"); close(); return; }
+        document.getElementById("pvKicker").textContent = "SOURCE PREVIEW \u00B7 " + esc2((d.site || "").toUpperCase());
+        document.getElementById("pvBody").innerHTML =
+          "<h1>" + esc2(d.title) + "</h1>" +
+          (d.image ? '<img class="pv-img" src="' + esc2(d.image) + '" alt="" referrerpolicy="no-referrer" onerror="this.style.display=&quot;none&quot;">' : "") +
+          d.paragraphs.map(function (p) { return "<p>" + esc2(p) + "</p>"; }).join("");
+        document.getElementById("pvFoot").innerHTML =
+          (d.lang ? "<span>" + esc2(String(d.lang).toUpperCase()) + "</span>" : "") +
+          (d.translated ? "<span>TRANSLATED TO ENGLISH BY UNSURFACED</span>" : "") +
+          '<a href="' + esc2(d.url || url) + '" target="_blank" rel="noopener">READ AT SOURCE \u2934</a>';
+      })
+      .catch(function () { window.open(url, "_blank", "noopener"); close(); });
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target && e.target.closest ? e.target.closest("a[data-pv]") : null;
+    if (!a) return;
+    e.preventDefault();
+    open(a.getAttribute("href"));
+  }, true);
+  // Lazy key visuals: stories without a wire image ask their source for one.
+  function enrich() {
+    var figs = document.querySelectorAll("figure[data-lazyimg]:not([data-done])");
+    for (var i = 0; i < figs.length; i++) {
+      (function (f) {
+        f.setAttribute("data-done", "1");
+        if (!API) return;
+        fetch(API + "/preview?meta=1&url=" + encodeURIComponent(f.getAttribute("data-lazyimg")))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.ok && d.image) { f.querySelector("img").src = d.image; f.style.display = ""; }
+          }).catch(function () {});
+      })(figs[i]);
+    }
+  }
+  new MutationObserver(enrich).observe(document.body, { childList: true, subtree: true });
+  enrich();
+})();
 </script>
 </body>
 </html>

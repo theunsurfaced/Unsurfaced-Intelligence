@@ -44,16 +44,16 @@ let pass = 0; const ok = (cond, label) => { if (!cond) { console.error('FAIL:', 
   const endMark = d.indexOf('"</p></article>";', a);
   const helpers = d.slice(a, d.indexOf('}', endMark) + 1);
   const api = new Function(escFn + '\n' + helpers +
-    '; return { renderItem, creditLine, isForeign, transUrl, keyVisual };')();
+    '; return { renderItem, creditLine, isForeign, keyVisual };')();
   const es = api.renderItem({ headline: 'H', take: 'T', lang: 'spanish',
     image_url: 'https://elpais.com/img.jpg', source_name: 'El País', source_url: 'https://elpais.com/x' }, 0);
   ok(es.includes('<figure class="keyvis"><img src="https://elpais.com/img.jpg"'), 'P2 key visual renders');
   ok(es.includes('loading="lazy"') && es.includes('referrerpolicy="no-referrer"') && es.includes('onerror='), 'P2 lazy + no-referrer + graceful degrade');
-  ok(es.includes('translate.google.com/translate?sl=auto&amp;tl=en&amp;u=https%3A%2F%2Felpais.com%2Fx'), 'P2 READ IN ENGLISH routes through translator');
-  ok(es.includes('READ IN ENGLISH') && es.includes('SPANISH'), 'P2 language named, translated read offered');
+  ok(es.includes('data-pv="en"') && !es.includes('translate.google'), 'P2 READ IN ENGLISH opens the in-house reader');
+  ok(es.includes('READ IN ENGLISH') && es.includes('SPANISH') && es.includes('class="ext"'), 'P2 language named, reader offered, tab-out kept');
   const en = api.renderItem({ headline: 'H', take: 'T', lang: 'english',
     source_name: 'Reuters', source_url: 'https://reuters.com/x' }, 1);
-  ok(!en.includes('READ IN ENGLISH') && !en.includes('keyvis'), 'P2 English item: untouched credit, no empty figure');
+  ok(!en.includes('READ IN ENGLISH') && en.includes('data-pv=') && en.includes('data-lazyimg='), 'P2 English item: name previews, lazy visual armed');
   const legacy = api.renderItem({ headline: 'H', take: 'T', source_name: 'Wire', source_url: 'https://w.com/x' }, 2);
   ok(!legacy.includes('READ IN ENGLISH'), 'P2 legacy items (no lang) degrade to the old credit');
   const xss = api.renderItem({ headline: 'H', take: 'T', lang: 'spanish',
