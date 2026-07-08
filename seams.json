@@ -73,6 +73,16 @@
       "file": "intelligence/index.html",
       "tag": "SEAM:STUDYBOARD",
       "purpose": "board overlay, third MINE door, gate affordance, partner listing toggle, take bridge"
+    },
+    "SEAM:STUDIO@worker": {
+      "file": "worker/src/index.js",
+      "tag": "SEAM:STUDIO",
+      "purpose": "content engine: manifest cut on cron, voice layer, admin routes, deploy archive"
+    },
+    "SEAM:STUDIO@intelligence": {
+      "file": "intelligence/index.html",
+      "tag": "SEAM:STUDIO",
+      "purpose": "house renderer + download counter: paint-op templates, store-zip, three-ring reveal"
     }
   },
   "planned": [

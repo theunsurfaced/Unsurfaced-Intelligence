@@ -63,7 +63,7 @@ export default {
       const _aiPath = path.startsWith('/play') || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
       if (_aiPath && !(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
 
-      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file') ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
@@ -72,6 +72,10 @@ export default {
         case '/mine/ask':            return mineAsk(body, env, origin);
         case '/mine/upload':         return mineUpload(request, env, origin, user);
         case '/whoami':             return kbWhoami(env, origin, user);
+        case '/studio/manifest':     return studioManifest(body, env, origin, user);
+        case '/studio/generate':     return studioGenerate(env, origin, user);
+        case '/studio/update':       return studioUpdate(body, env, origin, user);
+        case '/studio/archive':      return studioArchive(request, env, origin, user);
         case '/knowledge/submit':    return kbSubmit(body, env, origin, user);
         case '/knowledge/file':      return kbFile(request, env, origin, user);
         case '/knowledge/list':      return kbList(env, origin, user);
@@ -777,6 +781,138 @@ function logEvent(env, platform, space, event, sessionId, meta) {
   } catch { /* never throw from telemetry */ }
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+ * SEAM:STUDIO — the content engine. After DAILY publishes, the engine
+ * cuts the day's manifest into content_pieces: what to say, where, from
+ * which data. Rendering happens in the admin's browser (the house
+ * renderer); binaries archive to R2 only at deploy. Doctrine:
+ * templates/DOCTRINE.md — evidence that surfaced, not content made.
+ * Caps are law: perishable lane ships at most 2 pieces a day.
+ * ═══════════════════════════════════════════════════════════════════ */
+const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Name numbers, dates, sources. '
+  + 'Never explain the joke. Banned: engagement-bait ("you won\'t believe", "stop scrolling"), '
+  + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy.';
+async function studioCaption(env, platform, item) {
+  const dialect = platform === 'linkedin'
+    ? 'LinkedIn dialect: the finding leads; 2-3 sentences arguing it; no hashtags.'
+    : platform === 'instagram'
+      ? 'Instagram dialect: one sharp line, then one context line. End with up to 5 chosen hashtags on their own line.'
+      : 'TikTok dialect: hook under 12 words, then one payoff line. Up to 4 hashtags.';
+  try {
+    const out = await callModel(env, 't1', [
+      { role: 'system', content: 'You write social captions for Unsurfaced, a creative recon group publishing daily cultural intelligence. ' + STUDIO_VOICE + ' ' + dialect + ' Output only the caption text.' },
+      { role: 'user', content: `Finding: ${item.headline}\n${item.standfirst || ''}\nThe take: ${item.take || ''}\nSource: ${item.source_name || ''}` }
+    ], { max_tokens: 220 });
+    return String(out || '').trim().slice(0, 900);
+  } catch (e) { return ''; }
+}
+async function studioMemeLines(env, item) {
+  try {
+    const out = await callModel(env, 't1', [
+      { role: 'system', content: 'You write two-line house memes for Unsurfaced. ' + STUDIO_VOICE + ' Formats: "verdict" (line1 = the finding stated flat, line2 = the deadpan read) or "vs" (line1 = the signal, line2 = the noise it replaces). No emoji ever. Output ONLY JSON: {"mformat":"verdict"|"vs","line1":"...","line2":"..."}' },
+      { role: 'user', content: `Finding: ${item.headline}\nThe take: ${item.take || ''}` }
+    ], { max_tokens: 140 });
+    const j = JSON.parse(String(out).replace(/```json|```/g, '').trim());
+    if (j && j.line1) return { mformat: j.mformat === 'vs' ? 'vs' : 'verdict',
+      line1: String(j.line1).slice(0, 90), line2: String(j.line2 || '').slice(0, 110) };
+  } catch (e) {}
+  return { mformat: 'verdict', line1: String(item.headline || '').slice(0, 90),
+    line2: String(item.take || '').slice(0, 110) };
+}
+async function buildStudioManifest(env, day, issueNo, items) {
+  try {
+    const existing = await sbRest(env, `content_pieces?day=eq.${day}&select=id&limit=1`);
+    if (existing && existing.length) return { ok: true, skipped: 'manifest-exists' };
+    const lead = items && items[0];
+    if (!lead) return { ok: false, error: 'no_items' };
+    // The matrix is structural: stills x2, carousels x3, motion x3, memes x3 — eleven cells,
+    // cut in full every day. The kill rate at the counter is where thinness happens.
+    const leadPayload = { issue_no: issueNo, date: day, kicker: lead.kicker, headline: lead.headline,
+      take: lead.take, source_name: lead.source_name };
+    const sixPayload = { issue_no: issueNo, date: day,
+      slides: (items || []).slice(0, 6).map(it => ({
+        kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name })) };
+    const meme = await studioMemeLines(env, lead);
+    const memePayload = Object.assign({ issue_no: issueNo, date: day, source_name: lead.source_name }, meme);
+    const MATRIX = [
+      { format: 'signal_still', platform: 'instagram', lane: 'perishable', payload: leadPayload },
+      { format: 'signal_still', platform: 'linkedin',  lane: 'perishable', payload: leadPayload },
+      { format: 'the_six',      platform: 'instagram', lane: 'perishable', payload: sixPayload },
+      { format: 'the_six',      platform: 'linkedin',  lane: 'perishable', payload: sixPayload },
+      { format: 'the_six',      platform: 'tiktok',    lane: 'perishable', payload: sixPayload },
+      { format: 'kinetic_take', platform: 'instagram', lane: 'perishable', payload: leadPayload },
+      { format: 'kinetic_take', platform: 'linkedin',  lane: 'perishable', payload: leadPayload },
+      { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable', payload: leadPayload },
+      { format: 'hand_meme',    platform: 'instagram', lane: 'durable',    payload: memePayload },
+      { format: 'hand_meme',    platform: 'linkedin',  lane: 'durable',    payload: memePayload },
+      { format: 'hand_meme',    platform: 'tiktok',    lane: 'durable',    payload: memePayload },
+    ];
+    const pieces = [];
+    for (const cell of MATRIX) {
+      pieces.push({ day, lane: cell.lane, format: cell.format, platform: cell.platform, status: 'draft',
+        copy: { caption: await studioCaption(env, cell.platform, lead) }, payload: cell.payload });
+    }
+    await sbRest(env, 'content_pieces', { method: 'POST', body: pieces });
+    logEvent(env, 'intelligence', 'studio', 'manifest_cut', null, { day, pieces: pieces.length });
+    return { ok: true, pieces: pieces.length };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message).slice(0, 200) };
+  }
+}
+async function studioManifest(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const days = Math.min(parseInt(body.days, 10) || 7, 30);
+  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const rows = await sbRest(env,
+    `content_pieces?day=gte.${since}&order=day.desc,id.asc&select=id,day,lane,format,platform,copy,payload,status,deployed_at,post_url,archive_key`);
+  return json({ ok: true, pieces: rows || [] }, 200, origin, env);
+}
+async function studioGenerate(env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const eds = await sbRest(env, 'editions?status=eq.published&order=date.desc&limit=1');
+  const ed = eds && eds[0];
+  if (!ed) return json({ ok: false, error: 'no_edition' }, 200, origin, env);
+  const items = await sbRest(env, `edition_items?edition_id=eq.${ed.id}&order=ord.asc`);
+  const r = await buildStudioManifest(env, ed.date, ed.issue_no, items || []);
+  return json(r, 200, origin, env);
+}
+async function studioUpdate(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const id = parseInt(body.id, 10);
+  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const patch = {};
+  if (body.copy && typeof body.copy === 'object') patch.copy = body.copy;
+  if (['draft', 'approved', 'killed'].includes(body.status)) patch.status = body.status;
+  if (!Object.keys(patch).length) return json({ ok: false, error: 'empty_patch' }, 200, origin, env);
+  await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: patch });
+  return json({ ok: true, id }, 200, origin, env);
+}
+async function studioArchive(request, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const u = new URL(request.url);
+  const id = parseInt(u.searchParams.get('id'), 10);
+  const ext = (u.searchParams.get('ext') || 'png').replace(/[^a-z0-9]/gi, '').slice(0, 4);
+  const postUrl = (u.searchParams.get('post_url') || '').slice(0, 400);
+  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const rows = await sbRest(env, `content_pieces?id=eq.${id}&select=id,day,format`);
+  const piece = rows && rows[0];
+  if (!piece) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  let archive_key = null;
+  const raw = await request.arrayBuffer();
+  if (raw && raw.byteLength > 0 && env.MEDIA) {
+    if (raw.byteLength > 60000000) return json({ ok: false, error: 'too_large' }, 200, origin, env);
+    archive_key = `studio/${piece.day}/${piece.id}-${piece.format}.${ext}`;
+    await env.MEDIA.put(archive_key, raw, { httpMetadata: {
+      contentType: ext === 'mp4' ? 'video/mp4' : ext === 'zip' ? 'application/zip' : ext === 'pdf' ? 'application/pdf' : 'image/png' } });
+  }
+  const patch = { status: 'deployed', deployed_at: new Date().toISOString() };
+  if (archive_key) patch.archive_key = archive_key;
+  if (postUrl) patch.post_url = postUrl;
+  await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: patch });
+  logEvent(env, 'intelligence', 'studio', 'piece_deployed', null, { id, format: piece.format, archived: !!archive_key });
+  return json({ ok: true, id, archive_key }, 200, origin, env);
+}
+
 /* ═══ SEAM:STUDYBOARD — the public study board. Anyone may read the
  * opted-in shelf; the Worker (service role) is the only door and it
  * enforces the three locks server-side: live + audience='open' +
@@ -1246,5 +1382,6 @@ async function runDailyPipeline(env, opts) {
   });
 
   logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: clean.length });
+  await buildStudioManifest(env, today, issueNo, enriched).catch(() => {});
   return { ok: true, date: today, issue_no: issueNo, items: clean.length };
 }
