@@ -9,7 +9,16 @@
 import fs from 'fs';
 import { JSDOM } from 'jsdom';
 const html = fs.readFileSync('intelligence/index.html', 'utf-8');
-let pass = 0; const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
+let pass = 0;
+/* S: structural — the panel CSS must live in the REAL head, never a JS string */
+{
+  const hc = html.indexOf('</head>');
+  const kb = html.indexOf('.kbwrap{position:fixed');
+  const pv = html.indexOf('.pvwrap{position:fixed');
+  const tailClean = !html.slice(200000).includes('SEAM:KNOWLEDGE \u2014 the FEED panel. Fou');
+  if (!(kb > 0 && kb < hc && pv > 0 && pv < hc && tailClean)) { console.error('FAIL: S css must be in <head> and out of report literals'); process.exit(1); }
+  console.log('  ok S panel + reader CSS live in the real head; report literal clean');
+} const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function world(behave) {
@@ -49,6 +58,8 @@ const okRoute = (u, body) => ({ status: 200, body });
   await sleep(250);
   const wrap = d.getElementById('kbwrap');
   ok(wrap && wrap.classList.contains('on'), 'A click raises the panel');
+  const cs = dom.window.getComputedStyle(wrap);
+  ok(cs.position === 'fixed' && cs.zIndex === '2100', 'A panel styles actually APPLY (computed: fixed overlay)');
   d.getElementById('kbText').value = 'note';
   d.getElementById('kbGo').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
   await sleep(250);
