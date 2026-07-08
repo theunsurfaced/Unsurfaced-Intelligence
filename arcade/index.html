@@ -117,8 +117,8 @@ footer{
 }
 
 /* SEAM:LEADERBOARD — the public board. Anyone can read it; only the spine writes. */
-.board{max-width:1080px;margin:64px auto 0;padding:0 clamp(20px,5vw,48px)}
-.board-panel{border:1px solid rgba(250,247,242,.14);background:rgba(26,26,26,.45);padding:26px clamp(18px,3vw,34px) 22px}
+.board{padding:0 clamp(20px,4vw,56px) 88px}
+.board-panel{max-width:1080px;margin:0 auto;border:1px solid rgba(250,247,242,.14);background:rgba(26,26,26,.45);padding:26px clamp(18px,3vw,34px) 22px}
 .board-eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--red-deep)}
 .board-title{font-family:var(--arcade);font-size:clamp(20px,3.2vw,26px);color:var(--ivory);margin:8px 0 2px}
 .board-season{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--text3);text-transform:uppercase}
@@ -195,9 +195,10 @@ footer{
       <span class="cab-cta">Insert coin</span>
     </a>
   </div>
+</main>
 
-  <!-- SEAM:LEADERBOARD — public board mount. Reads /arcade/board on the spine. -->
-  <section class="board" id="board" aria-label="Hidden Hand Arcade leaderboard">
+<!-- SEAM:LEADERBOARD — its own band beneath the cabinets; scroll finds it as the row grows. -->
+<section class="board" id="board" aria-label="Hidden Hand Arcade leaderboard">
     <div class="board-panel">
       <span class="board-eyebrow">The Board</span>
       <h2 class="board-title">This week's hands</h2>
@@ -211,7 +212,6 @@ footer{
       <div class="board-foot">Top 10 &#183; resets weekly &#183; play any cabinet to claim a rank</div>
     </div>
   </section>
-</main>
 
 <footer>
   <span class="foot-line"><b>Unsurfaced™</b> · A creative recon group</span>
