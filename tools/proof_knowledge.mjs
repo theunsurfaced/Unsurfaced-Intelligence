@@ -36,7 +36,7 @@ const stubs = {
       'Beta paragraph long enough to be kept by the harvest filter for sure too.'.repeat(1) + '</p></article></body></html>' }),
 };
 const f = new Function('json', 'sbRest', 'callerIsAdmin', 'fetch',
-  block + '; return { kbChunk, kbEmbed, kbSubmit, kbFile, kbSearch, kbTags, kbTarget };');
+  block + '; return { kbChunk, kbEmbed, kbSubmit, kbFile, kbSearch, kbTags, kbTarget, kbWhoami };');
 const api = f(stubs.json, stubs.sbRest, stubs.callerIsAdmin, stubs.fetch);
 
 /* C: chunker */
@@ -84,5 +84,9 @@ const q1 = await api.kbSearch({ q: 'what do we know', target: 'daily' }, mkEnv()
 ok(q1.ok && sbCalls[0].path === 'rpc/knowledge_search', 'Q rides the 0006 rpc');
 const args = sbCalls[0].opts.body;
 ok(args.p_target === 'daily' && args.p_query.split(',').length === 384 && args.p_count === 8, 'Q same-model query vector, right args');
+
+/* W: whoami */
+ok((await api.kbWhoami(mkEnv(), '', { id: 'admin' })).admin === true, 'W admin reads true');
+ok((await api.kbWhoami(mkEnv(), '', { id: 'nobody' })).admin === false, 'W non-admin reads false');
 
 console.log('\nKNOWLEDGE PROOF: ' + pass + '/' + pass + ' assertions PASS');
