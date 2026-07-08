@@ -24,10 +24,13 @@
     "SEAM:ACTIVITY_LOG": {
       "file": "worker/src/index.js",
       "purpose": "logEvent() \u2014 every endpoint records activity (0007)"
+    },
+    "SEAM:MODEL_POOL": {
+      "file": "worker/src/index.js",
+      "purpose": "callModel() router; t1/t2 bulk public, t3 voice; sensitive pins to t3"
     }
   },
   "planned": [
-    "SEAM:MODEL_POOL",
     "SEAM:KNOWLEDGE_INGEST",
     "SEAM:OPS_AUTH",
     "SEAM:GUARD_SYNC",

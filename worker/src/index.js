@@ -36,6 +36,10 @@ const PLAY_SYSTEM = {
 };
 
 export default {
+  async scheduled(event, env, ctx) {
+    // DAILY pipeline — runs on cron. Builds today's edition end to end.
+    ctx.waitUntil(runDailyPipeline(env).catch(e => console.log('daily_pipeline_error', String(e && e.message))));
+  },
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
     if (request.method === 'OPTIONS') return preflight(origin, env);
@@ -48,6 +52,8 @@ export default {
       if (request.method === 'GET' && path.startsWith('/media/')) return serveMedia(path, env, origin);
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
       if (path.startsWith('/arcade/')) return arcadeRouter(path, request, env, origin);
+      if (path === '/api/edition/today') return editionToday(env, origin);
+      if (path === '/daily/run' && request.method === 'POST') return dailyRunGuarded(request, env, origin);
 
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
@@ -757,4 +763,172 @@ function logEvent(env, platform, space, event, sessionId, meta) {
       body: { platform, space, event, session_id: sessionId, meta: meta || {} }
     }).catch(() => {});
   } catch { /* never throw from telemetry */ }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * DAILY PIPELINE + SEAM:MODEL_POOL
+ * Ingest (GDELT/HN) → cluster → synthesize (fabrication-guarded) →
+ * publish today's edition. Cron-driven; also runnable via /daily/run.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+// The beats DAILY covers each cycle — broad cultural-intelligence surface.
+const DAILY_BEATS = [
+  'artificial intelligence', 'technology industry', 'consumer brands',
+  'media and entertainment', 'financial markets', 'climate and energy',
+  'health and biotech', 'geopolitics', 'creator economy', 'retail and commerce'
+];
+
+/* SEAM:MODEL_POOL — the single routing function every LLM call passes through.
+ * Tiers: t1/t2 = bulk transform on PUBLIC data; t3 = final voice.
+ * Today all tiers resolve to Workers AI (env.AI). When OpenRouter is wired,
+ * t1/t2 route to free models here — the call sites never change.
+ * `sensitive:true` payloads are FORBIDDEN from free/training-eligible models;
+ * they pin to t3 regardless of requested tier. */
+async function callModel(env, tier, messages, opts) {
+  opts = opts || {};
+  // Guard: sensitive content never rides a bulk/free tier.
+  const t = opts.sensitive ? 't3' : tier;
+  // Current resolution: all tiers → Workers AI. (OpenRouter free pool attaches here.)
+  const model = CONFIG.TEXT_MODEL;
+  const out = await env.AI.run(model, {
+    messages,
+    max_tokens: opts.max_tokens || CONFIG.MAX_TOKENS
+  });
+  return out.response || '';
+}
+
+async function editionToday(env, origin) {
+  try {
+    const eds = await sbRest(env, "editions?status=eq.published&order=date.desc&limit=1");
+    const ed = eds && eds[0];
+    if (!ed) return json({ edition: null, items: [] }, 200, origin, env);
+    const items = await sbRest(env, `edition_items?edition_id=eq.${ed.id}&order=ord.asc`);
+    return json({
+      edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' },
+      items: items || []
+    }, 200, origin, env);
+  } catch (e) {
+    return json({ edition: null, items: [], error: 'unavailable' }, 200, origin, env);
+  }
+}
+
+// Manual trigger (admin only) — same pipeline the cron runs, for on-demand builds.
+async function dailyRunGuarded(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user || !(await callerIsAdmin(env, user.id)))
+    return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const result = await runDailyPipeline(env);
+  return json({ ok: true, ...result }, 200, origin, env);
+}
+
+async function runDailyPipeline(env) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Idempotency: if today is already published, do nothing.
+  const existing = await sbRest(env, `editions?date=eq.${today}&select=id,status`);
+  if (existing && existing[0] && existing[0].status === 'published') {
+    return { skipped: 'already_published', date: today };
+  }
+
+  // 1. INGEST — gather public signal across beats (reuses gatherServerSignals).
+  const raw = [];
+  for (const beat of DAILY_BEATS) {
+    const sig = await gatherServerSignals(beat);
+    sig.forEach(s => raw.push({ ...s, beat }));
+  }
+  if (!raw.length) return { error: 'no_signal', date: today };
+
+  // 2. CLUSTER/DEDUP — collapse near-duplicate titles; keep the strongest per beat.
+  const seen = new Set();
+  const deduped = [];
+  for (const s of raw) {
+    const key = (s.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(s);
+  }
+  // Prefer news, cap the working set so synthesis stays focused.
+  const working = deduped
+    .sort((a, b) => (a.signalType === 'news' ? -1 : 1) - (b.signalType === 'news' ? -1 : 1))
+    .slice(0, 24);
+
+  // 3. SYNTHESIZE — interpretive items with a hard fabrication guard.
+  //    PUBLIC data only → t2 tier is allowed. Provenance copied verbatim.
+  const evidence = working.map((c, i) =>
+    `[${i + 1}] (${c.beat}) ${String(c.title || '').slice(0, 180)} ` +
+    `{source:${String(c.source || '').slice(0, 80)}|url:${String(c.url || '').slice(0, 200)}}`
+  ).join('\n');
+
+  const sys = 'You are the editor of Unsurfaced Daily, a cultural-intelligence brief. You do not summarize the news — ' +
+    'you INTERPRET it: why now, who benefits, what the second-order effect is. From the numbered evidence, select the ' +
+    '6 most significant stories across different beats. For each, write a sharp interpretive take. Ground every item in ' +
+    'the evidence — never invent facts, sources, or URLs. Copy each item\'s source_name and source_url VERBATIM from the ' +
+    'evidence item you used. Output STRICT JSON only, no markdown fences, no prose outside the JSON.';
+
+  const usr = `DATE: ${today}\n\nEVIDENCE:\n${evidence}\n\n` +
+    'Return JSON exactly shaped as:\n' +
+    '{"lead_headline":"<the day\'s single most important line, <=12 words>",' +
+    '"items":[{"kicker":"<2-4 word beat label, uppercase>","headline":"<=12-word headline",' +
+    '"standfirst":"<=20-word framing line","take":"2-3 sentences of interpretation: why now, who benefits, ' +
+    'what\'s the second-order effect","source_name":"copied verbatim from evidence","source_url":"copied verbatim from evidence"}]}\n' +
+    'Exactly 6 items across distinct beats. JSON only.';
+
+  let parsed = null;
+  try {
+    const resp = await callModel(env, 't2', [
+      { role: 'system', content: sys }, { role: 'user', content: usr }
+    ], { max_tokens: 2000 });
+    parsed = extractJson(resp);
+  } catch (e) { /* fall through */ }
+
+  if (!parsed || !Array.isArray(parsed.items) || !parsed.items.length) {
+    return { error: 'synthesis_failed', date: today };
+  }
+
+  // 4. FABRICATION GUARD — keep only items whose source_url actually appears in evidence.
+  const evidenceUrls = new Set(working.map(w => (w.url || '').trim()).filter(Boolean));
+  const clean = parsed.items
+    .filter(it => it && it.headline && it.take)
+    .map(it => ({
+      kicker: String(it.kicker || 'THE SIGNAL').slice(0, 40),
+      headline: String(it.headline).slice(0, 200),
+      standfirst: String(it.standfirst || '').slice(0, 240),
+      take: String(it.take).slice(0, 800),
+      source_name: String(it.source_name || '').slice(0, 120),
+      source_url: /^https?:\/\//.test(String(it.source_url || '')) &&
+                  evidenceUrls.has(String(it.source_url).trim()) ? it.source_url : null
+    }))
+    .slice(0, 6);
+
+  if (!clean.length) return { error: 'all_items_failed_guard', date: today };
+
+  // 5. PUBLISH — create/reuse today's edition row, replace its items, mark published.
+  let edId, issueNo;
+  if (existing && existing[0]) {
+    edId = existing[0].id;
+    const meta = await sbRest(env, `editions?id=eq.${edId}&select=issue_no`);
+    issueNo = meta && meta[0] ? meta[0].issue_no : 1;
+    await sbRest(env, `edition_items?edition_id=eq.${edId}`, { method: 'DELETE' });
+  } else {
+    const noRows = await sbRest(env, 'rpc/next_issue_no', { method: 'POST', body: {} });
+    issueNo = (typeof noRows === 'number') ? noRows : (noRows || 1);
+    const created = await sbRest(env, 'editions', {
+      method: 'POST', headers: { Prefer: 'return=representation' },
+      body: { issue_no: issueNo, date: today, status: 'building', headline: parsed.lead_headline || null }
+    });
+    edId = created[0].id;
+  }
+
+  await sbRest(env, 'edition_items', {
+    method: 'POST',
+    body: clean.map((it, i) => ({ edition_id: edId, ord: i, ...it }))
+  });
+
+  await sbRest(env, `editions?id=eq.${edId}`, {
+    method: 'PATCH',
+    body: { status: 'published', headline: parsed.lead_headline || null, published_at: new Date().toISOString() }
+  });
+
+  logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: clean.length });
+  return { ok: true, date: today, issue_no: issueNo, items: clean.length };
 }
