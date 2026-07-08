@@ -63,6 +63,16 @@
       "file": "intelligence/index.html",
       "tag": "SEAM:KNOWLEDGE",
       "purpose": "FEED panel: paste/link/file in, recall test, recent drops"
+    },
+    "SEAM:STUDYBOARD@worker": {
+      "file": "worker/src/index.js",
+      "tag": "SEAM:STUDYBOARD",
+      "purpose": "public shelf read: live + open-audience + opted-in only, safe fields"
+    },
+    "SEAM:STUDYBOARD@intelligence": {
+      "file": "intelligence/index.html",
+      "tag": "SEAM:STUDYBOARD",
+      "purpose": "board overlay, third MINE door, gate affordance, partner listing toggle, take bridge"
     }
   },
   "planned": [
