@@ -70,6 +70,7 @@ export default {
         case '/mine/synthesize':     return mineSynthesize(body, env, origin);
         case '/mine/ask':            return mineAsk(body, env, origin);
         case '/mine/upload':         return mineUpload(request, env, origin, user);
+        case '/whoami':             return kbWhoami(env, origin, user);
         case '/knowledge/submit':    return kbSubmit(body, env, origin, user);
         case '/knowledge/file':      return kbFile(request, env, origin, user);
         case '/knowledge/list':      return kbList(env, origin, user);
@@ -825,6 +826,10 @@ function kbTarget(t) { return ['daily', 'intelligence', 'both'].includes(t) ? t 
 function kbTags(x) {
   const a = Array.isArray(x) ? x : String(x || '').split(',');
   return a.map(s => String(s).trim().toLowerCase()).filter(Boolean).slice(0, 12);
+}
+async function kbWhoami(env, origin, user) {
+  // UI gating only — every /knowledge route re-checks at the door regardless.
+  return json({ ok: true, admin: await callerIsAdmin(env, user.id) }, 200, origin, env);
 }
 async function kbSubmit(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);

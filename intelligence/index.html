@@ -1223,7 +1223,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <span class="uai-eyebrow">Unsurfaced<span class="uai-tm">™</span> Intelligence</span>
     <span style="display:flex;align-items:center;gap:14px">
       <img id="uai-hub-logo" class="uai-hub-logo" alt="Unsurfaced™">
-      <button class="uai-back" style="position:static" id="kbOpen" title="Feed the ecosystem your own data">Feed ⌁</button>
+      <button class="uai-back" style="position:static" id="kbOpen" title="Feed the ecosystem your own data" hidden>Feed ⌁</button>
       <a class="uai-back" style="position:static;text-decoration:none;display:inline-block" href="../">&#8592; Home</a>
       <button class="uai-back" style="position:static" onclick="lgSignOut()">Sign out</button>
     </span>
@@ -7350,7 +7350,7 @@ function renderTrendingNow() {
         tags: document.getElementById("kbTags").value, target: document.getElementById("kbTarget").value });
       if (d && d.ok) { stat("LIVE \u2014 " + d.added + " chunks in the base."); document.getElementById("kbText").value = ""; document.getElementById("kbUrl").value = ""; list(); }
       else stat("REFUSED \u2014 " + esc3((d && d.error) || "unknown"));
-    } catch (e) { stat("REFUSED \u2014 " + (String(e).indexOf("403") > -1 ? "admin only" : "unreachable")); }
+    } catch (e) { stat(kbErr(e)); }
     btn.disabled = false;
   }
   async function sendFile(inp) {
@@ -7366,7 +7366,7 @@ function renderTrendingNow() {
       var d = await r.json();
       if (d && d.ok) { stat("LIVE \u2014 " + d.added + " chunks, original archived."); list(); }
       else stat("REFUSED \u2014 " + esc3((d && d.error) || r.status));
-    } catch (e) { stat("REFUSED \u2014 unreachable"); }
+    } catch (e) { stat(kbErr(e)); }
     inp.target.value = "";
   }
   async function list() {
@@ -7382,7 +7382,7 @@ function renderTrendingNow() {
       for (var i = 0; i < xs.length; i++) xs[i].addEventListener("click", async function (e) {
         await api("knowledge/delete", { id: +e.target.getAttribute("data-id") }); list();
       });
-    } catch (e) { document.getElementById("kbRows").innerHTML = '<div class="kb-item"><div class="c">Admin only \u2014 the base does not open for this account.</div></div>'; }
+    } catch (e) { document.getElementById("kbRows").innerHTML = '<div class="kb-item"><div class="c">' + kbErr(e) + '</div></div>'; }
   }
   async function search() {
     var q = document.getElementById("kbQ").value.trim();
@@ -7394,11 +7394,29 @@ function renderTrendingNow() {
       document.getElementById("kbHits").innerHTML = rows.length ? rows.map(function (r) {
         return '<div class="kb-hit"><b>' + Math.round((r.similarity || 0) * 100) + '%</b>' + esc3(String(r.content).slice(0, 220)) + '\u2026</div>';
       }).join("") : '<div class="kb-hit">No recall \u2014 feed it more.</div>';
-    } catch (e) { document.getElementById("kbHits").innerHTML = '<div class="kb-hit">Admin only.</div>'; }
+    } catch (e) { document.getElementById("kbHits").innerHTML = '<div class="kb-hit">' + kbErr(e) + '</div>'; }
   }
+  function kbErr(e) {
+    var s = String(e || "");
+    if (s.indexOf("404") > -1) return "WORKER STALE \u2014 paste the new worker-index.js into Cloudflare and Deploy.";
+    if (s.indexOf("403") > -1) return "ADMIN ONLY \u2014 this account cannot feed the base.";
+    if (s.indexOf("401") > -1) return "SIGNED OUT \u2014 sign in again.";
+    return "UNREACHABLE \u2014 network or API down.";
+  }
+  window.__kbErr = kbErr;
   document.addEventListener("click", function (e) {
     if (e.target && e.target.id === "kbOpen") show();
   });
+  // Admin-only reveal: the button stays hidden until the base itself confirms the role.
+  (function reveal(tries) {
+    if (tries > 40) return;
+    api("whoami", {}).then(function (d) {
+      var b = document.getElementById("kbOpen");
+      if (d && d.ok && d.admin && b) b.hidden = false;
+      else if (d && d.ok && !d.admin) return;            // confirmed non-admin: stay hidden, stop asking
+      else setTimeout(function () { reveal(tries + 1); }, 2500);
+    }).catch(function () { setTimeout(function () { reveal(tries + 1); }, 2500); });
+  })(0);
 })();
 </script>
 
