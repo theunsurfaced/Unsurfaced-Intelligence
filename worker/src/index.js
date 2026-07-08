@@ -249,7 +249,9 @@ async function gatherServerSignals(q) {
         source: a.domain || 'GDELT News',
         title: String(a.title || '').slice(0, 180),
         snippet: [a.sourcecountry, a.seendate].filter(Boolean).join(' · '),
-        url: a.url || ''
+        url: a.url || '',
+        image: a.socialimage || '',            // key visual straight from the source
+        lang: a.language || ''                 // e.g. "English", "Spanish" (GDELT names)
       }));
     }
   } catch (e) {}
@@ -263,7 +265,9 @@ async function gatherServerSignals(q) {
         source: 'Hacker News',
         title: String(h.title || h.story_title || '').slice(0, 180),
         snippet: `${h.points || 0} points · ${h.num_comments || 0} comments`,
-        url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`
+        url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+        image: '',
+        lang: 'English'
       }));
     }
   } catch (e) {}
@@ -817,16 +821,18 @@ async function dailyRunGuarded(request, env, origin) {
   const user = await authenticate(request, env);
   if (!user || !(await callerIsAdmin(env, user.id)))
     return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const result = await runDailyPipeline(env);
+  const force = new URL(request.url).searchParams.get('force') === '1';
+  const result = await runDailyPipeline(env, { force });
   return json({ ok: true, ...result }, 200, origin, env);
 }
 
-async function runDailyPipeline(env) {
+async function runDailyPipeline(env, opts) {
+  const force = !!(opts && opts.force);
   const today = new Date().toISOString().slice(0, 10);
 
   // Idempotency: if today is already published, do nothing.
   const existing = await sbRest(env, `editions?date=eq.${today}&select=id,status`);
-  if (existing && existing[0] && existing[0].status === 'published') {
+  if (existing && existing[0] && existing[0].status === 'published' && !force) {
     return { skipped: 'already_published', date: today };
   }
 
@@ -902,6 +908,16 @@ async function runDailyPipeline(env) {
 
   if (!clean.length) return { error: 'all_items_failed_guard', date: today };
 
+  // 4b. VISUAL + LANGUAGE CARRY-THROUGH — joined back to the ingest signal by
+  // source_url, never generated. If the guard nulled the URL, nothing attaches.
+  const sigByUrl = new Map(working.filter(w => w.url).map(w => [String(w.url).trim(), w]));
+  const enriched = clean.map(it => {
+    const sig = it.source_url ? sigByUrl.get(String(it.source_url).trim()) : null;
+    const img = sig && /^https?:\/\//.test(String(sig.image || '')) ? String(sig.image).slice(0, 500) : null;
+    const lng = sig && sig.lang ? String(sig.lang).slice(0, 40).toLowerCase() : null;
+    return { ...it, image_url: img, lang: lng };
+  });
+
   // 5. PUBLISH — create/reuse today's edition row, replace its items, mark published.
   let edId, issueNo;
   if (existing && existing[0]) {
@@ -921,7 +937,7 @@ async function runDailyPipeline(env) {
 
   await sbRest(env, 'edition_items', {
     method: 'POST',
-    body: clean.map((it, i) => ({ edition_id: edId, ord: i, ...it }))
+    body: enriched.map((it, i) => ({ edition_id: edId, ord: i, ...it }))
   });
 
   await sbRest(env, `editions?id=eq.${edId}`, {
