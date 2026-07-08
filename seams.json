@@ -53,6 +53,16 @@
       "file": "intelligence/index.html",
       "tag": "SEAM:PREVIEW",
       "purpose": "reader overlay; EXCAVATE source links preview in-window"
+    },
+    "SEAM:KNOWLEDGE@worker": {
+      "file": "worker/src/index.js",
+      "tag": "SEAM:KNOWLEDGE",
+      "purpose": "feed doorway: chunk + embed (own account) + knowledge_base writes, admin-gated"
+    },
+    "SEAM:KNOWLEDGE@intelligence": {
+      "file": "intelligence/index.html",
+      "tag": "SEAM:KNOWLEDGE",
+      "purpose": "FEED panel: paste/link/file in, recall test, recent drops"
     }
   },
   "planned": [
