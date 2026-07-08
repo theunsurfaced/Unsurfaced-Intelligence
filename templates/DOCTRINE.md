@@ -65,3 +65,10 @@ Eleven cells, every morning. The matrix over-generates **by design** — the
 kill rate at the counter is where thinness happens. Ship one or two; kill the rest.
 Meme grammar (two house formats, no others): **THE HAND READS** (the finding
 flat, then the deadpan read) and **SIGNAL / NOISE** (the split verdict).
+
+## The beats — five lanes, enforced at both ends
+**creativity · advertising · tech · ai · culture.** Each beat runs its own
+ingest query, and every published story carries its beat mechanically from
+the query that surfaced it — never assigned by a model. The daily slate seats
+three stories across three distinct beats; the counter shows the rest of the
+edition with one-tap **Cut this story** — the slate proposes, the admin disposes.

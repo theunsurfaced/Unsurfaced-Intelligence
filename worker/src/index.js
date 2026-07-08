@@ -74,6 +74,7 @@ export default {
         case '/whoami':             return kbWhoami(env, origin, user);
         case '/studio/manifest':     return studioManifest(body, env, origin, user);
         case '/studio/generate':     return studioGenerate(env, origin, user);
+        case '/studio/cut-story':    return studioCutStory(body, env, origin, user);
         case '/studio/update':       return studioUpdate(body, env, origin, user);
         case '/studio/archive':      return studioArchive(request, env, origin, user);
         case '/knowledge/submit':    return kbSubmit(body, env, origin, user);
@@ -858,32 +859,54 @@ async function buildStudioManifest(env, day, issueNo, items) {
     if (existing && existing.length) return { ok: true, skipped: 'manifest-exists' };
     const lead = items && items[0];
     if (!lead) return { ok: false, error: 'no_items' };
-    // The matrix is structural: stills x2, carousels x3, motion x3, memes x3 — eleven cells,
-    // cut in full every day. The kill rate at the counter is where thinness happens.
-    const leadPayload = { issue_no: issueNo, date: day, kicker: lead.kicker, headline: lead.headline,
-      take: lead.take, source_name: lead.source_name };
+    // THE SLATE — three stories across distinct beats, not one story in eleven outfits.
+    // Deterministic and free: walk the edition, seat the first story per unseen beat.
+    const slate = [];
+    const seenBeats = new Set();
+    for (const it of items) {
+      const b = it.beat || null;
+      if (b && !seenBeats.has(b)) { seenBeats.add(b); slate.push(it); }
+      if (slate.length === 3) break;
+    }
+    for (const it of items) {           // beats absent (pre-0012 editions) or thin: fill by order
+      if (slate.length === 3) break;
+      if (!slate.includes(it)) slate.push(it);
+    }
+    const base = (it, story) => ({ issue_no: issueNo, date: day, kicker: it.kicker, headline: it.headline,
+      take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story });
     const sixPayload = { issue_no: issueNo, date: day,
       slides: (items || []).slice(0, 6).map(it => ({
         kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name })) };
-    const meme = await studioMemeLines(env, lead);
-    const memePayload = Object.assign({ issue_no: issueNo, date: day, source_name: lead.source_name }, meme);
+    // 17 cells: edition x3 · primary story x8 · stories two and three x3 each.
     const MATRIX = [
-      { format: 'signal_still', platform: 'instagram', lane: 'perishable', payload: leadPayload },
-      { format: 'signal_still', platform: 'linkedin',  lane: 'perishable', payload: leadPayload },
-      { format: 'the_six',      platform: 'instagram', lane: 'perishable', payload: sixPayload },
-      { format: 'the_six',      platform: 'linkedin',  lane: 'perishable', payload: sixPayload },
-      { format: 'the_six',      platform: 'tiktok',    lane: 'perishable', payload: sixPayload },
-      { format: 'kinetic_take', platform: 'instagram', lane: 'perishable', payload: leadPayload },
-      { format: 'kinetic_take', platform: 'linkedin',  lane: 'perishable', payload: leadPayload },
-      { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable', payload: leadPayload },
-      { format: 'hand_meme',    platform: 'instagram', lane: 'durable',    payload: memePayload },
-      { format: 'hand_meme',    platform: 'linkedin',  lane: 'durable',    payload: memePayload },
-      { format: 'hand_meme',    platform: 'tiktok',    lane: 'durable',    payload: memePayload },
+      { format: 'the_six', platform: 'instagram', lane: 'perishable', it: null, story: 0 },
+      { format: 'the_six', platform: 'linkedin',  lane: 'perishable', it: null, story: 0 },
+      { format: 'the_six', platform: 'tiktok',    lane: 'perishable', it: null, story: 0 },
     ];
+    if (slate[0]) MATRIX.push(
+      { format: 'signal_still', platform: 'instagram', lane: 'perishable', it: slate[0], story: 1 },
+      { format: 'signal_still', platform: 'linkedin',  lane: 'perishable', it: slate[0], story: 1 },
+      { format: 'kinetic_take', platform: 'instagram', lane: 'perishable', it: slate[0], story: 1 },
+      { format: 'kinetic_take', platform: 'linkedin',  lane: 'perishable', it: slate[0], story: 1 },
+      { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable', it: slate[0], story: 1 },
+      { format: 'hand_meme',    platform: 'instagram', lane: 'durable',    it: slate[0], story: 1 },
+      { format: 'hand_meme',    platform: 'linkedin',  lane: 'durable',    it: slate[0], story: 1 },
+      { format: 'hand_meme',    platform: 'tiktok',    lane: 'durable',    it: slate[0], story: 1 });
+    [slate[1], slate[2]].forEach((it, i) => { if (it) MATRIX.push(
+      { format: 'signal_still', platform: 'instagram', lane: 'perishable', it, story: 2 + i },
+      { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable', it, story: 2 + i },
+      { format: 'hand_meme',    platform: 'instagram', lane: 'durable',    it, story: 2 + i }); });
+    const memeByStory = {};
+    for (const it of slate) if (it) memeByStory[it.headline] = await studioMemeLines(env, it);
     const pieces = [];
     for (const cell of MATRIX) {
+      const it = cell.it || lead;
+      let payload;
+      if (cell.format === 'the_six') payload = sixPayload;
+      else if (cell.format === 'hand_meme') payload = Object.assign(base(it, cell.story), memeByStory[it.headline] || {});
+      else payload = base(it, cell.story);
       pieces.push({ day, lane: cell.lane, format: cell.format, platform: cell.platform, status: 'draft',
-        copy: { caption: await studioCaption(env, cell.platform, lead) }, payload: cell.payload });
+        copy: { caption: await studioCaption(env, cell.platform, it) }, payload });
     }
     await sbRest(env, 'content_pieces', { method: 'POST', body: pieces });
     logEvent(env, 'intelligence', 'studio', 'manifest_cut', null, { day, pieces: pieces.length });
@@ -891,6 +914,33 @@ async function buildStudioManifest(env, day, issueNo, items) {
   } catch (e) {
     return { ok: false, error: String(e && e.message).slice(0, 200) };
   }
+}
+async function studioCutStory(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const itemId = parseInt(body.item_id, 10);
+  if (!itemId) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const rows = await sbRest(env, `edition_items?id=eq.${itemId}&select=*`);
+  const it = rows && rows[0];
+  if (!it) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const eds = await sbRest(env, `editions?id=eq.${it.edition_id}&select=issue_no,date`);
+  const ed = (eds && eds[0]) || {};
+  const day = ed.date || new Date().toISOString().slice(0, 10);
+  const dupe = await sbRest(env, `content_pieces?day=eq.${day}&payload->>headline=eq.${encodeURIComponent(it.headline)}&select=id&limit=1`);
+  if (dupe && dupe.length) return json({ ok: true, skipped: 'story-already-cut' }, 200, origin, env);
+  const meme = await studioMemeLines(env, it);
+  const base = { issue_no: ed.issue_no, date: day, kicker: it.kicker, headline: it.headline,
+    take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9 };
+  const pieces = [
+    { day, lane: 'perishable', format: 'signal_still', platform: 'instagram', status: 'draft',
+      copy: { caption: await studioCaption(env, 'instagram', it) }, payload: base },
+    { day, lane: 'perishable', format: 'kinetic_take', platform: 'tiktok', status: 'draft',
+      copy: { caption: await studioCaption(env, 'tiktok', it) }, payload: base },
+    { day, lane: 'durable', format: 'hand_meme', platform: 'instagram', status: 'draft',
+      copy: { caption: await studioCaption(env, 'instagram', it) }, payload: Object.assign({}, base, meme) },
+  ];
+  await sbRest(env, 'content_pieces', { method: 'POST', body: pieces });
+  logEvent(env, 'intelligence', 'studio', 'story_cut', null, { item: itemId, beat: base.beat });
+  return json({ ok: true, pieces: 3, beat: base.beat }, 200, origin, env);
 }
 async function studioManifest(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
@@ -1246,9 +1296,11 @@ async function previewRoute(request, env, origin) {
 
 // The beats DAILY covers each cycle — broad cultural-intelligence surface.
 const DAILY_BEATS = [
-  'artificial intelligence', 'technology industry', 'consumer brands',
-  'media and entertainment', 'financial markets', 'climate and energy',
-  'health and biotech', 'geopolitics', 'creator economy', 'retail and commerce'
+  { beat: 'creativity',  q: 'creative industry design' },
+  { beat: 'advertising', q: 'advertising brand campaign' },
+  { beat: 'tech',        q: 'technology industry' },
+  { beat: 'ai',          q: 'artificial intelligence' },
+  { beat: 'culture',     q: 'culture trend internet' }
 ];
 
 /* SEAM:MODEL_POOL — the single routing function every LLM call passes through.
@@ -1307,9 +1359,9 @@ async function runDailyPipeline(env, opts) {
 
   // 1. INGEST — gather public signal across beats (reuses gatherServerSignals).
   const raw = [];
-  for (const beat of DAILY_BEATS) {
-    const sig = await gatherServerSignals(beat);
-    sig.forEach(s => raw.push({ ...s, beat }));
+  for (const lane of DAILY_BEATS) {
+    const sig = await gatherServerSignals(lane.q);
+    sig.forEach(s => raw.push({ ...s, beat: lane.beat }));
   }
   if (!raw.length) return { error: 'no_signal', date: today };
 
@@ -1384,7 +1436,7 @@ async function runDailyPipeline(env, opts) {
     const sig = it.source_url ? sigByUrl.get(String(it.source_url).trim()) : null;
     const img = sig && /^https?:\/\//.test(String(sig.image || '')) ? String(sig.image).slice(0, 500) : null;
     const lng = sig && sig.lang ? String(sig.lang).slice(0, 40).toLowerCase() : null;
-    return { ...it, image_url: img, lang: lng };
+    return { ...it, image_url: img, lang: lng, beat: (sig && sig.beat) || 'culture' };
   });
 
   // 5. PUBLISH — create/reuse today's edition row, replace its items, mark published.
