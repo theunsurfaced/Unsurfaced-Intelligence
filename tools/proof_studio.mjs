@@ -58,6 +58,32 @@ const html = fs.readFileSync('intelligence/index.html', 'utf-8');
   ok(patch.status === 'deployed' && patch.archive_key && patch.deployed_at, 'R deploy patch: status + key + timestamp');
 }
 
+/* ── G: the fabrication guard — the caption layer earns the receipts covenant ── */
+{
+  const a = w.indexOf('function studioGround');
+  const b = w.indexOf('async function studioCaption');
+  const g = new Function(w.slice(a, b) + '; return { studioGround, studioFabricated, studioSafeCaption };')();
+  const item = { headline: 'EU boosts AI defense', take: 'The move lands as threats escalate.', kicker: 'ai tech', source_name: 'tportal', date: '2026-07-08' };
+  const ground = g.studioGround(item);
+  ok(g.studioFabricated('Announced on March 13, 2024, the plan lands.', ground) === 'year:2024', 'G invented year caught');
+  ok(String(g.studioFabricated('The EU allocated \u20AC17 million to the effort.', ground)).startsWith('money:'), 'G invented figure caught');
+  ok(g.studioFabricated('The move lands in 2026-07-08 fashion as threats escalate.', ground) === null, 'G grounded facts pass');
+  const safe = g.studioSafeCaption('linkedin', item);
+  ok(safe.includes('EU boosts AI defense') && safe.includes('Source: tportal') && g.studioFabricated(safe, ground) === null, 'G the safe floor can never fabricate');
+}
+
+/* ── GC: caption path retries once, then falls to the floor ── */
+{
+  const a = w.indexOf('const STUDIO_VOICE');
+  const b = w.indexOf('async function buildStudioManifest');
+  let calls = 0;
+  const cap = await new Function('callModel',
+    w.slice(a, b) + '; return studioCaption;')(
+    async () => { calls++; return 'The EU allocated \u20AC17 million on March 13, 2024.'; })(
+    {}, 'instagram', { headline: 'EU boosts AI defense', take: 'The move lands.', kicker: 'ai tech', source_name: 'tportal', date: '2026-07-08' });
+  ok(calls === 2 && cap.includes('EU boosts AI defense') && !cap.includes('2024') && !cap.includes('17 million'), 'GC stubborn fabricator: one retry, then the floor');
+}
+
 /* ── T + Z: client pure halves, exact shipped code ── */
 {
   const a = html.indexOf('var BRAND = { black');
