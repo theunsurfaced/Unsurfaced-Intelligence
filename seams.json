@@ -38,6 +38,21 @@
       "file": "arcade/index.html",
       "tag": "SEAM:LEADERBOARD",
       "purpose": "public tabbed board (RPS/CLAW/POP) \u2014 anonymous reads of the spine"
+    },
+    "SEAM:PREVIEW@worker": {
+      "file": "worker/src/index.js",
+      "tag": "SEAM:PREVIEW",
+      "purpose": "server-side reader: extract + translate-to-English + edge cache"
+    },
+    "SEAM:PREVIEW@daily": {
+      "file": "daily/index.html",
+      "tag": "SEAM:PREVIEW",
+      "purpose": "reader overlay, preview-first credits, lazy key visuals"
+    },
+    "SEAM:PREVIEW@intelligence": {
+      "file": "intelligence/index.html",
+      "tag": "SEAM:PREVIEW",
+      "purpose": "reader overlay; EXCAVATE source links preview in-window"
     }
   },
   "planned": [

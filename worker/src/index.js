@@ -54,6 +54,7 @@ export default {
       if (path.startsWith('/arcade/')) return arcadeRouter(path, request, env, origin);
       if (path === '/api/edition/today') return editionToday(env, origin);
       if (path === '/daily/run' && request.method === 'POST') return dailyRunGuarded(request, env, origin);
+      if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
 
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
@@ -767,6 +768,144 @@ function logEvent(env, platform, space, event, sessionId, meta) {
       body: { platform, space, event, session_id: sessionId, meta: meta || {} }
     }).catch(() => {});
   } catch { /* never throw from telemetry */ }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SEAM:PREVIEW — in-house source reader. Fetches an article server-side,
+ * extracts the readable core (title, key visual, paragraphs), and — the
+ * house being English-first — translates non-English text on request.
+ * Translation rides Workers AI m2m100 first, MODEL_POOL t1 as fallback;
+ * public news only, so free tiers are fair game. Edge-cached.
+ * ═══════════════════════════════════════════════════════════════════ */
+const PV_LANG_CODES = { arabic:'ar', bulgarian:'bg', chinese:'zh', croatian:'hr', czech:'cs',
+  danish:'da', dutch:'nl', english:'en', finnish:'fi', french:'fr', german:'de', greek:'el',
+  hebrew:'he', hindi:'hi', hungarian:'hu', indonesian:'id', italian:'it', japanese:'ja',
+  korean:'ko', norwegian:'no', polish:'pl', portuguese:'pt', romanian:'ro', russian:'ru',
+  serbian:'sr', slovak:'sk', slovenian:'sl', spanish:'es', swedish:'sv', thai:'th',
+  turkish:'tr', ukrainian:'uk', vietnamese:'vi' };
+function pvLangCode(name) {
+  const n = String(name || '').trim().toLowerCase();
+  if (!n) return null;
+  if (PV_LANG_CODES[n]) return PV_LANG_CODES[n];
+  return /^[a-z]{2}/.test(n) ? n.slice(0, 2) : null;
+}
+function pvBlockedHost(host) {
+  const x = String(host || '').toLowerCase();
+  if (!x || x === 'localhost' || x.endsWith('.local') || x.endsWith('.internal') || x.endsWith('.lan')) return true;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(x)) {
+    const p = x.split('.').map(Number);
+    if (p[0] === 127 || p[0] === 10 || p[0] === 0 || (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+        (p[0] === 192 && p[1] === 168) || (p[0] === 169 && p[1] === 254)) return true;
+  }
+  if (x.includes(':')) return true;
+  return false;
+}
+function pvDecode(s) {
+  return String(s || '')
+    .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCodePoint(+n); } catch (e) { return ''; } })
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => { try { return String.fromCodePoint(parseInt(n, 16)); } catch (e) { return ''; } })
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;|&rsquo;|&lsquo;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, '"').replace(/&mdash;/g, '\u2014').replace(/&ndash;/g, '\u2013')
+    .replace(/&hellip;/g, '\u2026').replace(/\s+/g, ' ').trim();
+}
+function pvMeta(html, prop) {
+  const re = new RegExp('<meta[^>]+(?:property|name)=["\\x27]' + prop + '["\\x27][^>]*>', 'i');
+  const m = html.match(re);
+  if (!m) return null;
+  const c = m[0].match(/content=["\x27]([^"\x27]*)["\x27]/i);
+  return c ? pvDecode(c[1]) : null;
+}
+function pvExtract(html, finalUrl) {
+  const tm = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = pvMeta(html, 'og:title') || (tm ? pvDecode(tm[1]) : null);
+  const site = pvMeta(html, 'og:site_name') || (new URL(finalUrl)).hostname.replace(/^www\./, '');
+  let image = pvMeta(html, 'og:image') || pvMeta(html, 'twitter:image');
+  if (image) { try { image = new URL(image, finalUrl).href; if (!/^https?:/.test(image)) image = null; } catch (e) { image = null; } }
+  let lang = null;
+  const hl = html.match(/<html[^>]+lang=["\x27]?([a-zA-Z-]{2,})/);
+  if (hl) lang = hl[1].slice(0, 2).toLowerCase();
+  if (!lang) { const loc = pvMeta(html, 'og:locale'); if (loc) lang = loc.slice(0, 2).toLowerCase(); }
+  let body = html.replace(/<(script|style|noscript|svg|iframe|form|nav|header|footer|aside)[\s\S]*?<\/\1>/gi, ' ');
+  const art = body.match(/<article[\s\S]*?<\/article>/i);
+  if (art) body = art[0];
+  const paras = [];
+  const re = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+  let m, chars = 0;
+  while ((m = re.exec(body)) && paras.length < 45 && chars < 14000) {
+    const t = pvDecode(m[1].replace(/<[^>]+>/g, ' '));
+    const cjk = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(t);
+    if (t.length >= (cjk ? 15 : 40)) { paras.push(t); chars += t.length; }
+  }
+  if (!paras.length) { const d = pvMeta(html, 'og:description'); if (d) paras.push(d); }
+  return { title: title || site, site, image, lang, paragraphs: paras };
+}
+async function pvTranslate(env, srcLang, texts) {
+  const code = pvLangCode(srcLang);
+  const out = [];
+  for (const t of texts) {
+    let done = null;
+    if (code && code !== 'en') {
+      try {
+        const r = await env.AI.run('@cf/meta/m2m100-1.2b', { text: t.slice(0, 1600), source_lang: code, target_lang: 'en' });
+        done = r && r.translated_text ? String(r.translated_text).trim() : null;
+      } catch (e) { done = null; }
+    }
+    if (!done) {
+      try {
+        done = (await callModel(env, 't1', [
+          { role: 'system', content: 'Translate the user text into English. Output only the translation, nothing else.' },
+          { role: 'user', content: t.slice(0, 1600) }
+        ], { max_tokens: 700 })).trim();
+      } catch (e) { done = t; }
+    }
+    out.push(done || t);
+  }
+  return out;
+}
+async function previewRoute(request, env, origin) {
+  const u = new URL(request.url);
+  const target = u.searchParams.get('url') || '';
+  const wantEn = (u.searchParams.get('lang') || 'en') === 'en';
+  const metaOnly = u.searchParams.get('meta') === '1';
+  let t;
+  try { t = new URL(target); } catch (e) { return json({ ok: false, error: 'bad_url' }, 200, origin, env); }
+  if (!/^https?:$/.test(t.protocol) || t.port || pvBlockedHost(t.hostname) || target.length > 600)
+    return json({ ok: false, error: 'blocked' }, 200, origin, env);
+
+  const cache = caches.default;
+  const key = new Request('https://pv.unsurfaced-intelligence.com/?u=' + encodeURIComponent(target) +
+    '&en=' + (wantEn ? 1 : 0) + '&m=' + (metaOnly ? 1 : 0));
+  const hit = await cache.match(key);
+  if (hit) { try { return json(JSON.parse(await hit.text()), 200, origin, env); } catch (e) {} }
+
+  let res;
+  try {
+    res = await fetch(t.href, { redirect: 'follow', headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; UnsurfacedPreview/1.0; +https://unsurfaced-intelligence.com)',
+      'Accept': 'text/html,application/xhtml+xml' } });
+  } catch (e) { return json({ ok: false, error: 'unreachable' }, 200, origin, env); }
+  if (!res.ok || !/text\/html|xhtml/.test(res.headers.get('content-type') || ''))
+    return json({ ok: false, error: 'not_html' }, 200, origin, env);
+  const html = (await res.text()).slice(0, 600000);
+  const ex = pvExtract(html, res.url || t.href);
+
+  let payload;
+  if (metaOnly) {
+    payload = { ok: true, url: t.href, site: ex.site, title: ex.title, image: ex.image, lang: ex.lang };
+  } else {
+    let translated = false, title = ex.title, paragraphs = ex.paragraphs;
+    const foreign = ex.lang && ex.lang !== 'en';
+    if (wantEn && foreign && paragraphs.length) {
+      const all = await pvTranslate(env, ex.lang, [title].concat(paragraphs));
+      title = all[0]; paragraphs = all.slice(1); translated = true;
+    }
+    payload = { ok: true, url: t.href, site: ex.site, title, image: ex.image,
+      lang: ex.lang, translated, paragraphs };
+  }
+  await cache.put(key, new Response(JSON.stringify(payload), { headers: {
+    'content-type': 'application/json', 'Cache-Control': 'public, s-maxage=' + (payload.ok ? 21600 : 600) } }));
+  return json(payload, 200, origin, env);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
