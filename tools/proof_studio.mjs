@@ -31,23 +31,47 @@ const html = fs.readFileSync('intelligence/index.html', 'utf-8');
     logEvent: () => {},
   };
   const api = new Function('json', 'sbRest', 'callerIsAdmin', 'callModel', 'logEvent',
-    w.slice(a, b) + '; return { buildStudioManifest, studioUpdate, studioArchive, studioManifest };')(
+    w.slice(a, b) + '; return { buildStudioManifest, studioUpdate, studioArchive, studioManifest, studioCutStory };')(
     stubs.json, stubs.sbRest, stubs.callerIsAdmin, stubs.callModel, stubs.logEvent);
 
-  const items = Array.from({ length: 8 }, (_, i) => ({ kicker: 'K' + i, headline: 'H' + i, take: 'T' + i, standfirst: 'S' + i, source_name: 'SRC' + i }));
+  const beats = ['ai', 'ai', 'tech', 'culture', 'tech', 'advertising'];
+  const items = Array.from({ length: 6 }, (_, i) => ({ kicker: 'K' + i, headline: 'H' + i, take: 'T' + i, standfirst: 'S' + i, source_name: 'SRC' + i, beat: beats[i] }));
   const m = await api.buildStudioManifest({}, '2026-07-08', 7, items);
   const ins = sb.find(c => c.opts && c.opts.method === 'POST' && c.path === 'content_pieces').opts.body;
-  ok(m.ok && m.pieces === 11 && ins.length === 11, 'M the matrix is structural: eleven cells');
-  const cells = ins.map(x => x.format + ':' + x.platform).sort().join('|');
-  ok(cells === ['hand_meme:instagram','hand_meme:linkedin','hand_meme:tiktok','kinetic_take:instagram','kinetic_take:linkedin','kinetic_take:tiktok','signal_still:instagram','signal_still:linkedin','the_six:instagram','the_six:linkedin','the_six:tiktok'].join('|'), 'M every named cell present: stills x2, carousels x3, motion x3, memes x3');
-  ok(ins.filter(x => x.lane === 'perishable').length === 8 && ins.filter(x => x.lane === 'durable').length === 3, 'M lanes: eight perishable, three durable memes');
-  const six = ins.find(x => x.format === 'the_six');
-  const meme = ins.find(x => x.format === 'hand_meme');
-  ok(six.payload.slides.length === 6 && ins[0].copy.caption.startsWith('CAPTION:') && meme.payload.line1 === 'L1' && meme.payload.mformat === 'vs', 'M slides capped, captions voiced, meme lines shaped');
+  ok(m.ok && m.pieces === 17 && ins.length === 17, 'M the slate is structural: seventeen cells across three stories');
+  const slateHeads = [...new Set(ins.filter(x => x.format !== 'the_six').map(x => x.payload.headline))];
+  ok(slateHeads.join('|') === 'H0|H2|H3', 'M three stories seated: first per unseen beat');
+  ok([...new Set(ins.filter(x => x.format !== 'the_six').map(x => x.payload.beat))].sort().join('|') === 'ai|culture|tech', 'M three distinct beats on the slate');
+  ok(ins.filter(x => x.payload.story === 1).length === 8, 'M primary story wears the full treatment: eight');
+  ok(ins.filter(x => x.payload.story === 2).length === 3 && ins.filter(x => x.payload.story === 3).length === 3, 'M stories two and three get the essential three');
+  ok(ins.filter(x => x.format === 'the_six').length === 3 && ins.find(x => x.format === 'the_six').payload.slides.length === 6, 'M the edition keeps its three carousels');
+  const memes = ins.filter(x => x.format === 'hand_meme');
+  ok(memes.length === 5 && memes.every(x => x.payload.line1 === 'L1') && ins[0].copy.caption.length > 0, 'M five memes, lines shaped per story, captions voiced');
+  /* fallback: pre-0012 editions with no beats still slate by order */
+  sb.length = 0; existing = [];
+  const bare = Array.from({ length: 4 }, (_, i) => ({ kicker: 'K', headline: 'B' + i, take: 'T', source_name: 'S' }));
+  await api.buildStudioManifest({}, '2026-07-09', 8, bare);
+  const ins2 = sb.find(c => c.opts && c.opts.method === 'POST' && c.path === 'content_pieces').opts.body;
+  ok([...new Set(ins2.filter(x => x.format !== 'the_six').map(x => x.payload.headline))].join('|') === 'B0|B1|B2', 'M beatless editions fall back to order');
   existing = [{ id: 1 }];
   ok((await api.buildStudioManifest({}, '2026-07-08', 7, items)).skipped === 'manifest-exists', 'M idempotent per day');
 
   ok((await api.studioManifest({}, {}, '', { id: 'nobody' })).error === 'forbidden', 'R manifest admin-gated');
+  ok((await api.studioCutStory({ item_id: 5 }, {}, '', { id: 'nobody' })).error === 'forbidden', 'S2 cut-story admin-gated');
+  sb.length = 0;
+  const cutStubs = Object.assign({}, stubs, { sbRest: async (env, path, opts) => { sb.push({ path, opts });
+    if (path.startsWith('edition_items?id=eq.5')) return [{ id: 5, edition_id: 2, kicker: 'K', headline: 'Left behind', take: 'T', source_name: 'S', beat: 'advertising' }];
+    if (path.startsWith('editions?id=eq.2')) return [{ issue_no: 7, date: '2026-07-08' }];
+    if (path.includes('payload->>headline')) return [];
+    return []; } });
+  const apiCut = new Function('json', 'sbRest', 'callerIsAdmin', 'callModel', 'logEvent',
+    w.slice(w.indexOf('const STUDIO_VOICE'), w.lastIndexOf('/*', w.indexOf('SEAM:STUDYBOARD \u2014 the public study board'))) + '; return studioCutStory;')(
+    stubs.json, cutStubs.sbRest, stubs.callerIsAdmin, stubs.callModel, stubs.logEvent);
+  const cut = await apiCut({ item_id: 5 }, {}, '', { id: 'admin' });
+  const cutIns = sb.find(c => c.opts && c.opts.method === 'POST' && c.path === 'content_pieces').opts.body;
+  ok(cut.ok && cut.pieces === 3 && cut.beat === 'advertising', 'S2 cut lands the essential three on the right beat');
+  ok(cutIns.map(x => x.format + ':' + x.platform).sort().join('|') === 'hand_meme:instagram|kinetic_take:tiktok|signal_still:instagram', 'S2 essential three: still, kinetic, meme');
+  ok(cutIns.every(x => x.payload.story === 9 && x.payload.headline === 'Left behind'), 'S2 pieces carry the story they were cut from');
   ok((await api.studioUpdate({ id: 9, status: 'deployed' }, {}, '', { id: 'admin' })).error === 'empty_patch', 'R update cannot forge deployed status');
   sb.length = 0;
   const req = { url: 'https://x/studio/archive?id=9&ext=png', arrayBuffer: async () => new TextEncoder().encode('PNGBYTES').buffer };
