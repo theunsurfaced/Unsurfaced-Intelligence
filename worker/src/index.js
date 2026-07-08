@@ -62,7 +62,7 @@ export default {
       const _aiPath = path.startsWith('/play') || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
       if (_aiPath && !(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
 
-      const body = request.method === 'POST' ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
@@ -70,6 +70,11 @@ export default {
         case '/mine/synthesize':     return mineSynthesize(body, env, origin);
         case '/mine/ask':            return mineAsk(body, env, origin);
         case '/mine/upload':         return mineUpload(request, env, origin, user);
+        case '/knowledge/submit':    return kbSubmit(body, env, origin, user);
+        case '/knowledge/file':      return kbFile(request, env, origin, user);
+        case '/knowledge/list':      return kbList(env, origin, user);
+        case '/knowledge/search':    return kbSearch(body, env, origin, user);
+        case '/knowledge/delete':    return kbDelete(body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
         case '/pay/responder':       return payResponder(body, env, origin, user);
@@ -768,6 +773,139 @@ function logEvent(env, platform, space, event, sessionId, meta) {
       body: { platform, space, event, session_id: sessionId, meta: meta || {} }
     }).catch(() => {});
   } catch { /* never throw from telemetry */ }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SEAM:KNOWLEDGE — the feed doorway. Founder-fed data enters here:
+ * paste, URL, or text file → chunk → embed → knowledge_base (0006).
+ * INTERNAL data: embeds ride Workers AI on our account only — never a
+ * free/training-eligible pool. Table is service-role locked; these
+ * admin-gated routes are the only door. Originals archive to R2.
+ * ═══════════════════════════════════════════════════════════════════ */
+const KB_EMBED_MODEL = '@cf/baai/bge-small-en-v1.5';   // 384-dim, matches vector(384)
+function kbChunk(text, size, cap) {
+  size = size || 900; cap = cap || 60;
+  const paras = String(text || '').split(/\n\s*\n/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const out = [];
+  let cur = '';
+  for (const p of paras) {
+    if (p.length > size) {                       // hard-split an oversized paragraph
+      if (cur) { out.push(cur); cur = ''; }
+      for (let i = 0; i < p.length && out.length < cap; i += size) out.push(p.slice(i, i + size));
+      continue;
+    }
+    if ((cur + ' ' + p).trim().length > size) { out.push(cur); cur = p; }
+    else cur = (cur ? cur + '\n' : '') + p;
+    if (out.length >= cap) break;
+  }
+  if (cur && out.length < cap) out.push(cur);
+  return out.slice(0, cap);
+}
+async function kbEmbed(env, chunks) {
+  const vecs = [];
+  for (let i = 0; i < chunks.length; i += 20) {
+    const batch = chunks.slice(i, i + 20);
+    const r = await env.AI.run(KB_EMBED_MODEL, { text: batch });
+    const data = (r && r.data) || [];
+    if (data.length !== batch.length) throw new Error('embed_shape');
+    for (const v of data) vecs.push('[' + v.join(',') + ']');
+  }
+  return vecs;
+}
+async function kbInsert(env, user, chunks, vecs, extra) {
+  const rows = chunks.map((c, i) => Object.assign({
+    content: c, embedding: vecs[i], submitted_by: user.id,
+    tags: extra.tags || [], target: extra.target, status: 'live'
+  }, extra.source_url ? { source_url: extra.source_url } : {},
+     extra.file_ref ? { file_ref: extra.file_ref } : {}));
+  await sbRest(env, 'knowledge_base', { method: 'POST', body: rows });
+  return rows.length;
+}
+function kbTarget(t) { return ['daily', 'intelligence', 'both'].includes(t) ? t : 'both'; }
+function kbTags(x) {
+  const a = Array.isArray(x) ? x : String(x || '').split(',');
+  return a.map(s => String(s).trim().toLowerCase()).filter(Boolean).slice(0, 12);
+}
+async function kbSubmit(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const target = kbTarget(body.target), tags = kbTags(body.tags);
+  let text = String(body.text || '').slice(0, 60000), source_url = null;
+  if (!text && body.url) {
+    let t;
+    try { t = new URL(String(body.url)); } catch (e) { return json({ ok: false, error: 'bad_url' }, 200, origin, env); }
+    if (!/^https?:$/.test(t.protocol) || t.port || pvBlockedHost(t.hostname))
+      return json({ ok: false, error: 'blocked' }, 200, origin, env);
+    let res;
+    try {
+      res = await fetch(t.href, { redirect: 'follow', headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; UnsurfacedFeed/1.0; +https://unsurfaced-intelligence.com)',
+        'Accept': 'text/html,application/xhtml+xml' } });
+    } catch (e) { return json({ ok: false, error: 'unreachable' }, 200, origin, env); }
+    if (!res.ok || !/text\/html|xhtml/.test(res.headers.get('content-type') || ''))
+      return json({ ok: false, error: 'not_html' }, 200, origin, env);
+    const ex = pvExtract((await res.text()).slice(0, 600000), res.url || t.href);
+    text = [ex.title].concat(ex.paragraphs).join('\n\n');
+    source_url = t.href;
+  }
+  if (!text.trim()) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  const chunks = kbChunk(text);
+  try {
+    const vecs = await kbEmbed(env, chunks);
+    const added = await kbInsert(env, user, chunks, vecs, { tags, target, source_url });
+    return json({ ok: true, added, target, tags }, 200, origin, env);
+  } catch (e) {
+    await sbRest(env, 'knowledge_base', { method: 'POST', body: [{
+      content: text.slice(0, 900), submitted_by: user.id, tags, target,
+      status: 'failed', fail_reason: String(e && e.message).slice(0, 200),
+      ...(source_url ? { source_url } : {}) }] });
+    return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+  }
+}
+async function kbFile(request, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const u = new URL(request.url);
+  const target = kbTarget(u.searchParams.get('target')), tags = kbTags(u.searchParams.get('tags'));
+  const name = (request.headers.get('x-filename') || 'drop.txt').replace(/[^\w.-]/g, '_');
+  if (!/\.(txt|md|markdown|csv|json)$/i.test(name))
+    return json({ ok: false, error: 'text_files_only' }, 200, origin, env);
+  const raw = await request.arrayBuffer();
+  if (raw.byteLength > 1500000) return json({ ok: false, error: 'too_large' }, 200, origin, env);
+  const text = new TextDecoder('utf-8', { fatal: false }).decode(raw).slice(0, 60000);
+  if (!text.trim()) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  let file_ref = null;
+  if (env.MEDIA) {
+    file_ref = `knowledge/${user.id}/${Date.now()}-${name}`;
+    await env.MEDIA.put(file_ref, raw, { httpMetadata: { contentType: 'text/plain' } });
+  }
+  const chunks = kbChunk(text);
+  try {
+    const vecs = await kbEmbed(env, chunks);
+    const added = await kbInsert(env, user, chunks, vecs, { tags, target, file_ref });
+    return json({ ok: true, added, target, tags, file_ref }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+  }
+}
+async function kbList(env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const rows = await sbRest(env, 'knowledge_base?select=id,content,source_url,file_ref,tags,target,status,created_at&order=created_at.desc&limit=50');
+  return json({ ok: true, rows: (rows || []).map(r => Object.assign(r, { content: String(r.content || '').slice(0, 140) })) }, 200, origin, env);
+}
+async function kbSearch(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const q = String(body.q || '').slice(0, 500);
+  if (!q.trim()) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  const vec = (await kbEmbed(env, [q]))[0];
+  const rows = await sbRest(env, 'rpc/knowledge_search', { method: 'POST',
+    body: { p_target: kbTarget(body.target), p_query: vec, p_count: Math.min(+body.count || 8, 20) } });
+  return json({ ok: true, rows: rows || [] }, 200, origin, env);
+}
+async function kbDelete(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const id = parseInt(body.id, 10);
+  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  await sbRest(env, `knowledge_base?id=eq.${id}`, { method: 'DELETE' });
+  return json({ ok: true, deleted: id }, 200, origin, env);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
