@@ -28,6 +28,16 @@
     "SEAM:MODEL_POOL": {
       "file": "worker/src/index.js",
       "purpose": "callModel() router; t1/t2 bulk public, t3 voice; sensitive pins to t3"
+    },
+    "SEAM:LEADERBOARD@rps": {
+      "file": "arcade/rps/index.html",
+      "tag": "SEAM:LEADERBOARD",
+      "purpose": "compete streak submit + match-end board card + shared join"
+    },
+    "SEAM:LEADERBOARD@hub": {
+      "file": "arcade/index.html",
+      "tag": "SEAM:LEADERBOARD",
+      "purpose": "public tabbed board (RPS/CLAW/POP) \u2014 anonymous reads of the spine"
     }
   },
   "planned": [

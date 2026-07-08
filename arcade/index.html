@@ -115,6 +115,27 @@ footer{
   .cab,.cab::before,.cab::after,.cab-glyph,.cab-cta::after{transition:none}
   .cab:hover{transform:none}
 }
+
+/* SEAM:LEADERBOARD — the public board. Anyone can read it; only the spine writes. */
+.board{max-width:1080px;margin:64px auto 0;padding:0 clamp(20px,5vw,48px)}
+.board-panel{border:1px solid rgba(250,247,242,.14);background:rgba(26,26,26,.45);padding:26px clamp(18px,3vw,34px) 22px}
+.board-eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--red-deep)}
+.board-title{font-family:var(--arcade);font-size:clamp(20px,3.2vw,26px);color:var(--ivory);margin:8px 0 2px}
+.board-season{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--text3);text-transform:uppercase}
+.board-tabs{display:flex;gap:8px;margin:16px 0 14px;flex-wrap:wrap}
+.board-tabs .bt{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  background:none;border:1px solid rgba(250,247,242,.18);color:var(--text2);padding:7px 14px;cursor:pointer;transition:all .2s}
+.board-tabs .bt:hover{color:var(--ivory)}
+.board-tabs .bt.on{border-color:var(--red-deep);color:var(--ivory)}
+.board-body .bd-row{display:flex;align-items:baseline;gap:12px;font-family:'Space Mono',monospace;
+  font-size:13px;line-height:2.05;color:var(--ivory)}
+.board-body .bd-row .rk{color:var(--red-deep);min-width:2.2em;text-align:right}
+.board-body .bd-row .hd{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-body .bd-row .sc{color:rgba(250,247,242,.72)}
+.board-body .bd-row.you{background:rgba(196,18,48,.14);outline:1px solid rgba(196,18,48,.4);padding:0 10px;margin:2px -10px}
+.board-body .bd-empty{font-family:'Space Mono',monospace;font-size:12px;color:rgba(250,247,242,.55);padding:6px 0 2px}
+.board-foot{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--text3);
+  text-transform:uppercase;margin-top:14px}
 </style>
 </head>
 <body>
@@ -174,6 +195,22 @@ footer{
       <span class="cab-cta">Insert coin</span>
     </a>
   </div>
+
+  <!-- SEAM:LEADERBOARD — public board mount. Reads /arcade/board on the spine. -->
+  <section class="board" id="board" aria-label="Hidden Hand Arcade leaderboard">
+    <div class="board-panel">
+      <span class="board-eyebrow">The Board</span>
+      <h2 class="board-title">This week's hands</h2>
+      <div class="board-season" id="boardSeason">Weekly season</div>
+      <div class="board-tabs" role="tablist">
+        <button class="bt on" data-game="rps" role="tab" aria-selected="true">RPS</button>
+        <button class="bt" data-game="claw" role="tab" aria-selected="false">Claw</button>
+        <button class="bt" data-game="pop" role="tab" aria-selected="false">Pop-A-Shot</button>
+      </div>
+      <div class="board-body" id="boardBody"><div class="bd-empty">Raising the board&#8230;</div></div>
+      <div class="board-foot">Top 10 &#183; resets weekly &#183; play any cabinet to claim a rank</div>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -181,5 +218,72 @@ footer{
   <span class="foot-line">Leaderboard · Prizes · Experiences</span>
 </footer>
 
+<script>
+/* SEAM:LEADERBOARD — public reader for the arcade spine. No auth, no writes:
+   the endpoint serves leaderboard_public only (handle/score/rank by design). */
+(function () {
+  var API = 'https://api.unsurfaced-intelligence.com';
+  var body = document.getElementById('boardBody');
+  var seasonEl = document.getElementById('boardSeason');
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.board-tabs .bt'));
+  var cache = {};
+  var current = 'rps';
+
+  function esc(s) {
+    return String(s).replace(/[&<>]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+    });
+  }
+  function me() {
+    try { return JSON.parse(localStorage.getItem('arcade_player') || 'null'); }
+    catch (e) { return null; }
+  }
+  function render(game, data) {
+    if (game !== current) return;
+    if (!data || !data.ok) {
+      body.innerHTML = '<div class="bd-empty">The board is off the wall for a moment - try again shortly.</div>';
+      return;
+    }
+    if (data.season) seasonEl.textContent = 'Season ' + data.season + ' - resets weekly';
+    var p = me();
+    var top = data.top || [];
+    if (!top.length) {
+      body.innerHTML = '<div class="bd-empty">No hands on the board this week - yours starts it.</div>';
+      return;
+    }
+    var html = '';
+    var inTop = false;
+    top.forEach(function (row) {
+      var you = p && row.handle === p.handle;
+      if (you) inTop = true;
+      html += '<div class="bd-row' + (you ? ' you' : '') + '"><span class="rk">' + row.rank +
+        '</span><span class="hd">' + esc(row.handle) + '</span><span class="sc">' + row.score + '</span></div>';
+    });
+    if (p && data.you && !inTop) {
+      html += '<div class="bd-row you"><span class="rk">' + data.you.rank +
+        '</span><span class="hd">' + esc(p.handle) + '</span><span class="sc">' + data.you.score + '</span></div>';
+    }
+    body.innerHTML = html;
+  }
+  function load(game) {
+    current = game;
+    if (cache[game]) { render(game, cache[game]); return; }
+    body.innerHTML = '<div class="bd-empty">Raising the board&#8230;</div>';
+    var p = me();
+    var q = API + '/arcade/board?game=' + game + (p ? '&player_id=' + encodeURIComponent(p.id) : '');
+    fetch(q).then(function (r) { return r.json(); })
+      .then(function (d) { cache[game] = d; render(game, d); })
+      .catch(function () { render(game, null); });
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-selected', 'false'); });
+      t.classList.add('on'); t.setAttribute('aria-selected', 'true');
+      load(t.getAttribute('data-game'));
+    });
+  });
+  load('rps');
+})();
+</script>
 </body>
 </html>
