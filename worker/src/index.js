@@ -789,9 +789,27 @@ function logEvent(env, platform, space, event, sessionId, meta) {
  * templates/DOCTRINE.md — evidence that surfaced, not content made.
  * Caps are law: perishable lane ships at most 2 pieces a day.
  * ═══════════════════════════════════════════════════════════════════ */
-const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Name numbers, dates, sources. '
+const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY facts, numbers, and dates that appear in the finding text \u2014 inventing a date, figure, name, or event is the one unforgivable move. If the finding has no number, write without one. '
   + 'Never explain the joke. Banned: engagement-bait ("you won\'t believe", "stop scrolling"), '
   + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy.';
+function studioGround(item) {
+  return [item.headline, item.standfirst, item.take, item.kicker, item.source_name, item.date]
+    .map(x => String(x || '')).join(' ');
+}
+function studioFabricated(text, ground) {
+  // Years and money the ground never mentioned = invention. Zero tolerance.
+  const g = String(ground || '');
+  const years = String(text || '').match(/\b(19|20)\d{2}\b/g) || [];
+  for (const y of years) if (!g.includes(y)) return 'year:' + y;
+  const money = String(text || '').match(/[\u20AC$\u00A3]\s?[\d.,]+\s?(?:million|billion|[MBK]\b)?|\b[\d.,]+\s(?:million|billion)\b/gi) || [];
+  for (const m of money) if (!g.includes(m.trim())) return 'money:' + m.trim();
+  return null;
+}
+function studioSafeCaption(platform, item) {
+  const base = String(item.headline || '') + ' \u2014 ' + String(item.take || '').slice(0, 160);
+  if (platform === 'linkedin') return base + (item.source_name ? '\nSource: ' + item.source_name : '');
+  return base + '\n\n#unsurfaced #' + String(item.kicker || 'signal').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
 async function studioCaption(env, platform, item) {
   const dialect = platform === 'linkedin'
     ? 'LinkedIn dialect: the finding leads; 2-3 sentences arguing it; no hashtags.'
@@ -799,12 +817,23 @@ async function studioCaption(env, platform, item) {
       ? 'Instagram dialect: one sharp line, then one context line. End with up to 5 chosen hashtags on their own line.'
       : 'TikTok dialect: hook under 12 words, then one payoff line. Up to 4 hashtags.';
   try {
-    const out = await callModel(env, 't1', [
+    const ground = studioGround(item);
+    const user = `Finding: ${item.headline}\n${item.standfirst || ''}\nThe take: ${item.take || ''}\nSource: ${item.source_name || ''}`;
+    let out = await callModel(env, 't1', [
       { role: 'system', content: 'You write social captions for Unsurfaced, a creative recon group publishing daily cultural intelligence. ' + STUDIO_VOICE + ' ' + dialect + ' Output only the caption text.' },
-      { role: 'user', content: `Finding: ${item.headline}\n${item.standfirst || ''}\nThe take: ${item.take || ''}\nSource: ${item.source_name || ''}` }
+      { role: 'user', content: user }
     ], { max_tokens: 220 });
-    return String(out || '').trim().slice(0, 900);
-  } catch (e) { return ''; }
+    let cap = String(out || '').trim().slice(0, 900);
+    if (studioFabricated(cap, ground)) {
+      out = await callModel(env, 't1', [
+        { role: 'system', content: 'Rewrite the caption using ONLY the facts in the finding. Remove every date, figure, and name that the finding does not contain. ' + dialect + ' Output only the caption text.' },
+        { role: 'user', content: user + '\n\nCaption to fix: ' + cap }
+      ], { max_tokens: 220 });
+      cap = String(out || '').trim().slice(0, 900);
+    }
+    if (!cap || studioFabricated(cap, ground)) cap = studioSafeCaption(platform, item);
+    return cap;
+  } catch (e) { return studioSafeCaption(platform, item); }
 }
 async function studioMemeLines(env, item) {
   try {
@@ -813,8 +842,12 @@ async function studioMemeLines(env, item) {
       { role: 'user', content: `Finding: ${item.headline}\nThe take: ${item.take || ''}` }
     ], { max_tokens: 140 });
     const j = JSON.parse(String(out).replace(/```json|```/g, '').trim());
-    if (j && j.line1) return { mformat: j.mformat === 'vs' ? 'vs' : 'verdict',
-      line1: String(j.line1).slice(0, 90), line2: String(j.line2 || '').slice(0, 110) };
+    if (j && j.line1) {
+      const ground = studioGround(item);
+      if (!studioFabricated(String(j.line1) + ' ' + String(j.line2 || ''), ground))
+        return { mformat: j.mformat === 'vs' ? 'vs' : 'verdict',
+          line1: String(j.line1).slice(0, 90), line2: String(j.line2 || '').slice(0, 110) };
+    }
   } catch (e) {}
   return { mformat: 'verdict', line1: String(item.headline || '').slice(0, 90),
     line2: String(item.take || '').slice(0, 110) };

@@ -48,7 +48,8 @@ what we own: type, geometry, the Hand, PLAY-generated art.
 - Formats rotate and retire **before** fatigue, not after.
 
 ## Voice
-Declarative. Specific. A little dangerous. We name numbers, dates, and sources.
+Declarative. Specific. A little dangerous. We name numbers, dates, and sources
+**that the finding actually contains** — invention is the one unforgivable move.
 We never explain the joke. We write like the reader is smart and busy —
 because at this frequency, only the smart and busy are still reading.
 
