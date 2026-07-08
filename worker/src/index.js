@@ -55,6 +55,7 @@ export default {
       if (path === '/api/edition/today') return editionToday(env, origin);
       if (path === '/daily/run' && request.method === 'POST') return dailyRunGuarded(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
+      if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
@@ -774,6 +775,23 @@ function logEvent(env, platform, space, event, sessionId, meta) {
       body: { platform, space, event, session_id: sessionId, meta: meta || {} }
     }).catch(() => {});
   } catch { /* never throw from telemetry */ }
+}
+
+/* ═══ SEAM:STUDYBOARD — the public study board. Anyone may read the
+ * opted-in shelf; the Worker (service role) is the only door and it
+ * enforces the three locks server-side: live + audience='open' +
+ * public_listing=true. Safe fields only — no partner identity, no
+ * invites, no funding internals. ═══ */
+async function mineStudiesPublic(env, origin) {
+  try {
+    const rows = await sbRest(env,
+      'study?select=id,title,goal,type,pay_cents,created_at' +
+      '&status=eq.live&audience=eq.open&public_listing=eq.true' +
+      '&order=created_at.desc&limit=24');
+    return json({ ok: true, studies: rows || [] }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: true, studies: [] }, 200, origin, env);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
