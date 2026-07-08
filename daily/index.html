@@ -8,7 +8,7 @@
   CSP: script-src includes the supabase-js CDN; connect-src includes
   *.supabase.co AND the Worker domain. Replace WORKER_DOMAIN before ship.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://player.vimeo.com https://www.tiktok.com https://www.instagram.com https://platform.twitter.com; connect-src 'self' https://*.supabase.co https://WORKER_DOMAIN;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://player.vimeo.com https://www.tiktok.com https://www.instagram.com https://platform.twitter.com; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com;">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -169,7 +169,7 @@
 <script>
 // ── CONFIG (straight ASCII quotes ONLY — edit on GitHub, never a rich editor) ──
 var CONFIG = {
-  API_BASE: "",            // e.g. "https://daily-api.unsurfaced.com"
+  API_BASE: "https://api.unsurfaced-intelligence.com",
   SUPABASE_URL: "",        // e.g. "https://xyz.supabase.co"
   SUPABASE_ANON_KEY: ""    // public by design; RLS-scoped
 };
