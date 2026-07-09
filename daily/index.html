@@ -110,6 +110,22 @@
 .pv-foot a{color:#C41230;text-decoration:none;border-bottom:1px solid rgba(196,18,48,.35)}
 .pv-load{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#555;padding:26px 0}
 .credit a.ext{color:inherit;text-decoration:none;border-bottom:none;opacity:.75}
+
+/* SEAM:ARCHIVE — the back-issue shelf. Every issue stays on the stand. */
+.folio-btn{background:none;border:none;color:inherit;font:inherit;letter-spacing:inherit;cursor:pointer;opacity:.7;padding:0}
+.folio-btn:hover{opacity:1;text-decoration:underline;text-underline-offset:4px}
+.arwrap{position:fixed;inset:0;background:rgba(10,10,10,.82);backdrop-filter:blur(3px);z-index:85;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:8vh 16px}
+.arwrap.on{display:flex}
+.ar{background:var(--cream,#F5F0E8);color:#141414;max-width:640px;width:100%;border:1px solid rgba(20,20,20,.25);box-shadow:0 30px 90px rgba(0,0,0,.55);padding:30px clamp(20px,4.5vw,44px) 34px;position:relative}
+.ar-close{position:absolute;top:14px;right:16px;font-family:'Space Mono',monospace;font-size:13px;background:none;border:1px solid rgba(20,20,20,.35);color:#141414;padding:4px 10px;cursor:pointer}
+.ar-close:hover{background:#141414;color:#F5F0E8}
+.ar-kicker{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:#C41230;margin-bottom:16px}
+.ar-row{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid rgba(20,20,20,.15);padding:12px 2px;cursor:pointer;font:inherit;color:#141414}
+.ar-row:hover{background:rgba(196,18,48,.06)}
+.ar-row .no{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;color:#C41230;margin-right:12px}
+.ar-row .dt{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:#555;margin-right:12px}
+.ar-row .ld{font-size:14px}
+.ar-empty{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#555;padding:18px 0}
 </style>
 </head>
 <body>
@@ -119,7 +135,7 @@
     <a class="home" href="../">&#8592; UNSURFACED HOME</a>
     <span class="brand">UNSURFACED — CULTURAL INTELLIGENCE</span>
   </span>
-  <span class="folio" id="folio">DAILY</span>
+  <button class="folio folio-btn" id="folio" title="Back issues — every edition stays on the stand" onclick="openArchive()">DAILY</button>
 </header>
 
 <main id="magazine">
@@ -232,7 +248,11 @@ function el(id) { return document.getElementById(id); }
     statusEl.textContent = "Backend not configured. The engine is being installed — Issue 001 is coming.";
     return;
   }
-  fetch(CONFIG.API_BASE + "/api/edition/today")
+  var wantIssue = parseInt(new URLSearchParams(window.location.search).get("issue"), 10);
+  window.loadEdition = function (issueNo) {
+    var u = issueNo ? CONFIG.API_BASE + "/api/edition?issue=" + issueNo : CONFIG.API_BASE + "/api/edition/today";
+    statusEl.textContent = "";
+    fetch(u)
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (!data.edition || !data.items || !data.items.length) {
@@ -244,8 +264,11 @@ function el(id) { return document.getElementById(id); }
       el("folio").textContent =
         "ISSUE " + String(data.edition.issue_no).padStart(3, "0") + " \u00B7 VOL 1 \u00B7 " + mon + " " + String(d.getDate()).padStart(2, "0");
       mag.innerHTML = data.items.map(renderItem).join("");
+      try { history.replaceState({}, "", window.location.pathname + (issueNo ? "?issue=" + issueNo : "")); } catch (e) {}
     })
     .catch(function () { statusEl.textContent = "The signal is temporarily unreachable."; });
+  };
+  loadEdition(wantIssue || null);
 
   // English-first house: non-English sources get a one-tap translated read.
   function isForeign(item) {
@@ -653,6 +676,52 @@ route();
   }
   new MutationObserver(enrich).observe(document.body, { childList: true, subtree: true });
   enrich();
+})();
+</script>
+<script>
+/* SEAM:ARCHIVE — the back-issue shelf. */
+(function () {
+  var API = (window.CONFIG && CONFIG.API_BASE) || "";
+  function esc6(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function make() {
+    var w = document.createElement("div");
+    w.className = "arwrap"; w.id = "arwrap";
+    w.innerHTML = '<div class="ar" role="dialog" aria-modal="true">' +
+      '<button class="ar-close" id="arClose">CLOSE \u2715</button>' +
+      '<div class="ar-kicker">UNSURFACED\u2122 DAILY \u00B7 The stand \u2014 every issue, kept</div>' +
+      '<div id="arList"><div class="ar-empty">PULLING THE STAND\u2026</div></div></div>';
+    document.body.appendChild(w);
+    w.addEventListener("click", function (e) { if (e.target === w) close(); });
+    document.getElementById("arClose").addEventListener("click", close);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+    return w;
+  }
+  function close() { var w = document.getElementById("arwrap"); if (w) { w.classList.remove("on"); document.body.style.overflow = ""; } }
+  window.openArchive = async function () {
+    var w = document.getElementById("arwrap") || make();
+    w.classList.add("on"); document.body.style.overflow = "hidden";
+    var list = document.getElementById("arList");
+    list.innerHTML = '<div class="ar-empty">PULLING THE STAND\u2026</div>';
+    try {
+      var r = await fetch(API + "/api/edition/archive");
+      var d = await r.json();
+      var issues = (d && d.issues) || [];
+      if (!issues.length) { list.innerHTML = '<div class="ar-empty">One issue so far \u2014 history starts tomorrow.</div>'; return; }
+      list.innerHTML = issues.map(function (i) {
+        return '<button class="ar-row" data-issue="' + i.issue_no + '">' +
+          '<span class="no">ISSUE ' + String(i.issue_no).padStart(3, "0") + '</span>' +
+          '<span class="dt">' + esc6(i.date) + '</span>' +
+          '<span class="ld">' + esc6(i.lead || "") + '</span></button>';
+      }).join("");
+      list.querySelectorAll("[data-issue]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          close();
+          if (window.loadEdition) loadEdition(+b.getAttribute("data-issue"));
+          window.scrollTo(0, 0);
+        });
+      });
+    } catch (e) { list.innerHTML = '<div class="ar-empty">The stand is unreachable.</div>'; }
+  };
 })();
 </script>
 </body>
