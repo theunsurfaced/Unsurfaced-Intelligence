@@ -159,7 +159,8 @@ const S = () => ({ calls: [], cfg: null, log: [], ach: new Set(), claims: [], fu
   const civ = mk(false); await sleep(400);
   ok(!civ.window.document.getElementById('tBtn'), 'U civilians see no treasury door');
   const stf = mk(true); await sleep(400);
-  ok(!!stf.window.document.getElementById('tBtn'), 'U staff devices see the door');
+  const tb = stf.window.document.getElementById('tBtn');
+  ok(!!tb && tb.parentElement.className === 'nav-right', 'U staff door lives in the nav, first in the right group');
   const tiles = stf.window.document.querySelectorAll('.cm h3');
   ok(tiles.length === 4 && [...tiles].map(t => t.textContent).join('|') === 'CHESS|CHECKERS|CORN HOLE|THUMB WRESTLING', 'U four reserved cabinets on the floor');
 }
