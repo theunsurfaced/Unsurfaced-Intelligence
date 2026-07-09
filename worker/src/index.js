@@ -51,7 +51,7 @@ export default {
       if (path === '/' || path === '/health') return json({ ok: true, service: 'unsurfaced-api' }, 200, origin, env);
       if (request.method === 'GET' && path.startsWith('/media/')) return serveMedia(path, env, origin);
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
-      if (path.startsWith('/arcade/')) return arcadeRouter(path, request, env, origin);
+      if (path.startsWith('/arcade/') && !path.startsWith('/arcade/admin/')) return arcadeRouter(path, request, env, origin);
       if (path === '/api/edition/today') return editionToday(env, origin);
       if (path === '/api/edition/archive') return editionArchive(env, origin);
       if (path === '/api/edition') return editionByIssue(url, env, origin);
@@ -65,7 +65,7 @@ export default {
       const _aiPath = path.startsWith('/play') || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
       if (_aiPath && !(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
 
-      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive') ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
@@ -79,6 +79,12 @@ export default {
         case '/studio/cut-story':    return studioCutStory(body, env, origin, user);
         case '/studio/update':       return studioUpdate(body, env, origin, user);
         case '/studio/archive':      return studioArchive(request, env, origin, user);
+        case '/arcade/admin/state':     return arcAdminState(env, origin, user);
+        case '/arcade/admin/rotate':    return arcAdminRotate(body, env, origin, user);
+        case '/arcade/admin/prize':     return arcAdminPrize(body, env, origin, user);
+        case '/arcade/admin/prize-obj': return arcAdminPrizeObj(request, env, origin, user);
+        case '/arcade/admin/claims':    return arcAdminClaims(env, origin, user);
+        case '/arcade/admin/fulfill':   return arcAdminFulfill(body, env, origin, user);
         case '/knowledge/submit':    return kbSubmit(body, env, origin, user);
         case '/knowledge/file':      return kbFile(request, env, origin, user);
         case '/knowledge/list':      return kbList(env, origin, user);
@@ -636,9 +642,13 @@ async function safeJson(request) { try { return await request.json(); } catch { 
  * events from 0007. Board reads go through leaderboard_public only.  */
 
 const ARCADE = {
-  GAMES: { rps: { max: 50 },                       // best streak cap
-           claw: { max: 5, minGrabMs: 3000 },      // wins per session cap
-           pop:  { max: 240, perSec: 4 } },        // 60s * 3pt heaters + slack
+  GAMES: { rps:      { max: 50, live: true },                    // best streak cap
+           claw:     { max: 5, minGrabMs: 3000, live: true },    // wins per session cap
+           pop:      { max: 240, perSec: 4, live: true },        // 60s * 3pt heaters + slack
+           chess:    { max: 50, live: false },                   // best win-streak vs the Hand
+           checkers: { max: 50, live: false },                   // best win-streak vs the Hand
+           cornhole: { max: 21, live: false },                   // cancellation to 21, best session
+           thumb:    { max: 60, perSec: 2, live: false } },      // pins per bout, rate-capped
   SESSION_MIN_S: 5, SESSION_MAX_S: 1800,
   HANDLE_RE: /^[A-Za-z0-9_ ]{3,20}$/,
   HANDLE_BLOCK: ['admin','unsurfaced','moderator','fuck','shit','bitch','cunt','nigg','fag','rape','hitler','nazi'],
@@ -648,6 +658,9 @@ async function arcadeRouter(path, request, env, origin) {
   const body = request.method === 'POST' ? await safeJson(request) : {};
   const url = new URL(request.url);
   switch (path) {
+    case '/arcade/match':   return arcadeMatch(body, env, origin);
+    case '/arcade/claim':   return arcadeClaim(body, env, origin);
+    case '/arcade/prize':   return arcadePrize(env, origin);
     case '/arcade/join':    return arcadeJoin(body, env, origin);
     case '/arcade/session': return arcadeSession(url, env, origin);
     case '/arcade/score':   return arcadeScore(body, env, origin);
@@ -659,6 +672,8 @@ async function arcadeRouter(path, request, env, origin) {
 /* POST /arcade/join { handle, email } -> { ok, player_id, handle }
  * Email is stored and never surfaced anywhere public (migration 0005). */
 async function arcadeJoin(body, env, origin) {
+  if (body && body.game && ARCADE.GAMES[body.game] && ARCADE.GAMES[body.game].live === false)
+    return json({ ok: false, error: 'coming_soon' }, 200, origin, env);
   const handle = String(body.handle || '').trim();
   const email  = String(body.email  || '').trim().toLowerCase();
   if (!ARCADE.HANDLE_RE.test(handle))
@@ -685,6 +700,8 @@ async function arcadeJoin(body, env, origin) {
 
 /* GET /arcade/session?game=pop -> { ok, token }  (HMAC, embeds game+iat+jti) */
 async function arcadeSession(url, env, origin) {
+  { const g = url.searchParams.get('game'); if (g && ARCADE.GAMES[g] && ARCADE.GAMES[g].live === false)
+    return json({ ok: false, error: 'coming_soon' }, 200, origin, env); }
   const game = url.searchParams.get('game');
   if (!ARCADE.GAMES[game]) return json({ ok: false, error: 'bad_game' }, 400, origin, env);
   const payload = { g: game, iat: Date.now(), jti: crypto.randomUUID() };
@@ -698,6 +715,7 @@ async function arcadeScore(body, env, origin) {
   const meta = (body.meta && typeof body.meta === 'object') ? body.meta : {};
   const spec = ARCADE.GAMES[game];
   if (!spec || !token || !player_id) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  if (spec.live === false) return json({ ok: false, error: 'coming_soon' }, 200, origin, env);
 
   // 1. Token: signature, game match, age window
   const dot = token.lastIndexOf('.');
@@ -723,6 +741,13 @@ async function arcadeScore(body, env, origin) {
   if (game === 'pop' && s > Math.ceil(Math.min(ageS, 75) * spec.perSec)) valid = false;
   if (game === 'claw' && meta.grab_ms != null && Number(meta.grab_ms) < spec.minGrabMs) valid = false;
 
+  // POP achievement pre-read: the board top BEFORE this score lands.
+  let popPrevTop = null;
+  if (game === 'pop' && valid) {
+    const t = await sbRest(env, `leaderboard_public?game=eq.pop&season=eq.${arcSeason()}&order=rank.asc&limit=1`);
+    popPrevTop = (t && t[0]) ? Number(t[0].score) : null;
+  }
+
   // 4. Insert (service role; anon has no path to these tables)
   await sbRest(env, 'arcade_scores', {
     method: 'POST',
@@ -732,13 +757,20 @@ async function arcadeScore(body, env, origin) {
   if (!valid) return json({ ok: false, error: 'implausible' }, 422, origin, env);
 
   const rank = await arcRank(env, game, player_id);
-  return json({ ok: true, rank }, 200, origin, env);
+  // SEAM:ENDGAME — beating an existing top mints the reveal, server-decided.
+  let grant = null;
+  if (game === 'pop' && popPrevTop !== null && s > popPrevTop) {
+    const cfg = await getArcConfig(env);
+    grant = await arcGrant(env, player_id, 'pop', cfg);
+  }
+  return json(Object.assign({ ok: true, rank }, grant || {}), 200, origin, env);
 }
 
 /* GET /arcade/board?game=pop&player_id=... -> { ok, season, top, you } */
 async function arcadeBoard(url, env, origin) {
   const game = url.searchParams.get('game');
   if (!ARCADE.GAMES[game]) return json({ ok: false, error: 'bad_game' }, 400, origin, env);
+  if (ARCADE.GAMES[game].live === false) return json({ ok: false, error: 'coming_soon' }, 200, origin, env);
   const season = arcSeason();
   const top = await sbRest(env, `leaderboard_public?game=eq.${game}&season=eq.${season}&order=rank.asc&limit=10`);
   let you = null;
@@ -765,6 +797,165 @@ function arcSeason() {  // ISO week, e.g. 2026-W28 — weekly seasons per spec
   const week = Math.ceil((((t - Date.UTC(y, 0, 1)) / 86400000) + 1) / 7);
   return `${y}-W${String(week).padStart(2, '0')}`;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * SEAM:ENDGAME — skill mints the key, the claw spends it, the Hand
+ * fulfills. One rotating house code (never per-player vouchers);
+ * achievements REVEAL the current code, once per player per version,
+ * so rotation re-arms the whole economy. The match rail is generic:
+ * RPS rides it today, chess/checkers/thumb ride it tomorrow.
+ * ═══════════════════════════════════════════════════════════════════ */
+const ARC_ACH = {
+  rps: { key: 'three_matches', chain: 3 },   // three consecutive best-of-3 wins vs the Hand
+  pop: { key: 'beats_top' },                 // decided server-side inside the score submit
+};
+async function arcVerify(env, token, game) {
+  if (!token) return { error: 'bad_token' };
+  const dot = token.lastIndexOf('.');
+  if (dot < 0) return { error: 'bad_token' };
+  const rawB64 = token.slice(0, dot), sig = token.slice(dot + 1);
+  let payload; try { payload = JSON.parse(atob(rawB64)); } catch (e) { return { error: 'bad_token' }; }
+  if (await arcSign(env, JSON.stringify(payload)) !== sig) return { error: 'bad_sig' };
+  if (payload.g !== game) return { error: 'game_mismatch' };
+  const ageS = (Date.now() - payload.iat) / 1000;
+  if (ageS < ARCADE.SESSION_MIN_S || ageS > ARCADE.SESSION_MAX_S) return { error: 'session_window' };
+  return { ok: true, payload };
+}
+async function getArcConfig(env) {
+  const rows = await sbRest(env, 'arcade_config?id=eq.1');
+  if (rows && rows[0]) return rows[0];
+  const seed = { id: 1, code: 'UNSURFACED', code_version: 1, prize_name: 'The first prize', prize_blurb: '' };
+  await sbRest(env, 'arcade_config', { method: 'POST', body: seed });
+  return seed;
+}
+async function arcGrant(env, playerId, game, cfg) {
+  // One reveal per player per code version — rotation re-arms.
+  try {
+    await sbRest(env, 'arcade_achievements', { method: 'POST', body: {
+      player_id: playerId, game, achievement_key: ARC_ACH[game].key, code_version: cfg.code_version } });
+    logEvent(env, 'arcade', game, 'code_revealed', null, { v: cfg.code_version });
+    return { achieved: true, code: cfg.code, prize: cfg.prize_name };
+  } catch (e) { return { achieved: false, already: true }; }
+}
+async function arcadeMatch(body, env, origin) {
+  const { token, player_id, game, result } = body;
+  const spec = ARCADE.GAMES[game];
+  if (!spec || !player_id || !['win', 'loss'].includes(result))
+    return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  if (spec.live === false) return json({ ok: false, error: 'coming_soon' }, 200, origin, env);
+  const v = await arcVerify(env, token, game);
+  if (!v.ok) return json({ ok: false, error: v.error }, 403, origin, env);
+  const today = new Date().toISOString().slice(0, 10);
+  const dayCount = await sbRest(env,
+    `arcade_match_log?player_id=eq.${player_id}&game=eq.${game}&created_at=gte.${today}&select=id&limit=200`);
+  if (dayCount && dayCount.length >= 200) return json({ ok: false, error: 'slow_down' }, 429, origin, env);
+  await sbRest(env, 'arcade_match_log', { method: 'POST', body: {
+    player_id, game, result, meta: (body.meta && typeof body.meta === 'object') ? body.meta : {} } });
+  const ach = ARC_ACH[game];
+  if (result !== 'win' || !ach || !ach.chain) return json({ ok: true }, 200, origin, env);
+  const last = await sbRest(env,
+    `arcade_match_log?player_id=eq.${player_id}&game=eq.${game}&order=created_at.desc,id.desc&limit=${ach.chain}&select=result`);
+  let streak = 0;
+  for (const r of (last || [])) { if (r.result === 'win') streak++; else break; }
+  if (streak < ach.chain) return json({ ok: true, chain: streak }, 200, origin, env);
+  const cfg = await getArcConfig(env);
+  const grant = await arcGrant(env, player_id, game, cfg);
+  return json(Object.assign({ ok: true, chain: ach.chain }, grant), 200, origin, env);
+}
+async function arcadeClaim(body, env, origin) {
+  const { token, player_id, code } = body;
+  if (!player_id || !code) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  const v = await arcVerify(env, token, 'claw');
+  if (!v.ok) return json({ ok: false, error: v.error }, 403, origin, env);
+  if (env.RATE_LIMIT) {
+    const k = 'arc:claim:' + v.payload.jti;
+    if (await env.RATE_LIMIT.get(k)) return json({ ok: false, error: 'replay' }, 409, origin, env);
+    await env.RATE_LIMIT.put(k, '1', { expirationTtl: 86400 });
+  }
+  const cfg = await getArcConfig(env);
+  const given = String(code).trim().toUpperCase();
+  if (given !== String(cfg.code).trim().toUpperCase()) {
+    logEvent(env, 'arcade', 'claw', 'claim_stale', v.payload.jti, {});
+    return json({ ok: false, error: 'stale_code' }, 200, origin, env);
+  }
+  const ticket = (Date.now().toString(36).slice(-3) + Math.random().toString(36).slice(2, 5)).toUpperCase();
+  await sbRest(env, 'arcade_claims', { method: 'POST', body: {
+    ticket, player_id, prize_name: cfg.prize_name, prize_blurb: cfg.prize_blurb || '',
+    code_version: cfg.code_version, status: 'open' } });
+  logEvent(env, 'arcade', 'claw', 'prize_claimed', v.payload.jti, { ticket });
+  return json({ ok: true, ticket, prize: cfg.prize_name }, 200, origin, env);
+}
+async function arcadePrize(env, origin) {
+  const cfg = await getArcConfig(env);
+  return json({ ok: true, name: cfg.prize_name, blurb: cfg.prize_blurb || '',
+    model: cfg.prize_obj_key ? '/media/' + cfg.prize_obj_key : null }, 200, origin, env);
+}
+/* ── the treasury: admin only, DB-truth gated ── */
+async function arcAdminState(env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const cfg = await getArcConfig(env);
+  const open = await sbRest(env, 'arcade_claims?status=eq.open&select=id');
+  const reveals = await sbRest(env, `arcade_achievements?code_version=eq.${cfg.code_version}&select=id`);
+  return json({ ok: true, code: cfg.code, code_version: cfg.code_version,
+    prize: { name: cfg.prize_name, blurb: cfg.prize_blurb || '', model: cfg.prize_obj_key || null },
+    open_claims: (open || []).length, reveals_this_version: (reveals || []).length }, 200, origin, env);
+}
+async function arcAdminRotate(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const code = String(body.code || '').trim();
+  if (!/^[A-Za-z0-9\- ]{3,24}$/.test(code)) return json({ ok: false, error: 'bad_code' }, 200, origin, env);
+  const cfg = await getArcConfig(env);
+  const nextV = cfg.code_version + 1;
+  await sbRest(env, 'arcade_config?id=eq.1', { method: 'PATCH', body: {
+    code: code.toUpperCase(), code_version: nextV, updated_at: new Date().toISOString() } });
+  logEvent(env, 'arcade', null, 'code_rotated', null, { v: nextV });
+  return json({ ok: true, code_version: nextV }, 200, origin, env);
+}
+async function arcAdminPrize(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const patch = { updated_at: new Date().toISOString() };
+  if (body.name) patch.prize_name = String(body.name).slice(0, 80);
+  if (body.blurb != null) patch.prize_blurb = String(body.blurb).slice(0, 240);
+  await getArcConfig(env);
+  await sbRest(env, 'arcade_config?id=eq.1', { method: 'PATCH', body: patch });
+  return json({ ok: true }, 200, origin, env);
+}
+async function arcAdminPrizeObj(request, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const name = (request.headers.get('x-filename') || 'prize.obj').replace(/[^\w.-]/g, '_');
+  if (!/\.obj$/i.test(name)) return json({ ok: false, error: 'obj_only' }, 200, origin, env);
+  const raw = await request.arrayBuffer();
+  if (!raw.byteLength || raw.byteLength > 8000000) return json({ ok: false, error: 'size' }, 200, origin, env);
+  if (!env.MEDIA) return json({ ok: false, error: 'storage_unconfigured' }, 500, origin, env);
+  const key = `arcade/prize/${Date.now()}-${name}`;
+  await env.MEDIA.put(key, raw, { httpMetadata: { contentType: 'text/plain' } });
+  await getArcConfig(env);
+  await sbRest(env, 'arcade_config?id=eq.1', { method: 'PATCH', body: {
+    prize_obj_key: key, updated_at: new Date().toISOString() } });
+  return json({ ok: true, key }, 200, origin, env);
+}
+async function arcAdminClaims(env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const rows = await sbRest(env,
+    'arcade_claims?order=created_at.desc&limit=50&select=ticket,player_id,prize_name,status,created_at,fulfilled_at');
+  const ids = [...new Set((rows || []).map(r => r.player_id))];
+  let handles = {};
+  if (ids.length) {
+    const ps = await sbRest(env, `arcade_players?id=in.(${ids.join(',')})&select=id,handle`);
+    (ps || []).forEach(p => { handles[p.id] = p.handle; });
+  }
+  return json({ ok: true, claims: (rows || []).map(r => Object.assign({ handle: handles[r.player_id] || '?' }, r)) }, 200, origin, env);
+}
+async function arcAdminFulfill(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const t = String(body.ticket || '').trim().toUpperCase();
+  if (!t) return json({ ok: false, error: 'bad_ticket' }, 200, origin, env);
+  await sbRest(env, `arcade_claims?ticket=eq.${encodeURIComponent(t)}`, { method: 'PATCH', body: {
+    status: 'fulfilled', fulfilled_at: new Date().toISOString() } });
+  logEvent(env, 'arcade', null, 'claim_fulfilled', null, { ticket: t });
+  return json({ ok: true, ticket: t }, 200, origin, env);
+}
+
 
 async function arcSign(env, raw) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LEADERBOARD_HMAC_SECRET || 'dev-only'),
