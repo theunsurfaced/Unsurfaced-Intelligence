@@ -146,7 +146,8 @@ footer{
 .cm h3{font-family:var(--arcade);font-size:clamp(19px,2.6vw,24px);color:var(--ivory);margin:0 0 8px;letter-spacing:.02em}
 .cm p{font-family:'Space Mono',monospace;font-size:10.5px;line-height:1.6;color:var(--text2,#8988A0);margin:0 0 14px}
 .cm .chip{font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);border:1px solid rgba(255,51,51,.4);padding:3px 8px}
-.tbtn{position:fixed;top:72px;right:24px;z-index:60;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;background:none;border:1px solid rgba(250,247,242,.25);color:var(--ivory);padding:8px 13px;cursor:pointer;display:none}
+.nav-right{display:flex;align-items:center;gap:10px}
+.tbtn{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;background:none;border:1px solid var(--text3);color:var(--text2);padding:9px 16px;cursor:pointer;transition:color .25s,border-color .25s}
 .tbtn:hover{border-color:var(--red);color:var(--red)}
 .twrap{position:fixed;inset:0;background:rgba(10,10,10,.88);backdrop-filter:blur(4px);z-index:120;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:6vh 16px 8vh}
 .twrap.on{display:flex}
@@ -174,6 +175,7 @@ footer{
 .introwrap{position:fixed;inset:0;background:#000;z-index:300;display:flex;align-items:center;justify-content:center;transition:opacity .6s ease}
 .introwrap.off{opacity:0;pointer-events:none}
 .introwrap video{width:100%;height:100%;object-fit:cover}
+@media (max-aspect-ratio: 4/3){.introwrap video{object-fit:contain}}
 .intro-skip{position:absolute;bottom:26px;right:28px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;background:rgba(10,10,10,.5);border:1px solid rgba(250,247,242,.35);color:var(--ivory,#FAF7F2);padding:9px 16px;cursor:pointer}
 .intro-skip:hover{border-color:var(--red,#FF3333);color:var(--red,#FF3333)}
 .intro-snd{position:absolute;bottom:26px;left:28px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;background:rgba(10,10,10,.5);border:1px solid rgba(250,247,242,.35);color:var(--ivory,#FAF7F2);padding:9px 16px;cursor:pointer}
@@ -213,7 +215,7 @@ footer{
     <span class="dot"></span>
     <svg class="brand-logo" viewBox="157.68 266.64 455.04 53.28" role="img" aria-label="Unsurfaced"><use href="#usf-logo"/></svg>
   </a>
-  <a href="../" class="back">← UNSURFACED HOME</a>
+  <span class="nav-right"><a href="../" class="back">← UNSURFACED HOME</a></span>
 </nav>
 
 <header>
@@ -464,9 +466,10 @@ footer{
       if (document.getElementById("tBtn")) return;
       var b = document.createElement("button");
       b.className = "tbtn"; b.id = "tBtn"; b.textContent = "TREASURY \u2301";
-      b.style.display = "block";
       b.addEventListener("click", show);
-      document.body.appendChild(b);
+      var slot = document.querySelector(".nav-right");
+      if (slot) slot.insertBefore(b, slot.firstChild);
+      else document.body.appendChild(b);
     } catch (e) {}
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);

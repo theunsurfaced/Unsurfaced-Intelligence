@@ -20,6 +20,7 @@ const html = fs.readFileSync('arcade/index.html', 'utf-8');
   const moov = head.indexOf('moov'), mdat = head.indexOf('mdat');
   ok(moov > -1 && (mdat === -1 || moov < mdat), 'F faststart: moov leads');
   ok(fs.statSync('arcade/intro-poster.jpg').size > 5000, 'F poster frame present');
+  ok(html.includes('@media (max-aspect-ratio: 4/3){.introwrap video{object-fit:contain}}'), 'F portrait shows the full frame, letterboxed');
 }
 function world(opts) {
   opts = opts || {};
