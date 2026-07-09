@@ -53,6 +53,8 @@ export default {
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
       if (path.startsWith('/arcade/')) return arcadeRouter(path, request, env, origin);
       if (path === '/api/edition/today') return editionToday(env, origin);
+      if (path === '/api/edition/archive') return editionArchive(env, origin);
+      if (path === '/api/edition') return editionByIssue(url, env, origin);
       if (path === '/daily/run' && request.method === 'POST') return dailyRunGuarded(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
@@ -1335,6 +1337,36 @@ async function editionToday(env, origin) {
   } catch (e) {
     return json({ edition: null, items: [], error: 'unavailable' }, 200, origin, env);
   }
+}
+
+/* SEAM:ARCHIVE — the back-issue shelf. Every published edition stays
+ * readable forever: a public index (issue, date, lead headline) and a
+ * public by-issue reader in the exact shape /api/edition/today serves,
+ * so the front page renders any day in history with the same code.
+ * Published-only — drafts never leak. */
+async function editionArchive(env, origin) {
+  try {
+    const eds = await sbRest(env, 'editions?status=eq.published&order=date.desc&limit=90&select=id,issue_no,date');
+    if (!eds || !eds.length) return json({ ok: true, issues: [] }, 200, origin, env);
+    const ids = eds.map(e => e.id).join(',');
+    const leads = await sbRest(env, `edition_items?edition_id=in.(${ids})&ord=eq.0&select=edition_id,headline`);
+    const byId = {};
+    (leads || []).forEach(l => { byId[l.edition_id] = l.headline; });
+    return json({ ok: true, issues: eds.map(e => ({
+      issue_no: e.issue_no, date: e.date, lead: byId[e.id] || '' })) }, 200, origin, env);
+  } catch (e) { return json({ ok: true, issues: [] }, 200, origin, env); }
+}
+async function editionByIssue(url, env, origin) {
+  try {
+    const n = parseInt(url.searchParams.get('issue'), 10);
+    if (!n) return json({ edition: null, items: [], error: 'bad_issue' }, 200, origin, env);
+    const eds = await sbRest(env, `editions?issue_no=eq.${n}&status=eq.published&limit=1`);
+    const ed = eds && eds[0];
+    if (!ed) return json({ edition: null, items: [] }, 200, origin, env);
+    const items = await sbRest(env, `edition_items?edition_id=eq.${ed.id}&order=ord.asc`);
+    return json({ edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' },
+      items: items || [] }, 200, origin, env);
+  } catch (e) { return json({ edition: null, items: [], error: 'unavailable' }, 200, origin, env); }
 }
 
 // Manual trigger (admin only) — same pipeline the cron runs, for on-demand builds.

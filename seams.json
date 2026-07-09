@@ -83,6 +83,16 @@
       "file": "intelligence/index.html",
       "tag": "SEAM:STUDIO",
       "purpose": "house renderer + download counter: paint-op templates, store-zip, three-ring reveal"
+    },
+    "SEAM:ARCHIVE@worker": {
+      "file": "worker/src/index.js",
+      "tag": "SEAM:ARCHIVE",
+      "purpose": "back-issue shelf: public archive index + by-issue reader, published-only"
+    },
+    "SEAM:ARCHIVE@daily": {
+      "file": "daily/index.html",
+      "tag": "SEAM:ARCHIVE",
+      "purpose": "the stand: folio opens the shelf, deep-linkable ?issue=NN"
     }
   },
   "planned": [
