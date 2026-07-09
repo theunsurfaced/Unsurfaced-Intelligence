@@ -93,6 +93,21 @@
       "file": "daily/index.html",
       "tag": "SEAM:ARCHIVE",
       "purpose": "the stand: folio opens the shelf, deep-linkable ?issue=NN"
+    },
+    "SEAM:ENDGAME@worker": {
+      "file": "worker/src/index.js",
+      "tag": "SEAM:ENDGAME",
+      "purpose": "the economy: rotating code, generic match rail, claims + tickets, treasury routes, 7-game registry"
+    },
+    "SEAM:ENDGAME@arcade-hub": {
+      "file": "arcade/index.html",
+      "tag": "SEAM:ENDGAME",
+      "purpose": "treasury panel (staff-door, shared-origin session) + coming-to-the-floor band"
+    },
+    "SEAM:INTRO@arcade-hub": {
+      "file": "arcade/index.html",
+      "tag": "SEAM:INTRO",
+      "purpose": "boot sequence: attract video, instant skip, watchdog + reduced-motion dissolve"
     }
   },
   "planned": [

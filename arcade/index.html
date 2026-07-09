@@ -117,8 +117,8 @@ footer{
 }
 
 /* SEAM:LEADERBOARD — the public board. Anyone can read it; only the spine writes. */
-.board{max-width:1080px;margin:64px auto 0;padding:0 clamp(20px,5vw,48px)}
-.board-panel{border:1px solid rgba(250,247,242,.14);background:rgba(26,26,26,.45);padding:26px clamp(18px,3vw,34px) 22px}
+.board{padding:0 clamp(20px,4vw,56px) 88px}
+.board-panel{max-width:1080px;margin:0 auto;border:1px solid rgba(250,247,242,.14);background:rgba(26,26,26,.45);padding:26px clamp(18px,3vw,34px) 22px}
 .board-eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--red-deep)}
 .board-title{font-family:var(--arcade);font-size:clamp(20px,3.2vw,26px);color:var(--ivory);margin:8px 0 2px}
 .board-season{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--text3);text-transform:uppercase}
@@ -136,9 +136,60 @@ footer{
 .board-body .bd-empty{font-family:'Space Mono',monospace;font-size:12px;color:rgba(250,247,242,.55);padding:6px 0 2px}
 .board-foot{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--text3);
   text-transform:uppercase;margin-top:14px}
+
+/* SEAM:ENDGAME — the floor grows; the treasury hides in plain sight. */
+.coming{padding:0 clamp(20px,4vw,56px) 72px}
+.coming-inner{max-width:1080px;margin:0 auto}
+.coming .eyebrow{display:block;margin-bottom:18px}
+.coming-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.cm{border:1px solid rgba(250,247,242,.14);background:rgba(26,26,26,.45);padding:20px 20px 18px;position:relative}
+.cm h3{font-family:var(--arcade);font-size:clamp(19px,2.6vw,24px);color:var(--ivory);margin:0 0 8px;letter-spacing:.02em}
+.cm p{font-family:'Space Mono',monospace;font-size:10.5px;line-height:1.6;color:var(--text2,#8988A0);margin:0 0 14px}
+.cm .chip{font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);border:1px solid rgba(255,51,51,.4);padding:3px 8px}
+.tbtn{position:fixed;top:72px;right:24px;z-index:60;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;background:none;border:1px solid rgba(250,247,242,.25);color:var(--ivory);padding:8px 13px;cursor:pointer;display:none}
+.tbtn:hover{border-color:var(--red);color:var(--red)}
+.twrap{position:fixed;inset:0;background:rgba(10,10,10,.88);backdrop-filter:blur(4px);z-index:120;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:6vh 16px 8vh}
+.twrap.on{display:flex}
+.tr{background:#141418;color:var(--ivory);max-width:720px;width:100%;border:1px solid rgba(250,247,242,.18);box-shadow:0 30px 90px rgba(0,0,0,.6);padding:28px clamp(18px,4vw,40px) 34px;position:relative}
+.tr-close{position:absolute;top:14px;right:16px;font-family:'Space Mono',monospace;font-size:12px;background:none;border:1px solid rgba(250,247,242,.3);color:var(--ivory);padding:4px 10px;cursor:pointer}
+.tr-eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--red);margin-bottom:14px}
+.tr-code{font-family:var(--arcade);font-size:clamp(28px,5vw,44px);letter-spacing:.06em;color:var(--ivory);margin:2px 0 4px}
+.tr-sub{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3,#545268);margin-bottom:16px}
+.tr label{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--text3,#545268);margin:14px 0 6px}
+.tr input[type=text]{width:100%;background:#0f0f13;border:1px solid rgba(250,247,242,.2);color:var(--ivory);padding:10px 12px;font-size:13px;font-family:'Space Mono',monospace}
+.tr-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.tr-row>div{flex:1;min-width:180px}
+.tr-btn{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;background:var(--red-deep,#C41230);color:#fff;border:none;padding:11px 18px;cursor:pointer}
+.tr-btn.ghost{background:none;border:1px solid rgba(250,247,242,.3);color:var(--ivory)}
+.tr-file{font-family:'Space Mono',monospace;font-size:10px;color:var(--ivory);border:1px dashed rgba(250,247,242,.3);padding:10px 12px;display:inline-block;cursor:pointer}
+.tr-status{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--text2,#8988A0);margin-top:12px;min-height:14px}
+.tr-claims{margin-top:22px;border-top:1px solid rgba(250,247,242,.14);padding-top:14px}
+.tr-claim{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(250,247,242,.08);font-family:'Space Mono',monospace;font-size:11px;color:var(--text2,#8988A0)}
+.tr-claim .tk{color:var(--red);font-weight:700}
+.tr-claim .hd{color:var(--ivory)}
+.tr-claim .st.open{color:#f5a55a}
+.tr-claim .st.fulfilled{color:#6de08f}
+
+/* SEAM:INTRO — the boot sequence. Attract mode plays, the floor reveals. */
+.introwrap{position:fixed;inset:0;background:#000;z-index:300;display:flex;align-items:center;justify-content:center;transition:opacity .6s ease}
+.introwrap.off{opacity:0;pointer-events:none}
+.introwrap video{width:100%;height:100%;object-fit:cover}
+.intro-skip{position:absolute;bottom:26px;right:28px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;background:rgba(10,10,10,.5);border:1px solid rgba(250,247,242,.35);color:var(--ivory,#FAF7F2);padding:9px 16px;cursor:pointer}
+.intro-skip:hover{border-color:var(--red,#FF3333);color:var(--red,#FF3333)}
+.intro-snd{position:absolute;bottom:26px;left:28px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;background:rgba(10,10,10,.5);border:1px solid rgba(250,247,242,.35);color:var(--ivory,#FAF7F2);padding:9px 16px;cursor:pointer}
+.intro-snd:hover{border-color:var(--red,#FF3333);color:var(--red,#FF3333)}
 </style>
 </head>
 <body>
+
+<!-- SEAM:INTRO — attract mode. Skippable instantly; never traps (watchdog + error dissolve). -->
+<div class="introwrap" id="introwrap">
+  <video id="introVid" autoplay muted playsinline preload="auto" poster="intro-poster.jpg">
+    <source src="intro.mp4" type="video/mp4">
+  </video>
+  <button class="intro-snd" id="introSnd">Sound on</button>
+  <button class="intro-skip" id="introSkip">Skip →</button>
+</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="usf-logo" viewBox="157.68 266.64 455.04 53.28">
 <path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 177.9375 313.964844 C 173.789062 313.964844 170.40625 312.566406 167.789062 309.769531 C 165.171875 306.972656 163.863281 302.992188 163.863281 297.820312 L 163.863281 275.269531 L 172.976562 275.269531 L 172.707031 297.097656 C 172.765625 299.804688 173.457031 301.910156 174.78125 303.410156 C 176.101562 304.914062 178.117188 305.667969 180.824219 305.667969 C 183.828125 305.667969 186.191406 304.796875 187.90625 303.050781 C 189.617188 301.308594 190.535156 298.902344 190.65625 295.832031 L 190.476562 275.269531 L 199.585938 275.269531 L 199.585938 313.152344 L 190.382812 313.152344 L 190.746094 306.207031 C 189.484375 308.671875 187.753906 310.582031 185.558594 311.9375 C 183.363281 313.289062 180.824219 313.964844 177.9375 313.964844 "/>
@@ -195,9 +246,23 @@ footer{
       <span class="cab-cta">Insert coin</span>
     </a>
   </div>
+</main>
 
-  <!-- SEAM:LEADERBOARD — public board mount. Reads /arcade/board on the spine. -->
-  <section class="board" id="board" aria-label="Hidden Hand Arcade leaderboard">
+<!-- SEAM:ENDGAME — the floor grows. Reserved cabinets, spine sockets already live. -->
+<section class="coming" aria-label="Games in development">
+  <div class="coming-inner">
+    <span class="eyebrow">Coming to the floor</span>
+    <div class="coming-grid">
+      <div class="cm"><h3>CHESS</h3><p>The Hand thinks eleven moves ahead. You get white.</p><span class="chip">In development</span></div>
+      <div class="cm"><h3>CHECKERS</h3><p>It jumps, it kings, it never blinks.</p><span class="chip">In development</span></div>
+      <div class="cm"><h3>CORN HOLE</h3><p>The Hand tosses opposite you. Cancellation to 21.</p><span class="chip">In development</span></div>
+      <div class="cm"><h3>THUMB WRESTLING</h3><p>Your thumb, its thumb, sixty seconds. Camera on.</p><span class="chip">In development</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SEAM:LEADERBOARD — its own band beneath the cabinets; scroll finds it as the row grows. -->
+<section class="board" id="board" aria-label="Hidden Hand Arcade leaderboard">
     <div class="board-panel">
       <span class="board-eyebrow">The Board</span>
       <h2 class="board-title">This week's hands</h2>
@@ -210,8 +275,7 @@ footer{
       <div class="board-body" id="boardBody"><div class="bd-empty">Raising the board&#8230;</div></div>
       <div class="board-foot">Top 10 &#183; resets weekly &#183; play any cabinet to claim a rank</div>
     </div>
-  </section>
-</main>
+</section>
 
 <footer>
   <span class="foot-line"><b>Unsurfaced™</b> · A creative recon group</span>
@@ -283,6 +347,168 @@ footer{
     });
   });
   load('rps');
+})();
+</script>
+<script>
+/* SEAM:ENDGAME — the treasury. Hidden in plain sight: only devices that have
+   hosted an admin session over at INTELLIGENCE ever see the door, and every
+   action re-proves the role at the database. Rides the shared-origin Supabase
+   session — sign in once over there, the treasury simply works here. */
+(function () {
+  var API = "https://api.unsurfaced-intelligence.com";
+  var SB_KEY = "sb-uxbhafkqungklmnrfdhp-auth-token";
+  function e7(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function tok() {
+    try {
+      var raw = localStorage.getItem(SB_KEY);
+      if (!raw) return null;
+      var j = JSON.parse(raw);
+      return j.access_token || (j.currentSession && j.currentSession.access_token) || null;
+    } catch (e) { return null; }
+  }
+  async function tfetch(path, body, raw) {
+    var t = tok();
+    if (!t) throw new Error("no_session");
+    var opts = { method: "POST", headers: { Authorization: "Bearer " + t } };
+    if (raw) { opts.body = raw.blob; opts.headers["x-filename"] = raw.name; opts.headers["content-type"] = "text/plain"; }
+    else if (body) { opts.body = JSON.stringify(body); opts.headers["content-type"] = "application/json"; }
+    var r = await fetch(API + path, opts);
+    if (r.status === 401) throw new Error("no_session");
+    if (r.status === 403) throw new Error("forbidden");
+    if (r.status === 404) throw new Error("stale");
+    return r.json();
+  }
+  function stat(m) { var el = document.getElementById("trStatus"); if (el) el.textContent = m || ""; }
+  function make() {
+    var w = document.createElement("div");
+    w.className = "twrap"; w.id = "twrap";
+    w.innerHTML = '<div class="tr" role="dialog" aria-modal="true">' +
+      '<button class="tr-close" id="trClose">CLOSE \u2715</button>' +
+      '<div class="tr-eyebrow">The treasury \u00B7 Hidden Hand Arcade</div>' +
+      '<div class="tr-sub">The code</div><div class="tr-code" id="trCode">\u2014</div>' +
+      '<div class="tr-sub" id="trMeta"></div>' +
+      '<div class="tr-row"><div><label>Rotate the code (3\u201324 chars)</label><input type="text" id="trNew" placeholder="NEW-CODE"></div>' +
+      '<button class="tr-btn" id="trRotate">Rotate</button></div>' +
+      '<div class="tr-row"><div><label>Prize name</label><input type="text" id="trPName"></div>' +
+      '<div><label>Prize blurb</label><input type="text" id="trPBlurb"></div>' +
+      '<button class="tr-btn ghost" id="trPSave">Save prize</button></div>' +
+      '<label>Prize model \u00B7 <span id="trObj">no model</span></label>' +
+      '<label class="tr-file">\uFF0B .OBJ (max 8MB)<input type="file" id="trObjFile" accept=".obj" hidden></label>' +
+      '<div class="tr-status" id="trStatus"></div>' +
+      '<div class="tr-claims"><label style="margin-top:0">Claims \u2014 the Hand fulfills</label><div id="trClaims"></div></div></div>';
+    document.body.appendChild(w);
+    w.addEventListener("click", function (e) { if (e.target === w) hide(); });
+    document.getElementById("trClose").addEventListener("click", hide);
+    document.getElementById("trRotate").addEventListener("click", rotate);
+    document.getElementById("trPSave").addEventListener("click", savePrize);
+    document.getElementById("trObjFile").addEventListener("change", sendObj);
+    return w;
+  }
+  function hide() { var w = document.getElementById("twrap"); if (w) { w.classList.remove("on"); document.body.style.overflow = ""; } }
+  function show() { var w = document.getElementById("twrap") || make(); w.classList.add("on"); document.body.style.overflow = "hidden"; load(); }
+  function err(e) {
+    var s = String(e && e.message || e);
+    if (s === "no_session") return "SIGN IN AT INTELLIGENCE FIRST \u2192 /intelligence/";
+    if (s === "forbidden") return "ADMIN ONLY \u2014 this account holds no key.";
+    if (s === "stale") return "WORKER STALE \u2014 paste and deploy the new worker.";
+    return "UNREACHABLE.";
+  }
+  async function load() {
+    stat("OPENING THE VAULT\u2026");
+    try {
+      var d = await tfetch("/arcade/admin/state");
+      document.getElementById("trCode").textContent = d.code;
+      document.getElementById("trMeta").textContent = "VERSION " + d.code_version + " \u00B7 " + d.reveals_this_version + " REVEALS \u00B7 " + d.open_claims + " OPEN CLAIMS";
+      document.getElementById("trPName").value = d.prize.name || "";
+      document.getElementById("trPBlurb").value = d.prize.blurb || "";
+      document.getElementById("trObj").textContent = d.prize.model ? d.prize.model.split("/").pop() : "no model";
+      stat("");
+      var c = await tfetch("/arcade/admin/claims");
+      document.getElementById("trClaims").innerHTML = (c.claims && c.claims.length) ? c.claims.map(function (r) {
+        return '<div class="tr-claim"><span class="tk">#' + e7(r.ticket) + '</span><span class="hd">' + e7(r.handle) + '</span>' +
+          '<span style="flex:1">' + e7(r.prize_name) + '</span><span class="st ' + e7(r.status) + '">' + e7(r.status).toUpperCase() + '</span>' +
+          (r.status === "open" ? '<button class="tr-btn ghost" data-ff="' + e7(r.ticket) + '" style="padding:5px 10px">Fulfill</button>' : '') + '</div>';
+      }).join("") : '<div class="tr-claim">No claims yet \u2014 the vault is patient.</div>';
+      document.querySelectorAll("[data-ff]").forEach(function (b) {
+        b.addEventListener("click", async function () {
+          try { await tfetch("/arcade/admin/fulfill", { ticket: b.getAttribute("data-ff") }); stat("FULFILLED \u2014 the Hand delivered."); load(); }
+          catch (e) { stat(err(e)); }
+        });
+      });
+    } catch (e) { stat(err(e)); }
+  }
+  async function rotate() {
+    var code = document.getElementById("trNew").value.trim();
+    if (!code) { stat("NAME THE NEW CODE FIRST."); return; }
+    try { var d = await tfetch("/arcade/admin/rotate", { code: code });
+      stat(d.ok ? "ROTATED \u2014 version " + d.code_version + ". The mint is re-armed." : "REFUSED \u2014 " + (d.error || "")); document.getElementById("trNew").value = ""; load();
+    } catch (e) { stat(err(e)); }
+  }
+  async function savePrize() {
+    try { await tfetch("/arcade/admin/prize", { name: document.getElementById("trPName").value, blurb: document.getElementById("trPBlurb").value });
+      stat("THE CLAW NOW HOLDS IT."); load();
+    } catch (e) { stat(err(e)); }
+  }
+  async function sendObj(ev) {
+    var f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    stat("LOWERING " + f.name.toUpperCase() + " INTO THE MACHINE\u2026");
+    try { var d = await tfetch("/arcade/admin/prize-obj", null, { blob: f, name: f.name });
+      stat(d.ok ? "MODEL IN \u2014 the claw holds its shape." : "REFUSED \u2014 " + (d.error || "")); load();
+    } catch (e) { stat(err(e)); }
+    ev.target.value = "";
+  }
+  function mount() {
+    try {
+      if (localStorage.getItem("uai_staff") !== "1") return;
+      if (document.getElementById("tBtn")) return;
+      var b = document.createElement("button");
+      b.className = "tbtn"; b.id = "tBtn"; b.textContent = "TREASURY \u2301";
+      b.style.display = "block";
+      b.addEventListener("click", show);
+      document.body.appendChild(b);
+    } catch (e) {}
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
+  else mount();
+})();
+</script>
+<script>
+/* SEAM:INTRO — the boot sequence. Rules: reduced-motion skips it, any failure
+   dissolves it, ESC or SKIP ends it, the floor is never held hostage. */
+(function () {
+  var w = document.getElementById("introwrap");
+  var v = document.getElementById("introVid");
+  if (!w || !v) return;
+  var gone = false;
+  function dissolve() {
+    if (gone) return; gone = true;
+    w.classList.add("off");
+    document.body.style.overflow = "";
+    setTimeout(function () { if (w.parentNode) w.parentNode.removeChild(w); }, 700);
+  }
+  try {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) { dissolve(); return; }
+  } catch (e) {}
+  document.body.style.overflow = "hidden";
+  v.addEventListener("ended", dissolve);
+  v.addEventListener("error", dissolve);
+  document.getElementById("introSkip").addEventListener("click", dissolve);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") dissolve(); });
+  var snd = document.getElementById("introSnd");
+  snd.addEventListener("click", function () {
+    v.muted = !v.muted;
+    snd.textContent = v.muted ? "Sound on" : "Sound off";
+  });
+  // Watchdog: if the tape cannot start within 4s, the floor opens anyway.
+  var armed = false;
+  v.addEventListener("canplay", function () { armed = true; });
+  setTimeout(function () { if (!armed) dissolve(); }, 4000);
+  v.addEventListener("click", function () {
+    if (v.paused) { var q = v.play(); if (q && q.catch) q.catch(function () {}); }
+  });
+  var p = v.play && v.play();
+  if (p && p.catch) p.catch(function () { /* autoplay denied: poster stands, tap the tape or skip */ });
 })();
 </script>
 </body>
