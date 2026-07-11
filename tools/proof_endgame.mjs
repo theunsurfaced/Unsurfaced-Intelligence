@@ -75,10 +75,10 @@ const S = () => ({ calls: [], cfg: null, log: [], ach: new Set(), claims: [], fu
 {
   const st = S(); const { api, env } = build(st);
   ok(Object.keys(api.ARCADE.GAMES).length === 7, 'R seven games in the registry');
-  ok(['chess', 'checkers', 'cornhole', 'thumb'].every(g => api.ARCADE.GAMES[g].live === false), 'R four reserved');
+  ok(['chess', 'checkers', 'cornhole'].every(g => api.ARCADE.GAMES[g].live === false) && api.ARCADE.GAMES.thumb.live === true, 'R three reserved, thumb on the floor');
   ok((await api.arcadeJoin({ game: 'chess' }, env, '')).error === 'coming_soon', 'R join refuses reserved');
   ok((await api.arcadeSession({ searchParams: new URLSearchParams('game=checkers') }, env, '')).error === 'coming_soon', 'R session refuses reserved');
-  ok((await api.arcadeMatch({ token: mkTok('thumb'), player_id: 'p1', game: 'thumb', result: 'win' }, env, '')).error === 'coming_soon', 'R match refuses reserved');
+  ok((await api.arcadeMatch({ token: mkTok('cornhole'), player_id: 'p1', game: 'cornhole', result: 'win' }, env, '')).error === 'coming_soon', 'R match refuses reserved');
 }
 /* C */
 {
@@ -162,7 +162,7 @@ const S = () => ({ calls: [], cfg: null, log: [], ach: new Set(), claims: [], fu
   const tb = stf.window.document.getElementById('tBtn');
   ok(!!tb && tb.parentElement.className === 'nav-right', 'U staff door lives in the nav, first in the right group');
   const tiles = stf.window.document.querySelectorAll('.cm h3');
-  ok(tiles.length === 4 && [...tiles].map(t => t.textContent).join('|') === 'CHESS|CHECKERS|CORN HOLE|THUMB WRESTLING', 'U four reserved cabinets on the floor');
+  ok(tiles.length === 3 && [...tiles].map(t => t.textContent).join('|') === 'CHESS|CHECKERS|CORN HOLE', 'U three reserved remain; thumb walked onto the floor');
 }
 /* D: dispatch — the treasury must never be shadowed by the public router */
 {

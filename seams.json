@@ -108,6 +108,16 @@
       "file": "arcade/index.html",
       "tag": "SEAM:INTRO",
       "purpose": "boot sequence: attract video, instant skip, watchdog + reduced-motion dissolve"
+    },
+    "SEAM:THUMB@cabinet": {
+      "file": "arcade/thumb/index.html",
+      "tag": "SEAM:THUMB",
+      "purpose": "thumb wrestling cabinet: pure match core, drag + camera translators, spine + match rail"
+    },
+    "SEAM:THUMB@arcade-hub": {
+      "file": "arcade/index.html",
+      "tag": "SEAM:THUMB",
+      "purpose": "cabinet 04 card + board tab"
     }
   },
   "planned": [
