@@ -308,48 +308,44 @@ body.story-open .fp-rule { display: flex; }
   <div id="ops-board" style="display:none">
     <div class="row" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
       <div>
-        <div class="kicker">OPS — TODAY'S ISSUE</div>
-        <div class="chips" id="ops-counts"></div>
+        <div class="kicker">OPS &mdash; THE CONTROL ROOM</div>
+        <div class="chips" id="hc-at"></div>
       </div>
       <div>
-        <button id="ops-refresh" class="ghost">REFRESH</button>
-        <button id="ops-publish">PUBLISH EDITION</button>
+        <button id="ops-spine" class="ghost">RUN SPINE</button>
+        <button id="ops-run" class="ghost">RUN PIPELINE</button>
+        <button id="ops-refresh">REFRESH</button>
         <button id="ops-signout" class="ghost">SIGN OUT</button>
       </div>
     </div>
     <div class="statusmsg" id="ops-msg"></div>
 
     <div class="panel">
-      <div class="tabs">
-        <button class="tab on" id="tab-signal">RAW SIGNAL</button>
-        <button class="tab" id="tab-finished">FINISHED TAKE</button>
-      </div>
-      <div id="mode-signal">
-        <p class="hint">Steer today's pull and seed proprietary candidates. Everything still passes dedup and the review gate.</p>
-        <label>TOPICS (COMMA-SEPARATED — BECOME EXTRA QUERY SEEDS)</label>
-        <input id="sig-topics" placeholder="sneaker resale, stadium pricing">
-        <label>PROPRIETARY CANDIDATES (ONE PER LINE: URL | TITLE | SNIPPET)</label>
-        <textarea id="sig-cands" placeholder="https://example.com/story | Headline here | Optional snippet"></textarea>
-        <label>NOTES (OPTIONAL, FOR THE RECORD)</label>
-        <input id="sig-notes">
-        <button id="sig-submit">SUBMIT SIGNAL</button>
-        <div class="statusmsg" id="sig-msg"></div>
-      </div>
-      <div id="mode-finished" style="display:none">
-        <p class="hint">A take already written to the bar. Enters as a near-final draft; still needs approval to publish.</p>
-        <label>KICKER</label>
-        <select id="ft-kicker"><option>THE SIGNAL</option><option>DISPATCH</option><option>FIELD NOTE</option><option>PULL QUOTE</option><option>THE LEDGER</option><option>THE SHIFT</option></select>
-        <label>HEADLINE (THE ARGUMENT, UNDER 12 WORDS)</label><input id="ft-headline">
-        <label>STANDFIRST (THE EVIDENCE, ONE SENTENCE)</label><textarea id="ft-standfirst"></textarea>
-        <label>TAKE (THE JUDGMENT, 2-3 SENTENCES)</label><textarea id="ft-take"></textarea>
-        <label>SOURCE NAME</label><input id="ft-srcname">
-        <label>SOURCE URL</label><input id="ft-srcurl">
-        <button id="ft-submit">SUBMIT AS DRAFT</button>
-        <div class="statusmsg" id="ft-msg"></div>
-      </div>
+      <div class="kicker">THE VERDICT</div>
+      <div id="hc-flags" class="chips">&mdash;</div>
     </div>
 
-    <div id="ops-items"></div>
+    <div class="panel">
+      <div class="kicker">THE PAPER</div>
+      <div id="hc-edition" class="chips">&mdash;</div>
+    </div>
+
+    <div class="panel">
+      <div class="kicker">THE SPINE</div>
+      <div id="hc-spine" class="chips">&mdash;</div>
+    </div>
+
+    <div class="panel">
+      <div class="kicker">THE LAKE &mdash; LAST 24H</div>
+      <div id="hc-lake" class="chips">&mdash;</div>
+      <div id="hc-backlog" class="chips">&mdash;</div>
+      <div id="hc-terr" class="chips"></div>
+    </div>
+
+    <div class="panel">
+      <div class="kicker">THE FEEDS &mdash; ERRORS IN THE EVENT WINDOW</div>
+      <div id="hc-feeds"></div>
+    </div>
   </div>
 </section>
 
@@ -359,15 +355,6 @@ var CONFIG = {
   API_BASE: "https://api.unsurfaced-intelligence.com",
   SUPABASE_URL: "https://uxbhafkqungklmnrfdhp.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmhhZmtxdW5na2xtbnJmZGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjI5NDgsImV4cCI6MjA5NzgzODk0OH0.2PufodDCcrV1PaOe4L1ke0Oy2u5OynY-u6jK5YNAGtw"  // public by design; RLS-scoped — the lock is in the database
-};
-
-var STATUS_ORDER = ["in_review", "draft", "approved", "rejected", "published"];
-var TRANSITIONS = {
-  draft:     [["in_review", "SEND TO REVIEW"]],
-  in_review: [["approved", "APPROVE"], ["rejected", "REJECT"], ["draft", "SEND BACK"]],
-  approved:  [["published", "PUBLISH ITEM"], ["draft", "PULL BACK"]],
-  rejected:  [["draft", "REVIVE"]],
-  published: []
 };
 
 function esc(s) {
@@ -628,216 +615,123 @@ function hardSignOut() {
   try { sb.auth.signOut().then(done, done); } catch (e) { done(); }
 }
 
+/* The gate asks the Worker, the Worker asks the database with the service
+ * role \u2014 DB truth, immune to RLS, one lock for the whole ecosystem. */
+function opsToken() {
+  return sb.auth.getSession().then(function (r) {
+    return (r.data && r.data.session) ? r.data.session.access_token : null;
+  });
+}
+
 function enterBoard() {
-  // UI gate only — RLS is the real lock. my_role() is the DB-enforced check.
-  sb.rpc("my_role").then(function (r) {
-    var role = r.data;
-    if (role !== "editor" && role !== "admin") {
-      el("li-msg").textContent = "SIGNED IN, BUT THIS ACCOUNT IS NOT AN EDITOR.";
-      return;
-    }
-    el("ops-gate").style.display = "none";
-    el("ops-board").style.display = "block";
-    wireBoard();
-    refreshBoard();
-  });
-}
-
-/* ── board data ── */
-var todayEdition = null;
-
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-
-function getOrCreateEdition() {
-  return sb.from("editions").select("*").eq("date", todayStr()).limit(1)
-    .then(function (r) {
-      if (r.error) throw r.error;
-      if (r.data.length) return r.data[0];
-      return sb.rpc("next_issue_no").then(function (n) {
-        if (n.error) throw n.error;
-        return sb.from("editions").insert({ issue_no: n.data, date: todayStr(), status: "building" }).select()
-          .then(function (ins) {
-            if (ins.error) {
-              // unique-date race: someone else opened it — refetch
-              return sb.from("editions").select("*").eq("date", todayStr()).limit(1)
-                .then(function (rf) { if (rf.error || !rf.data.length) throw (rf.error || new Error("edition race")); return rf.data[0]; });
-            }
-            return ins.data[0];
-          });
+  el("li-msg").textContent = "CHECKING THE LOCK\u2026";
+  opsToken().then(function (t) {
+    if (!t) { el("li-msg").textContent = "NO SESSION \u2014 SIGN IN."; return; }
+    return fetch(CONFIG.API_BASE + "/whoami", { headers: { Authorization: "Bearer " + t } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) { el("li-msg").textContent = "THE LOCK IS UNREACHABLE \u2014 TRY AGAIN."; return; }
+        if (!d.admin) { el("li-msg").textContent = "SIGNED IN, BUT THIS ACCOUNT IS NOT AN EDITOR."; return; }
+        el("li-msg").textContent = "";
+        el("ops-gate").style.display = "none";
+        el("ops-board").style.display = "block";
+        wireBoard();
+        refreshHealth();
       });
-    });
+  }).catch(function () { el("li-msg").textContent = "THE LOCK IS UNREACHABLE \u2014 TRY AGAIN."; });
 }
 
-function refreshBoard() {
-  el("ops-msg").textContent = "LOADING\u2026";
-  getOrCreateEdition().then(function (ed) {
-    todayEdition = ed;
-    return Promise.all([
-      sb.from("items").select("*").eq("edition_id", ed.id).order("created_at", { ascending: true }),
-      sb.rpc("ops_queue_counts")
-    ]);
-  }).then(function (rs) {
-    var items = rs[0].data || [];
-    var counts = rs[1].data || [];
-    renderCounts(counts);
-    renderItems(items);
-    el("ops-msg").textContent = "ISSUE " + String(todayEdition.issue_no).padStart(3, "0") +
-      " \u00B7 " + todayEdition.date + " \u00B7 " + todayEdition.status.toUpperCase();
-  }).catch(function (e) {
-    el("ops-msg").textContent = "LOAD FAILED: " + String(e.message || e).toUpperCase();
+/* \u2500\u2500 the control room: /daily/health rendered; /daily/spine and /daily/run armed \u2500\u2500 */
+function opsFetch(path, method) {
+  return opsToken().then(function (t) {
+    if (!t) throw new Error("no session");
+    return fetch(CONFIG.API_BASE + path, {
+      method: method || "GET",
+      headers: { Authorization: "Bearer " + t }
+    }).then(function (r) { return r.json(); });
   });
 }
 
-function renderCounts(counts) {
-  var map = {};
-  counts.forEach(function (c) { map[c.status] = c.n; });
-  var ready = map.approved || 0;
-  el("ops-counts").innerHTML =
-    "<span class=\"ready\">PUBLISH-READY " + ready + "</span> \u00B7 " +
-    STATUS_ORDER.map(function (s) { return s.toUpperCase().replace("_", " ") + " <b>" + (map[s] || 0) + "</b>"; }).join(" \u00B7 ");
+function rel(ts) {
+  if (!ts) return "\u2014";
+  var m = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
+  if (m < 1) return "JUST NOW";
+  if (m < 60) return m + "M AGO";
+  if (m < 1440) return Math.round(m / 60) + "H AGO";
+  return Math.round(m / 1440) + "D AGO";
 }
 
-function renderItems(items) {
-  var wrap = el("ops-items");
-  if (!items.length) {
-    wrap.innerHTML = "<div class=\"panel\"><p class=\"hint\">No items yet today. The cron drafts into this issue; finished takes land here too.</p></div>";
-    return;
-  }
-  var html = "";
-  STATUS_ORDER.forEach(function (st) {
-    var group = items.filter(function (i) { return i.status === st; });
-    if (!group.length) return;
-    html += "<div class=\"grp-head\">" + st.toUpperCase().replace("_", " ") + " \u00B7 " + group.length + "</div>";
-    group.forEach(function (i) { html += itemCard(i); });
-  });
-  wrap.innerHTML = html;
-  items.forEach(function (i) { wireItem(i); });
+function refreshHealth() {
+  el("ops-msg").textContent = "READING THE PULSE\u2026";
+  opsFetch("/daily/health").then(function (h) {
+    if (!h || !h.ok) { el("ops-msg").textContent = "HEALTH UNAVAILABLE: " + String((h && h.error) || "unknown").toUpperCase(); return; }
+    el("ops-msg").textContent = "";
+    renderHealth(h);
+  }).catch(function (e) { el("ops-msg").textContent = "HEALTH UNREACHABLE: " + String(e.message || e).toUpperCase(); });
 }
 
-function itemCard(i) {
-  var canEdit = i.status !== "published";
-  var ro = canEdit ? "" : " readonly disabled";
-  var btns = (TRANSITIONS[i.status] || []).map(function (t) {
-    return "<button data-item=\"" + i.id + "\" data-to=\"" + t[0] + "\">" + t[1] + "</button>";
-  }).join("");
-  return "<div class=\"item-card\" id=\"card-" + i.id + "\">" +
-    "<div class=\"row\"><span class=\"badge " + esc(i.status) + "\">" + esc(i.status.toUpperCase().replace("_", " ")) + "</span>" +
-    "<span class=\"badge\">" + esc((i.source || "engine").toUpperCase()) + "</span></div>" +
-    "<label>KICKER</label><input id=\"f-kicker-" + i.id + "\" value=\"" + esc(i.kicker || "") + "\"" + ro + ">" +
-    "<label>HEADLINE</label><input id=\"f-headline-" + i.id + "\" value=\"" + esc(i.headline || "") + "\"" + ro + ">" +
-    "<label>STANDFIRST</label><textarea id=\"f-standfirst-" + i.id + "\"" + ro + ">" + esc(i.standfirst || "") + "</textarea>" +
-    "<label>TAKE</label><textarea id=\"f-take-" + i.id + "\"" + ro + ">" + esc(i.take || "") + "</textarea>" +
-    "<div class=\"srcline\">SOURCE \u00B7 " + esc(i.source_name || "\u2014") + " \u00B7 " + esc(i.source_url || "") + "</div>" +
-    (i.review_note ? "<div class=\"flagline\">NOTE \u00B7 " + esc(i.review_note) + "</div>" : "") +
-    (canEdit ? "<button class=\"ghost\" data-save=\"" + i.id + "\">SAVE EDITS</button>" : "") + btns +
-    "<div class=\"statusmsg\" id=\"msg-" + i.id + "\"></div>" +
-    "</div>";
+function renderHealth(h) {
+  el("hc-at").textContent = "READ " + rel(h.at);
+  el("hc-flags").innerHTML = (h.flags && h.flags.length)
+    ? h.flags.map(function (f) { return '<span class="badge rejected">' + esc(String(f).toUpperCase().replace(/_/g, " ")) + "</span> "; }).join("")
+    : '<span class="badge approved">ALL CLEAR</span>';
+  var ed = h.edition;
+  el("hc-edition").innerHTML = ed
+    ? "ISSUE <b>" + esc(String(ed.issue_no).padStart(3, "0")) + "</b> \u00B7 " + esc(ed.date) +
+      " \u00B7 ITEMS <b>" + ed.items + "</b> \u00B7 FROM THE LAKE <b>" + ed.from_lake + "/" + ed.items + "</b>" +
+      " \u00B7 PUBLISHED " + rel(ed.published_at)
+    : "NO EDITION PUBLISHED YET.";
+  var s = h.spine, st = (s && s.last_stats) || {};
+  el("hc-spine").innerHTML = (s && s.last_run)
+    ? "LAST RUN <b>" + rel(s.last_run) + "</b> \u00B7 RUNS SEEN <b>" + s.runs_seen + "</b><br>" +
+      "CAPTURED <b>" + (st.captured || 0) + "</b> \u00B7 UNIQUE <b>" + (st.unique || 0) + "</b> \u00B7 FRESH <b>" + (st.fresh || 0) +
+      "</b> \u00B7 EMBEDDED <b>" + (st.embedded || 0) + "</b> \u00B7 FILTERED <b>" + (st.filtered || 0) +
+      "</b> \u00B7 REJECTED <b>" + (st.rejected || 0) + "</b> \u00B7 CONNECTED <b>" + (st.connected || 0) +
+      "</b> \u00B7 CALLS <b>" + (st.calls || 0) + "</b>"
+    : "NO SPINE RUN IN THE EVENT WINDOW.";
+  var by = (h.lake && h.lake.by_status) || {};
+  el("hc-lake").innerHTML = "INTAKE <b>" + h.lake.intake + "</b> \u00B7 FRESH <b>" + h.lake.fresh_24h + "</b>" +
+    (Object.keys(by).length ? " \u00B7 " + Object.keys(by).map(function (k) { return esc(k.toUpperCase()) + " <b>" + by[k] + "</b>"; }).join(" \u00B7 ") : "");
+  var bl = (h.lake && h.lake.backlog) || {};
+  el("hc-backlog").innerHTML = "BACKLOG \u2014 TO EMBED <b>" + bl.to_embed + "</b> \u00B7 TO FILTER <b>" + bl.to_filter + "</b> \u00B7 TO CONNECT <b>" + bl.to_connect + "</b>";
+  var terr = (h.lake && h.lake.by_territory) || {};
+  var tkeys = Object.keys(terr).sort(function (a, b) { return terr[b] - terr[a]; }).slice(0, 8);
+  el("hc-terr").innerHTML = tkeys.length
+    ? tkeys.map(function (k) { return esc(k.toUpperCase().replace(/-/g, " ")) + " <b>" + terr[k] + "</b>"; }).join(" \u00B7 ")
+    : "";
+  var feeds = h.feeds || {}, names = Object.keys(feeds);
+  el("hc-feeds").innerHTML = names.length
+    ? names.map(function (n) {
+        var f = feeds[n];
+        return '<div class="srcline">' + (f.errors >= 3 ? '<span class="badge rejected">DEAD</span> ' : "") +
+          esc(n.toUpperCase()) + " \u00B7 ERRORS <b>" + f.errors + "</b> \u00B7 LAST " + esc(String(f.last_error).toUpperCase()) +
+          " \u00B7 SEEN " + rel(f.last_seen) + "</div>";
+      }).join("")
+    : '<p class="hint">No feed errors in the event window \u2014 every source answered.</p>';
 }
 
-function wireItem(i) {
-  var card = el("card-" + i.id);
-  if (!card) return;
-  var saveBtn = card.querySelector("[data-save]");
-  if (saveBtn) saveBtn.onclick = function () {
-    sb.from("items").update({
-      kicker: el("f-kicker-" + i.id).value,
-      headline: el("f-headline-" + i.id).value,
-      standfirst: el("f-standfirst-" + i.id).value,
-      take: el("f-take-" + i.id).value
-    }).eq("id", i.id).then(function (r) {
-      el("msg-" + i.id).textContent = r.error ? r.error.message.toUpperCase() : "SAVED.";
-    });
-  };
-  card.querySelectorAll("[data-to]").forEach(function (b) {
-    b.onclick = function () {
-      var to = b.getAttribute("data-to");
-      var patch = { status: to };
-      if (to === "rejected") {
-        var note = prompt("Rejection note (required — the review gate explains itself):");
-        if (!note) return;
-        patch.review_note = note;
-      }
-      sb.from("items").update(patch).eq("id", i.id).then(function (r) {
-        if (r.error) { el("msg-" + i.id).textContent = r.error.message.toUpperCase(); return; }
-        refreshBoard();
-      });
-    };
-  });
-}
-
-/* ── board actions ── */
 function wireBoard() {
-  el("ops-refresh").onclick = refreshBoard;
-
-  el("ops-publish").onclick = function () {
-    if (!todayEdition) return;
-    if (!confirm("Publish the edition? All APPROVED items go live; drafts and review items stay back.")) return;
-    el("ops-msg").textContent = "PUBLISHING\u2026";
-    sb.from("items").update({ status: "published" })
-      .eq("edition_id", todayEdition.id).eq("status", "approved")
-      .then(function (r) {
-        if (r.error) throw r.error;
-        return sb.from("editions").update({ status: "published" }).eq("id", todayEdition.id);
-      })
-      .then(function (r) {
-        if (r.error) throw r.error;
-        refreshBoard();
-      })
-      .catch(function (e) { el("ops-msg").textContent = "PUBLISH FAILED: " + String(e.message || e).toUpperCase(); });
+  el("ops-refresh").onclick = refreshHealth;
+  el("ops-spine").onclick = function () {
+    el("ops-msg").textContent = "RUNNING THE SPINE\u2026";
+    opsFetch("/daily/spine", "POST").then(function (r) {
+      el("ops-msg").textContent = (r && r.ok)
+        ? ("SPINE: CAPTURED " + (r.captured || 0) + " \u00B7 FRESH " + (r.fresh || 0) + " \u00B7 CALLS " + (r.calls || 0))
+        : ("SPINE FAILED: " + String((r && r.error) || "unknown").toUpperCase());
+      refreshHealth();
+    }).catch(function (e) { el("ops-msg").textContent = "SPINE UNREACHABLE: " + String(e.message || e).toUpperCase(); });
   };
-
-  el("tab-signal").onclick = function () { setTab("signal"); };
-  el("tab-finished").onclick = function () { setTab("finished"); };
-
-  el("sig-submit").onclick = function () {
-    var topics = el("sig-topics").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
-    var candidates = el("sig-cands").value.split("\n").map(function (line) {
-      var parts = line.split("|").map(function (s) { return s.trim(); });
-      if (!parts[0]) return null;
-      return { url: parts[0], title: parts[1] || parts[0], snippet: parts[2] || "" };
-    }).filter(Boolean);
-    if (!topics.length && !candidates.length) { el("sig-msg").textContent = "NOTHING TO SUBMIT."; return; }
-    sb.auth.getUser().then(function (u) {
-      return sb.from("dev_submissions").insert({
-        mode: "signal",
-        payload: { topics: topics, candidates: candidates, notes: el("sig-notes").value || null },
-        submitted_by: u.data.user ? u.data.user.id : null
-      });
-    }).then(function (r) {
-      if (r.error) { el("sig-msg").textContent = r.error.message.toUpperCase(); return; }
-      el("sig-msg").textContent = "SIGNAL SUBMITTED \u2014 STEERS THE NEXT RUN.";
-      el("sig-topics").value = ""; el("sig-cands").value = ""; el("sig-notes").value = "";
-    });
+  el("ops-run").onclick = function () {
+    if (!confirm("Run the daily pipeline now? If today is already published this is a no-op.")) return;
+    el("ops-msg").textContent = "RUNNING THE PIPELINE\u2026";
+    opsFetch("/daily/run", "POST").then(function (r) {
+      el("ops-msg").textContent = (r && r.ok)
+        ? (r.skipped ? "PIPELINE: " + String(r.skipped).toUpperCase()
+                     : "PIPELINE: ISSUE " + (r.issue_no || "?") + " \u00B7 " + (r.items || 0) + " ITEMS \u00B7 MODE " + String(r.mode || "").toUpperCase())
+        : ("PIPELINE FAILED: " + String((r && r.error) || "unknown").toUpperCase());
+      refreshHealth();
+    }).catch(function (e) { el("ops-msg").textContent = "PIPELINE UNREACHABLE: " + String(e.message || e).toUpperCase(); });
   };
-
-  el("ft-submit").onclick = function () {
-    var headline = el("ft-headline").value.trim();
-    var take = el("ft-take").value.trim();
-    if (!headline || !take) { el("ft-msg").textContent = "HEADLINE AND TAKE ARE REQUIRED."; return; }
-    el("ft-msg").textContent = "SUBMITTING\u2026";
-    getOrCreateEdition().then(function (ed) {
-      return sb.from("items").insert({
-        edition_id: ed.id, status: "draft", source: "dev",
-        kicker: el("ft-kicker").value, headline: headline,
-        standfirst: el("ft-standfirst").value.trim(),
-        take: take,
-        source_name: el("ft-srcname").value.trim() || null,
-        source_url: el("ft-srcurl").value.trim() || null
-      });
-    }).then(function (r) {
-      if (r.error) { el("ft-msg").textContent = r.error.message.toUpperCase(); return; }
-      el("ft-msg").textContent = "DRAFT CREATED \u2014 IN THE QUEUE.";
-      ["ft-headline", "ft-standfirst", "ft-take", "ft-srcname", "ft-srcurl"].forEach(function (id) { el(id).value = ""; });
-      refreshBoard();
-    }).catch(function (e) { el("ft-msg").textContent = String(e.message || e).toUpperCase(); });
-  };
-}
-
-function setTab(which) {
-  el("tab-signal").className = "tab" + (which === "signal" ? " on" : "");
-  el("tab-finished").className = "tab" + (which === "finished" ? " on" : "");
-  el("mode-signal").style.display = which === "signal" ? "block" : "none";
-  el("mode-finished").style.display = which === "finished" ? "block" : "none";
 }
 
 route();

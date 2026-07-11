@@ -154,6 +154,14 @@
   "SEAM:EXCAVATE": {
    "file": "worker/src/index.js",
    "purpose": "lake as recon surface: /excavate/lake semantic search (territory/tier/window filters) + /excavate/cluster (neighborhood + provenance thread to published DAILY stories); intelligence page feeds every synthesize from it"
+  },
+  "SEAM:DAILY_HEALTH": {
+   "file": "worker/src/index.js",
+   "purpose": "admin observability door: lake backlog depths, spine heartbeat, per-feed error history, edition provenance share, named flags"
+  },
+  "SEAM:RECURRENCE": {
+   "file": "worker/src/index.js",
+   "purpose": "the lake's long memory: recurring themes ranked by weeks touched, span, breadth and paper provenance; cluster pulse on the cluster door"
   }
  },
  "planned": [

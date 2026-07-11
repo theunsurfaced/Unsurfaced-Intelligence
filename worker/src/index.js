@@ -67,8 +67,10 @@ export default {
       if (path === '/daily/pov' && request.method === 'GET') return dailyPovPublic(origin, env);
       if (path === '/daily/lake' && request.method === 'GET') return dailyLakePublic(env, origin);
       if (path === '/daily/spine' && request.method === 'POST') return dailySpineGuarded(request, env, origin);
+      if (path === '/daily/health' && request.method === 'GET') return dailyHealthGuarded(request, env, origin);
       if (path === '/excavate/lake' && request.method === 'POST') return excavateLake(request, env, origin);
       if (path === '/excavate/cluster' && request.method === 'POST') return excavateCluster(request, env, origin);
+      if (path === '/excavate/recurrence' && request.method === 'POST') return excavateRecurrence(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -1610,7 +1612,7 @@ const DAILY_POV = {
     { name:'Fast Company',       feed:'https://www.fastcompany.com/latest/rss',        tier:1, territories:['business-economics','advertising-marketing'], verified:false },
     { name:'Business of Fashion',feed:'https://www.businessoffashion.com/arc/outboundfeeds/rss/', tier:1, territories:['fashion-beauty','business-economics'], verified:false },
     { name:'Engadget',           feed:'https://www.engadget.com/rss.xml',              tier:2, territories:['technology-innovation'], verified:true },
-    { name:"It's Nice That",     feed:'https://www.itsnicethat.com/feed',              tier:2, territories:['art-design','advertising-marketing'], verified:false },
+    { name:"It's Nice That",     feed:'https://feeds.feedburner.com/itsnicethat/SlXC',              tier:2, territories:['art-design','advertising-marketing'], verified:false },
     { name:'Core77',             feed:'https://feeds.feedburner.com/core77/blog',      tier:2, territories:['art-design'], verified:false },
     { name:'Colossal',           feed:'https://www.thisiscolossal.com/feed/',          tier:2, territories:['art-design'], verified:true },
     { name:'Dazed',              feed:'https://www.dazeddigital.com/rss',              tier:2, territories:['fashion-beauty','music','global-diaspora'], verified:true },
@@ -2184,10 +2186,97 @@ async function excavateCluster(request, env, origin) {
         issue_no: (edBy.get(i.edition_id) || {}).issue_no || null,
         date: (edBy.get(i.edition_id) || {}).date || null }));
     }
+    const recurrence = clusterPulse([sig].concat(cluster));
     delete sig.embedding;
-    return json({ ok: true, signal: sig, cluster, published }, 200, origin, env);
+    return json({ ok: true, signal: sig, recurrence, cluster, published }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'cluster_unavailable' }, 200, origin, env);
+  }
+}
+
+/* ═══ SEAM:RECURRENCE — the lake's long memory made legible. A theme that
+ * keeps resurfacing across weeks is the compounding the POV's §08 promised.
+ * POST /excavate/recurrence (member-gated, rate-limited): one bounded
+ * select over recent connected/published signals, a PURE rollup grouped
+ * by cluster_id, ranked by persistence — weeks touched, span, members,
+ * source breadth, paper provenance. Zero model calls, zero writes.
+ * /excavate/cluster now carries its own cluster's pulse for free. ═══ */
+const RECUR = { WINDOW_D: 60, SCAN: 800, MIN_WEEKS: 2, TOP: 12 };
+
+function weekEpoch(ts) { return Math.floor(new Date(ts).getTime() / 6048e5); }
+
+// PURE: rows -> ranked recurring themes. Needs cluster_id + captured_at;
+// title/url/source/tier/territory/edition_item_id enrich the read.
+function recurrenceRollup(rows, top) {
+  const by = new Map();
+  for (const r of rows || []) {
+    if (!r.cluster_id || !r.captured_at) continue;
+    let c = by.get(r.cluster_id);
+    if (!c) {
+      c = { cluster_id: r.cluster_id, members: 0, weeks: new Set(), sources: new Set(),
+        territories: new Set(), first_seen: r.captured_at, last_seen: r.captured_at,
+        published: 0, best_tier: 4, exemplar: null };
+      by.set(r.cluster_id, c);
+    }
+    c.members++;
+    c.weeks.add(weekEpoch(r.captured_at));
+    if (r.source_name) c.sources.add(r.source_name);
+    if (r.territory) c.territories.add(r.territory);
+    if (r.captured_at < c.first_seen) c.first_seen = r.captured_at;
+    if (r.captured_at >= c.last_seen) {
+      c.last_seen = r.captured_at;
+      c.exemplar = { id: r.id, title: r.title, url: r.url,
+        source_name: r.source_name, territory: r.territory };
+    }
+    if (r.edition_item_id) c.published++;
+    if (r.source_tier && r.source_tier < c.best_tier) c.best_tier = r.source_tier;
+  }
+  const out = [];
+  for (const c of by.values()) {
+    if (c.weeks.size < RECUR.MIN_WEEKS) continue;
+    const span_days = Math.round((new Date(c.last_seen) - new Date(c.first_seen)) / 864e5);
+    out.push({
+      cluster_id: c.cluster_id, weeks_touched: c.weeks.size, span_days,
+      members: c.members, sources: c.sources.size, territories: [...c.territories],
+      published: c.published, best_tier: c.best_tier,
+      first_seen: c.first_seen, last_seen: c.last_seen, exemplar: c.exemplar,
+      score: c.weeks.size * 10 + Math.min(span_days, 45) + c.members
+        + c.sources.size * 2 + c.published * 3
+    });
+  }
+  out.sort(function (a, b) { return b.score - a.score; });
+  return out.slice(0, top || RECUR.TOP);
+}
+
+// PURE: one cluster's pulse, computed from rows already in hand.
+function clusterPulse(rows) {
+  const ts = (rows || []).map(function (r) { return r.captured_at; }).filter(Boolean).sort();
+  if (!ts.length) return null;
+  const weeks = new Set(ts.map(weekEpoch));
+  return { members: ts.length, first_seen: ts[0], last_seen: ts[ts.length - 1],
+    span_days: Math.round((new Date(ts[ts.length - 1]) - new Date(ts[0])) / 864e5),
+    weeks_touched: weeks.size };
+}
+
+async function excavateRecurrence(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const days = Math.min(180, Math.max(7, parseInt(body.days, 10) || RECUR.WINDOW_D));
+  const territory = DAILY_POV.territories.includes(body.territory) ? body.territory : null;
+  const top = Math.min(24, Math.max(1, parseInt(body.count, 10) || RECUR.TOP));
+  try {
+    const since = new Date(Date.now() - days * 864e5).toISOString();
+    const q = 'signals?status=in.(connected,published)&cluster_id=not.is.null' +
+      '&captured_at=gte.' + since + (territory ? '&territory=eq.' + territory : '') +
+      '&order=captured_at.desc&limit=' + RECUR.SCAN +
+      '&select=id,cluster_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id';
+    const rows = await sbRest(env, q) || [];
+    const themes = recurrenceRollup(rows, top);
+    return json({ ok: true, window_days: days, scanned: rows.length, themes }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'recurrence_unavailable' }, 200, origin, env);
   }
 }
 
@@ -2218,6 +2307,114 @@ async function dailyLakePublic(env, origin) {
   } catch (e) {
     return json({ ok: false, error: 'unavailable' }, 200, origin, env);
   }
+}
+
+/* ═══ SEAM:DAILY_HEALTH — the pipeline's pulse behind one admin door.
+ * GET /daily/health reads: the 24h capture window shape, the three
+ * backlog depths the drain still owes, the spine's recent heartbeats
+ * from activity_events, per-feed error history aggregated across runs,
+ * the latest edition with its lake-provenance share — and a flags
+ * array naming every condition that needs the editor's hand. Read-only,
+ * bounded (~8 sb calls), admin-gated; nowMs injects for proofs. ═══ */
+const HEALTH = {
+  EVENTS: 40, PROBE: 200, WINDOW_H: 24,
+  CAPTURE_STALE_MIN: 45,     // drain cron fires every 30' — 45' of silence is a missed beat
+  EDITION_DUE_UTC: 7,        // compose runs 06:00 UTC; 07:00 with no paper is late
+  DEAD_FEED_ERRORS: 3,       // three sightings in the event window = a dying feed
+  EMBED_BACKLOG: 150         // raw-unembedded probe depth that flags a clogged drain
+};
+
+async function dailyHealthGuarded(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user || !(await callerIsAdmin(env, user.id)))
+    return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  try {
+    return json(await dailyHealth(env), 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'health_error', detail: String(e && e.message).slice(0, 140) }, 200, origin, env);
+  }
+}
+
+async function dailyHealth(env, nowMs) {
+  const now = nowMs || Date.now();
+  const today = new Date(now).toISOString().slice(0, 10);
+  const since = new Date(now - HEALTH.WINDOW_H * 3600e3).toISOString();
+
+  // 1 · the capture window — status + territory shape of the last 24h intake
+  const win = await sbRest(env,
+    `signals?captured_at=gte.${since}&select=status,territory&limit=1000`) || [];
+  const winStatus = {}, winTerr = {};
+  win.forEach(r => {
+    winStatus[r.status] = (winStatus[r.status] || 0) + 1;
+    if (r.territory) winTerr[r.territory] = (winTerr[r.territory] || 0) + 1;
+  });
+
+  // 2 · backlog depths — what the drain still owes, probe-capped
+  const probe = (q) => sbRest(env, `signals?${q}&select=id&limit=${HEALTH.PROBE}`)
+    .then(r => (r || []).length).catch(() => -1);
+  const backlog = {
+    to_embed:   await probe('status=eq.raw&embedding=is.null'),
+    to_filter:  await probe('status=eq.raw&embedding=not.is.null'),
+    to_connect: await probe('status=eq.filtered')
+  };
+
+  // 3 · the heartbeat — recent daily events from the activity log
+  const events = await sbRest(env,
+    'activity_events?platform=eq.daily' +
+    '&event=in.(spine_run,edition_published,edition_starved,compose_error,spine_error)' +
+    `&order=created_at.desc&limit=${HEALTH.EVENTS}&select=event,created_at,meta`) || [];
+  const spineRuns = events.filter(e => e.event === 'spine_run');
+  const lastSpine = spineRuns[0] || null;
+  const fresh24 = spineRuns
+    .filter(e => now - new Date(e.created_at).getTime() <= HEALTH.WINDOW_H * 3600e3)
+    .reduce((a, e) => a + (Number(e.meta && e.meta.fresh) || 0), 0);
+
+  // 4 · feed health — errors aggregated per source across the run window.
+  //     spineRuns arrive newest-first, so the first sighting per feed IS
+  //     the most recent; set last_error/last_seen on create only.
+  const feeds = {};
+  spineRuns.forEach(e => ((e.meta && e.meta.feed_errors) || []).forEach(s => {
+    const str = String(s);
+    const i = str.lastIndexOf(':');
+    const name = i > 0 ? str.slice(0, i) : str;
+    const err = i > 0 ? str.slice(i + 1) : 'error';
+    if (!feeds[name]) feeds[name] = { errors: 0, last_error: err, last_seen: e.created_at };
+    feeds[name].errors++;
+  }));
+
+  // 5 · the paper — latest published edition + its lake-provenance share
+  const eds = await sbRest(env,
+    'editions?status=eq.published&order=date.desc&limit=1&select=id,issue_no,date,published_at') || [];
+  let edition = null;
+  if (eds[0]) {
+    const its = await sbRest(env,
+      `edition_items?edition_id=eq.${eds[0].id}&select=id,signal_id`) || [];
+    edition = { issue_no: eds[0].issue_no, date: eds[0].date, published_at: eds[0].published_at,
+      items: its.length, from_lake: its.filter(i => i.signal_id).length };
+  }
+
+  // 6 · the verdict — every condition needing the editor's hand, named
+  const flags = [];
+  const utcH = new Date(now).getUTCHours();
+  if (!edition) flags.push('no_edition_ever');
+  else if (edition.date !== today && utcH >= HEALTH.EDITION_DUE_UTC) flags.push('no_edition_today');
+  if (!lastSpine) flags.push('spine_never_ran');
+  else if (now - new Date(lastSpine.created_at).getTime() > HEALTH.CAPTURE_STALE_MIN * 60e3)
+    flags.push('capture_stale');
+  if (spineRuns.length && fresh24 === 0) flags.push('lake_quiet_24h');
+  if (backlog.to_embed >= HEALTH.EMBED_BACKLOG) flags.push('embed_backlog');
+  Object.keys(feeds).forEach(n => {
+    if (feeds[n].errors >= HEALTH.DEAD_FEED_ERRORS) flags.push('dead_feed:' + n);
+  });
+
+  return {
+    ok: true, at: new Date(now).toISOString(), flags,
+    lake: { window_hours: HEALTH.WINDOW_H, intake: win.length, fresh_24h: fresh24,
+      by_status: winStatus, by_territory: winTerr, backlog },
+    spine: { last_run: lastSpine ? lastSpine.created_at : null,
+      last_stats: lastSpine ? lastSpine.meta : null, runs_seen: spineRuns.length },
+    feeds, edition
+  };
 }
 
 /* SEAM:MODEL_POOL — the single routing function every LLM call passes through.
