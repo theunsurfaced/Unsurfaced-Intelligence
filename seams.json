@@ -146,6 +146,10 @@
   "SEAM:DAILY_SPINE": {
    "file": "worker/src/index.js",
    "purpose": "lake-filler: CAPTURE 28 feeds + GDELT -> hash dedup -> embed -> FILTER (echo + t1 classify) -> CONNECT (clusters + mechanical momentum); runs before edition, failures never block publishing"
+  },
+  "SEAM:DAILY_COMPOSER": {
+   "file": "worker/src/index.js",
+   "purpose": "twelve from the lake: POV slot-filler (quotas + edge law) + six-format law + t3 INTERPRET/APPLY voice; legacy synthesis survives as fallback; shared publishEdition backlinks signals"
   }
  },
  "planned": [
