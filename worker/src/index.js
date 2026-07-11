@@ -44,8 +44,7 @@ export default {
     } else if (cron === '0 6 * * *') {
       ctx.waitUntil(runDailyPipeline(env).catch(e => console.log('daily_pipeline_error', String(e && e.message))));
     } else {
-      ctx.waitUntil(spineAdvance(env, 38)
-        .then(s => logEvent(env, 'daily', null, 'spine_slice', null, s))
+      ctx.waitUntil(runDailySpine(env, { feeds: 6, gdelt: 1, advance: 26 })
         .catch(e => console.log('spine_slice_error', String(e && e.message))));
     }
   },
@@ -1797,6 +1796,18 @@ function momentumMech(neighbors, ownTerritory, ownTier, novelty) {
   };
 }
 
+/* rotatePick — stateless rotation: pick n items starting at an
+ * hour-derived offset, wrapping. Every source gets its turn across
+ * consecutive ticks; no KV, no cursor, fully deterministic. */
+function rotatePick(list, n, epoch) {
+  const L = (list || []).length;
+  if (!L) return [];
+  const off = (((epoch | 0) * Math.max(1, n | 0)) % L + L) % L;   // stride = window size
+  const out = [];
+  for (let i = 0; i < Math.min(n, L); i++) out.push(list[(off + i) % L]);
+  return out;
+}
+
 async function fetchWithTimeout(url, ms) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms);
@@ -1805,9 +1816,13 @@ async function fetchWithTimeout(url, ms) {
 }
 
 // CAPTURE — every enabled source; a dead feed costs its own items only.
-async function spineCapture(env) {
+async function spineCapture(env, opts) {
   const items = [], feedErrors = [];
-  const sources = DAILY_POV.sources.slice();
+  const hours = Math.floor(Date.now() / 18e5);   // 30-min epochs — matches the drain cadence
+  const nFeeds = (opts && opts.feeds) || 10;
+  const nLanes = (opts && opts.gdelt) != null ? opts.gdelt : 2;
+  const sources = rotatePick(DAILY_POV.sources, nFeeds, hours);
+  const lanes = rotatePick(DAILY_BEATS, nLanes, hours);
   for (let i = 0; i < sources.length; i += SPINE.PAR) {
     const chunk = sources.slice(i, i + SPINE.PAR);
     const settled = await Promise.allSettled(chunk.map(async (s) => {
@@ -1821,8 +1836,8 @@ async function spineCapture(env) {
       else feedErrors.push(chunk[j].name + ':' + String(res.reason && res.reason.message || res.reason).slice(0, 40));
     });
   }
-  // GDELT breadth sweep — tier 4, never sole evidence.
-  for (const lane of DAILY_BEATS) {
+  // GDELT breadth sweep — tier 4, never sole evidence, rotating lanes.
+  for (const lane of lanes) {
     try {
       const sig = await gatherServerSignals(lane.q);
       sig.filter(s => s.signalType === 'news' && s.url).slice(0, SPINE.GDELT_CAP).forEach(s => items.push({
@@ -1959,7 +1974,9 @@ async function spineAdvance(env, budget) {
   // E · EMBED backlog: raw rows without vectors.
   if (calls + 3 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.asc&limit=32&select=content_hash,title,summary') || [];
+    let back = [];
+    try { back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.asc&limit=32&select=content_hash,title,summary') || []; }
+    catch (e) { back = []; }
     for (let i = 0; i < back.length && calls + 2 <= budget; i += SPINE.EMBED_BATCH) {
       const batch = back.slice(i, i + SPINE.EMBED_BATCH);
       try {
@@ -2063,10 +2080,14 @@ async function spineAdvance(env, budget) {
   return stats;
 }
 
-async function runDailySpine(env) {
+async function runDailySpine(env, opts) {
   const t0 = Date.now();
-  const cap = await spineCapture(env);
-  const adv = await spineAdvance(env, 12);
+  let cap = { captured: 0, unique: 0, fresh: [], feedErrors: [] };
+  try { cap = await spineCapture(env, opts); }
+  catch (e) { cap.feedErrors.push('capture:' + String(e && e.message).slice(0, 60)); }
+  let adv = {};
+  try { adv = await spineAdvance(env, (opts && opts.advance) || 22); }
+  catch (e) { adv = { advance_error: String(e && e.message).slice(0, 60) }; }
   const stats = {
     captured: cap.captured, unique: cap.unique, fresh: cap.fresh.length,
     ...adv, feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
@@ -2174,8 +2195,12 @@ async function dailySpineGuarded(request, env, origin) {
   const user = await authenticate(request, env);
   if (!user || !(await callerIsAdmin(env, user.id)))
     return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const stats = await runDailySpine(env);
-  return json({ ok: true, ...stats }, 200, origin, env);
+  try {
+    const stats = await runDailySpine(env, { feeds: 10, gdelt: 2, advance: 22 });
+    return json({ ok: true, ...stats }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'spine_error', detail: String(e && e.message).slice(0, 140) }, 200, origin, env);
+  }
 }
 
 /* GET /daily/lake — public receipt: recent-window counts by status and
@@ -2265,8 +2290,12 @@ async function dailyRunGuarded(request, env, origin) {
   if (!user || !(await callerIsAdmin(env, user.id)))
     return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   const force = new URL(request.url).searchParams.get('force') === '1';
-  const result = await runDailyPipeline(env, { force });
-  return json({ ok: true, ...result }, 200, origin, env);
+  try {
+    const result = await runDailyPipeline(env, { force });
+    return json({ ok: true, ...result }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'pipeline_error', detail: String(e && e.message).slice(0, 140) }, 200, origin, env);
+  }
 }
 
 async function runDailyPipeline(env, opts) {
