@@ -13,8 +13,8 @@
       "bytes": 515996
     },
     "arcade/index.html": {
-      "version": "hub-v1.2",
-      "bytes": 81535
+      "version": "hub-v1.3",
+      "bytes": 81898
     },
     "arcade/rps/index.html": {
       "version": "rps-3-9",
@@ -25,8 +25,8 @@
       "bytes": 4179879
     },
     "arcade/pop-a-shot/index.html": {
-      "version": "pop-1-4",
-      "bytes": 4176227
+      "version": "pop-1-13",
+      "bytes": 4213556
     },
     "arcade/chess/index.html": {
       "version": "chess-1-0",

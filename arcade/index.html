@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hidden Hand Arcade · UNSURFACED™</title>
-<meta name="description" content="Compete against the hidden hand. Three games. One leaderboard. Prizes surface from the black.">
+<meta name="description" content="Compete against the hidden hand. Four games mint the tokens; the claw spends them. Prizes surface from the black.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230A0A0A'/%3E%3Ctext x='32' y='44' font-size='36' text-anchor='middle' fill='%23FF3333'%3E%E2%9C%8A%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -221,7 +221,7 @@ footer{
 <header>
   <span class="eyebrow">Hidden Hand Arcade</span>
   <h1>Play <em>the hidden hand.</em></h1>
-  <p class="sub">Three games. One opponent. Compete against the hidden hand, climb the leaderboard, and unlock prizes and experiences that surface from the black.</p>
+  <p class="sub">Four games. One opponent. Compete against the hidden hand, climb the leaderboard, and mint tokens &#8212; the claw turns them into prizes that surface from the black.</p>
 </header>
 
 <main>
@@ -260,21 +260,29 @@ footer{
 </main>
 
 <!-- SEAM:ENDGAME — the prize counter: four primaries mint the token, the claw spends it. -->
+<style>
+/* the prize counter: copy beside a cabinet-proportioned claw card */
+.pc-grid{display:grid;grid-template-columns:1.5fr minmax(260px,340px);gap:26px;align-items:stretch}
+.pc-grid .cm{margin:0}
+.pc-grid .cab{height:100%;box-sizing:border-box}
+@media(max-width:760px){.pc-grid{grid-template-columns:1fr}.pc-grid .cab{max-width:340px}}
+</style>
 <section class="coming" aria-label="The Prize Counter">
   <div class="coming-inner">
     <span class="eyebrow">The Prize Counter</span>
-    <div class="coming-grid">
-      <div class="cm" style="grid-column:1/-1">
+    <div class="pc-grid">
+      <div class="cm">
         <h3>THE CLAW &#183; TOKEN-GATED</h3>
-        <p>The floor's four primaries mint the key; the claw spends it. Beat the standing high score in <b>Pop-A-Shot</b>. Take three straight from the Hand at <b>Chess</b>. Win best of 9 &#8212; three matches in a row &#8212; at <b>RPS</b>. Pin ten consecutive rounds in <b>Thumb Wrestling</b>. Your token opens the door; the treasury holds the prize; the Hand fulfills.</p>
-        <a class="cab" href="./claw/" style="margin-top:12px">
-          <span class="cab-no">THE REWARDS MECHANISM</span>
-          <span class="cab-glyph" aria-hidden="true">&#128377;&#65039;</span>
-          <span class="cab-name">The Claw</span>
-          <span class="cab-tag">Enter your token. Drop the Hand. Claim the treasury's prize.</span>
-          <span class="cab-cta">Spend a token</span>
-        </a>
+        <p>The floor's four primaries mint the key; the claw spends it. Beat the standing high score in <b>Pop-A-Shot</b>. Take three straight from the Hand at <b>Chess</b>. Win best of 9 &#8212; three matches in a row &#8212; at <b>RPS</b>. Pin ten consecutive rounds in <b>Thumb Wrestling</b>.</p>
+        <p style="margin-top:10px">Your token opens the door; the treasury holds the prize; the Hand fulfills.</p>
       </div>
+      <a class="cab" href="./claw/">
+        <span class="cab-no">THE REWARDS MECHANISM</span>
+        <span class="cab-glyph" aria-hidden="true">&#128377;&#65039;</span>
+        <span class="cab-name">The Claw</span>
+        <span class="cab-tag">Enter your token. Drop the Hand. Claim the treasury's prize.</span>
+        <span class="cab-cta">Spend a token</span>
+      </a>
     </div>
   </div>
 </section>
