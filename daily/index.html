@@ -96,6 +96,27 @@
   .tabs button.tab { background: transparent; border: 1px solid var(--line); color: var(--mute); }
   .tabs button.tab.on { border-color: var(--red); color: var(--ivory); }
 
+/* ── OPS re-ink — the control room on paper. The floor's original styles were
+   cut for the dark magazine; the Ivory Edition turned the page and left them
+   behind. Scoped overrides in the PREVIEW reader's dialect: cream stock,
+   ink text, hairline borders, red where it earns it. ── */
+#ops .panel { background: var(--cream, #F5F0E8); border: 1px solid rgba(20,20,20,.25); }
+#ops .panel h3 { color: #141414; }
+#ops .panel .hint, #ops .hint { font-family: var(--body); font-size: 12.5px; color: #555; line-height: 1.7; }
+#ops label { color: #6d675e; }
+#ops input, #ops textarea, #ops select { background: #FFFFFF; color: #141414; border: 1px solid rgba(20,20,20,.3); }
+#ops .chips { color: #3d3a35; line-height: 2.1; letter-spacing: 1.2px; }
+#ops .chips b { color: #141414; }
+#ops .statusmsg { color: #6d675e; }
+#ops .badge { background: #FFFFFF; border: 1px solid rgba(20,20,20,.3); color: #3d3a35; }
+#ops .badge.rejected { color: var(--red, #C41230); border-color: var(--red, #C41230); background: rgba(196,18,48,.06); }
+#ops .badge.approved { color: #2E7D43; border-color: #2E7D43; background: rgba(46,125,67,.07); }
+#ops .srcline { color: #3d3a35; line-height: 2; }
+#ops button.ghost { border: 1px solid rgba(20,20,20,.35); color: #141414; background: transparent; }
+#ops button.ghost:hover { background: #141414; color: var(--ivory, #FAF7F2); }
+#ops .lever-legend { font-family: var(--sans); font-size: 11px; letter-spacing: 1px; color: #555; line-height: 1.9; margin: 6px 0 2px; max-width: 760px; }
+#ops .lever-legend b { color: #141414; }
+
 /* SEAM:PREVIEW — the in-house reader. Sources open here, in English, without leaving. */
 .pvwrap{position:fixed;inset:0;background:rgba(10,10,10,.82);backdrop-filter:blur(3px);z-index:80;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:6vh 16px 8vh}
 .pvwrap.on{display:flex}
@@ -319,6 +340,8 @@ body.story-open .fp-rule { display: flex; }
       </div>
     </div>
     <div class="statusmsg" id="ops-msg"></div>
+    <p class="lever-legend"><b>RUN SPINE</b> — feed the lake: pull a rotation of sources + GDELT, dedup, and advance the backlog one budgeted slice (embed → filter → connect). Safe to press repeatedly; the crons do this every 30 minutes.
+    <br><b>RUN PIPELINE</b> — make the paper: compose today's 12-slot edition from the lake and publish it. If today is already published it's a no-op; the 06:00 cron does this daily.</p>
 
     <div class="panel">
       <div class="kicker">THE VERDICT</div>
