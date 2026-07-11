@@ -127,6 +127,84 @@
 .ar-row .ld{font-size:14px}
 .ar-empty{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#555;padding:18px 0}
 </style>
+
+<style id="ivory-edition">
+/* ═══ THE IVORY EDITION — DAILY is the ecosystem's light surface: the paper
+   against the black arcade. Appended layer; the original sheet (and every
+   ops/login/archive/preview overlay it styles) remains byte-identical. ═══ */
+html { scroll-behavior: smooth; }
+body { background: var(--ivory); color: var(--ink); }
+#grain { opacity: .05; filter: invert(1); }
+
+.masthead { background: var(--ivory); color: var(--ink);
+  border-bottom: 2px solid var(--ink); box-shadow: 0 2px 0 var(--red); }
+.masthead .home, .masthead .brand { color: var(--ink); }
+.masthead .home:hover { color: var(--red); }
+.masthead .folio-btn { background: var(--ink); color: var(--ivory); border-color: var(--ink); }
+.masthead .folio-btn:hover { background: var(--red); border-color: var(--red); }
+
+.front { max-width: 1240px; margin: 0 auto; padding: 34px 22px 10px; }
+.fp-plate { text-align: center; padding: 26px 0 30px; border-bottom: 1px solid var(--ink); margin-bottom: 26px; }
+.fp-brand { font-family: var(--serif); font-size: clamp(44px, 7vw, 92px); line-height: .95;
+  margin: 0; color: var(--ink); letter-spacing: -.01em; }
+.fp-brand em { font-style: italic; color: var(--red); }
+.fp-tag { font-family: var(--sans); font-size: 10px; letter-spacing: .22em; color: var(--mute-warm); margin: 14px 0 0; }
+.fp-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 26px; }
+.fp-card { grid-column: span 4; display: flex; flex-direction: column; gap: 12px;
+  text-decoration: none; color: var(--ink); border-bottom: 1px solid rgba(10,10,10,.14); padding-bottom: 20px;
+  transition: transform .18s ease; }
+.fp-card:hover { transform: translateY(-3px); }
+.fp-card:hover .fp-head { text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; }
+.fp-lead { grid-column: 1 / -1; display: grid; grid-template-columns: 7fr 5fr; gap: 30px; align-items: center;
+  border-bottom: 2px solid var(--ink); padding-bottom: 30px; }
+.fp-feat { grid-column: span 6; }
+.fp-vis { margin: 0; aspect-ratio: 3 / 2; overflow: hidden; background: var(--cream);
+  border: 1px solid rgba(10,10,10,.16); }
+.fp-vis img { width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(.96) contrast(1.02); transition: transform .35s ease; }
+.fp-card:hover .fp-vis img { transform: scale(1.03); }
+.fp-ghosted { position: relative; }
+.fp-ghosted img { display: none; }
+.fp-ghosted::after { content: "Unsurfaced\2122"; position: absolute; inset: 0; display: grid; place-items: center;
+  font-family: var(--serif); font-size: 26px; color: rgba(10,10,10,.18); }
+.fp-lead .fp-vis { aspect-ratio: 16 / 10; }
+.fp-meta { display: flex; align-items: center; gap: 10px; }
+.fp-kicker { font-family: var(--sans); font-size: 10px; letter-spacing: .18em; color: var(--red);
+  border: 1px solid var(--red); padding: 3px 8px; }
+.fp-fmt { font-family: var(--sans); font-size: 9px; letter-spacing: .16em; color: var(--ivory);
+  background: var(--ink); padding: 4px 7px; }
+.fp-head { font-family: var(--serif); font-weight: 400; margin: 0; color: var(--ink);
+  font-size: 24px; line-height: 1.12; }
+.fp-lead .fp-head { font-size: clamp(30px, 4vw, 52px); }
+.fp-feat .fp-head { font-size: 30px; }
+.fp-stand { font-family: var(--serif); font-style: italic; color: var(--mute-warm); margin: 0; font-size: 17px; }
+.fp-src { font-family: var(--sans); font-size: 10px; letter-spacing: .14em; color: var(--mute-warm); margin: 0; }
+.fp-rule { display: flex; align-items: center; gap: 14px; margin: 34px 0 6px;
+  font-family: var(--sans); font-size: 10px; letter-spacing: .26em; color: var(--mute-warm); }
+.fp-rule::before, .fp-rule::after { content: ""; flex: 1; height: 1px; background: var(--ink); }
+
+#magazine article { border-color: rgba(10,10,10,.15); scroll-margin-top: 84px; }
+#magazine article.paper { background: var(--cream); }
+#magazine h1, #magazine h2 { color: var(--ink); }
+#magazine .kicker { color: var(--red); }
+#magazine .standfirst { color: var(--mute-warm); }
+#magazine .take { color: rgba(10,10,10,.86); }
+#magazine .credit, #magazine .credit a { color: var(--mute-warm); }
+#magazine .credit a:hover { color: var(--red); }
+#magazine .keyvis { border: 1px solid rgba(10,10,10,.16); }
+#status, .empty { color: var(--mute-warm); }
+
+@media (max-width: 960px) {
+  .fp-lead { grid-template-columns: 1fr; }
+  .fp-feat { grid-column: 1 / -1; }
+  .fp-card { grid-column: 1 / -1; }
+  .fp-grid { gap: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .fp-card, .fp-vis img { transition: none; }
+}
+</style>
 </head>
 <body>
 <div id="grain"></div>
@@ -137,6 +215,15 @@
   </span>
   <button class="folio folio-btn" id="folio" title="Back issues — every edition stays on the stand" onclick="openArchive()">DAILY</button>
 </header>
+
+<section id="front" class="front" hidden>
+  <div class="fp-plate">
+    <h1 class="fp-brand">Unsurfaced&#8482; <em>DAILY</em></h1>
+    <p class="fp-tag">INSPIRATION IS EVERYWHERE. INTELLIGENCE IS KNOWING WHAT TO DO WITH IT.</p>
+  </div>
+  <div id="front-grid" class="fp-grid"></div>
+  <div class="fp-rule"><span>THE EDITION</span></div>
+</section>
 
 <main id="magazine">
   <div class="empty">
@@ -264,6 +351,7 @@ function el(id) { return document.getElementById(id); }
       el("folio").textContent =
         "ISSUE " + String(data.edition.issue_no).padStart(3, "0") + " \u00B7 VOL 1 \u00B7 " + mon + " " + String(d.getDate()).padStart(2, "0");
       mag.innerHTML = data.items.map(renderItem).join("");
+      renderFront(data.items);
       try { history.replaceState({}, "", window.location.pathname + (issueNo ? "?issue=" + issueNo : "")); } catch (e) {}
     })
     .catch(function () { statusEl.textContent = "The signal is temporarily unreachable."; });
@@ -299,9 +387,37 @@ function el(id) { return document.getElementById(id); }
     return "SOURCE \u00B7 " + a + " <span class=\"langtag\">\u00B7 " + lang + "</span> \u00B7 " +
       "<a class=\"trans\" href=\"" + u + "\" data-pv=\"en\">READ IN ENGLISH</a>" + ext;
   }
+  /* ── THE FRONT PAGE (Ivory Edition) — an index over the same stories.
+     Cards anchor into the magazine below; zero new endpoints, zero new
+     behavior. Lead + two features + standard grid. ── */
+  function frontCard(item, i) {
+    var t = String(item.territory || item.kicker || "the signal").replace(/-/g, " ").toUpperCase();
+    var fmt = item.format && item.format !== "dispatch"
+      ? "<span class=\"fp-fmt\">" + esc(String(item.format).toUpperCase()) + "</span>" : "";
+    var vis = item.image_url && /^https?:\/\//.test(item.image_url)
+      ? "<figure class=\"fp-vis\"><img src=\"" + esc(item.image_url) +
+        "\" alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\"" +
+        " onerror=\"this.closest(&quot;figure&quot;).classList.add(&quot;fp-ghosted&quot;)\"></figure>"
+      : "<figure class=\"fp-vis fp-ghosted\"></figure>";
+    var kind = i === 0 ? " fp-lead" : (i === 1 || i === 2 ? " fp-feat" : "");
+    return "<a class=\"fp-card" + kind + "\" href=\"#story-" + i + "\">" +
+      vis +
+      "<div class=\"fp-body\">" +
+        "<div class=\"fp-meta\"><span class=\"fp-kicker\">" + esc(item.kicker || "THE SIGNAL") + "</span>" + fmt + "</div>" +
+        "<h3 class=\"fp-head\">" + esc(item.headline) + "</h3>" +
+        (i <= 2 && item.standfirst ? "<p class=\"fp-stand\">" + esc(item.standfirst) + "</p>" : "") +
+        "<p class=\"fp-src\">(" + esc(t) + ") \u00B7 " + esc((item.source_name || "").toUpperCase()) + "</p>" +
+      "</div></a>";
+  }
+  function renderFront(items) {
+    var fp = el("front-grid");
+    if (!fp || !items || !items.length) return;
+    fp.innerHTML = items.map(frontCard).join("");
+    var sec = el("front"); if (sec) sec.hidden = false;
+  }
   function renderItem(item, i) {
     var paper = i % 3 === 1 ? " class=\"paper\"" : "";
-    return "<article" + paper + ">" +
+    return "<article id=\"story-" + i + "\"" + paper + ">" +
       "<div class=\"kicker\">" + esc(item.kicker || "THE SIGNAL") + "</div>" +
       (i === 0 ? "<h1>" + esc(item.headline) + "</h1>" : "<h2>" + esc(item.headline) + "</h2>") +
       (item.standfirst ? "<p class=\"standfirst\">" + esc(item.standfirst) + "</p>" : "") +
