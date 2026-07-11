@@ -1022,7 +1022,9 @@ function logEvent(env, platform, space, event, sessionId, meta) {
  * ═══════════════════════════════════════════════════════════════════ */
 const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY facts, numbers, and dates that appear in the finding text \u2014 inventing a date, figure, name, or event is the one unforgivable move. If the finding has no number, write without one. '
   + 'Never explain the joke. Banned: engagement-bait ("you won\'t believe", "stop scrolling"), '
-  + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy.';
+  + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy. '
+  + 'Editorial standard: meaning over novelty; evidence over hype; tension over generality; '
+  + 'utility over performance \u2014 end where the reader can use what they now see.';
 function studioGround(item) {
   return [item.headline, item.standfirst, item.take, item.kicker, item.source_name, item.date]
     .map(x => String(x || '')).join(' ');
@@ -1041,6 +1043,18 @@ function studioSafeCaption(platform, item) {
   if (platform === 'linkedin') return base + (item.source_name ? '\nSource: ' + item.source_name : '');
   return base + '\n\n#unsurfaced #' + String(item.kicker || 'signal').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
+/* the composer's format steers the caption's angle — additive, silent on
+ * legacy items (no format field → no extra instruction). */
+function studioAngle(item) {
+  switch (item && item.format) {
+    case 'number':      return ' Anchor the caption on the number in the finding \u2014 the stat is the hook.';
+    case 'read':        return ' Frame it as one pattern showing up in more than one place at once.';
+    case 'signal':      return ' Frame it as an early signal from the edge \u2014 say plainly that it is early.';
+    case 'provocation': return ' Lead with the open question the finding leaves behind.';
+    case 'drop':        return ' Read the release through identity and behavior, never through PR.';
+    default:            return '';
+  }
+}
 async function studioCaption(env, platform, item) {
   const dialect = platform === 'linkedin'
     ? 'LinkedIn dialect: the finding leads; 2-3 sentences arguing it; no hashtags.'
@@ -1051,7 +1065,7 @@ async function studioCaption(env, platform, item) {
     const ground = studioGround(item);
     const user = `Finding: ${item.headline}\n${item.standfirst || ''}\nThe take: ${item.take || ''}\nSource: ${item.source_name || ''}`;
     let out = await callModel(env, 't1', [
-      { role: 'system', content: 'You write social captions for Unsurfaced, a creative recon group publishing daily cultural intelligence. ' + STUDIO_VOICE + ' ' + dialect + ' Output only the caption text.' },
+      { role: 'system', content: 'You write social captions for Unsurfaced, a creative recon group publishing daily cultural intelligence. ' + STUDIO_VOICE + ' ' + dialect + studioAngle(item) + ' Output only the caption text.' },
       { role: 'user', content: user }
     ], { max_tokens: 220 });
     let cap = String(out || '').trim().slice(0, 900);
@@ -1083,30 +1097,46 @@ async function studioMemeLines(env, item) {
   return { mformat: 'verdict', line1: String(item.headline || '').slice(0, 90),
     line2: String(item.take || '').slice(0, 110) };
 }
+/* PURE: the slate walk. First story per unseen territory; territory-less
+ * editions fall back to the beat walk; still thin → fill by order. The
+ * LEAD (item 0) always seats first. */
+function studioSlate(items) {
+  const slate = [], seenT = new Set(), seenB = new Set();
+  for (const it of (items || [])) {
+    const t = it.territory || null;
+    if (t && !seenT.has(t)) { seenT.add(t); slate.push(it); }
+    if (slate.length === 3) return slate;
+  }
+  for (const it of (items || [])) {
+    if (slate.length === 3) break;
+    if (slate.includes(it)) continue;
+    const b = it.beat || null;
+    if (b && !seenB.has(b)) { seenB.add(b); slate.push(it); }
+  }
+  for (const it of (items || [])) {
+    if (slate.length === 3) break;
+    if (!slate.includes(it)) slate.push(it);
+  }
+  return slate;
+}
+
 async function buildStudioManifest(env, day, issueNo, items) {
   try {
     const existing = await sbRest(env, `content_pieces?day=eq.${day}&select=id&limit=1`);
     if (existing && existing.length) return { ok: true, skipped: 'manifest-exists' };
     const lead = items && items[0];
     if (!lead) return { ok: false, error: 'no_items' };
-    // THE SLATE — three stories across distinct beats, not one story in eleven outfits.
-    // Deterministic and free: walk the edition, seat the first story per unseen beat.
-    const slate = [];
-    const seenBeats = new Set();
-    for (const it of items) {
-      const b = it.beat || null;
-      if (b && !seenBeats.has(b)) { seenBeats.add(b); slate.push(it); }
-      if (slate.length === 3) break;
-    }
-    for (const it of items) {           // beats absent (pre-0012 editions) or thin: fill by order
-      if (slate.length === 3) break;
-      if (!slate.includes(it)) slate.push(it);
-    }
+    // THE SLATE — three stories across distinct TERRITORIES (the 12-story law),
+    // beats as the fallback lens, order as the floor. Deterministic and free.
+    const slate = studioSlate(items);
     const base = (it, story) => ({ issue_no: issueNo, date: day, kicker: it.kicker, headline: it.headline,
-      take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story });
+      take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story,
+      territory: it.territory || null, editorial_format: it.format || 'dispatch',
+      apply: it.apply || null, momentum: it.momentum || null });
     const sixPayload = { issue_no: issueNo, date: day,
       slides: (items || []).slice(0, 6).map(it => ({
-        kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name })) };
+        kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name,
+        territory: it.territory || null, editorial_format: it.format || null })) };
     // 17 cells: edition x3 · primary story x8 · stories two and three x3 each.
     const MATRIX = [
       { format: 'the_six', platform: 'instagram', lane: 'perishable', it: null, story: 0 },
@@ -1159,7 +1189,9 @@ async function studioCutStory(body, env, origin, user) {
   if (dupe && dupe.length) return json({ ok: true, skipped: 'story-already-cut' }, 200, origin, env);
   const meme = await studioMemeLines(env, it);
   const base = { issue_no: ed.issue_no, date: day, kicker: it.kicker, headline: it.headline,
-    take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9 };
+    take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9,
+    territory: it.territory || null, editorial_format: it.format || 'dispatch',
+    apply: it.apply || null, momentum: it.momentum || null };
   const pieces = [
     { day, lane: 'perishable', format: 'signal_still', platform: 'instagram', status: 'draft',
       copy: { caption: await studioCaption(env, 'instagram', it) }, payload: base },
