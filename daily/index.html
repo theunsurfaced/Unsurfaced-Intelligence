@@ -519,6 +519,7 @@ var sb = null, opsInited = false;
 function route() {
   var isOps = location.hash.indexOf("#ops") === 0;
   el("magazine").style.display = isOps ? "none" : "";
+  var f = el("front"); if (f) f.style.display = isOps ? "none" : "";
   el("ops").style.display = isOps ? "block" : "none";
   if (isOps && !opsInited) initOps();
 }
