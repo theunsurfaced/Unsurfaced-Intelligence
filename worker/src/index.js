@@ -56,6 +56,7 @@ export default {
       if (path === '/api/edition/archive') return editionArchive(env, origin);
       if (path === '/api/edition') return editionByIssue(url, env, origin);
       if (path === '/daily/run' && request.method === 'POST') return dailyRunGuarded(request, env, origin);
+      if (path === '/daily/pov' && request.method === 'GET') return dailyPovPublic(origin, env);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -1520,6 +1521,128 @@ const DAILY_BEATS = [
   { beat: 'ai',          q: 'artificial intelligence' },
   { beat: 'culture',     q: 'culture trend internet' }
 ];
+
+/* ═══ SEAM:DAILY_POV — doctrine as code. The Intelligence POV (July 2026)
+ * in machine-readable form: territories, the tiered source registry, the
+ * resist-list, the five-stage prompts, the momentum rubric, and the
+ * 12-slot edition template. DAILY-02/03 consume this; STUDIO and EXCAVATE
+ * read the same law. Registry note: a feed is a candidate until its first
+ * successful capture — a dead feed must never kill the pipeline. ═══ */
+const DAILY_POV = {
+  version: 'pov-2026-07',
+  territories: [
+    'advertising-marketing','technology-innovation','artificial-intelligence',
+    'business-economics','entrepreneurship-creator','music','fashion-beauty',
+    'sneakers-streetwear','art-design','architecture-cities',
+    'entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'
+  ],
+  // Legacy SLATE compatibility: every territory resolves to one of the five beats.
+  beat_map: {
+    'advertising-marketing':'advertising', 'technology-innovation':'tech',
+    'artificial-intelligence':'ai', 'business-economics':'tech',
+    'entrepreneurship-creator':'culture', 'music':'culture',
+    'fashion-beauty':'culture', 'sneakers-streetwear':'culture',
+    'art-design':'creativity', 'architecture-cities':'creativity',
+    'entertainment-gaming':'culture', 'food-hospitality':'culture',
+    'sustainability-impact':'culture', 'global-diaspora':'culture'
+  },
+  tiers: {
+    1: { role: 'daily signal — original reporting, cross-category influence', cadence: 'daily' },
+    2: { role: 'specialist interpretation — depth, criticism, region',        cadence: 'weekly' },
+    3: { role: 'edge + weak signals — independents, communities, subculture', cadence: 'monitor' },
+    4: { role: 'validation + primary evidence',                               cadence: 'on-demand' }
+  },
+  // verified:false = candidate feed; CAPTURE tolerates failure per-source.
+  sources: [
+    { name:'The Verge',          feed:'https://www.theverge.com/rss/index.xml',        tier:1, territories:['technology-innovation','artificial-intelligence'], verified:true },
+    { name:'TechCrunch',         feed:'https://techcrunch.com/feed/',                  tier:1, territories:['technology-innovation','entrepreneurship-creator'], verified:true },
+    { name:'Hypebeast',          feed:'https://hypebeast.com/feed',                    tier:1, territories:['sneakers-streetwear','fashion-beauty'], verified:true },
+    { name:'Highsnobiety',       feed:'https://www.highsnobiety.com/feed/',            tier:1, territories:['fashion-beauty','sneakers-streetwear'], verified:false },
+    { name:'Dezeen',             feed:'https://www.dezeen.com/feed/',                  tier:1, territories:['art-design','architecture-cities'], verified:true },
+    { name:'ArchDaily',          feed:'https://www.archdaily.com/feed',                tier:1, territories:['architecture-cities'], verified:false },
+    { name:'Pitchfork',          feed:'https://pitchfork.com/feed/feed-news/rss',      tier:1, territories:['music'], verified:true },
+    { name:'Billboard',          feed:'https://www.billboard.com/feed/',               tier:1, territories:['music','entertainment-gaming'], verified:true },
+    { name:'Eater',              feed:'https://www.eater.com/rss/index.xml',           tier:1, territories:['food-hospitality'], verified:true },
+    { name:'Fast Company',       feed:'https://www.fastcompany.com/latest/rss',        tier:1, territories:['business-economics','advertising-marketing'], verified:false },
+    { name:'Business of Fashion',feed:'https://www.businessoffashion.com/arc/outboundfeeds/rss/', tier:1, territories:['fashion-beauty','business-economics'], verified:false },
+    { name:'Engadget',           feed:'https://www.engadget.com/rss.xml',              tier:2, territories:['technology-innovation'], verified:true },
+    { name:"It's Nice That",     feed:'https://www.itsnicethat.com/feed',              tier:2, territories:['art-design','advertising-marketing'], verified:false },
+    { name:'Core77',             feed:'https://feeds.feedburner.com/core77/blog',      tier:2, territories:['art-design'], verified:false },
+    { name:'Colossal',           feed:'https://www.thisiscolossal.com/feed/',          tier:2, territories:['art-design'], verified:true },
+    { name:'Dazed',              feed:'https://www.dazeddigital.com/rss',              tier:2, territories:['fashion-beauty','music','global-diaspora'], verified:true },
+    { name:'Creative Boom',      feed:'https://www.creativeboom.com/feed/',            tier:2, territories:['art-design','advertising-marketing'], verified:true },
+    { name:'Nice Kicks',         feed:'https://www.nicekicks.com/feed/',               tier:2, territories:['sneakers-streetwear'], verified:true },
+    { name:'Wallpaper',          feed:'https://www.wallpaper.com/feeds/all',           tier:2, territories:['art-design','architecture-cities'], verified:false },
+    { name:'Curbed',             feed:'https://www.curbed.com/rss/index.xml',          tier:2, territories:['architecture-cities'], verified:true },
+    { name:'Hyperallergic',      feed:'https://hyperallergic.com/feed/',               tier:2, territories:['art-design'], verified:true },
+    { name:'Rest of World',      feed:'https://restofworld.org/feed/latest/',          tier:2, territories:['global-diaspora','technology-innovation'], verified:true },
+    { name:'Blackbird Spyplane', feed:'https://www.blackbirdspyplane.com/feed',        tier:3, territories:['fashion-beauty','sneakers-streetwear'], verified:true },
+    { name:'Embedded',           feed:'https://embedded.substack.com/feed',            tier:3, territories:['entertainment-gaming','global-diaspora'], verified:true },
+    { name:'Garbage Day',        feed:'https://www.garbageday.email/feed',             tier:3, territories:['entertainment-gaming','technology-innovation'], verified:false },
+    { name:'Dirt',               feed:'https://dirt.fyi/feed',                         tier:3, territories:['entertainment-gaming','art-design'], verified:false },
+    { name:'OkayAfrica',         feed:'https://www.okayafrica.com/feeds/feed.rss',     tier:3, territories:['global-diaspora','music'], verified:false },
+    { name:'Link in Bio',        feed:'https://www.linkinbio.news/feed',               tier:3, territories:['advertising-marketing','entrepreneurship-creator'], verified:false }
+  ],
+  gdelt: { tier: 4, role: 'breadth sweep + validation; never sole evidence for a story' },
+  resist: [
+    { rule:'trend_laundering',   law:'one celebrity moment, campaign, show or viral post is not a movement — require a second independent appearance' },
+    { rule:'source_echo',        law:'repeated coverage of one announcement is one signal — collapse via hash + embedding dedup' },
+    { rule:'category_myopia',    law:'read every signal for its meaning outside its home industry' },
+    { rule:'scale_bias',         law:'small communities can be influential before they are large — Tier-3 quota protects them' },
+    { rule:'edge_fetish',        law:'not every niche scales — name the broader human need beneath it' },
+    { rule:'tech_determinism',   law:'capability is not adoption — track use, resistance, consequence, uneven access' },
+    { rule:'false_certainty',    law:'distinguish observed fact, editorial inference and emerging hypothesis — label inference' },
+    { rule:'frictionless_optimism', law:'for every adoption signal scan for backlash, fatigue, barriers, unintended effects' }
+  ],
+  standard: [
+    'selectivity_over_volume','meaning_over_novelty','connection_over_category',
+    'evidence_over_hype','tension_over_generality','utility_over_performance'
+  ],
+  stages: {
+    filter: 'You are the FILTER stage of a cultural-intelligence pipeline. Given one captured signal (title, summary, source), output ONLY JSON: {"territory": <one of the configured territories>, "novelty": <0-5, 0=routine 5=genuinely new behavior or condition>, "announcement": <true if routine PR/launch language with no behavioral evidence>, "note": <at most 12 words on what is actually new>}. No prose outside the JSON.',
+    connect: 'Given a small set of signals from different territories, name the one pattern connecting them in at most 2 sentences — a behavior, tension or value appearing in multiple places at once. If no real connection exists, output exactly NONE. Never force it.',
+    interpret: 'You write the take for Unsurfaced DAILY. 2-4 sentences. Move through the arc without naming its parts: the observable shift, the human tension underneath it, the new expectation forming, and the possibility it opens. Use only facts present in the evidence; if you infer, say so plainly. Declarative, specific, zero hype. The reader should finish smarter, not busier.',
+    apply: 'One sentence: why this matters right now and what it could unlock. End with exactly one audience tag in brackets from: [creative] [founder] [marketer] [exec] [talent].'
+  },
+  momentum: {
+    scale: '0-5 each',
+    dims: ['novelty','velocity','breadth','depth','durability','relevance'],
+    definitions: {
+      novelty:'how new the underlying behavior or condition is',
+      velocity:'how fast it is moving or accumulating',
+      breadth:'how many territories/communities it appears in',
+      depth:'strength and independence of the evidence',
+      durability:'likelihood it matters beyond the news cycle',
+      relevance:'usefulness to the DAILY audiences today'
+    },
+    note: 'confidence stays distinct from excitement'
+  },
+  edition: {
+    slots: 12, lead: 1, features: 2, standard: 9,
+    quotas: {
+      per_territory_max: 2,
+      min_territories: 8,
+      edge_min: 1,                        // at least one Tier-3 story every day
+      guaranteed_groups: [
+        ['artificial-intelligence','technology-innovation'],
+        ['business-economics','entrepreneurship-creator'],
+        ['fashion-beauty','sneakers-streetwear'],
+        ['art-design','architecture-cities'],
+        ['music','entertainment-gaming'],
+        ['food-hospitality','sustainability-impact','global-diaspora']
+      ]
+    },
+    formats: ['dispatch','read','signal','number','drop','provocation'],
+    format_min: { number: 1, signal: 1, provocation: 1 },
+    features_prefer: 'read'
+  }
+};
+
+/* GET /daily/pov — the public doctrine. Front-end, STUDIO and EXCAVATE
+ * read the same law the pipeline runs on. */
+function dailyPovPublic(origin, env) {
+  return json({ ok: true, pov: DAILY_POV }, 200, origin, env);
+}
 
 /* SEAM:MODEL_POOL — the single routing function every LLM call passes through.
  * Tiers: t1/t2 = bulk transform on PUBLIC data; t3 = final voice.

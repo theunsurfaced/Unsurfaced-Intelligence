@@ -1,150 +1,154 @@
 {
-  "registry": {
-    "SEAM:LEADERBOARD": {
-      "file": "arcade/pop-a-shot/index.html",
-      "purpose": "spec-3 leaderboard mount in showCard()"
-    },
-    "SEAM:SIGNUP_ENDPOINT": {
-      "file": "arcade/pop-a-shot/index.html",
-      "purpose": "beta email capture -> join flow"
-    },
-    "SEAM:CAMERA_MODE": {
-      "file": "arcade/pop-a-shot/index.html",
-      "purpose": "MediaPipe hand-tracking mode gate"
-    },
-    "SEAM:REVEAL_3D": {
-      "file": "arcade/claw/index.html",
-      "purpose": "hi-res prize object mount in reveal"
-    },
-    "SEAM:SIGNUP_ENDPOINT@claw": {
-      "file": "arcade/claw/index.html",
-      "tag": "SEAM:SIGNUP_ENDPOINT",
-      "purpose": "win email capture; PLAY/EXCAVATE/MINE crossover attach"
-    },
-    "SEAM:ACTIVITY_LOG": {
-      "file": "worker/src/index.js",
-      "purpose": "logEvent() \u2014 every endpoint records activity (0007)"
-    },
-    "SEAM:MODEL_POOL": {
-      "file": "worker/src/index.js",
-      "purpose": "callModel() router; t1/t2 bulk public, t3 voice; sensitive pins to t3"
-    },
-    "SEAM:LEADERBOARD@rps": {
-      "file": "arcade/rps/index.html",
-      "tag": "SEAM:LEADERBOARD",
-      "purpose": "compete streak submit + match-end board card + shared join"
-    },
-    "SEAM:LEADERBOARD@hub": {
-      "file": "arcade/index.html",
-      "tag": "SEAM:LEADERBOARD",
-      "purpose": "public tabbed board (RPS/CLAW/POP) \u2014 anonymous reads of the spine"
-    },
-    "SEAM:PREVIEW@worker": {
-      "file": "worker/src/index.js",
-      "tag": "SEAM:PREVIEW",
-      "purpose": "server-side reader: extract + translate-to-English + edge cache"
-    },
-    "SEAM:PREVIEW@daily": {
-      "file": "daily/index.html",
-      "tag": "SEAM:PREVIEW",
-      "purpose": "reader overlay, preview-first credits, lazy key visuals"
-    },
-    "SEAM:PREVIEW@intelligence": {
-      "file": "intelligence/index.html",
-      "tag": "SEAM:PREVIEW",
-      "purpose": "reader overlay; EXCAVATE source links preview in-window"
-    },
-    "SEAM:KNOWLEDGE@worker": {
-      "file": "worker/src/index.js",
-      "tag": "SEAM:KNOWLEDGE",
-      "purpose": "feed doorway: chunk + embed (own account) + knowledge_base writes, admin-gated"
-    },
-    "SEAM:KNOWLEDGE@intelligence": {
-      "file": "intelligence/index.html",
-      "tag": "SEAM:KNOWLEDGE",
-      "purpose": "FEED panel: paste/link/file in, recall test, recent drops"
-    },
-    "SEAM:STUDYBOARD@worker": {
-      "file": "worker/src/index.js",
-      "tag": "SEAM:STUDYBOARD",
-      "purpose": "public shelf read: live + open-audience + opted-in only, safe fields"
-    },
-    "SEAM:STUDYBOARD@intelligence": {
-      "file": "intelligence/index.html",
-      "tag": "SEAM:STUDYBOARD",
-      "purpose": "board overlay, third MINE door, gate affordance, partner listing toggle, take bridge"
-    },
-    "SEAM:STUDIO@worker": {
-      "file": "worker/src/index.js",
-      "tag": "SEAM:STUDIO",
-      "purpose": "content engine: manifest cut on cron, voice layer, admin routes, deploy archive"
-    },
-    "SEAM:STUDIO@intelligence": {
-      "file": "intelligence/index.html",
-      "tag": "SEAM:STUDIO",
-      "purpose": "house renderer + download counter: paint-op templates, store-zip, three-ring reveal"
-    },
-    "SEAM:ARCHIVE@worker": {
-      "file": "worker/src/index.js",
-      "tag": "SEAM:ARCHIVE",
-      "purpose": "back-issue shelf: public archive index + by-issue reader, published-only"
-    },
-    "SEAM:ARCHIVE@daily": {
-      "file": "daily/index.html",
-      "tag": "SEAM:ARCHIVE",
-      "purpose": "the stand: folio opens the shelf, deep-linkable ?issue=NN"
-    },
-    "SEAM:ENDGAME@worker": {
-      "file": "worker/src/index.js",
-      "tag": "SEAM:ENDGAME",
-      "purpose": "the economy: rotating code, generic match rail, claims + tickets, treasury routes, 7-game registry"
-    },
-    "SEAM:ENDGAME@arcade-hub": {
-      "file": "arcade/index.html",
-      "tag": "SEAM:ENDGAME",
-      "purpose": "treasury panel (staff-door, shared-origin session) + coming-to-the-floor band"
-    },
-    "SEAM:INTRO@arcade-hub": {
-      "file": "arcade/index.html",
-      "tag": "SEAM:INTRO",
-      "purpose": "boot sequence: attract video, instant skip, watchdog + reduced-motion dissolve"
-    },
-    "SEAM:THUMB@cabinet": {
-      "file": "arcade/thumb/index.html",
-      "tag": "SEAM:THUMB",
-      "purpose": "thumb wrestling cabinet: pure match core, drag + camera translators, spine + match rail"
-    },
-    "SEAM:THUMB@arcade-hub": {
-      "file": "arcade/index.html",
-      "tag": "SEAM:THUMB",
-      "purpose": "cabinet 04 card + board tab"
-    },
-    "SEAM:CHESS@cabinet": {
-      "file": "arcade/chess/index.html",
-      "tag": "SEAM:CHESS",
-      "purpose": "chess cabinet: proven 0x88 core, tiered brain, THE Hand twice on the 3D table, hold-to-move + orbit"
-    },
-    "SEAM:CHESS@arcade-hub": {
-      "file": "arcade/index.html",
-      "tag": "SEAM:CHESS",
-      "purpose": "cabinet 05 card + board tab"
-    },
-    "SEAM:ENDGAME@claw": {
-      "file": "arcade/claw/index.html",
-      "tag": "SEAM:ENDGAME",
-      "purpose": "the prize counter door: token gate, treasury prize connect, claim tickets"
-    },
-    "SEAM:ENDGAME@chess-cabinet": {
-      "file": "arcade/chess/index.html",
-      "tag": "SEAM:ENDGAME",
-      "purpose": "chess mints the key: three straight from the Hand reveals the treasury code"
-    }
+ "registry": {
+  "SEAM:LEADERBOARD": {
+   "file": "arcade/pop-a-shot/index.html",
+   "purpose": "spec-3 leaderboard mount in showCard()"
   },
-  "planned": [
-    "SEAM:KNOWLEDGE_INGEST",
-    "SEAM:OPS_AUTH",
-    "SEAM:GUARD_SYNC",
-    "SEAM:PROMPT_SYNC"
-  ],
-  "note": "planned seams live in /worker; they enter registry as they ship"
+  "SEAM:SIGNUP_ENDPOINT": {
+   "file": "arcade/pop-a-shot/index.html",
+   "purpose": "beta email capture -> join flow"
+  },
+  "SEAM:CAMERA_MODE": {
+   "file": "arcade/pop-a-shot/index.html",
+   "purpose": "MediaPipe hand-tracking mode gate"
+  },
+  "SEAM:REVEAL_3D": {
+   "file": "arcade/claw/index.html",
+   "purpose": "hi-res prize object mount in reveal"
+  },
+  "SEAM:SIGNUP_ENDPOINT@claw": {
+   "file": "arcade/claw/index.html",
+   "tag": "SEAM:SIGNUP_ENDPOINT",
+   "purpose": "win email capture; PLAY/EXCAVATE/MINE crossover attach"
+  },
+  "SEAM:ACTIVITY_LOG": {
+   "file": "worker/src/index.js",
+   "purpose": "logEvent() \u2014 every endpoint records activity (0007)"
+  },
+  "SEAM:MODEL_POOL": {
+   "file": "worker/src/index.js",
+   "purpose": "callModel() router; t1/t2 bulk public, t3 voice; sensitive pins to t3"
+  },
+  "SEAM:LEADERBOARD@rps": {
+   "file": "arcade/rps/index.html",
+   "tag": "SEAM:LEADERBOARD",
+   "purpose": "compete streak submit + match-end board card + shared join"
+  },
+  "SEAM:LEADERBOARD@hub": {
+   "file": "arcade/index.html",
+   "tag": "SEAM:LEADERBOARD",
+   "purpose": "public tabbed board (RPS/CLAW/POP) \u2014 anonymous reads of the spine"
+  },
+  "SEAM:PREVIEW@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:PREVIEW",
+   "purpose": "server-side reader: extract + translate-to-English + edge cache"
+  },
+  "SEAM:PREVIEW@daily": {
+   "file": "daily/index.html",
+   "tag": "SEAM:PREVIEW",
+   "purpose": "reader overlay, preview-first credits, lazy key visuals"
+  },
+  "SEAM:PREVIEW@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PREVIEW",
+   "purpose": "reader overlay; EXCAVATE source links preview in-window"
+  },
+  "SEAM:KNOWLEDGE@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:KNOWLEDGE",
+   "purpose": "feed doorway: chunk + embed (own account) + knowledge_base writes, admin-gated"
+  },
+  "SEAM:KNOWLEDGE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:KNOWLEDGE",
+   "purpose": "FEED panel: paste/link/file in, recall test, recent drops"
+  },
+  "SEAM:STUDYBOARD@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:STUDYBOARD",
+   "purpose": "public shelf read: live + open-audience + opted-in only, safe fields"
+  },
+  "SEAM:STUDYBOARD@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:STUDYBOARD",
+   "purpose": "board overlay, third MINE door, gate affordance, partner listing toggle, take bridge"
+  },
+  "SEAM:STUDIO@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:STUDIO",
+   "purpose": "content engine: manifest cut on cron, voice layer, admin routes, deploy archive"
+  },
+  "SEAM:STUDIO@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:STUDIO",
+   "purpose": "house renderer + download counter: paint-op templates, store-zip, three-ring reveal"
+  },
+  "SEAM:ARCHIVE@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:ARCHIVE",
+   "purpose": "back-issue shelf: public archive index + by-issue reader, published-only"
+  },
+  "SEAM:ARCHIVE@daily": {
+   "file": "daily/index.html",
+   "tag": "SEAM:ARCHIVE",
+   "purpose": "the stand: folio opens the shelf, deep-linkable ?issue=NN"
+  },
+  "SEAM:ENDGAME@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:ENDGAME",
+   "purpose": "the economy: rotating code, generic match rail, claims + tickets, treasury routes, 7-game registry"
+  },
+  "SEAM:ENDGAME@arcade-hub": {
+   "file": "arcade/index.html",
+   "tag": "SEAM:ENDGAME",
+   "purpose": "treasury panel (staff-door, shared-origin session) + coming-to-the-floor band"
+  },
+  "SEAM:INTRO@arcade-hub": {
+   "file": "arcade/index.html",
+   "tag": "SEAM:INTRO",
+   "purpose": "boot sequence: attract video, instant skip, watchdog + reduced-motion dissolve"
+  },
+  "SEAM:THUMB@cabinet": {
+   "file": "arcade/thumb/index.html",
+   "tag": "SEAM:THUMB",
+   "purpose": "thumb wrestling cabinet: pure match core, drag + camera translators, spine + match rail"
+  },
+  "SEAM:THUMB@arcade-hub": {
+   "file": "arcade/index.html",
+   "tag": "SEAM:THUMB",
+   "purpose": "cabinet 04 card + board tab"
+  },
+  "SEAM:CHESS@cabinet": {
+   "file": "arcade/chess/index.html",
+   "tag": "SEAM:CHESS",
+   "purpose": "chess cabinet: proven 0x88 core, tiered brain, THE Hand twice on the 3D table, hold-to-move + orbit"
+  },
+  "SEAM:CHESS@arcade-hub": {
+   "file": "arcade/index.html",
+   "tag": "SEAM:CHESS",
+   "purpose": "cabinet 05 card + board tab"
+  },
+  "SEAM:ENDGAME@claw": {
+   "file": "arcade/claw/index.html",
+   "tag": "SEAM:ENDGAME",
+   "purpose": "the prize counter door: token gate, treasury prize connect, claim tickets"
+  },
+  "SEAM:ENDGAME@chess-cabinet": {
+   "file": "arcade/chess/index.html",
+   "tag": "SEAM:ENDGAME",
+   "purpose": "chess mints the key: three straight from the Hand reveals the treasury code"
+  },
+  "SEAM:DAILY_POV": {
+   "file": "worker/src/index.js",
+   "purpose": "doctrine as code: territories, tiered source registry, resist-list, stage prompts, momentum rubric, 12-slot edition template; consumed by pipeline/STUDIO/EXCAVATE"
+  }
+ },
+ "planned": [
+  "SEAM:KNOWLEDGE_INGEST",
+  "SEAM:OPS_AUTH",
+  "SEAM:GUARD_SYNC",
+  "SEAM:PROMPT_SYNC"
+ ],
+ "note": "planned seams live in /worker; they enter registry as they ship"
 }
