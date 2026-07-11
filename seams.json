@@ -142,6 +142,10 @@
   "SEAM:DAILY_POV": {
    "file": "worker/src/index.js",
    "purpose": "doctrine as code: territories, tiered source registry, resist-list, stage prompts, momentum rubric, 12-slot edition template; consumed by pipeline/STUDIO/EXCAVATE"
+  },
+  "SEAM:DAILY_SPINE": {
+   "file": "worker/src/index.js",
+   "purpose": "lake-filler: CAPTURE 28 feeds + GDELT -> hash dedup -> embed -> FILTER (echo + t1 classify) -> CONNECT (clusters + mechanical momentum); runs before edition, failures never block publishing"
   }
  },
  "planned": [
