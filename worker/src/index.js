@@ -1624,8 +1624,7 @@ const DAILY_POV = {
     { name:'Rest of World',      feed:'https://restofworld.org/feed/latest/',          tier:2, territories:['global-diaspora','technology-innovation'], verified:true },
     { name:'Blackbird Spyplane', feed:'https://www.blackbirdspyplane.com/feed',        tier:3, territories:['fashion-beauty','sneakers-streetwear'], verified:true },
     { name:'Embedded',           feed:'https://embedded.substack.com/feed',            tier:3, territories:['entertainment-gaming','global-diaspora'], verified:true },
-    { name:'Garbage Day',        feed:'https://www.garbageday.email/feed',             tier:3, territories:['entertainment-gaming','technology-innovation'], verified:false },
-    { name:'Dirt',               feed:'https://dirt.fyi/feed',                         tier:3, territories:['entertainment-gaming','art-design'], verified:false },
+    { name:'Dirt',               feed:'https://rss.beehiiv.com/feeds/C8g1hSvrGA.xml',  tier:3, territories:['entertainment-gaming','art-design'], verified:false },
     { name:'OkayAfrica',         feed:'https://www.okayafrica.com/feeds/feed.rss',     tier:3, territories:['global-diaspora','music'], verified:false },
     { name:'Link in Bio',        feed:'https://www.linkinbio.news/feed',               tier:3, territories:['advertising-marketing','entrepreneurship-creator'], verified:false }
   ],
@@ -1690,7 +1689,7 @@ function dailyPovPublic(origin, env) {
   return json({ ok: true, pov: DAILY_POV }, 200, origin, env);
 }
 
-/* ═══ SEAM:DAILY_SPINE — the lake-filler. CAPTURE (28 feeds + GDELT) →
+/* ═══ SEAM:DAILY_SPINE — the lake-filler. CAPTURE (27 feeds + GDELT) →
  * hash dedup → embed (Workers AI, own account) → FILTER (echo kill +
  * t1 classify) → CONNECT (neighbors, clusters, mechanical momentum).
  * Runs inside runDailyPipeline BEFORE the edition (failures never block

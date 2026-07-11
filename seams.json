@@ -162,6 +162,10 @@
   "SEAM:RECURRENCE": {
    "file": "worker/src/index.js",
    "purpose": "the lake's long memory: recurring themes ranked by weeks touched, span, breadth and paper provenance; cluster pulse on the cluster door"
+  },
+  "SEAM:TELEMETRY": {
+   "file": "daily/index.html",
+   "purpose": "the face wears the engine: live lake counts off the public /daily/lake door as the masthead marquee"
   }
  },
  "planned": [

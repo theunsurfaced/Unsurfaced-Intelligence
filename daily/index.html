@@ -11,7 +11,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://www.youtube.com https://player.vimeo.com https://www.tiktok.com https://www.instagram.com https://platform.twitter.com; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com;">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&family=Black+Ops+One&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #0A0A0A; --matte: #1A1A1A; --ivory: #FAF7F2; --cream: #F5F0E8;
@@ -276,6 +276,91 @@ body.story-open .fp-rule { display: flex; }
   .fp-card, .fp-vis img { transition: none; }
 }
 </style>
+
+<style id="arcade-face">
+/* ═══ THE ARCADE FACE — DAILY as the intelligence arcade. The hub goes to the
+   void: matte modules, mono telemetry, one red doing live-data work, visuals
+   that surface from the black on approach. The reading sheet stays paper —
+   stories still open as ivory inside the dark. Appended layer; the Ivory
+   Edition and the base sheet beneath it remain byte-identical. ═══ */
+body { background: var(--ink); color: var(--ivory); }
+#grain { filter: none; opacity: .06; }
+
+/* the masthead goes void, signal line stays */
+.masthead { background: var(--ink); color: var(--ivory);
+  border-bottom: 1px solid rgba(250,247,242,.16); box-shadow: 0 2px 0 var(--red); }
+.masthead .home, .masthead .brand { color: var(--ivory); }
+.masthead .home:hover { color: var(--red); }
+.masthead .msvg { color: var(--ivory); }
+.masthead .folio-btn { background: var(--red); color: var(--ivory); border-color: var(--red); }
+.masthead .folio-btn:hover { background: var(--ivory); color: var(--ink); border-color: var(--ivory); }
+
+/* SEAM:TELEMETRY — the live strip. Real lake counts, marquee loop, pause on
+   hover, static under reduced motion, absent if the lake doesn't answer. */
+.tlx { background: var(--ink); border-bottom: 1px solid rgba(250,247,242,.14); overflow: hidden; }
+.tlx-track { display: inline-flex; align-items: center; white-space: nowrap; padding: 9px 0;
+  font-family: var(--sans); font-weight: 700; font-size: 10px; letter-spacing: .22em;
+  color: rgba(250,247,242,.62); animation: tlx 48s linear infinite; will-change: transform; }
+.tlx-track b { color: var(--ivory); font-weight: 700; padding-left: 6px; }
+.tlx-track .sep { color: var(--red); padding: 0 16px; font-size: 7px; }
+.tlx:hover .tlx-track { animation-play-state: paused; }
+@keyframes tlx { to { transform: translateX(-50%); } }
+
+/* the plate: mark in ivory, DAILY in the arcade voice — Black Ops One, once */
+.fp-plate { border-bottom: 1px solid rgba(250,247,242,.16); }
+.fp-mark { color: var(--ivory); }
+.fp-daily { font-family: 'Black Ops One', var(--body); font-style: normal;
+  color: var(--red); letter-spacing: .04em; transform: none; }
+.fp-tag { color: rgba(250,247,242,.5); }
+
+/* the grid: twelve indexed modules — slate order is the momentum ranking */
+.fp-grid { counter-reset: sig; }
+.fp-card { counter-increment: sig; position: relative; background: #141414;
+  border: 1px solid rgba(250,247,242,.12); padding: 18px 18px 22px; color: var(--ivory); }
+.fp-card::before { content: counter(sig, decimal-leading-zero); position: absolute;
+  top: 12px; right: 14px; font-family: var(--sans); font-weight: 700; font-size: 10px;
+  letter-spacing: .18em; color: rgba(250,247,242,.32); z-index: 2; }
+.fp-card::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: var(--red); transform: scaleX(0); transform-origin: left;
+  transition: transform .28s ease; }
+.fp-card:hover { transform: translateY(-3px); }
+.fp-card:hover::after { transform: scaleX(1); }
+.fp-card:hover::before { color: var(--red); }
+.fp-card:hover .fp-head { text-decoration: none; color: var(--ivory); }
+.fp-lead { border-bottom: 1px solid rgba(250,247,242,.12); padding: 26px; }
+.fp-lead::before { font-size: 12px; }
+
+/* visuals live desaturated in the black and surface to color on approach */
+.fp-vis { background: #101010; border: 1px solid rgba(250,247,242,.1); }
+.fp-vis img { filter: grayscale(.85) contrast(1.06) brightness(.94);
+  transition: filter .35s ease, transform .35s ease; }
+.fp-card:hover .fp-vis img { filter: grayscale(0) contrast(1.02) brightness(1); transform: scale(1.03); }
+.fp-ghosted { background: linear-gradient(135deg, #141414, #1C1C1C); }
+.fp-ghost-mark { color: rgba(250,247,242,.1); }
+
+/* the voice: Syne 800 uppercase headlines; serif standfirst stays as the
+   editorial soul inside the tech chrome */
+.fp-head { font-family: var(--body); font-weight: 800; text-transform: uppercase;
+  letter-spacing: .015em; line-height: 1.05; color: var(--ivory); }
+.fp-stand { color: rgba(250,247,242,.62); }
+.fp-src { color: rgba(250,247,242,.45); }
+.fp-kicker { color: var(--red); border-color: var(--red); background: transparent; }
+.fp-fmt { background: var(--red); color: var(--ivory); }
+.fp-rule { color: rgba(250,247,242,.5); }
+.fp-rule::before, .fp-rule::after { background: rgba(250,247,242,.25); }
+#status, .empty { color: rgba(250,247,242,.6); }
+
+@media (max-width: 640px) {
+  .fp-card { padding: 14px 14px 18px; }
+  .fp-lead { padding: 18px 14px 22px; }
+  .tlx-track { font-size: 9px; letter-spacing: .18em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tlx-track { animation: none; }
+  .fp-card, .fp-card::after, .fp-vis img { transition: none; }
+}
+</style>
+
 </head>
 <body>
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true"><symbol id="umark" viewBox="162.68 272.12 445.04 42.80"><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 177.9375 313.964844 C 173.789062 313.964844 170.40625 312.566406 167.789062 309.769531 C 165.171875 306.972656 163.863281 302.992188 163.863281 297.820312 L 163.863281 275.269531 L 172.976562 275.269531 L 172.707031 297.097656 C 172.765625 299.804688 173.457031 301.910156 174.78125 303.410156 C 176.101562 304.914062 178.117188 305.667969 180.824219 305.667969 C 183.828125 305.667969 186.191406 304.796875 187.90625 303.050781 C 189.617188 301.308594 190.535156 298.902344 190.65625 295.832031 L 190.476562 275.269531 L 199.585938 275.269531 L 199.585938 313.152344 L 190.382812 313.152344 L 190.746094 306.207031 C 189.484375 308.671875 187.753906 310.582031 185.558594 311.9375 C 183.363281 313.289062 180.824219 313.964844 177.9375 313.964844 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 221.246094 288.066406 L 212.5 288.066406 C 212.101562 288.066406 211.714844 288.042969 211.339844 288.007812 L 211.339844 313.152344 L 220.449219 313.152344 L 220.269531 292.585938 C 220.335938 290.882812 220.667969 289.378906 221.246094 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 237.726562 288.066406 C 238.027344 289.054688 238.226562 290.164062 238.308594 291.414062 L 238.128906 313.152344 L 247.238281 313.152344 L 247.238281 290.691406 C 247.238281 289.773438 247.183594 288.910156 247.097656 288.066406 Z M 237.726562 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 282.597656 293.757812 C 281.367188 292.855469 280.042969 292.167969 278.628906 291.683594 C 277.214844 291.203125 275.757812 290.78125 274.253906 290.421875 C 272.691406 290.0625 271.398438 289.699219 270.375 289.339844 C 269.351562 288.976562 268.539062 288.617188 267.941406 288.257812 C 267.839844 288.195312 267.75 288.128906 267.65625 288.066406 L 257.960938 288.066406 C 258.117188 288.914062 258.359375 289.6875 258.695312 290.378906 C 259.324219 291.671875 260.167969 292.765625 261.21875 293.667969 C 262.273438 294.570312 263.472656 295.308594 264.828125 295.878906 C 266.179688 296.453125 267.546875 296.917969 268.933594 297.277344 C 270.554688 297.578125 271.9375 297.894531 273.082031 298.222656 C 274.222656 298.554688 275.171875 298.933594 275.921875 299.351562 C 276.675781 299.773438 277.214844 300.222656 277.546875 300.707031 C 277.875 301.1875 278.042969 301.820312 278.042969 302.597656 C 278.042969 303.863281 277.515625 304.886719 276.464844 305.667969 C 275.410156 306.449219 273.742188 306.871094 271.457031 306.929688 C 269.292969 306.929688 267.355469 306.492188 265.640625 305.621094 C 263.925781 304.75 262.527344 303.410156 261.445312 301.605469 L 255.039062 306.117188 C 256.304688 308.164062 258.363281 309.980469 261.21875 311.574219 C 264.074219 313.167969 267.667969 313.964844 272 313.964844 C 274.707031 313.964844 276.992188 313.648438 278.855469 313.015625 C 280.71875 312.386719 282.238281 311.546875 283.410156 310.492188 C 284.582031 309.441406 285.425781 308.191406 285.9375 306.75 C 286.445312 305.304688 286.703125 303.773438 286.703125 302.148438 C 286.703125 300.164062 286.328125 298.496094 285.574219 297.140625 C 284.824219 295.789062 283.828125 294.660156 282.597656 293.757812 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 322.109375 288.066406 L 322.179688 295.832031 C 322.058594 298.902344 321.140625 301.308594 319.429688 303.050781 C 317.714844 304.796875 315.351562 305.667969 312.347656 305.667969 C 309.640625 305.667969 307.625 304.914062 306.304688 303.410156 C 304.980469 301.910156 304.289062 299.804688 304.230469 297.097656 L 304.339844 288.066406 L 295.390625 288.066406 L 295.390625 297.820312 C 295.390625 302.992188 296.695312 306.972656 299.3125 309.769531 C 301.929688 312.566406 305.3125 313.964844 309.460938 313.964844 C 312.347656 313.964844 314.886719 313.289062 317.082031 311.9375 C 319.277344 310.582031 321.007812 308.675781 322.269531 306.207031 L 321.910156 313.152344 L 331.109375 313.152344 L 331.109375 288.066406 Z M 322.109375 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 352.988281 288.066406 L 342.863281 288.066406 L 342.863281 313.152344 L 351.972656 313.152344 L 351.613281 294.75 C 351.769531 291.992188 352.230469 289.769531 352.988281 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 381.332031 288.066406 L 381.332031 313.152344 L 390.445312 313.152344 L 390.21875 288.066406 Z M 381.332031 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 431.222656 299.894531 C 431.222656 302 430.378906 303.652344 428.699219 304.855469 C 427.011719 306.058594 424.820312 306.660156 422.113281 306.660156 C 417.300781 306.660156 414.898438 305.003906 414.898438 301.699219 C 414.898438 300.015625 415.496094 298.796875 416.703125 298.042969 C 417.902344 297.292969 419.496094 296.917969 421.480469 296.917969 L 431.222656 296.917969 Z M 431 288.066406 C 431.144531 288.976562 431.222656 289.996094 431.222656 291.144531 L 420.851562 290.601562 C 418.6875 290.601562 416.703125 290.828125 414.898438 291.277344 C 413.09375 291.730469 411.527344 292.421875 410.207031 293.355469 C 408.882812 294.285156 407.84375 295.457031 407.09375 296.871094 C 406.339844 298.285156 405.964844 299.984375 405.964844 301.96875 C 405.964844 304.074219 406.328125 305.894531 407.046875 307.425781 C 407.769531 308.957031 408.746094 310.207031 409.980469 311.167969 C 411.210938 312.132812 412.65625 312.835938 414.3125 313.289062 C 415.964844 313.738281 417.722656 313.964844 419.585938 313.964844 C 422.414062 313.964844 424.757812 313.4375 426.625 312.386719 C 428.488281 311.335938 430.082031 309.785156 431.40625 307.742188 L 431.222656 313.152344 L 440.335938 313.152344 L 440.335938 290.78125 C 440.335938 289.832031 440.269531 288.9375 440.171875 288.066406 Z M 431 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 475.429688 304.71875 C 473.988281 305.53125 472.125 305.9375 469.839844 305.9375 C 466.410156 305.9375 463.75 304.839844 461.855469 302.644531 C 459.960938 300.449219 459.015625 297.636719 459.015625 294.210938 C 459.015625 291.875 459.464844 289.832031 460.347656 288.066406 L 450.546875 288.066406 C 449.941406 289.992188 449.632812 292.039062 449.632812 294.210938 C 449.632812 297.039062 450.144531 299.667969 451.167969 302.101562 C 452.191406 304.539062 453.601562 306.628906 455.40625 308.371094 C 457.210938 310.117188 459.34375 311.484375 461.8125 312.476562 C 464.277344 313.46875 466.953125 313.964844 469.839844 313.964844 C 473.507812 313.964844 476.542969 313.347656 478.949219 312.117188 C 481.355469 310.882812 483.492188 309.214844 485.355469 307.109375 L 479.128906 302.238281 C 478.109375 303.082031 476.875 303.90625 475.429688 304.71875 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 529.265625 288.066406 L 520.195312 288.066406 C 520.5625 288.964844 520.859375 289.917969 521.027344 290.964844 L 499.472656 291.144531 C 499.691406 290.015625 500.007812 288.992188 500.417969 288.066406 L 491.390625 288.066406 C 490.769531 289.992188 490.449219 292.035156 490.449219 294.210938 C 490.449219 297.039062 490.960938 299.667969 491.984375 302.105469 C 493.007812 304.539062 494.433594 306.628906 496.269531 308.371094 C 498.101562 310.117188 500.34375 311.484375 502.988281 312.476562 C 505.632812 313.46875 508.582031 313.964844 511.828125 313.964844 C 515.617188 313.964844 518.789062 313.378906 521.34375 312.207031 C 523.898438 311.03125 526.140625 309.574219 528.066406 307.832031 L 522.742188 302.238281 C 521.480469 303.261719 519.960938 304.195312 518.1875 305.035156 C 516.414062 305.878906 514.265625 306.296875 511.738281 306.296875 C 508.25 306.296875 505.515625 305.484375 503.527344 303.863281 C 501.546875 302.238281 500.222656 299.925781 499.558594 296.917969 L 530.230469 296.554688 C 530.410156 293.730469 530.09375 290.917969 529.28125 288.121094 C 529.277344 288.101562 529.269531 288.085938 529.265625 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 567.59375 288.066406 C 568.5 289.792969 568.964844 291.804688 568.964844 294.121094 C 568.964844 297.730469 567.96875 300.601562 565.988281 302.734375 C 564 304.871094 561.324219 305.9375 557.957031 305.9375 C 554.652344 305.9375 552.035156 304.871094 550.109375 302.734375 C 548.183594 300.601562 547.164062 297.730469 547.042969 294.121094 C 547.125 291.804688 547.628906 289.792969 548.53125 288.066406 L 538.617188 288.066406 C 538.085938 289.949219 537.796875 291.96875 537.753906 294.121094 C 537.8125 297.007812 538.308594 299.652344 539.242188 302.058594 C 540.171875 304.464844 541.433594 306.554688 543.03125 308.328125 C 544.621094 310.101562 546.503906 311.484375 548.667969 312.476562 C 550.832031 313.46875 553.148438 313.964844 555.613281 313.964844 C 558.800781 313.964844 561.503906 313.257812 563.730469 311.847656 C 565.957031 310.433594 567.667969 308.582031 568.875 306.296875 L 568.601562 313.152344 L 577.710938 313.152344 L 577.710938 288.066406 Z M 567.59375 288.066406 "/><g fill="currentColor" fill-opacity="1"><path style="fill:currentColor;stroke:none" transform="translate(583.2915,291.6675)" d="M 0.453125 -18.4375 L 10.53125 -18.4375 L 10.53125 -16 L 6.9375 -16 L 6.9375 -8.1875 L 3.984375 -8.1875 L 3.984375 -16 L 0.453125 -16 Z M 11.703125 -18.4375 L 16.1875 -18.4375 L 17.609375 -12.84375 L 19.109375 -18.4375 L 23.46875 -18.4375 L 23.46875 -8.1875 L 20.6875 -8.1875 L 20.6875 -15.4375 L 18.765625 -8.1875 L 16.4375 -8.1875 L 14.53125 -15.4375 L 14.53125 -8.1875 L 11.703125 -8.1875 Z M 11.703125 -18.4375 "/></g></symbol></svg>
@@ -287,6 +372,9 @@ body.story-open .fp-rule { display: flex; }
   </span>
   <button class="folio folio-btn" id="folio" title="Back issues — every edition stays on the stand" onclick="openArchive()">DAILY</button>
 </header>
+
+<!-- SEAM:TELEMETRY — the face wears the engine's pulse: live lake counts off the public door. -->
+<div id="telemetry" class="tlx" hidden aria-hidden="true"><div class="tlx-track" id="tlxTrack"></div></div>
 
 <section id="front" class="front" hidden>
   <div class="fp-plate">
@@ -872,6 +960,30 @@ route();
       });
     } catch (e) { list.innerHTML = '<div class="ar-empty">The stand is unreachable.</div>'; }
   };
+})();
+</script>
+<script>
+/* SEAM:TELEMETRY — the pulse feed. One public call to /daily/lake; the strip
+ * renders real counts or never appears at all. */
+(function () {
+  var API = (window.CONFIG && CONFIG.API_BASE) || "";
+  var wrap = document.getElementById("telemetry"), track = document.getElementById("tlxTrack");
+  if (!API || !wrap || !track) return;
+  function esc9(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  fetch(API + "/daily/lake").then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.ok) return;
+    var segs = ["LIVE · THE LAKE", "INTAKE<b>" + (d.window || 0) + "</b>"];
+    var by = d.by_status || {};
+    Object.keys(by).forEach(function (k) { segs.push(esc9(k.toUpperCase()) + "<b>" + by[k] + "</b>"); });
+    var t = d.by_territory || {};
+    Object.keys(t).sort(function (a, b) { return t[b] - t[a]; }).slice(0, 6).forEach(function (k) {
+      segs.push(esc9(k.toUpperCase().replace(/-/g, " ")) + "<b>" + t[k] + "</b>");
+    });
+    if (d.newest) segs.push("LAST CAPTURE<b>" + esc9(String(d.newest).slice(11, 16)) + " UTC</b>");
+    var run = segs.map(function (s) { return "<span>" + s + "</span><span class=\"sep\">■</span>"; }).join("");
+    track.innerHTML = run + run;   /* duplicate: the -50% loop is seamless */
+    wrap.hidden = false; wrap.removeAttribute("aria-hidden");
+  }).catch(function () {});
 })();
 </script>
 </body>
