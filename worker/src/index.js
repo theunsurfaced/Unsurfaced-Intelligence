@@ -68,6 +68,8 @@ export default {
       if (path === '/daily/pov' && request.method === 'GET') return dailyPovPublic(origin, env);
       if (path === '/daily/lake' && request.method === 'GET') return dailyLakePublic(env, origin);
       if (path === '/daily/spine' && request.method === 'POST') return dailySpineGuarded(request, env, origin);
+      if (path === '/excavate/lake' && request.method === 'POST') return excavateLake(request, env, origin);
+      if (path === '/excavate/cluster' && request.method === 'POST') return excavateCluster(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -2071,6 +2073,101 @@ async function runDailySpine(env) {
   };
   logEvent(env, 'daily', null, 'spine_run', null, stats);
   return stats;
+}
+
+
+/* ═══ SEAM:EXCAVATE — the lake as recon surface. Two doors, both for
+ * signed-in members, both rate-limited: /excavate/lake (semantic search
+ * over everything the spine ever captured, with territory/tier/window
+ * filters) and /excavate/cluster (a signal's neighborhood + the
+ * provenance thread to any published DAILY story). Every source added
+ * to the registry deepens this surface automatically. ═══ */
+async function excavateAuth(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return { err: json({ ok: false, error: 'auth_required' }, 401, origin, env) };
+  if (!(await underLimit(env, user.id)))
+    return { err: json({ ok: false, error: 'rate_limited' }, 429, origin, env) };
+  return { user };
+}
+
+async function excavateLake(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const q = String(body.q || '').trim().slice(0, 200);
+  if (!q) return json({ ok: false, error: 'q_required' }, 200, origin, env);
+  const territory = DAILY_POV.territories.includes(body.territory) ? body.territory : null;
+  const maxTier = Math.min(4, Math.max(1, parseInt(body.max_tier, 10) || 4));
+  const days = Math.min(365, Math.max(0, parseInt(body.days, 10) || 0));
+  const count = Math.min(24, Math.max(1, parseInt(body.count, 10) || 12));
+  try {
+    const emb = await env.AI.run(KB_EMBED_MODEL, { text: [q] });
+    const vec = emb && emb.data && emb.data[0];
+    if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+    const rows = await sbRest(env, 'rpc/match_signals', {
+      method: 'POST',
+      body: { p_query: vec, p_count: count, p_territory: territory, p_min_tier: maxTier,
+              p_since: days ? new Date(Date.now() - days * 24 * 3600e3).toISOString() : null }
+    }) || [];
+    return json({ ok: true, q, count: rows.length, results: rows.map(r => ({
+      id: r.id, title: r.title, url: r.url, summary: r.summary,
+      source_name: r.source_name, source_tier: r.source_tier,
+      territory: r.territory, status: r.status, captured_at: r.captured_at,
+      momentum: r.momentum, similarity: Math.round((r.similarity || 0) * 1000) / 1000
+    })) }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'lake_unavailable' }, 200, origin, env);
+  }
+}
+
+async function excavateCluster(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const id = String(body.id || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+    return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  try {
+    const sigRows = await sbRest(env, `signals?id=eq.${id}` +
+      '&select=id,title,url,summary,source_name,source_tier,territory,status,captured_at,momentum,cluster_id,embedding,edition_item_id');
+    const sig = sigRows && sigRows[0];
+    if (!sig) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    const byId = new Map();
+    if (sig.cluster_id) {
+      const kin = await sbRest(env, `signals?cluster_id=eq.${sig.cluster_id}&id=neq.${id}` +
+        '&order=captured_at.desc&limit=20' +
+        '&select=id,title,url,source_name,source_tier,territory,status,captured_at,momentum,edition_item_id') || [];
+      kin.forEach(k => byId.set(k.id, k));
+    }
+    const vec = Array.isArray(sig.embedding) ? sig.embedding
+      : (typeof sig.embedding === 'string' ? JSON.parse(sig.embedding) : null);
+    if (vec) {
+      const near = await sbRest(env, 'rpc/match_signals', {
+        method: 'POST', body: { p_query: vec, p_count: 8 }
+      }) || [];
+      near.filter(n => n.id !== id).forEach(n => { if (!byId.has(n.id)) byId.set(n.id, n); });
+    }
+    const cluster = [...byId.values()].slice(0, 20);
+    // the provenance thread: which of these made the paper, and when.
+    const itemIds = [sig, ...cluster].map(r => r.edition_item_id).filter(Boolean);
+    let published = [];
+    if (itemIds.length) {
+      const its = await sbRest(env, `edition_items?id=in.(${itemIds.join(',')})&select=id,edition_id,headline`) || [];
+      const edIds = [...new Set(its.map(i => i.edition_id))];
+      const eds = edIds.length
+        ? await sbRest(env, `editions?id=in.(${edIds.join(',')})&select=id,issue_no,date`) || [] : [];
+      const edBy = new Map(eds.map(e => [e.id, e]));
+      published = its.map(i => ({ item_id: i.id, headline: i.headline,
+        issue_no: (edBy.get(i.edition_id) || {}).issue_no || null,
+        date: (edBy.get(i.edition_id) || {}).date || null }));
+    }
+    delete sig.embedding;
+    return json({ ok: true, signal: sig, cluster, published }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'cluster_unavailable' }, 200, origin, env);
+  }
 }
 
 async function dailySpineGuarded(request, env, origin) {

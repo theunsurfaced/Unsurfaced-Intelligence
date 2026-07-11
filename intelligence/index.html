@@ -2200,6 +2200,31 @@ const API_BASE = 'https://api.unsurfaced-intelligence.com'; // <-- your Worker U
 // POST a JSON action to the proxy (used for /deep today; /synthesize later).
 async function api(action, payload) {
   const _h = await _authHeader();
+  // SEAM feed: every synthesis drinks from the lake — Unsurfaced's own
+  // captured signal joins the public lenses. Optional by design: any
+  // failure is silent and the public corpus proceeds untouched.
+  if (action === 'excavate/synthesize' && payload && payload.query) {
+    try {
+      const lr = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/lake', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, _h),
+        body: JSON.stringify({ q: String(payload.query).slice(0, 200), count: 10 })
+      }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+      if (lr && lr.ok && Array.isArray(lr.results) && lr.results.length) {
+        payload = Object.assign({}, payload, {
+          corpus: (payload.corpus || []).concat(lr.results.map(function (s) {
+            return {
+              lens: 'lake',
+              source: 'Unsurfaced Lake \u00B7 ' + (s.source_name || 'signal') + ' (T' + (s.source_tier || '?') + ')',
+              title: String(s.title || '').slice(0, 180),
+              text: String(s.summary || '').slice(0, 360),
+              url: s.url || ''
+            };
+          }))
+        });
+      }
+    } catch (e) { /* the lake is a bonus lens, never a blocker */ }
+  }
   const r = await fetch(API_BASE.replace(/\/$/, '') + '/' + action, {
     method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, _h),

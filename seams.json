@@ -150,6 +150,10 @@
   "SEAM:DAILY_COMPOSER": {
    "file": "worker/src/index.js",
    "purpose": "twelve from the lake: POV slot-filler (quotas + edge law) + six-format law + t3 INTERPRET/APPLY voice; legacy synthesis survives as fallback; shared publishEdition backlinks signals"
+  },
+  "SEAM:EXCAVATE": {
+   "file": "worker/src/index.js",
+   "purpose": "lake as recon surface: /excavate/lake semantic search (territory/tier/window filters) + /excavate/cluster (neighborhood + provenance thread to published DAILY stories); intelligence page feeds every synthesize from it"
   }
  },
  "planned": [
