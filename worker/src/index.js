@@ -57,6 +57,8 @@ export default {
       if (path === '/api/edition') return editionByIssue(url, env, origin);
       if (path === '/daily/run' && request.method === 'POST') return dailyRunGuarded(request, env, origin);
       if (path === '/daily/pov' && request.method === 'GET') return dailyPovPublic(origin, env);
+      if (path === '/daily/lake' && request.method === 'GET') return dailyLakePublic(env, origin);
+      if (path === '/daily/spine' && request.method === 'POST') return dailySpineGuarded(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -1644,6 +1646,288 @@ function dailyPovPublic(origin, env) {
   return json({ ok: true, pov: DAILY_POV }, 200, origin, env);
 }
 
+/* ═══ SEAM:DAILY_SPINE — the lake-filler. CAPTURE (28 feeds + GDELT) →
+ * hash dedup → embed (Workers AI, own account) → FILTER (echo kill +
+ * t1 classify) → CONNECT (neighbors, clusters, mechanical momentum).
+ * Runs inside runDailyPipeline BEFORE the edition (failures never block
+ * publishing) and standalone via POST /daily/spine (admin). Every stage
+ * is per-item fault-tolerant: a dead feed or a bad model reply costs
+ * one item, never the run. Momentum here is mechanical v1; the composer
+ * (DAILY-03) refines. ═══ */
+const SPINE = {
+  FEED_CAP: 10, GDELT_CAP: 4, MAX_NEW: 120, EMBED_BATCH: 16,
+  MAX_CLASSIFY: 48, MAX_CONNECT: 48, PAR: 6, TIMEOUT_MS: 8000,
+  ECHO_SIM: 0.93, CLUSTER_SIM: 0.80, BREADTH_SIM: 0.75
+};
+
+// tolerant RSS2/Atom item extraction — no DOM in Workers, regex law with
+// CDATA + entity handling; malformed feeds yield what they can, never throw.
+function rssDecode(s) {
+  return String(s || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => { try { return String.fromCodePoint(parseInt(h, 16)); } catch (e) { return ''; } })
+    .replace(/&#(\d+);/g, (_, d) => { try { return String.fromCodePoint(parseInt(d, 10)); } catch (e) { return ''; } })
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ');
+}
+function rssField(block, names) {
+  for (const n of names) {
+    const m = block.match(new RegExp('<' + n + '(?:\\s[^>]*)?>([\\s\\S]*?)</' + n + '>', 'i'));
+    if (m && m[1]) return m[1];
+  }
+  return '';
+}
+function rssItems(xml, max) {
+  const out = [];
+  const src = String(xml || '');
+  const blocks = src.match(/<item[\s>][\s\S]*?<\/item>/gi)
+             || src.match(/<entry[\s>][\s\S]*?<\/entry>/gi) || [];
+  for (const b of blocks.slice(0, max || 12)) {
+    let link = rssField(b, ['link']).trim();
+    if (!link) {                                     // Atom: <link href="..."/>
+      const m = b.match(/<link[^>]*href=["']([^"']+)["']/i);
+      link = m ? m[1] : '';
+    }
+    if (!/^https?:\/\//i.test(link)) continue;
+    const title = rssDecode(rssField(b, ['title'])).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!title) continue;
+    const desc = rssDecode(rssField(b, ['description', 'summary', 'content:encoded', 'content']))
+      .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
+    const dateRaw = rssField(b, ['pubDate', 'published', 'updated', 'dc:date']).trim();
+    const d = dateRaw ? new Date(dateRaw) : null;
+    out.push({
+      title: title.slice(0, 240), url: rssDecode(link).trim(), summary: desc,
+      published_at: d && !isNaN(d.getTime()) ? d.toISOString() : null
+    });
+  }
+  return out;
+}
+
+// dedup fingerprint: normalized title + canonical url (host+path, no query/utm).
+function hashInput(title, url) {
+  const t = String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 80);
+  let u = '';
+  try {
+    const p = new URL(String(url || ''));
+    u = (p.host + p.pathname).toLowerCase().replace(/\/+$/, '');
+  } catch (e) { u = String(url || '').toLowerCase().slice(0, 120); }
+  return t + '|' + u;
+}
+async function sha256hex(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+// model replies arrive fenced, prefixed, or clean — take the first {...}.
+function parseModelJson(s) {
+  try {
+    const m = String(s || '').match(/\{[\s\S]*\}/);
+    return m ? JSON.parse(m[0]) : null;
+  } catch (e) { return null; }
+}
+
+// mechanical momentum v1 — neighbors are {similarity, territory, source_tier,
+// captured_at}; confidence stays distinct from excitement.
+function momentumMech(neighbors, ownTerritory, ownTier, novelty) {
+  const near = neighbors.filter(n => n.similarity >= SPINE.BREADTH_SIM);
+  const now = Date.now();
+  const recent = near.filter(n => now - new Date(n.captured_at).getTime() <= 48 * 3600e3);
+  const terrs = new Set(near.map(n => n.territory).filter(Boolean)); terrs.add(ownTerritory);
+  const srcs = new Set(near.map(n => n.source_name).filter(Boolean));
+  const spanMs = near.length
+    ? Math.max(...near.map(n => now - new Date(n.captured_at).getTime())) : 0;
+  return {
+    novelty: Math.max(0, Math.min(5, novelty | 0)),
+    velocity: Math.min(5, recent.length),
+    breadth: Math.min(5, terrs.size - 1 + (near.length ? 1 : 0)),
+    depth: Math.min(5, Math.round(srcs.size ? (srcs.size + (5 - ownTier)) / 2 : (5 - ownTier) / 2)),
+    durability: Math.min(5, Math.round(spanMs / (24 * 3600e3))),
+    relevance: ({ 1: 4, 2: 3, 3: 3, 4: 2 })[ownTier] || 2
+  };
+}
+
+async function fetchWithTimeout(url, ms) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try { return await fetch(url, { signal: ctl.signal, cf: { cacheTtl: 600 }, headers: { 'User-Agent': 'UnsurfacedDAILY/1.0 (+https://unsurfaced-intelligence.com)' } }); }
+  finally { clearTimeout(t); }
+}
+
+// CAPTURE — every enabled source; a dead feed costs its own items only.
+async function spineCapture(env) {
+  const items = [], feedErrors = [];
+  const sources = DAILY_POV.sources.slice();
+  for (let i = 0; i < sources.length; i += SPINE.PAR) {
+    const chunk = sources.slice(i, i + SPINE.PAR);
+    const settled = await Promise.allSettled(chunk.map(async (s) => {
+      const r = await fetchWithTimeout(s.feed, SPINE.TIMEOUT_MS);
+      if (!r.ok) throw new Error('http_' + r.status);
+      const got = rssItems(await r.text(), SPINE.FEED_CAP);
+      return got.map(it => ({ ...it, source_name: s.name, source_tier: s.tier, territory: s.territories[0] || null }));
+    }));
+    settled.forEach((res, j) => {
+      if (res.status === 'fulfilled') items.push(...res.value);
+      else feedErrors.push(chunk[j].name + ':' + String(res.reason && res.reason.message || res.reason).slice(0, 40));
+    });
+  }
+  // GDELT breadth sweep — tier 4, never sole evidence.
+  for (const lane of DAILY_BEATS) {
+    try {
+      const sig = await gatherServerSignals(lane.q);
+      sig.filter(s => s.signalType === 'news' && s.url).slice(0, SPINE.GDELT_CAP).forEach(s => items.push({
+        title: s.title, url: s.url, summary: s.snippet || '', published_at: null,
+        source_name: s.source || 'GDELT', source_tier: 4, territory: null
+      }));
+    } catch (e) {}
+  }
+  // in-memory dedup by fingerprint, then bulk insert (dupes vs the lake ignored).
+  const byHash = new Map();
+  for (const it of items) {
+    const hash = await sha256hex(hashInput(it.title, it.url));
+    if (!byHash.has(hash)) byHash.set(hash, { ...it, content_hash: hash, status: 'raw' });
+  }
+  const rows = [...byHash.values()].slice(0, SPINE.MAX_NEW);
+  let fresh = [];
+  if (rows.length) {
+    fresh = await sbRest(env, 'signals?on_conflict=content_hash&select=id,content_hash,title,summary,source_name,source_tier,territory', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
+      body: rows
+    }) || [];
+  }
+  return { captured: items.length, unique: rows.length, fresh, feedErrors };
+}
+
+// EMBED — Workers AI (own account), batched; vectors kept in memory for
+// FILTER/CONNECT and persisted via merge-upsert on the fingerprint.
+async function spineEmbed(env, fresh) {
+  const vecs = new Map();
+  for (let i = 0; i < fresh.length; i += SPINE.EMBED_BATCH) {
+    const batch = fresh.slice(i, i + SPINE.EMBED_BATCH);
+    try {
+      const out = await env.AI.run(KB_EMBED_MODEL, {
+        text: batch.map(r => (r.title + '. ' + (r.summary || '')).slice(0, 512))
+      });
+      const data = (out && out.data) || [];
+      if (data.length !== batch.length) throw new Error('embed_shape');
+      await sbRest(env, 'signals?on_conflict=content_hash', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: batch.map((r, j) => ({ content_hash: r.content_hash, embedding: data[j] }))
+      });
+      batch.forEach((r, j) => vecs.set(r.content_hash, data[j]));
+    } catch (e) { /* this batch stays raw; next run retries nothing lost */ }
+  }
+  return vecs;
+}
+
+// FILTER — echo kill against the lake, then the POV classifier on t1.
+async function spineFilter(env, fresh, vecs) {
+  const updates = [], kept = [];
+  for (const r of fresh.slice(0, SPINE.MAX_CLASSIFY)) {
+    const vec = vecs.get(r.content_hash);
+    if (!vec) continue;
+    try {
+      const near = await sbRest(env, 'rpc/match_signals', {
+        method: 'POST', body: { p_query: vec, p_count: 2 }
+      }) || [];
+      const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
+      if (echo) { updates.push({ content_hash: r.content_hash, status: 'rejected', momentum: { echo_of: echo.id } }); continue; }
+      const reply = await callModel(env, 't1', [
+        { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
+        { role: 'user', content: 'TITLE: ' + r.title + '\nSUMMARY: ' + (r.summary || '(none)') + '\nSOURCE: ' + r.source_name }
+      ], { max_tokens: 160 });
+      const j = parseModelJson(reply) || {};
+      const territory = DAILY_POV.territories.includes(j.territory) ? j.territory : (r.territory || 'technology-innovation');
+      const novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0));
+      if (j.announcement === true && novelty <= 1) {
+        updates.push({ content_hash: r.content_hash, territory, status: 'rejected', momentum: { novelty, announcement: true } });
+        continue;
+      }
+      updates.push({ content_hash: r.content_hash, territory, status: 'filtered', momentum: { novelty, note: String(j.note || '').slice(0, 90) } });
+      kept.push({ ...r, territory, novelty });
+    } catch (e) { /* item stays raw for the next run */ }
+  }
+  if (updates.length) {
+    await sbRest(env, 'signals?on_conflict=content_hash', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
+    });
+  }
+  return kept;
+}
+
+// CONNECT — neighbors within 14 days, cluster adoption, mechanical momentum.
+async function spineConnect(env, kept, vecs) {
+  const updates = [];
+  const since = new Date(Date.now() - 14 * 24 * 3600e3).toISOString();
+  for (const r of kept.slice(0, SPINE.MAX_CONNECT)) {
+    const vec = vecs.get(r.content_hash);
+    if (!vec) continue;
+    try {
+      const near = (await sbRest(env, 'rpc/match_signals', {
+        method: 'POST', body: { p_query: vec, p_count: 6, p_since: since }
+      }) || []).filter(n => n.id !== r.id);
+      let cluster_id = null;
+      const anchor = near.filter(n => n.similarity >= SPINE.CLUSTER_SIM)[0];
+      if (anchor) {
+        const det = await sbRest(env, `signals?id=eq.${anchor.id}&select=cluster_id`);
+        cluster_id = (det && det[0] && det[0].cluster_id) || null;
+      }
+      if (!cluster_id) cluster_id = crypto.randomUUID();
+      const momentum = momentumMech(near, r.territory, r.source_tier, r.novelty);
+      momentum.note = undefined;
+      updates.push({ content_hash: r.content_hash, cluster_id, status: 'connected',
+        momentum: Object.assign({}, momentum, { neighbors: near.slice(0, 4).map(n => n.id) }) });
+    } catch (e) { /* stays filtered; composer treats filtered as usable */ }
+  }
+  if (updates.length) {
+    await sbRest(env, 'signals?on_conflict=content_hash', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
+    });
+  }
+  return updates.length;
+}
+
+async function runDailySpine(env) {
+  const t0 = Date.now();
+  const cap = await spineCapture(env);
+  const vecs = await spineEmbed(env, cap.fresh);
+  const kept = await spineFilter(env, cap.fresh, vecs);
+  const connected = await spineConnect(env, kept, vecs);
+  const stats = {
+    captured: cap.captured, unique: cap.unique, fresh: cap.fresh.length,
+    embedded: vecs.size, filtered: kept.length, connected,
+    feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
+  };
+  logEvent(env, 'daily', null, 'spine_run', null, stats);
+  return stats;
+}
+
+async function dailySpineGuarded(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user || !(await callerIsAdmin(env, user.id)))
+    return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const stats = await runDailySpine(env);
+  return json({ ok: true, ...stats }, 200, origin, env);
+}
+
+/* GET /daily/lake — public receipt: recent-window counts by status and
+ * territory, newest capture timestamp. Reads a bounded window, cheap. */
+async function dailyLakePublic(env, origin) {
+  try {
+    const rows = await sbRest(env, 'signals?select=status,territory,captured_at&order=captured_at.desc&limit=500') || [];
+    const byStatus = {}, byTerritory = {};
+    rows.forEach(r => {
+      byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+      if (r.territory) byTerritory[r.territory] = (byTerritory[r.territory] || 0) + 1;
+    });
+    return json({ ok: true, window: rows.length, newest: rows[0] ? rows[0].captured_at : null,
+      by_status: byStatus, by_territory: byTerritory }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'unavailable' }, 200, origin, env);
+  }
+}
+
 /* SEAM:MODEL_POOL — the single routing function every LLM call passes through.
  * Tiers: t1/t2 = bulk transform on PUBLIC data; t3 = final voice.
  * Today all tiers resolve to Workers AI (env.AI). When OpenRouter is wired,
@@ -1722,10 +2006,16 @@ async function runDailyPipeline(env, opts) {
   const force = !!(opts && opts.force);
   const today = new Date().toISOString().slice(0, 10);
 
+  // 0. THE SPINE — fill the lake first (the daily-spine seam). A spine
+  //    failure is logged and swallowed: the edition must publish regardless.
+  let spine = null;
+  try { spine = await runDailySpine(env); }
+  catch (e) { logEvent(env, 'daily', null, 'spine_error', null, { err: String(e && e.message).slice(0, 120) }); }
+
   // Idempotency: if today is already published, do nothing.
   const existing = await sbRest(env, `editions?date=eq.${today}&select=id,status`);
   if (existing && existing[0] && existing[0].status === 'published' && !force) {
-    return { skipped: 'already_published', date: today };
+    return { skipped: 'already_published', date: today, spine };
   }
 
   // 1. INGEST — gather public signal across beats (reuses gatherServerSignals).
