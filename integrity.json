@@ -13,20 +13,24 @@
       "bytes": 515996
     },
     "arcade/index.html": {
-      "version": "hub-v1.1",
-      "bytes": 59250
+      "version": "hub-v1.2",
+      "bytes": 81535
     },
     "arcade/rps/index.html": {
       "version": "rps-3-9",
       "bytes": 6882003
     },
     "arcade/claw/index.html": {
-      "version": "claw-2-4",
-      "bytes": 4174506
+      "version": "claw-2-5",
+      "bytes": 4179879
     },
     "arcade/pop-a-shot/index.html": {
       "version": "pop-1-4",
       "bytes": 4176227
+    },
+    "arcade/chess/index.html": {
+      "version": "chess-1-0",
+      "bytes": 6950521
     }
   },
   "payloads": {
@@ -41,7 +45,8 @@
         "arcade/rps/index.html",
         "arcade/claw/index.html",
         "arcade/pop-a-shot/index.html",
-        "arcade/thumb/index.html"
+        "arcade/thumb/index.html",
+        "arcade/chess/index.html"
       ]
     }
   }

@@ -645,7 +645,7 @@ const ARCADE = {
   GAMES: { rps:      { max: 50, live: true },                    // best streak cap
            claw:     { max: 5, minGrabMs: 3000, live: true },    // wins per session cap
            pop:      { max: 240, perSec: 4, live: true },        // 60s * 3pt heaters + slack
-           chess:    { max: 50, live: false },                   // best win-streak vs the Hand
+           chess:    { max: 50, live: true },                    // PRIMARY — best win-streak vs the Hand
            checkers: { max: 50, live: false },                   // best win-streak vs the Hand
            cornhole: { max: 21, live: false },                   // cancellation to 21, best session
            thumb:    { max: 60, perSec: 2, live: true } },       // pins per bout, rate-capped
@@ -660,6 +660,7 @@ async function arcadeRouter(path, request, env, origin) {
   switch (path) {
     case '/arcade/match':   return arcadeMatch(body, env, origin);
     case '/arcade/claim':   return arcadeClaim(body, env, origin);
+    case '/arcade/gate':    return arcadeGate(body, env, origin);
     case '/arcade/prize':   return arcadePrize(env, origin);
     case '/arcade/join':    return arcadeJoin(body, env, origin);
     case '/arcade/session': return arcadeSession(url, env, origin);
@@ -806,8 +807,10 @@ function arcSeason() {  // ISO week, e.g. 2026-W28 — weekly seasons per spec
  * RPS rides it today, chess/checkers/thumb ride it tomorrow.
  * ═══════════════════════════════════════════════════════════════════ */
 const ARC_ACH = {
-  rps: { key: 'three_matches', chain: 3 },   // three consecutive best-of-3 wins vs the Hand
-  pop: { key: 'beats_top' },                 // decided server-side inside the score submit
+  rps:   { key: 'three_matches', chain: 3 },   // best of 9: three consecutive best-of-3 wins vs the Hand
+  pop:   { key: 'beats_top' },                 // beat the standing high score (server-decided in score submit)
+  chess: { key: 'three_wins', chain: 3 },      // take three straight games from the Hand
+  thumb: { key: 'ten_straight', chain: 10 },   // pin ten consecutive rounds
 };
 async function arcVerify(env, token, game) {
   if (!token) return { error: 'bad_token' };
@@ -829,12 +832,18 @@ async function getArcConfig(env) {
   return seed;
 }
 async function arcGrant(env, playerId, game, cfg) {
+  // Unarmed treasury: the win stands, the reveal is NOT consumed —
+  // come back and play again once the Hand arms the claw.
+  if (!cfg.code || !String(cfg.code).trim()) {
+    logEvent(env, 'arcade', game, 'token_unarmed', null, {});
+    return { achieved: true, armed: false };
+  }
   // One reveal per player per code version — rotation re-arms.
   try {
     await sbRest(env, 'arcade_achievements', { method: 'POST', body: {
       player_id: playerId, game, achievement_key: ARC_ACH[game].key, code_version: cfg.code_version } });
     logEvent(env, 'arcade', game, 'code_revealed', null, { v: cfg.code_version });
-    return { achieved: true, code: cfg.code, prize: cfg.prize_name };
+    return { achieved: true, armed: true, code: cfg.code, prize: cfg.prize_name };
   } catch (e) { return { achieved: false, already: true }; }
 }
 async function arcadeMatch(body, env, origin) {
@@ -862,6 +871,19 @@ async function arcadeMatch(body, env, origin) {
   const grant = await arcGrant(env, player_id, game, cfg);
   return json(Object.assign({ ok: true, chain: ach.chain }, grant), 200, origin, env);
 }
+/* POST /arcade/gate { token(claw session), code } -> { ok, armed, valid }
+   The doorman: validates a token against the treasury without spending it. */
+async function arcadeGate(body, env, origin) {
+  const { token, code } = body;
+  const v = await arcVerify(env, token, 'claw');
+  if (!v.ok) return json({ ok: false, error: v.error }, 403, origin, env);
+  const cfg = await getArcConfig(env);
+  const armed = !!(cfg.code && String(cfg.code).trim());
+  if (!armed) return json({ ok: true, armed: false, valid: false }, 200, origin, env);
+  const valid = String(code || '').trim().toUpperCase() === String(cfg.code).trim().toUpperCase();
+  logEvent(env, 'arcade', 'claw', valid ? 'gate_opened' : 'gate_refused', v.payload.jti, {});
+  return json({ ok: true, armed: true, valid }, 200, origin, env);
+}
 async function arcadeClaim(body, env, origin) {
   const { token, player_id, code } = body;
   if (!player_id || !code) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
@@ -873,6 +895,8 @@ async function arcadeClaim(body, env, origin) {
     await env.RATE_LIMIT.put(k, '1', { expirationTtl: 86400 });
   }
   const cfg = await getArcConfig(env);
+  if (!cfg.code || !String(cfg.code).trim())
+    return json({ ok: false, error: 'unarmed' }, 200, origin, env);
   const given = String(code).trim().toUpperCase();
   if (given !== String(cfg.code).trim().toUpperCase()) {
     logEvent(env, 'arcade', 'claw', 'claim_stale', v.payload.jti, {});
@@ -903,13 +927,14 @@ async function arcAdminState(env, origin, user) {
 async function arcAdminRotate(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   const code = String(body.code || '').trim();
-  if (!/^[A-Za-z0-9\- ]{3,24}$/.test(code)) return json({ ok: false, error: 'bad_code' }, 200, origin, env);
+  const disarm = code === '';
+  if (!disarm && !/^[A-Za-z0-9\- ]{3,24}$/.test(code)) return json({ ok: false, error: 'bad_code' }, 200, origin, env);
   const cfg = await getArcConfig(env);
   const nextV = cfg.code_version + 1;
   await sbRest(env, 'arcade_config?id=eq.1', { method: 'PATCH', body: {
-    code: code.toUpperCase(), code_version: nextV, updated_at: new Date().toISOString() } });
-  logEvent(env, 'arcade', null, 'code_rotated', null, { v: nextV });
-  return json({ ok: true, code_version: nextV }, 200, origin, env);
+    code: disarm ? '' : code.toUpperCase(), code_version: nextV, updated_at: new Date().toISOString() } });
+  logEvent(env, 'arcade', null, disarm ? 'code_disarmed' : 'code_rotated', null, { v: nextV });
+  return json({ ok: true, code_version: nextV, armed: !disarm }, 200, origin, env);
 }
 async function arcAdminPrize(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);

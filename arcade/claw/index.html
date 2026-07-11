@@ -157,6 +157,38 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--red);outline-of
   </div>
 </div>
 
+<style>
+/* SEAM:ENDGAME — the prize counter door: token-gated entry */
+#gate{position:fixed;inset:0;z-index:9;background:rgba(10,10,10,.82);display:flex;align-items:center;
+  justify-content:center;padding:18px;opacity:0;pointer-events:none;transition:opacity .3s}
+#gate.on{opacity:1;pointer-events:auto}
+#gate .card{width:min(460px,100%);background:#121214;border:1px solid var(--line);border-radius:10px;padding:26px 24px;text-align:center}
+#gate .eyebrow{font-family:var(--arcade);font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+#gate h2{font-family:var(--arcade);font-weight:400;font-size:20px;margin-bottom:8px}
+#gate .earn{font-size:11px;line-height:1.9;letter-spacing:.06em;color:#8988A0;text-align:left;margin:14px 0;text-transform:uppercase}
+#gate .earn b{color:var(--ivory)}
+#gate input{width:100%;background:#0A0A0A;border:1px solid var(--line);border-radius:8px;color:var(--ivory);
+  font-family:'Space Mono',monospace;font-size:15px;letter-spacing:.3em;text-transform:uppercase;text-align:center;padding:12px}
+#gate .ok{margin-top:12px;width:100%}
+#gate .gate-status{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);min-height:16px;margin-top:10px}
+#gate .floor{display:block;margin-top:12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8988A0;text-decoration:none}
+</style>
+<div id="gate">
+  <div class="card">
+    <div class="eyebrow">The Prize Counter &#183; Token-Gated</div>
+    <h2>THE CLAW SPENDS WHAT THE FLOOR EARNS</h2>
+    <div class="earn">
+      <b>Pop-A-Shot</b> &#8212; beat the standing high score<br>
+      <b>Chess</b> &#8212; take three straight from the Hand<br>
+      <b>RPS</b> &#8212; win best of 9: three matches in a row<br>
+      <b>Thumb</b> &#8212; pin ten consecutive rounds
+    </div>
+    <input id="gateCode" placeholder="ENTER TOKEN" maxlength="24" autocomplete="off">
+    <button class="ok" id="gateGo">Unlock the Claw</button>
+    <div class="gate-status" id="gateStatus"></div>
+    <a class="floor" href="../">&#8592; Earn your token on the floor</a>
+  </div>
+</div>
 <div id="reveal">
   <div class="card">
     <div class="eyebrow" id="revealEyebrow">Surfaced</div>
@@ -595,7 +627,9 @@ function dismissPrimer(){
   setTimeout(()=>p.remove(), 500);
   blip(660,.08);
 }
-$('primerOk').addEventListener('click', dismissPrimer);
+$('primerOk').addEventListener('click', ()=>{ dismissPrimer(); if(!gateOpen) showGate(); });
+$('gateGo').addEventListener('click', gateTry);
+$('gateCode').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') gateTry(); });
 
 $('slyPill').addEventListener('click', ()=>{
   state.sly = !state.sly;
@@ -607,6 +641,43 @@ let pendingPrize = null;
 const SIGNUPS = [];   // SEAM:SIGNUP_ENDPOINT — POST to Supabase/API here when the
                       // beta backend lands; entries: { email, prize, at }
 let lastWin = null;
+/* SEAM:ENDGAME — spec 3 lands: the treasury owns the prize, the token opens
+   the door, the claim mints the ticket. Fail-open on network (server still
+   refuses claims), fail-closed on wrong token. */
+const ARC_API = 'https://api.unsurfaced-intelligence.com';
+let gateOpen = false, gateCode = null, clawToken = null, treasuryPrize = null, gateArmed = null;
+function arcPlayerId(){ try{ const p = JSON.parse(localStorage.getItem('arcade_player')||'null');
+  return p ? (p.id || p.player_id || null) : null; }catch(e){ return null; } }
+async function arcJson(path, opts){
+  const r = await fetch(ARC_API + path, Object.assign({ headers:{'content-type':'application/json'} }, opts||{}));
+  return r.json();
+}
+async function gateBoot(){
+  try{
+    const s = await arcJson('/arcade/session?game=claw');
+    clawToken = s.ok ? s.token : null;
+    const pz = await arcJson('/arcade/prize');
+    if (pz.ok) treasuryPrize = pz;
+  }catch(e){ /* offline: fail-open below */ }
+}
+gateBoot();
+function showGate(){ $('gate').classList.add('on'); setTimeout(()=>{ try{$('gateCode').focus();}catch(e){} }, 250); }
+function hideGate(){ $('gate').classList.remove('on'); }
+async function gateTry(){
+  const code = $('gateCode').value.trim();
+  $('gateStatus').textContent = 'CHECKING…';
+  try{
+    if (!clawToken) await gateBoot();
+    if (!clawToken){ gateOpen = true; hideGate();   // the floor is offline: free play, prizes not live
+      $('hint').classList.remove('off'); return; }
+    const r = await arcJson('/arcade/gate', { method:'POST',
+      body: JSON.stringify({ token: clawToken, code }) });
+    gateArmed = !!(r && r.armed);
+    if (r && r.ok && r.armed && r.valid){ gateOpen = true; gateCode = code; hideGate(); }
+    else if (r && r.ok && !r.armed){ $('gateStatus').textContent = 'THE CLAW ISN\u2019T ARMED \u2014 THE TREASURY READIES THE NEXT PRIZE. EARN YOUR TOKEN AND COME BACK.'; }
+    else { $('gateStatus').textContent = 'STALE OR UNKNOWN TOKEN \u2014 EARN A FRESH ONE ON THE FLOOR'; }
+  }catch(e){ gateOpen = true; hideGate(); }
+}
 function newGame(){
   for (const p of prizes){
     if (p.mesh.parent) scene.remove(p.mesh);
@@ -634,10 +705,25 @@ function onPrizeSecured(meta){
   // stage above the name) when the reveal-viewer build lands.
   if (meta && meta.hasPrize){
     state.score += 1; setTally(state.score);
-    $('revealEyebrow').textContent = 'Surfaced · Beta';
-    $('revealName').textContent = meta.prize.label;
-    $('revealMeta').textContent = (meta.prize.rarity||'common') + ' · inside the capsule';
+    /* SEAM:ENDGAME — the treasury's prize is THE prize; the local capsule
+       labels retire. The claim mints the fulfillment ticket. */
+    $('revealEyebrow').textContent = 'Surfaced \u00B7 The Treasury';
+    $('revealName').textContent = (treasuryPrize && treasuryPrize.name) || meta.prize.label;
+    $('revealMeta').textContent = (treasuryPrize && treasuryPrize.blurb) || 'inside the capsule';
     lastWin = meta.prize;
+    (async ()=>{
+      try{
+        const pid = arcPlayerId();
+        if (!pid){ $('revealMeta').textContent += ' \u00B7 JOIN THE BOARD TO CLAIM'; return; }
+        if (!gateCode){ return; }
+        const c = await arcJson('/arcade/claim', { method:'POST',
+          body: JSON.stringify({ token: clawToken, player_id: pid, code: gateCode }) });
+        if (c && c.ok && c.ticket) $('revealMeta').textContent =
+          (treasuryPrize && treasuryPrize.blurb ? treasuryPrize.blurb + ' \u00B7 ' : '') + 'TICKET ' + c.ticket + ' \u2014 THE HAND FULFILLS';
+        else if (c && c.error === 'stale_code') $('revealMeta').textContent += ' \u00B7 CODE ROTATED \u2014 EARN THE FRESH TOKEN';
+        else if (c && c.error === 'unarmed') $('revealMeta').textContent += ' \u00B7 TREASURY UNARMED \u2014 COME BACK SOON';
+      }catch(e){}
+    })();
     $('reveal').classList.add('win');
     sfx.win();
   } else {
