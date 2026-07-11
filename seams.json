@@ -118,6 +118,26 @@
       "file": "arcade/index.html",
       "tag": "SEAM:THUMB",
       "purpose": "cabinet 04 card + board tab"
+    },
+    "SEAM:CHESS@cabinet": {
+      "file": "arcade/chess/index.html",
+      "tag": "SEAM:CHESS",
+      "purpose": "chess cabinet: proven 0x88 core, tiered brain, THE Hand twice on the 3D table, hold-to-move + orbit"
+    },
+    "SEAM:CHESS@arcade-hub": {
+      "file": "arcade/index.html",
+      "tag": "SEAM:CHESS",
+      "purpose": "cabinet 05 card + board tab"
+    },
+    "SEAM:ENDGAME@claw": {
+      "file": "arcade/claw/index.html",
+      "tag": "SEAM:ENDGAME",
+      "purpose": "the prize counter door: token gate, treasury prize connect, claim tickets"
+    },
+    "SEAM:ENDGAME@chess-cabinet": {
+      "file": "arcade/chess/index.html",
+      "tag": "SEAM:ENDGAME",
+      "purpose": "chess mints the key: three straight from the Hand reveals the treasury code"
     }
   },
   "planned": [
