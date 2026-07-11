@@ -37,8 +37,17 @@ const PLAY_SYSTEM = {
 
 export default {
   async scheduled(event, env, ctx) {
-    // DAILY pipeline — runs on cron. Builds today's edition end to end.
-    ctx.waitUntil(runDailyPipeline(env).catch(e => console.log('daily_pipeline_error', String(e && e.message))));
+    // Three crons, one worker: 05:15 capture · every 30' drain · 06:00 compose.
+    const cron = String(event && event.cron || '');
+    if (cron === '15 5 * * *') {
+      ctx.waitUntil(runDailySpine(env).catch(e => console.log('spine_capture_error', String(e && e.message))));
+    } else if (cron === '0 6 * * *') {
+      ctx.waitUntil(runDailyPipeline(env).catch(e => console.log('daily_pipeline_error', String(e && e.message))));
+    } else {
+      ctx.waitUntil(spineAdvance(env, 38)
+        .then(s => logEvent(env, 'daily', null, 'spine_slice', null, s))
+        .catch(e => console.log('spine_slice_error', String(e && e.message))));
+    }
   },
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
@@ -1695,8 +1704,16 @@ function rssItems(xml, max) {
       .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
     const dateRaw = rssField(b, ['pubDate', 'published', 'updated', 'dc:date']).trim();
     const d = dateRaw ? new Date(dateRaw) : null;
+    // key visual, from the feed itself — media:*, enclosure, itunes, first <img>
+    let image = null;
+    const im = b.match(/<media:(?:content|thumbnail)[^>]*url=["']([^"']+)["']/i)
+            || b.match(/<enclosure[^>]*type=["']image[^"']*["'][^>]*url=["']([^"']+)["']/i)
+            || b.match(/<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp|gif)[^"']*)["']/i)
+            || b.match(/<itunes:image[^>]*href=["']([^"']+)["']/i)
+            || b.match(/<img[^>]*src=["']([^"']+)["']/i);
+    if (im && /^https?:\/\//i.test(rssDecode(im[1]))) image = rssDecode(im[1]).slice(0, 500);
     out.push({
-      title: title.slice(0, 240), url: rssDecode(link).trim(), summary: desc,
+      title: title.slice(0, 240), url: rssDecode(link).trim(), summary: desc, image,
       published_at: d && !isNaN(d.getTime()) ? d.toISOString() : null
     });
   }
@@ -1763,7 +1780,7 @@ async function spineCapture(env) {
       const r = await fetchWithTimeout(s.feed, SPINE.TIMEOUT_MS);
       if (!r.ok) throw new Error('http_' + r.status);
       const got = rssItems(await r.text(), SPINE.FEED_CAP);
-      return got.map(it => ({ ...it, source_name: s.name, source_tier: s.tier, territory: s.territories[0] || null }));
+      return got.map(it => ({ ...it, source_name: s.name, source_tier: s.tier, territory: s.territories[0] || null }));  // it.image rides along
     }));
     settled.forEach((res, j) => {
       if (res.status === 'fulfilled') items.push(...res.value);
@@ -1776,6 +1793,7 @@ async function spineCapture(env) {
       const sig = await gatherServerSignals(lane.q);
       sig.filter(s => s.signalType === 'news' && s.url).slice(0, SPINE.GDELT_CAP).forEach(s => items.push({
         title: s.title, url: s.url, summary: s.snippet || '', published_at: null,
+        image: /^https?:\/\//.test(String(s.image || '')) ? String(s.image).slice(0, 500) : null,
         source_name: s.source || 'GDELT', source_tier: 4, territory: null
       }));
     } catch (e) {}
@@ -1789,7 +1807,7 @@ async function spineCapture(env) {
   const rows = [...byHash.values()].slice(0, SPINE.MAX_NEW);
   let fresh = [];
   if (rows.length) {
-    fresh = await sbRest(env, 'signals?on_conflict=content_hash&select=id,content_hash,title,summary,source_name,source_tier,territory', {
+    fresh = await sbRest(env, 'signals?on_conflict=content_hash&select=id,content_hash,title,summary,source_name,source_tier,territory,image', {
       method: 'POST',
       headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
       body: rows
@@ -1798,106 +1816,226 @@ async function spineCapture(env) {
   return { captured: items.length, unique: rows.length, fresh, feedErrors };
 }
 
-// EMBED — Workers AI (own account), batched; vectors kept in memory for
-// FILTER/CONNECT and persisted via merge-upsert on the fingerprint.
-async function spineEmbed(env, fresh) {
-  const vecs = new Map();
-  for (let i = 0; i < fresh.length; i += SPINE.EMBED_BATCH) {
-    const batch = fresh.slice(i, i + SPINE.EMBED_BATCH);
+/* spineAdvance — the budgeted drain. Pulls its OWN backlog from the lake
+ * by status, spends at most `budget` subrequests (free-tier law: every
+ * fetch/AI/sb call counts), and stops mid-stage when the wallet empties.
+ * Fully resumable: whatever is left advances on the next slice. */
+
+/* ═══ SEAM:DAILY_COMPOSER — twelve from the lake. Candidates are recent
+ * connected/filtered signals; a PURE slot-filler enforces the POV edition
+ * template (per-territory max, edge quota); a PURE format law assigns the
+ * six shapes; INTERPRET+APPLY (t3, the voice layer) writes each take.
+ * The legacy synthesis path survives untouched as the fallback — the
+ * paper can never again starve on a single upstream. ═══ */
+
+// PURE: greedy fill under the POV quotas. cands sorted by score desc.
+function slotFill(cands, quotas) {
+  const picks = [], perT = {};
+  for (const c of cands) {
+    if (picks.length >= 12) break;
+    const t = c.territory || 'unknown';
+    if ((perT[t] || 0) >= quotas.per_territory_max) continue;
+    perT[t] = (perT[t] || 0) + 1;
+    picks.push(c);
+  }
+  // edge law: at least one Tier-3 story if the lake holds one.
+  if (quotas.edge_min > 0 && !picks.some(p => p.source_tier === 3)) {
+    const edge = cands.find(c => c.source_tier === 3 && !picks.includes(c));
+    if (edge && picks.length) {
+      let low = picks.length - 1;                       // swap out the weakest
+      picks[low] = edge;
+    }
+  }
+  return picks;
+}
+
+// PURE: the six shapes. idx 0 = LEAD; 1-2 = FEATURES (reads when connected).
+function assignFormat(c, idx, haveProvocation) {
+  if (idx === 0) return 'dispatch';
+  const breadth = (c.momentum && c.momentum.breadth) || 0;
+  if ((idx === 1 || idx === 2) && breadth >= 2) return 'read';
+  if (c.source_tier === 3) return 'signal';
+  if (/\d{2,}|\$\d|%/.test(c.title || '')) return 'number';
+  if (/launch|debut|unveil|drops?\b|releases?\b/i.test(c.title || '')) return 'drop';
+  if (!haveProvocation && idx >= 9) return 'provocation';
+  return 'dispatch';
+}
+
+async function composeFromLake(env, today) {
+  const since = new Date(Date.now() - 36 * 3600e3).toISOString();
+  const cands = (await sbRest(env,
+    `signals?status=in.(connected,filtered)&captured_at=gte.${since}` +
+    '&order=captured_at.desc&limit=120' +
+    '&select=id,url,title,summary,source_name,source_tier,territory,image,momentum,status'
+  ) || []).filter(c => c.title && c.url);
+  if (cands.length < 6) return null;
+
+  const dims = DAILY_POV.momentum.dims;
+  cands.forEach(c => {
+    const m = c.momentum || {};
+    c.score = dims.reduce((s, d) => s + (Number(m[d]) || 0), 0)
+      + (c.source_tier === 1 ? 1 : 0) + (c.status === 'connected' ? 1 : 0);
+  });
+  cands.sort((a, b) => b.score - a.score);
+
+  const picks = slotFill(cands, DAILY_POV.edition.quotas);
+  if (picks.length < 6) return null;
+
+  const items = [];
+  let haveProv = false;
+  for (let i = 0; i < picks.length; i++) {
+    const c = picks[i];
+    const format = assignFormat(c, i, haveProv);
+    if (format === 'provocation') haveProv = true;
+    let take = '', apply = null;
     try {
-      const out = await env.AI.run(KB_EMBED_MODEL, {
-        text: batch.map(r => (r.title + '. ' + (r.summary || '')).slice(0, 512))
-      });
-      const data = (out && out.data) || [];
-      if (data.length !== batch.length) throw new Error('embed_shape');
+      const reply = await callModel(env, 't3', [
+        { role: 'system', content: DAILY_POV.stages.interpret + ' Then, on its own final line: ' + DAILY_POV.stages.apply },
+        { role: 'user', content: 'TITLE: ' + c.title + '\nSUMMARY: ' + (c.summary || '(none)') +
+          '\nSOURCE: ' + c.source_name + ' (tier ' + c.source_tier + ')\nTERRITORY: ' + c.territory }
+      ], { max_tokens: 320 });
+      const lines = String(reply || '').trim().split('\n').map(s => s.trim()).filter(Boolean);
+      const tagLine = lines.findIndex(l => /\[(creative|founder|marketer|exec|talent)\]/i.test(l));
+      if (tagLine >= 0) { apply = lines[tagLine].slice(0, 240); lines.splice(tagLine, 1); }
+      take = lines.join(' ').slice(0, 800);
+    } catch (e) { /* voice failure → factual fallback below */ }
+    if (!take) take = String(c.summary || c.title).slice(0, 400);
+    items.push({
+      kicker: String(c.territory || 'the signal').replace(/-/g, ' ').toUpperCase().slice(0, 40),
+      headline: String(c.title).slice(0, 200),
+      standfirst: String(c.summary || '').slice(0, 160),
+      take,
+      source_name: String(c.source_name || '').slice(0, 120),
+      source_url: c.url,
+      image_url: /^https?:\/\//.test(String(c.image || '')) ? c.image : null,
+      lang: null,
+      beat: DAILY_POV.beat_map[c.territory] || 'culture',
+      territory: c.territory, format, apply,
+      signal_id: c.id, momentum: c.momentum || null
+    });
+  }
+  return { lead: items[0].headline, items };
+}
+
+async function spineAdvance(env, budget) {
+  let calls = 0;
+  const stats = { embedded: 0, filtered: 0, rejected: 0, connected: 0 };
+  const vecOf = (e) => Array.isArray(e) ? e : (typeof e === 'string' ? JSON.parse(e) : null);
+
+  // E · EMBED backlog: raw rows without vectors.
+  if (calls + 3 <= budget) {
+    calls++;
+    const back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.asc&limit=32&select=content_hash,title,summary') || [];
+    for (let i = 0; i < back.length && calls + 2 <= budget; i += SPINE.EMBED_BATCH) {
+      const batch = back.slice(i, i + SPINE.EMBED_BATCH);
+      try {
+        calls++;
+        const out = await env.AI.run(KB_EMBED_MODEL, {
+          text: batch.map(r => (r.title + '. ' + (r.summary || '')).slice(0, 512))
+        });
+        const data = (out && out.data) || [];
+        if (data.length !== batch.length) throw new Error('embed_shape');
+        calls++;
+        await sbRest(env, 'signals?on_conflict=content_hash', {
+          method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' },
+          body: batch.map((r, j) => ({ content_hash: r.content_hash, embedding: data[j] }))
+        });
+        stats.embedded += batch.length;
+      } catch (e) { /* stays raw; next slice retries */ }
+    }
+  }
+
+  // F · FILTER backlog: raw rows WITH vectors — echo kill + t1 classify.
+  if (calls + 4 <= budget) {
+    calls++;
+    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.asc&limit=12&select=id,content_hash,title,summary,source_name,source_tier,territory,embedding') || [];
+    const updates = [];
+    for (const r of back) {
+      if (calls + 3 > budget) break;
+      const vec = vecOf(r.embedding);
+      if (!vec) continue;
+      try {
+        calls++;
+        const near = await sbRest(env, 'rpc/match_signals', { method: 'POST', body: { p_query: vec, p_count: 2 } }) || [];
+        const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
+        if (echo) { updates.push({ content_hash: r.content_hash, status: 'rejected', momentum: { echo_of: echo.id } }); stats.rejected++; continue; }
+        calls++;
+        const reply = await callModel(env, 't1', [
+          { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
+          { role: 'user', content: 'TITLE: ' + r.title + '\nSUMMARY: ' + (r.summary || '(none)') + '\nSOURCE: ' + r.source_name }
+        ], { max_tokens: 160 });
+        const j = parseModelJson(reply) || {};
+        const territory = DAILY_POV.territories.includes(j.territory) ? j.territory : (r.territory || 'technology-innovation');
+        const novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0));
+        if (j.announcement === true && novelty <= 1) {
+          updates.push({ content_hash: r.content_hash, territory, status: 'rejected', momentum: { novelty, announcement: true } });
+          stats.rejected++;
+        } else {
+          updates.push({ content_hash: r.content_hash, territory, status: 'filtered', momentum: { novelty, note: String(j.note || '').slice(0, 90) } });
+          stats.filtered++;
+        }
+      } catch (e) { /* stays raw for the next slice */ }
+    }
+    if (updates.length && calls + 1 <= budget) {
+      calls++;
       await sbRest(env, 'signals?on_conflict=content_hash', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates' },
-        body: batch.map((r, j) => ({ content_hash: r.content_hash, embedding: data[j] }))
+        method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
       });
-      batch.forEach((r, j) => vecs.set(r.content_hash, data[j]));
-    } catch (e) { /* this batch stays raw; next run retries nothing lost */ }
+    }
   }
-  return vecs;
-}
 
-// FILTER — echo kill against the lake, then the POV classifier on t1.
-async function spineFilter(env, fresh, vecs) {
-  const updates = [], kept = [];
-  for (const r of fresh.slice(0, SPINE.MAX_CLASSIFY)) {
-    const vec = vecs.get(r.content_hash);
-    if (!vec) continue;
-    try {
-      const near = await sbRest(env, 'rpc/match_signals', {
-        method: 'POST', body: { p_query: vec, p_count: 2 }
-      }) || [];
-      const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
-      if (echo) { updates.push({ content_hash: r.content_hash, status: 'rejected', momentum: { echo_of: echo.id } }); continue; }
-      const reply = await callModel(env, 't1', [
-        { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
-        { role: 'user', content: 'TITLE: ' + r.title + '\nSUMMARY: ' + (r.summary || '(none)') + '\nSOURCE: ' + r.source_name }
-      ], { max_tokens: 160 });
-      const j = parseModelJson(reply) || {};
-      const territory = DAILY_POV.territories.includes(j.territory) ? j.territory : (r.territory || 'technology-innovation');
-      const novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0));
-      if (j.announcement === true && novelty <= 1) {
-        updates.push({ content_hash: r.content_hash, territory, status: 'rejected', momentum: { novelty, announcement: true } });
-        continue;
-      }
-      updates.push({ content_hash: r.content_hash, territory, status: 'filtered', momentum: { novelty, note: String(j.note || '').slice(0, 90) } });
-      kept.push({ ...r, territory, novelty });
-    } catch (e) { /* item stays raw for the next run */ }
-  }
-  if (updates.length) {
-    await sbRest(env, 'signals?on_conflict=content_hash', {
-      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
+  // C · CONNECT backlog: filtered rows — neighbors, clusters, momentum.
+  if (calls + 5 <= budget) {
+    calls++;
+    const back = await sbRest(env, 'signals?status=eq.filtered&order=captured_at.asc&limit=8&select=id,content_hash,territory,source_tier,embedding,momentum') || [];
+    const found = [], anchors = new Set();
+    for (const r of back) {
+      if (calls + 3 > budget) break;
+      const vec = vecOf(r.embedding);
+      if (!vec) continue;
+      try {
+        calls++;
+        const since = new Date(Date.now() - 14 * 24 * 3600e3).toISOString();
+        const near = (await sbRest(env, 'rpc/match_signals', {
+          method: 'POST', body: { p_query: vec, p_count: 6, p_since: since }
+        }) || []).filter(n => n.id !== r.id);
+        const anchor = near.find(n => n.similarity >= SPINE.CLUSTER_SIM);
+        if (anchor) anchors.add(anchor.id);
+        found.push({ r, near, anchorId: anchor ? anchor.id : null });
+      } catch (e) {}
+    }
+    let clusterOf = {};
+    if (anchors.size && calls + 1 <= budget) {
+      calls++;
+      const det = await sbRest(env, `signals?id=in.(${[...anchors].join(',')})&select=id,cluster_id`) || [];
+      det.forEach(d => { clusterOf[d.id] = d.cluster_id; });
+    }
+    const updates = found.map(({ r, near, anchorId }) => {
+      const cluster_id = (anchorId && clusterOf[anchorId]) || crypto.randomUUID();
+      const novelty = (r.momentum && r.momentum.novelty) || 0;
+      const m = momentumMech(near, r.territory, r.source_tier, novelty);
+      stats.connected++;
+      return { content_hash: r.content_hash, cluster_id, status: 'connected',
+        momentum: Object.assign({}, m, { neighbors: near.slice(0, 4).map(n => n.id) }) };
     });
+    if (updates.length && calls + 1 <= budget) {
+      calls++;
+      await sbRest(env, 'signals?on_conflict=content_hash', {
+        method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
+      });
+    }
   }
-  return kept;
-}
-
-// CONNECT — neighbors within 14 days, cluster adoption, mechanical momentum.
-async function spineConnect(env, kept, vecs) {
-  const updates = [];
-  const since = new Date(Date.now() - 14 * 24 * 3600e3).toISOString();
-  for (const r of kept.slice(0, SPINE.MAX_CONNECT)) {
-    const vec = vecs.get(r.content_hash);
-    if (!vec) continue;
-    try {
-      const near = (await sbRest(env, 'rpc/match_signals', {
-        method: 'POST', body: { p_query: vec, p_count: 6, p_since: since }
-      }) || []).filter(n => n.id !== r.id);
-      let cluster_id = null;
-      const anchor = near.filter(n => n.similarity >= SPINE.CLUSTER_SIM)[0];
-      if (anchor) {
-        const det = await sbRest(env, `signals?id=eq.${anchor.id}&select=cluster_id`);
-        cluster_id = (det && det[0] && det[0].cluster_id) || null;
-      }
-      if (!cluster_id) cluster_id = crypto.randomUUID();
-      const momentum = momentumMech(near, r.territory, r.source_tier, r.novelty);
-      momentum.note = undefined;
-      updates.push({ content_hash: r.content_hash, cluster_id, status: 'connected',
-        momentum: Object.assign({}, momentum, { neighbors: near.slice(0, 4).map(n => n.id) }) });
-    } catch (e) { /* stays filtered; composer treats filtered as usable */ }
-  }
-  if (updates.length) {
-    await sbRest(env, 'signals?on_conflict=content_hash', {
-      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
-    });
-  }
-  return updates.length;
+  stats.calls = calls;
+  return stats;
 }
 
 async function runDailySpine(env) {
   const t0 = Date.now();
   const cap = await spineCapture(env);
-  const vecs = await spineEmbed(env, cap.fresh);
-  const kept = await spineFilter(env, cap.fresh, vecs);
-  const connected = await spineConnect(env, kept, vecs);
+  const adv = await spineAdvance(env, 12);
   const stats = {
     captured: cap.captured, unique: cap.unique, fresh: cap.fresh.length,
-    embedded: vecs.size, filtered: kept.length, connected,
-    feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
+    ...adv, feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
   };
   logEvent(env, 'daily', null, 'spine_run', null, stats);
   return stats;
@@ -2006,10 +2144,13 @@ async function runDailyPipeline(env, opts) {
   const force = !!(opts && opts.force);
   const today = new Date().toISOString().slice(0, 10);
 
-  // 0. THE SPINE — fill the lake first (the daily-spine seam). A spine
-  //    failure is logged and swallowed: the edition must publish regardless.
+  // 0. THE SPINE — a drain slice first (the daily-spine seam). Capture has
+  //    its own 05:15 cron; compose runs travel light on the free-tier budget.
+  //    A spine failure is logged and swallowed: the edition publishes regardless.
   let spine = null;
-  try { spine = await runDailySpine(env); }
+  try {
+    spine = (opts && opts.fullSpine) ? await runDailySpine(env) : await spineAdvance(env, 8);
+  }
   catch (e) { logEvent(env, 'daily', null, 'spine_error', null, { err: String(e && e.message).slice(0, 120) }); }
 
   // Idempotency: if today is already published, do nothing.
@@ -2018,13 +2159,24 @@ async function runDailyPipeline(env, opts) {
     return { skipped: 'already_published', date: today, spine };
   }
 
-  // 1. INGEST — gather public signal across beats (reuses gatherServerSignals).
+  // 1. THE LAKE COMPOSER — twelve from the spine's catch (SEAM law).
+  try {
+    const lake = await composeFromLake(env, today);
+    if (lake) return await publishEdition(env, today, existing, lake.lead, lake.items, 'lake', spine);
+  } catch (e) {
+    logEvent(env, 'daily', null, 'compose_error', null, { err: String(e && e.message).slice(0, 120) });
+  }
+
+  // 1b. LEGACY INGEST — the fallback when the lake runs thin.
   const raw = [];
   for (const lane of DAILY_BEATS) {
     const sig = await gatherServerSignals(lane.q);
     sig.forEach(s => raw.push({ ...s, beat: lane.beat }));
   }
-  if (!raw.length) return { error: 'no_signal', date: today };
+  if (!raw.length) {
+    logEvent(env, 'daily', null, 'edition_starved', null, { date: today });
+    return { error: 'no_signal', date: today, spine };
+  }
 
   // 2. CLUSTER/DEDUP — collapse near-duplicate titles; keep the strongest per beat.
   const seen = new Set();
@@ -2100,7 +2252,14 @@ async function runDailyPipeline(env, opts) {
     return { ...it, image_url: img, lang: lng, beat: (sig && sig.beat) || 'culture' };
   });
 
-  // 5. PUBLISH — create/reuse today's edition row, replace its items, mark published.
+  // 5. PUBLISH — shared machinery (lake + legacy).
+  return publishEdition(env, today, existing, parsed.lead_headline || null, enriched, 'legacy', spine);
+}
+
+/* publishEdition — create/reuse today's edition, replace items, mark
+ * published, backlink lake signals when items carry signal_id, cut the
+ * STUDIO manifest. One door for both composers. */
+async function publishEdition(env, today, existing, leadHeadline, items, mode, spine) {
   let edId, issueNo;
   if (existing && existing[0]) {
     edId = existing[0].id;
@@ -2112,22 +2271,32 @@ async function runDailyPipeline(env, opts) {
     issueNo = (typeof noRows === 'number') ? noRows : (noRows || 1);
     const created = await sbRest(env, 'editions', {
       method: 'POST', headers: { Prefer: 'return=representation' },
-      body: { issue_no: issueNo, date: today, status: 'building', headline: parsed.lead_headline || null }
+      body: { issue_no: issueNo, date: today, status: 'building', headline: leadHeadline }
     });
     edId = created[0].id;
   }
 
-  await sbRest(env, 'edition_items', {
-    method: 'POST',
-    body: enriched.map((it, i) => ({ edition_id: edId, ord: i, ...it }))
-  });
+  const createdItems = await sbRest(env, 'edition_items', {
+    method: 'POST', headers: { Prefer: 'return=representation' },
+    body: items.map((it, i) => ({ edition_id: edId, ord: i, ...it }))
+  }) || [];
 
   await sbRest(env, `editions?id=eq.${edId}`, {
     method: 'PATCH',
-    body: { status: 'published', headline: parsed.lead_headline || null, published_at: new Date().toISOString() }
+    body: { status: 'published', headline: leadHeadline, published_at: new Date().toISOString() }
   });
 
-  logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: clean.length });
-  await buildStudioManifest(env, today, issueNo, enriched).catch(() => {});
-  return { ok: true, date: today, issue_no: issueNo, items: clean.length };
+  // provenance thread: the lake learns which of its signals made the paper.
+  try {
+    const backs = createdItems
+      .filter(r => r.signal_id)
+      .map(r => ({ id: r.signal_id, status: 'published', edition_item_id: r.id }));
+    if (backs.length) await sbRest(env, 'signals?on_conflict=id', {
+      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: backs
+    });
+  } catch (e) {}
+
+  logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: items.length, mode });
+  await buildStudioManifest(env, today, issueNo, items).catch(() => {});
+  return { ok: true, date: today, issue_no: issueNo, items: items.length, mode, spine };
 }

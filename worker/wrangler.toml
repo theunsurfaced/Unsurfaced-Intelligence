@@ -36,4 +36,4 @@ enabled = true
 
 # ── Cron: DAILY pipeline (06:00 UTC daily) ──────────────────────────
 [triggers]
-crons = ["0 6 * * *"]
+crons = ["*/30 * * * *", "15 5 * * *", "0 6 * * *"]
