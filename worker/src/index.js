@@ -648,7 +648,7 @@ const ARCADE = {
            chess:    { max: 50, live: false },                   // best win-streak vs the Hand
            checkers: { max: 50, live: false },                   // best win-streak vs the Hand
            cornhole: { max: 21, live: false },                   // cancellation to 21, best session
-           thumb:    { max: 60, perSec: 2, live: false } },      // pins per bout, rate-capped
+           thumb:    { max: 60, perSec: 2, live: true } },       // pins per bout, rate-capped
   SESSION_MIN_S: 5, SESSION_MAX_S: 1800,
   HANDLE_RE: /^[A-Za-z0-9_ ]{3,20}$/,
   HANDLE_BLOCK: ['admin','unsurfaced','moderator','fuck','shit','bitch','cunt','nigg','fag','rape','hitler','nazi'],

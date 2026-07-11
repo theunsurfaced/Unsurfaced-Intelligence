@@ -40,7 +40,8 @@
         "arcade/index.html",
         "arcade/rps/index.html",
         "arcade/claw/index.html",
-        "arcade/pop-a-shot/index.html"
+        "arcade/pop-a-shot/index.html",
+        "arcade/thumb/index.html"
       ]
     }
   }
