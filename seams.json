@@ -166,6 +166,10 @@
   "SEAM:TELEMETRY": {
    "file": "daily/index.html",
    "purpose": "the face wears the engine: live lake counts off the public /daily/lake door as the masthead marquee"
+  },
+  "SEAM:ARCADE_ECON": {
+   "file": "arcade/pop-a-shot/index.html",
+   "purpose": "run-it-back law: revealOk restart for joined players, fresh session token minted on next round start, arcade return door on the score card"
   }
  },
  "planned": [
