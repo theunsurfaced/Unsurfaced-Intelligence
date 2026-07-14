@@ -1008,11 +1008,11 @@ async function arcSign(env, raw) {
  * event (migration 0007). Fire-and-forget: analytics never block product. */
 function logEvent(env, platform, space, event, sessionId, meta) {
   try {
-    sbRest(env, 'activity_events', {
+    return sbRest(env, 'activity_events', {
       method: 'POST',
       body: { platform, space, event, session_id: sessionId, meta: meta || {} }
     }).catch(() => {});
-  } catch { /* never throw from telemetry */ }
+  } catch { return Promise.resolve(); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1971,12 +1971,22 @@ async function spineAdvance(env, budget) {
   let calls = 0;
   const stats = { embedded: 0, filtered: 0, rejected: 0, connected: 0 };
   const vecOf = (e) => Array.isArray(e) ? e : (typeof e === 'string' ? JSON.parse(e) : null);
+  // pgvector takes a bracketed literal. A raw JS array serializes toward PG
+  // '{...}' and vector(384) refuses it — kbEmbed has always done it this way.
+  const vecStr = (v) => '[' + v.join(',') + ']';
+  // ON CONFLICT DO UPDATE forms the whole tuple before it resolves the
+  // conflict, so a partial body trips NOT NULL on title/url (23502). Every
+  // upsert carries back the row it just read.
+  const carry = (r) => ({ content_hash: r.content_hash, title: r.title, url: r.url,
+    summary: r.summary, image: r.image, published_at: r.published_at,
+    source_name: r.source_name, source_tier: r.source_tier, territory: r.territory });
+  const errs = [];
 
   // E · EMBED backlog: raw rows without vectors.
   if (calls + 3 <= budget) {
     calls++;
     let back = [];
-    try { back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.asc&limit=32&select=content_hash,title,summary') || []; }
+    try { back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.asc&limit=32&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
     catch (e) { back = []; }
     for (let i = 0; i < back.length && calls + 2 <= budget; i += SPINE.EMBED_BATCH) {
       const batch = back.slice(i, i + SPINE.EMBED_BATCH);
@@ -1990,17 +2000,17 @@ async function spineAdvance(env, budget) {
         calls++;
         await sbRest(env, 'signals?on_conflict=content_hash', {
           method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' },
-          body: batch.map((r, j) => ({ content_hash: r.content_hash, embedding: data[j] }))
+          body: batch.map((r, j) => Object.assign({}, r, { embedding: vecStr(data[j]) }))
         });
         stats.embedded += batch.length;
-      } catch (e) { /* stays raw; next slice retries */ }
+      } catch (e) { errs.push('embed:' + String(e && e.message).slice(0, 50)); }
     }
   }
 
   // F · FILTER backlog: raw rows WITH vectors — echo kill + t1 classify.
   if (calls + 4 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.asc&limit=12&select=id,content_hash,title,summary,source_name,source_tier,territory,embedding') || [];
+    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.asc&limit=12&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding') || [];
     const updates = [];
     for (const r of back) {
       if (calls + 3 > budget) break;
@@ -2010,7 +2020,7 @@ async function spineAdvance(env, budget) {
         calls++;
         const near = await sbRest(env, 'rpc/match_signals', { method: 'POST', body: { p_query: vec, p_count: 2 } }) || [];
         const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
-        if (echo) { updates.push({ content_hash: r.content_hash, status: 'rejected', momentum: { echo_of: echo.id } }); stats.rejected++; continue; }
+        if (echo) { updates.push(Object.assign(carry(r), { status: 'rejected', momentum: { echo_of: echo.id } })); stats.rejected++; continue; }
         calls++;
         const reply = await callModel(env, 't1', [
           { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
@@ -2020,13 +2030,13 @@ async function spineAdvance(env, budget) {
         const territory = DAILY_POV.territories.includes(j.territory) ? j.territory : (r.territory || 'technology-innovation');
         const novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0));
         if (j.announcement === true && novelty <= 1) {
-          updates.push({ content_hash: r.content_hash, territory, status: 'rejected', momentum: { novelty, announcement: true } });
+          updates.push(Object.assign(carry(r), { territory, status: 'rejected', momentum: { novelty, announcement: true } }));
           stats.rejected++;
         } else {
-          updates.push({ content_hash: r.content_hash, territory, status: 'filtered', momentum: { novelty, note: String(j.note || '').slice(0, 90) } });
+          updates.push(Object.assign(carry(r), { territory, status: 'filtered', momentum: { novelty, note: String(j.note || '').slice(0, 90) } }));
           stats.filtered++;
         }
-      } catch (e) { /* stays raw for the next slice */ }
+      } catch (e) { errs.push('filter:' + String(e && e.message).slice(0, 50)); }
     }
     if (updates.length && calls + 1 <= budget) {
       calls++;
@@ -2039,7 +2049,7 @@ async function spineAdvance(env, budget) {
   // C · CONNECT backlog: filtered rows — neighbors, clusters, momentum.
   if (calls + 5 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.filtered&order=captured_at.asc&limit=8&select=id,content_hash,territory,source_tier,embedding,momentum') || [];
+    const back = await sbRest(env, 'signals?status=eq.filtered&order=captured_at.asc&limit=8&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || [];
     const found = [], anchors = new Set();
     for (const r of back) {
       if (calls + 3 > budget) break;
@@ -2067,8 +2077,8 @@ async function spineAdvance(env, budget) {
       const novelty = (r.momentum && r.momentum.novelty) || 0;
       const m = momentumMech(near, r.territory, r.source_tier, novelty);
       stats.connected++;
-      return { content_hash: r.content_hash, cluster_id, status: 'connected',
-        momentum: Object.assign({}, m, { neighbors: near.slice(0, 4).map(n => n.id) }) };
+      return Object.assign(carry(r), { cluster_id, status: 'connected',
+        momentum: Object.assign({}, m, { neighbors: near.slice(0, 4).map(n => n.id) }) });
     });
     if (updates.length && calls + 1 <= budget) {
       calls++;
@@ -2078,6 +2088,7 @@ async function spineAdvance(env, budget) {
     }
   }
   stats.calls = calls;
+  if (errs.length) stats.errors = errs.slice(0, 6);
   return stats;
 }
 
@@ -2093,7 +2104,7 @@ async function runDailySpine(env, opts) {
     captured: cap.captured, unique: cap.unique, fresh: cap.fresh.length,
     ...adv, feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
   };
-  logEvent(env, 'daily', null, 'spine_run', null, stats);
+  await logEvent(env, 'daily', null, 'spine_run', null, stats);
   return stats;
 }
 
@@ -2642,12 +2653,12 @@ async function publishEdition(env, today, existing, leadHeadline, items, mode, s
 
   // provenance thread: the lake learns which of its signals made the paper.
   try {
-    const backs = createdItems
-      .filter(r => r.signal_id)
-      .map(r => ({ id: r.signal_id, status: 'published', edition_item_id: r.id }));
-    if (backs.length) await sbRest(env, 'signals?on_conflict=id', {
-      method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: backs
-    });
+    const backs = createdItems.filter(r => r.signal_id);
+    for (const b of backs) {
+      await sbRest(env, `signals?id=eq.${b.signal_id}`, {
+        method: 'PATCH', body: { status: 'published', edition_item_id: b.id }
+      });
+    }
   } catch (e) {}
 
   logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: items.length, mode });
