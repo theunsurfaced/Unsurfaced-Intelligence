@@ -1968,6 +1968,10 @@ async function composeFromLake(env, today) {
 }
 
 async function spineAdvance(env, budget) {
+  // Drain newest-first. composeFromLake only sees captured_at >= now-36h, so
+  // oldest-first spends every call on rows the paper can never print and the
+  // lake reads 0/6 until the whole backlog clears. Today's signal goes first;
+  // the stale tail drains behind it on leftover budget.
   let calls = 0;
   const stats = { embedded: 0, filtered: 0, rejected: 0, connected: 0 };
   const vecOf = (e) => Array.isArray(e) ? e : (typeof e === 'string' ? JSON.parse(e) : null);
@@ -1986,7 +1990,7 @@ async function spineAdvance(env, budget) {
   if (calls + 3 <= budget) {
     calls++;
     let back = [];
-    try { back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.asc&limit=32&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
+    try { back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.desc&limit=32&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
     catch (e) { back = []; }
     for (let i = 0; i < back.length && calls + 2 <= budget; i += SPINE.EMBED_BATCH) {
       const batch = back.slice(i, i + SPINE.EMBED_BATCH);
@@ -2010,7 +2014,7 @@ async function spineAdvance(env, budget) {
   // F · FILTER backlog: raw rows WITH vectors — echo kill + t1 classify.
   if (calls + 4 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.asc&limit=12&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding') || [];
+    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.desc&limit=12&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding') || [];
     const updates = [];
     for (const r of back) {
       if (calls + 3 > budget) break;
@@ -2049,7 +2053,7 @@ async function spineAdvance(env, budget) {
   // C · CONNECT backlog: filtered rows — neighbors, clusters, momentum.
   if (calls + 5 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.filtered&order=captured_at.asc&limit=8&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || [];
+    const back = await sbRest(env, 'signals?status=eq.filtered&order=captured_at.desc&limit=8&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || [];
     const found = [], anchors = new Set();
     for (const r of back) {
       if (calls + 3 > budget) break;
