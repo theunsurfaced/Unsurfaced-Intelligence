@@ -48,7 +48,13 @@ export default {
         .then(s => console.log('daily_pipeline', JSON.stringify(s)))
         .catch(e => console.log('daily_pipeline_error', String(e && e.message))));
     } else {
-      ctx.waitUntil(runDailySpine(env, { feeds: 6, gdelt: 1, advance: 26 })
+      // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
+      // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
+      // sbRest is an *external* subrequest; env.AI.run is a Cloudflare service
+      // binding on the separate 1000 ceiling. 26 was sized as if AI calls spent
+      // the scarce budget — they never did, and CONNECT starved for five calls
+      // that did not exist. 46/50 return identical work: 42 is saturation.
+      ctx.waitUntil(runDailySpine(env, { feeds: 6, gdelt: 1, advance: 42 })
         .then(s => console.log('spine_slice', JSON.stringify(s)))
         .catch(e => console.log('spine_slice_error', String(e && e.message))));
     }
@@ -2304,7 +2310,7 @@ async function dailySpineGuarded(request, env, origin) {
   if (!user || !(await callerIsAdmin(env, user.id)))
     return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   try {
-    const stats = await runDailySpine(env, { feeds: 10, gdelt: 2, advance: 22 });
+    const stats = await runDailySpine(env, { feeds: 10, gdelt: 2, advance: 42 });
     return json({ ok: true, ...stats }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'spine_error', detail: String(e && e.message).slice(0, 140) }, 200, origin, env);
