@@ -44,9 +44,13 @@ export default {
         .then(s => console.log('spine_capture', JSON.stringify(s)))
         .catch(e => console.log('spine_capture_error', String(e && e.message))));
     } else if (cron === '0 6 * * *') {
+      // .then after .catch, not .finally: the catch resolves, so the watchdog
+      // runs whether compose succeeded, threw, or quietly produced nothing —
+      // and waitUntil still covers the returned chain.
       ctx.waitUntil(runDailyPipeline(env)
         .then(s => console.log('daily_pipeline', JSON.stringify(s)))
-        .catch(e => console.log('daily_pipeline_error', String(e && e.message))));
+        .catch(e => console.log('daily_pipeline_error', String(e && e.message)))
+        .then(() => editionWatchdog(env)));
     } else {
       // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
       // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
@@ -2518,6 +2522,104 @@ async function dailyRunGuarded(request, env, origin) {
   } catch (e) {
     return json({ ok: false, error: 'pipeline_error', detail: String(e && e.message).slice(0, 140) }, 200, origin, env);
   }
+}
+
+/* ═══ SEAM:EDITION_WATCHDOG — the alarm that did not exist. DAILY went dark
+ * for seven days while every cron reported Success. Health was written by
+ * logEvent into activity_events — a table that needs an admin JWT to read —
+ * so the pipeline could only report its condition to someone already inside.
+ * A system that speaks solely to authenticated readers goes quiet exactly
+ * when you most need it to talk.
+ *
+ * This seam trusts no return value. It asks the database what actually
+ * happened and mails out on two silent failures:
+ *   DARK   — no edition reached status='published' today. Either compose
+ *            produced nothing, or publishEdition stalled mid-write at
+ *            status='building' and left a half-paper behind.
+ *   LEGACY — an edition published, but not one item carried a signal_id.
+ *            Only lake items do; legacy ingest has none. The paper shipped,
+ *            the intelligence engine fed it nothing, and OPS looks green.
+ * Needs ALERT_EMAIL. Unset, it still speaks — to the log stream.  */
+async function editionWatchdog(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const eds = await sbRest(env, `editions?date=eq.${today}&select=id,issue_no,status`) || [];
+    const live = eds.find(e => e.status === 'published');
+
+    let level = null, why = '';
+    if (!live) {
+      level = 'DARK';
+      why = eds.length
+        ? `An edition row exists but stalled at status='${eds[0].status}'. publishEdition began and did not finish.`
+        : 'No edition row for today. Compose produced nothing and the legacy fallback did not catch it.';
+    } else {
+      const fromLake = await sbRest(env,
+        `edition_items?edition_id=eq.${live.id}&signal_id=not.is.null&select=id`) || [];
+      if (!fromLake.length) {
+        level = 'LEGACY';
+        why = `Issue ${live.issue_no} published, but no item carried a signal_id. `
+            + 'The lake fed nothing and legacy ingest carried the paper.';
+      }
+    }
+    if (!level) { console.log('edition_watchdog', 'ok issue=' + live.issue_no); return; }
+
+    let health = null;
+    try { health = await dailyHealth(env); }
+    catch (e) { health = { error: String(e && e.message).slice(0, 80) }; }
+    console.log('edition_watchdog_' + level.toLowerCase(),
+      JSON.stringify({ date: today, why, flags: (health && health.flags) || null }));
+
+    if (!env.ALERT_EMAIL) { console.log('edition_watchdog', 'ALERT_EMAIL unset - no mail sent'); return; }
+    const sent = await sendEmail(env, {
+      to: env.ALERT_EMAIL,
+      subject: (level === 'DARK' ? 'DAILY DARK - no edition for ' : 'DAILY degraded - legacy fallback on ') + today,
+      html: watchdogEmailHtml(level, today, why, health)
+    });
+    console.log('edition_watchdog', 'mail ' + JSON.stringify(sent));
+  } catch (e) {
+    // The watchdog must not fail the way the pipeline did. If it cannot read
+    // the edition state, that is itself the alarm - an alarm that goes quiet
+    // when the system breaks is not an alarm. Say it out loud, not into a log.
+    const detail = String(e && e.message).slice(0, 120);
+    console.log('edition_watchdog_error', detail);
+    if (env.ALERT_EMAIL) {
+      await sendEmail(env, {
+        to: env.ALERT_EMAIL,
+        subject: 'DAILY watchdog blind - cannot read edition state - ' + today,
+        html: watchdogEmailHtml('DARK', today, 'The watchdog itself failed: ' + detail
+          + '. Edition state is unknown - the lake could not be reached. Check the worker and Supabase.', null)
+      }).catch(() => {});
+    }
+  }
+}
+
+function watchdogEmailHtml(level, date, why, health) {
+  const h = health || {};
+  const b = (h.lake && h.lake.backlog) || {};
+  const dark = level === 'DARK';
+  const flags = (h.flags || []).map(f =>
+    `<code style="background:#F5F0E8;padding:2px 6px;border-radius:3px;font-size:12px">${esc(f)}</code>`
+  ).join(' ') || '<em style="color:#888">none raised</em>';
+  const row = (k, v) => `<tr><td style="padding:5px 18px 5px 0;color:#666">${esc(k)}</td>`
+    + `<td style="padding:5px 0"><strong>${esc(v == null ? '?' : v)}</strong></td></tr>`;
+  return `<div style="font-family:system-ui,Segoe UI,sans-serif;color:#0A0A0A;line-height:1.6;max-width:560px">
+    <div style="border-left:3px solid ${dark ? '#C41230' : '#B8860B'};padding-left:14px;margin:0 0 20px">
+      <h2 style="margin:0 0 3px;font-size:19px">${dark ? 'DAILY did not publish' : 'DAILY ran on the fallback'}</h2>
+      <div style="color:#666;font-size:13px;letter-spacing:.04em">${esc(date)}</div>
+    </div>
+    <p style="margin:0 0 18px">${esc(why)}</p>
+    <table style="border-collapse:collapse;font-size:14px;margin:0 0 18px">
+      ${row('to embed', b.to_embed)}
+      ${row('to filter', b.to_filter)}
+      ${row('to connect', b.to_connect)}
+      ${row('intake 24h', h.lake ? h.lake.fresh_24h : null)}
+      ${row('spine runs seen', h.spine ? h.spine.runs_seen : null)}
+      ${row('last spine run', h.spine ? (h.spine.last_run || 'never') : null)}
+    </table>
+    <p style="margin:0 0 6px;font-size:12px;color:#666;letter-spacing:.06em">FLAGS</p>
+    <p style="margin:0 0 20px">${flags}</p>
+    <p style="margin:0;font-size:12px;color:#888">SEAM:EDITION_WATCHDOG · 06:00 compose cron</p>
+  </div>`;
 }
 
 async function runDailyPipeline(env, opts) {
