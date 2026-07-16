@@ -1827,21 +1827,55 @@ function parseModelJson(s) {
 
 // mechanical momentum v1 — neighbors are {similarity, territory, source_tier,
 // captured_at}; confidence stays distinct from excitement.
+/* The rubric and the measurement are different instruments and must not be
+ * confused. The six dims below are TASTE: a 0-5 human scale, the editorial
+ * judgement that makes the paper good. `measure` is a NUMBER: uncapped,
+ * timestamped, tier-weighted - the thing a brand puts in a deck and the thing
+ * Nielsen cannot sell them, because Nielsen counts the audience after it
+ * arrives and this counts the press deciding, days upstream.
+ *
+ * The rubric reads the first 6 neighbours, exactly as it did when p_count WAS
+ * 6. That is deliberate: raising p_count to 40 would otherwise re-rank the
+ * paper silently - depth saturates at 5 the moment it sees more than ~6
+ * sources, and nobody knows yet what 40 does to those distributions. Measure
+ * first, retune with evidence. `measure` reads the full sample and is nested,
+ * so DAILY_POV.momentum.dims never picks it up and no score moves today.  */
 function momentumMech(neighbors, ownTerritory, ownTier, novelty) {
-  const near = neighbors.filter(n => n.similarity >= SPINE.BREADTH_SIM);
   const now = Date.now();
-  const recent = near.filter(n => now - new Date(n.captured_at).getTime() <= 48 * 3600e3);
+  const ms = (t) => new Date(t).getTime();
+
+  // ── taste: unchanged, first 6 only ──
+  const near = neighbors.slice(0, 6).filter(n => n.similarity >= SPINE.BREADTH_SIM);
+  const recent = near.filter(n => now - ms(n.captured_at) <= 48 * 3600e3);
   const terrs = new Set(near.map(n => n.territory).filter(Boolean)); terrs.add(ownTerritory);
   const srcs = new Set(near.map(n => n.source_name).filter(Boolean));
-  const spanMs = near.length
-    ? Math.max(...near.map(n => now - new Date(n.captured_at).getTime())) : 0;
+  const spanMs = near.length ? Math.max(...near.map(n => now - ms(n.captured_at))) : 0;
+
+  // ── measurement: the whole sample, nothing clamped ──
+  const rel = neighbors.filter(n => n.similarity >= SPINE.BREADTH_SIM);
+  const echoes = neighbors.filter(n => n.similarity >= SPINE.ECHO_SIM);
+  const eTimes = echoes.map(n => ms(n.captured_at)).filter(t => !isNaN(t));
+  const measure = {
+    echo_n: echoes.length,                                    // outlets carrying THIS story
+    echo_h: eTimes.length > 1                                 // hours first-to-last: velocity
+      ? Math.round((Math.max(...eTimes) - Math.min(...eTimes)) / 3600e3) : 0,
+    echo_t1: echoes.filter(n => n.source_tier === 1).length,   // how much of it is tier-1
+    near_n: rel.length,                                       // the wider neighbourhood
+    srcs_n: new Set(rel.map(n => n.source_name).filter(Boolean)).size,
+    terrs_n: new Set(rel.map(n => n.territory).filter(Boolean)).size,
+    span_h: rel.length
+      ? Math.round(Math.max(...rel.map(n => now - ms(n.captured_at))) / 3600e3) : 0,
+    sample: neighbors.length                                   // what the number was drawn from
+  };
+
   return {
     novelty: Math.max(0, Math.min(5, novelty | 0)),
     velocity: Math.min(5, recent.length),
     breadth: Math.min(5, terrs.size - 1 + (near.length ? 1 : 0)),
     depth: Math.min(5, Math.round(srcs.size ? (srcs.size + (5 - ownTier)) / 2 : (5 - ownTier) / 2)),
     durability: Math.min(5, Math.round(spanMs / (24 * 3600e3))),
-    relevance: ({ 1: 4, 2: 3, 3: 3, 4: 2 })[ownTier] || 2
+    relevance: ({ 1: 4, 2: 3, 3: 3, 4: 2 })[ownTier] || 2,
+    measure
   };
 }
 
@@ -2164,8 +2198,14 @@ async function spineAdvance(env, budget) {
         // day it was written, and `catch (e) {}` ate it, so CONNECT has never
         // run once. Losing the 14-day bound is a gain, not a cost - anchors may
         // now reach the whole archive, which is what recurrence actually wants.
+        // p_count was 6. Every momentum dim is computed from this sample, so a
+        // story carried by 6 outlets and one carried by 60 produced identical
+        // momentum - and the composer ranks on those dims, which meant velocity,
+        // breadth and depth could not spread and the paper was effectively
+        // ranked by tier and a model's novelty guess. 40 costs the same single
+        // subrequest; HNSW does not care and the payload is ~20KB.
         const near = (await sbRest(env, 'rpc/match_signals', {
-          method: 'POST', body: { p_query: vec, p_count: 6 }
+          method: 'POST', body: { p_query: vec, p_count: 40 }
         }) || []).filter(n => n.id !== r.id);
         const anchor = near.find(n => n.similarity >= SPINE.CLUSTER_SIM);
         if (anchor) anchors.add(anchor.id);
