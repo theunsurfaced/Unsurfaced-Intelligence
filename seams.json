@@ -159,6 +159,10 @@
    "file": "worker/src/index.js",
    "purpose": "admin observability door: lake backlog depths, spine heartbeat, per-feed error history, edition provenance share, named flags"
   },
+  "SEAM:EDITION_WATCHDOG": {
+   "file": "worker/src/index.js",
+   "purpose": "the alarm that did not exist: 06:00 ground-truth check on the edition row, not on a return value; DARK when nothing reached status=published or a row stalled at building, LEGACY when no item carried a signal_id and the fallback carried the paper; mails over Resend to ALERT_EMAIL and speaks even when it cannot read the lake \u2014 health that only an admin JWT can see is how DAILY went dark for seven days"
+  },
   "SEAM:RECURRENCE": {
    "file": "worker/src/index.js",
    "purpose": "the lake's long memory: recurring themes ranked by weeks touched, span, breadth and paper provenance; cluster pulse on the cluster door"
