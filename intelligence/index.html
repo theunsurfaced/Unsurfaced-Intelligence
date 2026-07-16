@@ -7179,7 +7179,11 @@ function _renderFeaturedCard(card, live, delay, showAsPending) {
   const title   = live?.title   || card.subtitle || card.title;
   const excerpt = live?.excerpt || card.hook;
   const stat    = live?.stat    || card.stat;
-  const bar     = live?.bar     || card.bar;
+  // Deliberately NOT `live?.bar || card.bar`. card.bar is 32 hand-typed
+  // literals; falling back to one is how the lie survived a live-data path.
+  // Only measured evidence draws a bar. The pool's bar values are now dead
+  // data - harmless, and left in place so this diff stays surgical.
+  const bar     = (live && live.bar != null) ? live.bar : null;
   const source  = live?.source  || '';
   const isNew   = live && !showAsPending;
 
@@ -7198,7 +7202,7 @@ function _renderFeaturedCard(card, live, delay, showAsPending) {
         <span class="card-stat">${stat}</span>
         <span style="color:var(--text3)">Click for full dashboard →</span>
       </div>
-      <div class="card-bar"><div class="card-bar-fill" style="width:${bar}%"></div></div>
+      ${bar != null ? `<div class="card-bar"><div class="card-bar-fill" style="width:${bar}%"></div></div>` : ''}
     </div>`;
 }
 
@@ -7269,17 +7273,37 @@ async function _fetchLiveCardData(card) {
     const tout  = (p) => Promise.race([p, new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 8000))]);
     const q     = card.query;
 
-    const [wiki, oa, hn] = await Promise.allSettled([
+    // SEAM:TELEMETRY — the fourth lens is our own. Every card already carries
+    // the exact `query` it hands OpenAlex; hand the same string to the lake and
+    // the card gains a second evidence rail: public academic depth AND what
+    // Unsurfaced has actually captured. Optional and silent by design — any
+    // failure leaves the public lenses untouched.
+    const lakeP = tout((async () => {
+      const hh = await _authHeader();
+      if (!hh.Authorization) return null;              // no session, no lake
+      const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/lake', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
+        body: JSON.stringify({ q: String(q).slice(0, 200), count: 12, days: 60 })
+      });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return (j && j.ok && Array.isArray(j.results) && j.results.length) ? j.results : null;
+    })());
+
+    const [wiki, oa, hn, lake] = await Promise.allSettled([
       tout(fetchWikiSummary(enc(q.split(' ').slice(0,5).join(' ')))),
       tout(_fetchJSON(`https://api.openalex.org/works?search=${enc(q)}&sort=cited_by_count:desc&per-page=3&filter=open_access.is_oa:true&mailto=excavate@unsurfaced.com`)),
       tout(_fetchJSON(`https://hn.algolia.com/api/v1/search?query=${enc(q)}&tags=story&hitsPerPage=5&numericFilters=points>5`)),
+      lakeP,
     ]);
 
     const wikiData  = wiki.status === 'fulfilled' ? wiki.value  : null;
     const oaData    = oa.status   === 'fulfilled' ? oa.value    : null;
     const hnData    = hn.status   === 'fulfilled' ? hn.value    : null;
+    const lakeRows  = lake.status === 'fulfilled' ? lake.value  : null;
 
-    if (!wikiData && !oaData && !hnData) return null;
+    if (!wikiData && !oaData && !hnData && !lakeRows) return null;
 
     // Build enriched excerpt from whatever came back
     let excerpt = card.hook;
@@ -7303,7 +7327,28 @@ async function _fetchLiveCardData(card) {
       }
     }
 
-    return { title: card.subtitle || card.title, excerpt, stat, bar: card.bar, source };
+    // The bar. It has never been anything but a literal: the pool types
+    // `bar:84` and this function used to hand `bar: card.bar` straight back,
+    // so even the LIVE path returned the typed number. A progress bar with
+    // nothing behind it is a claim, and this page makes it to brand leadership.
+    //
+    // The lake's momentum rubric declares its own ceiling — six dims, '0-5
+    // each' — so mean/30 is a true fraction of a scale we published, not a
+    // normalisation invented to make the bar look good. No lake evidence for a
+    // thesis means no bar: absence of data draws nothing.
+    let bar = null;
+    if (lakeRows && lakeRows.length) {
+      const DIMS = ['novelty','velocity','breadth','depth','durability','relevance'];
+      const CEIL = DIMS.length * 5;
+      const scores = lakeRows.map(r => DIMS.reduce((a,d) =>
+        a + (Number(r.momentum && r.momentum[d]) || 0), 0));
+      const mean = scores.reduce((a,b) => a + b, 0) / scores.length;
+      bar = Math.max(4, Math.min(100, Math.round((mean / CEIL) * 100)));
+      stat   = (stat ? stat + ' · ' : '') + lakeRows.length + ' in the lake';
+      source = source ? source + ' · Unsurfaced lake' : 'Unsurfaced lake';
+    }
+
+    return { title: card.subtitle || card.title, excerpt, stat, bar, source };
   } catch(e) { return null; }
 }
 
