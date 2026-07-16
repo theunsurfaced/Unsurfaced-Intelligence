@@ -2250,8 +2250,14 @@ async function runDailySpine(env, opts) {
   let adv = {};
   try { adv = await spineAdvance(env, (opts && opts.advance) || 22); }
   catch (e) { adv = { advance_error: String(e && e.message).slice(0, 60) }; }
+  // cap is hand-picked, not spread: anything spineCapture computes and this
+  // list omits is silently discarded here. gdelt was computed correctly and
+  // dropped on this exact line - a measurement thrown away one function above
+  // the one that made it, which is the whole bug class this pipeline exists
+  // to have stopped doing. Add the field here or it does not exist.
   const stats = {
     captured: cap.captured, unique: cap.unique, fresh: cap.fresh.length,
+    gdelt: cap.gdelt || null,
     ...adv, feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
   };
   await logEvent(env, 'daily', null, 'spine_run', null, stats);
@@ -2490,7 +2496,12 @@ function weekEpoch(ts) { return Math.floor(new Date(ts).getTime() / 6048e5); }
 
 // PURE: rows -> ranked recurring themes. Needs cluster_id + captured_at;
 // title/url/source/tier/territory/edition_item_id enrich the read.
-function recurrenceRollup(rows, top) {
+// minWeeks defaults to RECUR.MIN_WEEKS so existing callers are unchanged; it
+// is a parameter because the floor was hardcoded here, which silently made
+// SEAM:PROPOSE's min_weeks:1 preview a no-op - the rollup dropped one-week
+// clusters before the caller could ever see them.
+function recurrenceRollup(rows, top, minWeeks) {
+  const floor = Math.max(1, parseInt(minWeeks, 10) || RECUR.MIN_WEEKS);
   const by = new Map();
   for (const r of rows || []) {
     if (!r.cluster_id || !r.captured_at) continue;
@@ -2516,7 +2527,7 @@ function recurrenceRollup(rows, top) {
   }
   const out = [];
   for (const c of by.values()) {
-    if (c.weeks.size < RECUR.MIN_WEEKS) continue;
+    if (c.weeks.size < floor) continue;
     const span_days = Math.round((new Date(c.last_seen) - new Date(c.first_seen)) / 864e5);
     out.push({
       cluster_id: c.cluster_id, weeks_touched: c.weeks.size, span_days,
@@ -2592,7 +2603,7 @@ async function excavatePropose(request, env, origin) {
       '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + RECUR.SCAN +
       '&select=id,cluster_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id') || [];
 
-    const ranked = recurrenceRollup(rows, 64).filter(function (t) { return t.weeks_touched >= minWeeks; });
+    const ranked = recurrenceRollup(rows, 64, minWeeks);
     const themes = ranked.slice(0, want);
     if (!themes.length) {
       return json({ ok: true, proposed: [], scanned: rows.length, window_days: days, min_weeks: minWeeks,
