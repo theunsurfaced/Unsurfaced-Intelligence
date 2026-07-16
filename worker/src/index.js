@@ -87,6 +87,7 @@ export default {
       if (path === '/excavate/cluster' && request.method === 'POST') return excavateCluster(request, env, origin);
       if (path === '/excavate/recurrence' && request.method === 'POST') return excavateRecurrence(request, env, origin);
       if (path === '/excavate/promote' && request.method === 'POST') return excavatePromote(request, env, origin);
+      if (path === '/excavate/propose' && request.method === 'POST') return excavatePropose(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -2538,6 +2539,152 @@ function clusterPulse(rows) {
   return { members: ts.length, first_seen: ts[0], last_seen: ts[ts.length - 1],
     span_days: Math.round((new Date(ts[ts.length - 1]) - new Date(ts[0])) / 864e5),
     weeks_touched: weeks.size };
+}
+
+/* ═══ SEAM:PROPOSE — the lake writes its own themes.
+ *
+ * The featured surface runs on _FEATURED_POOL in intelligence/index.html: 32
+ * theses typed by hand, each carrying stat:'↑ High signal' and bar:84 as
+ * literals. The only live value on a card is an OpenAlex paper count for a
+ * hardcoded query. It is a mockup wearing a counter, and it has been telling
+ * on itself — 'WHICH BRANDS CONSUMERS ACTUALLY TRUST IN 2024', printed in 2026.
+ *
+ * The lake already holds every number bar:84 was pretending to be: weeks
+ * touched, span, breadth, source count, paper provenance. recurrenceRollup
+ * computes them. What a cluster lacks is a thesis.
+ *
+ * So the lake proposes and the editor disposes — SEAM:PROMOTE run the other
+ * direction. There a human hands the lake a signal; here the lake hands a
+ * human a theme. Neither publishes itself.
+ *
+ * Evidence is never invented: stat and bar are computed from the rollup, the
+ * model is never shown either word, and it receives only the cluster's own
+ * headlines. Every card declares provenance:'lake' so a proposal cannot be
+ * mistaken for the curated pool — the two-rail law again.
+ *
+ * One t3 call for the whole batch, KV-cached 24h. This surface does not move
+ * like DAILY and must not cost like it.
+ *
+ * NOTE: RECUR.MIN_WEEKS is 2, and cluster_id only began populating when
+ * CONNECT first ran. Until clusters carry two weeks behind them this returns
+ * [] — honestly, and saying why. That is recurrence working, not failing.
+ * Pass min_weeks:1 to preview what it will say.  ═══ */
+const PROPOSE_LENS = ['consumer', 'market', 'culture', 'brand'];
+
+async function excavatePropose(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const days = Math.min(180, Math.max(7, parseInt(body.days, 10) || RECUR.WINDOW_D));
+  const want = Math.min(8, Math.max(1, parseInt(body.count, 10) || 6));
+  const minWeeks = Math.min(6, Math.max(1, parseInt(body.min_weeks, 10) || RECUR.MIN_WEEKS));
+  const ck = 'prop:v1:' + days + ':' + want + ':' + minWeeks;
+
+  if (body.refresh !== true && env.RATE_LIMIT) {
+    const hit = await env.RATE_LIMIT.get(ck).catch(function () { return null; });
+    if (hit) { try { return json(Object.assign(JSON.parse(hit), { cached: true }), 200, origin, env); } catch (e) {} }
+  }
+
+  try {
+    const since = new Date(Date.now() - days * 864e5).toISOString();
+    const rows = await sbRest(env, 'signals?status=in.(connected,published)&cluster_id=not.is.null' +
+      '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + RECUR.SCAN +
+      '&select=id,cluster_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id') || [];
+
+    const ranked = recurrenceRollup(rows, 64).filter(function (t) { return t.weeks_touched >= minWeeks; });
+    const themes = ranked.slice(0, want);
+    if (!themes.length) {
+      return json({ ok: true, proposed: [], scanned: rows.length, window_days: days, min_weeks: minWeeks,
+        note: 'no cluster has recurred across ' + minWeeks + '+ weeks in this window yet — '
+            + 'recurrence needs time; clusters begin at CONNECT' }, 200, origin, env);
+    }
+
+    // the cluster's own headlines - free, the rows are already in memory
+    const titlesOf = new Map();
+    for (const r of rows) {
+      if (!r.cluster_id || !r.title) continue;
+      const a = titlesOf.get(r.cluster_id) || [];
+      if (a.length < 6) { a.push(r.title); titlesOf.set(r.cluster_id, a); }
+    }
+
+    const brief = themes.map(function (t, i) {
+      return '[' + (i + 1) + '] weeks=' + t.weeks_touched + ' span_days=' + t.span_days
+        + ' signals=' + t.members + ' sources=' + t.sources
+        + ' territories=' + (t.territories.join(',') || 'none') + ' published=' + t.published
+        + '\n    headlines: ' + (titlesOf.get(t.cluster_id) || []).map(function (x) {
+            return String(x).slice(0, 110); }).join(' // ');
+    }).join('\n');
+
+    const sys = 'You name recurring patterns for Unsurfaced INTELLIGENCE, a cultural recon platform read '
+      + 'by brand and creative leadership. Each numbered item is one cluster of signals the lake has seen '
+      + 'resurface across multiple weeks. Name the pattern underneath it.\n\n'
+      + DAILY_POV.stages.interpret + '\n\n'
+      + 'Return ONLY JSON: {"themes":[{"n":<item number>,"lens":<one of ' + PROPOSE_LENS.join('|') + '>,'
+      + '"title":<3-5 words, declarative, no colon>,'
+      + '"subtitle":<8-14 words naming the actual question>,'
+      + '"deck":<1 sentence on what is structurally shifting>,'
+      + '"hook":<1 sentence a strategist could say out loud in a room>,'
+      + '"query":<6-12 words of academic search terms for this pattern>}]}\n'
+      + 'Ground every word in the headlines given. Invent no facts, numbers, brands or dates. If a cluster '
+      + 'shows no real pattern, omit it entirely rather than forcing one. No prose outside the JSON.';
+
+    let written = [];
+    try {
+      const reply = await callModel(env, 't3', [
+        { role: 'system', content: sys },
+        { role: 'user', content: brief }
+      ], { max_tokens: 1400 });
+      const j = parseModelJson(reply);
+      written = (j && Array.isArray(j.themes)) ? j.themes : [];
+    } catch (e) {
+      return json({ ok: false, error: 'propose_voice_failed',
+        detail: String(e && e.message).slice(0, 120) }, 200, origin, env);
+    }
+
+    const maxScore = Math.max.apply(null, themes.map(function (t) { return t.score; }).concat([1]));
+    const proposed = [];
+    for (const w of written) {
+      const t = themes[(parseInt(w && w.n, 10) || 0) - 1];
+      if (!t || !w || !w.title) continue;
+      proposed.push({
+        id: 'lake-' + t.cluster_id.slice(0, 8),
+        cluster_id: t.cluster_id,
+        lens: PROPOSE_LENS.indexOf(w.lens) >= 0 ? w.lens : 'culture',
+        title: String(w.title).slice(0, 60),
+        subtitle: String(w.subtitle || '').slice(0, 120),
+        deck: String(w.deck || '').slice(0, 300),
+        hook: String(w.hook || '').slice(0, 300),
+        query: String(w.query || '').slice(0, 160),
+        // computed from the rollup - the model is never shown these words
+        stat: t.territories.length > 1
+          ? '↗ crossing ' + t.territories.length + ' territories'
+          : '↑ ' + t.weeks_touched + ' weeks running',
+        bar: Math.max(12, Math.min(96, Math.round((t.score / maxScore) * 92))),
+        evidence: {
+          weeks_touched: t.weeks_touched, span_days: t.span_days, members: t.members,
+          sources: t.sources, territories: t.territories, published: t.published,
+          best_tier: t.best_tier, first_seen: t.first_seen, last_seen: t.last_seen
+        },
+        exemplar: t.exemplar,
+        provenance: 'lake'
+      });
+    }
+
+    const out = { ok: true, window_days: days, scanned: rows.length, min_weeks: minWeeks,
+      candidates: ranked.length, proposed,
+      bar_note: 'bar is recurrence strength RELATIVE to this set; evidence carries the absolute numbers',
+      generated_at: new Date().toISOString() };
+    if (env.RATE_LIMIT) {
+      await env.RATE_LIMIT.put(ck, JSON.stringify(out), { expirationTtl: 86400 }).catch(function () {});
+    }
+    await logEvent(env, 'intelligence', 'excavate', 'propose', null,
+      { scanned: rows.length, candidates: ranked.length, proposed: proposed.length, min_weeks: minWeeks });
+    return json(out, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'propose_unavailable',
+      detail: String(e && e.message).slice(0, 120) }, 200, origin, env);
+  }
 }
 
 async function excavateRecurrence(request, env, origin) {

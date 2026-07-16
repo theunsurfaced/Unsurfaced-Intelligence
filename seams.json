@@ -171,6 +171,10 @@
    "file": "worker/src/index.js",
    "purpose": "how the lake grows by hand: /excavate/promote hashes on the capture fingerprint, takes an analyst-assigned tier, enters at raw and rides the newest-first drain into embed/filter/connect; momentum.promoted carries who, when, provider and the query that surfaced it, merged (never replaced) by every downstream stage"
   },
+  "SEAM:PROPOSE": {
+   "file": "worker/src/index.js",
+   "purpose": "the lake writes its own themes: recurring clusters (weeks touched, span, breadth, source count, paper provenance) go to t3 for a thesis in the DAILY voice \u2014 one batched call, KV-cached 24h; stat and bar are computed from recurrenceRollup and never written by the model, every card declares provenance:lake, and nothing publishes itself. SEAM:PROMOTE run the other direction: there a human hands the lake a signal, here the lake hands a human a theme"
+  },
   "SEAM:RECURRENCE": {
    "file": "worker/src/index.js",
    "purpose": "the lake's long memory: recurring themes ranked by weeks touched, span, breadth and paper provenance; cluster pulse on the cluster door"
