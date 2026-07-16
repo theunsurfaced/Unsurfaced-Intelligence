@@ -1330,6 +1330,27 @@ function kbChunk(text, size, cap) {
   if (cur && out.length < cap) out.push(cur);
   return out.slice(0, cap);
 }
+/* SEAM:EXCAVATE - the query door. bge-small-en-v1.5 is an ASYMMETRIC
+ * retrieval model: short query on one side, long passage on the other, and
+ * its model card asks the query to carry an instruction prefix while the
+ * passage carries none. We embed passages correctly ('title. summary') and
+ * have always embedded queries bare, so every EXCAVATE and FEED search has
+ * run one side of the pair mis-shaped.
+ *
+ * The prefix CANNOT live inside kbEmbed: that function serves both sides -
+ * kbInsert hands it passages, kbSearch hands it a query. Putting it there
+ * would poison the corpus. So it lives here, and only query paths call it.
+ *
+ * Safe by construction: ECHO_SIM (0.93) and CLUSTER_SIM (0.80) are compared
+ * against vecOf(r.embedding) - a signal's own stored vector, never a text
+ * embed - so no threshold moves and no row needs re-embedding. Both query
+ * callers rank top-N with no cutoff. Nothing to retune.  */
+const BGE_QUERY_PREFIX = 'Represent this sentence for searching relevant passages: ';
+async function embedQuery(env, q) {
+  const r = await env.AI.run(KB_EMBED_MODEL, { text: [BGE_QUERY_PREFIX + String(q || '')] });
+  return (r && r.data && r.data[0]) || null;
+}
+
 async function kbEmbed(env, chunks) {
   const vecs = [];
   for (let i = 0; i < chunks.length; i += 20) {
@@ -1428,7 +1449,8 @@ async function kbSearch(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   const q = String(body.q || '').slice(0, 500);
   if (!q.trim()) return json({ ok: false, error: 'empty' }, 200, origin, env);
-  const vec = (await kbEmbed(env, [q]))[0];
+  const vec = await embedQuery(env, q);          // query side - prefixed
+  if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
   const rows = await sbRest(env, 'rpc/knowledge_search', { method: 'POST',
     body: { p_target: kbTarget(body.target), p_query: vec, p_count: Math.min(+body.count || 8, 20) } });
   return json({ ok: true, rows: rows || [] }, 200, origin, env);
@@ -2222,8 +2244,7 @@ async function excavateLake(request, env, origin) {
   const days = Math.min(365, Math.max(0, parseInt(body.days, 10) || 0));
   const count = Math.min(24, Math.max(1, parseInt(body.count, 10) || 12));
   try {
-    const emb = await env.AI.run(KB_EMBED_MODEL, { text: [q] });
-    const vec = emb && emb.data && emb.data[0];
+    const vec = await embedQuery(env, q);          // query side - prefixed
     if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
     const rows = await sbRest(env, 'rpc/match_signals', {
       method: 'POST',
@@ -2236,7 +2257,7 @@ async function excavateLake(request, env, origin) {
       territory: r.territory, status: r.status, captured_at: r.captured_at,
       momentum: r.momentum, similarity: Math.round((r.similarity || 0) * 1000) / 1000,
       provenance: 'lake'
-    })), field: await fieldRail(env) }, 200, origin, env);
+    })), field: await fieldRail(env, q) }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'lake_unavailable' }, 200, origin, env);
   }
@@ -2265,15 +2286,43 @@ async function excavateLake(request, env, origin) {
  * chosen provider and set FIELD_API_KEY; the contract is:
  *   { title, url, summary, source_name } — and nothing else. Anything richer
  *   belongs in the lake, which is what SEAM:PROMOTE is for.  ═══ */
-async function fieldRail(env) {
-  if (!env.FIELD_API_KEY) return {
-    enabled: false, provider: null, count: 0, results: [],
-    note: 'no field provider attached — set FIELD_API_KEY and implement the fetch in fieldRail()'
-  };
-  return {
-    enabled: false, provider: String(env.FIELD_PROVIDER || 'unnamed'), count: 0, results: [],
-    note: 'FIELD_API_KEY is set but no fetch is implemented in fieldRail()'
-  };
+async function fieldRail(env, q) {
+  const off = (note) => ({ enabled: false, provider: null, count: 0, results: [], note });
+  if (!env.FIELD_API_KEY) return off('no field provider attached — set FIELD_API_KEY');
+  if (!q) return off('no query');
+  try {
+    // Tavily: POST /search, Bearer auth, 1000 calls/month free. Chosen over
+    // NVIDIA because NVIDIA's trial terms bar production and Generated Content
+    // in production outright, and EXCAVATE serves signed-in partners - that is
+    // 'activity serving real end-users' by their own FAQ. A platform sold
+    // against Nielsen cannot run on someone's evaluation licence.
+    const r = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + env.FIELD_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: String(q).slice(0, 300), search_depth: 'basic',
+        max_results: 6, include_answer: false, include_raw_content: false })
+    });
+    if (!r.ok) return off('field_http_' + r.status);   // fail closed AND say why
+    const j = await r.json().catch(() => null);
+    const rows = (j && Array.isArray(j.results) ? j.results : [])
+      .filter(x => x && x.title && /^https?:\/\//.test(String(x.url || '')))
+      .slice(0, 6)
+      .map(x => ({
+        // Deliberately thin. No tier, no momentum, no cluster, no captured_at.
+        // A field result cannot be rendered as a lake row because it has
+        // nothing to render them from. The shape is the law.
+        title: String(x.title).slice(0, 300),
+        url: String(x.url).slice(0, 500),
+        summary: String(x.content || '').slice(0, 600),
+        source_name: (() => { try { return new URL(x.url).hostname.replace(/^www\./, ''); } catch (e) { return 'field'; } })(),
+        provenance: 'field'
+      }));
+    return { enabled: true, provider: 'tavily', count: rows.length, results: rows,
+      fetched_at: new Date().toISOString(),
+      note: rows.length ? null : 'provider returned no usable results' };
+  } catch (e) {
+    return off('field_error: ' + String(e && e.message).slice(0, 80));
+  }
 }
 
 /* ═══ SEAM:PROMOTE — how the lake grows by hand. A field result that proves
