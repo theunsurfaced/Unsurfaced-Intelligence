@@ -289,8 +289,18 @@ function extractJson(s) {
 // to browser CORS, so they enrich the corpus with sources the client can't reach).
 async function gatherServerSignals(q) {
   const out = [];
-  const enc = encodeURIComponent(String(q || '').slice(0, 200));
-  if (!enc) return out;
+  // sourcelang:english is GDELT's own documented query filter and it runs on
+  // their side, so it does not depend on the casing of a.language in the
+  // response - a field this function has always collected into s.lang and
+  // which nothing ever read, which is how a Chinese headline off 163.com led
+  // Issue 003 of an English paper. Filtering here covers all three callers at
+  // once: the spine, the legacy fallback, and synthesize() - which was feeding
+  // untranslated articles to the model as evidence. HN is English by
+  // construction and unaffected. Translation is a feature we do not have;
+  // until we do, the wire is English.
+  const term = String(q || '').slice(0, 200).trim();
+  if (!term) return out;
+  const enc = encodeURIComponent(term + ' sourcelang:english');
   // GDELT — global news across the last few months, keyless JSON.
   try {
     const r = await fetch(`https://api.gdeltproject.org/api/v2/doc/doc?query=${enc}&mode=artlist&maxrecords=8&format=json&sort=hybridrel&timespan=3months`, { cf: { cacheTtl: 300 } });
@@ -1835,6 +1845,7 @@ async function fetchWithTimeout(url, ms) {
 // CAPTURE — every enabled source; a dead feed costs its own items only.
 async function spineCapture(env, opts) {
   const items = [], feedErrors = [];
+  let gdeltSeen = 0, gdeltKept = 0;          // SEAM:DAILY_SPINE - the wire must report itself
   const hours = Math.floor(Date.now() / 18e5);   // 30-min epochs — matches the drain cadence
   const nFeeds = (opts && opts.feeds) || 10;
   const nLanes = (opts && opts.gdelt) != null ? opts.gdelt : 2;
@@ -1857,7 +1868,18 @@ async function spineCapture(env, opts) {
   for (const lane of lanes) {
     try {
       const sig = await gatherServerSignals(lane.q);
-      sig.filter(s => s.signalType === 'news' && s.url).slice(0, SPINE.GDELT_CAP).forEach(s => items.push({
+      // Belt behind the query filter. Deliberately permissive: an unknown lang
+      // PASSES. An exact === 'English' against a field whose casing is
+      // unverified would drop every article and take tier 4 to zero in
+      // silence - and in the legacy fallback it would empty raw[] and return
+      // no_signal, which is the paper going dark. gdelt:"kept/seen" rides out
+      // on spine_slice so a filter that starts eating the wire says so on the
+      // first cron instead of never.
+      const news = sig.filter(s => s.signalType === 'news' && s.url);
+      const eng = news.filter(s => !s.lang || /^(english|eng|en)$/i.test(String(s.lang).trim()));
+      gdeltSeen += news.length;
+      gdeltKept += Math.min(eng.length, SPINE.GDELT_CAP);
+      eng.slice(0, SPINE.GDELT_CAP).forEach(s => items.push({
         title: s.title, url: s.url, summary: s.snippet || '', published_at: null,
         image: /^https?:\/\//.test(String(s.image || '')) ? String(s.image).slice(0, 500) : null,
         source_name: s.source || 'GDELT', source_tier: 4, territory: null
@@ -1879,7 +1901,8 @@ async function spineCapture(env, opts) {
       body: rows
     }) || [];
   }
-  return { captured: items.length, unique: rows.length, fresh, feedErrors };
+  return { captured: items.length, unique: rows.length, fresh, feedErrors,
+    gdelt: gdeltSeen ? (gdeltKept + '/' + gdeltSeen) : null };
 }
 
 /* spineAdvance — the budgeted drain. Pulls its OWN backlog from the lake
@@ -1895,6 +1918,23 @@ async function spineCapture(env, opts) {
  * paper can never again starve on a single upstream. ═══ */
 
 // PURE: greedy fill under the POV quotas. cands sorted by score desc.
+/* Language is never stored on a signal, so the lake cannot be asked what it
+ * cannot read: rows already inside the 36h window predate the capture filter,
+ * and a wire this broad will find a way in again. This is the belt at the door
+ * of the paper itself.
+ *
+ * Ratio, not presence. 'Uniqlo (\u30e6\u30cb\u30af\u30ed) launches X' is an English headline;
+ * dropping it over one katakana would be a permanent, silent false negative -
+ * exactly the bug class that cost this pipeline seven dark days. Ask the real
+ * question: is this headline PREDOMINANTLY not Latin script?  */
+const NON_LATIN_G = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u0400-\u04ff\u0590-\u05ff\u0600-\u06ff\u0e00-\u0e7f\u0900-\u097f]/g;
+function mostlyNonLatin(s) {
+  const t = String(s || '');
+  if (!t) return false;
+  const m = t.match(NON_LATIN_G);
+  return !!m && m.length / t.length > 0.3;
+}
+
 function slotFill(cands, quotas) {
   const picks = [], perT = {};
   for (const c of cands) {
@@ -1933,7 +1973,7 @@ async function composeFromLake(env, today) {
     `signals?status=in.(connected,filtered)&captured_at=gte.${since}` +
     '&order=captured_at.desc&limit=120' +
     '&select=id,url,title,summary,source_name,source_tier,territory,image,momentum,status'
-  ) || []).filter(c => c.title && c.url);
+  ) || []).filter(c => c.title && c.url && !mostlyNonLatin(c.title));
   if (cands.length < 6) return null;
 
   const dims = DAILY_POV.momentum.dims;
@@ -1946,6 +1986,21 @@ async function composeFromLake(env, today) {
 
   const picks = slotFill(cands, DAILY_POV.edition.quotas);
   if (picks.length < 6) return null;
+
+  // lead + features are the three big cards - the template has said so since
+  // day one and the composer never read it. `image` was selected and never
+  // scored, so a story with no key visual ranked exactly like one with, and
+  // Issue 003 shipped two of three visual slots empty. picks is score-ordered,
+  // so the first match is the strongest available. Format law is positional
+  // (idx 0 is always dispatch), so a swap changes which story wears which
+  // format, never the distribution. Nothing has an image -> nothing moves:
+  // degrade, never starve.
+  const visualSlots = DAILY_POV.edition.lead + DAILY_POV.edition.features;
+  for (let i = 0; i < Math.min(visualSlots, picks.length); i++) {
+    if (picks[i].image) continue;
+    const j = picks.findIndex((p, k) => k > i && p.image);
+    if (j > i) { const t = picks[i]; picks[i] = picks[j]; picks[j] = t; }
+  }
 
   const items = [];
   let haveProv = false;
@@ -2762,7 +2817,10 @@ async function runDailyPipeline(env, opts) {
   const raw = [];
   for (const lane of DAILY_BEATS) {
     const sig = await gatherServerSignals(lane.q);
-    sig.forEach(s => raw.push({ ...s, beat: lane.beat }));
+    // same law as the spine, same permissiveness - a filter that empties raw[]
+    // returns no_signal and takes the paper dark.
+    sig.filter(s => !s.lang || /^(english|eng|en)$/i.test(String(s.lang).trim()))
+       .forEach(s => raw.push({ ...s, beat: lane.beat }));
   }
   if (!raw.length) {
     logEvent(env, 'daily', null, 'edition_starved', null, { date: today });
