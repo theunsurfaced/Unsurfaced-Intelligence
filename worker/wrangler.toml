@@ -24,7 +24,23 @@ binding = "RATE_LIMIT"               # per-user AI limits + arcade replay guard 
 id = "1641a0a61b554cc582cd79c7aed0aeb6"
 
 # ── Observability ───────────────────────────────────────────────────
+# `[observability] enabled = true` alone was present here and did NOT persist
+# console.log output - only Cloudflare's own invocation records. The nested
+# blocks below are the canonical form the dashboard itself emits, and they are
+# what actually ingests custom logs. Without them, every console.log this
+# worker wrote (spine_slice, spine_capture, edition_watchdog) was dropped at
+# the door: correct code reporting into a channel that was switched off - the
+# same disease as logEvent writing health to a table needing an admin JWT to
+# read. Wrangler treats this file as source of truth, so a deploy WITHOUT
+# these blocks silently reverts the dashboard toggle and blinds the pipeline.
 [observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
 enabled = true
 
 # ── Secrets & vars: set in dashboard / via `wrangler secret put`,
