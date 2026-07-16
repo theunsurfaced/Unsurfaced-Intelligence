@@ -86,6 +86,7 @@ export default {
       if (path === '/excavate/lake' && request.method === 'POST') return excavateLake(request, env, origin);
       if (path === '/excavate/cluster' && request.method === 'POST') return excavateCluster(request, env, origin);
       if (path === '/excavate/recurrence' && request.method === 'POST') return excavateRecurrence(request, env, origin);
+      if (path === '/excavate/promote' && request.method === 'POST') return excavatePromote(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -2029,7 +2030,7 @@ async function spineAdvance(env, budget) {
   // F · FILTER backlog: raw rows WITH vectors — echo kill + t1 classify.
   if (calls + 4 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.desc&limit=12&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding') || [];
+    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.desc&limit=12&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || [];
     const updates = [];
     for (const r of back) {
       if (calls + 3 > budget) break;
@@ -2052,7 +2053,9 @@ async function spineAdvance(env, budget) {
           updates.push(Object.assign(carry(r), { territory, status: 'rejected', momentum: { novelty, announcement: true } }));
           stats.rejected++;
         } else {
-          updates.push(Object.assign(carry(r), { territory, status: 'filtered', momentum: { novelty, note: String(j.note || '').slice(0, 90) } }));
+          // merge, never replace: momentum.promoted is the receipt for a hand-
+          // promoted signal and must outlive every stage that touches the row.
+          updates.push(Object.assign(carry(r), { territory, status: 'filtered', momentum: Object.assign({}, r.momentum, { novelty, note: String(j.note || '').slice(0, 90) }) }));
           stats.filtered++;
         }
       } catch (e) { errs.push('filter:' + String(e && e.message).slice(0, 50)); }
@@ -2103,7 +2106,7 @@ async function spineAdvance(env, budget) {
       const novelty = (r.momentum && r.momentum.novelty) || 0;
       const m = momentumMech(near, r.territory, r.source_tier, novelty);
       return Object.assign(carry(r), { cluster_id, status: 'connected',
-        momentum: Object.assign({}, m, { neighbors: near.slice(0, 4).map(n => n.id) }) });
+        momentum: Object.assign({}, r.momentum, m, { neighbors: near.slice(0, 4).map(n => n.id) }) });
     });
     if (updates.length && calls + 1 <= budget) {
       calls++;
@@ -2176,10 +2179,106 @@ async function excavateLake(request, env, origin) {
       id: r.id, title: r.title, url: r.url, summary: r.summary,
       source_name: r.source_name, source_tier: r.source_tier,
       territory: r.territory, status: r.status, captured_at: r.captured_at,
-      momentum: r.momentum, similarity: Math.round((r.similarity || 0) * 1000) / 1000
-    })) }, 200, origin, env);
+      momentum: r.momentum, similarity: Math.round((r.similarity || 0) * 1000) / 1000,
+      provenance: 'lake'
+    })), field: await fieldRail(env) }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'lake_unavailable' }, 200, origin, env);
+  }
+}
+
+/* ═══ SEAM:FIELD_RAIL — the law before the provider. EXCAVATE can only ever
+ * see what the spine captured; the registry is the ceiling on every insight
+ * it produces. Live reach past that ceiling is legitimate — the surface is
+ * interactive, one query at a time, and a human is the filter — but a live
+ * result and a lake row are not the same kind of thing and must never share
+ * a list.
+ *
+ * A lake row carries source_tier, captured_at, cluster_id, momentum and a
+ * provenance thread to published DAILY stories. A field result carries none
+ * of it: no embedding, no cluster, no recurrence, no tier. Return them
+ * blended and you have laundered a web scrape as archive intelligence — the
+ * one thing the buyer we are chasing is trained to catch.
+ *
+ * So: two rails, structurally separate, each item declaring its own
+ * provenance. The field rail's field set is deliberately thin. You cannot
+ * render a field result as a lake row because it has no tier to render.
+ * The shape IS the law.
+ *
+ * No provider is attached. That is on purpose — the law ships before the
+ * fetcher. To attach one, implement fetch inside this function against a
+ * chosen provider and set FIELD_API_KEY; the contract is:
+ *   { title, url, summary, source_name } — and nothing else. Anything richer
+ *   belongs in the lake, which is what SEAM:PROMOTE is for.  ═══ */
+async function fieldRail(env) {
+  if (!env.FIELD_API_KEY) return {
+    enabled: false, provider: null, count: 0, results: [],
+    note: 'no field provider attached — set FIELD_API_KEY and implement the fetch in fieldRail()'
+  };
+  return {
+    enabled: false, provider: String(env.FIELD_PROVIDER || 'unnamed'), count: 0, results: [],
+    note: 'FIELD_API_KEY is set but no fetch is implemented in fieldRail()'
+  };
+}
+
+/* ═══ SEAM:PROMOTE — how the lake grows by hand. A field result that proves
+ * out gets promoted: hashed on the same fingerprint as capture, tiered by the
+ * member who promoted it, and inserted at status:'raw'. From there the spine
+ * owns it — and because the drain runs newest-first, a promotion is embedded
+ * on the very next slice, filtered after, clustered after that. It then
+ * participates in recurrence like anything else.
+ *
+ * This is the answer to the source problem RSS hides from you. RSS hands you
+ * editorial filtering for free, which is exactly why it is an echo; a
+ * firehose like X would take that filter away and starve FILTER at 12 rows a
+ * slice. Promotion puts the filter back where it belongs: one analyst, one
+ * judgement, one row. The tier question dissolves too — a designer with 200
+ * followers has no institutional tier, so the person who saw it assigns one.
+ *
+ * The receipt rides in momentum.promoted: who, when, which provider, and the
+ * query that surfaced it. That thread is the authority substitute — Mintel
+ * says trust us, this says here is when we first saw it and who called it.
+ * FILTER and CONNECT merge rather than replace momentum so it survives.  ═══ */
+async function excavatePromote(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const title = String(body.title || '').trim().slice(0, 300);
+  const url = String(body.url || '').trim().slice(0, 500);
+  if (!title) return json({ ok: false, error: 'title_required' }, 200, origin, env);
+  if (!/^https?:\/\//.test(url)) return json({ ok: false, error: 'url_required' }, 200, origin, env);
+  const tier = Math.min(4, Math.max(1, parseInt(body.tier, 10) || 3));
+  const territory = DAILY_POV.territories.includes(body.territory) ? body.territory : null;
+  try {
+    const hash = await sha256hex(hashInput(title, url));
+    const row = {
+      content_hash: hash, title, url,
+      summary: String(body.summary || '').slice(0, 1200),
+      image: /^https?:\/\//.test(String(body.image || '')) ? String(body.image).slice(0, 500) : null,
+      published_at: null,
+      source_name: String(body.source_name || 'FIELD').slice(0, 120),
+      source_tier: tier, territory, status: 'raw',
+      momentum: { promoted: {
+        by: gate.user.id, at: new Date().toISOString(),
+        provider: String(body.provider || 'manual').slice(0, 40),
+        q: String(body.q || '').slice(0, 200)
+      } }
+    };
+    const back = await sbRest(env, 'signals?on_conflict=content_hash&select=id,content_hash', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
+      body: [row]
+    }) || [];
+    const landed = back[0] || null;
+    await logEvent(env, 'intelligence', 'excavate', 'promote', null,
+      { tier, territory, provider: row.momentum.promoted.provider, fresh: !!landed });
+    return json({ ok: true, promoted: !!landed, already_in_lake: !landed,
+      content_hash: hash, id: landed ? landed.id : null,
+      note: landed ? 'entered the lake at raw — embedded on the next slice' : 'already captured; not duplicated'
+    }, 200, origin, env);
+  } catch (e) {
+    return json({ ok: false, error: 'promote_failed', detail: String(e && e.message).slice(0, 120) }, 200, origin, env);
   }
 }
 

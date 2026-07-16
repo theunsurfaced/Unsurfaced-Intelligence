@@ -163,6 +163,14 @@
    "file": "worker/src/index.js",
    "purpose": "the alarm that did not exist: 06:00 ground-truth check on the edition row, not on a return value; DARK when nothing reached status=published or a row stalled at building, LEGACY when no item carried a signal_id and the fallback carried the paper; mails over Resend to ALERT_EMAIL and speaks even when it cannot read the lake \u2014 health that only an admin JWT can see is how DAILY went dark for seven days"
   },
+  "SEAM:FIELD_RAIL": {
+   "file": "worker/src/index.js",
+   "purpose": "the law before the provider: EXCAVATE returns two rails that never blend \u2014 lake rows carry tier, captured_at, cluster and momentum, field results carry title/url/summary/source and nothing else, so a scrape cannot be rendered as archive; no provider attached by design, FIELD_API_KEY + a fetch in fieldRail() is the whole attach"
+  },
+  "SEAM:PROMOTE": {
+   "file": "worker/src/index.js",
+   "purpose": "how the lake grows by hand: /excavate/promote hashes on the capture fingerprint, takes an analyst-assigned tier, enters at raw and rides the newest-first drain into embed/filter/connect; momentum.promoted carries who, when, provider and the query that surfaced it, merged (never replaced) by every downstream stage"
+  },
   "SEAM:RECURRENCE": {
    "file": "worker/src/index.js",
    "purpose": "the lake's long memory: recurring themes ranked by weeks touched, span, breadth and paper provenance; cluster pulse on the cluster door"
