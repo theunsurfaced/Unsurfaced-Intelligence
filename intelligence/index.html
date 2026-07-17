@@ -178,6 +178,19 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 /* sources strip below results header */
 .results-sources-strip{background:var(--surface2);border:1px solid var(--border);border-top:none;padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
 .strip-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.12em;flex-shrink:0;}
+.voice-strip{border:1px solid var(--line);padding:16px 18px;margin:0 0 18px;background:rgba(255,51,51,0.02);}
+.voice-head{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.14em;color:var(--accent);margin-bottom:12px;}
+.voice-nums{display:flex;flex-wrap:wrap;gap:26px;margin-bottom:12px;}
+.voice-n{display:flex;flex-direction:column;gap:3px;}
+.voice-n b{font-size:22px;font-weight:600;line-height:1;}
+.voice-n span{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.08em;}
+.voice-cut{border-left:2px solid var(--accent);padding:8px 0 8px 12px;margin:0 0 12px;font-size:13px;line-height:1.5;}
+.voice-themes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.voice-theme{font-family:'Space Mono',monospace;font-size:9px;padding:3px 9px;border:1px solid var(--line);color:var(--text2);}
+.voice-samples{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);cursor:pointer;}
+.voice-sample{border-top:1px solid var(--line);padding:9px 0;font-size:12px;line-height:1.45;color:var(--text2);}
+.voice-sample a{color:var(--text3);font-family:'Space Mono',monospace;font-size:9px;text-decoration:none;}
+.voice-note{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);}
 .strip-chip{font-family:'Space Mono',monospace;font-size:9px;padding:3px 10px;border:1px solid;display:inline-flex;align-items:center;gap:5px;cursor:pointer;text-decoration:none;transition:all 0.2s;}
 .strip-chip.ok{border-color:rgba(74,222,128,0.3);color:#4ade80;}
 .strip-chip.ok:hover{background:rgba(74,222,128,0.08);}
@@ -1943,6 +1956,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     </div>
   </div>
   <div class="results-sources-strip" id="results-sources-strip"></div>
+  <!-- SEAM:VOICE@intelligence -->
+  <div id="voice-strip"></div>
   <div id="deep-cta-container"></div>
   <!-- 5-LENS TAB BAR -->
   <div class="results-lens-bar" id="results-lens-bar">
@@ -3445,6 +3460,98 @@ async function runDeepSearch(q) {
 // ════════════════════════════════════════════
 //  RENDER
 // ════════════════════════════════════════════
+/* SEAM:VOICE@intelligence — the one measured thing on this page.
+ *
+ * Everything else here is position. `confidence: i<3?'High':...` stamped a
+ * 1994 paper with zero citations High because it came back first; the card bar
+ * was `width:${50+i*8}%`, literally the loop index. Both are gone below.
+ *
+ * This strip is arithmetic over real posts, and it leads with the number no
+ * panel provider will ever sell: how much of a brand's name on social is
+ * actually the brand. For kool-aid, live, it is 13% — the other 87% is
+ * somebody else's metaphor. Nielsen would invoice for 97 mentions. We say 12
+ * and we are right.
+ *
+ * Fails silent by design: no provider, no session, no posts — the strip does
+ * not draw and the rest of the page is untouched. */
+async function renderVoiceStrip(q){
+  const el = document.getElementById('voice-strip');
+  if (!el) return;
+  el.innerHTML = '';
+  const entity = String(q || '').trim();
+  if (!entity) return;
+  let v = null;
+  try {
+    const hh = await _authHeader();
+    if (!hh.Authorization) return;
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/voice', {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
+      body: JSON.stringify({ entity: entity.slice(0, 80), days: 7 })
+    });
+    if (!r.ok) return;
+    v = await r.json();
+  } catch (e) { return; }
+  if (!v || !v.ok) return;
+
+  if (v.enabled === false) {
+    el.innerHTML = `<div class="voice-strip"><div class="voice-head">● CONSUMER VOICE</div>
+      <div class="voice-note">${safe(v.note || 'unavailable')}</div></div>`;
+    return;
+  }
+  if (!v.mentions) {
+    // Plain. No claim about what the silence means: this box does not know
+    // whether it was handed a brand, a category, or a six-word thesis, and
+    // 'the category may be moving without the brand in it' is nonsense on a
+    // query like 'streaming ad fatigue'. Report the absence, let the analyst
+    // read it.
+    el.innerHTML = `<div class="voice-strip"><div class="voice-head">● CONSUMER VOICE · BLUESKY · ${v.window_days} DAYS</div>
+      <div class="voice-note">No posts matched “${safe(entity)}” in the last ${v.window_days} days.</div></div>`;
+    return;
+  }
+
+  // The cut fires from the DATA, not from an assumption about what was typed.
+  // 'kool-aid' comes back at 13% because the name is an idiom before it is a
+  // beverage - that gap is the finding. 'creator economy' will come back near
+  // 90%, where there is no gap and announcing one would be theatre. So the
+  // sharp sentence only appears when the number earns it, and the wording says
+  // 'matched the search' rather than 'the name' - the box is handed brands,
+  // categories and theses alike and must be true for all three.
+  const pct = (v.about_rate != null) ? Math.round(v.about_rate * 100) : null;
+  let cut;
+  if (pct != null && v.about_estimate != null && pct < 50) {
+    cut = `<strong>${v.mentions} posts matched. About ${v.about_estimate} are actually about
+       “${safe(entity)}”.</strong> The other ${100 - pct}% use the words for something else —
+       an idiom, a surname, a coincidence. Read from ${v.about_sample_of}.`;
+  } else if (pct != null && v.about_estimate != null) {
+    cut = `<strong>${v.mentions} posts from ${v.authors} accounts</strong> in the last
+       ${v.window_days} days — ${pct}% of a ${v.about_sample_of}-post read was on topic.`;
+  } else {
+    cut = `<strong>${v.mentions} posts from ${v.authors} accounts</strong> in the last ${v.window_days} days.`;
+  }
+
+  const n = (b, s) => `<div class="voice-n"><b>${b}</b><span>${s}</span></div>`;
+  el.innerHTML = `<div class="voice-strip">
+    <div class="voice-head">● CONSUMER VOICE · BLUESKY · ${v.window_days} DAYS${v.capped ? ' · CAPPED AT 100' : ''}</div>
+    <div class="voice-nums">
+      ${n(v.mentions, 'MENTIONS')}
+      ${v.about_estimate != null ? n(v.about_estimate, 'ON TOPIC') : ''}
+      ${n(v.authors, 'ACCOUNTS')}
+      ${n((v.engagement && v.engagement.likes) || 0, 'LIKES')}
+      ${v.trend && v.trend.ratio ? n(v.trend.ratio + '×', 'VS ' + v.trend.prior_days + 'd AVG') : ''}
+    </div>
+    <div class="voice-cut">${cut}</div>
+    ${(v.themes || []).length ? `<div class="voice-themes">${v.themes.map(t =>
+      `<span class="voice-theme">${safe(t)}</span>`).join('')}</div>` : ''}
+    ${(v.samples || []).length ? `<div class="voice-samples" onclick="
+      var d=this.nextElementSibling; d.style.display = d.style.display==='none' ? 'block':'none';">
+      ▸ ${v.samples.length} posts — read them</div>
+      <div style="display:none">${v.samples.map(s => `<div class="voice-sample">${safe(s.text)}
+        ${s.url ? `<br><a href="${safeUrl(s.url)}" target="_blank" rel="noopener">@${safe(s.handle)} · ${s.likes} likes ↗</a>` : ''}
+      </div>`).join('')}</div>` : ''}
+  </div>`;
+}
+
 function renderResults(q, data, mode){
   lastMode=mode;
   lastSources=data.sources||[];
@@ -3462,6 +3569,7 @@ function renderResults(q, data, mode){
       ?'<div class="mode-pill basic">LIVE SOURCES — REAL-TIME PIPELINE</div>'
       :'<div class="mode-pill basic">BASIC SEARCH — OPEN-SOURCE INTELLIGENCE</div>');
 
+  renderVoiceStrip(q);   // fire and forget: the strip never blocks the page
   document.getElementById('res-sources').textContent=lastSources.length||'—';
   document.getElementById('res-insights').textContent=(data.insights||[]).length;
   document.getElementById('res-ideas').textContent=(data.ideas||[]).length;
@@ -3491,7 +3599,11 @@ function renderResults(q, data, mode){
         <span class="proof-link" onclick="event.stopPropagation();openSourcesModal()">View Sources</span>
         ${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open Source ↗</a>`:''}
       </div>
-      <div class="card-bar"><div class="card-bar-fill" style="width:${50+i*8}%"></div></div>
+      ${'' /* The bar that used to sit here took its width from the loop index -
+              first card 50 percent, each one after it eight more. Position,
+              drawn as data, on a page shown to brand leadership. Nothing on an
+              insight card is measured, so nothing draws. The voice strip above
+              is the measurement. Do not restore this without a number behind it. */}
     </div>
   `).join('');
 
@@ -7332,18 +7444,33 @@ async function _fetchLiveCardData(card) {
     // so even the LIVE path returned the typed number. A progress bar with
     // nothing behind it is a claim, and this page makes it to brand leadership.
     //
-    // The lake's momentum rubric declares its own ceiling — six dims, '0-5
-    // each' — so mean/30 is a true fraction of a scale we published, not a
-    // normalisation invented to make the bar look good. No lake evidence for a
-    // thesis means no bar: absence of data draws nothing.
+    // Divide by what was actually measured, not by the whole rubric.
+    //
+    // The first version summed six dims and divided by thirty - a true fraction
+    // of the published ceiling, and wrong, because only CONNECT fills all six.
+    // FILTER writes {novelty, note}: ONE dim. The lake holds hundreds of
+    // filtered rows and a handful of connected ones, so every thesis averaged
+    // ~4/30 and the bar pinned near zero on the live page. Not a lie any more,
+    // just wrong - which is worse, because it was wrong with a straight face.
+    //
+    // So: mean score across the dims each row actually carries, over 5, the
+    // per-dim ceiling. Same scale for every row. The honest caveat is that a
+    // filtered row is judged on one dimension and a connected row on six -
+    // equal scale, unequal confidence. Fixable once CONNECT has run long enough
+    // to make connected-only viable; not before, or the bar vanishes entirely.
+    // No lake evidence still draws nothing.
     let bar = null;
     if (lakeRows && lakeRows.length) {
       const DIMS = ['novelty','velocity','breadth','depth','durability','relevance'];
-      const CEIL = DIMS.length * 5;
-      const scores = lakeRows.map(r => DIMS.reduce((a,d) =>
-        a + (Number(r.momentum && r.momentum[d]) || 0), 0));
-      const mean = scores.reduce((a,b) => a + b, 0) / scores.length;
-      bar = Math.max(4, Math.min(100, Math.round((mean / CEIL) * 100)));
+      const scores = lakeRows.map(r => {
+        const m = r.momentum || {};
+        const present = DIMS.filter(d => m[d] != null && !isNaN(Number(m[d])));
+        return present.length
+          ? present.reduce((a, d) => a + Number(m[d]), 0) / present.length : null;
+      }).filter(s => s != null);
+      if (!scores.length) return { title: card.subtitle || card.title, excerpt, stat, bar: null, source };
+      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+      bar = Math.max(4, Math.min(100, Math.round((mean / 5) * 100)));
       stat   = (stat ? stat + ' · ' : '') + lakeRows.length + ' in the lake';
       source = source ? source + ' · Unsurfaced lake' : 'Unsurfaced lake';
     }

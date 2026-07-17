@@ -171,6 +171,11 @@
    "file": "worker/src/index.js",
    "purpose": "how the lake grows by hand: /excavate/promote hashes on the capture fingerprint, takes an analyst-assigned tier, enters at raw and rides the newest-first drain into embed/filter/connect; momentum.promoted carries who, when, provider and the query that surfaced it, merged (never replaced) by every downstream stage"
   },
+  "SEAM:VOICE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:VOICE",
+   "purpose": "the one measured thing on the search surface: a voice strip above the result cards leading with how much of a brand's name on social is actually the brand \u2014 kool-aid reads 97 mentions, ~12 about the beverage, 87% somebody else's idiom. Everything else on that page was position: confidence was the array index and the card bar was width 50+i*8, both now gone. Fails silent \u2014 no provider, no session, no posts and the strip does not draw"
+  },
   "SEAM:VOICE": {
    "file": "worker/src/index.js",
    "purpose": "the fourth rail \u2014 what people actually said. Consumer voice is AGGREGATE, not signal: one post is noise, a thousand is a measurement, so this never writes rows to the lake (FILTER does 12 a slice and hashInput cannot dedupe a repost) and returns ONE row per entity per window \u2014 mentions, authors, engagement, trend vs our own KV history, themes and sentiment from one batched t1 call on a sample. Bluesky because in 2026 no free door remains: Reddit's unauthenticated .json 403s since May 2026 and its commercial floor is $12k/year, X is $200/mo minimum, TikTok and Instagram have no honest door. searchPosts is not public despite the docs, so a session is required \u2014 free, KV-cached 90m. Counts are arithmetic; only the reading goes to a model"
