@@ -171,6 +171,10 @@
    "file": "worker/src/index.js",
    "purpose": "how the lake grows by hand: /excavate/promote hashes on the capture fingerprint, takes an analyst-assigned tier, enters at raw and rides the newest-first drain into embed/filter/connect; momentum.promoted carries who, when, provider and the query that surfaced it, merged (never replaced) by every downstream stage"
   },
+  "SEAM:VOICE": {
+   "file": "worker/src/index.js",
+   "purpose": "the fourth rail \u2014 what people actually said. Consumer voice is AGGREGATE, not signal: one post is noise, a thousand is a measurement, so this never writes rows to the lake (FILTER does 12 a slice and hashInput cannot dedupe a repost) and returns ONE row per entity per window \u2014 mentions, authors, engagement, trend vs our own KV history, themes and sentiment from one batched t1 call on a sample. Bluesky because in 2026 no free door remains: Reddit's unauthenticated .json 403s since May 2026 and its commercial floor is $12k/year, X is $200/mo minimum, TikTok and Instagram have no honest door. searchPosts is not public despite the docs, so a session is required \u2014 free, KV-cached 90m. Counts are arithmetic; only the reading goes to a model"
+  },
   "SEAM:PROPOSE": {
    "file": "worker/src/index.js",
    "purpose": "the lake writes its own themes: recurring clusters (weeks touched, span, breadth, source count, paper provenance) go to t3 for a thesis in the DAILY voice \u2014 one batched call, KV-cached 24h; stat and bar are computed from recurrenceRollup and never written by the model, every card declares provenance:lake, and nothing publishes itself. SEAM:PROMOTE run the other direction: there a human hands the lake a signal, here the lake hands a human a theme"

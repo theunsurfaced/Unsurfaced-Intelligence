@@ -88,6 +88,7 @@ export default {
       if (path === '/excavate/recurrence' && request.method === 'POST') return excavateRecurrence(request, env, origin);
       if (path === '/excavate/promote' && request.method === 'POST') return excavatePromote(request, env, origin);
       if (path === '/excavate/propose' && request.method === 'POST') return excavatePropose(request, env, origin);
+      if (path === '/excavate/voice' && request.method === 'POST') return excavateVoice(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
 
@@ -2581,6 +2582,208 @@ function clusterPulse(rows) {
  * [] — honestly, and saying why. That is recurrence working, not failing.
  * Pass min_weeks:1 to preview what it will say.  ═══ */
 const PROPOSE_LENS = ['consumer', 'market', 'culture', 'brand'];
+
+/* ═══ SEAM:VOICE — the fourth rail. LAKE is ours, FIELD is live, ACADEMIC is
+ * mechanism; this is what people actually said.
+ *
+ * The law that shapes everything here: consumer voice is AGGREGATE, not signal.
+ * One article is a signal. One post is noise — a thousand posts is a signal. So
+ * this never writes rows to the lake: FILTER does 12 a slice and a brand
+ * firehose would starve it by lunchtime, and hashInput cannot dedupe a repost.
+ * It returns ONE measurement per entity per window. That is the row a brand
+ * manager reads first, and it is the only thing on this platform Nielsen
+ * cannot already sell them.
+ *
+ * Bluesky, because in 2026 there is no free door left. Reddit's unauthenticated
+ * .json began returning 403 in May 2026; its free tier is non-commercial only
+ * with registration closed, and commercial access carries a $12k/year floor —
+ * that is a client line item, not platform overhead. X is $200/mo minimum.
+ * TikTok and Instagram have no honest door at all. Bluesky costs nothing, has
+ * no quota meter, and skews precisely culture-adjacent — the sneakers/music/
+ * art/design audience the 14 territories already cover. It is better AIMED for
+ * this product than X, not merely cheaper.
+ *
+ * searchPosts is NOT public despite the docs: public.api.bsky.app returns 403.
+ * So a session is required — free, but a credential. KV-cached 90m so the
+ * handshake is not paid per query.
+ *
+ * Facts counted here, language written by the model, never the reverse.
+ * mentions/authors/engagement are arithmetic over what came back; only themes
+ * and sentiment go to t1, on a sample, in one batched call.  ═══ */
+async function bskySession(env) {
+  if (!env.BSKY_HANDLE || !env.BSKY_APP_PASSWORD) return null;
+  const k = 'voice:sess:v1';
+  if (env.RATE_LIMIT) {
+    const hit = await env.RATE_LIMIT.get(k).catch(function () { return null; });
+    if (hit) { try { const s = JSON.parse(hit); if (s && s.jwt) return s; } catch (e) {} }
+  }
+  const r = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: env.BSKY_HANDLE, password: env.BSKY_APP_PASSWORD })
+  });
+  if (!r.ok) throw new Error('bsky_session_' + r.status);
+  const j = await r.json();
+  if (!j || !j.accessJwt) throw new Error('bsky_session_shape');
+  const s = { jwt: j.accessJwt, did: j.did || null };
+  // 90m: the token lives ~2h, so refresh well inside it rather than at the edge.
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(k, JSON.stringify(s), { expirationTtl: 5400 })
+    .catch(function () {});
+  return s;
+}
+
+async function excavateVoice(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {};
+  try { body = await request.json(); } catch (e) {}
+  const entity = String(body.entity || body.q || '').trim().slice(0, 80);
+  if (!entity) return json({ ok: false, error: 'entity_required' }, 200, origin, env);
+  const days = Math.min(30, Math.max(1, parseInt(body.days, 10) || 7));
+  const ck = 'voice:v1:' + days + ':' + entity.toLowerCase();
+
+  if (body.refresh !== true && env.RATE_LIMIT) {
+    const hit = await env.RATE_LIMIT.get(ck).catch(function () { return null; });
+    if (hit) { try { return json(Object.assign(JSON.parse(hit), { cached: true }), 200, origin, env); } catch (e) {} }
+  }
+
+  const off = (note) => json({ ok: true, entity, window_days: days, enabled: false,
+    provider: null, mentions: 0, samples: [], provenance: 'voice', note }, 200, origin, env);
+
+  try {
+    let sess = null;
+    try { sess = await bskySession(env); }
+    catch (e) { return off('voice provider error: ' + String(e && e.message).slice(0, 60)); }
+    if (!sess) return off('no voice provider — set BSKY_HANDLE and BSKY_APP_PASSWORD');
+
+    const since = new Date(Date.now() - days * 864e5).toISOString();
+    const url = 'https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=' + encodeURIComponent(entity)
+      + '&limit=100&sort=latest&since=' + encodeURIComponent(since);
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + sess.jwt } });
+    if (r.status === 401 && env.RATE_LIMIT) {                 // stale token: burn it, once
+      await env.RATE_LIMIT.delete('voice:sess:v1').catch(function () {});
+      return off('voice_session_expired — retry');
+    }
+    if (!r.ok) return off('voice_http_' + r.status);
+    const j = await r.json().catch(function () { return null; });
+    const posts = (j && Array.isArray(j.posts)) ? j.posts : [];
+
+    if (!posts.length) {
+      const out0 = { ok: true, entity, window_days: days, enabled: true, provider: 'bluesky',
+        mentions: 0, authors: 0, engagement: { likes: 0, reposts: 0, replies: 0 },
+        trend: null, themes: [], samples: [], provenance: 'voice',
+        note: 'no posts in window — the brand is not in this conversation, which is itself a finding' };
+      if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, JSON.stringify(out0), { expirationTtl: 21600 })
+        .catch(function () {});
+      return json(out0, 200, origin, env);
+    }
+
+    // ── arithmetic, not opinion ──
+    const authors = new Set();
+    let likes = 0, reposts = 0, replies = 0;
+    for (const p of posts) {
+      if (p.author && p.author.did) authors.add(p.author.did);
+      likes += Number(p.likeCount) || 0;
+      reposts += Number(p.repostCount) || 0;
+      replies += Number(p.replyCount) || 0;
+    }
+    const texts = posts.map(function (p) { return String((p.record && p.record.text) || ''); })
+      .filter(Boolean);
+
+    // ── trend: today against the prior window, from our own history ──
+    let trend = null;
+    if (env.RATE_LIMIT) {
+      const today = new Date().toISOString().slice(0, 10);
+      const hk = 'voice:hist:' + entity.toLowerCase() + ':' + today;
+      await env.RATE_LIMIT.put(hk, String(posts.length), { expirationTtl: 2764800 }).catch(function () {});
+      const prior = [];
+      for (let d = 1; d <= 7; d++) {
+        const dt = new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
+        const v = await env.RATE_LIMIT.get('voice:hist:' + entity.toLowerCase() + ':' + dt)
+          .catch(function () { return null; });
+        if (v != null) prior.push(Number(v) || 0);
+      }
+      if (prior.length >= 2) {
+        const avg = prior.reduce(function (a, b) { return a + b; }, 0) / prior.length;
+        trend = { today: posts.length, prior_days: prior.length,
+          prior_avg: Math.round(avg * 10) / 10,
+          ratio: avg > 0 ? Math.round((posts.length / avg) * 10) / 10 : null };
+      }
+    }
+
+    // ── one t1 call: disambiguate, THEN read. Language only, never counts. ──
+    // Most brands worth consulting on are also ordinary words. 'kool-aid' is an
+    // idiom before it is a beverage; so are Apple, Target, Tide, Dove, Shell,
+    // Gap, Subway, Visa. A raw name search returns the metaphor, and a mention
+    // count laid over it is a lie with a decimal point. So the model separates
+    // posts ABOUT the entity from posts that merely use its name, and both
+    // numbers ship: the raw search count, and the real one.
+    //
+    // The share is not a caveat, it is the finding. 'Eighty-seven percent of
+    // your brand name on social is somebody else's metaphor' is the most useful
+    // sentence this rail can hand a brand manager, and no panel provider sells
+    // it — they bill by the mention.
+    let themes = [], sentiment = null, aboutN = null;
+    const sampleN = Math.min(40, texts.length);
+    try {
+      const sample = texts.slice(0, 40).map(function (t, i) {
+        return '[' + (i + 1) + '] ' + t.replace(/\s+/g, ' ').slice(0, 180); }).join('\n');
+      const reply = await callModel(env, 't1', [
+        { role: 'system', content: 'You are given numbered social posts that all matched a '
+          + 'search for a named ENTITY. Many will merely use its name as a common word, an '
+          + 'idiom, a person, or an unrelated thing. First separate them. Then read only the '
+          + 'ones actually about the entity.\n'
+          + 'Return ONLY JSON: {"about":[<item numbers genuinely about the entity>],'
+          + '"themes":[<3-6 short noun phrases drawn from the ABOUT posts, most common first>],'
+          + '"sentiment":{"pos":<n>,"neu":<n>,"neg":<n>}} where the three counts sum to the '
+          + 'number of ABOUT items. If none are about the entity, return an empty "about" and '
+          + 'empty themes. Count only what is written. Invent nothing. No prose outside the JSON.' },
+        { role: 'user', content: 'Entity: ' + entity + '\n\n' + sample }
+      ], { max_tokens: 600 });
+      const pj = parseModelJson(reply);
+      if (pj && Array.isArray(pj.about)) {
+        const good = pj.about.map(function (n) { return parseInt(n, 10); })
+          .filter(function (n) { return n >= 1 && n <= sampleN; });
+        aboutN = new Set(good).size;
+      }
+      if (pj && Array.isArray(pj.themes)) themes = pj.themes.slice(0, 6).map(function (t) {
+        return String(t).slice(0, 48); });
+      if (pj && pj.sentiment) sentiment = {
+        pos: Number(pj.sentiment.pos) || 0, neu: Number(pj.sentiment.neu) || 0,
+        neg: Number(pj.sentiment.neg) || 0, of_about: aboutN };
+    } catch (e) { /* the count stands without the reading */ }
+
+    const out = {
+      ok: true, entity, window_days: days, enabled: true, provider: 'bluesky',
+      mentions: posts.length,
+      capped: posts.length >= 100,     // searchPosts limit — say so, do not imply a total
+      // the raw count is what the search matched; about_* is what is actually
+      // yours. Extrapolated from the read sample and it says so — never counted
+      // whole, because we only read 40.
+      about_sample: aboutN, about_sample_of: sampleN,
+      about_rate: (aboutN != null && sampleN) ? Math.round((aboutN / sampleN) * 100) / 100 : null,
+      about_estimate: (aboutN != null && sampleN) ? Math.round(posts.length * (aboutN / sampleN)) : null,
+      authors: authors.size,
+      engagement: { likes, reposts, replies },
+      trend, themes, sentiment,
+      samples: posts.slice(0, 5).map(function (p) {
+        const rk = String(p.uri || '').split('/').pop();
+        const hd = (p.author && p.author.handle) || '';
+        return { text: String((p.record && p.record.text) || '').slice(0, 240),
+          handle: hd, likes: Number(p.likeCount) || 0,
+          at: (p.record && p.record.createdAt) || p.indexedAt || null,
+          url: hd && rk ? 'https://bsky.app/profile/' + hd + '/post/' + rk : null };
+      }),
+      provenance: 'voice', fetched_at: new Date().toISOString()
+    };
+    if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, JSON.stringify(out), { expirationTtl: 21600 })
+      .catch(function () {});
+    await logEvent(env, 'intelligence', 'excavate', 'voice', null,
+      { entity: entity.slice(0, 40), days, mentions: out.mentions, authors: out.authors });
+    return json(out, 200, origin, env);
+  } catch (e) {
+    return off('voice_error: ' + String(e && e.message).slice(0, 80));
+  }
+}
 
 async function excavatePropose(request, env, origin) {
   const gate = await excavateAuth(request, env, origin);
