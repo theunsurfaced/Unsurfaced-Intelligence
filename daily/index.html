@@ -515,9 +515,9 @@ function el(id) { return document.getElementById(id); }
   function keyVisual(item) {
     var has = item.image_url && /^https?:\/\//.test(item.image_url);
     if (has) {
-      return "<figure class=\"keyvis\"><img src=\"" + esc(item.image_url) +
+      return "<figure class=\"keyvis\"" + (item.source_url ? " data-lazyimg=\"" + esc(item.source_url) + "\" data-done=\"1\"" : "") + "><img src=\"" + esc(item.image_url) +
         "\" alt=\"\" loading=\"lazy\" referrerpolicy=\"no-referrer\"" +
-        " onerror=\"this.closest(&quot;figure&quot;).style.display=&quot;none&quot;\"></figure>";
+        " onerror=\"dailyImgFail(this)\"></figure>";
     }
     if (!item.source_url) return "";
     // No wire image: ask the source itself, lazily, after render.
@@ -545,9 +545,9 @@ function el(id) { return document.getElementById(id); }
       ? "<span class=\"fp-fmt\">" + esc(String(item.format).toUpperCase()) + "</span>" : "";
     var pri = i === 0 ? " fetchpriority=\"high\"" : "";
     var vis = item.image_url && /^https?:\/\//.test(item.image_url)
-      ? "<figure class=\"fp-vis\"><img src=\"" + esc(item.image_url) +
+      ? "<figure class=\"fp-vis\"" + (item.source_url ? " data-lazyimg=\"" + esc(item.source_url) + "\" data-done=\"1\"" : "") + "><img src=\"" + esc(item.image_url) +
         "\" alt=\"\" loading=\"lazy\" decoding=\"async\"" + pri + " referrerpolicy=\"no-referrer\"" +
-        " onerror=\"this.closest(&quot;figure&quot;).classList.add(&quot;fp-ghosted&quot;)\"></figure>"
+        " onerror=\"dailyImgFail(this)\"><svg class=\"fp-ghost-mark\" viewBox=\"162.68 272.12 445.04 42.80\" aria-hidden=\"true\"><use href=\"#umark\"/></svg></figure>"
       : (item.source_url
         ? "<figure class=\"fp-vis fp-ghosted\" data-lazyimg=\"" + esc(item.source_url) + "\">" +
           "<img alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"" +
@@ -897,6 +897,15 @@ route();
     open(a.getAttribute("href"));
   }, true);
   // Lazy key visuals: stories without a wire image ask their source for one.
+  // A dead wire image walks the same road: hide the corpse, raise the mark,
+  // re-open the lazy door \u2014 the source's own og:image is one fetch away.
+  window.dailyImgFail = function (img) {
+    img.style.display = "none";
+    var f = img.closest("figure"); if (!f) return;
+    f.classList.add("fp-ghosted");
+    if (f.classList.contains("keyvis") && !f.getAttribute("data-lazyimg")) { f.style.display = "none"; return; }
+    if (f.getAttribute("data-lazyimg")) { f.removeAttribute("data-done"); enrich(); }
+  };
   function enrich() {
     var figs = document.querySelectorAll("figure[data-lazyimg]:not([data-done])");
     for (var i = 0; i < figs.length; i++) {
@@ -906,7 +915,7 @@ route();
         fetch(API + "/preview?meta=1&url=" + encodeURIComponent(f.getAttribute("data-lazyimg")))
           .then(function (r) { return r.json(); })
           .then(function (d) {
-            if (d && d.ok && d.image) { f.querySelector("img").src = d.image; f.style.display = ""; }
+            if (d && d.ok && d.image) { var im = f.querySelector("img"); im.src = d.image; im.style.display = ""; f.style.display = ""; }
           }).catch(function () {});
       })(figs[i]);
     }

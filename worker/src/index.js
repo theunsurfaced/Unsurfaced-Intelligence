@@ -2156,14 +2156,14 @@ async function composeFromLake(env, today) {
       ], { max_tokens: 320 });
       const lines = String(reply || '').trim().split('\n').map(s => s.trim()).filter(Boolean);
       const tagLine = lines.findIndex(l => /\[(creative|founder|marketer|exec|talent)\]/i.test(l));
-      if (tagLine >= 0) { apply = lines[tagLine].slice(0, 240); lines.splice(tagLine, 1); }
-      take = lines.join(' ').slice(0, 800);
+      if (tagLine >= 0) { apply = studioTrimClean(lines[tagLine], 240); lines.splice(tagLine, 1); }
+      take = studioTrimClean(lines.join(' '), 800);
     } catch (e) { /* voice failure → factual fallback below */ }
-    if (!take) take = String(c.summary || c.title).slice(0, 400);
+    if (!take) take = studioTrimClean(c.summary || c.title, 400);
     items.push({
       kicker: String(c.territory || 'the signal').replace(/-/g, ' ').toUpperCase().slice(0, 40),
-      headline: String(c.title).slice(0, 200),
-      standfirst: String(c.summary || '').slice(0, 160),
+      headline: studioTrimClean(c.title, 200),
+      standfirst: studioTrimClean(c.summary, 160),
       take,
       source_name: String(c.source_name || '').slice(0, 120),
       source_url: c.url,
@@ -3411,9 +3411,9 @@ async function runDailyPipeline(env, opts) {
     .filter(it => it && it.headline && it.take)
     .map(it => ({
       kicker: String(it.kicker || 'THE SIGNAL').slice(0, 40),
-      headline: String(it.headline).slice(0, 200),
-      standfirst: String(it.standfirst || '').slice(0, 240),
-      take: String(it.take).slice(0, 800),
+      headline: studioTrimClean(it.headline, 200),
+      standfirst: studioTrimClean(it.standfirst, 240),
+      take: studioTrimClean(it.take, 800),
       source_name: String(it.source_name || '').slice(0, 120),
       source_url: /^https?:\/\//.test(String(it.source_url || '')) &&
                   evidenceUrls.has(String(it.source_url).trim()) ? it.source_url : null
