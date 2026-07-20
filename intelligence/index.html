@@ -9746,6 +9746,19 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
   function e5(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
   /* ── pure wrap: measure is injected (browser: canvas; proofs: approximator) ── */
+  /* THE LENGTH CONTRACT, render side \u2014 same knife as the Worker:
+   * within budget untouched; over \u2192 last sentence end, else last word
+   * boundary, connectors stripped. The box never cuts mid-thought. */
+  function stTrimClean(text, budget) {
+    var t = String(text || "").replace(/^\s+|\s+$/g, "");
+    if (t.length <= budget) return t;
+    var cut = t.slice(0, budget), best = -1;
+    var re = /[.!?\u2026](?=\s|$)/g, m;
+    while ((m = re.exec(cut))) best = m.index;
+    if (best > budget * 0.4) return cut.slice(0, best + 1);
+    var sp = cut.lastIndexOf(" ");
+    return (sp > 0 ? cut.slice(0, sp) : cut).replace(/[\s,;:\u2014\u2013-]+$/, "");
+  }
   function wrapWith(measure, text, o) {
     var size = o.size;
     while (size >= (o.min || o.size)) {
@@ -9766,7 +9779,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
   window.STUDIO_TEMPLATES = {
     version: "foundry-1.1",
     signal_still: function (p) {
-      var take = String(p.take || "").slice(0, 260);
+      var take = stTrimClean(p.take, 260);
       return [{ w: 1080, h: 1350, ops: [
         { op: "fill", color: BRAND.black },
         { op: "text", text: "UNSURFACED\u2122 DAILY", x: 84, y: 118, font: "Space Mono", size: 26, weight: "700", color: BRAND.ivory, ls: 7 },
@@ -9805,7 +9818,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
           { op: "dot", x: 84, y: sy(168), r: 8, color: BRAND.red },
           { op: "text", text: String(s.kicker || "THE SIGNAL").toUpperCase(), x: 110, y: sy(179), font: "Space Mono", size: 27, weight: "700", color: BRAND.red, ls: 8 },
           { op: "wrap", text: String(s.headline || ""), x: 84, y: sy(290), w: 912, font: "Syne", size: 92, min: 62, weight: "800", color: fg, lh: 1.06, max: 5 },
-          { op: "wrap", text: String(s.take || "").slice(0, 230), x: 84, y: sy(880), w: 912, font: "Space Mono", size: 29, weight: "400", color: sub, lh: 1.5, max: 6 },
+          { op: "wrap", text: stTrimClean(s.take, 230), x: 84, y: sy(880), w: 912, font: "Space Mono", size: 29, weight: "400", color: sub, lh: 1.5, max: 6 },
           { op: "rule", x: 84, y: sy(1252), w: 912, hgt: 3, color: BRAND.red },
           { op: "text", text: "SOURCE \u00B7 " + String(s.source_name || "").toUpperCase(), x: 84, y: sy(1300), font: "Space Mono", size: 22, weight: "400", color: fg, ls: 4 }
         ]});
@@ -9814,7 +9827,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     },
     hand_meme: function (p, platform) {
       var H = platform === "tiktok" ? 1920 : platform === "linkedin" ? 1350 : 1080;
-      var l1 = String(p.line1 || "").slice(0, 90), l2 = String(p.line2 || "").slice(0, 110);
+      var l1 = stTrimClean(p.line1, 90), l2 = stTrimClean(p.line2, 110);
       var receipt = "UNSURFACED\u2122 \u00B7 ISSUE " + String(p.issue_no || "").padStart(3, "0") +
         (p.source_name ? " \u00B7 " + String(p.source_name).toUpperCase() : "");
       if (p.mformat === "vs") {
@@ -9846,7 +9859,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
   /* ── motion: layout (pure, measure injected) + frame program (pure) ── */
   window.studioMotionLayout = function (p, measure) {
     var head = wrapWith(measure, String(p.headline || ""), { w: 912, size: 118, min: 84, max: 5, font: "Syne", weight: "800" });
-    var take = wrapWith(measure, String(p.take || "").slice(0, 230), { w: 912, size: 34, min: 30, max: 5, font: "Space Mono", weight: "400" });
+    var take = wrapWith(measure, stTrimClean(p.take, 230), { w: 912, size: 34, min: 30, max: 5, font: "Space Mono", weight: "400" });
     return { headSize: head.size, headLines: head.lines.map(function (l) { return l.split(" "); }),
              takeSize: take.size, takeLines: take.lines };
   };

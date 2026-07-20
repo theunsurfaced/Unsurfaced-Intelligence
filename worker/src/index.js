@@ -1057,6 +1057,30 @@ const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY
   + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy. '
   + 'Editorial standard: meaning over novelty; evidence over hype; tension over generality; '
   + 'utility over performance \u2014 end where the reader can use what they now see.';
+/* THE LENGTH CONTRACT \u2014 copy composes to the box; the box never cuts
+ * the copy. studioTrimClean is the only knife: within budget \u2192 untouched;
+ * over \u2192 cut at the last sentence end inside budget; no sentence end \u2192
+ * last word boundary, trailing connectors stripped. Never mid-word, never
+ * an ellipsis. studioComplete is the gate: hashtag tail set aside, the
+ * copy must land on terminal punctuation or it does not enter the queue. */
+function studioTrimClean(text, budget) {
+  const t = String(text || '').trim();
+  if (t.length <= budget) return t;
+  const cut = t.slice(0, budget);
+  let best = -1;
+  for (const m of cut.matchAll(/[.!?\u2026](?=\s|$)/g)) best = m.index;
+  if (best > budget * 0.4) return cut.slice(0, best + 1);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > 0 ? cut.slice(0, sp) : cut).replace(/[\s,;:\u2014\u2013-]+$/, '');
+}
+function studioComplete(text) {
+  let t = String(text || '').trim();
+  const lines = t.split('\n');
+  while (lines.length && /^[#\s]*(#[\w\u00c0-\uffff]+[\s]*)+$/.test(lines[lines.length - 1])) lines.pop();
+  t = lines.join('\n').trim();
+  if (!t) return false;
+  return /[.!?\u2026"'\u201d\u2019)]$/.test(t);
+}
 function studioGround(item) {
   return [item.headline, item.standfirst, item.take, item.kicker, item.source_name, item.date]
     .map(x => String(x || '')).join(' ');
@@ -1071,7 +1095,7 @@ function studioFabricated(text, ground) {
   return null;
 }
 function studioSafeCaption(platform, item) {
-  const base = String(item.headline || '') + ' \u2014 ' + String(item.take || '').slice(0, 160);
+  const base = String(item.headline || '') + ' \u2014 ' + studioTrimClean(item.take, 160);
   if (platform === 'linkedin') return base + (item.source_name ? '\nSource: ' + item.source_name : '');
   return base + '\n\n#unsurfaced #' + String(item.kicker || 'signal').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
@@ -1088,34 +1112,36 @@ function studioAngle(item) {
   }
 }
 async function studioCaption(env, platform, item) {
-  const dialect = platform === 'linkedin'
+  const budget = platform === 'linkedin' ? 600 : platform === 'instagram' ? 500 : 300;
+  const contract = ' Land the whole caption within ' + budget + ' characters. Complete every sentence \u2014 if it will not fit, drop an idea, never a sentence.';
+  const dialect = (platform === 'linkedin'
     ? 'LinkedIn dialect: the finding leads; 2-3 sentences arguing it; no hashtags.'
     : platform === 'instagram'
       ? 'Instagram dialect: one sharp line, then one context line. End with up to 5 chosen hashtags on their own line.'
-      : 'TikTok dialect: hook under 12 words, then one payoff line. Up to 4 hashtags.';
+      : 'TikTok dialect: hook under 12 words, then one payoff line. Up to 4 hashtags.') + contract;
   try {
     const ground = studioGround(item);
     const user = `Finding: ${item.headline}\n${item.standfirst || ''}\nThe take: ${item.take || ''}\nSource: ${item.source_name || ''}`;
     let out = await callModel(env, 't1', [
       { role: 'system', content: 'You write social captions for Unsurfaced, a creative recon group publishing daily cultural intelligence. ' + STUDIO_VOICE + ' ' + dialect + studioAngle(item) + ' Output only the caption text.' },
       { role: 'user', content: user }
-    ], { max_tokens: 220 });
-    let cap = String(out || '').trim().slice(0, 900);
-    if (studioFabricated(cap, ground)) {
+    ], { max_tokens: 400 });
+    let cap = studioTrimClean(out, budget);
+    if (studioFabricated(cap, ground) || !studioComplete(cap)) {
       out = await callModel(env, 't1', [
-        { role: 'system', content: 'Rewrite the caption using ONLY the facts in the finding. Remove every date, figure, and name that the finding does not contain. ' + dialect + ' Output only the caption text.' },
+        { role: 'system', content: 'Rewrite the caption using ONLY the facts in the finding. Remove every date, figure, and name that the finding does not contain. Finish every sentence \u2014 no fragments. ' + dialect + ' Output only the caption text.' },
         { role: 'user', content: user + '\n\nCaption to fix: ' + cap }
-      ], { max_tokens: 220 });
-      cap = String(out || '').trim().slice(0, 900);
+      ], { max_tokens: 400 });
+      cap = studioTrimClean(out, budget);
     }
-    if (!cap || studioFabricated(cap, ground)) cap = studioSafeCaption(platform, item);
+    if (!cap || studioFabricated(cap, ground) || !studioComplete(cap)) cap = studioSafeCaption(platform, item);
     return cap;
   } catch (e) { return studioSafeCaption(platform, item); }
 }
 async function studioMemeLines(env, item) {
   try {
     const out = await callModel(env, 't1', [
-      { role: 'system', content: 'You write two-line house memes for Unsurfaced. ' + STUDIO_VOICE + ' Formats: "verdict" (line1 = the finding stated flat, line2 = the deadpan read) or "vs" (line1 = the signal, line2 = the noise it replaces). No emoji ever. Output ONLY JSON: {"mformat":"verdict"|"vs","line1":"...","line2":"..."}' },
+      { role: 'system', content: 'You write two-line house memes for Unsurfaced. ' + STUDIO_VOICE + ' Formats: "verdict" (line1 = the finding stated flat, line2 = the deadpan read) or "vs" (line1 = the signal, line2 = the noise it replaces). No emoji ever. line1 within 90 characters, line2 within 110 \u2014 complete phrases only, never cut a thought. Output ONLY JSON: {"mformat":"verdict"|"vs","line1":"...","line2":"..."}' },
       { role: 'user', content: `Finding: ${item.headline}\nThe take: ${item.take || ''}` }
     ], { max_tokens: 140 });
     const j = JSON.parse(String(out).replace(/```json|```/g, '').trim());
@@ -1123,11 +1149,11 @@ async function studioMemeLines(env, item) {
       const ground = studioGround(item);
       if (!studioFabricated(String(j.line1) + ' ' + String(j.line2 || ''), ground))
         return { mformat: j.mformat === 'vs' ? 'vs' : 'verdict',
-          line1: String(j.line1).slice(0, 90), line2: String(j.line2 || '').slice(0, 110) };
+          line1: studioTrimClean(j.line1, 90), line2: studioTrimClean(j.line2, 110) };
     }
   } catch (e) {}
-  return { mformat: 'verdict', line1: String(item.headline || '').slice(0, 90),
-    line2: String(item.take || '').slice(0, 110) };
+  return { mformat: 'verdict', line1: studioTrimClean(item.headline, 90),
+    line2: studioTrimClean(item.take, 110) };
 }
 /* PURE: the slate walk. First story per unseen territory; territory-less
  * editions fall back to the beat walk; still thin → fill by order. The
