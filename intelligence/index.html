@@ -2372,7 +2372,7 @@ async function _sbSignup() {
   const { data, error } = await _sb.auth.signUp({ email, password, options: { data: { first_name: firstName, last_name: lastName, company, role } } });
   _lgSetLoading('lg-signup-btn', false);
   if (error) return _lgSetError(error.message || 'Sign up failed');
-  if (data.session) { _currentUser = _userFromSb(data.user); _authShowApp(); showToast('Welcome to Unsurfaced ✓'); }
+  if (data.session) { _currentUser = _userFromSb(data.user); _authShowApp(); }
   else { _lgSetError('Account created. Check your email to confirm, then sign in. (Tip: to skip this, turn off “Confirm email” in Supabase → Authentication.)'); lgSwitch('login'); }
 }
 async function _sbSendReset() {
@@ -6551,7 +6551,23 @@ function mineConfirmReset() {
 function mineCloseTrace() { const m = document.getElementById('mine-modal'); if (m) m.classList.remove('show'); }
 
 
-function _authShowApp() {
+// SEAM:APPROVAL — the gate. In connected mode a profile must be approved before
+// the platform opens. Mirrors _isAdmin(): a direct is_approved() RPC — the same
+// function RLS consults — so the UI can never disagree with the database.
+// localStorage mode has no real roles, so it enters freely.
+async function _authShowApp() {
+  if (sbEnabled()) {
+    let approved = false;
+    try { const { data, error } = await _sb.rpc('is_approved'); approved = !error && data === true; }
+    catch (e) { approved = false; }
+    if (!approved) return _authShowPending();
+  }
+  _enterPlatform();
+}
+
+// The "you're in" reveal — byte-for-byte the original _authShowApp body. Reached
+// only once approval has passed (or in local mode).
+function _enterPlatform() {
   const g = document.getElementById('login-gate');
   if (g) g.classList.add('hidden');
   _renderNavUser();
@@ -6561,6 +6577,22 @@ function _authShowApp() {
   _fiInitPending = true;
   initFeaturedInsights();
   goHub();
+}
+
+// SEAM:APPROVAL — the waiting room. A signed-in but unapproved profile lands
+// here instead of the platform. Reuses the login-gate shell so it matches the
+// house exactly; the session stays alive, so approval needs no second sign-up.
+function _authShowPending() {
+  _authShowGate();
+  try {
+    document.querySelectorAll('.lg-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lg-panel').forEach(p => p.classList.remove('active'));
+    const row = document.querySelector('.lg-tab-row'); if (row) row.style.display = 'none';
+    const panel = document.getElementById('lg-panel-pending'); if (panel) panel.classList.add('active');
+    const em = document.getElementById('lg-pending-email');
+    if (em) em.textContent = (_currentUser && _currentUser.email) ? _currentUser.email : '';
+    _lgClearError();
+  } catch (e) {}
 }
 
 // Show the Research Ops entry point only to confirmed admins. The link is
@@ -6589,6 +6621,7 @@ async function _syncAdminUI() {
 
 // ── Tab / panel switching ─────────────────────────────────────────
 function lgSwitch(tab) {
+  const _row = document.querySelector('.lg-tab-row'); if (_row) _row.style.display = '';
   document.querySelectorAll('.lg-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.lg-panel').forEach(p => p.classList.remove('active'));
   const te = document.getElementById('lg-tab-'   + tab);
@@ -10332,6 +10365,20 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
           <a href="#" onclick="lgShowForgot();return false">← Resend code</a>
           &nbsp;·&nbsp;
           <a href="#" onclick="lgSwitch('login');return false">Back to Sign In</a>
+        </div>
+      </div>
+
+      <!-- PENDING APPROVAL (SEAM:APPROVAL) -->
+      <div class="lg-panel" id="lg-panel-pending">
+        <div style="text-align:center;padding:6px 0 2px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;">Account pending</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;line-height:1.15;margin-bottom:12px;">You're on the list.</div>
+          <p style="font-size:13px;color:var(--text3);line-height:1.6;margin:0 0 6px;">Your profile is in. An admin reviews new access before the platform opens &mdash; you'll be let in shortly. No second sign-up needed.</p>
+          <p id="lg-pending-email" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.04em;margin:0 0 18px;"></p>
+        </div>
+        <button class="lg-submit" id="lg-pending-check" onclick="_authShowApp()">CHECK AGAIN &rarr;</button>
+        <div class="lg-fine-print" style="margin-top:16px">
+          <a href="#" onclick="lgSignOut();return false">Sign out</a>
         </div>
       </div>
 

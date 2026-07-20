@@ -1380,7 +1380,18 @@ function kbTags(x) {
 }
 async function kbWhoami(env, origin, user) {
   // UI gating only — every /knowledge route re-checks at the door regardless.
-  return json({ ok: true, admin: await callerIsAdmin(env, user.id) }, 200, origin, env);
+  // Also reports approval status (SEAM:APPROVAL) so any consumer can gate on DB
+  // truth. One read covers both role and status; callerIsAdmin stays untouched.
+  let admin = false, approved = false, status = 'pending';
+  try {
+    const r = await sbRest(env, `app_user?id=eq.${user.id}&select=role,status`);
+    if (r && r[0]) {
+      admin = r[0].role === 'admin';
+      status = r[0].status || 'pending';
+      approved = status === 'approved' || admin;
+    }
+  } catch (e) {}
+  return json({ ok: true, admin, approved, status }, 200, origin, env);
 }
 async function kbSubmit(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
