@@ -170,9 +170,9 @@ body { background: var(--ivory); color: var(--ink); }
 .fp-brand { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end;
   column-gap: clamp(12px, 2.2vw, 24px); row-gap: 12px; }
 .fp-mark { width: min(540px, 54vw); height: auto; color: var(--ink); display: block; order: 1; }
-.fp-daily { font-family: var(--serif); font-style: italic; color: var(--red); white-space: nowrap;
-  font-size: clamp(44px, 6.8vw, 72px); line-height: .9; letter-spacing: .01em; display: block;
-  transform: translateY(3%); order: 2; }
+.fp-daily { font-family: var(--body); font-weight: 800; font-style: normal; color: var(--ink); white-space: nowrap;
+  font-size: clamp(44px, 6.8vw, 72px); line-height: .9; letter-spacing: normal; display: block;
+  transform: translateY(2%); order: 2; }
 .fp-lockrule { order: 3; flex-basis: 100%; width: min(220px, 38vw); height: 3px;
   background: var(--red); display: block; margin: 4px auto 0; }
 .masthead .msvg { width: 118px; height: auto; color: var(--ink); display: inline-block; vertical-align: -2px; }
@@ -306,11 +306,10 @@ body { background: var(--ink); color: var(--ivory); }
 .tlx:hover .tlx-track { animation-play-state: paused; }
 @keyframes tlx { to { transform: translateX(-50%); } }
 
-/* the plate: mark in ivory, DAILY in the arcade voice — Black Ops One, once */
+/* the plate: mark in ivory, DAILY in the sting's voice — Syne 800, the opener's lockup */
 .fp-plate { border-bottom: 1px solid rgba(250,247,242,.16); }
 .fp-mark { color: var(--ivory); }
-.fp-daily { font-family: 'Black Ops One', var(--body); font-style: normal;
-  color: var(--red); letter-spacing: .04em; transform: none; }
+.fp-daily { color: var(--ivory); }
 .fp-tag { color: rgba(250,247,242,.5); }
 
 /* the grid: twelve indexed modules — slate order is the momentum ranking */
