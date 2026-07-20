@@ -200,6 +200,16 @@
   "SEAM:ARCADE_ECON": {
    "file": "arcade/pop-a-shot/index.html",
    "purpose": "run-it-back law: revealOk restart for joined players, fresh session token minted on next round start, arcade return door on the score card"
+  },
+  "SEAM:APPROVAL@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:APPROVAL",
+   "purpose": "the /whoami door reports approval, not just role \u2014 one read of app_user returns role and status, approved = status approved or admin, so any consumer gates on the same DB truth is_approved() enforces in RLS"
+  },
+  "SEAM:APPROVAL@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:APPROVAL",
+   "purpose": "the gate before the platform \u2014 _authShowApp() checks is_approved() (same RPC shape as is_admin) and routes an unapproved profile to the pending screen instead of the hub; session stays alive so approval needs no second sign-up, and an rpc error fails closed to pending"
   }
  },
  "planned": [
