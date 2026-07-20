@@ -111,6 +111,7 @@ export default {
         case '/studio/generate':     return studioGenerate(env, origin, user);
         case '/studio/cut-story':    return studioCutStory(body, env, origin, user);
         case '/studio/update':       return studioUpdate(body, env, origin, user);
+        case '/studio/kill':         return studioKill(body, env, origin, user);
         case '/studio/archive':      return studioArchive(request, env, origin, user);
         case '/arcade/admin/state':     return arcAdminState(env, origin, user);
         case '/arcade/admin/rotate':    return arcAdminRotate(body, env, origin, user);
@@ -1240,7 +1241,7 @@ async function studioManifest(body, env, origin, user) {
   const days = Math.min(parseInt(body.days, 10) || 7, 30);
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   const rows = await sbRest(env,
-    `content_pieces?day=gte.${since}&order=day.desc,id.asc&select=id,day,lane,format,platform,copy,payload,status,deployed_at,post_url,archive_key`);
+    `content_pieces?day=gte.${since}&status=neq.killed&order=day.desc,id.asc&select=id,day,lane,format,platform,copy,payload,status,deployed_at,post_url,archive_key`);
   return json({ ok: true, pieces: rows || [] }, 200, origin, env);
 }
 async function studioGenerate(env, origin, user) {
@@ -1262,6 +1263,29 @@ async function studioUpdate(body, env, origin, user) {
   if (!Object.keys(patch).length) return json({ ok: false, error: 'empty_patch' }, 200, origin, env);
   await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: patch });
   return json({ ok: true, id }, 200, origin, env);
+}
+/* KILL means kill \u2014 the piece leaves the shared queue for every admin.
+ * Never-deployed drafts hard-delete (no ledger value); anything that
+ * shipped soft-kills to status='killed' \u2014 the record of what went out
+ * is never erased. The queue query excludes killed, so both paths
+ * vanish from the list, persistently. */
+async function studioKill(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const id = parseInt(body.id, 10);
+  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const rows = await sbRest(env, `content_pieces?id=eq.${id}&select=id,deployed_at,status`);
+  const piece = rows && rows[0];
+  if (!piece) return json({ ok: true, id, gone: 'already' }, 200, origin, env);
+  let mode;
+  if (piece.deployed_at) {
+    await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: { status: 'killed' } });
+    mode = 'soft';
+  } else {
+    await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'DELETE' });
+    mode = 'hard';
+  }
+  logEvent(env, 'intelligence', 'studio', 'piece_killed', null, { id, mode });
+  return json({ ok: true, id, mode }, 200, origin, env);
 }
 async function studioArchive(request, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);

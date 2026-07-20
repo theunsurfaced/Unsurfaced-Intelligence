@@ -10146,7 +10146,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     });
     document.querySelectorAll("[data-kill]").forEach(function (b) {
       b.addEventListener("click", async function () {
-        try { await api("studio/update", { id: +b.getAttribute("data-kill"), status: "killed" }); showToast("Killed \u2014 the rate is the quality bar"); load(); } catch (e) { showToast("Failed"); }
+        try { await api("studio/kill", { id: +b.getAttribute("data-kill") }); showToast("Killed \u2014 gone from the queue"); load(); } catch (e) { showToast("Failed"); }
       });
     });
     document.querySelectorAll("[data-dl]").forEach(function (b) {
