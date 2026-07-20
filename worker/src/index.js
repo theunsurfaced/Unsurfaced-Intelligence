@@ -1050,7 +1050,8 @@ function logEvent(env, platform, space, event, sessionId, meta) {
  * which data. Rendering happens in the admin's browser (the house
  * renderer); binaries archive to R2 only at deploy. Doctrine:
  * templates/DOCTRINE.md — evidence that surfaced, not content made.
- * Caps are law: perishable lane ships at most 2 pieces a day.
+ * Caps are law: one hero piece per story, chosen by story shape;
+ * only the lead carries an alt. The engine selects; the admin disposes.
  * ═══════════════════════════════════════════════════════════════════ */
 const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY facts, numbers, and dates that appear in the finding text \u2014 inventing a date, figure, name, or event is the one unforgivable move. If the finding has no number, write without one. '
   + 'Never explain the joke. Banned: engagement-bait ("you won\'t believe", "stop scrolling"), '
@@ -1155,6 +1156,26 @@ async function studioMemeLines(env, item) {
   return { mformat: 'verdict', line1: studioTrimClean(item.headline, 90),
     line2: studioTrimClean(item.take, 110) };
 }
+/* PURE: the selector. One hero per story \u2014 the editorial format the
+ * composer stamped picks the piece format and its native platform, and
+ * the reason ships in the payload so the counter shows its work.
+ * Scoreboard, never the playbook: the reason is the read, not the rubric. */
+function studioSelect(it) {
+  switch (it && it.editorial_format || it && it.format) {
+    case 'number':      return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
+      why: 'number-led finding \u2014 the stat card is the hero' };
+    case 'provocation': return { format: 'hand_meme',    platform: 'instagram', lane: 'durable',
+      why: 'open question \u2014 the meme grammar carries it' };
+    case 'drop':        return { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable',
+      why: 'release energy \u2014 motion is the native read' };
+    case 'read':        return { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable',
+      why: 'pattern across places \u2014 the moving take' };
+    case 'signal':      return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
+      why: 'early signal \u2014 the flat card, stated plainly' };
+    default:            return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
+      why: 'dispatch \u2014 the still carries the finding' };
+  }
+}
 /* PURE: the slate walk. First story per unseen territory; territory-less
  * editions fall back to the beat walk; still thin → fill by order. The
  * LEAD (item 0) always seats first. */
@@ -1195,34 +1216,34 @@ async function buildStudioManifest(env, day, issueNo, items) {
       slides: (items || []).slice(0, 6).map(it => ({
         kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name,
         territory: it.territory || null, editorial_format: it.format || null })) };
-    // 17 cells: edition x3 · primary story x8 · stories two and three x3 each.
+    // The slate walk: 2 edition anchors + hero per story (lead carries an alt).
+    // Six pieces on a full slate, down from seventeen. Caps are code, not comment.
     const MATRIX = [
-      { format: 'the_six', platform: 'instagram', lane: 'perishable', it: null, story: 0 },
-      { format: 'the_six', platform: 'linkedin',  lane: 'perishable', it: null, story: 0 },
-      { format: 'the_six', platform: 'tiktok',    lane: 'perishable', it: null, story: 0 },
+      { format: 'the_six', platform: 'instagram', lane: 'perishable', it: null, story: 0,
+        why: 'the edition anchor \u2014 carousel-native feed' },
+      { format: 'the_six', platform: 'linkedin',  lane: 'perishable', it: null, story: 0,
+        why: 'the edition anchor \u2014 document-post native' },
     ];
-    if (slate[0]) MATRIX.push(
-      { format: 'signal_still', platform: 'instagram', lane: 'perishable', it: slate[0], story: 1 },
-      { format: 'signal_still', platform: 'linkedin',  lane: 'perishable', it: slate[0], story: 1 },
-      { format: 'kinetic_take', platform: 'instagram', lane: 'perishable', it: slate[0], story: 1 },
-      { format: 'kinetic_take', platform: 'linkedin',  lane: 'perishable', it: slate[0], story: 1 },
-      { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable', it: slate[0], story: 1 },
-      { format: 'hand_meme',    platform: 'instagram', lane: 'durable',    it: slate[0], story: 1 },
-      { format: 'hand_meme',    platform: 'linkedin',  lane: 'durable',    it: slate[0], story: 1 },
-      { format: 'hand_meme',    platform: 'tiktok',    lane: 'durable',    it: slate[0], story: 1 });
-    [slate[1], slate[2]].forEach((it, i) => { if (it) MATRIX.push(
-      { format: 'signal_still', platform: 'instagram', lane: 'perishable', it, story: 2 + i },
-      { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable', it, story: 2 + i },
-      { format: 'hand_meme',    platform: 'instagram', lane: 'durable',    it, story: 2 + i }); });
+    if (slate[0]) {
+      const hero = studioSelect(slate[0]);
+      MATRIX.push({ format: hero.format, platform: hero.platform, lane: hero.lane, it: slate[0], story: 1, why: hero.why });
+      MATRIX.push({ format: 'signal_still', platform: 'linkedin', lane: 'perishable', it: slate[0], story: 1,
+        why: 'the lead carries two \u2014 the LinkedIn read' });
+    }
+    [slate[1], slate[2]].forEach((it, i) => { if (it) {
+      const hero = studioSelect(it);
+      MATRIX.push({ format: hero.format, platform: hero.platform, lane: hero.lane, it, story: 2 + i, why: hero.why });
+    } });
     const memeByStory = {};
-    for (const it of slate) if (it) memeByStory[it.headline] = await studioMemeLines(env, it);
+    for (const cell of MATRIX) if (cell.it && cell.format === 'hand_meme' && !memeByStory[cell.it.headline])
+      memeByStory[cell.it.headline] = await studioMemeLines(env, cell.it);
     const pieces = [];
     for (const cell of MATRIX) {
       const it = cell.it || lead;
       let payload;
-      if (cell.format === 'the_six') payload = sixPayload;
-      else if (cell.format === 'hand_meme') payload = Object.assign(base(it, cell.story), memeByStory[it.headline] || {});
-      else payload = base(it, cell.story);
+      if (cell.format === 'the_six') payload = Object.assign({}, sixPayload, { selection: cell.why });
+      else if (cell.format === 'hand_meme') payload = Object.assign(base(it, cell.story), memeByStory[it.headline] || {}, { selection: cell.why });
+      else payload = Object.assign(base(it, cell.story), { selection: cell.why });
       pieces.push({ day, lane: cell.lane, format: cell.format, platform: cell.platform, status: 'draft',
         copy: { caption: await studioCaption(env, cell.platform, it) }, payload });
     }
@@ -1245,22 +1266,21 @@ async function studioCutStory(body, env, origin, user) {
   const day = ed.date || new Date().toISOString().slice(0, 10);
   const dupe = await sbRest(env, `content_pieces?day=eq.${day}&payload->>headline=eq.${encodeURIComponent(it.headline)}&select=id&limit=1`);
   if (dupe && dupe.length) return json({ ok: true, skipped: 'story-already-cut' }, 200, origin, env);
-  const meme = await studioMemeLines(env, it);
+  const hero = studioSelect(it);
   const base = { issue_no: ed.issue_no, date: day, kicker: it.kicker, headline: it.headline,
     take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9,
     territory: it.territory || null, editorial_format: it.format || 'dispatch',
-    apply: it.apply || null, momentum: it.momentum || null };
+    apply: it.apply || null, momentum: it.momentum || null,
+    selection: 'admin cut \u2014 ' + hero.why };
+  const payload = hero.format === 'hand_meme'
+    ? Object.assign({}, base, await studioMemeLines(env, it)) : base;
   const pieces = [
-    { day, lane: 'perishable', format: 'signal_still', platform: 'instagram', status: 'draft',
-      copy: { caption: await studioCaption(env, 'instagram', it) }, payload: base },
-    { day, lane: 'perishable', format: 'kinetic_take', platform: 'tiktok', status: 'draft',
-      copy: { caption: await studioCaption(env, 'tiktok', it) }, payload: base },
-    { day, lane: 'durable', format: 'hand_meme', platform: 'instagram', status: 'draft',
-      copy: { caption: await studioCaption(env, 'instagram', it) }, payload: Object.assign({}, base, meme) },
+    { day, lane: hero.lane, format: hero.format, platform: hero.platform, status: 'draft',
+      copy: { caption: await studioCaption(env, hero.platform, it) }, payload },
   ];
   await sbRest(env, 'content_pieces', { method: 'POST', body: pieces });
-  logEvent(env, 'intelligence', 'studio', 'story_cut', null, { item: itemId, beat: base.beat });
-  return json({ ok: true, pieces: 3, beat: base.beat }, 200, origin, env);
+  logEvent(env, 'intelligence', 'studio', 'story_cut', null, { item: itemId, beat: base.beat, format: hero.format });
+  return json({ ok: true, pieces: 1, beat: base.beat, format: hero.format }, 200, origin, env);
 }
 async function studioManifest(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
