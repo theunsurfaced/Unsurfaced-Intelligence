@@ -2074,10 +2074,47 @@ function mostlyNonLatin(s) {
   return !!m && m.length / t.length > 0.3;
 }
 
+/* ONE STORY, ONE SLOT. The lake's hash dedup kills identical fingerprints
+ * and the spine MEASURES echo \u2014 but the composer never took the test,
+ * so three writeups of one drop could ride the same momentum wave into
+ * three slots. The edition now applies the doctrine's own bar at the
+ * door: embedding cosine >= CLUSTER_SIM (0.80) is the same story. When a
+ * vector is missing, the backstop is title content-token containment \u2014
+ * >= 0.5 within one source, >= 0.75 across sources. */
+function vecParse(e) {
+  if (Array.isArray(e)) return e;
+  if (typeof e !== 'string' || e[0] !== '[') return null;
+  try { const v = JSON.parse(e); return Array.isArray(v) ? v : null; } catch { return null; }
+}
+function cosineSim(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  const d = Math.sqrt(na) * Math.sqrt(nb);
+  return d ? dot / d : 0;
+}
+const STORY_STOP = new Set(['the','a','an','is','are','was','its','it','of','to','in','on','for','and','with','at','this','that','from','by','as','his','her','their','our','your']);
+function titleTokens(t) {
+  return new Set(String(t || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter(x => x.length > 1 && !STORY_STOP.has(x)));
+}
+function sameStory(a, b) {
+  if (a._vec && b._vec) return cosineSim(a._vec, b._vec) >= SPINE.CLUSTER_SIM;
+  const ta = titleTokens(a.title), tb = titleTokens(b.title);
+  if (!ta.size || !tb.size) return false;
+  let ov = 0, ent = 0;
+  for (const x of ta) if (tb.has(x)) { ov++; if (x.length >= 5) ent++; }
+  const contain = ov / Math.min(ta.size, tb.size);
+  const sameSrc = a.source_name && a.source_name === b.source_name;
+  if (contain >= (sameSrc ? 0.5 : 0.75)) return true;
+  // entity law: two substantial shared names is the same subject \u2014
+  // three outlets, one merger, one slot.
+  return ent >= 2 && contain >= 0.3;
+}
 function slotFill(cands, quotas) {
   const picks = [], perT = {};
   for (const c of cands) {
     if (picks.length >= 12) break;
+    if (picks.some(p => sameStory(p, c))) continue;   // one story, one slot
     const t = c.territory || 'unknown';
     if ((perT[t] || 0) >= quotas.per_territory_max) continue;
     perT[t] = (perT[t] || 0) + 1;
@@ -2085,7 +2122,8 @@ function slotFill(cands, quotas) {
   }
   // edge law: at least one Tier-3 story if the lake holds one.
   if (quotas.edge_min > 0 && !picks.some(p => p.source_tier === 3)) {
-    const edge = cands.find(c => c.source_tier === 3 && !picks.includes(c));
+    const edge = cands.find(c => c.source_tier === 3 && !picks.includes(c)
+      && !picks.slice(0, -1).some(p => sameStory(p, c)));
     if (edge && picks.length) {
       let low = picks.length - 1;                       // swap out the weakest
       picks[low] = edge;
@@ -2122,6 +2160,17 @@ async function composeFromLake(env, today) {
       + (c.source_tier === 1 ? 1 : 0) + (c.status === 'connected' ? 1 : 0);
   });
   cands.sort((a, b) => b.score - a.score);
+
+  // arm the same-story test: vectors for the ranked head, one fetch.
+  const head = cands.slice(0, 40);
+  try {
+    const vecs = await sbRest(env,
+      `signals?id=in.(${head.map(c => c.id).join(',')})&select=id,embedding`) || [];
+    const byId = {}; for (const v of vecs) byId[v.id] = vecParse(v.embedding);
+    for (const c of head) c._vec = byId[c.id] || null;
+    const armed = head.filter(c => c._vec).length;
+    await logEvent(env, 'daily', 'compose', 'dedup_vectors', null, { head: head.length, armed });
+  } catch (e) { /* vectors missing -> title backstop carries the test */ }
 
   const picks = slotFill(cands, DAILY_POV.edition.quotas);
   if (picks.length < 6) return null;

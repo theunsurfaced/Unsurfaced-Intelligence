@@ -184,7 +184,7 @@ body { background: var(--ivory); color: var(--ink); }
   transition: transform .18s ease; }
 .fp-card:hover { transform: translateY(-3px); }
 .fp-card:hover .fp-head { text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; }
-.fp-lead { grid-column: 1 / -1; display: grid; grid-template-columns: 7fr 5fr; gap: 30px; align-items: center;
+.fp-lead { grid-column: 1 / -1; display: grid; grid-template-columns: 7fr 5fr; gap: 30px; align-items: stretch;
   border-bottom: 2px solid var(--ink); padding-bottom: 30px; }
 .fp-feat { grid-column: span 6; }
 .fp-vis { margin: 0; aspect-ratio: 3 / 2; overflow: hidden; background: var(--cream);
@@ -198,7 +198,7 @@ body { background: var(--ivory); color: var(--ink); }
 .fp-ghost-mark { position: absolute; inset: 0; margin: auto; width: 52%; height: auto;
   color: rgba(10,10,10,.17); display: block; z-index: 1; }
 .fp-vis:not(.fp-ghosted) .fp-ghost-mark { display: none; }
-.fp-lead .fp-vis { aspect-ratio: 16 / 10; }
+.fp-lead .fp-vis { aspect-ratio: auto; height: 100%; min-height: 320px; }
 .fp-meta { display: flex; align-items: center; gap: 10px; }
 .fp-kicker { font-family: var(--sans); font-size: 10px; letter-spacing: .18em; color: var(--red);
   border: 1px solid var(--red); padding: 3px 8px; }
@@ -207,6 +207,7 @@ body { background: var(--ivory); color: var(--ink); }
 .fp-head { font-family: var(--serif); font-weight: 400; margin: 0; color: var(--ink);
   font-size: 24px; line-height: 1.12; }
 .fp-lead .fp-head { font-size: clamp(30px, 4vw, 52px); }
+.fp-lead .fp-head.fp-head-long { font-size: clamp(24px, 3vw, 40px); }
 .fp-feat .fp-head { font-size: 30px; }
 .fp-stand { font-family: var(--serif); font-style: italic; color: var(--mute-warm); margin: 0; font-size: 17px; }
 .fp-src { font-family: var(--sans); font-size: 10px; letter-spacing: .14em; color: var(--mute-warm); margin: 0; }
@@ -558,7 +559,7 @@ function el(id) { return document.getElementById(id); }
       vis +
       "<div class=\"fp-body\">" +
         "<div class=\"fp-meta\"><span class=\"fp-kicker\">" + esc(item.kicker || "THE SIGNAL") + "</span>" + fmt + "</div>" +
-        "<h3 class=\"fp-head\">" + esc(item.headline) + "</h3>" +
+        "<h3 class=\"fp-head" + (i === 0 && String(item.headline || "").length > 64 ? " fp-head-long" : "") + "\">" + esc(item.headline) + "</h3>" +
         (i <= 2 && item.standfirst ? "<p class=\"fp-stand\">" + esc(item.standfirst) + "</p>" : "") +
         "<p class=\"fp-src\">" + (item.territory ? "(" + esc(t) + ") \u00B7 " : "") + esc((item.source_name || "").toUpperCase()) + "</p>" +
       "</div></a>";
