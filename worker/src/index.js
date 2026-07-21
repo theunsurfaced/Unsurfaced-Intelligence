@@ -2212,7 +2212,7 @@ async function composeFromLake(env, today) {
     items.push({
       kicker: String(c.territory || 'the signal').replace(/-/g, ' ').toUpperCase().slice(0, 40),
       headline: studioTrimClean(c.title, 200),
-      standfirst: studioTrimClean(c.summary, 160),
+      standfirst: firstSentences(c.summary, 220) || firstSentences(take, 220) || null,
       take,
       source_name: String(c.source_name || '').slice(0, 120),
       source_url: c.url,
@@ -3209,6 +3209,34 @@ async function callModel(env, tier, messages, opts) {
   return out.response || '';
 }
 
+/* A COMPLETE SENTENCE UNDER EVERY HEADLINE. firstSentences keeps only
+ * whole sentences: accumulate full stops within budget, guard the
+ * abbreviation trap (Warner Bros. is a name, not a sentence), and if no
+ * complete sentence fits, return nothing \u2014 the caller falls back to
+ * the voiced take, which the completeness gate already guarantees ends
+ * clean. healStandfirsts applies the law at serve, so editions frozen
+ * before this law still read complete today. */
+const SENT_ABBREV = new Set(['bros','inc','corp','co','ltd','mr','mrs','ms','dr','st','no','vs','jr','sr','dept','gov','sen','rep']);
+function firstSentences(text, budget) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  let out = '';
+  const re = /[.!?\u2026](?=\s|$)/g; let m;
+  while ((m = re.exec(t))) {
+    const prev = t.slice(0, m.index).split(' ').pop().toLowerCase().replace(/[^a-z]/g, '');
+    if (m[0] === '.' && (SENT_ABBREV.has(prev) || prev.length === 1)) continue;
+    const cand = t.slice(0, m.index + 1);
+    if (cand.length > budget) break;
+    out = cand;
+    if (out.length >= budget * 0.6) break;
+  }
+  return out;
+}
+function healStandfirsts(items) {
+  return (items || []).map(it => Object.assign({}, it, {
+    standfirst: firstSentences(it.standfirst, 240) || firstSentences(it.take, 240) || null
+  }));
+}
 async function editionToday(env, origin) {
   try {
     const eds = await sbRest(env, "editions?status=eq.published&order=date.desc&limit=1");
@@ -3217,7 +3245,7 @@ async function editionToday(env, origin) {
     const items = await sbRest(env, `edition_items?edition_id=eq.${ed.id}&order=ord.asc`);
     return json({
       edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' },
-      items: items || []
+      items: healStandfirsts(items)
     }, 200, origin, env);
   } catch (e) {
     return json({ edition: null, items: [], error: 'unavailable' }, 200, origin, env);
@@ -3250,7 +3278,7 @@ async function editionByIssue(url, env, origin) {
     if (!ed) return json({ edition: null, items: [] }, 200, origin, env);
     const items = await sbRest(env, `edition_items?edition_id=eq.${ed.id}&order=ord.asc`);
     return json({ edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' },
-      items: items || [] }, 200, origin, env);
+      items: healStandfirsts(items) }, 200, origin, env);
   } catch (e) { return json({ edition: null, items: [], error: 'unavailable' }, 200, origin, env); }
 }
 
@@ -3461,7 +3489,7 @@ async function runDailyPipeline(env, opts) {
     .map(it => ({
       kicker: String(it.kicker || 'THE SIGNAL').slice(0, 40),
       headline: studioTrimClean(it.headline, 200),
-      standfirst: studioTrimClean(it.standfirst, 240),
+      standfirst: firstSentences(it.standfirst, 240) || null,
       take: studioTrimClean(it.take, 800),
       source_name: String(it.source_name || '').slice(0, 120),
       source_url: /^https?:\/\//.test(String(it.source_url || '')) &&

@@ -560,7 +560,7 @@ function el(id) { return document.getElementById(id); }
       "<div class=\"fp-body\">" +
         "<div class=\"fp-meta\"><span class=\"fp-kicker\">" + esc(item.kicker || "THE SIGNAL") + "</span>" + fmt + "</div>" +
         "<h3 class=\"fp-head" + (i === 0 && String(item.headline || "").length > 64 ? " fp-head-long" : "") + "\">" + esc(item.headline) + "</h3>" +
-        (i <= 2 && item.standfirst ? "<p class=\"fp-stand\">" + esc(item.standfirst) + "</p>" : "") +
+        (item.standfirst ? "<p class=\"fp-stand\">" + esc(item.standfirst) + "</p>" : "") +
         "<p class=\"fp-src\">" + (item.territory ? "(" + esc(t) + ") \u00B7 " : "") + esc((item.source_name || "").toUpperCase()) + "</p>" +
       "</div></a>";
   }
