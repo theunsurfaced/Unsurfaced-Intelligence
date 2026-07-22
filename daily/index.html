@@ -266,15 +266,40 @@ body.story-open .fp-rule { display: flex; }
   .fp-tag { font-size: 8px; letter-spacing: .18em; }
   .fp-grid { gap: 20px; }
   .fp-lead { gap: 16px; padding-bottom: 22px; }
-  .fp-lead .fp-vis { aspect-ratio: 3 / 2; }
+  /* the pipeline's images are overwhelmingly 16:9 (og:image standard);
+     cover in a 3/2 box eats ~15% of the width - half a dancer each side. */
+  .fp-lead .fp-vis { aspect-ratio: 16 / 9; min-height: 0; }
   .fp-lead .fp-head { font-size: clamp(26px, 8vw, 34px); }
   .fp-feat .fp-head { font-size: 24px; }
   .fp-head { font-size: 22px; }
   .fp-stand { font-size: 15px; }
 }
+/* ── SEAM:INTRO - the masthead reveal ─────────────────────────────────
+   Type-motion only: Syne, the rule, the tag. No 3D, no video - the 5MB hand
+   stays on the landing page where it earns its weight; a daily read cannot
+   tax its own masthead. Children animate, the plate never moves, content
+   below is rendered before this class is ever applied. */
+.fp-plate.intro-full .fp-mark,
+.fp-plate.intro-full .fp-daily,
+.fp-plate.intro-full .fp-lockrule,
+.fp-plate.intro-full .fp-tag { animation: introRise .9s cubic-bezier(.22,.9,.24,1) both; }
+.fp-plate.intro-full .fp-mark     { animation-delay: .10s; }
+.fp-plate.intro-full .fp-daily    { animation-delay: .34s; }
+.fp-plate.intro-full .fp-lockrule { animation: introRule .7s cubic-bezier(.22,.9,.24,1) .62s both; }
+.fp-plate.intro-full .fp-tag      { animation-delay: .86s; animation-duration: .8s; }
+.fp-plate.intro-soft .fp-mark,
+.fp-plate.intro-soft .fp-daily,
+.fp-plate.intro-soft .fp-lockrule,
+.fp-plate.intro-soft .fp-tag { animation: introSoft .6s ease-out both; }
+@keyframes introRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes introRule { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+@keyframes introSoft { from { opacity: .35; } to { opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .fp-card, .fp-vis img { transition: none; }
+  .fp-plate .fp-mark, .fp-plate .fp-daily,
+  .fp-plate .fp-lockrule, .fp-plate .fp-tag { animation: none !important; }
 }
 </style>
 
@@ -506,6 +531,11 @@ function el(id) { return document.getElementById(id); }
     })
     .catch(function () { statusEl.textContent = "The signal is temporarily unreachable."; });
   };
+  // Safari restores the previous scroll offset BEFORE async content exists,
+  // so the plate pops in with the page already sitting 100px down - the mark
+  // half under the status bar, and the reader never touched the screen.
+  // Own the scroll: restore manually, and pin to top on a fresh front load.
+  try { history.scrollRestoration = "manual"; } catch (e) {}
   loadEdition(wantIssue || null);
 
   // English-first house: non-English sources get a one-tap translated read.
@@ -569,6 +599,21 @@ function el(id) { return document.getElementById(id); }
     if (!fp || !items || !items.length) return;
     fp.innerHTML = items.map(frontCard).join("");
     var sec = el("front"); if (sec) sec.hidden = false;
+    if (!location.hash) { try { window.scrollTo(0, 0); } catch (e) {} }
+    // SEAM:INTRO - the lockup arrives instead of appearing. Full sequence on
+    // the first open of the session, a short breathe after; sessionStorage so
+    // tomorrow's first open gets the moment again but reload #3 today does
+    // not. Reduced motion gets the lockup instantly - no sequence, no breathe.
+    // Pure CSS on elements already rendered: if this line never runs, the
+    // reader sees the paper. The intro can fail; the news cannot.
+    try {
+      var plate = sec.querySelector(".fp-plate");
+      if (plate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        var seen = sessionStorage.getItem("dailyIntro");
+        plate.classList.add(seen ? "intro-soft" : "intro-full");
+        sessionStorage.setItem("dailyIntro", "1");
+      }
+    } catch (e) {}
   }
   /* single-issue law: the front IS the page; a card opens its story
      alone below THE EDITION rule. Deep links (#story-N) still work. */
