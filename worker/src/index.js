@@ -72,7 +72,7 @@ export default {
     try {
       // Public
       if (path === '/' || path === '/health') return json({ ok: true, service: 'unsurfaced-api' }, 200, origin, env);
-      if (request.method === 'GET' && path.startsWith('/media/')) return serveMedia(path, env, origin);
+      if (request.method === 'GET' && path.startsWith('/media/')) return serveMedia(path, env, origin, request);
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
       if (path.startsWith('/arcade/') && !path.startsWith('/arcade/admin/')) return arcadeRouter(path, request, env, origin);
       if (path === '/api/edition/today') return editionToday(env, origin);
@@ -387,15 +387,39 @@ async function mineUpload(request, env, origin, user) {
 }
 
 /* ---------------------------- media ----------------------------- */
-async function serveMedia(path, env, origin) {
+async function serveMedia(path, env, origin, request) {
+  // Range-aware: Safari probes bytes=0-1 and refuses to play without a 206;
+  // seeking in every browser rides the same rail. R2 does the byte math.
   if (!env.MEDIA) return new Response('not found', { status: 404 });
   const key = decodeURIComponent(path.slice('/media/'.length));
-  const obj = await env.MEDIA.get(key);
+  let range = null;
+  const rh = request && request.headers.get('Range');
+  if (rh) {
+    const m = /^bytes=(\d*)-(\d*)$/.exec(rh.trim());
+    if (m) {
+      if (m[1] === '' && m[2] !== '') range = { suffix: parseInt(m[2], 10) };
+      else if (m[1] !== '' && m[2] === '') range = { offset: parseInt(m[1], 10) };
+      else if (m[1] !== '' && m[2] !== '') { const a = parseInt(m[1], 10), b = parseInt(m[2], 10); range = { offset: a, length: b - a + 1 }; }
+    }
+  }
+  let obj;
+  try { obj = await env.MEDIA.get(key, range ? { range } : undefined); }
+  catch (e) { obj = null; }
+  if (!obj && range) { obj = await env.MEDIA.get(key); range = null; } // unsatisfiable range: fall back to full
   if (!obj) return new Response('not found', { status: 404 });
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
+  headers.set('Accept-Ranges', 'bytes');
   headers.set('Cache-Control', 'public, max-age=3600');
   if (origin) headers.set('Access-Control-Allow-Origin', origin);
+  if (range) {
+    const total = obj.size;
+    const start = range.suffix != null ? total - range.suffix : range.offset;
+    const end = range.length != null ? start + range.length - 1 : total - 1;
+    headers.set('Content-Range', 'bytes ' + start + '-' + end + '/' + total);
+    headers.set('Content-Length', String(end - start + 1));
+    return new Response(obj.body, { status: 206, headers });
+  }
   return new Response(obj.body, { headers });
 }
 
