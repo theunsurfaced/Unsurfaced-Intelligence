@@ -322,7 +322,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 
 /* ── ERROR / TOAST ── */
 .error-banner{background:rgba(245,90,140,0.08);border:1px solid rgba(245,90,140,0.25);border-left:3px solid var(--accent2);padding:14px 20px;font-family:'Space Mono',monospace;font-size:12px;color:var(--accent2);letter-spacing:0.06em;line-height:1.6;display:none;max-width:1400px;margin:0 auto 20px;position:relative;z-index:1;padding-left:40px;padding-right:40px;}
-.toast{position:fixed;bottom:32px;right:32px;background:var(--accent);color:#fff;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;padding:14px 24px;z-index:999;transform:translateY(100px);opacity:0;transition:all 0.4s ease;letter-spacing:0.08em;}
+.toast{position:fixed;bottom:32px;right:32px;background:var(--accent);color:#fff;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;padding:14px 24px;z-index:9600;transform:translateY(100px);opacity:0;transition:all 0.4s ease;letter-spacing:0.08em;}
 .toast.show{transform:translateY(0);opacity:1;}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
@@ -1197,7 +1197,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 
 
 /* SEAM:STUDYBOARD — the public shelf. Open studies, browsable before sign-in. */
-.sbwrap{position:fixed;inset:0;background:rgba(5,5,8,.86);backdrop-filter:blur(4px);z-index:2200;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:5vh 16px 8vh}
+.sbwrap{position:fixed;inset:0;background:rgba(5,5,8,.86);backdrop-filter:blur(4px);z-index:9500;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:5vh 16px 8vh}
 .sbwrap.on{display:flex}
 .sb{background:var(--surface2);color:var(--text);max-width:860px;width:100%;border:1px solid var(--border2);box-shadow:0 30px 90px rgba(0,0,0,.6);padding:30px clamp(20px,4vw,44px) 36px;position:relative}
 .sb-close{position:absolute;top:14px;right:16px;font-family:'Space Mono',monospace;font-size:12px;background:none;border:1px solid var(--border2);color:var(--text);padding:4px 10px;cursor:pointer}
@@ -7912,11 +7912,14 @@ function renderTrendingNow() {
     grid.innerHTML = studies.map(function (s) {
       return '<div class="sb-card"><div class="sb-card-top"><span class="sb-pay">' + (s.pay > 0 ? '$' + e4(s.pay) + ' PER RESPONSE' : 'FREE STUDY') + '</span><span class="sb-type">' + typeLabel(s.type) + '</span></div>' +
         '<h3>' + e4(s.title) + '</h3><p>' + e4(s.goal || "") + '</p>' +
-        '<button class="sb-btn" data-take="' + e4(s.id) + '">' + (authed ? 'Take this study \u2192' : 'Sign up to take this study \u2192') + '</button></div>';
+        '<button class="sb-btn" data-take="' + e4(s.id) + '" data-pay="' + (s.pay || 0) + '">' + (authed ? 'Take this study \u2192' : ((s.pay || 0) > 0 ? 'Sign up to take this study \u2192' : 'Respond free \u2014 no account \u2192')) + '</button></div>';
     }).join("");
     var btns = grid.querySelectorAll("[data-take]");
     for (var i = 0; i < btns.length; i++) btns[i].addEventListener("click", function (e) {
       var id = e.target.getAttribute("data-take");
+      var payC = Number(e.target.getAttribute("data-pay") || 0);
+      /* SEAM:GUEST_LINK — free study, no session: the guest room is the door, not the signup tab */
+      if (!authed && payC === 0 && typeof _guestMaybeOpen === "function") { closeSb(); _guestMaybeOpen(id); return; }
       try { sessionStorage.setItem("mine_pending_study", id); } catch (e2) {}
       closeSb();
       if (authed) { if (typeof openMine === "function") openMine("responder"); }
