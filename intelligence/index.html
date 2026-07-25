@@ -5554,6 +5554,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Auth gate — runs on every page load
   _authInit();
   _handleReturnFlags();
+  setTimeout(function () { try { _pendingStudyAfterAuth(0); } catch (e) {} }, 900);
   // Backup init: fire if _authShowApp didn't already queue it
   setTimeout(function() {
     if (!_fiInitPending && typeof initFeaturedInsights === 'function') {
@@ -6649,6 +6650,33 @@ async function _guestSubmit() {
   } catch (e) { showToast('Submit failed \u2014 try again'); }
 }
 function _guestClose() { const w = document.getElementById('guestwrap'); if (w) w.remove(); document.body.style.overflow = ''; _guest = null; }
+/* SEAM:GUEST_LINK — the signed-in half of the link. __minePendingLaunch only ever
+ * fired from vRHome, so a signed-in user landing on the hub never consumed the
+ * stash: homepage, no study. This drives it by account role — admin to the study
+ * in Research Ops, partner to their detail, responder into the take-flow (where
+ * the existing vRHome consumer finishes the job). Signed-out never reaches here;
+ * the guest hook owns that side. */
+async function _pendingStudyAfterAuth(tries) {
+  let id = null; try { id = sessionStorage.getItem('mine_pending_study'); } catch (e) {}
+  if (!id || !sbEnabled() || !API_BASE) return;
+  let authed = false;
+  try { const a = await _authHeader(); authed = !!(a && a.Authorization); } catch (e) {}
+  if (!authed) { if ((tries || 0) < 3) setTimeout(function () { _pendingStudyAfterAuth((tries || 0) + 1); }, 900); return; }
+  let role = 'responder';
+  try { if (await _isAdmin()) role = 'admin'; } catch (e) {}
+  if (role !== 'admin') {
+    try {
+      const u = await _sb.auth.getSession();
+      const uid = u && u.data && u.data.session && u.data.session.user && u.data.session.user.id;
+      if (uid) { const pr = await _sb.from('partner_profile').select('id').eq('owner_id', uid).maybeSingle(); if (pr && pr.data && pr.data.id) role = 'partner'; }
+    } catch (e) {}
+  }
+  if (role === 'responder') { openMine('responder'); return; } // stash survives — vRHome's consumer takes it from here
+  try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {}
+  await _sbOpenMine(role);
+  if (typeof mStudy === 'function' && mStudy(id)) { mineRoute(role === 'admin' ? 'a-study' : 'p-study', id); }
+  else showToast("That study isn't in your view \u2014 open the link in a private window to respond as a guest.");
+}
 function mineDeleteStudy(id) {
   const s = mStudy(id); if (!s) return; const hasResp = mResponsesFor(id).length > 0;
   const q = hasResp ? 'Archive "' + s.title + '"? Its responses are kept, but it leaves every board.' : 'Delete "' + s.title + '"? This is permanent.';
