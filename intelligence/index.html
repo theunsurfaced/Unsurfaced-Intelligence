@@ -2559,27 +2559,38 @@ async function _sbDelContact(i) {
   await mineHydrate('partner'); mineRoute('p-contacts');
 }
 async function _sbSaveStudy(launch) {
-  mineSaveDraftMeta(); const d = mineState.draft; const me = mePartner();
+  /* SEAM:STUDY_ADMIN — admin edits any study, ownership preserved; free ($0) studies are first-class. */
+  mineSaveDraftMeta(); const d = mineState.draft; const isAdmin = mineSession.role === 'admin'; const me = mePartner();
   if (!d.title) { showToast('Give your study a title'); return; }
   if (launch) {
     if (!d.questions.length) { showToast('Add at least one question'); return; }
     if ((d.type === 'video' || d.type === 'audio') && !d.asset) { showToast('Upload the ' + d.type + ' first'); return; }
-    if (d.audience === 'contacts' && !d.contactEmails.length) { showToast('Pick contacts to invite, or choose open'); return; }
+    if (d.audience === 'contacts' && !d.contactEmails.length && !isAdmin) { showToast('Pick contacts to invite, or choose open'); return; }
   }
-  const row = { partner_id: me.id, title: d.title, goal: d.goal, type: d.type, pay_cents: (d.pay || 0) * 100, audience: d.audience, status: launch ? 'live' : 'draft', public_listing: !!(d.publicListing && d.audience === 'open'), asset_key: d.asset ? (d.asset.key || null) : null, asset_name: d.asset ? d.asset.name : null };
-  const isEdit = !!mStudy(d.id); let studyId = isEdit ? d.id : null;
+  const original = mStudy(d.id); const isEdit = !!original;
+  if (!isEdit && !me) { showToast('Studies are created from a partner account'); return; }
+  // hard rail: reward on a launched study with responses in is a promise — it does not move
+  if (isEdit && original.status !== 'draft' && mResponsesFor(d.id).length && (d.pay || 0) !== (original.pay || 0)) {
+    showToast('Reward is locked once responses exist — $' + (original.pay || 0) + ' stands'); return;
+  }
+  const row = { title: d.title, goal: d.goal, type: d.type, pay_cents: (d.pay || 0) * 100, audience: d.audience, status: launch ? 'live' : (isEdit ? original.status : 'draft'), public_listing: !!(d.publicListing && d.audience === 'open'), asset_key: d.asset ? (d.asset.key || null) : null, asset_name: d.asset ? d.asset.name : null };
+  let studyId = isEdit ? d.id : null;
   if (isEdit) {
     const { error } = await _sb.from('study').update(row).eq('id', studyId); if (error) { showToast('Save failed: ' + error.message); return; }
     await _sb.from('study_question').delete().eq('study_id', studyId);
-    await _sb.from('study_invite').delete().eq('study_id', studyId);
+    // invites: only rewritten when the editor actually holds invite data (admin hydrate never loads invites — leave them standing)
+    if (d.audience !== 'contacts') { await _sb.from('study_invite').delete().eq('study_id', studyId); }
+    else if (d.contactEmails.length) { await _sb.from('study_invite').delete().eq('study_id', studyId); }
   } else {
+    row.partner_id = me.id;
     const { data, error } = await _sb.from('study').insert(row).select('id').single(); if (error) { showToast('Save failed: ' + error.message); return; } studyId = data.id;
   }
   if (d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [] }))); }
   if (d.audience === 'contacts' && d.contactEmails.length) { await _sb.from('study_invite').insert(d.contactEmails.map(e => ({ study_id: studyId, email: e }))); }
   let inviteMsg = '';
   if (launch && d.audience === 'contacts' && d.contactEmails.length && API_BASE) { try { const er = await api('email/study-invite', { study_id: studyId }); if (er && er.ok && er.data) inviteMsg = ' · ' + (er.data.sent || 0) + ' invited'; } catch (e) {} }
-  showToast((launch ? 'Study is live' : 'Draft saved') + inviteMsg); mineState.draft = null; await mineHydrate('partner'); mineRoute('p-home');
+  showToast((launch ? 'Study is live' : 'Saved') + inviteMsg); mineState.draft = null;
+  await mineHydrate(isAdmin ? 'admin' : 'partner'); mineRoute(isAdmin ? 'a-home' : 'p-home');
 }
 async function _sbSubmitResponse() {
   const st = mineState.resp; if (!st) return; const s = mStudy(st.studyId);
@@ -2593,9 +2604,27 @@ async function _sbSubmitResponse() {
   mineState.lastTitle = s.title; mineState.lastPay = s.pay || 0; await mineHydrate('responder'); mineRoute('r-done');
 }
 async function _sbCloseStudy(id) {
+  const isAdmin = mineSession.role === 'admin';
   const { error } = await _sb.from('study').update({ status: 'closed' }).eq('id', id);
   if (error) { showToast('Failed: ' + error.message); return; }
-  showToast('Study closed'); await mineHydrate('partner'); mineRoute('p-study', id);
+  showToast('Study closed'); await mineHydrate(isAdmin ? 'admin' : 'partner'); mineRoute(isAdmin ? 'a-study' : 'p-study', id);
+}
+/* SEAM:STUDY_DELETE — two-tier teardown. No responses: hard delete, children cascade.
+ * Responses exist: archive — the rows are receipts, they survive. RLS door: 0016. */
+async function _sbDeleteStudy(id) {
+  const isAdmin = mineSession.role === 'admin'; const hasResp = mResponsesFor(id).length > 0;
+  if (hasResp) {
+    const { error } = await _sb.from('study').update({ status: 'archived' }).eq('id', id);
+    if (error) { showToast('Archive failed: ' + error.message); return; }
+    showToast('Study archived — responses kept');
+  } else {
+    await _sb.from('study_question').delete().eq('study_id', id);
+    await _sb.from('study_invite').delete().eq('study_id', id);
+    const { error } = await _sb.from('study').delete().eq('id', id);
+    if (error) { showToast('Delete failed: ' + error.message); return; }
+    showToast('Study deleted');
+  }
+  await mineHydrate(isAdmin ? 'admin' : 'partner'); mineRoute(isAdmin ? 'a-home' : 'p-home');
 }
 async function _sbPickAsset(input) {
   const f = input.files && input.files[0]; if (!f) return;
@@ -5895,7 +5924,7 @@ function meResponder() { return mResponder(mineSession.responderId); }
 function mePartner() { return mPartner(mineSession.partnerId); }
 
 function mPill(status) {
-  const map = { draft: 'Draft', live: 'Live', closed: 'Closed' };
+  const map = { draft: 'Draft', live: 'Live', closed: 'Closed', archived: 'Archived' };
   const cls = status === 'live' ? 'st-live' : status === 'closed' ? '' : 'st-dev';
   return '<span class="uai-status ' + cls + '" style="font-size:9px">' + (map[status] || status) + '</span>';
 }
@@ -6039,7 +6068,7 @@ function vRHome() {
     (s.audience === 'open' || (s.contactEmails || []).map(e => e.toLowerCase()).indexOf(me.email.toLowerCase()) >= 0));
   const earned = myResp.reduce((a, r) => a + (mStudy(r.studyId) ? (mStudy(r.studyId).pay || 0) : 0), 0);
   const cards = open.map(s => (
-    '<div class="ma-study"><div class="ma-study-top"><span class="uai-status st-live" style="font-size:9px">$' + (s.pay || 0) + '</span><span class="ma-muted">' + mineTypeLabel(s.type) + '</span></div>'
+    '<div class="ma-study"><div class="ma-study-top"><span class="uai-status st-live" style="font-size:9px">' + (s.pay > 0 ? '$' + s.pay : 'FREE') + '</span><span class="ma-muted">' + mineTypeLabel(s.type) + '</span></div>'
     + '<h3>' + safe(s.title) + '</h3><p>' + safe(s.goal || '') + '</p>'
     + '<button class="mr-btn mr-btn-primary" onclick="mineStartStudy(\'' + s.id + '\')">Begin →</button></div>'
   )).join('');
@@ -6106,7 +6135,7 @@ function mineSubmitResponse() {
 }
 function vRDone() {
   return '<span class="mr-eyebrow" style="color:var(--accent4)">Submitted</span><h2 class="mr-h">Your voice is in.</h2>'
-    + '<p class="mr-p">Thanks for responding to “' + safe(mineState.lastTitle || '') + '.” Your <b style="color:var(--accent4)">$' + (mineState.lastPay || 0) + '</b> is pending review. You just helped a brand learn from a real person.</p>'
+    + '<p class="mr-p">Thanks for responding to “' + safe(mineState.lastTitle || '') + '.” ' + (mineState.lastPay > 0 ? 'Your <b style="color:var(--accent4)">$' + mineState.lastPay + '</b> is pending review. ' : '') + 'You just helped a brand learn from a real person.</p>'
     + '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineRoute(\'r-home\')">Back to studies →</button></div>';
 }
 function vRProfile() {
@@ -6185,7 +6214,7 @@ function mineCreatePartner() {
 
 function vPHome() {
   const me = mePartner(); if (!me) return vPGate();
-  const mine = mineDB.studies.filter(s => s.partnerId === me.id);
+  const mine = mineDB.studies.filter(s => s.partnerId === me.id && s.status !== 'archived');
   const cards = mine.map(s => {
     const n = mResponsesFor(s.id).length;
     return '<div class="ma-study"><div class="ma-study-top">' + mPill(s.status) + '<span class="ma-muted">' + mineTypeLabel(s.type) + ' · ' + n + ' responses</span></div>'
@@ -6235,8 +6264,8 @@ function mineDelContact(i) {
 function mineNewStudy() { mineState.draft = { id: mid('std'), type: 'survey', title: '', goal: '', asset: null, questions: [], audience: 'open', contactEmails: [], pay: 10 }; mineState.qedit = null; mineRoute('p-new'); }
 function mineEditStudy(id) { const s = mStudy(id); if (!s) return; mineState.draft = JSON.parse(JSON.stringify(s)); mineState.qedit = null; mineRoute('p-new'); }
 function vPNew() {
-  const d = mineState.draft; if (!d) return vPHome();
-  const me = mePartner();
+  const d = mineState.draft; if (!d) return (mineSession.role === 'admin' ? vAHome() : vPHome());
+  const me = mePartner() || { contacts: [] };
   const typeChips = ['survey', 'video', 'audio'].map(t =>
     '<button class="mp-aud' + (d.type === t ? ' on' : '') + '" onclick="mineDraftType(\'' + t + '\')">' + (t === 'survey' ? 'Build a survey' : t === 'video' ? 'Upload a video' : 'Upload audio') + '</button>').join('');
   let assetBlock = '';
@@ -6264,12 +6293,13 @@ function vPNew() {
     '<button class="mp-aud' + (d.contactEmails.indexOf(c.email) >= 0 ? ' on' : '') + '" onclick="mineToggleInvite(\'' + safeAttr(c.email) + '\',this)">' + safe(c.email) + '</button>').join('')
     : '<span class="ma-muted">No contacts yet — <button class="u-trace" onclick="mineRoute(\'p-contacts\')">add some</button></span>') + '</div>' : '';
 
-  return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineSaveDraftMeta();mineRoute(\'p-home\')">← Research</button>'
+  return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineSaveDraftMeta();mineRoute(mineSession.role === \'admin\' ? \'a-home\' : \'p-home\')">← Back</button>'
     + '<span class="mr-eyebrow">New study</span><h2 class="mr-h">Build it.</h2>'
     + '<label class="mp-label">What kind of study?</label><div class="ma-chiprow">' + typeChips + '</div>'
     + field('nd-title', 'Study title', 'e.g. React to our spring campaign', d.title)
     + area('nd-goal', 'What do you want to learn?', 'The decision this informs…', d.goal)
-    + field('nd-pay', 'Reward per response ($)', '10', String(d.pay || 10), 'number')
+    + field('nd-pay', 'Reward per response ($)', '10', String(d.pay == null ? 10 : d.pay), 'number')
+    + '<p class="mr-priv" style="margin:-4px 0 8px">Set $0 to run a free study — responders volunteer, nothing is funded or paid out.</p>'
     + '<label class="mr-check" style="margin-top:6px"><input type="checkbox" id="nd-public"' + (d.publicListing ? ' checked' : '') + '> List this study publicly on the MINE board <span style="color:var(--text3)">(open-audience studies only)</span></label>'
     + assetBlock
     + '<div class="ma-sec">Questions (' + d.questions.length + ')</div>'
@@ -6281,7 +6311,7 @@ function vPNew() {
 }
 function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text' }[t] || t; }
 function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi') ? '' : 'none'; }
-function mineSaveDraftMeta() { const d = mineState.draft; if (!d) return; const t = document.getElementById('nd-title'); const g = document.getElementById('nd-goal'); const p = document.getElementById('nd-pay'); if (t) d.title = t.value.trim(); if (g) d.goal = g.value.trim(); if (p) d.pay = parseInt(p.value, 10) || 0; const pl = document.getElementById('nd-public'); if (pl) d.publicListing = pl.checked; }
+function mineSaveDraftMeta() { const d = mineState.draft; if (!d) return; const t = document.getElementById('nd-title'); const g = document.getElementById('nd-goal'); const p = document.getElementById('nd-pay'); if (t) d.title = t.value.trim(); if (g) d.goal = g.value.trim(); if (p) d.pay = Math.max(0, parseInt(p.value, 10) || 0); const pl = document.getElementById('nd-public'); if (pl) d.publicListing = pl.checked; }
 function mineDraftType(t) { mineSaveDraftMeta(); mineState.draft.type = t; mineRoute('p-new'); }
 function mineDraftAud(a) { mineSaveDraftMeta(); mineState.draft.audience = a; mineRoute('p-new'); }
 function mineToggleInvite(email, btn) { const d = mineState.draft; const k = d.contactEmails.indexOf(email); if (k >= 0) { d.contactEmails.splice(k, 1); btn.classList.remove('on'); } else { d.contactEmails.push(email); btn.classList.add('on'); } }
@@ -6324,10 +6354,14 @@ function mineStudyDetail(s, backView, admin) {
   const listRow = (s.audience === 'open' && s.status !== 'draft') ? ('<div class="ma-row"><div><div class="ma-row-t">Public listing</div><div class="ma-row-s">' + (s.publicListing ? 'Live on the MINE board — anyone can find and take this study.' : 'Unlisted — only people with the link or an invite can take it.') + '</div></div><button class="mr-btn" onclick="mineToggleListing(\'' + s.id + '\')">' + (s.publicListing ? 'Unlist' : 'List publicly') + '</button></div>') : '';
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'' + backView + '\')">← Back</button>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="mr-eyebrow">' + mineTypeLabel(s.type) + ' · </span>' + mPill(s.status)
-    + (s.status === 'draft' && !admin ? '<button class="mr-btn" onclick="mineEditStudy(\'' + s.id + '\')">Edit study</button>' : (s.status === 'live' && !admin ? '<button class="mr-btn" onclick="mineCloseStudy(\'' + s.id + '\')">Close study</button>' : '')) + '</div>'
+    + '<span style="display:flex;gap:8px;flex-wrap:wrap">'
+    + ((admin || s.status === 'draft') ? '<button class="mr-btn" onclick="mineEditStudy(\'' + s.id + '\')">Edit study</button>' : '')
+    + (s.status === 'live' ? '<button class="mr-btn" onclick="mineCloseStudy(\'' + s.id + '\')">Close study</button>' : '')
+    + '<button class="mr-btn" style="color:var(--red,#FF3333)" onclick="mineDeleteStudy(\'' + s.id + '\')">' + (mResponsesFor(s.id).length ? 'Archive' : 'Delete') + '</button>'
+    + '</span></div>'
     + '<h2 class="mr-h">' + safe(s.title) + '</h2>' + (s.goal ? '<p class="mr-p">' + safe(s.goal) + '</p>' : '')
     + (admin ? '<p class="ma-muted">Partner: ' + safe(partner ? partner.company : '—') + '</p>' : '')
-    + '<div class="ma-metrics">' + metric(resp.length, 'Responses') + metric((s.questions || []).length, 'Questions') + metric('$' + (s.pay || 0), 'Per response') + metric(s.audience === 'open' ? 'Open' : 'Invited', 'Audience') + '</div>'
+    + '<div class="ma-metrics">' + metric(resp.length, 'Responses') + metric((s.questions || []).length, 'Questions') + metric(s.pay > 0 ? '$' + s.pay : 'Free', 'Per response') + metric(s.audience === 'open' ? 'Open' : 'Invited', 'Audience') + '</div>'
     + ((sbEnabled() && API_BASE) ? mineFundBlock(s, resp) : '')
     + (resp.length ? mineReadBlock(s, resp) : '')
     + (resp.length ? '<div class="ma-sec">What the data says</div>' + summary : '')
@@ -6357,7 +6391,7 @@ function mineResponseCard(s, r) {
     return '<div class="ma-ans"><span class="ma-ans-q">' + safe(q.prompt) + '</span><span class="ma-ans-a">' + safe(Array.isArray(a) ? a.join(', ') : String(a)) + '</span></div>';
   }).join('');
   const paid = r.status === 'paid';
-  const payCtl = (sbEnabled() && API_BASE) ? (paid
+  const payCtl = (sbEnabled() && API_BASE && s.pay > 0) ? (paid
     ? '<span class="uai-status st-live" style="font-size:9px">✓ Paid $' + (s.pay || 0) + '</span>'
     : '<button class="mr-btn" style="font-size:11px;padding:5px 10px" onclick="minePayResponse(\'' + r.id + '\',\'' + s.id + '\')">Approve &amp; pay $' + (s.pay || 0) + '</button>') : '';
   return '<div class="mp-quote"><div class="mp-quote-m" style="margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px"><span><span class="mp-sent-chip">' + safe(r.anon) + '</span> <span class="ma-muted">' + safe((r.segments || []).join(', ')) + '</span></span>' + payCtl + '</div>' + rows + '</div>';
@@ -6492,6 +6526,8 @@ function _payErr(code) {
 
 // ── MINE: partner pre-funds a study's response budget (Stripe Checkout) ──────
 function mineFundBlock(s, resp) {
+  /* SEAM:FREE_STUDY — $0 studies never touch the funding rail. No Stripe object exists for free. */
+  if (!(s.pay > 0)) return '<div class="ma-sec">Response budget</div><div class="ma-row"><div><div class="ma-row-t">Free study</div><div class="ma-row-s">Responders volunteer — no funding, no payouts, no Stripe.</div></div></div>';
   const funded = Math.round(s.fundedCents || 0) / 100;
   const paidOut = (resp || []).filter(r => r.status === 'paid').length * (s.pay || 0);
   const remaining = funded - paidOut;
@@ -6529,6 +6565,15 @@ function _handleReturnFlags() {
 
 function mineCloseStudy(id) {
   if (sbEnabled()) return _sbCloseStudy(id); const s = mStudy(id); if (s) { s.status = 'closed'; mineSave(); showToast('Study closed'); mineRoute('p-study', id); } }
+function mineDeleteStudy(id) {
+  const s = mStudy(id); if (!s) return; const hasResp = mResponsesFor(id).length > 0;
+  const q = hasResp ? 'Archive "' + s.title + '"? Its responses are kept, but it leaves every board.' : 'Delete "' + s.title + '"? This is permanent.';
+  if (!window.confirm(q)) return;
+  if (sbEnabled()) return _sbDeleteStudy(id);
+  const isAdmin = mineSession.role === 'admin';
+  if (hasResp) { s.status = 'archived'; showToast('Study archived — responses kept'); }
+  else { mineDB.studies = mineDB.studies.filter(x => x.id !== id); showToast('Study deleted'); }
+  mineSave(); mineRoute(isAdmin ? 'a-home' : 'p-home'); }
 
 // ============================ ADMIN (master) ==========================
 function vAHome() {
@@ -7781,7 +7826,7 @@ function renderTrendingNow() {
     var authed = await signedIn();
     if (!studies.length) { grid.innerHTML = '<div class="sb-empty">Nothing on the shelf this week \u2014 partners list studies here when they open them to everyone.</div>'; return; }
     grid.innerHTML = studies.map(function (s) {
-      return '<div class="sb-card"><div class="sb-card-top"><span class="sb-pay">$' + e4(s.pay) + ' PER RESPONSE</span><span class="sb-type">' + typeLabel(s.type) + '</span></div>' +
+      return '<div class="sb-card"><div class="sb-card-top"><span class="sb-pay">' + (s.pay > 0 ? '$' + e4(s.pay) + ' PER RESPONSE' : 'FREE STUDY') + '</span><span class="sb-type">' + typeLabel(s.type) + '</span></div>' +
         '<h3>' + e4(s.title) + '</h3><p>' + e4(s.goal || "") + '</p>' +
         '<button class="sb-btn" data-take="' + e4(s.id) + '">' + (authed ? 'Take this study \u2192' : 'Sign up to take this study \u2192') + '</button></div>';
     }).join("");

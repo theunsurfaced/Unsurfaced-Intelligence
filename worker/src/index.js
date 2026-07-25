@@ -537,7 +537,7 @@ async function payResponder(body, env, origin, user) {
 async function emailStudyInvite(body, env, origin, user) {
   if (!env.SUPABASE_SERVICE_ROLE_KEY) return json({ ok: false, error: 'service_unconfigured' }, 200, origin, env);
   const sid = String(body.study_id || ''); if (!sid) return json({ ok: false, error: 'study_required' }, 400, origin, env);
-  const ss = await sbRest(env, `study?id=eq.${sid}&select=id,partner_id,title`);
+  const ss = await sbRest(env, `study?id=eq.${sid}&select=id,partner_id,title,pay_cents`);
   const study = ss && ss[0]; if (!study) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
   const admin = await callerIsAdmin(env, user.id);
   if (!admin) {
@@ -549,7 +549,8 @@ async function emailStudyInvite(body, env, origin, user) {
   const base = String(env.APP_URL || origin || '').replace(/\/$/, '');
   let sent = 0;
   for (const e of emails) {
-    const res = await sendEmail(env, { to: e, subject: "You're invited to a paid study on Unsurfaced", html: inviteEmailHtml(study.title, base + '/?study=' + sid) });
+    const paid = (study.pay_cents || 0) > 0; /* SEAM:FREE_STUDY — $0 studies invite volunteers, never promise pay */
+    const res = await sendEmail(env, { to: e, subject: paid ? "You're invited to a paid study on Unsurfaced" : "You're invited to a study on Unsurfaced", html: inviteEmailHtml(study.title, base + '/?study=' + sid, paid) });
     if (res && res.ok) sent++;
   }
   return json({ ok: true, data: { sent, total: emails.length } }, 200, origin, env);
@@ -575,10 +576,10 @@ function payEmailHtml(name, study, cents) {
     <p>Thanks for your response to <strong>${esc(study || 'a study')}</strong>. Your payout of <strong>${amt}</strong> is on its way to your connected account.</p>
     <p style="color:#666">— The Unsurfaced team</p></div>`;
 }
-function inviteEmailHtml(study, url) {
+function inviteEmailHtml(study, url, paid) {
   return `<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6">
-    <h2 style="margin:0 0 8px">You're invited to a paid research study</h2>
-    <p>A brand wants your honest take on <strong>${esc(study || 'a new study')}</strong>. It takes a couple of minutes, and you'll be paid for your response.</p>
+    <h2 style="margin:0 0 8px">You're invited to a ${paid ? 'paid ' : ''}research study</h2>
+    <p>A brand wants your honest take on <strong>${esc(study || 'a new study')}</strong>. It takes a couple of minutes${paid ? ", and you'll be paid for your response" : ''}.</p>
     <p><a href="${esc(url)}" style="display:inline-block;background:#FF3B3B;color:#fff;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:600">Take the study →</a></p>
     <p style="color:#666">— Unsurfaced</p></div>`;
 }

@@ -210,6 +210,28 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:APPROVAL",
    "purpose": "the gate before the platform \u2014 _authShowApp() checks is_approved() (same RPC shape as is_admin) and routes an unapproved profile to the pending screen instead of the hub; session stays alive so approval needs no second sign-up, and an rpc error fails closed to pending"
+  },
+  "SEAM:STUDY_ADMIN": {
+   "file": "intelligence/index.html",
+   "purpose": "admin edits any study: ownership never rewritten (row drops partner_id on edit), invites survive an editor that never hydrated them, reward locked once responses exist \u2014 the promise made to responders does not move"
+  },
+  "SEAM:STUDY_DELETE": {
+   "file": "intelligence/index.html",
+   "purpose": "two-tier teardown behind a confirm gate: no responses = hard delete (children cascade), responses = archive \u2014 the rows are receipts and receipts survive; RLS doors opened in 0016"
+  },
+  "SEAM:FREE_STUDY@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:FREE_STUDY",
+   "purpose": "$0 studies are first-class: the pay field round-trips zero (was silently rewritten to $10), fund block and pay buttons never draw, boards read FREE, done screen makes no promise \u2014 free means no payment object, not a $0 one"
+  },
+  "SEAM:FREE_STUDY": {
+   "file": "worker/src/index.js",
+   "purpose": "the invite email tells the truth about zero: pay_cents rides the study read and a $0 study invites volunteers \u2014 subject and body drop the paid claim; pay/fund routes' amount<=0 rejections become backstops, not walls"
+  },
+  "SEAM:INTRO@daily": {
+   "file": "daily/index.html",
+   "tag": "SEAM:INTRO",
+   "purpose": "the masthead reveal \u2014 type-motion only: Syne, the rule, the tag; no 3D, no video, the 5MB hand stays on the landing page where it earns its weight. Full sequence on the session's first open (sessionStorage), a short breathe after; reduced motion gets the lockup instantly"
   }
  },
  "planned": [
