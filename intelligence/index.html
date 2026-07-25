@@ -6351,6 +6351,7 @@ function mineStudyDetail(s, backView, admin) {
   const summary = mineSummary(s, resp);
   const list = resp.map(r => mineResponseCard(s, r)).join('');
   const partner = mPartner(s.partnerId);
+  const linkRow = (s.status === 'live') ? ('<div class="ma-row"><div><div class="ma-row-t">Response link</div><div class="ma-row-s">' + (s.pay > 0 ? 'Signed-in flow — the link routes takers through profile and Stripe payout as designed.' : 'Free study — anyone with the link responds with just an email and ZIP, no profile.') + '</div></div><button class="mr-btn" onclick="mineCopyLink(\'' + s.id + '\')">Copy link</button></div>') : '';
   const listRow = (s.audience === 'open' && s.status !== 'draft') ? ('<div class="ma-row"><div><div class="ma-row-t">Public listing</div><div class="ma-row-s">' + (s.publicListing ? 'Live on the MINE board — anyone can find and take this study.' : 'Unlisted — only people with the link or an invite can take it.') + '</div></div><button class="mr-btn" onclick="mineToggleListing(\'' + s.id + '\')">' + (s.publicListing ? 'Unlist' : 'List publicly') + '</button></div>') : '';
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'' + backView + '\')">← Back</button>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="mr-eyebrow">' + mineTypeLabel(s.type) + ' · </span>' + mPill(s.status)
@@ -6365,7 +6366,7 @@ function mineStudyDetail(s, backView, admin) {
     + ((sbEnabled() && API_BASE) ? mineFundBlock(s, resp) : '')
     + (resp.length ? mineReadBlock(s, resp) : '')
     + (resp.length ? '<div class="ma-sec">What the data says</div>' + summary : '')
-    + listRow + '<div class="ma-sec">Responses — every one is a receipt</div>'
+    + linkRow + listRow + '<div class="ma-sec">Responses — every one is a receipt</div>'
     + (list || empty('No responses yet. ' + (s.status === 'live' ? 'Live and waiting — responders who match will see it.' : 'Launch the study to start collecting.')));
 }
 function mineSummary(s, resp) {
@@ -6558,13 +6559,96 @@ function _handleReturnFlags() {
     if (p.has('funded')) showToast(p.get('funded') === 'cancel' ? 'Checkout cancelled' : 'Payment received — funding your study…');
     else if (p.has('payout')) showToast(p.get('payout') === 'done' ? 'Payout setup complete' : 'Payout setup saved');
     if (p.has('studio')) { try { sessionStorage.setItem('uai_pending_studio', '1'); } catch (e3) {} p.delete('studio'); const q1 = p.toString(); history.replaceState({}, '', window.location.pathname + (q1 ? '?' + q1 : '')); }
-    if (p.has('study')) { try { sessionStorage.setItem('mine_pending_study', p.get('study')); } catch (e2) {} p.delete('study'); const q0 = p.toString(); history.replaceState({}, '', window.location.pathname + (q0 ? '?' + q0 : '')); }
+    if (p.has('study')) { const _gsid = p.get('study'); try { sessionStorage.setItem('mine_pending_study', _gsid); } catch (e2) {} setTimeout(() => { try { _guestMaybeOpen(_gsid); } catch (e4) {} }, 400); p.delete('study'); const q0 = p.toString(); history.replaceState({}, '', window.location.pathname + (q0 ? '?' + q0 : '')); }
     if (p.has('funded') || p.has('payout')) { p.delete('funded'); p.delete('payout'); const q = p.toString(); history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '')); }
   } catch (e) {}
 }
 
 function mineCloseStudy(id) {
   if (sbEnabled()) return _sbCloseStudy(id); const s = mStudy(id); if (s) { s.status = 'closed'; mineSave(); showToast('Study closed'); mineRoute('p-study', id); } }
+/* SEAM:GUEST_LINK — the link is the door. mineCopyLink mints it; the boot hook
+ * below opens the guest room for signed-out visitors when the study is free.
+ * Paid or signed-in: the existing pending-study flow stands untouched. */
+function mineCopyLink(id) {
+  const url = window.location.origin + window.location.pathname + '?study=' + encodeURIComponent(id);
+  const done = () => showToast('Link copied');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(() => window.prompt('Copy the response link:', url));
+  else window.prompt('Copy the response link:', url);
+}
+let _guest = null;
+async function _guestMaybeOpen(sid) {
+  if (!sid || !API_BASE) return;
+  try { const a = await _authHeader(); if (a && a.Authorization) return; } catch (e) {}
+  try {
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/study?id=' + encodeURIComponent(sid));
+    const d = await r.json();
+    if (!d || !d.ok || !d.data) return;
+    if ((d.data.pay_cents || 0) > 0) return; // paid: the sign-up gate + Stripe rail owns it
+    _guest = { s: d.data, answers: {}, consent: false };
+    _guestRender();
+  } catch (e) {}
+}
+function _guestSet(qid, val, multi) {
+  if (!_guest) return;
+  if (multi) { const cur = _guest.answers[qid] || []; const i = cur.indexOf(val); if (i >= 0) cur.splice(i, 1); else cur.push(val); _guest.answers[qid] = cur; }
+  else _guest.answers[qid] = val;
+  _guestRender();
+}
+function _guestQ(q, i) {
+  const a = _guest.answers[q.id];
+  const head = '<div style="font-weight:700;margin:18px 0 8px">' + (i + 1) + '. ' + safe(q.prompt) + '</div>';
+  if (q.type === 'open') return head + '<textarea class="mr-textarea" rows="3" placeholder="Your answer\u2026" oninput="_guest.answers[\'' + q.id + '\']=this.value">' + safe(a || '') + '</textarea>';
+  if (q.type === 'scale') return head + '<div class="ma-chiprow">' + [1,2,3,4,5].map(n => '<button class="mp-aud' + (a === String(n) ? ' on' : '') + '" onclick="_guestSet(\'' + q.id + '\',\'' + n + '\')">' + n + '</button>').join('') + '</div>';
+  const multi = q.type === 'multi';
+  return head + '<div class="ma-chiprow">' + (q.options || []).map(o => { const on = multi ? (a || []).indexOf(o) >= 0 : a === o; return '<button class="mp-aud' + (on ? ' on' : '') + '" onclick="_guestSet(\'' + q.id + '\',\'' + safeAttr(o) + '\',' + multi + ')">' + safe(o) + '</button>'; }).join('') + '</div>';
+}
+function _guestRender() {
+  let wrap = document.getElementById('guestwrap');
+  if (!wrap) { wrap = document.createElement('div'); wrap.id = 'guestwrap'; wrap.className = 'sbwrap on'; document.body.appendChild(wrap); document.body.style.overflow = 'hidden'; }
+  const s = _guest.s;
+  if (_guest.done) {
+    wrap.innerHTML = '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Your voice is in.</h2><div class="sb-sub">Thanks for responding to \u201c' + safe(s.title) + '\u201d \u2014 you just helped a brand learn from a real person.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestClose()">Done</button></div>';
+    return;
+  }
+  let media = '';
+  if ((s.type === 'video' || s.type === 'audio') && s.asset_key && API_BASE) {
+    const u = API_BASE.replace(/\/$/, '') + '/media/' + encodeURIComponent(s.asset_key);
+    media = s.type === 'video' ? '<video class="ma-media" src="' + safeAttr(u) + '" controls style="width:100%;margin:10px 0"></video>' : '<audio class="ma-media" src="' + safeAttr(u) + '" controls style="width:100%;margin:10px 0"></audio>';
+  }
+  const inp = 'width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#E8E8EE;padding:10px;border-radius:8px;font-family:inherit;font-size:14px;outline:none;margin:4px 0 10px';
+  wrap.innerHTML = '<div class="sb" role="dialog" aria-modal="true"><button class="sb-close" onclick="_guestClose()">CLOSE \u2715</button>'
+    + '<div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>' + safe(s.title) + '</h2>'
+    + (s.goal ? '<div class="sb-sub">' + safe(s.goal) + '</div>' : '')
+    + media
+    + (s.questions || []).map((q, i) => _guestQ(q, i)).join('')
+    + '<div style="font-weight:700;margin:18px 0 4px">Your email</div><input id="guest-email" type="email" placeholder="you@example.com" style="' + inp + '" value="' + safeAttr(_guest.email || '') + '">'
+    + '<div style="font-weight:700;margin:6px 0 4px">ZIP code</div><input id="guest-zip" type="text" inputmode="numeric" maxlength="5" placeholder="60452" style="' + inp + '" value="' + safeAttr(_guest.zip || '') + '">'
+    + '<label class="mr-check" style="margin:8px 0 14px;display:block"><input type="checkbox"' + (_guest.consent ? ' checked' : '') + ' onchange="_guest.consent=this.checked"> I consent to my response being used as research. This is a free study \u2014 no compensation.</label>'
+    + '<button class="mr-btn mr-btn-primary" onclick="_guestSubmit()">Submit response \u2192</button></div>';
+}
+async function _guestSubmit() {
+  const s = _guest.s;
+  const email = (document.getElementById('guest-email') || {}).value || '';
+  const zip = (document.getElementById('guest-zip') || {}).value || '';
+  _guest.email = email; _guest.zip = zip;
+  const req = (s.questions || []).filter(q => q.type !== 'open');
+  const ok = req.every(q => { const a = _guest.answers[q.id]; return a != null && (!Array.isArray(a) || a.length); });
+  if (!ok) { showToast('Please answer the required questions'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) { showToast('Enter a valid email'); return; }
+  if (!/^\d{5}$/.test(zip.trim())) { showToast('Enter a 5-digit ZIP code'); return; }
+  if (!_guest.consent) { showToast('Please confirm consent'); return; }
+  try {
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/respond', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ study_id: s.id, email: email.trim(), zip: zip.trim(), answers: _guest.answers }) });
+    const d = await r.json();
+    if (d && d.ok) { _guest.done = true; _guestRender(); try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {} return; }
+    const code = d && d.error;
+    showToast(code === 'already_responded' ? 'This email already responded to this study'
+      : code === 'paid_study' ? 'This is a paid study \u2014 sign up to take it and get paid'
+      : code === 'rate_limited' ? 'Too many submissions from this connection today'
+      : 'Submit failed \u2014 try again');
+  } catch (e) { showToast('Submit failed \u2014 try again'); }
+}
+function _guestClose() { const w = document.getElementById('guestwrap'); if (w) w.remove(); document.body.style.overflow = ''; _guest = null; }
 function mineDeleteStudy(id) {
   const s = mStudy(id); if (!s) return; const hasResp = mResponsesFor(id).length > 0;
   const q = hasResp ? 'Archive "' + s.title + '"? Its responses are kept, but it leaves every board.' : 'Delete "' + s.title + '"? This is permanent.';

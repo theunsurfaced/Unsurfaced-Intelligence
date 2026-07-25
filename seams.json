@@ -232,6 +232,15 @@
    "file": "daily/index.html",
    "tag": "SEAM:INTRO",
    "purpose": "the masthead reveal \u2014 type-motion only: Syne, the rule, the tag; no 3D, no video, the 5MB hand stays on the landing page where it earns its weight. Full sequence on the session's first open (sessionStorage), a short breathe after; reduced motion gets the lockup instantly"
+  },
+  "SEAM:GUEST_LINK": {
+   "file": "worker/src/index.js",
+   "purpose": "the public response door: link possession is the credential (the invite emails' own law); /mine/study reads live studies safely, /mine/respond takes free-study answers with email + ZIP through service role \u2014 the response_bi trigger nulls responder_id and skips the profile block so GUEST-#### and the ZIP segment survive; paid studies hard-reject here, one response per email per study by index, per-IP rate door; guest email never leaves the row \u2014 mine_study_responses does not select it"
+  },
+  "SEAM:GUEST_LINK@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:GUEST_LINK",
+   "purpose": "the link and the room: Copy link on every live study's detail (pay-aware caption), and a boot hook riding the existing ?study= consumer \u2014 signed-out + free opens the guest overlay (media on the /media/ rail, questions, email + ZIP + consent), signed-in or paid falls through to the pending-study flow and the Stripe rail untouched"
   }
  },
  "planned": [

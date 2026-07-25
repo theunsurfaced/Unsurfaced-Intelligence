@@ -91,6 +91,8 @@ export default {
       if (path === '/excavate/voice' && request.method === 'POST') return excavateVoice(request, env, origin);
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
+      if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
+      if (path === '/mine/respond' && request.method === 'POST') return mineGuestRespond(request, env, origin);
 
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
@@ -555,6 +557,59 @@ async function payResponder(body, env, origin, user) {
   // notify responder
   await sendEmail(env, { to: prof.email, subject: "You've been paid for your response", html: payEmailHtml(prof.name, study.title, amount) }).catch(() => {});
   return json({ ok: true, data: { amount_cents: amount, transfer_id: transfer.id } }, 200, origin, env);
+}
+
+/* ═══ SEAM:GUEST_LINK — the public response door ═════════════════════
+ * Every live study is reachable by link; possession of the link is the
+ * credential (same law the invite emails already live by). Free studies
+ * complete without a profile: email + ZIP + answers through the worker's
+ * service role — the response_bi trigger nulls responder_id and skips the
+ * profile block, so GUEST-#### and the ZIP segment written here survive.
+ * Paid studies hard-reject at this door: the guest rail is free-only by
+ * law, not by UI. Email is dedup + contact only; mine_study_responses
+ * never selects it, so partners see GUEST-#### and a ZIP, nothing else. */
+async function mineStudyPublic(url, env, origin) {
+  const sid = String(url.searchParams.get('id') || '');
+  if (!sid) return json({ ok: false, error: 'study_required' }, 400, origin, env);
+  let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,title,goal,type,pay_cents,asset_key`); } catch (e) { ss = null; }
+  const s = ss && ss[0];
+  if (!s) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
+  let qs; try { qs = await sbRest(env, `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options&order=ord`); } catch (e) { qs = []; }
+  return json({ ok: true, data: { id: s.id, title: s.title, goal: s.goal, type: s.type, pay_cents: s.pay_cents || 0, asset_key: s.asset_key || null, questions: qs || [] } }, 200, origin, env);
+}
+async function mineGuestRespond(request, env, origin) {
+  const body = await safeJson(request);
+  const sid = String(body.study_id || '');
+  const email = String(body.email || '').trim().toLowerCase();
+  const zip = String(body.zip || '').trim();
+  const answers = (body.answers && typeof body.answers === 'object') ? body.answers : null;
+  if (!sid) return json({ ok: false, error: 'study_required' }, 400, origin, env);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ ok: false, error: 'email_invalid' }, 200, origin, env);
+  if (!/^\d{5}$/.test(zip)) return json({ ok: false, error: 'zip_invalid' }, 200, origin, env);
+  if (!answers || !Object.keys(answers).length) return json({ ok: false, error: 'answers_required' }, 200, origin, env);
+  // light per-IP door: 20 guest submissions a day
+  if (env.RATE_LIMIT) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const key = 'grl:' + ip + ':' + new Date().toISOString().slice(0, 10);
+    const cur = parseInt((await env.RATE_LIMIT.get(key)) || '0', 10);
+    if (cur >= 20) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
+    await env.RATE_LIMIT.put(key, String(cur + 1), { expirationTtl: 60 * 60 * 26 });
+  }
+  let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,pay_cents`); } catch (e) { ss = null; }
+  const s = ss && ss[0];
+  if (!s) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
+  if ((s.pay_cents || 0) > 0) return json({ ok: false, error: 'paid_study' }, 200, origin, env);
+  // deterministic guest label: same guest, same study, same number
+  let hsh = 5381; const seed = sid + '|' + email;
+  for (let i = 0; i < seed.length; i++) hsh = ((hsh * 33) ^ seed.charCodeAt(i)) >>> 0;
+  const anon = 'GUEST-' + String(1000 + (hsh % 9000));
+  try {
+    await sbRest(env, 'response', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { study_id: sid, anon_id: anon, segments: [zip], answers, guest_email: email, guest_zip: zip, status: 'submitted' } });
+  } catch (e) {
+    if (String(e && e.message) === 'sb_409') return json({ ok: false, error: 'already_responded' }, 200, origin, env);
+    return json({ ok: false, error: 'submit_failed' }, 200, origin, env);
+  }
+  return json({ ok: true, data: { anon } }, 200, origin, env);
 }
 
 // --- email invites for a study's invited contacts (partner who owns it, or admin) ---
