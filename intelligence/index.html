@@ -2416,14 +2416,14 @@ async function _sbResetPassword() {
 // ── MINE data adapter (Supabase) ────────────────────────────────────────────
 function _mapResponder(p) { return { id: p.user_id, anon: p.anon_id, name: p.name, email: p.email, age: p.age_range, location: p.location, interests: p.interests || [], prefs: p.prefs || [], cadence: p.cadence }; }
 function _mapPartner(p) { return { id: p.id, company: p.company, contactName: p.contact_name, email: p.email, website: p.website, useCase: p.use_case, contacts: [] }; }
-function _mapStudy(s) { return { id: s.id, partnerId: s.partner_id, title: s.title, goal: s.goal, type: s.type, asset: s.asset_key ? { name: s.asset_name, key: s.asset_key } : null, pay: Math.round((s.pay_cents || 0) / 100), audience: s.audience, contactEmails: [], status: s.status, fundedCents: s.funded_cents || 0, publicListing: !!s.public_listing, questions: [] }; }
+function _mapStudy(s) { return { id: s.id, partnerId: s.partner_id, title: s.title, goal: s.goal, type: s.type, asset: s.asset_key ? { name: s.asset_name, key: s.asset_key } : null, pay: Math.round((s.pay_cents || 0) / 100), audience: s.audience, contactEmails: [], status: s.status, fundedCents: s.funded_cents || 0, publicListing: !!s.public_listing, targetN: s.target_n || null, questions: [] }; }
 function _mapResponse(r) { return { id: r.id, studyId: r.study_id, anon: r.anon_id, segments: r.segments || [], answers: r.answers || {}, status: r.status }; }
 
 async function _attachQuestions(studies) {
   if (!studies.length) return;
   const ids = studies.map(s => s.id);
   const { data } = await _sb.from('study_question').select('*').in('study_id', ids).order('ord');
-  const by = {}; (data || []).forEach(q => { (by[q.study_id] = by[q.study_id] || []).push({ id: q.id, type: q.type, prompt: q.prompt, options: q.options || [] }); });
+  const by = {}; (data || []).forEach(q => { (by[q.study_id] = by[q.study_id] || []).push({ id: q.id, type: q.type, prompt: q.prompt, options: q.options || [], passOptions: q.pass_options || null }); });
   studies.forEach(s => s.questions = by[s.id] || []);
 }
 async function _attachInvites(studies) {
@@ -2573,7 +2573,7 @@ async function _sbSaveStudy(launch) {
   if (isEdit && original.status !== 'draft' && mResponsesFor(d.id).length && (d.pay || 0) !== (original.pay || 0)) {
     showToast('Reward is locked once responses exist — $' + (original.pay || 0) + ' stands'); return;
   }
-  const row = { title: d.title, goal: d.goal, type: d.type, pay_cents: (d.pay || 0) * 100, audience: d.audience, status: launch ? 'live' : (isEdit ? original.status : 'draft'), public_listing: !!(d.publicListing && d.audience === 'open'), asset_key: d.asset ? (d.asset.key || null) : null, asset_name: d.asset ? d.asset.name : null };
+  const row = { title: d.title, goal: d.goal, type: d.type, pay_cents: (d.pay || 0) * 100, target_n: d.targetN || null, audience: d.audience, status: launch ? 'live' : (isEdit ? original.status : 'draft'), public_listing: !!(d.publicListing && d.audience === 'open'), asset_key: d.asset ? (d.asset.key || null) : null, asset_name: d.asset ? d.asset.name : null };
   let studyId = isEdit ? d.id : null;
   if (isEdit) {
     const { error } = await _sb.from('study').update(row).eq('id', studyId); if (error) { showToast('Save failed: ' + error.message); return; }
@@ -2585,7 +2585,7 @@ async function _sbSaveStudy(launch) {
     row.partner_id = me.id;
     const { data, error } = await _sb.from('study').insert(row).select('id').single(); if (error) { showToast('Save failed: ' + error.message); return; } studyId = data.id;
   }
-  if (d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [] }))); }
+  if (d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }))); }
   if (d.audience === 'contacts' && d.contactEmails.length) { await _sb.from('study_invite').insert(d.contactEmails.map(e => ({ study_id: studyId, email: e }))); }
   let inviteMsg = '';
   if (launch && d.audience === 'contacts' && d.contactEmails.length && API_BASE) { try { const er = await api('email/study-invite', { study_id: studyId }); if (er && er.ok && er.data) inviteMsg = ' · ' + (er.data.sent || 0) + ' invited'; } catch (e) {} }
@@ -2598,9 +2598,15 @@ async function _sbSubmitResponse() {
   const ok = req.every(q => st.answers[q.id] != null && (!Array.isArray(st.answers[q.id]) || st.answers[q.id].length));
   if (!ok) { showToast('Please answer the required questions'); return; }
   if (!st.consent) { showToast('Please confirm consent'); return; }
+  /* SEAM:MINE_SCALE — screeners gate entry: a disqualifying answer is a polite exit, not a stored row */
+  const scr = (s.questions || []).filter(q => q.type === 'screener' && Array.isArray(q.passOptions) && q.passOptions.length);
+  const screened = scr.some(q => q.passOptions.indexOf(st.answers[q.id]) < 0);
+  if (screened) { mineState.lastTitle = s.title; mineState.lastScreened = true; mineRoute('r-done'); return; }
+  mineState.lastScreened = false;
   const uid = await _uid();
   const { error } = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, answers: st.answers });
   if (error) { showToast('Submit failed: ' + error.message); return; }
+  if (API_BASE) { try { api('mine/notify', { study_id: s.id }); } catch (e) {} }
   mineState.lastTitle = s.title; mineState.lastPay = s.pay || 0; await mineHydrate('responder'); mineRoute('r-done');
 }
 async function _sbCloseStudy(id) {
@@ -6135,6 +6141,9 @@ function mineSubmitResponse() {
   mineSave(); mineState.lastTitle = s.title; mineState.lastPay = s.pay || 0; mineRoute('r-done');
 }
 function vRDone() {
+  if (mineState.lastScreened) return '<span class="mr-eyebrow">Screened</span><h2 class="mr-h">Not this one.</h2>'
+    + '<p class="mr-p">Thanks for your interest in \u201c' + safe(mineState.lastTitle || '') + '\u201d \u2014 this study is looking for a specific audience and your answers didn\u2019t match its criteria. Nothing was recorded. More studies are always coming.</p>'
+    + '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineRoute(\'r-home\')">Back to studies \u2192</button></div>';
   return '<span class="mr-eyebrow" style="color:var(--accent4)">Submitted</span><h2 class="mr-h">Your voice is in.</h2>'
     + '<p class="mr-p">Thanks for responding to “' + safe(mineState.lastTitle || '') + '.” ' + (mineState.lastPay > 0 ? 'Your <b style="color:var(--accent4)">$' + mineState.lastPay + '</b> is pending review. ' : '') + 'You just helped a brand learn from a real person.</p>'
     + '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineRoute(\'r-home\')">Back to studies →</button></div>';
@@ -6281,12 +6290,13 @@ function vPNew() {
     + '<div class="ma-actions"><button class="mr-btn" onclick="mineQEdit(\'' + q.id + '\')">Edit</button><button class="mr-btn" onclick="mineQDel(\'' + q.id + '\')">✕</button></div></div>').join('');
   const qe = mineState.qedit ? d.questions.find(x => x.id === mineState.qedit) : null;
   const formType = qe ? qe.type : 'single';
-  const showOpts = (formType === 'single' || formType === 'multi');
+  const showOpts = (formType === 'single' || formType === 'multi' || formType === 'screener');
   const qform = '<div class="ma-card2"><div class="mp-label">' + (qe ? 'Edit question' : 'Add a question') + '</div>'
     + '<select id="q-type" class="mr-field" onchange="mineQFormToggle()">'
-    + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['scale', 'Rating (1–5)'], ['open', 'Open text']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
+    + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['scale', 'Rating (1–5)'], ['open', 'Open text'], ['screener', 'Screener (qualify)']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
     + '<input id="q-prompt" class="mr-field" placeholder="Question prompt" value="' + safeAttr(qe ? qe.prompt : '') + '">'
     + '<textarea id="q-opts" class="mr-textarea" rows="2" placeholder="Options, one per line" style="' + (showOpts ? '' : 'display:none') + '">' + safe(qe && qe.options ? qe.options.join('\n') : '') + '</textarea>'
+    + '<input id="q-pass" class="mr-field" placeholder="Qualifying answers (comma-separated, must match options)" style="' + (formType === 'screener' ? '' : 'display:none') + '" value="' + safeAttr(qe && qe.passOptions ? qe.passOptions.join(', ') : '') + '">'
     + '<button class="mr-btn mr-btn-primary" onclick="mineQSave()">' + (qe ? 'Save question' : '+ Add question') + '</button>'
     + (qe ? ' <button class="mr-btn" onclick="mineState.qedit=null;mineRoute(\'p-new\')">Cancel edit</button>' : '') + '</div>';
   const audOpen = d.audience === 'open';
@@ -6301,6 +6311,7 @@ function vPNew() {
     + area('nd-goal', 'What do you want to learn?', 'The decision this informs…', d.goal)
     + field('nd-pay', 'Reward per response ($)', '10', String(d.pay == null ? 10 : d.pay), 'number')
     + '<p class="mr-priv" style="margin:-4px 0 8px">Set $0 to run a free study — responders volunteer, nothing is funded or paid out.</p>'
+    + field('nd-target', 'Target responses (optional)', 'e.g. 50 — study auto-closes when reached', d.targetN == null ? '' : String(d.targetN), 'number')
     + '<label class="mr-check" style="margin-top:6px"><input type="checkbox" id="nd-public"' + (d.publicListing ? ' checked' : '') + '> List this study publicly on the MINE board <span style="color:var(--text3)">(open-audience studies only)</span></label>'
     + assetBlock
     + '<div class="ma-sec">Questions (' + d.questions.length + ')</div>'
@@ -6310,9 +6321,9 @@ function vPNew() {
     + contactPick
     + '<div class="mr-nav"><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>';
 }
-function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text' }[t] || t; }
-function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi') ? '' : 'none'; }
-function mineSaveDraftMeta() { const d = mineState.draft; if (!d) return; const t = document.getElementById('nd-title'); const g = document.getElementById('nd-goal'); const p = document.getElementById('nd-pay'); if (t) d.title = t.value.trim(); if (g) d.goal = g.value.trim(); if (p) d.pay = Math.max(0, parseInt(p.value, 10) || 0); const pl = document.getElementById('nd-public'); if (pl) d.publicListing = pl.checked; }
+function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text', screener: 'Screener' }[t] || t; }
+function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi' || t === 'screener') ? '' : 'none'; const pp = document.getElementById('q-pass'); if (pp) pp.style.display = (t === 'screener') ? '' : 'none'; }
+function mineSaveDraftMeta() { const d = mineState.draft; if (!d) return; const t = document.getElementById('nd-title'); const g = document.getElementById('nd-goal'); const p = document.getElementById('nd-pay'); if (t) d.title = t.value.trim(); if (g) d.goal = g.value.trim(); if (p) d.pay = Math.max(0, parseInt(p.value, 10) || 0); const tn = document.getElementById('nd-target'); if (tn) { const nv = parseInt(tn.value, 10); d.targetN = (nv > 0) ? nv : null; } const pl = document.getElementById('nd-public'); if (pl) d.publicListing = pl.checked; }
 function mineDraftType(t) { mineSaveDraftMeta(); mineState.draft.type = t; mineRoute('p-new'); }
 function mineDraftAud(a) { mineSaveDraftMeta(); mineState.draft.audience = a; mineRoute('p-new'); }
 function mineToggleInvite(email, btn) { const d = mineState.draft; const k = d.contactEmails.indexOf(email); if (k >= 0) { d.contactEmails.splice(k, 1); btn.classList.remove('on'); } else { d.contactEmails.push(email); btn.classList.add('on'); } }
@@ -6322,10 +6333,16 @@ function mineClearAsset() { mineSaveDraftMeta(); mineState.draft.asset = null; m
 function mineQSave() {
   const d = mineState.draft; const type = v('q-type'); const prompt = v('q-prompt');
   if (!prompt) { showToast('Add a question prompt'); return; }
-  let options = []; if (type === 'single' || type === 'multi') { options = ((document.getElementById('q-opts') || {}).value || '').split('\n').map(s => s.trim()).filter(Boolean); if (options.length < 2) { showToast('Add at least two options'); return; } }
+  let options = []; if (type === 'single' || type === 'multi' || type === 'screener') { options = ((document.getElementById('q-opts') || {}).value || '').split('\n').map(s => s.trim()).filter(Boolean); if (options.length < 2) { showToast('Add at least two options'); return; } }
+  let passOptions = null;
+  if (type === 'screener') {
+    passOptions = (((document.getElementById('q-pass') || {}).value || '').split(',').map(s => s.trim()).filter(Boolean));
+    passOptions = passOptions.filter(pv => options.indexOf(pv) >= 0);
+    if (!passOptions.length) { showToast('Screeners need at least one qualifying answer that matches an option'); return; }
+  }
   mineSaveDraftMeta();
-  if (mineState.qedit) { const q = d.questions.find(x => x.id === mineState.qedit); q.type = type; q.prompt = prompt; q.options = options; mineState.qedit = null; }
-  else d.questions.push({ id: mid('q'), type, prompt, options });
+  if (mineState.qedit) { const q = d.questions.find(x => x.id === mineState.qedit); q.type = type; q.prompt = prompt; q.options = options; q.passOptions = passOptions; mineState.qedit = null; }
+  else d.questions.push({ id: mid('q'), type, prompt, options, passOptions });
   mineRoute('p-new');
 }
 function mineQEdit(id) { mineSaveDraftMeta(); mineState.qedit = id; mineRoute('p-new'); }
@@ -6352,6 +6369,7 @@ function mineStudyDetail(s, backView, admin) {
   const summary = mineSummary(s, resp);
   const list = resp.map(r => mineResponseCard(s, r)).join('');
   const partner = mPartner(s.partnerId);
+  const lakeRow = (resp.length && sbEnabled() && API_BASE) ? ('<div class="ma-row"><div><div class="ma-row-t">The lake</div><div class="ma-row-s">Send this study\u2019s read and verbatims into the intelligence lake \u2014 EXCAVATE searches primary research beside cultural signal.</div></div><button class="mr-btn" onclick="mineLakeSync(\'' + s.id + '\')">Send to the lake</button></div>') : '';
   const linkRow = (s.status === 'live') ? ('<div class="ma-row"><div><div class="ma-row-t">Response link</div><div class="ma-row-s">' + (s.pay > 0 ? 'Signed-in flow — the link routes takers through profile and Stripe payout as designed.' : 'Free study — anyone with the link responds with just an email and ZIP, no profile.') + '</div></div><button class="mr-btn" onclick="mineCopyLink(\'' + s.id + '\')">Copy link</button></div>') : '';
   const listRow = (s.audience === 'open' && s.status !== 'draft') ? ('<div class="ma-row"><div><div class="ma-row-t">Public listing</div><div class="ma-row-s">' + (s.publicListing ? 'Live on the MINE board — anyone can find and take this study.' : 'Unlisted — only people with the link or an invite can take it.') + '</div></div><button class="mr-btn" onclick="mineToggleListing(\'' + s.id + '\')">' + (s.publicListing ? 'Unlist' : 'List publicly') + '</button></div>') : '';
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'' + backView + '\')">← Back</button>'
@@ -6363,11 +6381,11 @@ function mineStudyDetail(s, backView, admin) {
     + '</span></div>'
     + '<h2 class="mr-h">' + safe(s.title) + '</h2>' + (s.goal ? '<p class="mr-p">' + safe(s.goal) + '</p>' : '')
     + (admin ? '<p class="ma-muted">Partner: ' + safe(partner ? partner.company : '—') + '</p>' : '')
-    + '<div class="ma-metrics">' + metric(resp.length, 'Responses') + metric((s.questions || []).length, 'Questions') + metric(s.pay > 0 ? '$' + s.pay : 'Free', 'Per response') + metric(s.audience === 'open' ? 'Open' : 'Invited', 'Audience') + '</div>'
+    + '<div class="ma-metrics">' + metric(s.targetN ? resp.length + ' / ' + s.targetN : resp.length, 'Responses') + metric((s.questions || []).length, 'Questions') + metric(s.pay > 0 ? '$' + s.pay : 'Free', 'Per response') + metric(s.audience === 'open' ? 'Open' : 'Invited', 'Audience') + '</div>'
     + ((sbEnabled() && API_BASE) ? mineFundBlock(s, resp) : '')
     + (resp.length ? mineReadBlock(s, resp) : '')
     + (resp.length ? '<div class="ma-sec">What the data says</div>' + summary : '')
-    + linkRow + listRow + '<div class="ma-sec">Responses — every one is a receipt</div>'
+    + linkRow + lakeRow + listRow + '<div class="ma-sec">Responses — every one is a receipt</div>'
     + (list || empty('No responses yet. ' + (s.status === 'live' ? 'Live and waiting — responders who match will see it.' : 'Launch the study to start collecting.')));
 }
 function mineSummary(s, resp) {
@@ -6410,7 +6428,7 @@ function mineReadBlock(s, resp) {
   return '<div class="ma-sec">The Read — AI synthesis</div>'
     + '<div id="mine-read" class="ma-sum" style="line-height:1.6">'
     +   '<p class="mr-p" style="margin:0 0 12px;color:var(--text3)">' + safe(hint) + '</p>'
-    +   '<button class="mr-btn-primary" onclick="mineGenRead(\'' + s.id + '\')">Generate the Read</button>'
+    +   '<button class="mr-btn-primary" onclick="mineGenRead(\'' + s.id + '\')">Generate the Read</button> <button class="mr-btn" onclick="mineExportReport(\'' + s.id + '\')">Print report</button>'
     + '</div>'
     + '<div class="ma-sec">Ask the data</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
@@ -6570,8 +6588,33 @@ function mineCloseStudy(id) {
 /* SEAM:GUEST_LINK — the link is the door. mineCopyLink mints it; the boot hook
  * below opens the guest room for signed-out visitors when the study is free.
  * Paid or signed-in: the existing pending-study flow stands untouched. */
+/* SEAM:MINE_LAKE — one click and the study is signal */
+async function mineLakeSync(id) {
+  const read = (document.getElementById('mine-read') || {}).innerText || '';
+  try {
+    const d = await api('mine/lake-sync', { study_id: id, read: read.indexOf('Generate the Read') < 0 ? read.slice(0, 500) : '' });
+    showToast(d && d.ok ? (d.note || 'Sent to the lake') : 'Sync failed \u2014 ' + ((d && d.error) || 'try again'));
+  } catch (e) { showToast('Sync failed \u2014 try again'); }
+}
+/* SEAM:MINE_SCALE — the report is the deliverable a partner forwards; print owns the PDF */
+function mineExportReport(id) {
+  const s = mStudy(id); if (!s) return;
+  const resp = mResponsesFor(id);
+  const read = (document.getElementById('mine-read') || {}).innerText || '';
+  const css = 'body{font-family:Georgia,serif;color:#111;max-width:720px;margin:40px auto;padding:0 24px;line-height:1.55}h1{font-family:Helvetica,Arial,sans-serif;font-size:30px;margin:0 0 4px}h2{font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin:28px 0 8px;color:#C41230}.meta{color:#666;font-size:13px;margin-bottom:18px}.r{border-left:3px solid #ddd;padding:6px 12px;margin:10px 0;font-size:13px}.r b{font-family:Helvetica,Arial,sans-serif}@media print{button{display:none}}';
+  const rows = resp.map(r => '<div class="r"><b>' + safe(r.anon || 'anon') + '</b>' + (r.segments && r.segments.length ? ' \u00B7 ' + safe(r.segments.join(', ')) : '') + '<br>' + safe(JSON.stringify(r.answers)) + '</div>').join('');
+  const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + safe(s.title) + ' \u2014 Unsurfaced MINE report</title><style>' + css + '</style></head><body>'
+    + '<div class="meta">UNSURFACED\u2122 \u00B7 MINE RESEARCH REPORT \u00B7 ' + new Date().toLocaleDateString() + '</div>'
+    + '<h1>' + safe(s.title) + '</h1><div class="meta">' + safe(s.goal || '') + '</div>'
+    + '<h2>Study</h2><div class="meta">' + resp.length + (s.targetN ? ' / ' + s.targetN : '') + ' responses \u00B7 ' + (s.pay > 0 ? '$' + s.pay + ' per response' : 'Free study') + ' \u00B7 ' + safe(s.status) + '</div>'
+    + (read && read.indexOf('Generate the Read') < 0 ? '<h2>The Read</h2><div>' + safe(read).replace(/\n/g, '<br>') + '</div>' : '')
+    + '<h2>Responses \u2014 every one is a receipt</h2>' + (rows || '<div class="meta">No responses yet.</div>')
+    + '<button onclick="window.print()" style="margin-top:24px;padding:10px 18px">Print / Save as PDF</button></body></html>';
+  const wnd = window.open('', '_blank'); if (!wnd) { showToast('Allow pop-ups to export the report'); return; }
+  wnd.document.write(html); wnd.document.close(); setTimeout(() => { try { wnd.print(); } catch (e) {} }, 350);
+}
 function mineCopyLink(id) {
-  const url = window.location.origin + window.location.pathname + '?study=' + encodeURIComponent(id);
+  const url = API_BASE ? (API_BASE.replace(/\/$/, '') + '/s/' + encodeURIComponent(id)) : (window.location.origin + window.location.pathname + '?study=' + encodeURIComponent(id));
   const done = () => showToast('Link copied');
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(() => window.prompt('Copy the response link:', url));
   else window.prompt('Copy the response link:', url);
@@ -6608,7 +6651,10 @@ function _guestRender() {
   if (!wrap) { wrap = document.createElement('div'); wrap.id = 'guestwrap'; wrap.className = 'sbwrap on'; document.body.appendChild(wrap); document.body.style.overflow = 'hidden'; }
   const s = _guest.s;
   if (_guest.done) {
-    wrap.innerHTML = '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Your voice is in.</h2><div class="sb-sub">Thanks for responding to \u201c' + safe(s.title) + '\u201d \u2014 you just helped a brand learn from a real person.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestClose()">Done</button></div>';
+    /* SEAM:MINE_SCALE — the panel loop: every guest who finishes is a recruited panelist */
+    wrap.innerHTML = _guest.screened
+      ? '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Not this one.</h2><div class="sb-sub">This study is looking for a specific audience and your answers didn\u2019t match its criteria \u2014 nothing was recorded. Join the panel and the right studies find you.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>'
+      : '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Your voice is in.</h2><div class="sb-sub">Thanks for responding to \u201c' + safe(s.title) + '\u201d \u2014 you just helped a brand learn from a real person.</div><div class="sb-sub" style="margin-top:10px">Want to get <b>paid</b> for the next one? Join the panel \u2014 your email carries over.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>';
     return;
   }
   let media = '';
@@ -6641,13 +6687,20 @@ async function _guestSubmit() {
   try {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/respond', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ study_id: s.id, email: email.trim(), zip: zip.trim(), answers: _guest.answers }) });
     const d = await r.json();
-    if (d && d.ok) { _guest.done = true; _guestRender(); try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {} return; }
+    if (d && d.ok) { _guest.done = true; _guest.screened = !!(d.data && d.data.screened); _guestRender(); try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {} return; }
     const code = d && d.error;
     showToast(code === 'already_responded' ? 'This email already responded to this study'
       : code === 'paid_study' ? 'This is a paid study \u2014 sign up to take it and get paid'
       : code === 'rate_limited' ? 'Too many submissions from this connection today'
       : 'Submit failed \u2014 try again');
   } catch (e) { showToast('Submit failed \u2014 try again'); }
+}
+function _guestJoinPanel() {
+  const em = (_guest && _guest.email) || '';
+  _guestClose();
+  const su = document.querySelector('.lg-tab[data-tab=signup], .lg-tab:nth-child(2)'); if (su) su.click();
+  const f = document.querySelector('#login-gate input[type=email]'); if (f) { f.value = em; f.focus(); }
+  showToast('Create your account \u2014 your responses ride with this email.');
 }
 function _guestClose() { const w = document.getElementById('guestwrap'); if (w) w.remove(); document.body.style.overflow = ''; _guest = null; }
 /* SEAM:GUEST_LINK — the signed-in half of the link. __minePendingLaunch only ever

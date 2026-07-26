@@ -92,6 +92,7 @@ export default {
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
+      if (path.startsWith('/s/') && request.method === 'GET') return mineSharePage(path, env);
       if (path === '/mine/respond' && request.method === 'POST') return mineGuestRespond(request, env, origin);
 
       // Everything below requires a signed-in user
@@ -105,6 +106,8 @@ export default {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
         case '/excavate/synthesize': return synthesize(body, env, origin);
+        case '/mine/notify':        return mineNotify(body, env, origin, user);
+        case '/mine/lake-sync':     return mineLakeSync(body, env, origin, user);
         case '/mine/synthesize':     return mineSynthesize(body, env, origin);
         case '/mine/ask':            return mineAsk(body, env, origin);
         case '/mine/upload':         return mineUpload(request, env, origin, user);
@@ -571,11 +574,11 @@ async function payResponder(body, env, origin, user) {
 async function mineStudyPublic(url, env, origin) {
   const sid = String(url.searchParams.get('id') || '');
   if (!sid) return json({ ok: false, error: 'study_required' }, 400, origin, env);
-  let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,title,goal,type,pay_cents,asset_key`); } catch (e) { ss = null; }
+  let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,title,goal,type,pay_cents,asset_key,target_n`); } catch (e) { ss = null; }
   const s = ss && ss[0];
   if (!s) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
   let qs; try { qs = await sbRest(env, `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options&order=ord`); } catch (e) { qs = []; }
-  return json({ ok: true, data: { id: s.id, title: s.title, goal: s.goal, type: s.type, pay_cents: s.pay_cents || 0, asset_key: s.asset_key || null, questions: qs || [] } }, 200, origin, env);
+  return json({ ok: true, data: { id: s.id, title: s.title, goal: s.goal, type: s.type, pay_cents: s.pay_cents || 0, asset_key: s.asset_key || null, target_n: s.target_n || null, questions: qs || [] } }, 200, origin, env);
 }
 async function mineGuestRespond(request, env, origin) {
   const body = await safeJson(request);
@@ -599,6 +602,12 @@ async function mineGuestRespond(request, env, origin) {
   const s = ss && ss[0];
   if (!s) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
   if ((s.pay_cents || 0) > 0) return json({ ok: false, error: 'paid_study' }, 200, origin, env);
+  /* SEAM:MINE_SCALE — screeners enforced here, where the pass keys live; guests never see them */
+  let scrQ; try { scrQ = await sbRest(env, `study_question?study_id=eq.${sid}&type=eq.screener&select=id,pass_options`); } catch (e) { scrQ = []; }
+  for (const q of (scrQ || [])) {
+    if (Array.isArray(q.pass_options) && q.pass_options.length && q.pass_options.indexOf(answers[q.id]) < 0)
+      return json({ ok: true, data: { screened: true } }, 200, origin, env);
+  }
   // deterministic guest label: same guest, same study, same number
   let hsh = 5381; const seed = sid + '|' + email;
   for (let i = 0; i < seed.length; i++) hsh = ((hsh * 33) ^ seed.charCodeAt(i)) >>> 0;
@@ -609,7 +618,84 @@ async function mineGuestRespond(request, env, origin) {
     if (String(e && e.message) === 'sb_409') return json({ ok: false, error: 'already_responded' }, 200, origin, env);
     return json({ ok: false, error: 'submit_failed' }, 200, origin, env);
   }
+  try { await mineMilestone(env, sid); } catch (e) {}
   return json({ ok: true, data: { anon } }, 200, origin, env);
+}
+/* SEAM:MINE_SCALE — partners hear their study breathing: milestone mail at 1/10/25/50
+ * and at target; target_n reached also closes the study (service role, one place). */
+async function mineMilestone(env, sid) {
+  const rows = await sbRest(env, `response?study_id=eq.${sid}&select=id`);
+  const n = (rows || []).length; if (!n) return;
+  const ss = await sbRest(env, `study?id=eq.${sid}&select=id,title,target_n,status,partner_id`);
+  const s = ss && ss[0]; if (!s) return;
+  const atTarget = s.target_n && n >= s.target_n;
+  if (atTarget && s.status === 'live') {
+    try { await sbRest(env, `study?id=eq.${sid}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: 'closed' } }); } catch (e) {}
+  }
+  if (!(n === 1 || n === 10 || n === 25 || n === 50 || atTarget)) return;
+  try {
+    const pp = await sbRest(env, `partner_profile?id=eq.${s.partner_id}&select=owner_id`);
+    const owner = pp && pp[0] && pp[0].owner_id; if (!owner) return;
+    const ur = await fetch(env.SUPABASE_URL + '/auth/v1/admin/users/' + owner, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY } });
+    const u = ur.ok ? await ur.json() : null; const to = u && u.email; if (!to) return;
+    const base = (env.APP_URL || '').replace(/\/$/, '');
+    await sendEmail(env, { to, subject: atTarget ? `"${s.title}" hit its target \u2014 ${n} responses, study closed` : `"${s.title}" \u2014 ${n} response${n === 1 ? '' : 's'} in`, html: `<div style="font-family:system-ui,sans-serif;line-height:1.6"><h2 style="margin:0 0 8px">${n} response${n === 1 ? '' : 's'} on \u201c${s.title}\u201d</h2><p>${atTarget ? 'Your target was reached and the study auto-closed. The full read is waiting.' : 'Your study is collecting. Open it to generate the Read.'}</p>${base ? `<p><a href="${base}/intelligence/">Open MINE \u2192</a></p>` : ''}</div>` });
+  } catch (e) {}
+}
+/* SEAM:MINE_LAKE — primary research becomes signal. One digest row per study
+ * (VOICE law: aggregate, never per-post noise) enters the lake through the
+ * PROMOTE machinery: status raw, content_hash dedup, embedded on the next
+ * drain slice — then EXCAVATE searches what real people told us beside what
+ * the culture is saying. Tier 1: nothing outranks primary. Verbatims ride as
+ * GUEST-####/anon labels only — no emails, no ZIPs, no profile fields. */
+async function mineLakeSync(body, env, origin, user) {
+  const sid = String(body.study_id || '');
+  if (!sid) return json({ ok: false, error: 'study_required' }, 400, origin, env);
+  const ss = await sbRest(env, `study?id=eq.${sid}&select=id,title,goal,partner_id`);
+  const s = ss && ss[0]; if (!s) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
+  const admin = await callerIsAdmin(env, user.id);
+  if (!admin) {
+    const pp = await sbRest(env, `partner_profile?owner_id=eq.${user.id}&select=id`);
+    if (!pp || !pp[0] || pp[0].id !== s.partner_id) return json({ ok: false, error: 'not_yours' }, 200, origin, env);
+  }
+  const resp = (await sbRest(env, `response?study_id=eq.${sid}&select=anon_id,answers&limit=200`)) || [];
+  if (!resp.length) return json({ ok: false, error: 'no_responses' }, 200, origin, env);
+  const read = String(body.read || '').slice(0, 500);
+  const verb = resp.slice(0, 8).map(r => (r.anon_id || 'anon') + ': ' + JSON.stringify(r.answers).slice(0, 90)).join(' \u00B7 ');
+  const summary = ('PRIMARY RESEARCH \u2014 ' + resp.length + ' real responses. GOAL: ' + (s.goal || '') + (read ? ' READ: ' + read : '') + ' VERBATIM: ' + verb).slice(0, 1200);
+  const title = ('MINE: ' + s.title).slice(0, 300);
+  const url = 'https://api.unsurfaced-intelligence.com/s/' + sid;
+  try {
+    const hash = await sha256hex(hashInput(title, url));
+    const row = { content_hash: hash, title, url, summary, image: null, published_at: null,
+      source_name: 'MINE PRIMARY', source_tier: 1, territory: null, status: 'raw',
+      momentum: { mine: { study_id: sid, responses: resp.length, by: user.id, at: new Date().toISOString() } } };
+    const back = await sbRest(env, 'signals?on_conflict=content_hash&select=id', {
+      method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' }, body: [row] }) || [];
+    const landed = back[0] || null;
+    await logEvent(env, 'intelligence', 'mine', 'lake_sync', null, { study: sid, responses: resp.length, fresh: !!landed });
+    return json({ ok: true, promoted: !!landed, already_in_lake: !landed,
+      note: landed ? 'in the lake at raw \u2014 searchable in EXCAVATE after the next slice' : 'this study is already in the lake' }, 200, origin, env);
+  } catch (e) { return json({ ok: false, error: 'sync_failed' }, 200, origin, env); }
+}
+async function mineNotify(body, env, origin, user) {
+  const sid = String(body.study_id || '');
+  if (!sid) return json({ ok: false, error: 'study_required' }, 400, origin, env);
+  try { await mineMilestone(env, sid); } catch (e) {}
+  return json({ ok: true }, 200, origin, env);
+}
+/* SEAM:MINE_SCALE — the link unfurls as the study, not a homepage: OG card + redirect */
+async function mineSharePage(path, env) {
+  const sid = decodeURIComponent(path.slice('/s/'.length));
+  let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,title,goal,pay_cents`); } catch (e) { ss = null; }
+  const s = ss && ss[0];
+  const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
+  const dest = base + '/intelligence/?study=' + encodeURIComponent(sid);
+  const esc2 = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const title = s ? esc2(s.title) + ' \u2014 ' + ((s.pay_cents || 0) > 0 ? 'Paid study' : 'Free study') + ' on Unsurfaced MINE' : 'A study on Unsurfaced MINE';
+  const desc = s ? esc2((s.goal || '').slice(0, 160)) : 'Real questions for real people.';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary"><meta http-equiv="refresh" content="0;url=${dest}"></head><body><script>location.replace(${JSON.stringify(dest)})</script><a href="${dest}">Open the study</a></body></html>`;
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
 // --- email invites for a study's invited contacts (partner who owns it, or admin) ---

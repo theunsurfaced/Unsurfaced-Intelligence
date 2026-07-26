@@ -241,6 +241,24 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:GUEST_LINK",
    "purpose": "the link and the room: Copy link on every live study's detail (pay-aware caption), and a boot hook riding the existing ?study= consumer \u2014 signed-out + free opens the guest overlay (media on the /media/ rail, questions, email + ZIP + consent), signed-in or paid falls through to the pending-study flow and the Stripe rail untouched"
+  },
+  "SEAM:MINE_SCALE": {
+   "file": "worker/src/index.js",
+   "purpose": "the competitive pass: screeners enforced where the pass keys live (guests never see them), milestone mail at 1/10/25/50 and at target via the auth admin door, target_n auto-close in one service-role place, and /s/:id \u2014 the share link unfurls as the study, not a homepage"
+  },
+  "SEAM:MINE_SCALE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:MINE_SCALE",
+   "purpose": "builder grows screeners (qualifying answers) and a response target with live progress; a disqualifying answer is a polite exit, not a stored row; every finishing guest meets the panel loop \u2014 join with the email that already answered; The Read prints to a branded report a partner can forward"
+  },
+  "SEAM:MINE_LAKE": {
+   "file": "worker/src/index.js",
+   "purpose": "primary research becomes signal: one digest row per study (VOICE law \u2014 aggregate, never per-post noise) enters through the PROMOTE machinery at raw, embedded on the next drain slice, tier 1 because nothing outranks what real people actually said; verbatims ride as anon labels only \u2014 no emails, ZIPs, or profile fields ever leave the response table"
+  },
+  "SEAM:MINE_LAKE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:MINE_LAKE",
+   "purpose": "one click on the study detail sends the read and verbatims into the lake \u2014 after the next slice, EXCAVATE answers with what the culture is saying and what our own respondents told us in the same result set"
   }
  },
  "planned": [
