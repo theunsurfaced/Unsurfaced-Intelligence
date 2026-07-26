@@ -259,6 +259,10 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:MINE_LAKE",
    "purpose": "one click on the study detail sends the read and verbatims into the lake \u2014 after the next slice, EXCAVATE answers with what the culture is saying and what our own respondents told us in the same result set"
+  },
+  "SEAM:LIVE_EDIT": {
+   "file": "intelligence/index.html",
+   "purpose": "clients optimize mid-flight: partners edit live studies \u2014 adds and wording apply to new responders while collected answers keep their receipts; question ids are stable (PATCH in place, never delete-all-reinsert, which minted new ids and orphaned every answer), types and removals lock once responses exist, and a zero-row PATCH surfaces instead of no-oping (RLS door: 0019)"
   }
  },
  "planned": [

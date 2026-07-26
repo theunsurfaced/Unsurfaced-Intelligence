@@ -2575,9 +2575,27 @@ async function _sbSaveStudy(launch) {
   }
   const row = { title: d.title, goal: d.goal, type: d.type, pay_cents: (d.pay || 0) * 100, target_n: d.targetN || null, audience: d.audience, status: launch ? 'live' : (isEdit ? original.status : 'draft'), public_listing: !!(d.publicListing && d.audience === 'open'), asset_key: d.asset ? (d.asset.key || null) : null, asset_name: d.asset ? d.asset.name : null };
   let studyId = isEdit ? d.id : null;
+  /* SEAM:LIVE_EDIT — stable question ids: edits PATCH in place, adds INSERT, removals
+   * DELETE only while no responses exist. Delete-all-reinsert minted new ids and
+   * orphaned every collected answer — that path is dead. */
+  const hasResp = isEdit && mResponsesFor(d.id).length > 0;
+  if (hasResp) {
+    const origQ = original.questions || [];
+    for (const oq of origQ) {
+      const nq = d.questions.find(x => x.id === oq.id);
+      if (!nq) { showToast('Questions can\u2019t be removed once responses exist \u2014 collected answers are receipts'); return; }
+      if (nq.type !== oq.type) { showToast('Question types are locked once responses exist'); return; }
+    }
+  }
   if (isEdit) {
     const { error } = await _sb.from('study').update(row).eq('id', studyId); if (error) { showToast('Save failed: ' + error.message); return; }
-    await _sb.from('study_question').delete().eq('study_id', studyId);
+    const keepIds = (original.questions || []).filter(oq => d.questions.some(x => x.id === oq.id)).map(oq => oq.id);
+    if (!hasResp) { if (keepIds.length) await _sb.from('study_question').delete().eq('study_id', studyId).not('id', 'in', '(' + keepIds.join(',') + ')'); else await _sb.from('study_question').delete().eq('study_id', studyId); }
+    for (let i = 0; i < d.questions.length; i++) {
+      const q = d.questions[i];
+      if (keepIds.indexOf(q.id) >= 0) { const { data: ud } = await _sb.from('study_question').update({ ord: i, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }).eq('id', q.id).select('id'); if (!ud || !ud.length) { showToast('Question update was blocked \u2014 run migration 0019'); return; } }
+      else { await _sb.from('study_question').insert({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }); }
+    }
     // invites: only rewritten when the editor actually holds invite data (admin hydrate never loads invites — leave them standing)
     if (d.audience !== 'contacts') { await _sb.from('study_invite').delete().eq('study_id', studyId); }
     else if (d.contactEmails.length) { await _sb.from('study_invite').delete().eq('study_id', studyId); }
@@ -2585,7 +2603,7 @@ async function _sbSaveStudy(launch) {
     row.partner_id = me.id;
     const { data, error } = await _sb.from('study').insert(row).select('id').single(); if (error) { showToast('Save failed: ' + error.message); return; } studyId = data.id;
   }
-  if (d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }))); }
+  if (!isEdit && d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }))); }
   if (d.audience === 'contacts' && d.contactEmails.length) { await _sb.from('study_invite').insert(d.contactEmails.map(e => ({ study_id: studyId, email: e }))); }
   let inviteMsg = '';
   if (launch && d.audience === 'contacts' && d.contactEmails.length && API_BASE) { try { const er = await api('email/study-invite', { study_id: studyId }); if (er && er.ok && er.data) inviteMsg = ' · ' + (er.data.sent || 0) + ' invited'; } catch (e) {} }
@@ -6319,7 +6337,9 @@ function vPNew() {
     + '<div class="ma-sec">Who responds?</div>'
     + '<div class="ma-chiprow"><button class="mp-aud' + (audOpen ? ' on' : '') + '" onclick="mineDraftAud(\'open\')">Open to matched responders</button><button class="mp-aud' + (!audOpen ? ' on' : '') + '" onclick="mineDraftAud(\'contacts\')">Only my contacts</button></div>'
     + contactPick
-    + '<div class="mr-nav"><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>';
+    + (mStudy(d.id) && mStudy(d.id).status === 'live'
+        ? '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(false)">Save changes →</button></div><p class="mr-priv">Live study: adds and wording edits apply to new responders; collected answers keep their receipts. Question types and removals are locked once responses exist.</p>'
+        : '<div class="mr-nav"><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>');
 }
 function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text', screener: 'Screener' }[t] || t; }
 function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi' || t === 'screener') ? '' : 'none'; const pp = document.getElementById('q-pass'); if (pp) pp.style.display = (t === 'screener') ? '' : 'none'; }
@@ -6375,7 +6395,7 @@ function mineStudyDetail(s, backView, admin) {
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'' + backView + '\')">← Back</button>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="mr-eyebrow">' + mineTypeLabel(s.type) + ' · </span>' + mPill(s.status)
     + '<span style="display:flex;gap:8px;flex-wrap:wrap">'
-    + ((admin || s.status === 'draft') ? '<button class="mr-btn" onclick="mineEditStudy(\'' + s.id + '\')">Edit study</button>' : '')
+    + ((admin || s.status === 'draft' || s.status === 'live') ? '<button class="mr-btn" onclick="mineEditStudy(\'' + s.id + '\')">Edit study</button>' : '')
     + (s.status === 'live' ? '<button class="mr-btn" onclick="mineCloseStudy(\'' + s.id + '\')">Close study</button>' : '')
     + '<button class="mr-btn" style="color:var(--red,#FF3333)" onclick="mineDeleteStudy(\'' + s.id + '\')">' + (mResponsesFor(s.id).length ? 'Archive' : 'Delete') + '</button>'
     + '</span></div>'
