@@ -263,6 +263,22 @@
   "SEAM:LIVE_EDIT": {
    "file": "intelligence/index.html",
    "purpose": "clients optimize mid-flight: partners edit live studies \u2014 adds and wording apply to new responders while collected answers keep their receipts; question ids are stable (PATCH in place, never delete-all-reinsert, which minted new ids and orphaned every answer), types and removals lock once responses exist, and a zero-row PATCH surfaces instead of no-oping (RLS door: 0019)"
+  },
+  "SEAM:FIELD_STATE": {
+   "file": "worker/src/index.js",
+   "purpose": "cluster states from pure arithmetic; EMERGING/ACCELERATING/STRUCTURAL/COOLING/CONTESTED/STEADY + curve shapes; geometry pass feeds CONTESTED"
+  },
+  "SEAM:BOOK_ANCHOR": {
+   "file": "worker/src/index.js",
+   "purpose": "relevance gate; book_anchors as passage-side vectors, PROPOSE re-ranks at 0.6 + 0.4*relevance; /excavate/anchors admin door (0020)"
+  },
+  "SEAM:SCOREBOARD": {
+   "file": "worker/src/index.js",
+   "purpose": "every EMERGING/ACCELERATING read logged to cluster_calls; resolved >30d as converted/held/faded (0020)"
+  },
+  "SEAM:ARRIVAL_LIVE": {
+   "file": "intelligence/index.html",
+   "purpose": "arrival consumes PROPOSE; the read + five-state strip + receipts; below 4 cards the 32-topic pool paints unchanged"
   }
  },
  "planned": [
