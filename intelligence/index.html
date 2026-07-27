@@ -6621,17 +6621,23 @@ function mineExportReport(id) {
   const s = mStudy(id); if (!s) return;
   const resp = mResponsesFor(id);
   const read = (document.getElementById('mine-read') || {}).innerText || '';
-  const css = 'body{font-family:Georgia,serif;color:#111;max-width:720px;margin:40px auto;padding:0 24px;line-height:1.55}h1{font-family:Helvetica,Arial,sans-serif;font-size:30px;margin:0 0 4px}h2{font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin:28px 0 8px;color:#C41230}.meta{color:#666;font-size:13px;margin-bottom:18px}.r{border-left:3px solid #ddd;padding:6px 12px;margin:10px 0;font-size:13px}.r b{font-family:Helvetica,Arial,sans-serif}@media print{button{display:none}}';
-  const rows = resp.map(r => '<div class="r"><b>' + safe(r.anon || 'anon') + '</b>' + (r.segments && r.segments.length ? ' \u00B7 ' + safe(r.segments.join(', ')) : '') + '<br>' + safe(JSON.stringify(r.answers)) + '</div>').join('');
+  const qmap = {}; (s.questions || []).forEach(q => { qmap[q.id] = q.prompt; });
+  const css = "@import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Space+Mono&display=swap');body{font-family:'Space Mono',monospace;background:#FAF7F2;color:#0A0A0A;max-width:760px;margin:0 auto;padding:48px 32px;line-height:1.6;font-size:13px}.wm{font-family:'Syne',sans-serif;font-weight:800;font-size:34px;letter-spacing:-.01em}.rule{height:3px;background:#C41230;margin:10px 0 26px}.eb{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#C41230;margin:30px 0 8px;font-weight:700}h1{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;margin:0 0 6px}.meta{color:#545268;font-size:12px}.rc{border:1px solid #0A0A0A;padding:14px 16px;margin:14px 0;page-break-inside:avoid}.rc .who{font-family:'Syne',sans-serif;font-weight:800;font-size:13px}.rc .seg{color:#545268;font-size:11px;letter-spacing:.08em;text-transform:uppercase}.qa{margin:10px 0 0}.q{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#545268;margin:10px 0 2px}.a{font-size:14px}.ft{margin-top:40px;padding-top:12px;border-top:1px solid #0A0A0A;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#545268}@media print{button{display:none}body{padding:24px}}";
+  const rows = resp.map(r => {
+    const qa = Object.keys(r.answers || {}).map(k => '<div class="q">' + safe(qmap[k] || 'Question') + '</div><div class="a">' + safe(Array.isArray(r.answers[k]) ? r.answers[k].join(', ') : String(r.answers[k])) + '</div>').join('');
+    return '<div class="rc"><span class="who">' + safe(r.anon || 'anon') + '</span>' + (r.segments && r.segments.length ? ' <span class="seg">\u00B7 ' + safe(r.segments.join(', ')) + '</span>' : '') + '<div class="qa">' + qa + '</div></div>';
+  }).join('');
   const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + safe(s.title) + ' \u2014 Unsurfaced MINE report</title><style>' + css + '</style></head><body>'
-    + '<div class="meta">UNSURFACED\u2122 \u00B7 MINE RESEARCH REPORT \u00B7 ' + new Date().toLocaleDateString() + '</div>'
+    + '<div class="wm">Unsurfaced</div><div class="rule"></div>'
+    + '<div class="eb">MINE Research Report \u00B7 ' + new Date().toLocaleDateString() + '</div>'
     + '<h1>' + safe(s.title) + '</h1><div class="meta">' + safe(s.goal || '') + '</div>'
-    + '<h2>Study</h2><div class="meta">' + resp.length + (s.targetN ? ' / ' + s.targetN : '') + ' responses \u00B7 ' + (s.pay > 0 ? '$' + s.pay + ' per response' : 'Free study') + ' \u00B7 ' + safe(s.status) + '</div>'
-    + (read && read.indexOf('Generate the Read') < 0 ? '<h2>The Read</h2><div>' + safe(read).replace(/\n/g, '<br>') + '</div>' : '')
-    + '<h2>Responses \u2014 every one is a receipt</h2>' + (rows || '<div class="meta">No responses yet.</div>')
-    + '<button onclick="window.print()" style="margin-top:24px;padding:10px 18px">Print / Save as PDF</button></body></html>';
+    + '<div class="eb">Study</div><div class="meta">' + resp.length + (s.targetN ? ' / ' + s.targetN : '') + ' responses \u00B7 ' + (s.pay > 0 ? '$' + s.pay + ' per response' : 'Free study') + ' \u00B7 ' + safe(s.status) + '</div>'
+    + (read && read.indexOf('Generate the Read') < 0 ? '<div class="eb">The Read</div><div>' + safe(read).replace(/\n/g, '<br>') + '</div>' : '')
+    + '<div class="eb">Responses \u2014 every one is a receipt</div>' + (rows || '<div class="meta">No responses yet.</div>')
+    + '<div class="ft">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence \u00B7 The read is free. The moves are yours.</div>'
+    + '<button onclick="window.print()" style="margin-top:24px;padding:10px 18px;font-family:inherit">Print / Save as PDF</button></body></html>';
   const wnd = window.open('', '_blank'); if (!wnd) { showToast('Allow pop-ups to export the report'); return; }
-  wnd.document.write(html); wnd.document.close(); setTimeout(() => { try { wnd.print(); } catch (e) {} }, 350);
+  wnd.document.write(html); wnd.document.close(); setTimeout(() => { try { wnd.print(); } catch (e) {} }, 500);
 }
 function mineCopyLink(id) {
   const url = API_BASE ? (API_BASE.replace(/\/$/, '') + '/s/' + encodeURIComponent(id)) : (window.location.origin + window.location.pathname + '?study=' + encodeURIComponent(id));
