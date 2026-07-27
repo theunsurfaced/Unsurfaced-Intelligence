@@ -1,4 +1,4 @@
--- 0018_field_state.sql
+-- 0020_field_state.sql
 -- FIELD STATE arc: book anchors (relevance gate) + cluster calls (scoreboard).
 -- Idempotent. Both tables are worker-only surfaces: the service role reads and
 -- writes them through /excavate/propose and /excavate/anchors. RLS is enabled
