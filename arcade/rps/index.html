@@ -1010,7 +1010,7 @@ els.ok.onclick = ()=>{
    ════════════════════════════════════════════════════════════════ */
 const detector = {
   ready:false, starting:false, camOn:false, landmarker:null, raf:0,
-  video:document.getElementById('video'), stable:null, _buf:[],
+  video:document.getElementById('video'), stable:null, _buf:[], _vfc:null,
   async start(){
     if(this.ready){ this._loop(); els.camWrap.classList.remove('off'); return true; }
     if(this.starting) return false;
@@ -1026,7 +1026,11 @@ const detector = {
       }
       try{
         els.hint.textContent = 'Requesting camera access…';
-        const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
+        // SEAM:CAM_CORE — 640x480 ideal: finger-state classification wants more
+        // pixels than wrist tracking, but 1080p (what an unconstrained request
+        // returns on many phones) just taxes the copy path and the GPU.
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video:{ facingMode:'user', width:{ ideal:640 }, height:{ ideal:480 }, frameRate:{ ideal:30 } }, audio:false });
         this.video.srcObject = stream;
         els.camWrap.classList.remove('off');   // show the box before play() (iOS needs it visible)
         await this.video.play().catch(()=>{});
@@ -1040,13 +1044,20 @@ const detector = {
     // ── STEP 2: camera is live — now load the hand-tracking model ──────
     try{
       els.hint.textContent = 'Loading hand tracking…';
-      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
-      const files = await vision.FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+      /* SEAM:CAM_CORE — one constant governs the runtime. 1.0.0 verified
+         API-identical to our call surface (createFromOptions / detectForVideo /
+         .landmarks) against the published d.ts; revert = edit this line. */
+      const MP_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.0';
+      const vision = await import(MP_CDN + '/vision_bundle.mjs');
+      const files = await vision.FilesetResolver.forVisionTasks(MP_CDN + '/wasm');
       this.landmarker = await vision.HandLandmarker.createFromOptions(files,{
-        baseOptions:{ modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' },
+        baseOptions:{ modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          delegate:'GPU' },
         numHands:1, runningMode:'VIDEO'
       });
+      // Warmup: the first inference compiles shaders — spend it here, behind
+      // the loading hint, so it never lands on the player's first SHOOT.
+      try{ if(this.video.readyState>=2) this.landmarker.detectForVideo(this.video, performance.now()); }catch(e){}
       this.ready = true; this._loop();
       els.hint.textContent = 'Camera live — throw your hand on “SHOOT”.';
       this.starting = false;
@@ -1087,24 +1098,40 @@ const detector = {
     toast(base, 4200);
     return false;
   },
-  stop(){ cancelAnimationFrame(this.raf); const s=this.video.srcObject; if(s) s.getTracks().forEach(t=>t.stop()); this.video.srcObject=null; this.ready=false; this.camOn=false; },
+  stop(){ this._stopLoop(); const s=this.video.srcObject; if(s) s.getTracks().forEach(t=>t.stop()); this.video.srcObject=null; this.ready=false; this.camOn=false; },
+  /* SEAM:CAM_CORE — detection rides requestVideoFrameCallback: one inference
+     per DELIVERED camera frame (~30Hz), not per display refresh (120Hz on a
+     ProMotion phone — three duplicate inferences out of four, pure heat).
+     rAF fallback keeps a 33ms throttle where rvfc is absent. */
+  _stopLoop(){
+    if(this._vfc && this.video.cancelVideoFrameCallback) this.video.cancelVideoFrameCallback(this._vfc);
+    cancelAnimationFrame(this.raf); this._vfc=null;
+  },
+  _detectOnce(){
+    if(this.landmarker && this.video.readyState>=2){
+      const res = this.landmarker.detectForVideo(this.video, performance.now());
+      if(res.landmarks && res.landmarks.length){
+        const g = classify(res.landmarks[0]);
+        this._push(g);
+      }else{ this._push(null); }
+    }
+  },
   _loop(){
-    const tick=()=>{
-      if(this.landmarker && this.video.readyState>=2){
-        const res = this.landmarker.detectForVideo(this.video, performance.now());
-        if(res.landmarks && res.landmarks.length){
-          const g = classify(res.landmarks[0]);
-          this._push(g);
-        }else{ this._push(null); }
-      }
+    this._stopLoop();
+    if(document.hidden) return;              // visibility hook resumes us
+    if('requestVideoFrameCallback' in HTMLVideoElement.prototype){
+      const onFrame=()=>{ this._detectOnce(); this._vfc=this.video.requestVideoFrameCallback(onFrame); };
+      this._vfc=this.video.requestVideoFrameCallback(onFrame);
+    }else{
+      let last=0;
+      const tick=(t)=>{ if(t-last>=33){ last=t; this._detectOnce(); } this.raf=requestAnimationFrame(tick); };
       this.raf=requestAnimationFrame(tick);
-    };
-    cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(tick);
+    }
   },
   /* Sample FRESH detections for `ms` and return the majority throw — this is
      what the player commits ON "SHOOT", independent of the countdown hold. */
   async capture(ms=460){
-    cancelAnimationFrame(this.raf);          // own the video during the window
+    this._stopLoop();                        // own the video during the window
     const counts={}; const t0=performance.now();
     await new Promise(resolve=>{
       const step=()=>{
@@ -1125,17 +1152,27 @@ const detector = {
     return best;
   },
   _push(g){
-    this._buf.push(g); if(this._buf.length>6) this._buf.shift();
-    // stable = a move that appears in >=4 of last 6 frames
+    this._buf.push(g); if(this._buf.length>4) this._buf.shift();
+    // SEAM:CAM_CORE — stable = >=3 of the last 4 frames. At ~30fps that is
+    // ~100ms to lock a throw instead of ~200ms under the old 4-of-6, with the
+    // same single-frame-flicker rejection. The read should feel simultaneous.
     const counts={}; for(const x of this._buf) if(x) counts[x]=(counts[x]||0)+1;
     let best=null,bn=0; for(const k in counts) if(counts[k]>bn){bn=counts[k];best=k;}
     // drop a stale read once the hand has been out of frame for a few frames
-    const gone = this._buf.slice(-4).every(x=>!x);
-    this.stable = bn>=4 ? best : (gone ? null : this.stable);
+    const gone = this._buf.slice(-3).every(x=>!x);
+    this.stable = bn>=3 ? best : (gone ? null : this.stable);
     els.read.textContent=(this.stable||'…').toUpperCase();
     els.read.classList.toggle('on', !!this.stable);
   }
 };
+
+/* SEAM:CAM_CORE — locked phone, backgrounded tab: detection sleeps, the
+   stream stays warm, everything resumes on return. The hot-phone fix. */
+document.addEventListener('visibilitychange', ()=>{
+  if(!detector || !detector.ready) return;
+  if(document.hidden) detector._stopLoop();
+  else detector._loop();
+});
 
 /* classify 21 landmarks -> rock | paper | scissors */
 function classify(lm){

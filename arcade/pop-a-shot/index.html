@@ -1998,7 +1998,7 @@ function loopAim(dt){
 }
 
 /* SEAM:CAMERA_MODE — camera shooting (BETA, §3C) attaches here. Lazy-load
-   @mediapipe/tasks-vision@0.10.35 (pinned) ONLY on explicit entry. Track the
+   @mediapipe/tasks-vision (CAM.CDN pin below) ONLY on explicit entry. Track the
    shooting chain: wrist (landmark 0) vertical velocity → power, lateral wrist
    drift → angle, fingertip 8/12/16 palm-distance extension spike coinciding
    with wrist deceleration peak → release + timing bonus. Calibration primer:
@@ -2006,7 +2006,9 @@ function loopAim(dt){
    FILLED (build 4): opt-in, on-device, lazy-loaded on explicit entry only. */
 const CAM = { FLOOR: 0.9, FULL: 3.0, COOL: 0.7, MODEL:
   'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-  CDN: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35' };
+  /* SEAM:CAM_CORE — unified arcade runtime; 1.0.0 verified API-identical to
+     this call surface against the published d.ts. Revert = this line. */
+  CDN: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.0' };
 let camVideo = null, camTracker = null, camOn = false;
 let camPeak = 0, camCool = 0, camPrevY = null, camPrevT = 0, camVy = 0;
 
@@ -2017,17 +2019,20 @@ async function startCamera(){
     const vision = await import(CAM.CDN + '/vision_bundle.mjs');
     const files = await vision.FilesetResolver.forVisionTasks(CAM.CDN + '/wasm');
     camTracker = await vision.HandLandmarker.createFromOptions(files, {
-      baseOptions: { modelAssetPath: CAM.MODEL }, runningMode: 'VIDEO', numHands: 1 });
+      baseOptions: { modelAssetPath: CAM.MODEL, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: 1 });
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 320, height: 240, facingMode: 'user' }, audio: false });
     camVideo = document.getElementById('camView');
     camVideo.srcObject = stream; await camVideo.play();
+    /* SEAM:CAM_CORE — warmup: the first inference compiles shaders; spend it
+       here so it never lands on the player's first flick. */
+    try { if (camVideo.readyState >= 2) camTracker.detectForVideo(camVideo, performance.now()); } catch (e) {}
     camOn = true; camPeak = 0; camPrevY = null;
     camVideo.classList.add('on');
     setCamUI('on');
     $('hint').textContent = 'camera armed · raise your hand, flick up to shoot';
     $('hint').classList.remove('off');
-    requestAnimationFrame(camLoop);
+    camLoopStart();
   } catch(e){
     console.warn('camera mode failed', e);
     setCamUI('off');
@@ -2037,6 +2042,7 @@ async function startCamera(){
 }
 function stopCamera(){
   camOn = false;
+  camLoopStop();
   if (camVideo && camVideo.srcObject){
     camVideo.srcObject.getTracks().forEach(t=>t.stop());
     camVideo.srcObject = null; camVideo.classList.remove('on','armed');
@@ -2049,12 +2055,38 @@ function setCamUI(st){
   pill.textContent = st === 'on' ? 'Camera · ON' :
                      st === 'starting…' ? 'Camera …' : 'Camera · BETA';
 }
-function camLoop(){
+/* SEAM:CAM_CORE — detection rides requestVideoFrameCallback where present:
+   one inference per delivered camera frame, zero duplicate work on high-Hz
+   displays. rAF path keeps the original 33ms throttle as the fallback. The
+   visibility hook parks the whole thing when the tab hides. */
+let camVfc = null;
+function camLoopStart(){
+  camLoopStop();
+  if (document.hidden) return;                        // visibility hook resumes
+  if (camVideo && 'requestVideoFrameCallback' in HTMLVideoElement.prototype){
+    const onFrame = () => { camDetect(performance.now()); if (camOn) camVfc = camVideo.requestVideoFrameCallback(onFrame); };
+    camVfc = camVideo.requestVideoFrameCallback(onFrame);
+  } else {
+    requestAnimationFrame(camLoop);
+  }
+}
+function camLoopStop(){
+  if (camVfc != null && camVideo && camVideo.cancelVideoFrameCallback) camVideo.cancelVideoFrameCallback(camVfc);
+  camVfc = null;
+}
+document.addEventListener('visibilitychange', () => {
   if (!camOn) return;
+  if (document.hidden) camLoopStop(); else camLoopStart();
+});
+function camLoop(){
+  if (!camOn || camVfc != null) return;
   requestAnimationFrame(camLoop);
-  if (!camTracker || camVideo.readyState < 2) return;
-  const t = performance.now();
-  if (t - camPrevT < 33) return;                      // ~30 Hz detection
+  const t0 = performance.now();
+  if (t0 - camPrevT < 33) return;                     // ~30 Hz detection
+  camDetect(t0);
+}
+function camDetect(t){
+  if (!camOn || !camTracker || !camVideo || camVideo.readyState < 2) return;
   const res = camTracker.detectForVideo(camVideo, t);
   const dt = (t - camPrevT)/1000; camPrevT = t;
   if (camCool > 0) camCool -= dt;

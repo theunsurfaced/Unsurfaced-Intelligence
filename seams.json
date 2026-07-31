@@ -302,6 +302,20 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:RESPONSE_QUALITY",
    "purpose": "review lane on response cards \u2014 flags visible, admin clean/reject verdicts and the withdrawal delete, every write asserted by returned row count (RLS silent no-op law)"
+  },
+  "SEAM:CAM_CORE": {
+   "file": "arcade/rps/index.html",
+   "purpose": "unified camera stack: tasks-vision 1.0.0 (one revert constant), GPU delegate, warmup inference, rvfc per-camera-frame loops, visibility pause; RPS adds 640x480 ideal constraints + 3-of-4 stable read (~100ms lock)"
+  },
+  "SEAM:CAM_CORE@pop": {
+   "file": "arcade/pop-a-shot/index.html",
+   "tag": "SEAM:CAM_CORE",
+   "purpose": "same stack; shooting physics untouched \u2014 rvfc gate wraps the existing 30Hz throttle as fallback"
+  },
+  "SEAM:CAM_CORE@thumb": {
+   "file": "arcade/thumb/index.html",
+   "tag": "SEAM:CAM_CORE",
+   "purpose": "same stack + two kills: landmarker reused across toggles (WASM leak) and the boot-time setTimeout(33) eternal chain replaced by a gated loop; edge velocities EMA'd in the pure translator, pose stays raw"
   }
  },
  "planned": [
