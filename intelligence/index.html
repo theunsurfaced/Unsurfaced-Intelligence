@@ -6215,16 +6215,23 @@ function _invitesHtml(sid, d) {
   const paste = '<textarea id="inv-paste" class="mr-textarea" rows="3" placeholder="Paste emails \u2014 one per line, or comma separated. Names welcome: Ada Lovelace <ada@ex.com>"></textarea>'
     + '<div class="mr-nav" style="margin:8px 0 16px">'
     + '<button class="mr-btn mr-btn-primary" onclick="_invitesMint(\'' + sid + '\')">Mint links</button>'
-    + ((t.pending || 0) > 0 ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\')">Send ' + t.pending + ' pending \u2192</button>' : '')
-    + '</div>';
+    + ((t.pending || 0) > 0
+        ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\')">Send ' + t.pending + ' pending \u2192</button>'
+        : ((t.sent || 0) > 0
+            ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\',true)">Resend ' + t.sent + ' \u2192</button>'
+            : ''))
+    + '</div>'
+    + ((d.total || 0) === 0 ? '<p class="ma-muted" style="margin:-6px 0 14px">Minting creates the links. Sending is the second button \u2014 nothing leaves until you press it.</p>' : '');
   const rows = (d.invites || []).map(i =>
     '<div class="ma-row"><div><div class="ma-row-t">' + safe(i.email) + (i.name ? ' <span class="ma-muted">' + safe(i.name) + '</span>' : '') + '</div>'
     + '<div class="ma-row-s" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase">' + safe(i.status) + '</div></div>'
     + '<span style="display:flex;gap:6px">'
-    + (i.link && i.status !== 'revoked' && i.status !== 'responded'
-        ? '<button class="mr-btn" style="font-size:10px;padding:4px 9px" onclick="_inviteCopy(this,\'' + safeAttr(i.link) + '\')">Copy link</button>'
-          + '<button class="mr-btn" style="font-size:10px;padding:4px 9px;color:var(--red,#FF3333)" onclick="_inviteRevoke(\'' + sid + '\',\'' + i.id + '\')">Revoke</button>'
-        : '') + '</span></div>').join('');
+    + (i.status === 'revoked'
+        ? '<button class="mr-btn" style="font-size:10px;padding:4px 9px" onclick="_inviteRestore(\'' + sid + '\',\'' + i.id + '\')">Restore</button>'
+        : (i.link && i.status !== 'responded'
+            ? '<button class="mr-btn" style="font-size:10px;padding:4px 9px" onclick="_inviteCopy(this,\'' + safeAttr(i.link) + '\')">Copy link</button>'
+              + '<button class="mr-btn" style="font-size:10px;padding:4px 9px;color:var(--red,#FF3333)" onclick="_inviteRevoke(\'' + sid + '\',\'' + i.id + '\')">Revoke</button>'
+            : '')) + '</span></div>').join('');
   return head + paste + rows;
 }
 
@@ -6237,20 +6244,31 @@ async function _invitesMint(sid) {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'mint', list: raw }) });
     const d = await r.json();
-    if (d && d.ok) { showToast(d.minted + ' new link' + (d.minted === 1 ? '' : 's') + ' minted'); _invitesLoad(sid); }
+    if (d && d.ok) { showToast(d.minted + ' new link' + (d.minted === 1 ? '' : 's') + ' minted'
+      + (d.revived ? ' \u00B7 ' + d.revived + ' revoked restored' : '')
+      + ' \u2014 press Send to deliver them'); _invitesLoad(sid); }
     else showToast(d && d.error === 'no_valid_emails' ? 'No valid emails in that list' : 'Mint failed \u2014 try again');
   } catch (e) { showToast('Mint failed \u2014 try again'); }
 }
 
-async function _invitesSend(sid) {
+async function _invitesSend(sid, retrySent) {
   try {
     const hh = await _authHeader();
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/invites', {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
-      body: JSON.stringify({ study_id: sid, op: 'send' }) });
+      body: JSON.stringify({ study_id: sid, op: 'send', retry_sent: !!retrySent }) });
     const d = await r.json();
-    if (d && d.ok) { showToast(d.sent + ' invitation' + (d.sent === 1 ? '' : 's') + ' sent' + (d.remaining ? ' \u00B7 ' + d.remaining + ' remaining \u2014 send again' : '')); _invitesLoad(sid); }
-    else showToast(d && d.error === 'study_not_live' ? 'Launch the study before sending invites' : 'Send failed \u2014 try again');
+    if (d && d.ok) {
+      /* The provider's own words, surfaced. A failure that says nothing is how
+         a whole evening gets spent looking in the wrong place. */
+      if (d.failed) showToast(d.sent + ' sent, ' + d.failed + ' failed \u2014 ' + (d.fail_detail || 'no reason given'));
+      else showToast(d.sent + ' invitation' + (d.sent === 1 ? '' : 's') + ' sent'
+        + (d.remaining ? ' \u00B7 ' + d.remaining + ' still pending' : ''));
+      _invitesLoad(sid);
+    }
+    else showToast(d && d.error === 'study_not_live' ? 'Launch the study before sending invites'
+      : d && d.error === 'mail_not_configured' ? 'Mail is not configured on the worker \u2014 RESEND_API_KEY is missing'
+      : 'Send failed \u2014 ' + ((d && d.error) || 'try again'));
   } catch (e) { showToast('Send failed \u2014 try again'); }
 }
 
@@ -6264,6 +6282,17 @@ async function _inviteRevoke(sid, id) {
   } catch (e) {}
 }
 
+async function _inviteRestore(sid, id) {
+  try {
+    const hh = await _authHeader();
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/invites', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
+      body: JSON.stringify({ study_id: sid, op: 'restore', invite_id: id }) });
+    const d = await r.json();
+    showToast(d && d.ok ? 'Restored with a fresh link \u2014 send it when ready' : 'Restore failed \u2014 try again');
+    _invitesLoad(sid);
+  } catch (e) { showToast('Restore failed \u2014 try again'); }
+}
 function _inviteCopy(btn, link) {
   try { navigator.clipboard.writeText(link).then(function () { showToast('Link copied'); }); }
   catch (e) { showToast(link); }

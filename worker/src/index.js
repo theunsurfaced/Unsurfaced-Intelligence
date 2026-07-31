@@ -786,11 +786,28 @@ async function mineInvites(body, env, origin, user) {
       const back = await sbRest(env, 'study_invite?on_conflict=study_id,email', {
         method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
         body: rows }) || [];
+      /* Revive: ignore-duplicates means a revoked or tokenless row would be
+       * skipped forever, locking that address out of this study permanently.
+       * Anything the caller just submitted that is dead comes back with a new
+       * token. Live tokens are untouched — a link already in someone's inbox
+       * must keep working. */
+      let revived = 0;
+      const existing = await sbRest(env,
+        `study_invite?study_id=eq.${sid}&select=id,email,token,status`) || [];
+      for (const row of existing) {
+        if (!seen[String(row.email || '').toLowerCase()]) continue;
+        if (row.token && row.status !== 'revoked') continue;
+        await sbRest(env, `study_invite?id=eq.${row.id}`, { method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: { token: mintToken(), status: 'pending', sent_at: null, responded_at: null }
+        }).catch(() => {});
+        revived++;
+      }
       const all = await sbRest(env,
         `study_invite?study_id=eq.${sid}&select=id,email,name,token,status&order=created_at`) || [];
       await logEvent(env, 'intelligence', 'mine', 'invites_mint', user.id,
-        { study: sid, submitted: people.length, fresh: back.length });
-      return json({ ok: true, minted: back.length, total: all.length,
+        { study: sid, submitted: people.length, fresh: back.length, revived });
+      return json({ ok: true, minted: back.length, revived, total: all.length,
         invites: all.map(i => ({ id: i.id, email: i.email, name: i.name, status: i.status,
           link: i.token ? base + '/intelligence/?t=' + i.token : null })) }, 200, origin, env);
     }
@@ -805,14 +822,20 @@ async function mineInvites(body, env, origin, user) {
       if (st2.status !== 'live')
         return json({ ok: false, error: 'study_not_live',
           note: 'launch the study before sending invites' }, 200, origin, env);
+      const wantStatuses = body.retry_sent ? 'in.(pending,sent)' : 'eq.pending';
       const pend = await sbRest(env,
-        `study_invite?study_id=eq.${sid}&status=eq.pending&token=not.is.null` +
+        `study_invite?study_id=eq.${sid}&status=${wantStatuses}&token=not.is.null` +
         `&select=id,email,name,token&limit=80`) || [];
-      if (!pend.length) return json({ ok: true, sent: 0, note: 'no pending invites' }, 200, origin, env);
+      if (!pend.length) return json({ ok: true, sent: 0, failed: 0, note: 'no pending invites' }, 200, origin, env);
+      if (!env.RESEND_API_KEY)
+        return json({ ok: false, error: 'mail_not_configured',
+          note: 'RESEND_API_KEY is not set on the worker \u2014 no email can send until it is' }, 200, origin, env);
       const payLine = (st2.pay_cents || 0) > 0
         ? '<p style="margin:0 0 14px"><b>$' + ((st2.pay_cents || 0) / 100).toFixed(2).replace(/\.00$/, '')
           + '</b> for your completed response.</p>' : '';
       let sent = 0;
+      let failed = 0;
+      let failDetail = null;
       const nowIso = new Date().toISOString();
       for (const iv of pend) {
         const link = base + '/intelligence/?t=' + iv.token;
@@ -828,21 +851,44 @@ async function mineInvites(body, env, origin, user) {
           + '<p><a href="' + link + '" style="background:#C41230;color:#fff;padding:12px 22px;'
           + 'text-decoration:none;font-weight:700;border-radius:4px;display:inline-block">Take the study \u2192</a></p>'
           + '<p style="margin:18px 0 0;font-size:12px;color:#888">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence</p></div>';
+        let res = null;
         try {
-          await sendEmail(env, { to: iv.email,
+          res = await sendEmail(env, { to: iv.email,
             subject: 'You\u2019re invited: \u201c' + st2.title + '\u201d'
               + ((st2.pay_cents || 0) > 0 ? ' \u2014 paid study' : ''), html });
+        } catch (e) { res = { ok: false, detail: String(e && e.message).slice(0, 120) }; }
+        if (res && res.ok === true) {
           await sbRest(env, `study_invite?id=eq.${iv.id}`, { method: 'PATCH',
             headers: { Prefer: 'return=minimal' },
-            body: { status: 'sent', sent_at: nowIso } });
+            body: { status: 'sent', sent_at: nowIso } }).catch(() => {});
           sent++;
-        } catch (e) { /* leave it pending; the next send picks it up */ }
+        } else {
+          failed++;
+          if (!failDetail) failDetail = (res && res.status ? 'HTTP ' + res.status + ' \u2014 ' : '')
+            + ((res && res.detail) || (res && res.skipped ? 'no RESEND_API_KEY' : 'unknown'));
+          // stays pending — the next send picks it up once the cause is fixed
+        }
       }
       const remain = await sbRest(env,
         `study_invite?study_id=eq.${sid}&status=eq.pending&select=id`) || [];
       await logEvent(env, 'intelligence', 'mine', 'invites_send', user.id,
-        { study: sid, sent, remaining: remain.length });
-      return json({ ok: true, sent, remaining: remain.length }, 200, origin, env);
+        { study: sid, sent, failed, remaining: remain.length });
+      return json({ ok: true, sent, failed, remaining: remain.length,
+        fail_detail: failed ? failDetail : null,
+        note: failed ? 'provider rejected ' + failed + ' \u2014 common cause: EMAIL_FROM missing or on an unverified Resend domain' : null }, 200, origin, env);
+    }
+    if (op === 'restore') {
+      // The undo. A revoked invite gets a NEW token — the old link stays dead,
+      // which is the whole point of having revoked it.
+      const id = String(body.invite_id || '');
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+      const back = await sbRest(env, `study_invite?id=eq.${id}&study_id=eq.${sid}`, {
+        method: 'PATCH', headers: { Prefer: 'return=representation' },
+        body: { token: mintToken(), status: 'pending', sent_at: null, responded_at: null } }) || [];
+      if (!back.length) return json({ ok: false, error: 'invite_not_found' }, 200, origin, env);
+      await logEvent(env, 'intelligence', 'mine', 'invite_restore', user.id, { study: sid });
+      return json({ ok: true, link: back[0].token ? base + '/intelligence/?t=' + back[0].token : null },
+        200, origin, env);
     }
     if (op === 'revoke') {
       const id = String(body.invite_id || '');
@@ -1234,7 +1280,10 @@ async function sendEmail(env, msg) {
     headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from, to: [msg.to], subject: msg.subject, html: msg.html })
   });
-  return r.ok ? { ok: true } : { ok: false };
+  if (r.ok) return { ok: true };
+  let detail = '';
+  try { detail = (await r.text()).slice(0, 200); } catch (e) {}
+  return { ok: false, status: r.status, detail };
 }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function payEmailHtml(name, study, cents) {
