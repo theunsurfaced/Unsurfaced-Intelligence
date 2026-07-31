@@ -423,6 +423,14 @@ async function serveMedia(path, env, origin, request) {
   obj.writeHttpMetadata(headers);
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Cache-Control', 'public, max-age=3600');
+  /* SEAM:STIMULUS — uploaded HTML (mock landing pages) is a first-class
+     stimulus. Served with a CSP sandbox: scripts, forms, and clicks all work,
+     but the document runs with an opaque origin — no storage, no credentialed
+     reach into the API, even when the /media/ URL is opened directly rather
+     than inside the response overlay's sandboxed iframe. */
+  const ctype = String((obj.httpMetadata && obj.httpMetadata.contentType) || '');
+  if (ctype.indexOf('text/html') >= 0)
+    headers.set('Content-Security-Policy', 'sandbox allow-scripts allow-forms allow-popups');
   if (origin) headers.set('Access-Control-Allow-Origin', origin);
   if (range) {
     const total = obj.size;
@@ -930,7 +938,7 @@ async function mineTokenStudy(url, env, origin) {
   if (!st) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
   if (st.status !== 'live') return json({ ok: false, error: 'study_closed' }, 200, origin, env);
   let qs;
-  try { qs = await sbRest(env, `study_question?study_id=eq.${i.study_id}&select=id,ord,type,prompt,options&order=ord`); }
+  try { qs = await sbRest(env, `study_question?study_id=eq.${i.study_id}&select=id,ord,type,prompt,options,asset_key,asset_name&order=ord`); }
   catch (e) { qs = []; }
   return json({ ok: true, data: { id: st.id, title: st.title, goal: st.goal, type: st.type,
     pay_cents: st.pay_cents || 0, asset_key: st.asset_key || null, target_n: st.target_n || null,
@@ -1060,7 +1068,7 @@ async function mineClientResults(body, env, origin, user) {
     const st = ss && ss[0];
     if (!st) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
     const qs = await sbRest(env,
-      `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options&order=ord`) || [];
+      `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options,asset_key,asset_name&order=ord`) || [];
     // No email, no ZIP, no responder_id crosses this line — a client read can
     // never carry PII because the select never asks for it.
     const rows = await sbRest(env,
@@ -1127,7 +1135,7 @@ async function mineStudyPublic(url, env, origin) {
   let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,title,goal,type,pay_cents,asset_key,target_n`); } catch (e) { ss = null; }
   const s = ss && ss[0];
   if (!s) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
-  let qs; try { qs = await sbRest(env, `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options&order=ord`); } catch (e) { qs = []; }
+  let qs; try { qs = await sbRest(env, `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options,asset_key,asset_name&order=ord`); } catch (e) { qs = []; }
   return json({ ok: true, data: { id: s.id, title: s.title, goal: s.goal, type: s.type, pay_cents: s.pay_cents || 0, asset_key: s.asset_key || null, target_n: s.target_n || null, questions: qs || [] } }, 200, origin, env);
 }
 async function mineGuestRespond(request, env, origin) {
