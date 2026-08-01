@@ -2439,13 +2439,14 @@ function _mapResponder(p) { return { id: p.user_id, anon: p.anon_id, name: p.nam
 function _mapPartner(p) { return { id: p.id, company: p.company, contactName: p.contact_name, email: p.email, website: p.website, useCase: p.use_case, contacts: [] }; }
 function _mapStudy(s) { return { id: s.id, partnerId: s.partner_id, title: s.title, goal: s.goal, type: s.type, asset: s.asset_key ? { name: s.asset_name, key: s.asset_key } : null, pay: Math.round((s.pay_cents || 0) / 100), audience: s.audience, contactEmails: [], status: s.status, fundedCents: s.funded_cents || 0, publicListing: !!s.public_listing, targetN: s.target_n || null, questions: [] }; }
 function _mapResponse(r) { return { id: r.id, studyId: r.study_id, anon: r.anon_id, segments: r.segments || [], answers: r.answers || {}, status: r.status,
-  qualityStatus: r.quality_status || null, qualityFlags: (r.quality && r.quality.flags) || [], durationMs: r.duration_ms || null }; }
+  qualityStatus: r.quality_status || null, qualityFlags: (r.quality && r.quality.flags) || [], durationMs: r.duration_ms || null,
+  clickCount: r.clicks ? Object.values(r.clicks).reduce((a, v) => a + (Array.isArray(v) ? v.length : 0), 0) : 0 }; }
 
 async function _attachQuestions(studies) {
   if (!studies.length) return;
   const ids = studies.map(s => s.id);
   const { data } = await _sb.from('study_question').select('*').in('study_id', ids).order('ord');
-  const by = {}; (data || []).forEach(q => { (by[q.study_id] = by[q.study_id] || []).push({ id: q.id, type: q.type, prompt: q.prompt, options: q.options || [], passOptions: q.pass_options || null }); });
+  const by = {}; (data || []).forEach(q => { (by[q.study_id] = by[q.study_id] || []).push({ id: q.id, type: q.type, prompt: q.prompt, options: q.options || [], passOptions: q.pass_options || null, assetKey: q.asset_key || null, assetName: q.asset_name || null }); });
   studies.forEach(s => s.questions = by[s.id] || []);
 }
 async function _attachInvites(studies) {
@@ -2628,8 +2629,8 @@ async function _sbSaveStudy(launch) {
     if (!hasResp) { if (keepIds.length) await _sb.from('study_question').delete().eq('study_id', studyId).not('id', 'in', '(' + keepIds.join(',') + ')'); else await _sb.from('study_question').delete().eq('study_id', studyId); }
     for (let i = 0; i < d.questions.length; i++) {
       const q = d.questions[i];
-      if (keepIds.indexOf(q.id) >= 0) { const { data: ud } = await _sb.from('study_question').update({ ord: i, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }).eq('id', q.id).select('id'); if (!ud || !ud.length) { showToast('Question update was blocked \u2014 run migration 0019'); return; } }
-      else { await _sb.from('study_question').insert({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }); }
+      if (keepIds.indexOf(q.id) >= 0) { const { data: ud } = await _sb.from('study_question').update({ ord: i, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null, asset_key: q.assetKey || null, asset_name: q.assetName || null }).eq('id', q.id).select('id'); if (!ud || !ud.length) { showToast('Question update was blocked \u2014 run migration 0019'); return; } }
+      else { await _sb.from('study_question').insert({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null, asset_key: q.assetKey || null, asset_name: q.assetName || null }); }
     }
     // invites: only rewritten when the editor actually holds invite data (admin hydrate never loads invites — leave them standing)
     if (d.audience !== 'contacts') { await _sb.from('study_invite').delete().eq('study_id', studyId); }
@@ -2638,7 +2639,7 @@ async function _sbSaveStudy(launch) {
     row.partner_id = me.id;
     const { data, error } = await _sb.from('study').insert(row).select('id').single(); if (error) { showToast('Save failed: ' + error.message); return; } studyId = data.id;
   }
-  if (!isEdit && d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null }))); }
+  if (!isEdit && d.questions.length) { await _sb.from('study_question').insert(d.questions.map((q, i) => ({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null, asset_key: q.assetKey || null, asset_name: q.assetName || null }))); }
   if (d.audience === 'contacts' && d.contactEmails.length) { await _sb.from('study_invite').insert(d.contactEmails.map(e => ({ study_id: studyId, email: e }))); }
   let inviteMsg = '';
   if (launch && d.audience === 'contacts' && d.contactEmails.length && API_BASE) { try { const er = await api('email/study-invite', { study_id: studyId }); if (er && er.ok && er.data) inviteMsg = ' · ' + (er.data.sent || 0) + ' invited'; } catch (e) {} }
@@ -2657,7 +2658,7 @@ async function _sbSubmitResponse() {
   if (screened) { mineState.lastTitle = s.title; mineState.lastScreened = true; mineRoute('r-done'); return; }
   mineState.lastScreened = false;
   const uid = await _uid();
-  const { error } = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, answers: st.answers });
+  const { error } = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, answers: st.answers, clicks: st.clicks || {} });
   if (error) { showToast('Submit failed: ' + error.message); return; }
   if (API_BASE) { try { api('mine/notify', { study_id: s.id }); } catch (e) {} }
   mineState.lastTitle = s.title; mineState.lastPay = s.pay || 0; await mineHydrate('responder'); mineRoute('r-done');
@@ -6089,10 +6090,21 @@ function vCHome() {
     + (list || empty('No studies are shared with this account yet. Ask your Unsurfaced contact for access.'));
 }
 
+/* Admin or partner stepping into the client's room to see exactly what the
+ * client sees. The results endpoint always allowed it; this is the door. */
+function _clientPreview(sid) {
+  mineState.cBack = { view: mineState.view, arg: mineState.arg };
+  mineRoute('c-study', sid);
+}
 function vCStudy(sid) {
-  const st = (mineDB.clientStudies || []).find(x => x.id === sid);
-  return ((mineDB.clientStudies || []).length > 1
-      ? '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'c-home\')">\u2190 Your studies</button>' : '')
+  const st = (mineDB.clientStudies || []).find(x => x.id === sid)
+    || (typeof mStudy === 'function' ? mStudy(sid) : null);
+  const back = mineState.cBack
+    ? '<button class="mr-btn" style="margin-bottom:18px" onclick="var b=mineState.cBack;mineState.cBack=null;mineRoute(b.view,b.arg)">\u2190 Back to study</button>'
+    : ((mineDB.clientStudies || []).length > 1
+      ? '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'c-home\')">\u2190 Your studies</button>' : '');
+  return back
+    + (mineState.cBack ? '<div class="ma-sum" style="margin:0 0 14px"><div class="ma-row-s" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase">Previewing as client \u2014 this is exactly what they see</div></div>' : '')
     + '<span class="mr-eyebrow">Live results' + (st ? ' \u00B7 ' + safe(st.status) : '') + '</span>'
     + '<h2 class="mr-h">' + safe(st ? st.title : 'Your study') + '</h2>'
     + (st && st.goal ? '<p class="mr-p">' + safe(st.goal) + '</p>' : '')
@@ -6148,6 +6160,7 @@ function _clientResultsHtml(d) {
         + (q.verbatims || []).slice(0, 12).map(vv =>
             '<div class="ma-ans"><span class="ma-ans-q">' + safe(vv.who) + '</span><span class="ma-ans-a">\u201c' + safe(vv.text) + '\u201d</span></div>').join('')
         + ((q.verbatims || []).length > 12 ? '<div class="ma-muted" style="margin-top:6px">+ ' + ((q.verbatims || []).length - 12) + ' more in the full report</div>' : '')
+        + _clickBlock(q.clicks)
         + '</div>';
       continue;
     }
@@ -6157,6 +6170,7 @@ function _clientResultsHtml(d) {
       + keys.map(k => '<div class="mp-bar-row"><span class="mp-bar-label">' + safe(k) + '</span>'
           + '<span class="mp-bar-track"><span class="mp-bar-fill" style="width:' + Math.round((q.counts[k] / max) * 100) + '%"></span></span>'
           + '<span class="mp-bar-n">' + (q.pct && q.pct[k] != null ? q.pct[k] + '%' : q.counts[k]) + '</span></div>').join('')
+      + _clickBlock(q.clicks)
       + '</div>';
   }
   if (d.crosstab && Object.keys(d.crosstab).length) {
@@ -6177,6 +6191,26 @@ function _clientResultsHtml(d) {
   return h;
 }
 
+/* SEAM:CLICKPATH — what they DID, beside what they said. First-click is the
+ * headline: the distribution of the very first thing each respondent touched
+ * inside the stimulus. Renders nothing when there is no behavior to show. */
+function _clickBlock(cs) {
+  if (!cs || !cs.respondents) return '';
+  const bar = (obj, label) => {
+    const ks = Object.keys(obj || {});
+    if (!ks.length) return '';
+    const mx = Math.max(1, ...ks.map(k => obj[k]));
+    return '<div class="ma-muted" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin:10px 0 4px">' + label + '</div>'
+      + ks.map(k => '<div class="mp-bar-row"><span class="mp-bar-label">' + safe(k) + '</span>'
+        + '<span class="mp-bar-track"><span class="mp-bar-fill" style="width:' + Math.round((obj[k] / mx) * 100) + '%"></span></span>'
+        + '<span class="mp-bar-n">' + obj[k] + '</span></div>').join('');
+  };
+  return '<div style="border-top:1px solid rgba(255,255,255,.08);margin-top:12px;padding-top:2px">'
+    + '<div class="ma-muted" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin:8px 0 0">Behavior \u00B7 ' + cs.respondents + ' interacted \u00B7 ' + cs.total + ' clicks</div>'
+    + bar(cs.first, 'First click \u2014 what they did first')
+    + bar(cs.top, 'Most touched')
+    + '</div>';
+}
 function _clientCrosstab(qid) {
   if (_clientCache) { _clientCache.crosstab = qid || null; _clientLoadResults(_clientCache.sid); }
 }
@@ -6196,15 +6230,21 @@ function _fieldRailRow(s, admin) {
 async function _invitesLoad(sid) {
   const box = document.getElementById('inv-mgr');
   if (!box) return;
+  const fail = function (why) {
+    box.innerHTML = '<div class="ma-row"><div><div class="ma-row-t">Invites could not load</div>'
+      + '<div class="ma-row-s">' + safe(why) + '</div></div>'
+      + '<button class="mr-btn" onclick="_invitesLoad(\'' + sid + '\')">Retry</button></div>';
+  };
   try {
     const hh = await _authHeader();
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/invites', {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'list' }) });
+    if (!r.ok) return fail('The API answered ' + r.status + (r.status === 404 ? ' \u2014 the worker may not be deployed yet' : ''));
     const d = await r.json();
-    if (!d || !d.ok) { box.innerHTML = ''; return; }
+    if (!d || !d.ok) return fail(d && d.error === 'forbidden' ? 'This account cannot manage invites for this study' : 'Error: ' + ((d && d.error) || 'unknown'));
     box.innerHTML = _invitesHtml(sid, d);
-  } catch (e) { box.innerHTML = ''; }
+  } catch (e) { fail('Network error \u2014 check the connection'); }
 }
 
 function _invitesHtml(sid, d) {
@@ -6302,7 +6342,8 @@ function _inviteCopy(btn, link) {
 function _clientAccessRow(s, admin) {
   if (!sbEnabled() || !API_BASE) return '';
   if (s.status === 'draft') return '';
-  return '<div class="ma-sec">Client access \u2014 read-only, this study only</div>'
+  return '<div class="ma-sec" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">Client access \u2014 read-only, this study only'
+    + '<button class="mr-btn" style="font-size:11px" onclick="_clientPreview(\'' + s.id + '\')">Preview client view \u2192</button></div>'
     + '<div id="client-acc"><p class="mr-p ma-empty">Loading\u2026</p></div>';
 }
 
@@ -6314,8 +6355,13 @@ async function _clientListLoad(sid) {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/client-access', {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'list' }) });
+    if (!r.ok) { box.innerHTML = '<div class="ma-row"><div><div class="ma-row-t">Client access could not load</div>'
+      + '<div class="ma-row-s">The API answered ' + r.status + (r.status === 404 ? ' \u2014 the worker may not be deployed yet' : '') + '</div></div>'
+      + '<button class="mr-btn" onclick="_clientListLoad(\'' + sid + '\')">Retry</button></div>'; return; }
     const d = await r.json();
-    if (!d || !d.ok) { box.innerHTML = ''; return; }
+    if (!d || !d.ok) { box.innerHTML = '<div class="ma-row"><div><div class="ma-row-t">Client access could not load</div>'
+      + '<div class="ma-row-s">Error: ' + safe((d && d.error) || 'unknown') + '</div></div>'
+      + '<button class="mr-btn" onclick="_clientListLoad(\'' + sid + '\')">Retry</button></div>'; return; }
     const rows = (d.clients || []).map(c =>
       '<div class="ma-row"><div><div class="ma-row-t">' + safe(c.email || c.id) + '</div>'
       + '<div class="ma-row-s">Watching live results</div></div>'
@@ -6517,17 +6563,20 @@ function mineTypeLabel(t) { return t === 'video' ? 'Video reaction' : t === 'aud
 
 function mineStartStudy(id) {
   const s = mStudy(id); if (!s) return;
-  mineState.resp = { studyId: id, answers: {}, consent: false };
+  mineState.resp = { studyId: id, answers: {}, consent: false, clicks: {} };
+  window._clickStore = mineState.resp.clicks;
   mineRoute('r-study', id);
 }
 function vRStudy(id) {
   const s = mStudy(id || mineState.arg); if (!s) return vRHome();
-  let assetHtml = '';
-  if (s.type === 'video' || s.type === 'audio') {
-    const url = s.asset && (sbEnabled() && s.asset.key ? (API_BASE.replace(/\/$/, '') + '/media/' + encodeURIComponent(s.asset.key)) : mineMedia[s.asset.mediaId]);
-    if (url && s.type === 'video') assetHtml = '<video class="ma-media" src="' + safeAttr(url) + '" controls></video>';
-    else if (url && s.type === 'audio') assetHtml = '<audio class="ma-media" src="' + safeAttr(url) + '" controls></audio>';
-    else assetHtml = '<div class="ma-clip">' + (s.type === 'video' ? '▶' : '♪') + ' ' + safe(s.asset ? s.asset.name : 'Media') + ' — preview available in the session it was uploaded</div>';
+  /* SEAM:STIMULUS — the study-level asset rides the universal renderer too:
+     a mock landing page attached at study level is the whole environment the
+     respondent explores before any question asks about it. */
+  let assetHtml = s.asset && s.asset.key ? _assetHtml(s.asset.key, s.asset.name, true) : '';
+  if (!assetHtml && (s.type === 'video' || s.type === 'audio') && s.asset && mineMedia[s.asset.mediaId]) {
+    const url = mineMedia[s.asset.mediaId];
+    assetHtml = s.type === 'video' ? '<video class="ma-media" src="' + safeAttr(url) + '" controls></video>'
+      : '<audio class="ma-media" src="' + safeAttr(url) + '" controls></audio>';
   }
   const qs = (s.questions || []).map((q, i) => mineRenderQuestion(q, i)).join('');
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'r-home\')">← Studies</button>'
@@ -6539,7 +6588,8 @@ function vRStudy(id) {
     + '<div class="mr-nav"><button class="mr-btn" onclick="mineRoute(\'r-home\')">Back</button><button class="mr-btn mr-btn-primary" onclick="mineSubmitResponse()">Submit response →</button></div>';
 }
 function mineRenderQuestion(q, i) {
-  const head = '<div class="ma-q">' + (i + 1) + '. ' + safe(q.prompt) + '</div>';
+  const head = '<div class="ma-q">' + (i + 1) + '. ' + safe(q.prompt) + '</div>'
+    + _assetHtml(q.assetKey || q.asset_key, q.assetName || q.asset_name, true, q.id);
   if (q.type === 'open') return head + '<textarea class="mr-textarea" rows="3" oninput="mineState.resp.answers[\'' + q.id + '\']=this.value" placeholder="Your answer…"></textarea>';
   if (q.type === 'scale') return head + '<div class="mr-scale">' + ['1', '2', '3', '4', '5'].map(o => '<button type="button" onclick="mineAnsPick(\'' + q.id + '\',\'' + o + '\',this,false)">' + o + '</button>').join('') + '</div>';
   const multi = q.type === 'multi';
@@ -6720,7 +6770,11 @@ function vPNew() {
   const showOpts = (formType === 'single' || formType === 'multi' || formType === 'screener');
   const qform = '<div class="ma-card2"><div class="mp-label">' + (qe ? 'Edit question' : 'Add a question') + '</div>'
     + '<select id="q-type" class="mr-field" onchange="mineQFormToggle()">'
-    + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['scale', 'Rating (1–5)'], ['open', 'Open text'], ['screener', 'Screener (qualify)']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
+    + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['scale', 'Rating (1–5)'], ['open', 'Open text'], ['screener', 'Screener (qualify)'], ['attention', 'Attention check (quality)']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
+    + (sbEnabled() ? ('<div class="ma-clip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0">'
+      + '<span id="q-asset-chip">' + (mineState.qAsset ? '\u25A6 ' + safe(mineState.qAsset.name) : 'No stimulus attached \u2014 image, video, audio, or an HTML page respondents click through')
+      + '</span><span>' + (mineState.qAsset ? '<button class="u-trace" onclick="_qAssetClear()">remove</button> ' : '')
+      + '<label class="u-trace" style="cursor:pointer">attach<input type="file" accept="image/*,video/*,audio/*,.html,.htm" style="display:none" onchange="_qAssetPick(this)"></label></span></div>') : '')
     + '<input id="q-prompt" class="mr-field" placeholder="Question prompt" value="' + safeAttr(qe ? qe.prompt : '') + '">'
     + '<textarea id="q-opts" class="mr-textarea" rows="2" placeholder="Options, one per line" style="' + (showOpts ? '' : 'display:none') + '">' + safe(qe && qe.options ? qe.options.join('\n') : '') + '</textarea>'
     + '<input id="q-pass" class="mr-field" placeholder="Qualifying answers (comma-separated, must match options)" style="' + (formType === 'screener' ? '' : 'display:none') + '" value="' + safeAttr(qe && qe.passOptions ? qe.passOptions.join(', ') : '') + '">'
@@ -6750,8 +6804,8 @@ function vPNew() {
         ? '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(false)">Save changes →</button></div><p class="mr-priv">Live study: adds and wording edits apply to new responders; collected answers keep their receipts. Question types and removals are locked once responses exist.</p>'
         : '<div class="mr-nav"><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>');
 }
-function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text', screener: 'Screener' }[t] || t; }
-function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi' || t === 'screener') ? '' : 'none'; const pp = document.getElementById('q-pass'); if (pp) pp.style.display = (t === 'screener') ? '' : 'none'; }
+function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text', screener: 'Screener', attention: 'Attention check' }[t] || t; }
+function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi' || t === 'screener' || t === 'attention') ? '' : 'none'; const pp = document.getElementById('q-pass'); if (pp) { pp.style.display = (t === 'screener' || t === 'attention') ? '' : 'none'; pp.placeholder = t === 'attention' ? 'The correct answer (must match an option) \u2014 wrong answers flag, never reject' : 'Qualifying answers (comma-separated, must match options)'; } }
 function mineSaveDraftMeta() { const d = mineState.draft; if (!d) return; const t = document.getElementById('nd-title'); const g = document.getElementById('nd-goal'); const p = document.getElementById('nd-pay'); if (t) d.title = t.value.trim(); if (g) d.goal = g.value.trim(); if (p) d.pay = Math.max(0, parseInt(p.value, 10) || 0); const tn = document.getElementById('nd-target'); if (tn) { const nv = parseInt(tn.value, 10); d.targetN = (nv > 0) ? nv : null; } const pl = document.getElementById('nd-public'); if (pl) d.publicListing = pl.checked; }
 function mineDraftType(t) { mineSaveDraftMeta(); mineState.draft.type = t; mineRoute('p-new'); }
 function mineDraftAud(a) { mineSaveDraftMeta(); mineState.draft.audience = a; mineRoute('p-new'); }
@@ -6759,22 +6813,47 @@ function mineToggleInvite(email, btn) { const d = mineState.draft; const k = d.c
 function minePickAsset(input) {
   if (sbEnabled()) return _sbPickAsset(input); const f = input.files && input.files[0]; if (!f) return; const id = mid('media'); try { mineMedia[id] = URL.createObjectURL(f); } catch (e) {} mineSaveDraftMeta(); mineState.draft.asset = { name: f.name, mediaId: id, kind: f.type }; mineRoute('p-new'); }
 function mineClearAsset() { mineSaveDraftMeta(); mineState.draft.asset = null; mineRoute('p-new'); }
+/* SEAM:STIMULUS — per-question attach. Upload rides the same /mine/upload
+ * rail as the study asset; the pointer parks in mineState.qAsset until save. */
+async function _qAssetPick(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  try {
+    const auth = await _authHeader();
+    showToast('Uploading ' + f.name + '\u2026');
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/upload', { method: 'POST',
+      headers: Object.assign({ 'content-type': f.type || (/\.html?$/i.test(f.name) ? 'text/html' : 'application/octet-stream'), 'x-filename': f.name }, auth), body: f });
+    const d = await r.json();
+    if (d && d.ok && d.data && d.data.key) {
+      mineState.qAsset = { key: d.data.key, name: f.name };
+      const chip = document.getElementById('q-asset-chip');
+      if (chip) chip.textContent = '\u25A6 ' + f.name;
+      showToast('Stimulus attached \u2014 saves with the question');
+    } else showToast('Upload failed \u2014 try again');
+  } catch (e) { showToast('Upload failed \u2014 try again'); }
+}
+function _qAssetClear() { mineState.qAsset = null; const chip = document.getElementById('q-asset-chip'); if (chip) chip.textContent = 'No stimulus attached'; }
 function mineQSave() {
   const d = mineState.draft; const type = v('q-type'); const prompt = v('q-prompt');
   if (!prompt) { showToast('Add a question prompt'); return; }
-  let options = []; if (type === 'single' || type === 'multi' || type === 'screener') { options = ((document.getElementById('q-opts') || {}).value || '').split('\n').map(s => s.trim()).filter(Boolean); if (options.length < 2) { showToast('Add at least two options'); return; } }
+  let options = []; if (type === 'single' || type === 'multi' || type === 'screener' || type === 'attention') { options = ((document.getElementById('q-opts') || {}).value || '').split(/[\n,;]+/).map(s => s.trim()).filter(Boolean); if (options.length < 2) { showToast('Add at least two options \u2014 one per line or comma-separated'); return; } }
   let passOptions = null;
-  if (type === 'screener') {
+  if (type === 'screener' || type === 'attention') {
     passOptions = (((document.getElementById('q-pass') || {}).value || '').split(',').map(s => s.trim()).filter(Boolean));
     passOptions = passOptions.filter(pv => options.indexOf(pv) >= 0);
-    if (!passOptions.length) { showToast('Screeners need at least one qualifying answer that matches an option'); return; }
+    if (!passOptions.length) { showToast(type === 'screener'
+      ? 'Screeners need at least one qualifying answer that matches an option'
+      : 'Attention checks need the correct answer \u2014 it must match an option'); return; }
   }
   mineSaveDraftMeta();
-  if (mineState.qedit) { const q = d.questions.find(x => x.id === mineState.qedit); q.type = type; q.prompt = prompt; q.options = options; q.passOptions = passOptions; mineState.qedit = null; }
-  else d.questions.push({ id: mid('q'), type, prompt, options, passOptions });
+  const _qa = mineState.qAsset || null; mineState.qAsset = null;
+  if (mineState.qedit) { const q = d.questions.find(x => x.id === mineState.qedit); q.type = type; q.prompt = prompt; q.options = options; q.passOptions = passOptions; q.assetKey = _qa ? _qa.key : null; q.assetName = _qa ? _qa.name : null; mineState.qedit = null; }
+  else d.questions.push({ id: mid('q'), type, prompt, options, passOptions, assetKey: _qa ? _qa.key : null, assetName: _qa ? _qa.name : null });
   mineRoute('p-new');
 }
-function mineQEdit(id) { mineSaveDraftMeta(); mineState.qedit = id; mineRoute('p-new'); }
+function mineQEdit(id) { mineSaveDraftMeta(); mineState.qedit = id;
+  const _eq = (mineState.draft.questions || []).find(x => x.id === id);
+  mineState.qAsset = (_eq && _eq.assetKey) ? { key: _eq.assetKey, name: _eq.assetName } : null;
+  mineRoute('p-new'); }
 function mineQDel(id) { mineSaveDraftMeta(); const d = mineState.draft; d.questions = d.questions.filter(x => x.id !== id); if (mineState.qedit === id) mineState.qedit = null; mineRoute('p-new'); }
 function mineSaveStudy(launch) {
   if (sbEnabled()) return _sbSaveStudy(launch);
@@ -6855,7 +6934,8 @@ function mineResponseCard(s, r) {
       + 'padding:2px 7px;border-radius:2px;border:1px solid currentColor;color:'
       + (good ? 'var(--accent4,#F55A8C)' : bad ? 'var(--red,#FF3333)' : 'var(--text3,#545268)') + '">' + safe(f) + '</span>';
   }).join(' ');
-  const dur = r.durationMs ? '<span class="ma-muted" style="font-size:10px">' + Math.round(r.durationMs / 1000) + 's</span>' : '';
+  const dur = (r.durationMs ? '<span class="ma-muted" style="font-size:10px">' + Math.round(r.durationMs / 1000) + 's</span>' : '')
+    + (r.clickCount ? ' <span class="ma-muted" style="font-size:10px">\u00B7 ' + r.clickCount + ' interactions</span>' : '');
   const isAdminView = mineSession.role === 'admin';
   const verdicts = isAdminView && sbEnabled()
     ? '<span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
@@ -7087,7 +7167,8 @@ async function _guestMaybeOpen(sid) {
     const d = await r.json();
     if (!d || !d.ok || !d.data) return;
     if ((d.data.pay_cents || 0) > 0) return; // paid: the sign-up gate + Stripe rail owns it
-    _guest = { s: d.data, answers: {}, consent: false };
+    _guest = { s: d.data, answers: {}, consent: false, clicks: {} };
+    window._clickStore = _guest.clicks;
     _guestRender();
   } catch (e) {}
 }
@@ -7110,7 +7191,8 @@ async function _tokenMaybeOpen(tok) {
     }
     _guest = { s: d.data, answers: {}, consent: false, token: tok,
       email: d.data.invited_email || '', startedAt: Date.now(),
-      consentVersion: d.data.consent_version || null };
+      consentVersion: d.data.consent_version || null, clicks: {} };
+    window._clickStore = _guest.clicks;
     _guestRender();
   } catch (e) {}
 }
@@ -7120,9 +7202,61 @@ function _guestSet(qid, val, multi) {
   else _guest.answers[qid] = val;
   _guestRender();
 }
+/* SEAM:STIMULUS — one renderer for every stimulus, treatment by filename.
+ * HTML is the headline: a mock landing page renders live and clickable in a
+ * sandboxed iframe (scripts, forms, popups — never an origin). Everything a
+ * respondent reacts to flows through here, so the treatment rules live in
+ * exactly one place. */
+/* SEAM:CLICKPATH — the overlay's half of the instrument. The beacon inside a
+ * stimulus posts {unsrf:'click',...}; a sandboxed frame's origin is opaque
+ * ('null'), so event.source vs iframe.contentWindow is the only trustworthy
+ * address. Events file into the active response store under the frame's
+ * question id — study-level stimuli file under '_study'. Everything shaped
+ * and capped here AND server-side; the worker's cleanClicks is the law. */
+window._clickStore = null;   // set by whichever response flow is live
+window.addEventListener('message', function (ev) {
+  const d = ev.data;
+  if (!d || d.unsrf !== 'click' || !window._clickStore) return;
+  let qid = null;
+  const frames = document.querySelectorAll('iframe.stim-frame');
+  for (let k = 0; k < frames.length; k++) {
+    if (frames[k].contentWindow === ev.source) { qid = frames[k].getAttribute('data-qid') || '_study'; break; }
+  }
+  if (qid === null) return;                          // not one of ours
+  const store = window._clickStore;
+  store[qid] = store[qid] || [];
+  if (store[qid].length >= 200) return;
+  store[qid].push({ type: 'click', t: Math.max(0, parseInt(d.t, 10) || 0),
+    label: String(d.label || '').slice(0, 40), href: d.href ? String(d.href).slice(0, 120) : null,
+    x: parseInt(d.x, 10) || 0, y: parseInt(d.y, 10) || 0 });
+});
+function _assetKind(name) {
+  const ext = String(name || '').toLowerCase().split('.').pop();
+  if (ext === 'html' || ext === 'htm') return 'html';
+  if (['png','jpg','jpeg','gif','webp','avif','svg'].indexOf(ext) >= 0) return 'image';
+  if (['mp4','mov','webm','m4v'].indexOf(ext) >= 0) return 'video';
+  if (['mp3','wav','m4a','aac','ogg'].indexOf(ext) >= 0) return 'audio';
+  return 'file';
+}
+function _assetHtml(key, name, tall, qid) {
+  if (!key || !API_BASE) return '';
+  const u = API_BASE.replace(/\/$/, '') + '/media/' + encodeURIComponent(key);
+  const kind = _assetKind(name);
+  if (kind === 'html') return ''
+    + '<div class="ma-clip" style="margin:8px 0 4px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
+    + '<span>\u25A6 ' + safe(name || 'Interactive page') + ' \u2014 live, click through it</span>'
+    + '<a class="u-trace" href="' + safeAttr(u) + '" target="_blank" rel="noopener">open full screen \u2197</a></div>'
+    + '<iframe class="ma-media stim-frame"' + (qid ? ' data-qid="' + safeAttr(qid) + '"' : '') + ' src="' + safeAttr(u) + '" sandbox="allow-scripts allow-forms allow-popups" '
+    + 'style="width:100%;height:' + (tall ? '560' : '420') + 'px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#fff;margin:0 0 10px" loading="lazy"></iframe>';
+  if (kind === 'image') return '<img class="ma-media" src="' + safeAttr(u) + '" alt="' + safeAttr(name || 'stimulus') + '" style="max-width:100%;border-radius:8px;margin:8px 0 10px" loading="lazy">';
+  if (kind === 'video') return '<video class="ma-media" src="' + safeAttr(u) + '" controls playsinline style="width:100%;border-radius:8px;margin:8px 0 10px"></video>';
+  if (kind === 'audio') return '<audio class="ma-media" src="' + safeAttr(u) + '" controls style="width:100%;margin:8px 0 10px"></audio>';
+  return '<a class="ma-clip" href="' + safeAttr(u) + '" target="_blank" rel="noopener" style="display:block;margin:8px 0 10px">\u2913 ' + safe(name || 'Attachment') + '</a>';
+}
 function _guestQ(q, i) {
   const a = _guest.answers[q.id];
-  const head = '<div style="font-weight:700;margin:18px 0 8px">' + (i + 1) + '. ' + safe(q.prompt) + '</div>';
+  const head = '<div style="font-weight:700;margin:18px 0 8px">' + (i + 1) + '. ' + safe(q.prompt) + '</div>'
+    + _assetHtml(q.asset_key, q.asset_name, true, q.id);
   if (q.type === 'open') return head + '<textarea class="mr-textarea" rows="3" placeholder="Your answer\u2026" oninput="_guest.answers[\'' + q.id + '\']=this.value">' + safe(a || '') + '</textarea>';
   if (q.type === 'scale') return head + '<div class="ma-chiprow">' + [1,2,3,4,5].map(n => '<button class="mp-aud' + (a === String(n) ? ' on' : '') + '" onclick="_guestSet(\'' + q.id + '\',\'' + n + '\')">' + n + '</button>').join('') + '</div>';
   const multi = q.type === 'multi';
@@ -7139,11 +7273,7 @@ function _guestRender() {
       : '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Your voice is in.</h2><div class="sb-sub">Thanks for responding to \u201c' + safe(s.title) + '\u201d \u2014 you just helped a brand learn from a real person.</div><div class="sb-sub" style="margin-top:10px">Want to get <b>paid</b> for the next one? Join the panel \u2014 your email carries over.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>';
     return;
   }
-  let media = '';
-  if ((s.type === 'video' || s.type === 'audio') && s.asset_key && API_BASE) {
-    const u = API_BASE.replace(/\/$/, '') + '/media/' + encodeURIComponent(s.asset_key);
-    media = s.type === 'video' ? '<video class="ma-media" src="' + safeAttr(u) + '" controls style="width:100%;margin:10px 0"></video>' : '<audio class="ma-media" src="' + safeAttr(u) + '" controls style="width:100%;margin:10px 0"></audio>';
-  }
+  const media = s.asset_key ? _assetHtml(s.asset_key, s.asset_name || (s.type === 'video' ? 'video.mp4' : s.type === 'audio' ? 'audio.mp3' : ''), true) : '';
   const inp = 'width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#E8E8EE;padding:10px;border-radius:8px;font-family:inherit;font-size:14px;outline:none;margin:4px 0 10px';
   /* SEAM:FIELD_RAIL — one modal, two doors. Token mode is an invited paid
      study: the email is already known, so it is shown and locked rather than
@@ -7182,6 +7312,7 @@ async function _guestSubmit() {
       const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/t/respond', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token: _guest.token, answers: _guest.answers, consent: true,
+          clicks: _guest.clicks || {},
           consent_version: _guest.consentVersion || null,
           started_at: new Date(_guest.startedAt || Date.now()).toISOString(),
           duration_ms: Date.now() - (_guest.startedAt || Date.now()) }) });
@@ -7205,7 +7336,7 @@ async function _guestSubmit() {
   if (!/^\d{5}$/.test(zip.trim())) { showToast('Enter a 5-digit ZIP code'); return; }
   if (!_guest.consent) { showToast('Please confirm consent'); return; }
   try {
-    const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/respond', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ study_id: s.id, email: email.trim(), zip: zip.trim(), answers: _guest.answers }) });
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/respond', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ study_id: s.id, email: email.trim(), zip: zip.trim(), answers: _guest.answers, clicks: _guest.clicks || {} }) });
     const d = await r.json();
     if (d && d.ok) { _guest.done = true; _guest.screened = !!(d.data && d.data.screened); _guestRender(); try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {} return; }
     const code = d && d.error;
@@ -7222,7 +7353,7 @@ function _guestJoinPanel() {
   const f = document.querySelector('#login-gate input[type=email]'); if (f) { f.value = em; f.focus(); }
   showToast('Create your account \u2014 your responses ride with this email.');
 }
-function _guestClose() { const w = document.getElementById('guestwrap'); if (w) w.remove(); document.body.style.overflow = ''; _guest = null; }
+function _guestClose() { const w = document.getElementById('guestwrap'); if (w) w.remove(); document.body.style.overflow = ''; _guest = null; window._clickStore = null; }
 /* SEAM:GUEST_LINK — the signed-in half of the link. __minePendingLaunch only ever
  * fired from vRHome, so a signed-in user landing on the hub never consumed the
  * stash: homepage, no study. This drives it by account role — admin to the study

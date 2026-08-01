@@ -399,6 +399,77 @@ async function mineUpload(request, env, origin, user) {
 }
 
 /* ---------------------------- media ----------------------------- */
+/* ═══ SEAM:CLICKPATH — behavior beside stated response ═══════════════════
+ * CLICK_BEACON is appended to every served HTML stimulus (append, never
+ * html.replace('</body>') — the injection law). It captures clicks at the
+ * document level — label, href, position, ms since open — and posts them to
+ * the parent via postMessage, the one channel a sandboxed opaque-origin frame
+ * has. Appending at document end is deliberate: the DOM exists by then and
+ * document-level listeners need no placement. Cap 200 events; the beacon
+ * never throws into the client's page. */
+const CLICK_BEACON = '<script>(function(){try{var t0=Date.now(),n=0;'
+  + 'function lbl(el){var e=(el&&el.closest)?(el.closest("a,button,[role=button],input,select,textarea,[onclick]")||el):el;'
+  + 'var s=String(e.innerText||e.value||e.getAttribute("aria-label")||e.title||e.tagName||"").trim().replace(/\\s+/g," ").slice(0,40);'
+  + 'return s||String(e.tagName||"?");}'
+  + 'document.addEventListener("click",function(ev){if(n>=200)return;n++;'
+  + 'var a=(ev.target&&ev.target.closest)?ev.target.closest("a"):null;'
+  + 'parent.postMessage({unsrf:"click",t:Date.now()-t0,label:lbl(ev.target),'
+  + 'href:a?String(a.getAttribute("href")||"").slice(0,120):null,'
+  + 'x:Math.round(ev.clientX||0),y:Math.round(ev.clientY||0)},"*");},true);'
+  + 'parent.postMessage({unsrf:"open",t:0},"*");'
+  + '}catch(e){}})();<\/script>';
+
+// PURE and total: whatever a browser (or an attacker) posts back becomes at
+// most 200 shaped events across all questions, strings capped, numbers
+// coerced, unknown keys dropped. Garbage in, empty object out.
+function cleanClicks(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out = {};
+  let budget = 200;
+  for (const qid of Object.keys(raw).slice(0, 40)) {
+    if (!/^[\w-]{1,60}$/.test(qid)) continue;
+    const arr = raw[qid];
+    if (!Array.isArray(arr)) continue;
+    const evs = [];
+    for (const e of arr) {
+      if (budget <= 0) break;
+      if (!e || typeof e !== 'object') continue;
+      const type = e.type === 'open' ? 'open' : 'click';
+      const ev = { type, t: Math.max(0, Math.min(36e5, parseInt(e.t, 10) || 0)) };
+      if (type === 'click') {
+        ev.label = String(e.label || '').slice(0, 40);
+        if (!ev.label) continue;
+        if (e.href) ev.href = String(e.href).slice(0, 120);
+        ev.x = Math.max(0, Math.min(9999, parseInt(e.x, 10) || 0));
+        ev.y = Math.max(0, Math.min(9999, parseInt(e.y, 10) || 0));
+      }
+      evs.push(ev); budget--;
+    }
+    if (evs.length) out[qid] = evs;
+  }
+  return out;
+}
+
+// PURE: the client-read summary for one question — how many respondents
+// interacted, total clicks, the first-click distribution (the money answer),
+// and the most-touched targets. Rejected responses never counted upstream.
+function clickSummary(rows, qid) {
+  let respondents = 0, total = 0;
+  const first = {}, top = {};
+  for (const r of (rows || [])) {
+    const evs = (r.clicks && r.clicks[qid]) || [];
+    const clicks = evs.filter(e => e && e.type === 'click' && e.label);
+    if (!clicks.length) continue;
+    respondents++; total += clicks.length;
+    const f = clicks[0].label;
+    first[f] = (first[f] || 0) + 1;
+    for (const c of clicks) top[c.label] = (top[c.label] || 0) + 1;
+  }
+  if (!respondents) return null;
+  const cut = (o) => Object.fromEntries(Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 8));
+  return { respondents, total, first: cut(first), top: cut(top) };
+}
+
 async function serveMedia(path, env, origin, request) {
   // Range-aware: Safari probes bytes=0-1 and refuses to play without a 206;
   // seeking in every browser rides the same rail. R2 does the byte math.
@@ -432,6 +503,15 @@ async function serveMedia(path, env, origin, request) {
   if (ctype.indexOf('text/html') >= 0)
     headers.set('Content-Security-Policy', 'sandbox allow-scripts allow-forms allow-popups');
   if (origin) headers.set('Access-Control-Allow-Origin', origin);
+  /* SEAM:CLICKPATH — full HTML responses carry the beacon, appended to the
+     document (landing pages are small; buffering one is nothing). Range
+     requests skip injection — nobody range-requests a landing page, and a
+     spliced beacon would corrupt the byte math. */
+  if (!range && ctype.indexOf('text/html') >= 0) {
+    const html = await obj.text();
+    headers.delete('Content-Length');
+    return new Response(html + CLICK_BEACON, { headers });
+  }
   if (range) {
     const total = obj.size;
     const start = range.suffix != null ? total - range.suffix : range.offset;
@@ -995,6 +1075,7 @@ async function mineTokenRespond(request, env, origin) {
         invite_id: i.id, duration_ms: isNaN(dur) ? null : dur,
         started_at: body.started_at || null,
         quality: { flags: scan.flags }, quality_status: scan.status,
+        clicks: cleanClicks(body.clicks),
         consent_version: String(body.consent_version || CONSENT_VERSION).slice(0, 40),
         consent_at: now } });
   } catch (e) {
@@ -1072,8 +1153,17 @@ async function mineClientResults(body, env, origin, user) {
     // No email, no ZIP, no responder_id crosses this line — a client read can
     // never carry PII because the select never asks for it.
     const rows = await sbRest(env,
-      `response?study_id=eq.${sid}&select=anon_id,segments,answers,quality_status,submitted_at&limit=2000`) || [];
+      `response?study_id=eq.${sid}&select=anon_id,segments,answers,clicks,quality_status,submitted_at&limit=2000`) || [];
     const agg = aggregateResponses(rows, qs, RAIL.CLIENT_FLOOR);
+    /* SEAM:CLICKPATH — behavior joins the read once the floor is met. Only
+       non-rejected responses feed the summary, same law as every number. */
+    if (agg.floor_met) {
+      const live = rows.filter(r => r.quality_status !== 'rejected');
+      for (const q of agg.questions) {
+        const cs = clickSummary(live, q.id);
+        if (cs) q.clicks = cs;
+      }
+    }
     const out = { ok: true, role, study: { id: st.id, title: st.title, goal: st.goal,
       target_n: st.target_n || null, status: st.status },
       n: agg.n, floor: agg.floor, floor_met: agg.floor_met, questions: agg.questions };
@@ -1171,7 +1261,7 @@ async function mineGuestRespond(request, env, origin) {
   for (let i = 0; i < seed.length; i++) hsh = ((hsh * 33) ^ seed.charCodeAt(i)) >>> 0;
   const anon = 'GUEST-' + String(1000 + (hsh % 9000));
   try {
-    await sbRest(env, 'response', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { study_id: sid, anon_id: anon, segments: [zip], answers, guest_email: email, guest_zip: zip, status: 'submitted' } });
+    await sbRest(env, 'response', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { study_id: sid, anon_id: anon, segments: [zip], answers, guest_email: email, guest_zip: zip, status: 'submitted', clicks: cleanClicks(body.clicks) } });
   } catch (e) {
     if (String(e && e.message) === 'sb_409') return json({ ok: false, error: 'already_responded' }, 200, origin, env);
     return json({ ok: false, error: 'submit_failed' }, 200, origin, env);
