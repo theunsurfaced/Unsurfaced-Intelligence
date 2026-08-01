@@ -226,14 +226,26 @@ async function synthesize(body, env, origin) {
       'sources, or URLs. Copy each insight\'s "source" and "sourceUrl" verbatim from the evidence item you used. ' +
       'Output STRICT JSON only — no markdown fences, no prose outside the JSON object.';
 
+    /* SEAM:INSIGHT_COMPILER — report mode adds the house shape. The two-liner
+     * law is Unsurfaced's own: line one reframes what the evidence actually
+     * says, line two is the move it implies. "implication" is the sentence
+     * that separates intelligence from retrieval — every finding must answer
+     * "so what does a brand DO about this". */
+    const isReport = body.mode === 'report';
     const usr = `Topic: "${query}"\n\nEVIDENCE:\n${evidence}\n\n` +
       'Return JSON exactly shaped as:\n' +
-      '{"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
-      '"excerpt":"1-2 sentence finding grounded in the evidence","source":"copied from evidence",' +
+      '{' + (isReport ? '"read":["line 1: one sharp sentence reframing what the evidence actually shows",' +
+      '"line 2: one sentence naming the move it implies"],' : '') +
+      '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
+      '"excerpt":"1-2 sentence finding grounded in the evidence",' +
+      (isReport ? '"implication":"1 sentence: what this means for a brand decision",' : '') +
+      '"source":"copied from evidence",' +
       '"sourceUrl":"copied from evidence"}],' +
       '"ideas":[{"type":"Positioning|Product|Campaign|Content|Partnership","headline":"<=9 words",' +
       '"body":"1-2 sentence recommendation tied to the insights"}],' +
       '"brief":"3-4 sentence executive read of where the conversation actually is and what to do about it"}\n' +
+      (isReport ? 'Never restate source counts or citation totals as findings — say what the evidence MEANS. ' +
+      'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
 
     const out = await env.AI.run(CONFIG.TEXT_MODEL, {
@@ -245,20 +257,33 @@ async function synthesize(body, env, origin) {
       // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read.
       return json({ ok: false, error: 'synthesis_unparsable' }, 200, origin, env);
     }
+    // Earned confidence: density of corroborating evidence in the insight's
+    // own category. Never hardcoded, never the model's opinion of itself.
+    const catDensity = {};
+    for (const c of merged) {
+      const k = ['consumer', 'market', 'culture', 'brand'].includes(c.lens) ? c.lens : 'consumer';
+      catDensity[k] = (catDensity[k] || 0) + 1;
+    }
+    const earned = (cat2) => (catDensity[cat2] || 0) >= 3 ? 'High' : (catDensity[cat2] || 0) === 2 ? 'Medium' : 'Low';
     const insights = parsed.insights.slice(0, 8).map(x => ({
       category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer',
       title: String(x.title || '').slice(0, 120),
       excerpt: String(x.excerpt || '').slice(0, 400),
+      implication: String(x.implication || '').slice(0, 300) || null,
+      confidence: earned(['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer'),
       source: String(x.source || '').slice(0, 120),
       sourceUrl: /^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null
     })).filter(x => x.title);
+    const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2)
+      .map(x => String(x || '').slice(0, 220)).filter(Boolean);
     const ideas = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 6).map(x => ({
       type: String(x.type || 'Strategy').slice(0, 40),
       headline: String(x.headline || '').slice(0, 120),
       body: String(x.body || '').slice(0, 400)
     })).filter(x => x.headline);
     const brief = String(parsed.brief || '').slice(0, 1200);
-    return json({ ok: true, data: { insights, ideas, brief, signals: added, connectors: serverConnectors(added) } }, 200, origin, env);
+    return json({ ok: true, data: { insights, ideas, brief, read: read.length === 2 ? read : null,
+      evidence_n: merged.length, signals: added, connectors: serverConnectors(added) } }, 200, origin, env);
   }
 
   // ── Narrative text mode: brief + string corpus (MINE partner preview) ──

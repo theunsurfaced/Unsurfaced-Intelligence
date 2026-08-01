@@ -1952,7 +1952,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
         <div class="audience-cell"><span class="audience-pct" style="color:var(--accent4)">19%</span><span class="audience-label">Gen X · 44–59</span></div>
         <div class="audience-cell"><span class="audience-pct" style="color:var(--text2)">12%</span><span class="audience-label">Boomer · 60+</span></div>
       </div>
-      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;">Open-source panel synthesis · n≈14,847</div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;">MODELED — illustrative segmentation · live panel wiring in progress</div>
     </div>
   </div>
 </div>
@@ -3928,6 +3928,10 @@ function _saveReport(q, data, mode) {
 // ══════════════════════════════════════════════════════════════
 
 const _BRAND_DATA = [
+  /* SEAM:INSIGHT_COMPILER — these scores are MODELED fixtures until EVO-3
+     computes them from the lake (state, momentum, recurrence) and MINE
+     (primary research). The card renderer badges them accordingly \u2014 a
+     number without lineage never again renders as a measurement. */
   { name:"Nike",          ticker:"NKE",  sector:"Lifestyle & Apparel", cat:"lifestyle",
     desc:"Athletic footwear, apparel & equipment", col:"var(--accent)",
     scores:{trust:88,relevance:92,momentum:84,equity:91}, trend:"+2.1%",
@@ -4131,7 +4135,7 @@ function renderBrandGrid(brands) {
           <div class="brand-card-bar-fill" style="width:${b.scores.trust}%;background:${b.col}"></div>
         </div>
         <div class="brand-card-trend" style="color:${trendCol}">
-          ${trendUp ? '▲' : '▼'} ${b.trend} &nbsp;<span style="color:var(--text3)">30-day signal</span>
+          ${trendUp ? '▲' : '▼'} ${b.trend} &nbsp;<span style="color:var(--text3)">30-day signal · modeled</span>
         </div>
         <button class="brand-card-btn" onclick="event.stopPropagation();excavateBrand('${b.name}')">
           EXCAVATE INTELLIGENCE →
@@ -4318,11 +4322,17 @@ function generateReport() {
   renderReportCards();
   
   // Animate progress
+  /* SEAM:INSIGHT_COMPILER — the bar is theater; the completion is not. It
+     parks at 94 until the evidence is in AND the compiler has answered. A
+     report that says READY has been judged, not animated. */
   let prog = 0;
   const pi = setInterval(() => {
     prog += Math.random() * 8 + 3;
-    if (prog >= 100) { prog = 100; clearInterval(pi); _completeReport(id, q); }
     const r = _reportStore.find(r => r.id === id);
+    if (prog >= 94) {
+      prog = 94;
+      if (r && r._fetched && !r._compiling) { r._compiling = true; clearInterval(pi); _completeReport(id, q); }
+    }
     if (r) { r.progress = Math.round(prog); renderReportCards(); }
   }, 380);
 
@@ -4356,18 +4366,49 @@ async function _fetchReportData(q, id) {
       rpt._hnCount = hn.value.nbHits;
     }
     if (ins.length) rpt.insights = ins;
-  } catch(e) { /* silent */ }
+    /* SEAM:INSIGHT_COMPILER — the raw evidence rides with the report so the
+       compiler judges sources, not our template summaries of them. */
+    rpt._corpus = ins.map(x => ({ lens: x.category, source: x.source,
+      title: x.title, text: x.excerpt, url: x.sourceUrl || null }));
+    rpt._fetched = true;
+  } catch(e) { const rpt2 = _reportStore.find(r => r.id === id); if (rpt2) rpt2._fetched = true; }
 }
 
-function _completeReport(id, q) {
+async function _completeReport(id, q) {
   const rpt = _reportStore.find(r => r.id === id);
   if (!rpt) return;
+  /* SEAM:INSIGHT_COMPILER — the judgment layer. Evidence in, house shape
+     out: THE READ (reframe, then move), findings carrying implication and
+     EARNED confidence, a brief that says what the conversation means. When
+     the compiler cannot answer, the report ships wearing its true name —
+     RETRIEVAL SUMMARY — with confidence demoted, never dressed up. */
+  let compiled = null;
+  if ((rpt._corpus || []).length) {
+    try {
+      const d = await api('excavate/synthesize', { query: q, mode: 'report', corpus: rpt._corpus });
+      if (d && d.ok && d.data && (d.data.insights || []).length) compiled = d.data;
+    } catch (e) { /* fall through to the honest fallback */ }
+  }
   rpt.status = 'ready'; rpt.progress = 100;
-  rpt.summary = `Intelligence report on "${q}" synthesizing open-source signals.${rpt._oaCount ? ' ' + rpt._oaCount.toLocaleString() + ' academic papers indexed.' : ''}${rpt._hnCount ? ' ' + rpt._hnCount.toLocaleString() + ' HN discussions.' : ''} Findings and strategic recommendations ready for download.`;
-  rpt.ideas = buildIdeas(q, rpt.insights.length ? rpt.insights : [{category:'brand',title:'',excerpt:'',stat:'',confidence:'Medium',source:''}], 'basic');
+  if (compiled) {
+    rpt.read = compiled.read || null;
+    rpt.summary = compiled.brief || '';
+    rpt.insights = compiled.insights.map(x => ({ category: x.category, title: x.title,
+      excerpt: x.excerpt + (x.implication ? ' \u2192 ' + x.implication : ''),
+      stat: x.source, confidence: x.confidence, source: x.source, sourceUrl: x.sourceUrl }));
+    rpt.ideas = (compiled.ideas || []).map(x => ({ type: x.type, headline: x.headline, body: x.body }));
+    rpt.compiled = true;
+  } else {
+    rpt.read = null; rpt.compiled = false;
+    rpt.summary = 'RETRIEVAL SUMMARY \u2014 synthesis unavailable for this run. Raw source signals below; regenerate to retry the compiler. '
+      + (rpt._oaCount ? rpt._oaCount.toLocaleString() + ' academic papers indexed. ' : '')
+      + (rpt._hnCount ? rpt._hnCount.toLocaleString() + ' practitioner discussions. ' : '');
+    rpt.insights = (rpt.insights || []).map(x => Object.assign({}, x, { confidence: 'Unverified' }));
+    rpt.ideas = buildIdeas(q, rpt.insights.length ? rpt.insights : [{category:'brand',title:'',excerpt:'',stat:'',confidence:'Unverified',source:''}], 'basic');
+  }
   renderReportCards();
   _addToDeployQueue(q, rpt.type, rpt.mode);
-  showToast('Report ready — ' + q.slice(0,28));
+  showToast(rpt.compiled ? 'Report compiled \u2014 ' + q.slice(0, 28) : 'Report ready (retrieval only) \u2014 ' + q.slice(0, 28));
 }
 
 function renderReportCards() {
@@ -4379,7 +4420,7 @@ function renderReportCards() {
          onmouseover="this.style.borderColor='var(--border2)';this.style.transform='translateY(-2px)'"
          onmouseout="this.style.transform='';this.style.borderColor='${rpt.status==='generating'?'rgba(255,59,59,.35)':'var(--border)'}'">
       <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid;color:${rpt.status==='generating'?'var(--accent)':'#4ade80'};border-color:${rpt.status==='generating'?'rgba(255,59,59,.3)':'rgba(74,222,128,.3)'}">
-        ${rpt.status==='generating'?'⟳ GENERATING':'✓ READY'}
+        ${rpt.status==='generating'?'⟳ GENERATING':(rpt.compiled===false?'✓ READY · RETRIEVAL':'✓ READY')}
       </div>
       ${rpt.status==='generating'?`<div style="margin-bottom:8px"><div style="height:2px;background:var(--surface3)"><div style="height:100%;background:var(--accent);width:${rpt.progress}%;transition:width .5s ease"></div></div><div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--accent);margin-top:3px">Building… ${rpt.progress}%</div></div>`:''}
       <div style="font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:5px;line-height:1.25">${rpt.query}</div>
@@ -5120,12 +5161,15 @@ function _synthesiseLens(q, cat, raw) {
     });
   }
 
-  // ── Fallback if insufficient data ─────────────────────────────────
-  while (insights.length < 3) {
+  /* SEAM:INSIGHT_COMPILER — the padding loop is dead. An empty lens says so
+     ONCE, honestly, at Low confidence — it does not mint three findings out
+     of its own retrieval arithmetic. ("Signal Signal" died here too: the
+     label already names the lens; the template stops re-suffixing it.) */
+  if (!insights.length) {
     insights.push({
-      category:cat, title:`${catLabel} Signal: "${q.split(' ').slice(0,4).join(' ')}"`,
-      excerpt: `Open-source ${catLabel.toLowerCase()} intelligence for "${q}" is being synthesised across ${si-1} data sources. ${si>3?'Initial signals confirm detectable activity.':'Some sources returned limited data — activate Deep Search for quantified intelligence from industry authorities.'} Intelligence depth increases with source diversity across the full 15-source pipeline.`,
-      stat: `${si-1} sources queried`, confidence:'Medium', source:'Synthesis', sourceUrl:null,
+      category:cat, title:`${catLabel}: evidence thin for "${q.split(' ').slice(0,4).join(' ')}"`,
+      excerpt: `The open sources answered lightly on this lens — not enough corroboration to state a finding. That is itself a signal: the conversation here is early, niche, or happening on closed platforms. Deep Search reaches further.`,
+      stat: 'insufficient evidence', confidence:'Low', source:'Excavate', sourceUrl:null,
     });
   }
 
