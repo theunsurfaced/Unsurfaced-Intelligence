@@ -6037,6 +6037,52 @@ function mineSignOut() {
   if (mineSession.role === 'partner') mineSession.partnerId = null;
   mineSession.role = null; mineSave(); mineExit();
 }
+/* SEAM:EVOLUTION_1 — partners get their raw data on day one, because they
+ * will ask on day one. One row per response, one column per question, quality
+ * columns riding when present. Proper CSV quoting — a verbatim with a comma
+ * in it must not shear the row. */
+function _csvCell(v) {
+  const s2 = String(v == null ? '' : v);
+  return /[",\n]/.test(s2) ? '"' + s2.replace(/"/g, '""') + '"' : s2;
+}
+function _respExport(sid) {
+  const s = mStudy(sid); if (!s) return;
+  const resp = (mineDB.responses || []).filter(r => r.studyId === sid);
+  if (!resp.length) { showToast('No responses to export yet'); return; }
+  const qs = s.questions || [];
+  const head = ['respondent', 'status', 'quality', 'flags', 'seconds', 'interactions', 'segments']
+    .concat(qs.map(q => q.prompt.slice(0, 60)));
+  const rows = resp.map(r => [r.anon || '', r.status || '', r.qualityStatus || '',
+      (r.qualityFlags || []).join('|'), r.durationMs ? Math.round(r.durationMs / 1000) : '',
+      r.clickCount || 0, (r.segments || []).join('|')]
+    .concat(qs.map(q => { const a = (r.answers || {})[q.id];
+      return Array.isArray(a) ? a.join('|') : (a == null ? '' : a); })));
+  const csv = [head].concat(rows).map(row => row.map(_csvCell).join(',')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (s.title || 'study').replace(/[^\w-]+/g, '_').toLowerCase() + '_responses.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  showToast(resp.length + ' response' + (resp.length === 1 ? '' : 's') + ' exported');
+}
+
+/* SEAM:EVOLUTION_1 — "run it again" is the shape of repeat business. Clone
+ * carries structure and stimulus pointers (same R2 objects — pointers, not
+ * copies); responses, invites, and grants stay with the original. */
+function _studyDuplicate(sid) {
+  const s = mStudy(sid); if (!s) return;
+  mineState.draft = { title: (s.title || 'Study') + ' (again)', goal: s.goal || '',
+    type: s.type || 'survey', pay: s.pay || 0, target: s.targetN || s.target_n || '',
+    audience: s.audience || 'open', listing: !!s.publicListing,
+    asset: s.asset && s.asset.key ? { key: s.asset.key, name: s.asset.name } : null,
+    questions: (s.questions || []).map(q => ({ id: mid('q'), type: q.type, prompt: q.prompt,
+      options: (q.options || []).slice(), passOptions: q.passOptions ? q.passOptions.slice() : null,
+      assetKey: q.assetKey || null, assetName: q.assetName || null })) };
+  mineState.qedit = null; mineState.qAsset = null;
+  showToast('Duplicated \u2014 same structure, fresh study, nothing shared');
+  mineRoute('p-new');
+}
 function mineBar() {
   const id = document.getElementById('mine-id'); if (!id) return;
   let html = '';
@@ -6137,7 +6183,8 @@ function _clientResultsHtml(d) {
     + (d.floor_met ? metric('OPEN', 'Findings') : metric(d.floor, 'Opens at N'))
     + '</div>';
   if (pctFill != null) h += '<div class="mp-bar-track" style="display:block;height:8px;margin:4px 0 18px"><span class="mp-bar-fill" style="width:' + pctFill + '%;height:8px;display:block"></span></div>';
-  h += '<p class="ma-muted" style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase">Live \u00B7 refreshes each minute \u00B7 rejected responses never counted</p>';
+  h += '<p class="ma-muted" style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>Live \u00B7 refreshes each minute \u00B7 rejected responses never counted</span>'
+    + (d.floor_met ? '<button class="u-trace" onclick="_clientReport()">Download report \u2913</button>' : '') + '</p>';
   if (!d.floor_met) {
     /* The floor, explained in the client's language rather than enforced in
        silence — a number they can hold us to instead of one they screenshot. */
@@ -6211,6 +6258,53 @@ function _clickBlock(cs) {
     + bar(cs.top, 'Most touched')
     + '</div>';
 }
+/* SEAM:EVOLUTION_1 — the client leaves with an artifact. Built from exactly
+ * what the room shows (same payload, same floor law — the button only exists
+ * once findings are open), print-styled, carrying the house mark. Their
+ * stakeholder deck circulates it with our name on it. */
+function _clientReport() {
+  const c = _clientCache && _clientCache.data; if (!c || !c.floor_met) return;
+  const esc = (t) => String(t == null ? '' : t).replace(/</g, '&lt;');
+  let body = '<h1>' + esc(c.study.title) + '</h1>'
+    + (c.study.goal ? '<p class="goal">' + esc(c.study.goal) + '</p>' : '')
+    + '<p class="meta">' + c.n + ' quality responses \u00B7 generated ' + new Date().toLocaleDateString()
+    + ' \u00B7 rejected responses excluded</p>';
+  for (const q of (c.questions || [])) {
+    body += '<div class="q">' + esc(q.prompt) + '</div>';
+    if (q.type === 'open') {
+      body += (q.verbatims || []).slice(0, 20).map(v =>
+        '<div class="verb">\u201c' + esc(v.text) + '\u201d <span class="who">\u2014 ' + esc(v.who) + '</span></div>').join('');
+    } else {
+      const keys = Object.keys(q.counts || {}).sort((a, b) => q.counts[b] - q.counts[a]);
+      body += keys.map(k => '<div class="row"><span>' + esc(k) + '</span><span><b>'
+        + (q.pct && q.pct[k] != null ? q.pct[k] + '%' : q.counts[k]) + '</b> (' + q.counts[k] + ')</span></div>').join('');
+    }
+    if (q.clicks && q.clicks.respondents) {
+      body += '<div class="beh">Behavior \u00B7 ' + q.clicks.respondents + ' interacted \u00B7 ' + q.clicks.total + ' clicks</div>';
+      const fk = Object.keys(q.clicks.first || {});
+      if (fk.length) body += '<div class="beh-h">First click</div>' + fk.map(k =>
+        '<div class="row"><span>' + esc(k) + '</span><span><b>' + q.clicks.first[k] + '</b></span></div>').join('');
+    }
+  }
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Allow pop-ups to download the report'); return; }
+  w.document.write('<!doctype html><html><head><title>' + esc(c.study.title) + ' \u2014 Unsurfaced</title><style>'
+    + 'body{font-family:system-ui,sans-serif;max-width:680px;margin:40px auto;padding:0 20px;color:#0A0A0A;line-height:1.5}'
+    + 'h1{font-size:26px;margin:0 0 4px}.goal{color:#444;margin:0 0 6px}.meta{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;border-bottom:3px solid #C41230;padding-bottom:14px}'
+    + '.q{font-weight:700;margin:26px 0 8px;font-size:15px}.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee}'
+    + '.verb{margin:6px 0;font-style:italic}.who{color:#888;font-style:normal;font-size:12px}'
+    + '.beh{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.12em;margin:12px 0 4px;border-top:1px solid #eee;padding-top:8px}'
+    + '.beh-h{font-size:10px;color:#C41230;text-transform:uppercase;letter-spacing:.12em;margin:6px 0 2px}'
+    + '.foot{margin-top:36px;font-size:11px;color:#888}@media print{.noprint{display:none}}'
+    + '</style></head><body>'
+    + '<div style="font-weight:800;font-size:20px">UNSURFACED\u2122</div>'
+    + '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#888;margin:0 0 22px">Consumer & Market Intelligence \u00B7 Live study report</div>'
+    + body
+    + '<div class="foot">Generated from the live results room. Findings open at ' + c.floor + ' quality responses by design \u2014 early percentages mislead.</div>'
+    + '<div class="noprint" style="margin-top:22px"><button onclick="window.print()" style="background:#C41230;color:#fff;border:0;padding:12px 22px;font-weight:700;cursor:pointer">Print / Save as PDF</button></div>'
+    + '</body></html>');
+  w.document.close();
+}
 function _clientCrosstab(qid) {
   if (_clientCache) { _clientCache.crosstab = qid || null; _clientLoadResults(_clientCache.sid); }
 }
@@ -6253,12 +6347,13 @@ function _invitesHtml(sid, d) {
     + metric(t.sent || 0, 'Sent') + metric(t.responded || 0, 'Responded')
     + metric(t.screened || 0, 'Screened') + '</div>';
   const paste = '<textarea id="inv-paste" class="mr-textarea" rows="3" placeholder="Paste emails \u2014 one per line, or comma separated. Names welcome: Ada Lovelace <ada@ex.com>"></textarea>'
+    + '<label class="u-trace" style="cursor:pointer;display:inline-block;margin:2px 0 6px">\u2913 import a CSV instead<input type="file" accept=".csv,.txt" style="display:none" onchange="_invitesCsv(this,\'' + sid + '\')"></label>'
     + '<div class="mr-nav" style="margin:8px 0 16px">'
     + '<button class="mr-btn mr-btn-primary" onclick="_invitesMint(\'' + sid + '\')">Mint links</button>'
     + ((t.pending || 0) > 0
         ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\')">Send ' + t.pending + ' pending \u2192</button>'
         : ((t.sent || 0) > 0
-            ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\',true)">Resend ' + t.sent + ' \u2192</button>'
+            ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\',true)">Remind ' + t.sent + ' who haven\u2019t responded \u2192</button>'
             : ''))
     + '</div>'
     + ((d.total || 0) === 0 ? '<p class="ma-muted" style="margin:-6px 0 14px">Minting creates the links. Sending is the second button \u2014 nothing leaves until you press it.</p>' : '');
@@ -6275,6 +6370,46 @@ function _invitesHtml(sid, d) {
   return head + paste + rows;
 }
 
+/* SEAM:EVOLUTION_1 — client lists arrive as CSV exports, not typed lists.
+ * The parser is deliberately dumb and total: find the email in each row by
+ * shape, treat the longest other cell as the name, ignore everything else.
+ * Header rows fall out naturally (no email in them). */
+function _invitesCsv(input, sid) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async function () {
+    const lines = String(rd.result || '').split(/\r?\n/);
+    const people = [];
+    for (const line of lines) {
+      const m = line.match(/[^\s@<>,;"']+@[^\s@<>,;"']+\.[^\s@<>,;"']{2,}/);
+      if (!m) continue;
+      /* Quoted cells first ("Lovelace, Ada" is one name, not two cells);
+         otherwise the longest non-email cell wins. */
+      const qm = line.replace(m[0], '').match(/"([^"]{2,})"/);
+      let name = qm ? qm[1].trim() : null;
+      if (!name) {
+        const cells = line.replace(m[0], '').split(/[,;\t]/).map(c => c.replace(/["']/g, '').trim()).filter(Boolean);
+        cells.sort((a, b) => b.length - a.length);
+        name = cells[0] || null;
+      }
+      people.push({ email: m[0].toLowerCase(), name: name ? name.slice(0, 80) : null });
+    }
+    if (!people.length) { showToast('No emails found in that file'); return; }
+    /* Mint directly with objects — names survive only as objects (the string
+       path strips them), and review happens in the rendered invite list. */
+    try {
+      const hh = await _authHeader();
+      const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/invites', {
+        method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
+        body: JSON.stringify({ study_id: sid, op: 'mint', list: people }) });
+      const d = await r.json();
+      if (d && d.ok) { showToast(d.minted + ' minted' + (d.revived ? ' \u00B7 ' + d.revived + ' restored' : '') + ' from ' + people.length + ' contacts \u2014 review below, then Send'); _invitesLoad(sid); }
+      else showToast('Import failed \u2014 ' + ((d && d.error) || 'try again'));
+    } catch (e) { showToast('Import failed \u2014 try again'); }
+  };
+  rd.readAsText(f);
+  input.value = '';
+}
 async function _invitesMint(sid) {
   const raw = (document.getElementById('inv-paste') || {}).value || '';
   if (!raw.trim()) { showToast('Paste at least one email'); return; }
@@ -6802,7 +6937,7 @@ function vPNew() {
     + contactPick
     + (mStudy(d.id) && mStudy(d.id).status === 'live'
         ? '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(false)">Save changes →</button></div><p class="mr-priv">Live study: adds and wording edits apply to new responders; collected answers keep their receipts. Question types and removals are locked once responses exist.</p>'
-        : '<div class="mr-nav"><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>');
+        : '<div class="mr-nav"><button class="mr-btn" onclick="_draftPreview()">Preview \u2192</button><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>');
 }
 function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text', screener: 'Screener', attention: 'Attention check' }[t] || t; }
 function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi' || t === 'screener' || t === 'attention') ? '' : 'none'; const pp = document.getElementById('q-pass'); if (pp) { pp.style.display = (t === 'screener' || t === 'attention') ? '' : 'none'; pp.placeholder = t === 'attention' ? 'The correct answer (must match an option) \u2014 wrong answers flag, never reject' : 'Qualifying answers (comma-separated, must match options)'; } }
@@ -6885,6 +7020,8 @@ function mineStudyDetail(s, backView, admin) {
     + '<span style="display:flex;gap:8px;flex-wrap:wrap">'
     + ((admin || s.status === 'draft' || s.status === 'live') ? '<button class="mr-btn" onclick="mineEditStudy(\'' + s.id + '\')">Edit study</button>' : '')
     + (s.status === 'live' ? '<button class="mr-btn" onclick="mineCloseStudy(\'' + s.id + '\')">Close study</button>' : '')
+    + '<button class="mr-btn" onclick="_respExport(\'' + s.id + '\')">Export CSV</button>'
+    + '<button class="mr-btn" onclick="_studyDuplicate(\'' + s.id + '\')">Duplicate</button>'
     + '<button class="mr-btn" style="color:var(--red,#FF3333)" onclick="mineDeleteStudy(\'' + s.id + '\')">' + (mResponsesFor(s.id).length ? 'Archive' : 'Delete') + '</button>'
     + '</span></div>'
     + '<h2 class="mr-h">' + safe(s.title) + '</h2>' + (s.goal ? '<p class="mr-p">' + safe(s.goal) + '</p>' : '')
@@ -7176,6 +7313,26 @@ async function _guestMaybeOpen(sid) {
  * studies field by token, not by account. Opens for signed-in and signed-out
  * alike; the token identifies the respondent, so a session would add nothing
  * but friction. */
+/* SEAM:EVOLUTION_1 — experience the study before it exists. Renders the SAME
+ * overlay a respondent gets, from the builder's draft state, and records
+ * nothing: no store armed, submit walled off, banner says so. Building blind
+ * and testing with a burned token was the old way; this is the honest way. */
+function _draftPreview() {
+  mineSaveDraftMeta();
+  const d = mineState.draft || {};
+  if (!(d.questions || []).length) { showToast('Add at least one question to preview'); return; }
+  _guest = { s: { id: '_preview', title: d.title || 'Untitled study', goal: d.goal || '',
+      type: d.type || 'survey', pay_cents: Math.round((parseFloat(d.pay) || 0) * 100),
+      asset_key: d.asset ? d.asset.key : null, asset_name: d.asset ? d.asset.name : null,
+      questions: (d.questions || []).map(q => ({ id: q.id, type: q.type, prompt: q.prompt,
+        options: q.options || [], asset_key: q.assetKey || null, asset_name: q.assetName || null })) },
+    answers: {}, consent: false, preview: true };
+  window._clickStore = null;                     // preview records nothing
+  _guestRender();
+  setTimeout(() => { const w = document.querySelector('#guestwrap .sb');
+    if (w) w.insertAdjacentHTML('afterbegin',
+      '<div style="background:var(--red,#C41230);color:#fff;font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding:6px 10px;margin:0 0 14px">Preview \u2014 exactly what respondents see \u00B7 nothing records</div>'); }, 0);
+}
 async function _tokenMaybeOpen(tok) {
   if (!tok || !API_BASE) return;
   try {
@@ -7196,11 +7353,24 @@ async function _tokenMaybeOpen(tok) {
     _guestRender();
   } catch (e) {}
 }
+/* SEAM:EVOLUTION_1 — the progress read. Uncertainty is where abandonment
+ * lives: a respondent who knows they are 3 of 8 finishes; one staring down an
+ * unmeasured scroll bails. Counts ANSWERED over TOTAL (excluding nothing —
+ * screeners and attention checks are questions to the person answering). */
+function _guestProgress() {
+  const el = document.getElementById('guest-prog');
+  if (!el || !_guest || !_guest.s) return;
+  const qs = _guest.s.questions || [];
+  const done = qs.filter(q => { const a = _guest.answers[q.id];
+    return a != null && (!Array.isArray(a) || a.length) && String(a).trim() !== ''; }).length;
+  el.textContent = done + ' of ' + qs.length + ' answered' + (done === qs.length && qs.length ? ' \u2014 ready to submit' : '');
+}
 function _guestSet(qid, val, multi) {
   if (!_guest) return;
   if (multi) { const cur = _guest.answers[qid] || []; const i = cur.indexOf(val); if (i >= 0) cur.splice(i, 1); else cur.push(val); _guest.answers[qid] = cur; }
   else _guest.answers[qid] = val;
   _guestRender();
+  setTimeout(_guestProgress, 0);
 }
 /* SEAM:STIMULUS — one renderer for every stimulus, treatment by filename.
  * HTML is the headline: a mock landing page renders live and clickable in a
@@ -7214,6 +7384,37 @@ function _guestSet(qid, val, multi) {
  * question id — study-level stimuli file under '_study'. Everything shaped
  * and capped here AND server-side; the worker's cleanClicks is the law. */
 window._clickStore = null;   // set by whichever response flow is live
+/* SEAM:EVOLUTION_1 — expand-in-place. The iframe node never moves (moving an
+ * iframe reloads it and resets the stimulus); its wrapper goes fixed-fullscreen
+ * and a close bar rides on top. Esc works. Tracking never blinks. */
+function _stimExpand(btn) {
+  const clip = btn.closest('.ma-clip');
+  const frame = clip && clip.nextElementSibling;
+  if (!frame || frame.tagName !== 'IFRAME') return;
+  if (frame._stimFull) return _stimCollapse(frame);
+  frame._stimFull = { style: frame.getAttribute('style') || '' };
+  const bar = document.createElement('div');
+  bar.id = 'stim-fullbar';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100001;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0A0A0A;color:#FAF7F2;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase';
+  bar.innerHTML = '<span>\u25A6 Interactive stimulus \u2014 your clicks are part of the study</span><button class="mr-btn" style="font-size:10px;padding:5px 12px" onclick="_stimCollapse()">Close \u2715</button>';
+  document.body.appendChild(bar);
+  frame.setAttribute('style', 'position:fixed;top:42px;left:0;width:100vw;height:calc(100vh - 42px);z-index:100000;border:0;border-radius:0;background:#fff;margin:0');
+  document.body.style.overflow = 'hidden';
+  frame._stimEsc = (e) => { if (e.key === 'Escape') _stimCollapse(); };
+  document.addEventListener('keydown', frame._stimEsc);
+  window._stimActive = frame;
+}
+function _stimCollapse(frame) {
+  frame = frame || window._stimActive;
+  if (!frame || !frame._stimFull) return;
+  frame.setAttribute('style', frame._stimFull.style);
+  document.removeEventListener('keydown', frame._stimEsc);
+  frame._stimFull = null; frame._stimEsc = null; window._stimActive = null;
+  const bar = document.getElementById('stim-fullbar');
+  if (bar) bar.remove();
+  const gw = document.getElementById('guestwrap');
+  document.body.style.overflow = gw ? 'hidden' : '';
+}
 window.addEventListener('message', function (ev) {
   const d = ev.data;
   if (!d || d.unsrf !== 'click' || !window._clickStore) return;
@@ -7242,10 +7443,14 @@ function _assetHtml(key, name, tall, qid) {
   if (!key || !API_BASE) return '';
   const u = API_BASE.replace(/\/$/, '') + '/media/' + encodeURIComponent(key);
   const kind = _assetKind(name);
+  /* SEAM:EVOLUTION_1 — full screen used to open the raw file in a new tab,
+     which severs the parent link and takes the beacon's eyes with it exactly
+     when the stimulus matters most (phones). Expand now grows the SAME frame
+     in place — the parent relationship, and every click, survives. */
   if (kind === 'html') return ''
     + '<div class="ma-clip" style="margin:8px 0 4px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
     + '<span>\u25A6 ' + safe(name || 'Interactive page') + ' \u2014 live, click through it</span>'
-    + '<a class="u-trace" href="' + safeAttr(u) + '" target="_blank" rel="noopener">open full screen \u2197</a></div>'
+    + '<button class="u-trace" onclick="_stimExpand(this)">full screen \u2197</button></div>'
     + '<iframe class="ma-media stim-frame"' + (qid ? ' data-qid="' + safeAttr(qid) + '"' : '') + ' src="' + safeAttr(u) + '" sandbox="allow-scripts allow-forms allow-popups" '
     + 'style="width:100%;height:' + (tall ? '560' : '420') + 'px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#fff;margin:0 0 10px" loading="lazy"></iframe>';
   if (kind === 'image') return '<img class="ma-media" src="' + safeAttr(u) + '" alt="' + safeAttr(name || 'stimulus') + '" style="max-width:100%;border-radius:8px;margin:8px 0 10px" loading="lazy">';
@@ -7286,12 +7491,13 @@ function _guestRender() {
     : '<div style="font-weight:700;margin:18px 0 4px">Your email</div><input id="guest-email" type="email" placeholder="you@example.com" style="' + inp + '" value="' + safeAttr(_guest.email || '') + '">'
       + '<div style="font-weight:700;margin:6px 0 4px">ZIP code</div><input id="guest-zip" type="text" inputmode="numeric" maxlength="5" placeholder="60452" style="' + inp + '" value="' + safeAttr(_guest.zip || '') + '">';
   const _consentLine = _tk
-    ? 'I am 18 or older and I consent to my response being used as research for this brand. I can withdraw and request deletion at any time.'
-    : 'I consent to my response being used as research. This is a free study \u2014 no compensation.';
+    ? 'I am 18 or older and I consent to my response \u2014 including how I interact with any pages or materials shown \u2014 being used as research for this brand. I can withdraw and request deletion at any time.'
+    : 'I consent to my response \u2014 including how I interact with any pages or materials shown \u2014 being used as research. This is a free study \u2014 no compensation.';
   wrap.innerHTML = '<div class="sb" role="dialog" aria-modal="true"><button class="sb-close" onclick="_guestClose()">CLOSE \u2715</button>'
     + '<div class="sb-eyebrow">MINE \u00B7 ' + (_tk ? ('Invited study' + (_pay ? ' \u00B7 ' + _pay : '')) : 'Free study') + '</div><h2>' + safe(s.title) + '</h2>'
     + (s.goal ? '<div class="sb-sub">' + safe(s.goal) + '</div>' : '')
     + media
+    + '<div id="guest-prog" style="position:sticky;top:0;z-index:5;background:rgba(10,10,10,.92);backdrop-filter:blur(4px);padding:8px 0;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text2,#8988A0)"></div>'
     + (s.questions || []).map((q, i) => _guestQ(q, i)).join('')
     + _idBlock
     + '<label class="mr-check" style="margin:8px 0 14px;display:block"><input type="checkbox"' + (_guest.consent ? ' checked' : '') + ' onchange="_guest.consent=this.checked"> ' + _consentLine + '</label>'
@@ -7299,6 +7505,7 @@ function _guestRender() {
 }
 async function _guestSubmit() {
   const s = _guest.s;
+  if (_guest.preview) { showToast('Preview only \u2014 launch the study to collect real responses'); return; }
   /* SEAM:FIELD_RAIL — the invited branch. duration_ms is the honest read of
      how long this took; the worker's quality scan uses it to catch a farmed
      response. Nothing here decides anything — the scan flags, an admin

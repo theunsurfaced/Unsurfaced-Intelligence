@@ -334,6 +334,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:CLICKPATH",
    "purpose": "one message listener routes beacon events by contentWindow identity into the active response store; guest/token/responder flows arm and carry; client dashboard behavior block (first click = the headline) + admin interaction chip"
+  },
+  "SEAM:EVOLUTION_1": {
+   "file": "intelligence/index.html",
+   "purpose": "usability pass, all roles: consent copy names behavior capture; progress counter (answered/total, sticky); tracked full-screen (expand-in-place, beacon never severed); draft preview (real overlay, records nothing, submit walled); CSV import (quoted-name aware, direct object mint); response CSV export (proper quoting); reminder relabel; study duplication (fresh ids, pointers carried); client report download (floor-gated, house-marked)"
+  },
+  "SEAM:EVOLUTION_1@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:EVOLUTION_1",
+   "purpose": "consent version 2026-08-behavior (new words, new version); milestone mail reaches granted clients at exactly the floor crossing and the target \u2014 the two moments the results room is most worth opening"
   }
  },
  "planned": [
