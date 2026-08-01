@@ -343,6 +343,10 @@
    "file": "worker/src/index.js",
    "tag": "SEAM:EVOLUTION_1",
    "purpose": "consent version 2026-08-behavior (new words, new version); milestone mail reaches granted clients at exactly the floor crossing and the target \u2014 the two moments the results room is most worth opening"
+  },
+  "SEAM:DEEP_RAIL": {
+   "file": "worker/src/index.js",
+   "purpose": "the /deep route the page has called since birth: house PPLX key preferred with BYOK fallback, global + per-IP daily budget in KV answering 429, 6h response cache by payload hash (hits cost no budget), upstream status mirrored because the page's 401/402/429 copy branches on it, errors never cached"
   }
  },
  "planned": [
