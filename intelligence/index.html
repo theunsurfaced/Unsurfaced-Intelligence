@@ -1890,6 +1890,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
       <div class="fi-skeleton"></div>
     </div>
 
+    <div id="lake-signal-block"></div>
     <div class="section-header">
       <span class="section-title">Signal Trend</span>
       <div class="chart-controls">
@@ -4145,11 +4146,45 @@ function renderBrandGrid(brands) {
 }
 
 // ── Click a brand card ───────────────────────────────────────────
+/* SEAM:MOAT_1 — the measured block. Fetches computed lake signal for the
+ * brand and renders it labeled COMPUTED with its timestamp, above the modeled
+ * chart. Thin lake says so plainly. Failures render nothing — a missing
+ * measurement is not an error state, it is the pre-moat world. */
+async function _brandLakeLoad(name) {
+  const box = document.getElementById('lake-signal-block');
+  if (!box || !API_BASE) return;
+  box.innerHTML = '';
+  try {
+    const d = await api('excavate/brand-signal', { brand: name });
+    if (!d || !d.ok || !d.signal) return;
+    const sig = d.signal;
+    const mono = "font-family:'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase";
+    if (sig.thin) {
+      box.innerHTML = '<div style="border:1px solid var(--border);background:var(--surface);padding:14px 18px;margin:0 0 18px">'
+        + '<div style="' + mono + ';font-size:9px;color:var(--text3)">UNSURFACED LAKE \u00B7 COMPUTED</div>'
+        + '<div style="font-size:12px;color:var(--text2);margin-top:6px">' + (sig.matches || 0) + ' captured signal' + (sig.matches === 1 ? '' : 's') + ' touch this brand \u2014 not enough to measure yet. The lake deepens daily; measured momentum replaces the modeled chart when evidence earns it.</div></div>';
+      return;
+    }
+    const up = sig.momentum_pct >= 0;
+    box.innerHTML = '<div style="border:1px solid rgba(74,222,128,.35);background:var(--surface);padding:16px 18px;margin:0 0 18px">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">'
+      + '<span style="' + mono + ';font-size:9px;color:#4ade80">UNSURFACED LAKE \u00B7 COMPUTED \u2014 not modeled</span>'
+      + '<span style="' + mono + ';font-size:9px;color:var(--text3)">computed ' + new Date(d.computed_at).toLocaleDateString() + '</span></div>'
+      + '<div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:12px">'
+      + '<span><b style="font-size:20px">' + sig.mentions_90d + '</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">signals \u00B7 90d</span></span>'
+      + '<span><b style="font-size:20px;color:' + (up ? '#4ade80' : 'var(--accent)') + '">' + (up ? '\u25B2 +' : '\u25BC ') + sig.momentum_pct + '%</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">30d vs prior</span></span>'
+      + '<span><b style="font-size:20px">' + sig.tier1_share + '%</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">tier-1 sources</span></span></div>'
+      + (sig.top && sig.top.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">Leading: '
+        + sig.top.slice(0, 2).map(t => (t.url ? '<a href="' + safeAttr(t.url) + '" target="_blank" rel="noopener" style="color:var(--text)">' + safe(t.title) + '</a>' : safe(t.title)) + ' <span style="color:var(--text3)">(' + safe(t.source) + ')</span>').join(' \u00B7 ') + '</div>' : '')
+      + '</div>';
+  } catch (e) { /* pre-moat world: render nothing */ }
+}
 function excavateBrand(name) {
   // Find brand data for this brand
   const brand = _BRAND_DATA.find(b => b.name === name);
   if (brand) {
     // Open full intelligence dashboard with brand-specific query
+    setTimeout(function () { _brandLakeLoad(brand.name); }, 400);
     openInsightDashboard({
       title:    brand.name + ' — Brand Intelligence',
       cat:      'brand',
@@ -4158,6 +4193,7 @@ function excavateBrand(name) {
     });
   } else {
     // Fallback: custom brand search
+    setTimeout(function () { _brandLakeLoad(name); }, 400);
     openInsightDashboard({
       title:    name + ' — Brand Intelligence',
       cat:      'brand',

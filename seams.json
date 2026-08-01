@@ -356,6 +356,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:INSIGHT_COMPILER",
    "purpose": "reports complete on DATA not animation (bar parks at 94 until corpus fetched AND compiled); corpus flows through /excavate/synthesize; honest fallback ships as RETRIEVAL SUMMARY with confidence demoted to Unverified; padding loop dead (empty lens says so once at Low); Signal-Signal doubling dead; truth chips \u2014 audience panel and brand trend lines say MODELED until EVO-3 computes them from the lake"
+  },
+  "SEAM:MOAT_1": {
+   "file": "worker/src/index.js",
+   "purpose": "first computed brand number: /excavate/brand-signal \u2014 pure computeBrandSignal over lake matches (90d mentions, 30d-vs-prior momentum with zero-division sentinel, tier-1 share, leading signals); under 3 real matches (sim>=.3) returns thin:true \u2014 the moat fills honestly or not at all"
+  },
+  "SEAM:MOAT_1@arrival": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:MOAT_1",
+   "purpose": "LAKE SIGNAL block above the modeled chart on brand dashboards, badged COMPUTED \u2014 not modeled, with its timestamp; thin lake says 'not enough to measure yet'; failures render nothing; both excavateBrand branches fire the load"
   }
  },
  "planned": [
