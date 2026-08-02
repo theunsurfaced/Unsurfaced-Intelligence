@@ -328,7 +328,39 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 @keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 
 @media(max-width:1100px){.main{grid-template-columns:1fr;}.insights-grid{grid-template-columns:1fr;}.results-grid{grid-template-columns:1fr 1fr;}.ideas-grid{grid-template-columns:1fr 1fr;}}
-@media(max-width:700px){nav{padding:0 20px;}.nav-links{display:none;}.hero,.main{padding-left:20px;padding-right:20px;}#live-results{padding-left:20px;padding-right:20px;}.results-grid,.ideas-grid{grid-template-columns:1fr;}.results-stats{flex-direction:column;gap:8px;}.modal-options{grid-template-columns:1fr;}.brand-row{flex-direction:column;}.deep-cta-strip{flex-direction:column;}}
+/* SEAM:MOBILE_RAIL — portrait is a first-class citizen. The old breakpoint
+   DELETED the nav under 700px (display:none, no replacement) — the reason
+   phones had to rotate. Replaced with the snap-scroll rail: every tab one
+   thumb-swipe away, nothing hidden, terminal aesthetic intact. Grids fall to
+   one column, the dashboard overlay breathes, tap targets grow. */
+@media(max-width:700px){
+  nav{padding:0 14px;gap:10px;}
+  .nav-links{display:flex;overflow-x:auto;white-space:nowrap;gap:18px;padding:4px 2px 8px;margin:0;
+    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1;min-width:0;}
+  .nav-links::-webkit-scrollbar{display:none;}
+  .nav-links li{scroll-snap-align:start;flex:0 0 auto;}
+  .nav-links a{font-size:11px;padding:8px 2px;display:inline-block;}
+  .nav-right{gap:8px;flex:0 0 auto;}
+  .nav-right>*{font-size:10px !important;padding:8px 10px !important;}
+  .ticker-bar{height:32px;font-size:10px;}
+  .ticker-label{font-size:9px;padding:0 10px;}
+  .hero,.main{padding-left:16px;padding-right:16px;}
+  .main{display:block;}
+  #live-results{padding-left:16px;padding-right:16px;}
+  .hero h1,.hero-title{font-size:clamp(30px,9vw,44px);}
+  .results-grid,.ideas-grid,.insights-grid,.audience-grid,.lens-ideas-row,
+  .idb-overview-grid,.idb-quad-grid,.idb-sources-grid,.idb-actions-grid,.idb-quad-actions{grid-template-columns:1fr;}
+  .truth-signals{grid-template-columns:1fr 1fr;}
+  .idb-finding{grid-template-columns:1fr;}
+  .results-stats{flex-direction:column;gap:8px;}
+  .modal-options{grid-template-columns:1fr;}
+  .brand-row{flex-direction:column;}
+  .deep-cta-strip{flex-direction:column;}
+  .idb-overlay,.idb-content{padding-left:14px !important;padding-right:14px !important;}
+  .idb-title{font-size:clamp(22px,7vw,30px) !important;}
+  button,.mr-btn,.brand-card-btn{min-height:40px;}
+  input,select,textarea{font-size:16px;}
+}
 
 /* ── CLEAR SEARCH BUTTON ────────────────────────────────────── */
 .search-clear{position:absolute;right:210px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:6px 8px;line-height:1;transition:color .18s;display:none;z-index:2;}

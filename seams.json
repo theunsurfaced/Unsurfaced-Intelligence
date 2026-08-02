@@ -382,6 +382,10 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:LAKE_LOOP",
    "purpose": "admin Publish-to-lake button on study detail; worker enforces every law, the button asks and reports"
+  },
+  "SEAM:MOBILE_RAIL": {
+   "file": "intelligence/index.html",
+   "purpose": "portrait first-class: the old 700px breakpoint deleted the nav (display:none, no replacement \u2014 the forced-rotate bug); replaced with snap-scroll nav rail, compact ticker, single-column grids (results/ideas/insights/audience/idb quads/sources/actions), breathing dashboard overlay, 40px tap targets, 16px inputs killing iOS zoom-on-focus"
   }
  },
  "planned": [
