@@ -3129,7 +3129,31 @@ async function composeFromLake(env, today) {
     await logEvent(env, 'daily', 'compose', 'dedup_vectors', null, { head: head.length, armed });
   } catch (e) { /* vectors missing -> title backstop carries the test */ }
 
-  const picks = slotFill(cands, DAILY_POV.edition.quotas);
+  /* SEAM:APERTURE — cross-issue memory. slotFill deduped within one issue;
+   * nothing remembered yesterday, so the same story re-entered daily — the
+   * repetition Fresco named. Now the trailing 7 days of published stories
+   * are the memory: a candidate matching a recent pick (sameStory: vector
+   * or entity law) is suppressed from fresh slots and counted — the count
+   * ships in the compose log today and feeds the RECURRENCE strip next.
+   * Failure to fetch history never blocks an edition. */
+  let recurring = 0;
+  let pool = cands;
+  try {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const prior = await sbRest(env,
+      `edition_stories?select=title,source_name,editions!inner(date,status)&editions.date=gte.${since}&editions.status=eq.published&limit=120`) || [];
+    if (prior.length) {
+      const fresh = [];
+      for (const c of pool) {
+        if (prior.some(p => sameStory(p, c))) { recurring++; continue; }
+        fresh.push(c);
+      }
+      if (fresh.length >= 6) pool = fresh;
+      await logEvent(env, 'daily', 'compose', 'cross_issue_dedup', null, { prior: prior.length, suppressed: recurring, fresh: fresh.length });
+    }
+  } catch (e) { /* memoryless compose beats no compose */ }
+
+  const picks = slotFill(pool, DAILY_POV.edition.quotas);
   if (picks.length < 6) return null;
 
   // lead + features are the three big cards - the template has said so since
