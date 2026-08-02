@@ -2038,6 +2038,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <div class="idb-spinner"></div>
     <div class="idb-loading-label">EXCAVATING INTELLIGENCE</div>
     <div class="idb-loading-q" id="idb-loading-q"></div>
+    <div id="idb-loading-diag" style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--text3);margin-top:14px"></div>
+    <button onclick="closeInsightDashboard()" style="margin-top:18px;background:none;border:1px solid var(--border2);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;padding:9px 18px;cursor:pointer;letter-spacing:.1em">← CANCEL</button>
   </div>
   <div id="idb-content" style="display:none">
     <div class="idb-hero">
@@ -5420,6 +5422,27 @@ function _getTopicKey(config) {
   return null;
 }
 
+/* SEAM:FLIGHT_RECORDER — the platform reports its own failures. A silent
+ * freeze cost two debugging rounds; never again. Any uncaught error or
+ * rejection paints a persistent banner with message and line — the user's
+ * screenshot IS the diagnosis. */
+(function () {
+  function _crashBar(msg) {
+    try {
+      var b = document.getElementById('unsrf-crash') || document.createElement('div');
+      b.id = 'unsrf-crash';
+      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#C41230;color:#fff;padding:8px 14px;font-family:monospace;font-size:11px;line-height:1.5;white-space:pre-wrap';
+      b.textContent = 'RUNTIME · ' + msg + '   (screenshot this bar)';
+      document.body.appendChild(b);
+    } catch (e2) {}
+  }
+  window.addEventListener('error', function (ev) {
+    _crashBar((ev.message || 'error') + ' · ' + String(ev.filename || '').split('/').pop() + ':' + (ev.lineno || '?'));
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    _crashBar('unhandled rejection · ' + String(ev.reason && (ev.reason.message || ev.reason)).slice(0, 200));
+  });
+})();
 async function openInsightDashboard(config) {
   _idbConfig = config;
   const overlay = document.getElementById('insight-dashboard');
@@ -5435,7 +5458,16 @@ async function openInsightDashboard(config) {
   try {
     _querySeed = Date.now();
     const topicKey = _getTopicKey(config);
-    const data = await _runDashboardSearch(config, topicKey);
+    /* SEAM:FLIGHT_RECORDER — stage beacons + watchdog: the loading screen
+       narrates which stage is running, and past 25s it says so out loud.
+       A hang now has a name and an exit instead of a locked screen. */
+    const _diag = (t) => { const d = document.getElementById('idb-loading-diag'); if (d) d.textContent = t; };
+    _diag('stage: searching open sources…');
+    const _wd = setTimeout(() => _diag('taking unusually long — a source may be stalled · CANCEL is safe, retry after'), 25000);
+    let data;
+    try { data = await _runDashboardSearch(config, topicKey); }
+    finally { clearTimeout(_wd); }
+    _diag('stage: rendering…');
     _idbData = data;
     _renderDashboard(config, data);
     setTimeout(function () { try { _dashReadLoad(config, data); } catch (e) {} }, 200);
@@ -7506,6 +7538,18 @@ function _guestSet(qid, val, multi) {
  * question id — study-level stimuli file under '_study'. Everything shaped
  * and capped here AND server-side; the worker's cleanClicks is the law. */
 window._clickStore = null;   // set by whichever response flow is live
+/* SEAM:FLIGHT_RECORDER — boot chip: three seconds of proof the script
+ * armed. If a click "does nothing", the chip's absence on reload convicts a
+ * boot-time crash (which the crash bar will have named). */
+setTimeout(function () {
+  try {
+    var c = document.createElement('div');
+    c.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99999;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);color:#4ade80;font-family:monospace;font-size:9px;letter-spacing:.12em;padding:4px 10px;pointer-events:none';
+    c.textContent = 'SCRIPTS ARMED';
+    document.body.appendChild(c);
+    setTimeout(function () { c.remove(); }, 3000);
+  } catch (e) {}
+}, 300);
 /* SEAM:EVOLUTION_1 — expand-in-place. The iframe node never moves (moving an
  * iframe reloads it and resets the stimulus); its wrapper goes fixed-fullscreen
  * and a close bar rides on top. Esc works. Tracking never blinks. */

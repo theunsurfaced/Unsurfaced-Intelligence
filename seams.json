@@ -369,6 +369,10 @@
   "SEAM:DASH_READ": {
    "file": "intelligence/index.html",
    "purpose": "EVO-4 opener: THE READ compiled onto dashboards from their own evidence via report-mode synthesize (lake auto-joins); thin corpus silent, honest-fallback cards never feed the compiler, failure renders nothing; roadmapped rationale captions on every modeled module (retires-as register) + method line inside the Lake block"
+  },
+  "SEAM:FLIGHT_RECORDER": {
+   "file": "intelligence/index.html",
+   "purpose": "the platform reports its own failures: crash bar paints any uncaught error/rejection with message+line, loading screen carries CANCEL (no scroll-locked dead ends), stage beacons + 25s watchdog name a stalled search, 3s SCRIPTS ARMED boot chip whose absence convicts a boot crash \u2014 born from a freeze that gave no testimony"
   }
  },
  "planned": [
