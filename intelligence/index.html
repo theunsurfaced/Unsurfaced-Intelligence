@@ -1892,7 +1892,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 
     <div id="lake-signal-block"></div>
     <div class="section-header">
-      <span class="section-title">Signal Trend</span>
+      <span class="section-title">Signal Trend <span style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:400">· modeled — retires as the lake deepens; Lake Signal above is live</span></span>
       <div class="chart-controls">
         <button class="chart-btn active" onclick="setChartView('30d',this)">30D</button>
         <button class="chart-btn" onclick="setChartView('90d',this)">90D</button>
@@ -1910,7 +1910,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     </div>
 
     <div class="section-header" style="margin-top:32px">
-      <span class="section-title">Audience Intelligence</span>
+      <span class="section-title">Audience Intelligence <span style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:400">· modeled — retires as MINE panel data wires in</span></span>
       <span class="section-action">DEEP DIVE →</span>
     </div>
     <div class="brand-row">
@@ -1927,7 +1927,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
       <div class="trend-list" id="trending-now-list"><!-- populated by renderTrendingNow() --></div>
     </div>
     <div class="sidebar-panel">
-      <div class="section-header"><span class="section-title">Market Signals</span></div>
+      <div class="section-header"><span class="section-title">Market Signals <span style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);font-weight:400">· modeled — retires as measured signal replaces it</span></span></div>
       <div class="signal-list">
         <div class="signal-item"><div class="signal-row"><span class="signal-name">Consumer Confidence</span><span class="signal-val" style="color:var(--accent)">HIGH</span></div><div class="signal-track"><div class="signal-fill" style="width:78%;background:var(--accent)"></div></div></div>
         <div class="signal-item"><div class="signal-row"><span class="signal-name">Brand Trust Index</span><span class="signal-val" style="color:var(--accent3)">MED+</span></div><div class="signal-track"><div class="signal-fill" style="width:62%;background:var(--accent3)"></div></div></div>
@@ -1953,7 +1953,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
         <div class="audience-cell"><span class="audience-pct" style="color:var(--accent4)">19%</span><span class="audience-label">Gen X · 44–59</span></div>
         <div class="audience-cell"><span class="audience-pct" style="color:var(--text2)">12%</span><span class="audience-label">Boomer · 60+</span></div>
       </div>
-      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;">MODELED — illustrative segmentation · live panel wiring in progress</div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.06em;">MODELED — retires as the MINE panel wires in · measured segments replace these</div>
     </div>
   </div>
 </div>
@@ -2057,6 +2057,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     </div>
     <div class="idb-body">
       <div class="idb-lens-panel active" id="idb-panel-overview">
+        <div id="idb-read"></div>
         <div class="section-header" style="margin-bottom:20px"><span class="section-title">Intelligence Overview</span></div>
         <div class="idb-quad-grid" id="idb-quad-grid"></div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);padding:20px 24px;margin-bottom:32px;">
@@ -4154,6 +4155,41 @@ function renderBrandGrid(brands) {
  * brand and renders it labeled COMPUTED with its timestamp, above the modeled
  * chart. Thin lake says so plainly. Failures render nothing — a missing
  * measurement is not an error state, it is the pre-moat world. */
+/* SEAM:DASH_READ — the dashboard learns judgment. After render, the base
+ * findings package as a corpus and flow through the same compiler reports
+ * use (api() joins the lake automatically): THE READ lands above the
+ * overview — reframe, then move — with up to three implications. Failure
+ * renders nothing; the dashboard was already useful. */
+async function _dashReadLoad(config, data) {
+  const box = document.getElementById('idb-read');
+  if (!box || !API_BASE) return;
+  const src = (data && data.base && data.base.insights) || [];
+  const corpus = src.filter(x => x.source && x.source !== 'Excavate' && x.source !== 'Synthesis')
+    .slice(0, 16).map(x => ({ lens: x.category || 'consumer', source: x.source,
+      title: String(x.title || '').slice(0, 160), text: String(x.excerpt || '').slice(0, 320),
+      url: x.sourceUrl || '' }));
+  if (corpus.length < 3) return;
+  const mono2 = "font-family:'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase";
+  box.innerHTML = '<div style="border:1px solid var(--border);background:var(--surface2);padding:14px 20px;margin-bottom:22px">'
+    + '<span style="' + mono2 + ';font-size:9px;color:var(--text3)">Compiling the read\u2026</span></div>';
+  try {
+    const d = await api('excavate/synthesize', { query: config.query || config.title, mode: 'report', corpus });
+    if (!d || !d.ok || !d.data) { box.innerHTML = ''; return; }
+    const read = d.data.read;
+    const imps = (d.data.insights || []).filter(x => x.implication).slice(0, 3);
+    if (!read && !imps.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div style="border:1px solid rgba(74,222,128,.35);background:var(--surface2);padding:20px 24px;margin-bottom:26px">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">'
+      + '<span style="' + mono2 + ';font-size:9px;color:#4ade80">THE READ \u00B7 compiled from ' + (d.data.evidence_n || corpus.length) + ' evidence signals</span>'
+      + '<span style="' + mono2 + ';font-size:9px;color:var(--text3)">earned confidence \u00B7 every claim cited in All Findings</span></div>'
+      + (read ? '<p style="font-family:\'DM Serif Display\',serif;font-size:19px;line-height:1.45;color:var(--text);margin:0 0 4px">' + safe(read[0]) + '</p>'
+        + '<p style="font-size:14px;color:var(--text2);line-height:1.6;margin:0 0 12px">' + safe(read[1]) + '</p>' : '')
+      + (imps.length ? '<div style="border-top:1px solid var(--border);padding-top:10px">'
+        + imps.map(x => '<div style="font-size:12px;color:var(--text2);margin:5px 0">\u2192 ' + safe(x.implication)
+          + ' <span style="' + mono2 + ';font-size:8px;color:var(--text3)">' + safe(x.source) + ' \u00B7 ' + safe(x.confidence) + '</span></div>').join('') + '</div>' : '')
+      + '</div>';
+  } catch (e) { box.innerHTML = ''; }
+}
 async function _brandLakeLoad(name) {
   const box = document.getElementById('lake-signal-block');
   if (!box || !API_BASE) return;
@@ -4178,6 +4214,7 @@ async function _brandLakeLoad(name) {
       + '<span><b style="font-size:20px">' + sig.mentions_90d + '</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">signals \u00B7 90d</span></span>'
       + '<span><b style="font-size:20px;color:' + (up ? '#4ade80' : 'var(--accent)') + '">' + (up ? '\u25B2 +' : '\u25BC ') + sig.momentum_pct + '%</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">30d vs prior</span></span>'
       + '<span><b style="font-size:20px">' + sig.tier1_share + '%</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">tier-1 sources</span></span></div>'
+      + '<div style="' + mono + ';font-size:8px;color:var(--text3);margin-top:10px">Method: semantic match of captured lake signal \u00B7 similarity \u2265 .30 \u00B7 90-day window \u00B7 tier per source registry</div>'
       + (sig.top && sig.top.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">Leading: '
         + sig.top.slice(0, 2).map(t => (t.url ? '<a href="' + safeAttr(t.url) + '" target="_blank" rel="noopener" style="color:var(--text)">' + safe(t.title) + '</a>' : safe(t.title)) + ' <span style="color:var(--text3)">(' + safe(t.source) + ')</span>').join(' \u00B7 ') + '</div>' : '')
       + '</div>';
@@ -5401,6 +5438,7 @@ async function openInsightDashboard(config) {
     const data = await _runDashboardSearch(config, topicKey);
     _idbData = data;
     _renderDashboard(config, data);
+    setTimeout(function () { try { _dashReadLoad(config, data); } catch (e) {} }, 200);
   } catch(e) {
     const loadEl=document.getElementById('idb-loading');
     if(loadEl){

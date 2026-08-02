@@ -365,6 +365,10 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:MOAT_1",
    "purpose": "LAKE SIGNAL block above the modeled chart on brand dashboards, badged COMPUTED \u2014 not modeled, with its timestamp; thin lake says 'not enough to measure yet'; failures render nothing; both excavateBrand branches fire the load"
+  },
+  "SEAM:DASH_READ": {
+   "file": "intelligence/index.html",
+   "purpose": "EVO-4 opener: THE READ compiled onto dashboards from their own evidence via report-mode synthesize (lake auto-joins); thin corpus silent, honest-fallback cards never feed the compiler, failure renders nothing; roadmapped rationale captions on every modeled module (retires-as register) + method line inside the Lake block"
   }
  },
  "planned": [
