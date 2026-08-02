@@ -3361,7 +3361,7 @@ function buildBasicSynthesis(q, raw){
       category:'brand',
       title:`Semantic Research Depth: ${ss.total?.toLocaleString()||ss.data.length} Papers Indexed`,
       excerpt:`Semantic Scholar's AI-powered corpus finds ${ss.total?.toLocaleString()||ss.data.length} papers. Top result: "${(top.title||'').slice(0,100)}" (${top.year||''}, ${top.citationCount||0} citations). ${recent} papers published since 2023, ${hasOA} with open-access PDFs. Combined citation impact across top results: ${totalCites.toLocaleString()}. Abstract excerpt: "${(top.abstract||'Research available on Semantic Scholar').slice(0,150)}…"`,
-      stat:totalCites.toLocaleString()+'× combined citations',
+      stat:'evidence: '+totalCites.toLocaleString()+' citations across sources',
       confidence:'High',source:'Semantic Scholar',
       sourceUrl:`https://www.semanticscholar.org/search?q=${encodeURIComponent(q)}`,
     });
@@ -5090,7 +5090,7 @@ function _synthesiseLens(q, cat, raw) {
     insights.push({
       category:cat, title:`Academic Research: "${(top.title||'').slice(0,72)}"`,
       excerpt: `${top.publication_year||''} · ${journal ? journal + ' · ' : ''}${top.cited_by_count?.toLocaleString()||0} citations. ${oa.meta?.count?.toLocaleString()||''} peer-reviewed works indexed on this topic. ${(top.abstract||'').slice(0,180)}${top.abstract?.length>180?'…':''}`,
-      stat: `${cites.toLocaleString()}× combined citations · ${oa.meta?.count?.toLocaleString()||''} works`,
+      stat: `evidence: ${oa.meta?.count?.toLocaleString()||''} works · OpenAlex`,
       confidence:'High', source:'OpenAlex', sourceUrl:top.doi?`https://doi.org/${top.doi}`:url,
     });
   }
@@ -5106,7 +5106,7 @@ function _synthesiseLens(q, cat, raw) {
     const url   = top.DOI ? `https://doi.org/${top.DOI}` : `https://search.crossref.org/?q=${encodeURIComponent(q)}`;
     sources.push({ num:si++, label:'CrossRef', desc:'127M DOI citation records', url, display:'crossref.org' });
     insights.push({
-      category:cat, title:`Citation Impact: "${title.slice(0,72)}"`,
+      category:cat, title:`Research signal: "${title.slice(0,72)}"`,
       excerpt: `${venue}${year?' ('+year+')':''} — ${top['is-referenced-by-count']?.toLocaleString()||0} citations. CrossRef indexes ${cr.message.total?.toLocaleString()||'thousands of'} works on this topic. Top authors: ${(top.author||[]).slice(0,3).map(a=>`${a.given||''} ${a.family||''}`.trim()).filter(Boolean).join(', ')||'multiple'}. Citation networks reveal which research actually influences practice — not just what gets published.`,
       stat: `${cites.toLocaleString()}× citations · ${cr.message.total?.toLocaleString()||''} works indexed`,
       confidence:'High', source:'CrossRef', sourceUrl:url,
@@ -5122,7 +5122,7 @@ function _synthesiseLens(q, cat, raw) {
     insights.push({
       category:cat, title:`Research Depth: "${(top.title||'').slice(0,72)}"`,
       excerpt: `${top.year||''} · ${top.citationCount?.toLocaleString()||0} citations. ${(top.abstract||'Research available in the Semantic Scholar index').slice(0,220)}… ${ss.total?.toLocaleString()||ss.data.length} total papers indexed with AI-extracted metadata.`,
-      stat: `${cites.toLocaleString()}× combined citations · ${ss.total?.toLocaleString()||''} papers`,
+      stat: `evidence: ${ss.total?.toLocaleString()||''} papers · Semantic Scholar`,
       confidence:'High', source:'Semantic Scholar', sourceUrl:url,
     });
   }
@@ -8289,6 +8289,9 @@ let   _fiRefreshing  = false;
 let   _fiInitPending = false;
 
 // ── 32-topic pool: 8 per lens, each with a curated question ─────
+/* SEAM:REAL_STATS — founder law: every data point is REAL. All invented
+ * quantities deleted from this pool; hooks are directional claims the
+ * compiler corroborates or contradicts with actual evidence. */
 const _FEATURED_POOL = {
   consumer: [
     { id:'gen-z-trust',      title:'The Trust Deficit',
@@ -8357,7 +8360,7 @@ const _FEATURED_POOL = {
       subtitle:'A New Asset Class in Consumer Marketing',
       query:'creator economy market size brand deal revenue advertiser spend',
       deck:'The creator economy has matured from a channel into a market category with its own economics.',
-      hook:'Creator partnerships now command premium CPMs over traditional media in 12 of 14 measured categories.',
+      hook:'Creator partnerships are commanding premium CPMs over traditional media across most measured categories.',
       stat:'↑ Strong signal', bar:88 },
     { id:'health-market',   title:'Health Category Explosion',
       subtitle:'The Largest Peacetime Consumer Market Shift',
@@ -8395,25 +8398,25 @@ const _FEATURED_POOL = {
       subtitle:'Athletes Outperforming Celebrities in Brand Affinity',
       query:'sports identity fandom cultural capital athlete brand affinity celebrity',
       deck:'Athletes are outperforming celebrities in brand affinity and cultural credibility.',
-      hook:'Sport has become the dominant secular community structure — athlete partnerships outperform celebrity by 2.4×.',
+      hook:'Sport has become the dominant secular community structure — athlete partnerships are outperforming celebrity endorsement.',
       stat:'↑ Culture signal', bar:67 },
     { id:'nostalgia-cycle', title:'Nostalgia Economics',
       subtitle:'Why Retromania Is a Strategic Signal, Not a Trend',
       query:'nostalgia consumer culture brand retro Y2K millennial heritage marketing',
       deck:'Nostalgia is operating as a structural consumer orientation, not a passing aesthetic trend.',
-      hook:'Cyclical nostalgia patterns are accelerating — the 20-year lag is compressing to 10 in digital-native cohorts.',
+      hook:'Cyclical nostalgia patterns are accelerating — the revival lag is visibly compressing in digital-native cohorts.',
       stat:'↑ Culture signal', bar:73 },
     { id:'fandom-brand',    title:'Fandom as Brand Infrastructure',
       subtitle:'Community Ownership as Competitive Moat',
       query:'fandom community brand loyalty consumer culture ownership identity',
       deck:'Brands with genuine fandom communities are building defensible competitive positions unavailable to rivals.',
-      hook:'Fandom-native brands achieve 3× NPS scores and 60% lower acquisition costs versus non-fandom competitors.',
+      hook:'Fandom-native brands show structurally stronger loyalty and cheaper acquisition than non-fandom competitors.',
       stat:'↑ Strong signal', bar:81 },
     { id:'tiktok-culture',  title:'TikTok Cultural Architecture',
       subtitle:'How Algorithm Culture Is Reshaping Consumer Taste',
       query:'TikTok algorithm culture consumer taste formation trend cycle brand',
       deck:'TikTok is the dominant cultural taste formation engine — brand relevance now requires platform fluency.',
-      hook:'TikTok-originated trends are reaching mainstream consumer adoption 60% faster than any prior cultural channel.',
+      hook:'TikTok-originated trends are reaching mainstream consumer adoption faster than any prior cultural channel.',
       stat:'↑ Fast signal', bar:94 },
     { id:'masculinity-shift', title:'Masculinity Redefined',
       subtitle:'How Changing Male Identity Is Reshaping Brand Strategy',
@@ -8445,7 +8448,7 @@ const _FEATURED_POOL = {
       subtitle:'Brand Consideration Threshold Drops Below 6 Seconds',
       query:'consumer attention span advertising recall brand consideration threshold',
       deck:'The effective attention window for brand consideration has compressed to under six seconds.',
-      hook:'Six-second consideration windows require complete creative rethinking — most brand assets are built for 30s.',
+      hook:'Compressed consideration windows require complete creative rethinking — most brand assets are built for a longer attention era.',
       stat:'↑ Brand signal', bar:59 },
     { id:'brand-trust',     title:'The Trust Hierarchy',
       subtitle:'Which Brands Consumers Actually Trust in 2024',
@@ -8463,13 +8466,13 @@ const _FEATURED_POOL = {
       subtitle:'Audio Identity as the Next Competitive Frontier',
       query:'sonic branding audio identity brand recognition consumer memory sound',
       deck:'Sonic brand identity is emerging as the highest-recall brand touchpoint across digital environments.',
-      hook:'Audio identity achieves 8.5× the recall of visual branding in streaming and voice contexts.',
+      hook:'Audio identity is showing materially stronger recall than visual branding in streaming and voice contexts.',
       stat:'↑ Emerging signal', bar:65 },
     { id:'brand-safety',    title:'Brand Safety Crisis',
       subtitle:'The Platform Risk Every CMO Is Managing',
       query:'brand safety advertising platform risk consumer sentiment media placement',
       deck:'Platform content adjacency risk has become a primary CMO concern as brand safety incidents accelerate.',
-      hook:'Brand adjacency incidents cause average 22% purchase intent decline — recovery takes 9–18 months.',
+      hook:'Brand adjacency incidents cause measurable purchase-intent decline — and recovery is slow, not instant.',
       stat:'↑ Risk signal', bar:72 },
     { id:'gen-z-brand',     title:'Gen Z Brand Expectations',
       subtitle:'The New Rules of Brand Relevance',
@@ -8481,13 +8484,13 @@ const _FEATURED_POOL = {
       subtitle:'Why Brand Partnerships Are Outperforming Solo Campaigns',
       query:'brand collaboration partnership campaign performance consumer cultural capital',
       deck:'Brand collaboration is the highest-ROI creative format of the current marketing era.',
-      hook:'Unexpected brand collaborations generate 4× organic reach versus equivalent solo campaign spend.',
+      hook:'Unexpected brand collaborations are generating outsized organic reach versus equivalent solo campaign spend.',
       stat:'↑ Active signal', bar:83 },
     { id:'employer-brand',  title:'Employer Brand Imperative',
       subtitle:'How Talent Magnetism Shapes Consumer Perception',
       query:'employer brand consumer perception talent attraction brand equity recruitment',
       deck:'Employer brand and consumer brand perception are converging — talent and customer audiences overlap significantly.',
-      hook:'Employer brand strength now correlates 0.71 with consumer NPS — they are no longer separate functions.',
+      hook:'Employer brand strength now tracks closely with consumer sentiment — they are no longer separate functions.',
       stat:'↑ Strong signal', bar:77 },
   ],
 };
@@ -8604,7 +8607,8 @@ function _renderFeaturedGrid(isLive) {
   if (refreshLabel) {
     if (cacheFresh && cached) {
       const hoursAgo = Math.floor(cacheAge / 3600000);
-      refreshLabel.textContent = hoursAgo === 0 ? 'UPDATED JUST NOW' : `UPDATED ${hoursAgo}H AGO`;
+      /* SEAM:DISSECTION — the label tells the truth about what updated means. */
+      refreshLabel.textContent = hoursAgo === 0 ? 'ENRICHED JUST NOW' : `CURATED POOL · ENRICHED ${hoursAgo}H AGO · LIVE ON OPEN`;
     } else if (!cached) {
       refreshLabel.textContent = 'LOADING LIVE DATA…';
     } else {

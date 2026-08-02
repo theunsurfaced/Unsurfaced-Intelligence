@@ -386,6 +386,14 @@
   "SEAM:MOBILE_RAIL": {
    "file": "intelligence/index.html",
    "purpose": "portrait first-class: the old 700px breakpoint deleted the nav (display:none, no replacement \u2014 the forced-rotate bug); replaced with snap-scroll nav rail, compact ticker, single-column grids (results/ideas/insights/audience/idb quads/sources/actions), breathing dashboard overlay, 40px tap targets, 16px inputs killing iOS zoom-on-focus"
+  },
+  "SEAM:REAL_STATS": {
+   "file": "intelligence/index.html",
+   "purpose": "founder law enforced: every data point is REAL \u2014 all ten invented quantities in the featured pool deleted (2.4x, 3x, 4x, 8.5x, 60%, 22%, 0.71, 12-of-14, 20-to-10, six-second), hooks rewritten as directional claims the compiler corroborates or contradicts with actual evidence; no number renders without lineage"
+  },
+  "SEAM:DISSECTION": {
+   "file": "intelligence/index.html",
+   "purpose": "Lens 2 dissection closed: staleness label honest (curated pool / enriched Nh ago / live on open), citation counts demoted from headline stat to provenance (evidence: N works / source), Citation Impact reframed as Research signal \u2014 metadata never again wears an insight costume"
   }
  },
  "planned": [
