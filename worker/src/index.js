@@ -3141,7 +3141,7 @@ async function composeFromLake(env, today) {
   try {
     const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const prior = await sbRest(env,
-      `edition_stories?select=title,source_name,editions!inner(date,status)&editions.date=gte.${since}&editions.status=eq.published&limit=120`) || [];
+      `edition_items?select=title,source_name,editions!inner(date,status)&editions.date=gte.${since}&editions.status=eq.published&limit=120`) || [];
     if (prior.length) {
       const fresh = [];
       for (const c of pool) {
