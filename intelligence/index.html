@@ -4162,6 +4162,18 @@ function renderBrandGrid(brands) {
  * use (api() joins the lake automatically): THE READ lands above the
  * overview — reframe, then move — with up to three implications. Failure
  * renders nothing; the dashboard was already useful. */
+/* SEAM:LAKE_LOOP — the admin door: one click sends floor-cleared field work
+ * into the lake as tier-0 signal. The worker enforces every law; this button
+ * just asks and reports. */
+async function _lakePublish(sid) {
+  if (!confirm('Publish this study\u2019s floor-cleared findings to the lake as tier-0 signal? Republishing updates the same entry.')) return;
+  try {
+    const d = await api('mine/publish-signal', { study_id: sid });
+    if (d && d.ok) showToast('Published \u2014 \u201c' + d.published.title.slice(0, 40) + '\u201d is now lake signal (' + d.published.n + ' responses)');
+    else showToast(d && d.error === 'below_floor' ? 'Below the floor \u2014 the lake only takes floor-cleared findings'
+      : d && d.error === 'admin_only' ? 'Admin only' : 'Publish failed \u2014 ' + ((d && d.error) || 'try again'));
+  } catch (e) { showToast('Publish failed \u2014 try again'); }
+}
 async function _dashReadLoad(config, data) {
   const box = document.getElementById('idb-read');
   if (!box || !API_BASE) return;
@@ -7175,6 +7187,7 @@ function mineStudyDetail(s, backView, admin) {
     + ((admin || s.status === 'draft' || s.status === 'live') ? '<button class="mr-btn" onclick="mineEditStudy(\'' + s.id + '\')">Edit study</button>' : '')
     + (s.status === 'live' ? '<button class="mr-btn" onclick="mineCloseStudy(\'' + s.id + '\')">Close study</button>' : '')
     + '<button class="mr-btn" onclick="_respExport(\'' + s.id + '\')">Export CSV</button>'
+    + (admin ? '<button class="mr-btn" onclick="_lakePublish(\'' + s.id + '\')">Publish to lake \u2192</button>' : '')
     + '<button class="mr-btn" onclick="_studyDuplicate(\'' + s.id + '\')">Duplicate</button>'
     + '<button class="mr-btn" style="color:var(--red,#FF3333)" onclick="mineDeleteStudy(\'' + s.id + '\')">' + (mResponsesFor(s.id).length ? 'Archive' : 'Delete') + '</button>'
     + '</span></div>'

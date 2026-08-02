@@ -373,6 +373,15 @@
   "SEAM:FLIGHT_RECORDER": {
    "file": "intelligence/index.html",
    "purpose": "the platform reports its own failures: crash bar paints any uncaught error/rejection with message+line, loading screen carries CANCEL (no scroll-locked dead ends), stage beacons + 25s watchdog name a stalled search, 3s SCRIPTS ARMED boot chip whose absence convicts a boot crash \u2014 born from a freeze that gave no testimony"
+  },
+  "SEAM:LAKE_LOOP": {
+   "file": "worker/src/index.js",
+   "purpose": "the organism breathes: /mine/publish-signal sends floor-cleared MINE aggregates into the lake as tier-0 signal (admin-gated, idempotent via content_hash mine-{study_id}, status filtered, raw doc embedding per the book); EXCAVATE brand signal and DASH_READ can now cite Unsurfaced's own field work"
+  },
+  "SEAM:LAKE_LOOP@arrival": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:LAKE_LOOP",
+   "purpose": "admin Publish-to-lake button on study detail; worker enforces every law, the button asks and reports"
   }
  },
  "planned": [

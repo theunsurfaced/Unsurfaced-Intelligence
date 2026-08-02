@@ -86,6 +86,7 @@ export default {
       if (path === '/excavate/lake' && request.method === 'POST') return excavateLake(request, env, origin);
       if (path === '/deep' && request.method === 'POST') return deepSearch(request, env, origin);
       if (path === '/excavate/brand-signal' && request.method === 'POST') return brandSignal(request, env, origin);
+      if (path === '/mine/publish-signal' && request.method === 'POST') return minePublishSignal(request, env, origin);
       if (path === '/excavate/cluster' && request.method === 'POST') return excavateCluster(request, env, origin);
       if (path === '/excavate/recurrence' && request.method === 'POST') return excavateRecurrence(request, env, origin);
       if (path === '/excavate/promote' && request.method === 'POST') return excavatePromote(request, env, origin);
@@ -3392,6 +3393,68 @@ function computeBrandSignal(rows, nowMs) {
       url: r.url || null, source: r.source_name || '', tier: r.source_tier || null,
       captured_at: r.captured_at }))
   };
+}
+
+/* SEAM:LAKE_LOOP — the organism's first closed loop: approved MINE field
+ * work enters the lake as TIER-0 signal, the highest trust rank the platform
+ * has, because it is the one source no competitor can retrieve: what real
+ * people told Unsurfaced, on the record, floor-cleared. Laws: admin-only
+ * (editorial gate is a human), floor law travels (no floor, no publish),
+ * idempotent (content_hash = mine-{study_id}, republish merges), doc
+ * embedding raw title+summary per the book (prefix is for queries only).
+ */
+function mineSignalSummary(study, agg) {
+  let out = String(study.goal || '').trim();
+  const bits = [];
+  for (const q of (agg.questions || []).slice(0, 3)) {
+    if (q.type === 'open' || !q.counts) continue;
+    const keys = Object.keys(q.counts).sort((a, b) => q.counts[b] - q.counts[a]);
+    if (!keys.length) continue;
+    const top = keys[0];
+    const pct = q.pct && q.pct[top] != null ? q.pct[top] + '%' : q.counts[top] + ' of ' + q.answered;
+    bits.push('"' + String(q.prompt).slice(0, 70) + '" \u2192 ' + String(top).slice(0, 40) + ' (' + pct + ')');
+    const fk = q.clicks && q.clicks.first && Object.keys(q.clicks.first).sort((a, b) => q.clicks.first[b] - q.clicks.first[a])[0];
+    if (fk) bits.push('first click: ' + String(fk).slice(0, 40));
+  }
+  if (bits.length) out += ' \u2014 Field results (' + agg.n + ' quality responses): ' + bits.join(' \u00b7 ');
+  return out.slice(0, 460);
+}
+
+async function minePublishSignal(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  const uid = gate.user && gate.user.id;
+  if (!uid || !(await callerIsAdmin(env, uid)))
+    return json({ ok: false, error: 'admin_only' }, 200, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) {}
+  const sid = String(body.study_id || '');
+  if (!/^[0-9a-f-]{36}$/i.test(sid)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const ss = await sbRest(env, `study?id=eq.${sid}&select=id,title,goal,status`);
+  const study = ss && ss[0];
+  if (!study) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const qs = await sbRest(env, `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options,asset_name&order=ord`) || [];
+  const rows = await sbRest(env, `response?study_id=eq.${sid}&select=anon_id,segments,answers,clicks,quality_status&limit=2000`) || [];
+  const agg = aggregateResponses(rows, qs, RAIL.CLIENT_FLOOR);
+  if (agg.floor_met) {
+    const live = rows.filter(r => r.quality_status !== 'rejected');
+    for (const q of agg.questions) { const cs = clickSummary(live, q.id); if (cs) q.clicks = cs; }
+  }
+  if (!agg.floor_met)
+    return json({ ok: false, error: 'below_floor', note: 'the floor law travels: ' + RAIL.CLIENT_FLOOR + ' quality responses before anything enters the lake' }, 200, origin, env);
+  const title = 'Field study: ' + String(study.title || '').slice(0, 110);
+  const summary = mineSignalSummary(study, agg);
+  const er = await env.AI.run(KB_EMBED_MODEL, { text: [(title + '. ' + summary).slice(0, 512)] });
+  const vec = er && er.data && er.data[0];
+  if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+  await sbRest(env, 'signals?on_conflict=content_hash', {
+    method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' },
+    body: [{ content_hash: 'mine-' + sid, title, summary,
+      url: (env.APP_URL || '').replace(/\/$/, '') + '/intelligence/',
+      source_name: 'Unsurfaced MINE', source_tier: 0, territory: 'field',
+      status: 'filtered', published_at: new Date().toISOString(),
+      embedding: '[' + vec.join(',') + ']' }] });
+  try { await logEvent(env, 'intelligence', 'mine', 'lake_publish', uid, { study: sid, n: agg.n }); } catch (e) {}
+  return json({ ok: true, published: { title, n: agg.n } }, 200, origin, env);
 }
 
 async function brandSignal(request, env, origin) {
