@@ -2668,7 +2668,12 @@ const DAILY_POV = {
     'advertising-marketing','technology-innovation','artificial-intelligence',
     'business-economics','entrepreneurship-creator','music','fashion-beauty',
     'sneakers-streetwear','art-design','architecture-cities',
-    'entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'
+    'entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora',
+    /* SEAM:APERTURE cut 2 — the masthead widens ADDITIVELY (existing slugs are
+       load-bearing across feed tags and the classifier). Six new lanes from
+       the twenty-lane map; feeds to fill them are cut 3. */
+    'sports-culture','wellness-fitness','retail-dtc','luxury',
+    'travel-experiences','media-platforms'
   ],
   // Legacy SLATE compatibility: every territory resolves to one of the five beats.
   beat_map: {
@@ -2678,7 +2683,10 @@ const DAILY_POV = {
     'fashion-beauty':'culture', 'sneakers-streetwear':'culture',
     'art-design':'creativity', 'architecture-cities':'creativity',
     'entertainment-gaming':'culture', 'food-hospitality':'culture',
-    'sustainability-impact':'culture', 'global-diaspora':'culture'
+    'sustainability-impact':'culture', 'global-diaspora':'culture',
+    'sports-culture':'culture', 'wellness-fitness':'culture',
+    'retail-dtc':'tech', 'luxury':'culture',
+    'travel-experiences':'culture', 'media-platforms':'advertising'
   },
   tiers: {
     1: { role: 'daily signal — original reporting, cross-category influence', cadence: 'daily' },
