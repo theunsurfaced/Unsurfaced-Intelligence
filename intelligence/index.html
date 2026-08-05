@@ -360,6 +360,19 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   .idb-title{font-size:clamp(22px,7vw,30px) !important;}
   button,.mr-btn,.brand-card-btn{min-height:40px;}
   input,select,textarea{font-size:16px;}
+  /* SEAM:DOOR_GATE — hub + turnstile on phones: doors stack, type scales,
+     the escape button clears the gate chrome. */
+  .uai-triptych{flex-direction:column;gap:2px;}
+  .uai-door{min-height:150px;padding:22px 18px;}
+  .uai-h1{font-size:clamp(38px,11vw,56px);}
+  .uai-lede{font-size:14px;}
+  .uai-hub-top{flex-wrap:wrap;gap:8px;padding:12px 14px;}
+  .uai-hub-top .uai-back{font-size:10px;padding:7px 10px;}
+  .uai-hub-head{padding-left:16px;padding-right:16px;}
+  .uai-hub-base{font-size:9px;padding:0 16px 14px;}
+  .uai-space-inner{padding:0 16px;}
+  .uai-doors2{flex-direction:column;}
+  #uai-gate-back{top:64px !important;left:12px !important;font-size:9px !important;padding:7px 10px !important;}
 }
 
 /* ── CLEAR SEARCH BUTTON ────────────────────────────────────── */
@@ -1404,19 +1417,19 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
       <span class="uai-role">Generative Studio</span>
       <span class="uai-verb">PLAY</span>
       <span class="uai-def">Long-form content and visual assets, made with you.</span>
-      <span class="uai-foot"><span class="uai-status st-soon">Early access</span><span class="uai-go">Enter →</span></span>
+      <span class="uai-foot"><span class="uai-status st-soon">Create</span><span class="uai-go">Enter →</span></span>
     </button>
     <button class="uai-door door-excavate" onclick="enterSpace('excavate')" aria-label="Enter EXCAVATE — insights engine">
       <span class="uai-role">Insights Engine</span>
       <span class="uai-verb">EXCAVATE</span>
       <span class="uai-def">Real-time signal from the public world, fused into a cited read.</span>
-      <span class="uai-foot"><span class="uai-status st-live">Live</span><span class="uai-go">Enter →</span></span>
+      <span class="uai-foot"><span class="uai-status st-live">Learn</span><span class="uai-go">Enter →</span></span>
     </button>
     <button class="uai-door door-mine" onclick="enterSpace('mine')" aria-label="Enter MINE — primary research">
       <span class="uai-role">Primary Research</span>
       <span class="uai-verb">MINE</span>
       <span class="uai-def">Truth mined from real people — surveys, video, and voice.</span>
-      <span class="uai-foot"><span class="uai-status st-dev">In development</span><span class="uai-go">Enter →</span></span>
+      <span class="uai-foot"><span class="uai-status st-dev">Grow</span><span class="uai-go">Enter →</span></span>
     </button>
   </div>
   <p class="uai-hub-base">EXCAVATE digs the public surface · MINE goes to the source · PLAY makes what comes next</p>
@@ -5889,7 +5902,7 @@ function _gateForDoor(name) {
     const back = document.createElement('button');
     back.id = 'uai-gate-back'; back.type = 'button';
     back.textContent = '\u2190 Back to spaces';
-    back.style.cssText = 'position:absolute;top:18px;left:18px;background:none;border:1px solid var(--border2);color:var(--text2);font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;padding:8px 14px;cursor:pointer;z-index:2';
+    back.style.cssText = 'position:absolute;top:74px;left:18px;background:none;border:1px solid var(--border2);color:var(--text2);font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;padding:8px 14px;cursor:pointer;z-index:2';
     back.onclick = function () {
       try { sessionStorage.removeItem('pending_door'); } catch (e) {}
       const g2 = document.getElementById('login-gate');
