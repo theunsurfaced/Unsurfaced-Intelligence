@@ -398,6 +398,10 @@
   "SEAM:APERTURE": {
    "file": "worker/src/index.js",
    "purpose": "cut 1 of the aperture arc: cross-issue memory \u2014 trailing-7-day published stories dedup the compose pool via sameStory (vector or entity law); suppressed count logged, feeds the RECURRENCE strip next; fetch failure degrades to memoryless compose, never blocks an edition"
+  },
+  "SEAM:DOOR_GATE": {
+   "file": "intelligence/index.html",
+   "purpose": "the user journey inversion (GATE-BEHIND-THE-CLICK spec): hub is the signed-out ground state, doors are turnstiles stashing pending_door, sign-in lands inside the chosen territory; approval law stacks after auth unchanged, guest rail rides above the hub, recovery/pending flows raise the gate directly, back-to-spaces escape on the turnstile gate"
   }
  },
  "planned": [

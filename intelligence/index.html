@@ -1392,7 +1392,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
       <button class="uai-back" style="position:static" id="stOpen" title="STUDIO — the content engine" hidden>Studio ⌁</button>
       <button class="uai-back" style="position:static" id="kbOpen" title="Feed the ecosystem your own data" hidden>Feed ⌁</button>
       <a class="uai-back" style="position:static;text-decoration:none;display:inline-block" href="../">&#8592; Home</a>
-      <button class="uai-back" style="position:static" onclick="lgSignOut()">Sign out</button>
+      <button class="uai-back" style="position:static" id="uai-authbtn" onclick="lgSignOut()">Sign out</button>
     </span>
   </div>
   <div class="uai-hub-head">
@@ -2374,8 +2374,8 @@ async function _sbAuthInit() {
     // fall through to _authShowApp and skip the password change.
     if (_isRecoveryUrl()) { _showRecoveryPanel(); return; }
     if (data && data.session) { _currentUser = _userFromSb(data.session.user); _authShowApp(); }
-    else { _authShowGate(); }
-  } catch (e) { _authShowGate(); }
+    else { _showHubSignedOut(); }
+  } catch (e) { _showHubSignedOut(); }
 }
 
 // True when the page was opened from a Supabase recovery email link.
@@ -5862,7 +5862,42 @@ function _authInit() {
       if (emailField) emailField.value = lastEmail;
     }
   } catch(e) {}
+  _showHubSignedOut();
+}
+
+/* SEAM:DOOR_GATE — the user journey inversion (GATE-BEHIND-THE-CLICK spec).
+ * Signed-out ground state is the HUB: three doors visible, gate risen only
+ * when a door is chosen, destination stashed so sign-in lands the user
+ * INSIDE the territory they picked. The gate is a turnstile mid-stride, not
+ * a wall. Laws preserved: SEAM:APPROVAL still stacks (pending screen fires
+ * after auth, before entry — the stash survives it); the guest rail rides
+ * ABOVE the hub exactly as it rode above the gate (z-law unchanged);
+ * recovery and pending flows still raise the gate directly. */
+function _showHubSignedOut() {
+  window._signedOut = true;
+  const g = document.getElementById('login-gate');
+  if (g) g.classList.add('hidden');
+  goHub();
+  const b = document.getElementById('uai-authbtn');
+  if (b) { b.textContent = 'Sign in \u2192'; b.onclick = function () { _gateForDoor(null); }; }
+}
+function _gateForDoor(name) {
+  try { if (name) sessionStorage.setItem('pending_door', name); else sessionStorage.removeItem('pending_door'); } catch (e) {}
   _authShowGate();
+  const g = document.getElementById('login-gate');
+  if (g && !document.getElementById('uai-gate-back')) {
+    const back = document.createElement('button');
+    back.id = 'uai-gate-back'; back.type = 'button';
+    back.textContent = '\u2190 Back to spaces';
+    back.style.cssText = 'position:absolute;top:18px;left:18px;background:none;border:1px solid var(--border2);color:var(--text2);font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;padding:8px 14px;cursor:pointer;z-index:2';
+    back.onclick = function () {
+      try { sessionStorage.removeItem('pending_door'); } catch (e) {}
+      const g2 = document.getElementById('login-gate');
+      if (g2) g2.classList.add('hidden');
+      goHub();
+    };
+    g.appendChild(back);
+  }
 }
 
 function _authShowGate() {
@@ -5905,6 +5940,9 @@ function goHub(){
   } catch (e) {}
 }
 function enterSpace(name){
+  /* SEAM:DOOR_GATE — the turnstile. Signed out, the chosen door is stashed
+     and the gate rises; sign-in resumes INTO this exact space. */
+  if (window._signedOut) { _gateForDoor(name); return; }
   _uaiHide();
   if(name==='excavate'){
     document.body.style.overflow='';
@@ -7767,6 +7805,9 @@ async function _guestSubmit() {
 function _guestJoinPanel() {
   const em = (_guest && _guest.email) || '';
   _guestClose();
+  /* SEAM:DOOR_GATE — the gate is no longer the ground state; raise it before
+     pointing at its signup panel. */
+  _gateForDoor(null);
   const su = document.querySelector('.lg-tab[data-tab=signup], .lg-tab:nth-child(2)'); if (su) su.click();
   const f = document.querySelector('#login-gate input[type=email]'); if (f) { f.value = em; f.focus(); }
   showToast('Create your account \u2014 your responses ride with this email.');
@@ -7856,7 +7897,16 @@ function _enterPlatform() {
   // user on the ecosystem front door (PLAY · EXCAVATE · MINE).
   _fiInitPending = true;
   initFeaturedInsights();
+  window._signedOut = false;
+  const ab = document.getElementById('uai-authbtn');
+  if (ab) { ab.textContent = 'Sign out'; ab.onclick = function () { lgSignOut(); }; }
+  const gb = document.getElementById('uai-gate-back');
+  if (gb) gb.remove();
   goHub();
+  /* SEAM:DOOR_GATE — land inside the chosen territory, not on a homepage. */
+  let door = null;
+  try { door = sessionStorage.getItem('pending_door'); sessionStorage.removeItem('pending_door'); } catch (e) {}
+  if (door) setTimeout(function () { try { enterSpace(door); } catch (e) {} }, 60);
 }
 
 // SEAM:APPROVAL — the waiting room. A signed-in but unapproved profile lands
