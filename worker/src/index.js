@@ -98,6 +98,7 @@ export default {
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
       if (path.startsWith('/s/') && request.method === 'GET') return mineSharePage(path, env);
       if (path === '/mine/respond' && request.method === 'POST') return mineGuestRespond(request, env, origin);
+      if (path === '/beacon' && request.method === 'POST') return beaconTrack(request, env, origin);
       if (path === '/mine/t' && request.method === 'GET') return mineTokenStudy(url, env, origin);
       if (path === '/mine/t/respond' && request.method === 'POST') return mineTokenRespond(request, env, origin);
 
@@ -1480,9 +1481,10 @@ async function mineSharePage(path, env) {
   const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
   const dest = base + '/intelligence/?study=' + encodeURIComponent(sid);
   const esc2 = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  const title = s ? esc2(s.title) + ' \u2014 ' + ((s.pay_cents || 0) > 0 ? 'Paid study' : 'Free study') + ' on Unsurfaced MINE' : 'A study on Unsurfaced MINE';
+  const title = s ? esc2(s.title) + ' \u00b7 ' + ((s.pay_cents || 0) > 0 ? 'Paid study' : 'Free study') + ' on Unsurfaced MINE' : 'A study on Unsurfaced MINE';
   const desc = s ? esc2((s.goal || '').slice(0, 160)) : 'Real questions for real people.';
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary"><meta http-equiv="refresh" content="0;url=${dest}"></head><body><script>location.replace(${JSON.stringify(dest)})</script><a href="${dest}">Open the study</a></body></html>`;
+  const img = 'https://api.unsurfaced-intelligence.com/media/og/study-default.png';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="website"><meta property="og:site_name" content="Unsurfaced Intelligence"><meta property="og:image" content="${img}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${desc}"><meta name="twitter:image" content="${img}"><meta http-equiv="refresh" content="0;url=${dest}"></head><body><script>location.replace(${JSON.stringify(dest)})</script><a href="${dest}">Open the study</a></body></html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
@@ -1992,6 +1994,30 @@ async function arcSign(env, raw) {
 
 /* SEAM:ACTIVITY_LOG — the one function every endpoint calls to record an
  * event (migration 0007). Fire-and-forget: analytics never block product. */
+/* SEAM:BEACON -- the public funnel counter. Allowlisted events only, per-IP
+ * throttle, then the house logEvent (SEAM:ACTIVITY_LOG) writes activity_events.
+ * Awaited so Workers cannot cancel the write at response time; logEvent itself
+ * swallows every failure, so this route can never break the client. */
+async function beaconTrack(request, env, origin) {
+  const b = await safeJson(request);
+  const ev = String(b.event || '');
+  const SPACE = { portal_view: 'hub', study_open: 'mine', guest_submit: 'mine',
+                  panel_join: 'mine', study_invite_accepted: 'hub', study_invite_dismissed: 'hub' };
+  if (!(ev in SPACE)) return json({ ok: true }, 200, origin, env);
+  if (env.RATE_LIMIT) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const key = 'brl:' + ip + ':' + new Date().toISOString().slice(0, 10);
+    const cur = parseInt((await env.RATE_LIMIT.get(key)) || '0', 10);
+    if (cur >= 500) return json({ ok: true }, 200, origin, env);
+    await env.RATE_LIMIT.put(key, String(cur + 1), { expirationTtl: 60 * 60 * 26 });
+  }
+  let meta = (b.meta && typeof b.meta === 'object' && !Array.isArray(b.meta)) ? b.meta : {};
+  try { if (JSON.stringify(meta).length > 600) meta = {}; } catch (e) { meta = {}; }
+  const sid = String(b.session_id || '').slice(0, 64) || null;
+  await logEvent(env, 'intelligence', SPACE[ev], ev, sid, meta);
+  return json({ ok: true }, 200, origin, env);
+}
+
 function logEvent(env, platform, space, event, sessionId, meta) {
   try {
     return sbRest(env, 'activity_events', {

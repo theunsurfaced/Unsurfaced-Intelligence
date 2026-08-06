@@ -410,6 +410,15 @@
   "SEAM:STUDY_INVITE_ROUTE": {
    "file": "intelligence/index.html",
    "purpose": "token and routing shim for the invite: usiAuthToken via _authHeader with persisted-session fallback; usiGoToStudies via openStudyBoard, then enterSpace('mine'), then a real .door-mine click"
+  },
+  "SEAM:BEACON": {
+   "file": "intelligence/index.html",
+   "purpose": "first-party funnel beacon: portal_view, study_open, guest_submit, panel_join and the invite events ride POST /beacon into activity_events; analytics never block product"
+  },
+  "SEAM:BEACON_WORKER": {
+   "tag": "SEAM:BEACON",
+   "file": "worker/src/index.js",
+   "purpose": "the /beacon route: event allowlist, per-IP throttle, then the house logEvent writes activity_events"
   }
  },
  "planned": [

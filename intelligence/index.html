@@ -4,8 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; frame-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://*.workers.dev https://api.perplexity.ai https://api.openalex.org https://openalex.org https://api.gdeltproject.org https://api.semanticscholar.org https://www.semanticscholar.org https://en.wikipedia.org https://*.wikipedia.org https://www.wikidata.org https://query.wikidata.org https://export.arxiv.org https://arxiv.org https://hn.algolia.com https://api.crossref.org https://search.crossref.org https://api.worldbank.org https://data.worldbank.org https://content.guardianapis.com https://www.theguardian.com https://openlibrary.org https://api.patentsview.org https://patentsview.org https://www.reddit.com https://eutils.ncbi.nlm.nih.gov https://pubmed.ncbi.nlm.nih.gov https://doi.org">
-<title>Excavate by Unsurfaced™ — Consumer & Market Intelligence</title>
-<meta name="description" content="Real-time consumer and market intelligence platform for brands, marketers, and agencies. Powered by open-source data and Perplexity Sonar Pro.">
+<title>Unsurfaced™ Intelligence · Consumer & Market Intelligence</title>
+<meta name="description" content="One intelligence, three spaces. EXCAVATE digs the public surface, MINE goes straight to the source, PLAY makes what comes next. Real answers from real people.">
+<meta property="og:title" content="Unsurfaced™ Intelligence">
+<meta property="og:description" content="One intelligence, three spaces. EXCAVATE digs the public surface, MINE goes straight to the source, PLAY makes what comes next.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://unsurfaced-intelligence.com/intelligence/">
+<meta property="og:site_name" content="Unsurfaced Intelligence">
+<meta property="og:image" content="https://api.unsurfaced-intelligence.com/media/og/intelligence.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://api.unsurfaced-intelligence.com/media/og/intelligence.png">
+<meta name="theme-color" content="#0A0A0F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://api.unsurfaced-intelligence.com">
+<link rel="preconnect" href="https://uxbhafkqungklmnrfdhp.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -2444,7 +2461,7 @@ async function _sbSignup() {
   _lgSetLoading('lg-signup-btn', false);
   if (error) return _lgSetError(error.message || 'Sign up failed');
   if (data.session) { _currentUser = _userFromSb(data.user); _authShowApp(); }
-  else { _lgSetError('Account created. Check your email to confirm, then sign in. (Tip: to skip this, turn off “Confirm email” in Supabase → Authentication.)'); lgSwitch('login'); }
+  else { _lgSetError('Account created. Check your email to confirm, then sign in.'); lgSwitch('login'); }
 }
 async function _sbSendReset() {
   const email = (document.getElementById('lg-forgot-email') && document.getElementById('lg-forgot-email').value || '').trim();
@@ -6964,11 +6981,11 @@ function vRStudy(id) {
   }
   const qs = (s.questions || []).map((q, i) => mineRenderQuestion(q, i)).join('');
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'r-home\')">← Studies</button>'
-    + '<span class="mr-eyebrow">' + mineTypeLabel(s.type) + ' · $' + (s.pay || 0) + '</span>'
+    + '<span class="mr-eyebrow">' + mineTypeLabel(s.type) + (((s.pay || 0) > 0) ? ' \u00b7 $' + s.pay : '') + '</span>'
     + '<h2 class="mr-h">' + safe(s.title) + '</h2>' + (s.goal ? '<p class="mr-p">' + safe(s.goal) + '</p>' : '')
     + assetHtml
     + (qs || empty('This study has no questions yet.'))
-    + '<label class="mr-check" style="margin-top:20px"><input type="checkbox" onchange="mineState.resp.consent=this.checked"> I consent to my response being used as research and understand I’ll be compensated after review.</label>'
+    + '<label class="mr-check" style="margin-top:20px"><input type="checkbox" onchange="mineState.resp.consent=this.checked"> I consent to my response being used as research for this brand.' + ((s.pay || 0) > 0 ? ' I understand I\u2019ll be compensated after review.' : ' This is a free study \u2014 no compensation.') + '</label>'
     + '<div class="mr-nav"><button class="mr-btn" onclick="mineRoute(\'r-home\')">Back</button><button class="mr-btn mr-btn-primary" onclick="mineSubmitResponse()">Submit response →</button></div>';
 }
 function mineRenderQuestion(q, i) {
@@ -11919,6 +11936,52 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
 
   </div><!-- /lg-shell -->
 </div><!-- /login-gate -->
+
+<!-- SEAM:BEACON -- first-party funnel beacon, INTELLIGENCE client -->
+<script id="usiBeaconJs">
+(function () {
+  'use strict';
+  /* SEAM:BEACON -- portal_view, study_open, guest_submit, panel_join, plus the
+     invite's own events, into activity_events via POST /beacon. Analytics never
+     block product: every path swallows, nothing here is load bearing. */
+  if (typeof window.logEvent === 'function') return;
+  var API = (window.UNSURFACED_API || 'https://api.unsurfaced-intelligence.com') + '/beacon';
+  var SID = 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  var OK = { portal_view: 1, study_open: 1, guest_submit: 1, panel_join: 1,
+             study_invite_accepted: 1, study_invite_dismissed: 1 };
+  function send(event, meta) {
+    try {
+      if (!OK[event]) return;
+      var body = JSON.stringify({ event: event, session_id: SID, meta: meta || {} });
+      var ok = false;
+      if (navigator.sendBeacon) {
+        try { ok = navigator.sendBeacon(API, new Blob([body], { type: 'application/json' })); } catch (e) { ok = false; }
+      }
+      if (!ok && typeof fetch === 'function') {
+        fetch(API, { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: body }).catch(function () {});
+      }
+    } catch (e) { /* never load bearing */ }
+  }
+  window.logEvent = function (event, meta) { send(event, meta); };
+  function wrap(name, event, metaFn) {
+    var fn = window[name];
+    if (typeof fn !== 'function') return;
+    window[name] = function () {
+      try { send(event, metaFn ? metaFn(arguments) : {}); } catch (e) {}
+      return fn.apply(this, arguments);
+    };
+  }
+  function arm() {
+    wrap('_guestMaybeOpen', 'study_open', function (a) { return { study_id: a && a[0] ? String(a[0]) : null }; });
+    wrap('_guestSubmit', 'guest_submit', null);
+    wrap('_guestJoinPanel', 'panel_join', null);
+    send('portal_view', { path: window.location.pathname });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
+  else arm();
+})();
+</script>
+<!-- /SEAM:BEACON -->
 
 <!-- SEAM:STUDY_INVITE_ROUTE -- token getter and MINE routing for the invite -->
 <script id="usiInviteRoute">
