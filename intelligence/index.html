@@ -5503,6 +5503,10 @@ function _getTopicKey(config) {
 (function () {
   function _crashBar(msg) {
     try {
+      /* SEAM:FLIGHT_RECORDER -- civilian gate: console always, paint only for debug */
+      try { console.error('RUNTIME', msg); } catch (e0) {}
+      var dbg = false; try { dbg = /[?&]debug=1/.test(location.search) || localStorage.getItem('usi.debug') === '1'; } catch (e1) {}
+      if (!dbg) return;
       var b = document.getElementById('unsrf-crash') || document.createElement('div');
       b.id = 'unsrf-crash';
       b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#C41230;color:#fff;padding:8px 14px;font-family:monospace;font-size:11px;line-height:1.5;white-space:pre-wrap';
@@ -7656,6 +7660,9 @@ window._clickStore = null;   // set by whichever response flow is live
  * boot-time crash (which the crash bar will have named). */
 setTimeout(function () {
   try {
+    /* SEAM:FLIGHT_RECORDER -- chip gate: debug eyes only */
+    var dbg = false; try { dbg = /[?&]debug=1/.test(location.search) || localStorage.getItem('usi.debug') === '1'; } catch (e0) {}
+    if (!dbg) return;
     var c = document.createElement('div');
     c.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99999;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);color:#4ade80;font-family:monospace;font-size:9px;letter-spacing:.12em;padding:4px 10px;pointer-events:none';
     c.textContent = 'SCRIPTS ARMED';
