@@ -72,7 +72,7 @@ export default {
     try {
       // Public
       if (path === '/' || path === '/health') return json({ ok: true, service: 'unsurfaced-api' }, 200, origin, env);
-      if (request.method === 'GET' && path.startsWith('/media/')) return serveMedia(path, env, origin, request);
+      if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/media/')) return serveMedia(path, env, origin, request);
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
       if (path.startsWith('/arcade/') && !path.startsWith('/arcade/admin/')) return arcadeRouter(path, request, env, origin);
       if (path === '/api/edition/today') return editionToday(env, origin);
