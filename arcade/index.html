@@ -496,10 +496,20 @@ footer{
     } catch (e) { stat(err(e)); }
     ev.target.value = "";
   }
-  function mount() {
+  async function mount() {
     try {
-      if (localStorage.getItem("uai_staff") !== "1") return;
+      /* SEAM:ENDGAME -- treasury door, server truth only. The button exists
+         for a live, signed-in admin session and nothing else: one probe of
+         /arcade/admin/state per load, only when a shared-origin session is
+         present. No token, 401, 403, or network failure -- silence. The
+         device-flag era is over: history is not identity. */
       if (document.getElementById("tBtn")) return;
+      var t = tok();
+      if (!t) return;
+      var r = await fetch(API + "/arcade/admin/state", { method: "POST", headers: { Authorization: "Bearer " + t } });
+      if (!r.ok) return;
+      var d = await r.json();
+      if (!d || d.ok !== true) return;
       var b = document.createElement("button");
       b.className = "tbtn"; b.id = "tBtn"; b.textContent = "TREASURY \u2301";
       b.addEventListener("click", show);
