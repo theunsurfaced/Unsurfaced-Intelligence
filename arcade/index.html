@@ -496,30 +496,39 @@ footer{
     } catch (e) { stat(err(e)); }
     ev.target.value = "";
   }
-  async function mount() {
+  function tRemove() {
     try {
-      /* SEAM:ENDGAME -- treasury door, server truth only. The button exists
-         for a live, signed-in admin session and nothing else: one probe of
-         /arcade/admin/state per load, only when a shared-origin session is
-         present. No token, 401, 403, or network failure -- silence. The
-         device-flag era is over: history is not identity. */
-      if (document.getElementById("tBtn")) return;
+      var b = document.getElementById("tBtn");
+      if (b && b.parentNode) b.parentNode.removeChild(b);
+      hide();
+    } catch (e) {}
+  }
+  async function tVerify() {
+    try {
+      /* SEAM:ENDGAME -- treasury door v2: server truth, re-proven on every
+         surface of the page. Load, bfcache resurrection (pageshow), cross-tab
+         sign-out (storage), and tab refocus all re-run the same check --
+         sign out anywhere, the door dies everywhere. History is not
+         identity; neither is a cached DOM. */
       var t = tok();
-      if (!t) return;
+      if (!t) { tRemove(); return; }
       var r = await fetch(API + "/arcade/admin/state", { method: "POST", headers: { Authorization: "Bearer " + t } });
-      if (!r.ok) return;
-      var d = await r.json();
-      if (!d || d.ok !== true) return;
+      var d = r.ok ? await r.json() : null;
+      if (!d || d.ok !== true) { tRemove(); return; }
+      if (document.getElementById("tBtn")) return;
       var b = document.createElement("button");
       b.className = "tbtn"; b.id = "tBtn"; b.textContent = "TREASURY \u2301";
       b.addEventListener("click", show);
       var slot = document.querySelector(".nav-right");
       if (slot) slot.insertBefore(b, slot.firstChild);
       else document.body.appendChild(b);
-    } catch (e) {}
+    } catch (e) { /* transient network: leave the current state standing */ }
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
-  else mount();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tVerify);
+  else tVerify();
+  window.addEventListener("pageshow", function (ev) { if (ev && ev.persisted) tVerify(); });
+  window.addEventListener("storage", function (ev) { if (ev && ev.key === SB_KEY) tVerify(); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) tVerify(); });
 })();
 </script>
 <script>
