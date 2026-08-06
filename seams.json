@@ -402,6 +402,14 @@
   "SEAM:DOOR_GATE": {
    "file": "intelligence/index.html",
    "purpose": "the user journey inversion (GATE-BEHIND-THE-CLICK spec): hub is the signed-out ground state, doors are turnstiles stashing pending_door, sign-in lands inside the chosen territory; approval law stacks after auth unchanged, guest rail rides above the hub, recovery/pending flows raise the gate directly, back-to-spaces escape on the turnstile gate"
+  },
+  "SEAM:STUDY_INVITE": {
+   "file": "intelligence/index.html",
+   "purpose": "open-studies invite on the hub: public /mine/studies for data, /whoami approval as db truth, observer-armed behind the login gate, hub-scroll pill collapse, 24h snooze on dismiss; zero open studies renders nothing"
+  },
+  "SEAM:STUDY_INVITE_ROUTE": {
+   "file": "intelligence/index.html",
+   "purpose": "token and routing shim for the invite: usiAuthToken via _authHeader with persisted-session fallback; usiGoToStudies via openStudyBoard, then enterSpace('mine'), then a real .door-mine click"
   }
  },
  "planned": [
