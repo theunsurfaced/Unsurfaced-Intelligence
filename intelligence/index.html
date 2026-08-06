@@ -11960,12 +11960,11 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     try {
       if (!OK[event]) return;
       var body = JSON.stringify({ event: event, session_id: SID, meta: meta || {} });
-      var ok = false;
-      if (navigator.sendBeacon) {
-        try { ok = navigator.sendBeacon(API, new Blob([body], { type: 'application/json' })); } catch (e) { ok = false; }
-      }
-      if (!ok && typeof fetch === 'function') {
-        fetch(API, { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: body }).catch(function () {});
+      /* SEAM:BEACON -- transport law: fetch keepalive, credentials omitted.
+         sendBeacon is always credentialed; our CORS rightly refuses
+         credentials, so sendBeacon queued then died silently. Never again. */
+      if (typeof fetch === 'function') {
+        fetch(API, { method: 'POST', keepalive: true, credentials: 'omit', headers: { 'content-type': 'application/json' }, body: body }).catch(function () {});
       }
     } catch (e) { /* never load bearing */ }
   }
