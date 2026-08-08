@@ -145,6 +145,7 @@ export default {
         case '/pay/responder':       return payResponder(body, env, origin, user);
         case '/pay/fund-study':      return payFundStudy(body, env, origin, user);
         case '/email/study-invite':  return emailStudyInvite(body, env, origin, user);
+        case '/mine/ensure-slug':    return mineEnsureSlug(body, env, origin, user);
         default: return json({ ok: false, error: 'not_found' }, 404, origin, env);
       }
     } catch (err) {
@@ -1453,7 +1454,8 @@ async function mineLakeSync(body, env, origin, user) {
   const verb = resp.slice(0, 8).map(r => (r.anon_id || 'anon') + ': ' + JSON.stringify(r.answers).slice(0, 90)).join(' \u00B7 ');
   const summary = ('PRIMARY RESEARCH \u2014 ' + resp.length + ' real responses. GOAL: ' + (s.goal || '') + (read ? ' READ: ' + read : '') + ' VERBATIM: ' + verb).slice(0, 1200);
   const title = ('MINE: ' + s.title).slice(0, 300);
-  const url = 'https://api.unsurfaced-intelligence.com/s/' + sid;
+  const slug = await ensureStudySlug(env, s);
+  const url = ((env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '')) + '/s/' + (slug || sid);
   try {
     const hash = await sha256hex(hashInput(title, url));
     const row = { content_hash: hash, title, url, summary, image: null, published_at: null,
@@ -1474,9 +1476,51 @@ async function mineNotify(body, env, origin, user) {
   return json({ ok: true }, 200, origin, env);
 }
 /* SEAM:MINE_SCALE — the link unfurls as the study, not a homepage: OG card + redirect */
+function slugifyTitle(t) {
+  return String(t || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'study';
+}
+async function ensureStudySlug(env, study) {
+  if (!study || !study.id) return null;
+  if (study.slug) return study.slug;
+  try {
+    const cur = await sbRest(env, `study?id=eq.${study.id}&select=slug,title`);
+    if (cur && cur[0] && cur[0].slug) return cur[0].slug;
+    const base = slugifyTitle((cur && cur[0] && cur[0].title) || study.title);
+    for (let k = 0; k < 6; k++) {
+      const cand = k ? base + '-' + (k + 1) : base;
+      const taken = await sbRest(env, `study?slug=eq.${cand}&select=id`);
+      if (taken && taken.length) continue;
+      await sbRest(env, `study?id=eq.${study.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { slug: cand } });
+      return cand;
+    }
+  } catch (e) {}
+  return null;
+}
+async function mineEnsureSlug(body, env, origin, user) {
+  const sid = String(body.study_id || '');
+  if (!/^[0-9a-f-]{36}$/i.test(sid)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const ss = await sbRest(env, `study?id=eq.${sid}&select=id,partner_id,title,slug`);
+  const study = ss && ss[0];
+  if (!study) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const admin = await callerIsAdmin(env, user.id);
+  if (!admin) {
+    const pp = await sbRest(env, `partner_profile?owner_id=eq.${user.id}&select=id`);
+    if (!(pp && pp[0] && pp[0].id === study.partner_id)) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  }
+  const slug = await ensureStudySlug(env, study);
+  return json({ ok: true, slug, url: ((env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '')) + '/s/' + (slug || sid) }, 200, origin, env);
+}
 async function mineSharePage(path, env) {
-  const sid = decodeURIComponent(path.slice('/s/'.length));
-  let ss; try { ss = await sbRest(env, `study?id=eq.${sid}&status=eq.live&select=id,title,goal,pay_cents`); } catch (e) { ss = null; }
+  /* SEAM:SHARE_SLUG — branded permalinks. /s/{key} resolves by UUID or by
+   * slug; slugs mint lazily from the title on first share and never change
+   * (permalink law: links must not rot). The live-only gate is unchanged —
+   * drafts and closed studies still render the generic card. */
+  const key = decodeURIComponent(path.slice('/s/'.length)).slice(0, 120);
+  const byId = /^[0-9a-f-]{36}$/i.test(key);
+  const q = byId ? `id=eq.${key}` : `slug=eq.${key.toLowerCase()}`;
+  let ss; try { ss = await sbRest(env, `study?${q}&status=eq.live&select=id,title,goal,pay_cents`); } catch (e) { ss = null; }
+  const sid = (ss && ss[0] && ss[0].id) || (byId ? key : '');
   const s = ss && ss[0];
   const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
   const dest = base + '/intelligence/?study=' + encodeURIComponent(sid);

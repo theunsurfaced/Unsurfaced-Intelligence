@@ -7560,9 +7560,20 @@ function mineExportReport(id) {
   const wnd = window.open('', '_blank'); if (!wnd) { showToast('Allow pop-ups to export the report'); return; }
   wnd.document.write(html); wnd.document.close(); setTimeout(() => { try { wnd.print(); } catch (e) {} }, 500);
 }
-function mineCopyLink(id) {
-  const url = API_BASE ? (API_BASE.replace(/\/$/, '') + '/s/' + encodeURIComponent(id)) : (window.location.origin + window.location.pathname + '?study=' + encodeURIComponent(id));
-  const done = () => showToast('Link copied');
+/* SEAM:SHARE_SLUG — branded permalinks first: the copy button asks the worker
+ * to mint (or return) the study's slug and copies unsurfaced-intelligence.com
+ * /s/{slug}. Every fallback keeps the old behavior — a link is always copied. */
+async function mineCopyLink(id) {
+  let url = API_BASE ? (API_BASE.replace(/\/$/, '') + '/s/' + encodeURIComponent(id)) : (window.location.origin + window.location.pathname + '?study=' + encodeURIComponent(id));
+  try {
+    const s = mStudy(id);
+    if (s && s.slug) url = 'https://unsurfaced-intelligence.com/s/' + s.slug;
+    else if (API_BASE) {
+      const d = await api('mine/ensure-slug', { study_id: id });
+      if (d && d.ok && d.url) { url = d.url; if (s && d.slug) s.slug = d.slug; }
+    }
+  } catch (e) {}
+  const done = () => showToast('Link copied \u2014 ' + url.replace(/^https?:\/\//, ''));
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(() => window.prompt('Copy the response link:', url));
   else window.prompt('Copy the response link:', url);
 }

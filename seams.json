@@ -419,6 +419,15 @@
    "tag": "SEAM:BEACON",
    "file": "worker/src/index.js",
    "purpose": "the /beacon route: event allowlist, per-IP throttle, then the house logEvent writes activity_events"
+  },
+  "SEAM:SHARE_SLUG": {
+   "file": "worker/src/index.js",
+   "purpose": "branded study permalinks: /s/{key} resolves by UUID or slug (live-only gate unchanged), slugs mint lazily from the title (kebab, diacritic-folded, deduped, capped 60) and never change once set \u2014 permalink law; /mine/ensure-slug authed endpoint (partner-or-admin) mints on demand; lake share cards carry the branded URL (0024)"
+  },
+  "SEAM:SHARE_SLUG@arrival": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:SHARE_SLUG",
+   "purpose": "copy-link goes slug-first: known slug copies unsurfaced-intelligence.com/s/{slug}, else ensure-slug mints one, every fallback still copies a working link; toast shows the copied domain"
   }
  },
  "planned": [
