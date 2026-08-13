@@ -1271,19 +1271,91 @@ async function mineClientResults(body, env, origin, user) {
     // never carry PII because the select never asks for it.
     const rows = await sbRest(env,
       `response?study_id=eq.${sid}&select=anon_id,segments,answers,clicks,quality_status,submitted_at&limit=2000`) || [];
-    const agg = aggregateResponses(rows, qs, RAIL.CLIENT_FLOOR);
+    /* SEAM:ANALYSIS_RAIL — segment lens. The census is always computed from
+     * the FULL set (so the filter UI knows what exists); the aggregate runs
+     * on the filtered set, and the floor law applies to the filtered n —
+     * a segment below the floor says so instead of showing thin numbers. */
+    const segReq = String(body.segment || '').slice(0, 60);
+    const segCensus = {};
+    for (const r of rows) {
+      if (r.quality_status === 'rejected') continue;
+      for (const g of (r.segments || [])) { const k = String(g).slice(0, 60); if (k) segCensus[k] = (segCensus[k] || 0) + 1; }
+    }
+    const segRows = segReq ? rows.filter(r => (r.segments || []).map(String).includes(segReq)) : rows;
+    const agg = aggregateResponses(segRows, qs, RAIL.CLIENT_FLOOR);
+    agg.segment = segReq || null;
+    agg.segments = Object.entries(segCensus).sort((a, b) => b[1] - a[1]).slice(0, 24)
+      .map(([k, v]) => ({ name: k, n: v }));
+    /* Top-2-box for scale questions — computed, never modeled. */
+    for (const q of agg.questions || []) {
+      if (q.type === 'scale' && q.answered) {
+        const t2 = ((q.counts && q.counts['4']) || 0) + ((q.counts && q.counts['5']) || 0);
+        q.t2b = Math.round((t2 / q.answered) * 100);
+      }
+    }
     /* SEAM:CLICKPATH — behavior joins the read once the floor is met. Only
        non-rejected responses feed the summary, same law as every number. */
     if (agg.floor_met) {
-      const live = rows.filter(r => r.quality_status !== 'rejected');
+      const live = segRows.filter(r => r.quality_status !== 'rejected');
       for (const q of agg.questions) {
         const cs = clickSummary(live, q.id);
         if (cs) q.clicks = cs;
       }
     }
+    /* SEAM:ANALYSIS_RAIL — THE MINE READ. The compiler finally judges the
+     * platform's own primary research: closed findings + verbatims flow to
+     * the T-model, out comes the house two-liner plus THEMES read from the
+     * open answers (theme names + VERBATIM quotes only — no counts, because
+     * a count the model estimated would violate the real-stats law; measured
+     * theme counts arrive with embedding clustering in v2). KV-cached by
+     * n + segment so the 60s poll never re-burns AI; failure ships the
+     * numbers without the read, never an error. */
+    let insight = null;
+    if (agg.floor_met) {
+      const iKey = `mr:${sid}:${agg.n}:${segReq || 'all'}`;
+      try { const hit = await env.RATE_LIMIT.get(iKey); if (hit) insight = JSON.parse(hit); } catch (e) {}
+      if (!insight) {
+        try {
+          const lines = [];
+          for (const q of agg.questions.slice(0, 8)) {
+            if (q.type === 'open' || !q.counts) continue;
+            const top = Object.keys(q.counts).sort((a, b) => q.counts[b] - q.counts[a])[0];
+            if (top) lines.push(`"${String(q.prompt).slice(0, 80)}" -> top answer "${String(top).slice(0, 50)}" (${q.pct && q.pct[top] != null ? q.pct[top] + '%' : q.counts[top] + '/' + q.answered})${q.t2b != null ? ', T2B ' + q.t2b + '%' : ''}`);
+          }
+          const opens = agg.questions.filter(q => q.type === 'open' && (q.verbatims || []).length >= 3).slice(0, 3);
+          let vb = '';
+          for (const q of opens) vb += `\nOPEN "${String(q.prompt).slice(0, 80)}" [id ${q.id}]:\n` +
+            q.verbatims.slice(0, 16).map(v => '- ' + String(v.text).slice(0, 140)).join('\n');
+          const usr = `Primary research study: "${st.title}". Goal: ${String(st.goal || '').slice(0, 160)}. ${agg.n} quality responses${segReq ? ' (segment: ' + segReq + ')' : ''}.\nCLOSED FINDINGS:\n${lines.join('\n')}\n${vb}\n\nReturn JSON exactly: {"read":["line 1: one sharp sentence on what the field actually said","line 2: the move it implies for the client"],"themes":[{"qid":"<id from OPEN header>","name":"<=5 word theme","quotes":["verbatim copied exactly","verbatim copied exactly"]}]}\nUp to 4 themes per open question. Quotes must be COPIED VERBATIM from the responses above — never paraphrase, never invent. JSON only.`;
+          const out2 = await env.AI.run(CONFIG.TEXT_MODEL, { messages: [
+            { role: 'system', content: 'You compile primary research into honest findings. You never invent numbers or quotes.' },
+            { role: 'user', content: usr }], max_tokens: 900 });
+          const raw = String((out2 && (out2.response || out2.result || '')) || '');
+          const jm = raw.match(/\{[\s\S]*\}/);
+          if (jm) {
+            const parsed = JSON.parse(jm[0]);
+            const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2).map(x => String(x || '').slice(0, 220)).filter(Boolean);
+            const allVerb = new Set();
+            for (const q of opens) for (const v of q.verbatims) allVerb.add(v.text);
+            const themes = (Array.isArray(parsed.themes) ? parsed.themes : []).slice(0, 12).map(t => ({
+              qid: String(t.qid || '').slice(0, 60),
+              name: String(t.name || '').slice(0, 60),
+              quotes: (Array.isArray(t.quotes) ? t.quotes : []).slice(0, 2)
+                .map(x => String(x || '').slice(0, 160))
+                .filter(x => { for (const v of allVerb) if (v.indexOf(x) >= 0 || x.indexOf(v.slice(0, 100)) >= 0) return true; return false; })
+            })).filter(t => t.name);
+            if (read.length === 2) {
+              insight = { read, themes, computed_at: new Date().toISOString(), basis: agg.n + ' responses' + (segReq ? ' \u00b7 ' + segReq : '') };
+              try { await env.RATE_LIMIT.put(iKey, JSON.stringify(insight), { expirationTtl: 21600 }); } catch (e) {}
+            }
+          }
+        } catch (e) { /* numbers without the read beat no numbers */ }
+      }
+    }
     const out = { ok: true, role, study: { id: st.id, title: st.title, goal: st.goal,
       target_n: st.target_n || null, status: st.status },
-      n: agg.n, floor: agg.floor, floor_met: agg.floor_met, questions: agg.questions };
+      n: agg.n, floor: agg.floor, floor_met: agg.floor_met, questions: agg.questions,
+      segment: agg.segment, segments: agg.segments, insight };
     if (agg.floor_met && body.crosstab)
       out.crosstab = crossTab(rows, String(body.crosstab), 5);
     // Fielding health is for the house, never the client.
