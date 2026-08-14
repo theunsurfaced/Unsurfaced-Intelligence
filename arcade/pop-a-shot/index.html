@@ -210,7 +210,7 @@ button.soon{cursor:pointer;background:none}
       <button class="ok" id="signupGo">Join the Board</button>
       <button class="skip" id="signupSkip">Skip — run it back</button>
     </div>
-    <button class="ok" id="revealOk" style="display:none">Keep playing</button>
+    <button class="ok" id="revealOk" style="display:none">Run it back →</button>
     <a class="skip" id="revealArcade" href="/arcade/">Return to the Arcade</a>
   </div>
 </div>
@@ -539,7 +539,7 @@ function showCard(){
   // SEAM:LEADERBOARD — spec 3 mounted: score submission + ranked board.
   const joined = !!arcPlayer();
   document.querySelector('#reveal .signup').style.display = joined ? 'none' : '';
-  $('revealOk').style.display = joined ? '' : 'none';
+  $('revealOk').style.display = joined ? 'block' : 'none'; /* SEAM:ARCADE_ECON -- inline block beats the .win css that buried run-it-back */
   $('boardWrap').style.display = 'none';
   (async () => { await arcSubmitScore(); await arcRenderBoard(); })();
   $('revealEyebrow').textContent = joined ? 'Final Score' : 'Final Score · Join the Board';
@@ -591,7 +591,7 @@ $('signupGo').addEventListener('click', ()=>{
         blip(660, .1); setTimeout(()=>blip(880, .14), 90);
         await arcSubmitScore(); await arcRenderBoard();
         document.querySelector('#reveal .signup').style.display = 'none';
-        $('revealOk').style.display = '';
+        $('revealOk').style.display = 'block';
       } else if (r.error === 'handle_taken' || r.error === 'handle_unavailable'){
         go.disabled = false; go.textContent = 'Join the Board';
         hd.classList.add('err'); hd.focus();
