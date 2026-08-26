@@ -437,6 +437,28 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:ANALYSIS_RAIL",
    "purpose": "client room: segment select with counts, THE READ block (honesty label: quotes verbatim, themes read not counted), T2B chip on scale bars, lens carried through cache and poll"
+  },
+  "SEAM:INSTRUMENT": {
+   "file": "intelligence/index.html",
+   "purpose": "the question type vocabulary and the math each type earns: adds ab (forced choice), nps (0\u201310 with computed promoters\u2212detractors score), rank (tap-to-order, in-place DOM writes so stimulus iframes never reload mid-response), numeric (mean/median/range, non-numeric excluded from n); scale becomes configurable \u2014 points ride in options, anchor labels in pass_options, empty options renders the original 1\u20135 so every existing question is untouched; worker aggregateResponses branches per type and T2B now reads the scale\u2019s own top two points \u2014 the hardcoded 4+5 was silently wrong for every non-5-point scale, and a 2-point scale reports no top box rather than a half-truth; five touchpoints move together: label registry, builder toggle, both respondent renderers, aggregate, report render"
+  },
+  "SEAM:METHODOLOGY": {
+   "file": "intelligence/index.html",
+   "purpose": "the template registry \u2014 fourteen instrument batteries (concept, message, package, ad pretest, landing page, name, tracker, NPS pulse, Van Westendorp, pricing ladder, feature prioritisation, U&A, territory, post-purchase CX) filterable by industry; mineMethodSeed returns fresh objects in the exact shape mineQSave writes so seeded questions are indistinguishable from hand-built and edits never bleed into the registry or a sibling; retires the survey/video/audio chips (vestigial since per-question stimulus) and makes the study-level stimulus slot unconditional for any asset type; every template\u2019s types must exist in SEAM:INSTRUMENT \u2014 proof_methodology.js fails the build otherwise"
+  },
+  "SEAM:BANNER": {
+   "file": "worker/src/index.js",
+   "purpose": "cut any question by any other at READ time \u2014 crossTabBy derives groups from stored answers so it works retroactively on every fielded study with no migration and no write-path edit; twoProp is a two-proportion z-test of each group against its own complement (never the total, which contains the group and understates every difference), tested only when both cells clear the minimum \u2014 an unmarked number is genuinely unremarkable, not merely untested; groups below minimum are named and suppressed, never dropped silently; multi-select banners place a respondent in every group they picked; floor law rides along \u2014 below CLIENT_FLOOR the cut is not computed at all; client renders \u25b2\u25bc at p<.05 under each question with group n visible"
+  },
+  "SEAM:INSTRUMENT@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:INSTRUMENT",
+   "purpose": "the math half of the vocabulary: aggregateResponses branches per type \u2014 mean rank + first-choice share for rank, mean/median/range for numeric with non-numeric excluded from n, NPS computed from counts (promoters\u2212detractors, never modeled); scale points ride the aggregate entry so T2B reads the scale\u2019s own top two points \u2014 the hardcoded 4+5 is dead, and a 2-point scale reports no top box rather than a half-truth"
+  },
+  "SEAM:BANNER@arrival": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:BANNER",
+   "purpose": "client room: Compare-by selector fed by worker banner_options, cut header names every group with its n and lists suppressed cells by name, \u25b2\u25bc at p<.05 render under each question\u2019s top answers with group n beside them \u2014 an unmarked number is genuinely unremarkable, not merely untested; switching the banner refetches so the floor law and the PII select law both stay server-side"
   }
  },
  "planned": [

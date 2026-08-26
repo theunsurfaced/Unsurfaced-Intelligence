@@ -6435,12 +6435,14 @@ async function _clientLoadResults(sid, quiet) {
     const bodyReq = { study_id: sid };
     if (_clientCache && _clientCache.sid === sid && _clientCache.crosstab) bodyReq.crosstab = _clientCache.crosstab;
     if (_clientCache && _clientCache.sid === sid && _clientCache.segment) bodyReq.segment = _clientCache.segment;
+    /* SEAM:BANNER — the chosen banner point rides with the request. */
+    if (_clientCache && _clientCache.sid === sid && _clientCache.banner) bodyReq.banner = _clientCache.banner;
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/client-results', {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify(bodyReq) });
     const d = await r.json();
     if (!d || !d.ok) { if (!quiet) box.innerHTML = empty('Could not load results \u2014 check your connection.'); return; }
-    _clientCache = { sid, data: d, crosstab: bodyReq.crosstab || null, segment: bodyReq.segment || null };
+    _clientCache = { sid, data: d, crosstab: bodyReq.crosstab || null, segment: bodyReq.segment || null, banner: bodyReq.banner || null };
     box.innerHTML = _clientResultsHtml(d);
   } catch (e) { if (!quiet) box.innerHTML = empty('Could not load results \u2014 check your connection.'); }
 }
@@ -6484,14 +6486,41 @@ function _clientResultsHtml(d) {
       + 'The moment ' + d.floor + ' quality responses are in, every question\u2019s distribution appears here automatically. '
       + 'The study keeps collecting either way.</div></div>';
   }
-  const singles = d.questions.filter(q => q.type === 'single' || q.type === 'scale');
+  /* SEAM:INSTRUMENT — forced choice and NPS are categorical and cut cleanly.
+     Rank and numeric are not, and stay out of the segment selector. */
+  const singles = d.questions.filter(q => q.type === 'single' || q.type === 'scale' || q.type === 'ab' || q.type === 'nps');
+  /* SEAM:BANNER — the banner selector. Options come from the worker, which
+     knows which question types can carry a cut. */
+  const bopts = d.banner_options || [];
+  const bsel = bopts.length
+    ? '<select class="mr-field" style="width:auto;font-size:11px;padding:6px 10px" onchange="_clientBanner(this.value)">'
+      + '<option value="">Compare by: off</option>'
+      + bopts.map(q => '<option value="' + q.id + '"' + ((_clientCache && _clientCache.banner === q.id) ? ' selected' : '') + '>Compare by: ' + safe(String(q.prompt).slice(0, 38)) + '</option>').join('')
+      + '</select>'
+    : '';
   if (singles.length) {
     h += '<div class="ma-sec" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">What the field is saying'
       + '<select class="mr-field" style="width:auto;font-size:11px;padding:6px 10px" onchange="_clientCrosstab(this.value)">'
-      + '<option value="">Cross-tab: off</option>'
+      + '<option value="">By tag: off</option>'
       + singles.map(q => '<option value="' + q.id + '"' + (_clientCache && _clientCache.crosstab === q.id ? ' selected' : '') + '>By segment: ' + safe(q.prompt.slice(0, 40)) + '</option>').join('')
-      + '</select></div>';
-  } else h += '<div class="ma-sec">What the field is saying</div>';
+      + '</select>' + bsel + '</div>';
+  } else h += '<div class="ma-sec" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">What the field is saying' + bsel + '</div>';
+  /* SEAM:BANNER — the banner header names the cut and its groups before any
+     number appears, so nobody reads a segment percentage without knowing what
+     n it rests on. */
+  if (d.banner && d.banner.groups && d.banner.groups.length) {
+    h += '<div class="ma-sum"><div class="ma-q">Cut by: ' + safe(d.banner.banner.prompt) + '</div>'
+      + '<div class="ma-chiprow" style="margin-top:6px">'
+      + d.banner.groups.map(g => '<span class="mp-aud">' + safe(g.name) + ' \u00B7 n=' + g.n + '</span>').join('')
+      + '</div>'
+      + ((d.banner.suppressed || []).length
+          ? '<div class="mr-priv" style="margin-top:6px">Held back below minimum cell size: '
+            + d.banner.suppressed.map(x => safe(x.name) + ' (n=' + x.n + ')').join(', ') + '</div>'
+          : '')
+      + '<div class="mr-priv" style="margin-top:4px">\u25B2 and \u25BC mark differences significant at p&lt;.05 against everyone outside that group.</div></div>';
+  } else if (_clientCache && _clientCache.banner) {
+    h += '<div class="ma-sum"><div class="ma-row-s">No group in that question reaches the minimum cell size yet \u2014 comparisons appear once a group carries at least 5 responses.</div></div>';
+  }
   for (const q of d.questions) {
     if (q.type === 'open') {
       h += '<div class="ma-sum"><div class="ma-q">' + safe(q.prompt) + ' <span class="ma-muted">\u00B7 ' + q.answered + ' voices</span></div>'
@@ -6502,12 +6531,51 @@ function _clientResultsHtml(d) {
         + '</div>';
       continue;
     }
+    /* SEAM:INSTRUMENT — rank, numeric and NPS carry their own shapes. A bar
+     * chart over distinct values would be a chart of noise for all three. */
+    if (q.type === 'rank') {
+      const ord = q.order || Object.keys(q.mean_rank || {});
+      h += '<div class="ma-sum"><div class="ma-q">' + safe(q.prompt) + ' <span class="ma-muted">\u00B7 ' + q.answered + ' ranked</span></div>'
+        + ord.map((k, i) => '<div class="mp-bar-row"><span class="mp-bar-label">' + (i + 1) + '. ' + safe(k) + '</span>'
+            + '<span class="mp-bar-track"><span class="mp-bar-fill" style="width:' + Math.round(((q.first_pct || {})[k] || 0)) + '%"></span></span>'
+            + '<span class="mp-bar-n">avg ' + ((q.mean_rank || {})[k] != null ? q.mean_rank[k] : '\u2014') + '</span></div>').join('')
+        + '<div class="mr-priv" style="margin-top:6px">Ordered by average rank. Bar shows share who put it first.</div>'
+        + _clickBlock(q.clicks) + '</div>';
+      continue;
+    }
+    if (q.type === 'numeric') {
+      h += '<div class="ma-sum"><div class="ma-q">' + safe(q.prompt) + ' <span class="ma-muted">\u00B7 ' + q.answered + ' answered</span></div>'
+        + (q.answered
+            ? '<div class="ma-row-s" style="display:flex;gap:18px;flex-wrap:wrap;margin:6px 0">'
+              + '<span><b style="font-size:1.4em">' + q.mean + '</b> mean</span>'
+              + '<span><b style="font-size:1.4em">' + q.median + '</b> median</span>'
+              + '<span class="ma-muted">range ' + q.min + ' to ' + q.max + '</span></div>'
+            : '<div class="ma-row-s ma-muted">No numeric answers yet.</div>')
+        + _clickBlock(q.clicks) + '</div>';
+      continue;
+    }
+    if (q.type === 'nps') {
+      const pts = []; for (let n = 0; n <= 10; n++) pts.push(String(n));
+      const mx = Math.max(1, ...pts.map(k => (q.counts || {})[k] || 0));
+      h += '<div class="ma-sum"><div class="ma-q">' + safe(q.prompt) + ' <span class="ma-muted">\u00B7 ' + q.answered + ' answered</span></div>'
+        + (q.nps != null
+            ? '<div class="ma-row-s" style="display:flex;gap:18px;flex-wrap:wrap;margin:6px 0">'
+              + '<span><b style="font-size:1.6em">' + (q.nps > 0 ? '+' : '') + q.nps + '</b> NPS</span>'
+              + '<span class="ma-muted">' + q.promoters + '% promoters \u00B7 ' + q.detractors + '% detractors</span></div>'
+            : '')
+        + pts.map(k => '<div class="mp-bar-row"><span class="mp-bar-label">' + k + '</span>'
+            + '<span class="mp-bar-track"><span class="mp-bar-fill" style="width:' + Math.round((((q.counts || {})[k] || 0) / mx) * 100) + '%"></span></span>'
+            + '<span class="mp-bar-n">' + ((q.counts || {})[k] || 0) + '</span></div>').join('')
+        + _clickBlock(q.clicks) + '</div>';
+      continue;
+    }
     const keys = Object.keys(q.counts || {}).sort((a, b) => (q.counts[b] || 0) - (q.counts[a] || 0));
     const max = Math.max(1, ...keys.map(k => q.counts[k]));
     h += '<div class="ma-sum"><div class="ma-q">' + safe(q.prompt) + ' <span class="ma-muted">\u00B7 ' + q.answered + ' answered' + (q.t2b != null ? ' \u00B7 T2B ' + q.t2b + '%' : '') + '</span></div>'
       + keys.map(k => '<div class="mp-bar-row"><span class="mp-bar-label">' + safe(k) + '</span>'
           + '<span class="mp-bar-track"><span class="mp-bar-fill" style="width:' + Math.round((q.counts[k] / max) * 100) + '%"></span></span>'
           + '<span class="mp-bar-n">' + (q.pct && q.pct[k] != null ? q.pct[k] + '%' : q.counts[k]) + '</span></div>').join('')
+      + _bannerRows(d, q, keys)
       + _clickBlock(q.clicks)
       + '</div>';
   }
@@ -6529,6 +6597,37 @@ function _clientResultsHtml(d) {
   return h;
 }
 
+/* SEAM:BANNER — the cut, rendered under the question it cuts. Only the top
+ * answers get a row: a banner table with twelve columns is a spreadsheet, not
+ * a read. An arrow appears only where the z-test cleared p<.05 AND both cells
+ * cleared the minimum, so an unmarked number is genuinely unremarkable rather
+ * than merely untested. */
+function _bannerRows(d, q, keys) {
+  const b = d.banner;
+  if (!b || !b.groups || !b.groups.length) return '';
+  const cut = (b.questions || {})[q.id];
+  if (!cut || !cut.cells) return '';
+  const top = (keys || []).slice(0, 3);
+  if (!top.length) return '';
+  let out = '<div style="margin:10px 0 2px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+    + '<tr><th style="text-align:left;padding:4px 6px;opacity:.6;font-weight:600">Group</th>'
+    + top.map(k => '<th style="text-align:right;padding:4px 6px;opacity:.6;font-weight:600">' + safe(String(k).slice(0, 18)) + '</th>').join('')
+    + '<th style="text-align:right;padding:4px 6px;opacity:.6;font-weight:600">n</th></tr>';
+  for (const g of b.groups) {
+    const cell = cut.cells[g.name];
+    if (!cell) continue;
+    out += '<tr><td style="padding:4px 6px;border-top:1px solid rgba(255,255,255,.08)">' + safe(g.name) + '</td>'
+      + top.map(k => {
+          const p = cell.pct && cell.pct[k] != null ? cell.pct[k] : null;
+          const s = cell.sig && cell.sig[k];
+          const mark = s ? (s.dir === 'up' ? ' \u25B2' : ' \u25BC') : '';
+          return '<td style="text-align:right;padding:4px 6px;border-top:1px solid rgba(255,255,255,.08);'
+            + (s ? 'font-weight:700' : '') + '">' + (p == null ? '\u2014' : p + '%') + mark + '</td>';
+        }).join('')
+      + '<td style="text-align:right;padding:4px 6px;border-top:1px solid rgba(255,255,255,.08);opacity:.6">' + cell.n + '</td></tr>';
+  }
+  return out + '</table></div>';
+}
 /* SEAM:CLICKPATH — what they DID, beside what they said. First-click is the
  * headline: the distribution of the very first thing each respondent touched
  * inside the stimulus. Renders nothing when there is no behavior to show. */
@@ -6604,6 +6703,11 @@ function _clientReport() {
 }
 function _clientCrosstab(qid) {
   if (_clientCache) { _clientCache.crosstab = qid || null; _clientLoadResults(_clientCache.sid); }
+}
+/* SEAM:BANNER — switching the banner refetches; the cut is computed server
+   side so the floor law and the PII select law both still apply. */
+function _clientBanner(qid) {
+  if (_clientCache) { _clientCache.banner = qid || null; _clientLoadResults(_clientCache.sid); }
 }
 
 /* ═══ SEAM:FIELD_RAIL — the invite manager ═══════════════════════════════
@@ -7019,11 +7123,93 @@ function vRStudy(id) {
     + '<label class="mr-check" style="margin-top:20px"><input type="checkbox" onchange="mineState.resp.consent=this.checked"> I consent to my response being used as research for this brand.' + ((s.pay || 0) > 0 ? ' I understand I\u2019ll be compensated after review.' : ' This is a free study \u2014 no compensation.') + '</label>'
     + '<div class="mr-nav"><button class="mr-btn" onclick="mineRoute(\'r-home\')">Back</button><button class="mr-btn mr-btn-primary" onclick="mineSubmitResponse()">Submit response →</button></div>';
 }
+/* SEAM:INSTRUMENT — one body renderer for every new instrument, shared by the
+ * panel flow and the guest flow. The two flows carry different stores and
+ * different selected-state classes (panel 'sel', guest 'on'), so mode decides
+ * both. Nothing here ever emits an object answer: an object would break CSV
+ * export, crossTab and the report render, so rank writes an ordered array and
+ * everything else writes a scalar. */
+function _mineScalePoints(q) {
+  const o = (q.options || []).map(String).filter(x => x.trim());
+  return o.length ? o : ['1', '2', '3', '4', '5'];
+}
+function _mineAnchorRow(q) {
+  const p = q.passOptions || q.pass_options || [];
+  const lo = p[0] ? String(p[0]) : '', hi = p[1] ? String(p[1]) : '';
+  if (!lo && !hi) return '';
+  return '<div class="mr-priv" style="display:flex;justify-content:space-between;margin:2px 2px 10px">'
+    + '<span>' + safe(lo) + '</span><span>' + safe(hi) + '</span></div>';
+}
+function _mineRankBoxId(qid) { return 'rk_' + String(qid).replace(/[^A-Za-z0-9_-]/g, ''); }
+/* Rank writes in place. Re-routing would rebuild every stimulus iframe and
+ * reset an HTML asset mid-response; only this one box is ever rewritten. */
+function _mineRankSet(qid, opt, mode) {
+  const store = mode === 'guest' ? (_guest && _guest.answers) : (mineState.resp && mineState.resp.answers);
+  if (!store) return;
+  const cur = Array.isArray(store[qid]) ? store[qid].slice() : [];
+  const k = cur.indexOf(opt);
+  if (k >= 0) cur.splice(k, 1); else cur.push(opt);
+  store[qid] = cur;
+  const q = _mineFindQ(qid, mode);
+  const box = document.getElementById(_mineRankBoxId(qid));
+  if (q && box) box.innerHTML = _mineRankInner(q, cur, mode);
+}
+function _mineFindQ(qid, mode) {
+  const s = mode === 'guest' ? (_guest && _guest.s) : (mineState.resp && mStudy(mineState.resp.studyId));
+  return s && (s.questions || []).find(x => x.id === qid);
+}
+function _mineRankInner(q, cur, mode) {
+  const order = Array.isArray(cur) ? cur : [];
+  const on = mode === 'guest' ? 'mp-aud' : 'mp-aud';
+  const sel = mode === 'guest' ? ' on' : ' on';
+  return '<div class="ma-chiprow">' + (q.options || []).map(o => {
+    const at = order.indexOf(o);
+    return '<button type="button" class="' + on + (at >= 0 ? sel : '') + '" onclick="_mineRankSet(\'' + safeAttr(q.id) + '\',\'' + safeAttr(o) + '\',\'' + mode + '\')">'
+      + (at >= 0 ? (at + 1) + '. ' : '') + safe(o) + '</button>';
+  }).join('') + '</div>'
+    + '<div class="mr-priv" style="margin:2px 0 10px">Tap in order, best first. ' + order.length + ' of ' + (q.options || []).length + ' placed.</div>';
+}
+/* Returns input HTML for the new instruments, or '' when the type is one of the
+ * original six and the caller keeps its own branch. */
+function _mineInstrumentBody(q, cur, mode) {
+  const cls = mode === 'guest' ? 'mp-aud' : 'mp-aud';
+  const onc = mode === 'guest' ? ' on' : ' on';
+  const call = function (val) {
+    return mode === 'guest'
+      ? "_guestSet('" + safeAttr(q.id) + "','" + safeAttr(val) + "')"
+      : "mineAnsPick('" + safeAttr(q.id) + "','" + safeAttr(val) + "',this,false)";
+  };
+  if (q.type === 'nps') {
+    const row = [];
+    for (let n = 0; n <= 10; n++) {
+      row.push('<button type="button" class="' + cls + (String(cur) === String(n) ? onc : '') + '" onclick="' + call(String(n)) + '">' + n + '</button>');
+    }
+    return '<div class="ma-chiprow">' + row.join('') + '</div>'
+      + '<div class="mr-priv" style="display:flex;justify-content:space-between;margin:2px 2px 10px"><span>Not at all likely</span><span>Extremely likely</span></div>';
+  }
+  if (q.type === 'rank') {
+    return '<div id="' + _mineRankBoxId(q.id) + '">' + _mineRankInner(q, cur, mode) + '</div>';
+  }
+  if (q.type === 'numeric') {
+    const h = mode === 'guest'
+      ? 'oninput="_guest.answers[\'' + safeAttr(q.id) + '\']=this.value"'
+      : 'oninput="mineState.resp.answers[\'' + safeAttr(q.id) + '\']=this.value"';
+    return '<input type="number" class="mr-field" inputmode="decimal" placeholder="Enter a number" value="' + safeAttr(cur == null ? '' : String(cur)) + '" ' + h + '>';
+  }
+  if (q.type === 'ab') {
+    return '<div class="ma-chiprow" style="gap:10px">' + (q.options || []).slice(0, 2).map(o =>
+      '<button type="button" class="' + cls + (cur === o ? onc : '') + '" style="flex:1;min-height:58px;font-weight:700" onclick="' + call(o) + '">' + safe(o) + '</button>').join('') + '</div>';
+  }
+  return '';
+}
 function mineRenderQuestion(q, i) {
   const head = '<div class="ma-q">' + (i + 1) + '. ' + safe(q.prompt) + '</div>'
     + _assetHtml(q.assetKey || q.asset_key, q.assetName || q.asset_name, true, q.id);
   if (q.type === 'open') return head + '<textarea class="mr-textarea" rows="3" oninput="mineState.resp.answers[\'' + q.id + '\']=this.value" placeholder="Your answer…"></textarea>';
-  if (q.type === 'scale') return head + '<div class="mr-scale">' + ['1', '2', '3', '4', '5'].map(o => '<button type="button" onclick="mineAnsPick(\'' + q.id + '\',\'' + o + '\',this,false)">' + o + '</button>').join('') + '</div>';
+  /* SEAM:INSTRUMENT — new instruments answer first; the original six fall through. */
+  const _ib = _mineInstrumentBody(q, (mineState.resp && mineState.resp.answers) ? mineState.resp.answers[q.id] : null, 'panel');
+  if (_ib) return head + _ib;
+  if (q.type === 'scale') return head + '<div class="mr-scale">' + _mineScalePoints(q).map(o => '<button type="button" onclick="mineAnsPick(\'' + q.id + '\',\'' + safeAttr(o) + '\',this,false)">' + safe(o) + '</button>').join('') + '</div>' + _mineAnchorRow(q);
   const multi = q.type === 'multi';
   return head + '<div class="mr-choices">' + (q.options || []).map(o => '<button type="button" onclick="mineAnsPick(\'' + q.id + '\',\'' + safeAttr(o) + '\',this,' + multi + ')">' + safe(o) + '</button>').join('') + '</div>';
 }
@@ -7182,18 +7368,212 @@ function mineDelContact(i) {
 // ---- study builder ----
 function mineNewStudy() { mineState.draft = { id: mid('std'), type: 'survey', title: '', goal: '', asset: null, questions: [], audience: 'open', contactEmails: [], pay: 10 }; mineState.qedit = null; mineRoute('p-new'); }
 function mineEditStudy(id) { const s = mStudy(id); if (!s) return; mineState.draft = JSON.parse(JSON.stringify(s)); mineState.qedit = null; mineRoute('p-new'); }
+/* SEAM:METHODOLOGY — the template registry. Each entry is a real instrument
+ * battery, not a category label. `seed` returns fresh question objects in the
+ * exact shape mineQSave writes, so a seeded question is indistinguishable from
+ * a hand-built one and stays fully editable. `stim` marks which question wants
+ * a stimulus attached; the builder shows a prompt rather than blocking. */
+const MINE_METHODS = [
+  { id: 'concept', name: 'Concept test', tags: ['CPG', 'Retail', 'Services'],
+    what: 'Monadic read on a single concept: appeal, distinctiveness, fit, intent.',
+    goal: 'Decide whether this concept is strong enough to develop further.',
+    q: [
+      { t: 'scale', p: 'How appealing is this concept to you?', o: ['1','2','3','4','5','6','7'], a: ['Not at all appealing','Extremely appealing'], stim: true },
+      { t: 'scale', p: 'How different is this from what is already available?', o: ['1','2','3','4','5','6','7'], a: ['Not at all different','Completely different'] },
+      { t: 'scale', p: 'How well does this fit a need you actually have?', o: ['1','2','3','4','5','6','7'], a: ['Fits no need','Fits perfectly'] },
+      { t: 'scale', p: 'How likely would you be to buy this?', o: ['1','2','3','4','5'], a: ['Definitely would not','Definitely would'] },
+      { t: 'open', p: 'What is the single biggest reason for that answer?' },
+    ] },
+  { id: 'message', name: 'Message test', tags: ['CPG', 'B2B', 'Services'],
+    what: 'Head-to-head on two lines: preference, believability, and why.',
+    goal: 'Choose between two message routes with evidence rather than opinion.',
+    q: [
+      { t: 'ab', p: 'Which of these two says more to you?', o: ['Message A', 'Message B'], stim: true },
+      { t: 'open', p: 'What made you choose that one?' },
+      { t: 'scale', p: 'How believable is the message you chose?', o: ['1','2','3','4','5'], a: ['Not at all believable','Completely believable'] },
+      { t: 'multi', p: 'Which of these does it make you feel?', o: ['Curious','Reassured','Excited','Sceptical','Nothing in particular'] },
+    ] },
+  { id: 'package', name: 'Package test', tags: ['CPG', 'Retail'],
+    what: 'Shelf standout, quality read, and rank against the competitive set.',
+    goal: 'Decide which pack design earns the shelf.',
+    q: [
+      { t: 'scale', p: 'How much does this stand out on a crowded shelf?', o: ['1','2','3','4','5','6','7'], a: ['Disappears','Impossible to miss'], stim: true },
+      { t: 'scale', p: 'How high-quality does this look?', o: ['1','2','3','4','5','6','7'], a: ['Very low quality','Very high quality'] },
+      { t: 'rank', p: 'Rank these packs in the order you would reach for them.', o: ['Pack A','Pack B','Pack C'] },
+      { t: 'open', p: 'What is the first thing you noticed?' },
+    ] },
+  { id: 'adpre', name: 'Ad pretest', tags: ['CPG', 'Media', 'Retail'],
+    what: 'Attention, brand linkage, takeaway and action after exposure.',
+    goal: 'Decide whether this creative is ready to run.',
+    q: [
+      { t: 'open', p: 'In your own words, what was that about?', stim: true },
+      { t: 'single', p: 'Whose ad was that?', o: ['I know exactly','I have a rough idea','No idea'] },
+      { t: 'scale', p: 'How much did it hold your attention?', o: ['1','2','3','4','5','6','7'], a: ['Lost me immediately','Held me completely'] },
+      { t: 'scale', p: 'How likely would you be to look this up afterwards?', o: ['1','2','3','4','5'], a: ['Definitely not','Definitely would'] },
+      { t: 'open', p: 'What would you cut or change?' },
+    ] },
+  { id: 'landing', name: 'Landing page test', tags: ['B2B', 'Services', 'Retail'],
+    what: 'Live clickable page with behaviour recorded beside stated answers.',
+    goal: 'Find where the page loses people before it converts them.',
+    q: [
+      { t: 'open', p: 'Spend a moment on the page. What does this company do?', stim: true },
+      { t: 'scale', p: 'How clear was that to work out?', o: ['1','2','3','4','5','6','7'], a: ['Very confusing','Completely clear'] },
+      { t: 'scale', p: 'How much would you trust this company?', o: ['1','2','3','4','5','6','7'], a: ['Not at all','Completely'] },
+      { t: 'open', p: 'What stopped you, confused you, or made you hesitate?' },
+      { t: 'scale', p: 'How likely would you be to sign up?', o: ['1','2','3','4','5'], a: ['Definitely not','Definitely would'] },
+    ] },
+  { id: 'name', name: 'Name test', tags: ['CPG', 'B2B', 'Retail', 'Services'],
+    what: 'Rank, forced choice, and unprompted association.',
+    goal: 'Choose a name on evidence instead of the loudest voice in the room.',
+    q: [
+      { t: 'open', p: 'What does this name make you think of? First thing that comes to mind.', stim: true },
+      { t: 'rank', p: 'Rank these names from best to worst for this product.', o: ['Name A','Name B','Name C','Name D'] },
+      { t: 'ab', p: 'Final call: which one?', o: ['Name A','Name B'] },
+      { t: 'scale', p: 'How easy is that name to say out loud?', o: ['1','2','3','4','5'], a: ['Very awkward','Very easy'] },
+    ] },
+  { id: 'tracker', name: 'Brand tracker', tags: ['CPG', 'Retail', 'Media', 'Services'],
+    what: 'Awareness, consideration, NPS and attribute associations. Built to rerun.',
+    goal: 'Establish a baseline this quarter and measure movement against it.',
+    q: [
+      { t: 'multi', p: 'Which of these brands have you heard of?', o: ['Brand A','Brand B','Brand C','Brand D','None of these'] },
+      { t: 'multi', p: 'Which would you consider next time you buy?', o: ['Brand A','Brand B','Brand C','Brand D','None of these'] },
+      { t: 'nps', p: 'How likely are you to recommend us to a friend or colleague?' },
+      { t: 'multi', p: 'Which words fit us?', o: ['Trustworthy','Innovative','Good value','Premium','For people like me','Hard to understand'] },
+      { t: 'open', p: 'What is the one thing we could do better?' },
+    ] },
+  { id: 'nps', name: 'NPS pulse', tags: ['B2B', 'Retail', 'Services'],
+    what: 'Short loyalty read with the driver question attached. Runs in minutes.',
+    goal: 'Track loyalty and know what is moving it.',
+    q: [
+      { t: 'nps', p: 'How likely are you to recommend us to a friend or colleague?' },
+      { t: 'open', p: 'What is the main reason for your score?' },
+      { t: 'scale', p: 'How easy is it to deal with us?', o: ['1','2','3','4','5','6','7'], a: ['Very difficult','Very easy'] },
+    ] },
+  { id: 'vw', name: 'Price sensitivity', tags: ['CPG', 'B2B', 'Retail', 'Services'],
+    what: 'Van Westendorp: four price points that bracket the acceptable range.',
+    goal: 'Find the price range the market will actually accept.',
+    q: [
+      { t: 'numeric', p: 'At what price would this be so cheap you would doubt its quality?', stim: true },
+      { t: 'numeric', p: 'At what price would this be a bargain?' },
+      { t: 'numeric', p: 'At what price would this start to feel expensive?' },
+      { t: 'numeric', p: 'At what price would this be too expensive to consider?' },
+      { t: 'open', p: 'What are you comparing it against when you answer that?' },
+    ] },
+  { id: 'ladder', name: 'Pricing ladder', tags: ['B2B', 'Services', 'Retail'],
+    what: 'Purchase intent read at three fixed price points.',
+    goal: 'See where intent falls off as price climbs.',
+    q: [
+      { t: 'scale', p: 'At the lower price, how likely would you be to buy?', o: ['1','2','3','4','5'], a: ['Definitely not','Definitely would'], stim: true },
+      { t: 'scale', p: 'At the middle price, how likely would you be to buy?', o: ['1','2','3','4','5'], a: ['Definitely not','Definitely would'] },
+      { t: 'scale', p: 'At the higher price, how likely would you be to buy?', o: ['1','2','3','4','5'], a: ['Definitely not','Definitely would'] },
+      { t: 'open', p: 'At what point did it stop being worth it?' },
+    ] },
+  { id: 'feature', name: 'Feature prioritisation', tags: ['B2B', 'Services', 'Media'],
+    what: 'Rank order plus willingness to pay. Tells you what to build first.',
+    goal: 'Decide the build order from demand rather than internal preference.',
+    q: [
+      { t: 'rank', p: 'Rank these by how much you would use them.', o: ['Feature A','Feature B','Feature C','Feature D'] },
+      { t: 'single', p: 'Which one would you miss most if it disappeared?', o: ['Feature A','Feature B','Feature C','Feature D'] },
+      { t: 'numeric', p: 'What would you pay per month for the one you ranked first?' },
+      { t: 'open', p: 'What is missing from this list entirely?' },
+    ] },
+  { id: 'ua', name: 'Usage and attitudes', tags: ['CPG', 'Retail', 'Media', 'Services'],
+    what: 'Category behaviour, frequency, drivers and barriers. The foundation study.',
+    goal: 'Understand how the category actually behaves before deciding anything.',
+    q: [
+      { t: 'single', p: 'How often do you buy in this category?', o: ['Weekly or more','A few times a month','Monthly','A few times a year','Never'] },
+      { t: 'rank', p: 'Rank what matters most when you choose.', o: ['Price','Quality','Convenience','Brand','Recommendation'] },
+      { t: 'multi', p: 'What stops you buying more often?', o: ['Cost','Hard to find','Do not need it','Happy with what I use','Never thought about it'] },
+      { t: 'numeric', p: 'Roughly what do you spend in this category in a typical month?' },
+      { t: 'open', p: 'Walk us through the last time you bought. What happened?' },
+    ] },
+  { id: 'territory', name: 'Creative territory test', tags: ['Media', 'CPG', 'Retail'],
+    what: 'Several routes, ranked, with the reasoning underneath.',
+    goal: 'Pick the territory to develop, and know why it won.',
+    q: [
+      { t: 'rank', p: 'Rank these routes from strongest to weakest.', o: ['Route A','Route B','Route C'], stim: true },
+      { t: 'open', p: 'What is the strongest one saying to you?' },
+      { t: 'scale', p: 'How well does the one you ranked first fit the brand?', o: ['1','2','3','4','5','6','7'], a: ['Completely wrong','Perfect fit'] },
+      { t: 'multi', p: 'Which of these describes the strongest route?', o: ['Fresh','Familiar','Confusing','Memorable','Forgettable'] },
+    ] },
+  { id: 'cx', name: 'Post-purchase CX', tags: ['Retail', 'Services', 'B2B'],
+    what: 'Effort, satisfaction, loyalty and repeat intent after a real transaction.',
+    goal: 'Find the friction in the experience you already deliver.',
+    q: [
+      { t: 'scale', p: 'How much effort did that take you?', o: ['1','2','3','4','5','6','7'], a: ['A great deal of effort','No effort at all'] },
+      { t: 'nps', p: 'How likely are you to recommend us after that experience?' },
+      { t: 'open', p: 'Where did it get harder than it needed to be?' },
+      { t: 'scale', p: 'How likely are you to buy from us again?', o: ['1','2','3','4','5'], a: ['Definitely not','Definitely would'] },
+    ] },
+];
+const MINE_METHOD_TAGS = ['All', 'CPG', 'B2B', 'Retail', 'Media', 'Services'];
+/* Fresh objects every call. A shared reference would let one draft's edits
+ * bleed into the next study seeded from the same template. */
+function mineMethodSeed(m) {
+  return (m.q || []).map(x => ({
+    id: mid('q'), type: x.t, prompt: x.p,
+    options: (x.o || []).slice(),
+    passOptions: (x.a || []).slice(),
+    assetKey: null, assetName: null,
+  }));
+}
+function mineMethodPick(id) {
+  const m = MINE_METHODS.find(x => x.id === id);
+  if (!m) return;
+  const d = mineState.draft; if (!d) return;
+  if ((d.questions || []).length && !confirm('Replace the ' + d.questions.length + ' question' + (d.questions.length === 1 ? '' : 's') + ' already in this study?')) return;
+  mineSaveDraftMeta();
+  d.questions = mineMethodSeed(m);
+  d.method = m.id;
+  if (!d.goal) d.goal = m.goal;
+  if (!d.title) d.title = m.name;
+  mineState.qedit = null;
+  mineRoute('p-new');
+  showToast(m.name + ' loaded \u2014 ' + d.questions.length + ' questions, all editable');
+}
+function mineMethodBlank() {
+  const d = mineState.draft; if (!d) return;
+  if ((d.questions || []).length && !confirm('Clear all ' + d.questions.length + ' questions and start blank?')) return;
+  mineSaveDraftMeta();
+  d.questions = []; d.method = null; mineState.qedit = null;
+  mineRoute('p-new');
+}
+function mineMethodFilter(t) { mineSaveDraftMeta(); mineState.tplFilter = t; mineRoute('p-new'); }
+function mineMethodGrid(d) {
+  const f = mineState.tplFilter || 'All';
+  const list = MINE_METHODS.filter(m => f === 'All' || (m.tags || []).indexOf(f) >= 0);
+  const chips = MINE_METHOD_TAGS.map(t =>
+    '<button class="mp-aud' + (f === t ? ' on' : '') + '" onclick="mineMethodFilter(\'' + t + '\')">' + t + '</button>').join('');
+  const cards = list.map(m => {
+    const on = d.method === m.id;
+    return '<button class="ma-card2" style="text-align:left;cursor:pointer;display:block;width:100%;margin:0;'
+      + 'border:1px solid ' + (on ? 'var(--red,#FF3333)' : 'rgba(255,255,255,.14)') + '" onclick="mineMethodPick(\'' + m.id + '\')">'
+      + '<div style="font-weight:700;margin-bottom:4px">' + safe(m.name) + (on ? ' \u2713' : '') + '</div>'
+      + '<div class="mr-priv" style="margin:0 0 6px">' + safe(m.what) + '</div>'
+      + '<div class="ma-row-s ma-muted">' + m.q.length + ' questions \u00B7 ' + (m.tags || []).join(', ') + '</div>'
+      + '</button>';
+  }).join('');
+  return '<label class="mp-label">Start from a methodology</label>'
+    + '<div class="ma-chiprow" style="margin-bottom:10px">' + chips + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:10px">' + cards + '</div>'
+    + '<div class="ma-chiprow"><button class="mp-aud' + (d.method ? '' : ' on') + '" onclick="mineMethodBlank()">Blank study</button></div>'
+    + '<p class="mr-priv">Every seeded question is editable, removable, and yours. A template is a starting position.</p>';
+}
 function vPNew() {
   const d = mineState.draft; if (!d) return (mineSession.role === 'admin' ? vAHome() : vPHome());
   const me = mePartner() || { contacts: [] };
-  const typeChips = ['survey', 'video', 'audio'].map(t =>
-    '<button class="mp-aud' + (d.type === t ? ' on' : '') + '" onclick="mineDraftType(\'' + t + '\')">' + (t === 'survey' ? 'Build a survey' : t === 'video' ? 'Upload a video' : 'Upload audio') + '</button>').join('');
-  let assetBlock = '';
-  if (d.type === 'video' || d.type === 'audio') {
-    assetBlock = '<div class="ma-sec">' + (d.type === 'video' ? 'Video' : 'Audio') + ' to react to</div>'
-      + (d.asset ? '<div class="ma-clip">' + (d.type === 'video' ? '▶' : '♪') + ' ' + safe(d.asset.name) + ' <button class="u-trace" onclick="mineClearAsset()">replace</button></div>'
-        : '<label class="mr-upload">＋ Choose ' + d.type + ' file<input type="file" accept="' + d.type + '/*" hidden onchange="minePickAsset(this)"></label>')
-      + '<p class="mr-priv">Add questions below for responders to answer after they ' + (d.type === 'video' ? 'watch' : 'listen') + '.</p>';
-  }
+  /* SEAM:METHODOLOGY — the survey/video/audio chips are retired. They were
+     vestigial from the day per-question stimulus shipped, and they told every
+     visitor the platform does three things. mineDraftType stays defined for
+     any old draft still carrying a type. */
+  /* SEAM:METHODOLOGY — the study-level stimulus slot is always open and
+     takes any asset. Gating it behind a video/audio choice was arbitrary:
+     the per-question slot already accepts image, video, audio and HTML. */
+  const assetBlock = '<div class="ma-sec">Study stimulus (optional)</div>'
+    + (d.asset
+        ? '<div class="ma-clip">\u25A6 ' + safe(d.asset.name) + ' <button class="u-trace" onclick="mineClearAsset()">replace</button></div>'
+        : '<label class="mr-upload">\uFF0B Attach an image, video, audio file, or an HTML page respondents click through<input type="file" accept="image/*,video/*,audio/*,.html,.htm" hidden onchange="minePickAsset(this)"></label>')
+    + '<p class="mr-priv">Shown once at the top of the study. Attach per-question stimulus below when a question needs its own.</p>';
   const qlist = d.questions.map((q, i) =>
     '<div class="ma-qitem"><div><b>' + (i + 1) + '. ' + safe(q.prompt) + '</b><div class="ma-row-s">' + mineQTypeLabel(q.type) + (q.options && q.options.length ? ' · ' + q.options.length + ' options' : '') + '</div></div>'
     + '<div class="ma-actions"><button class="mr-btn" onclick="mineQEdit(\'' + q.id + '\')">Edit</button><button class="mr-btn" onclick="mineQDel(\'' + q.id + '\')">✕</button></div></div>').join('');
@@ -7202,7 +7582,7 @@ function vPNew() {
   const showOpts = (formType === 'single' || formType === 'multi' || formType === 'screener');
   const qform = '<div class="ma-card2"><div class="mp-label">' + (qe ? 'Edit question' : 'Add a question') + '</div>'
     + '<select id="q-type" class="mr-field" onchange="mineQFormToggle()">'
-    + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['scale', 'Rating (1–5)'], ['open', 'Open text'], ['screener', 'Screener (qualify)'], ['attention', 'Attention check (quality)']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
+    + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['ab', 'Forced choice (A vs B)'], ['scale', 'Rating scale'], ['nps', 'NPS (0–10)'], ['rank', 'Rank order'], ['numeric', 'Number'], ['open', 'Open text'], ['screener', 'Screener (qualify)'], ['attention', 'Attention check (quality)']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
     + (sbEnabled() ? ('<div class="ma-clip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0">'
       + '<span id="q-asset-chip">' + (mineState.qAsset ? '\u25A6 ' + safe(mineState.qAsset.name) : 'No stimulus attached \u2014 image, video, audio, or an HTML page respondents click through')
       + '</span><span>' + (mineState.qAsset ? '<button class="u-trace" onclick="_qAssetClear()">remove</button> ' : '')
@@ -7219,7 +7599,7 @@ function vPNew() {
 
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineSaveDraftMeta();mineRoute(mineSession.role === \'admin\' ? \'a-home\' : \'p-home\')">← Back</button>'
     + '<span class="mr-eyebrow">New study</span><h2 class="mr-h">Build it.</h2>'
-    + '<label class="mp-label">What kind of study?</label><div class="ma-chiprow">' + typeChips + '</div>'
+    + mineMethodGrid(d)
     + field('nd-title', 'Study title', 'e.g. React to our spring campaign', d.title)
     + area('nd-goal', 'What do you want to learn?', 'The decision this informs…', d.goal)
     + field('nd-pay', 'Reward per response ($)', '10', String(d.pay == null ? 10 : d.pay), 'number')
@@ -7236,8 +7616,30 @@ function vPNew() {
         ? '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(false)">Save changes →</button></div><p class="mr-priv">Live study: adds and wording edits apply to new responders; collected answers keep their receipts. Question types and removals are locked once responses exist.</p>'
         : '<div class="mr-nav"><button class="mr-btn" onclick="_draftPreview()">Preview \u2192</button><button class="mr-btn" onclick="mineSaveStudy(false)">Save draft</button><button class="mr-btn mr-btn-primary" onclick="mineSaveStudy(true)">Launch study →</button></div>');
 }
-function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating 1–5', open: 'Open text', screener: 'Screener', attention: 'Attention check' }[t] || t; }
-function mineQFormToggle() { const t = v('q-type'); const o = document.getElementById('q-opts'); if (o) o.style.display = (t === 'single' || t === 'multi' || t === 'screener' || t === 'attention') ? '' : 'none'; const pp = document.getElementById('q-pass'); if (pp) { pp.style.display = (t === 'screener' || t === 'attention') ? '' : 'none'; pp.placeholder = t === 'attention' ? 'The correct answer (must match an option) \u2014 wrong answers flag, never reject' : 'Qualifying answers (comma-separated, must match options)'; } }
+function mineQTypeLabel(t) { return { single: 'Single choice', multi: 'Multiple choice', scale: 'Rating scale', nps: 'NPS 0–10', rank: 'Rank order', numeric: 'Number', ab: 'Forced choice', open: 'Open text', screener: 'Screener', attention: 'Attention check' }[t] || t; }
+/* SEAM:INSTRUMENT — the options textarea and the second row change meaning
+ * by type. For scale the textarea holds the points and the second row holds
+ * the two anchor labels; for screener and attention the second row keeps its
+ * original qualifying/correct-answer job. One toggle, one place. */
+function mineQFormToggle() {
+  const t = v('q-type');
+  const o = document.getElementById('q-opts');
+  const OPTS = ['single', 'multi', 'screener', 'attention', 'ab', 'rank', 'scale'];
+  if (o) {
+    o.style.display = OPTS.indexOf(t) >= 0 ? '' : 'none';
+    o.placeholder = t === 'scale' ? 'Scale points, one per line (blank = 1\u20135)'
+      : t === 'ab' ? 'Exactly two options, one per line'
+      : t === 'rank' ? 'Items to rank, one per line'
+      : 'Options, one per line';
+  }
+  const pp = document.getElementById('q-pass');
+  if (pp) {
+    pp.style.display = (t === 'screener' || t === 'attention' || t === 'scale') ? '' : 'none';
+    pp.placeholder = t === 'attention' ? 'The correct answer (must match an option) \u2014 wrong answers flag, never reject'
+      : t === 'scale' ? 'Anchor labels: low, high (e.g. Not at all, Extremely)'
+      : 'Qualifying answers (comma-separated, must match options)';
+  }
+}
 function mineSaveDraftMeta() { const d = mineState.draft; if (!d) return; const t = document.getElementById('nd-title'); const g = document.getElementById('nd-goal'); const p = document.getElementById('nd-pay'); if (t) d.title = t.value.trim(); if (g) d.goal = g.value.trim(); if (p) d.pay = Math.max(0, parseInt(p.value, 10) || 0); const tn = document.getElementById('nd-target'); if (tn) { const nv = parseInt(tn.value, 10); d.targetN = (nv > 0) ? nv : null; } const pl = document.getElementById('nd-public'); if (pl) d.publicListing = pl.checked; }
 function mineDraftType(t) { mineSaveDraftMeta(); mineState.draft.type = t; mineRoute('p-new'); }
 function mineDraftAud(a) { mineSaveDraftMeta(); mineState.draft.audience = a; mineRoute('p-new'); }
@@ -7787,7 +8189,10 @@ function _guestQ(q, i) {
   const head = '<div style="font-weight:700;margin:18px 0 8px">' + (i + 1) + '. ' + safe(q.prompt) + '</div>'
     + _assetHtml(q.asset_key, q.asset_name, true, q.id);
   if (q.type === 'open') return head + '<textarea class="mr-textarea" rows="3" placeholder="Your answer\u2026" oninput="_guest.answers[\'' + q.id + '\']=this.value">' + safe(a || '') + '</textarea>';
-  if (q.type === 'scale') return head + '<div class="ma-chiprow">' + [1,2,3,4,5].map(n => '<button class="mp-aud' + (a === String(n) ? ' on' : '') + '" onclick="_guestSet(\'' + q.id + '\',\'' + n + '\')">' + n + '</button>').join('') + '</div>';
+  /* SEAM:INSTRUMENT — new instruments answer first; the original six fall through. */
+  const _ib = _mineInstrumentBody(q, a, 'guest');
+  if (_ib) return head + _ib;
+  if (q.type === 'scale') return head + '<div class="ma-chiprow">' + _mineScalePoints(q).map(o => '<button class="mp-aud' + (a === String(o) ? ' on' : '') + '" onclick="_guestSet(\'' + q.id + '\',\'' + safeAttr(o) + '\')">' + safe(o) + '</button>').join('') + '</div>' + _mineAnchorRow(q);
   const multi = q.type === 'multi';
   return head + '<div class="ma-chiprow">' + (q.options || []).map(o => { const on = multi ? (a || []).indexOf(o) >= 0 : a === o; return '<button class="mp-aud' + (on ? ' on' : '') + '" onclick="_guestSet(\'' + q.id + '\',\'' + safeAttr(o) + '\',' + multi + ')">' + safe(o) + '</button>'; }).join('') + '</div>';
 }

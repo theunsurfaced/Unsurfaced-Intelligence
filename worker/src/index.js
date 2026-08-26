@@ -881,6 +881,49 @@ function aggregateResponses(rows, questions, floor) {
   for (const q of (questions || [])) {
     if (q.type === 'screener' || q.type === 'attention') continue;
     const entry = { id: q.id, prompt: q.prompt, type: q.type, answered: 0 };
+    /* SEAM:INSTRUMENT — rank and numeric leave before the categorical branch.
+     * Counting distinct values on continuous or ordinal data produces a number
+     * that looks like a finding and is not one. */
+    if (q.type === 'rank') {
+      const sums = {}, seen = {}, firsts = {};
+      for (const r of live) {
+        const v = (r.answers || {})[q.id];
+        if (!Array.isArray(v) || !v.length) continue;
+        entry.answered++;
+        v.forEach((o, i) => {
+          const k = String(o); if (!k.trim()) return;
+          sums[k] = (sums[k] || 0) + (i + 1);
+          seen[k] = (seen[k] || 0) + 1;
+          if (i === 0) firsts[k] = (firsts[k] || 0) + 1;
+        });
+      }
+      entry.mean_rank = {}; entry.first_pct = {};
+      for (const k of Object.keys(sums)) {
+        entry.mean_rank[k] = Math.round((sums[k] / seen[k]) * 100) / 100;
+        entry.first_pct[k] = entry.answered ? Math.round(((firsts[k] || 0) / entry.answered) * 1000) / 10 : 0;
+      }
+      entry.order = Object.keys(sums).sort((a, b) => entry.mean_rank[a] - entry.mean_rank[b]);
+      out.push(entry); continue;
+    }
+    if (q.type === 'numeric') {
+      const nums = [];
+      for (const r of live) {
+        const raw = (r.answers || {})[q.id];
+        if (raw == null || String(raw).trim() === '') continue;
+        const v = Number(raw);
+        if (Number.isFinite(v)) nums.push(v);
+      }
+      entry.answered = nums.length;
+      if (nums.length) {
+        nums.sort((a, b) => a - b);
+        const sum = nums.reduce((x, y) => x + y, 0);
+        const mid = Math.floor(nums.length / 2);
+        entry.mean = Math.round((sum / nums.length) * 100) / 100;
+        entry.median = nums.length % 2 ? nums[mid] : Math.round(((nums[mid - 1] + nums[mid]) / 2) * 100) / 100;
+        entry.min = nums[0]; entry.max = nums[nums.length - 1];
+      }
+      out.push(entry); continue;
+    }
     if (q.type === 'open') {
       entry.verbatims = live
         .map(r => ({ who: r.anon_id || 'anon', text: String((r.answers || {})[q.id] || '').trim() }))
@@ -904,10 +947,119 @@ function aggregateResponses(rows, questions, floor) {
       const denom = entry.answered || 1;
       entry.pct = {};
       for (const k of Object.keys(counts)) entry.pct[k] = Math.round((counts[k] / denom) * 1000) / 10;
+      /* SEAM:INSTRUMENT — the scale's own points ride along so top-box math
+       * downstream reads this scale, not an assumed 1-5. */
+      if (q.type === 'scale') {
+        const pts = (q.options || []).map(String).filter(x => x.trim());
+        entry.points = pts.length ? pts : ['1', '2', '3', '4', '5'];
+      }
+      /* SEAM:INSTRUMENT — NPS: promoters minus detractors, computed from the
+       * counts already tallied. Never modeled. */
+      if (q.type === 'nps' && entry.answered) {
+        let prom = 0, det = 0;
+        for (const k of Object.keys(counts)) {
+          const n = Number(k);
+          if (!Number.isFinite(n)) continue;
+          if (n >= 9) prom += counts[k];
+          else if (n <= 6) det += counts[k];
+        }
+        entry.promoters = Math.round((prom / entry.answered) * 1000) / 10;
+        entry.detractors = Math.round((det / entry.answered) * 1000) / 10;
+        entry.nps = Math.round(entry.promoters - entry.detractors);
+      }
     }
     out.push(entry);
   }
   return { n, floor: lim, floor_met: true, questions: out };
+}
+
+/* SEAM:BANNER — PURE. Two-proportion z-test. Compares one group against its
+ * own complement; testing a group against a total that contains it understates
+ * every difference. Returns null when either side is too thin to test, and a
+ * null result renders as silence rather than a hedge. */
+function twoProp(x1, n1, x2, n2, minCell) {
+  const min = minCell || 5;
+  if (n1 < min || n2 < min) return null;
+  const pool = (x1 + x2) / (n1 + n2);
+  if (pool <= 0 || pool >= 1) return null;
+  const se = Math.sqrt(pool * (1 - pool) * (1 / n1 + 1 / n2));
+  if (!se || !Number.isFinite(se)) return null;
+  const z = ((x1 / n1) - (x2 / n2)) / se;
+  if (!Number.isFinite(z)) return null;
+  return { z: Math.round(z * 100) / 100, sig: Math.abs(z) >= 1.96, dir: z > 0 ? 'up' : 'down' };
+}
+
+/* SEAM:BANNER — PURE. Cut every question by one banner question. Groups are
+ * derived from stored answers, so this works on studies that were fielded long
+ * before banners existed. A multi-select banner puts a respondent in every
+ * group they picked, which is correct: the groups overlap, and each is still
+ * tested against everyone outside it. Groups below the minimum are named and
+ * suppressed rather than dropped silently, because a client who cannot see
+ * that a cell was withheld will assume it did not exist. */
+function crossTabBy(rows, bannerQid, questions, minCell) {
+  const live = (rows || []).filter(r => r.quality_status !== 'rejected');
+  const min = minCell || 5;
+  const bq = (questions || []).find(q => String(q.id) === String(bannerQid));
+  if (!bq) return null;
+
+  const groups = {};
+  for (const r of live) {
+    const v = (r.answers || {})[bannerQid];
+    if (v == null || String(v).trim() === '') continue;
+    for (const x of (Array.isArray(v) ? v : [v])) {
+      const k = String(x).slice(0, 60);
+      if (!k.trim()) continue;
+      (groups[k] = groups[k] || []).push(r);
+    }
+  }
+  const all = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+  const names = all.filter(k => groups[k].length >= min).slice(0, 8);
+  const suppressed = all.filter(k => groups[k].length < min).map(k => ({ name: k, n: groups[k].length }));
+  if (!names.length) return { banner: { id: bq.id, prompt: bq.prompt }, groups: [], suppressed, questions: {} };
+
+  const SKIP = ['open', 'screener', 'attention', 'rank', 'numeric'];
+  const byQ = {};
+  for (const q of (questions || [])) {
+    if (String(q.id) === String(bannerQid)) continue;
+    if (SKIP.indexOf(q.type) >= 0) continue;
+
+    const tally = (set) => {
+      let n = 0; const c = {};
+      for (const r of set) {
+        const v = (r.answers || {})[q.id];
+        if (v == null || String(v).trim() === '') continue;
+        n++;
+        for (const x of (Array.isArray(v) ? v : [v])) {
+          const k = String(x);
+          if (k.trim()) c[k] = (c[k] || 0) + 1;
+        }
+      }
+      return { n, counts: c };
+    };
+
+    const cells = {};
+    let any = false;
+    for (const g of names) {
+      const inSet = groups[g];
+      const inIds = new Set(inSet);
+      const outSet = live.filter(r => !inIds.has(r));
+      const a = tally(inSet), b = tally(outSet);
+      const pct = {}, sig = {};
+      for (const k of Object.keys(a.counts)) {
+        pct[k] = a.n ? Math.round((a.counts[k] / a.n) * 1000) / 10 : 0;
+        const t = twoProp(a.counts[k], a.n, b.counts[k] || 0, b.n, min);
+        if (t && t.sig) { sig[k] = t; any = true; }
+      }
+      cells[g] = { n: a.n, counts: a.counts, pct, sig };
+    }
+    byQ[q.id] = { cells, any_sig: any };
+  }
+  return {
+    banner: { id: bq.id, prompt: bq.prompt },
+    groups: names.map(g => ({ name: g, n: groups[g].length })),
+    suppressed,
+    questions: byQ,
+  };
 }
 
 // PURE: segment cross-tab. Segments are the free-text tags already on every
@@ -1288,9 +1440,18 @@ async function mineClientResults(body, env, origin, user) {
       .map(([k, v]) => ({ name: k, n: v }));
     /* Top-2-box for scale questions — computed, never modeled. */
     for (const q of agg.questions || []) {
+      /* SEAM:INSTRUMENT — top-2-box reads the scale's own top two points. The
+       * previous hardcoded '4' + '5' was right for 1-5 and silently wrong for
+       * every other scale length. A 2-point scale has no top BOX, so it is
+       * skipped rather than reported as a half-truth. */
       if (q.type === 'scale' && q.answered) {
-        const t2 = ((q.counts && q.counts['4']) || 0) + ((q.counts && q.counts['5']) || 0);
-        q.t2b = Math.round((t2 / q.answered) * 100);
+        const pts = (q.points && q.points.length) ? q.points : ['1', '2', '3', '4', '5'];
+        if (pts.length >= 3) {
+          const top = pts.slice(-2);
+          const t2 = top.reduce((acc, k) => acc + ((q.counts && q.counts[k]) || 0), 0);
+          q.t2b = Math.round((t2 / q.answered) * 100);
+          q.t2b_points = top;
+        }
       }
     }
     /* SEAM:CLICKPATH — behavior joins the read once the floor is met. Only
@@ -1358,6 +1519,16 @@ async function mineClientResults(body, env, origin, user) {
       segment: agg.segment, segments: agg.segments, insight };
     if (agg.floor_met && body.crosstab)
       out.crosstab = crossTab(rows, String(body.crosstab), 5);
+    /* SEAM:BANNER — the banner rides the same floor law as every other number:
+     * below the floor a client sees fielding progress and nothing that looks
+     * like a finding, so the cut is not computed at all. */
+    if (agg.floor_met && body.banner)
+      out.banner = crossTabBy(segRows, String(body.banner), qs, 5);
+    /* Which questions can serve as a banner point, so the client picks from
+     * what actually exists rather than guessing. */
+    out.banner_options = (qs || [])
+      .filter(q => ['single', 'multi', 'scale', 'ab', 'nps', 'screener'].indexOf(q.type) >= 0)
+      .map(q => ({ id: q.id, prompt: q.prompt, type: q.type }));
     // Fielding health is for the house, never the client.
     if (role !== 'client') {
       const flagged = rows.filter(r => r.quality_status === 'flagged').length;
