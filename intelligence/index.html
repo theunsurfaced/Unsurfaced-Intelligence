@@ -2501,6 +2501,21 @@ async function _sbResetPassword() {
 }
 
 // ── MINE data adapter (Supabase) ────────────────────────────────────────────
+/* SEAM:PROFILE — the client half of the label law. Reads the _mapResponder
+ * shape (age, location, interests) and must produce exactly what the worker's
+ * profileSegments produces from the raw row; proof_profile.js holds the two
+ * side by side. */
+function _profileSegments(r) {
+  if (!r) return [];
+  const out = [];
+  if (r.age && String(r.age).trim()) out.push('Age ' + String(r.age).trim().slice(0, 40));
+  if (r.location && String(r.location).trim()) out.push('Near ' + String(r.location).trim().slice(0, 40));
+  for (const it of (Array.isArray(r.interests) ? r.interests : []).slice(0, 4)) {
+    const t = String(it).trim();
+    if (t) out.push(t.slice(0, 40));
+  }
+  return out.slice(0, 8).map(x => x.slice(0, 60));
+}
 function _mapResponder(p) { return { id: p.user_id, anon: p.anon_id, name: p.name, email: p.email, age: p.age_range, location: p.location, interests: p.interests || [], prefs: p.prefs || [], cadence: p.cadence }; }
 function _mapPartner(p) { return { id: p.id, company: p.company, contactName: p.contact_name, email: p.email, website: p.website, useCase: p.use_case, contacts: [] }; }
 function _mapStudy(s) { return { id: s.id, partnerId: s.partner_id, title: s.title, goal: s.goal, type: s.type, asset: s.asset_key ? { name: s.asset_name, key: s.asset_key } : null, pay: Math.round((s.pay_cents || 0) / 100), audience: s.audience, contactEmails: [], status: s.status, fundedCents: s.funded_cents || 0, publicListing: !!s.public_listing, targetN: s.target_n || null, questions: [] }; }
@@ -2724,7 +2739,24 @@ async function _sbSubmitResponse() {
   if (screened) { mineState.lastTitle = s.title; mineState.lastScreened = true; mineRoute('r-done'); return; }
   mineState.lastScreened = false;
   const uid = await _uid();
-  const { error } = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, answers: st.answers, clicks: st.clicks || {} });
+  /* SEAM:PROFILE — snapshot rail. The richer insert is attempted first; if it
+   * fails for any reason the exact pre-patch insert runs, because a response
+   * lost to a segments column would be this feature costing someone their
+   * answers. The read path derives whatever the snapshot missed. */
+  const _snap = _profileSegments(meResponder());
+  let error = null;
+  if (_snap.length) {
+    const _r1 = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, segments: _snap, answers: st.answers, clicks: st.clicks || {} });
+    error = _r1.error;
+    if (error) {
+      try { console.warn('[SEAM:PROFILE] snapshot insert refused, falling back bare:', error.message); } catch (e0) {}
+      const _r2 = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, answers: st.answers, clicks: st.clicks || {} });
+      error = _r2.error;
+    }
+  } else {
+    const _r0 = await _sb.from('response').insert({ study_id: s.id, responder_id: uid, answers: st.answers, clicks: st.clicks || {} });
+    error = _r0.error;
+  }
   if (error) { showToast('Submit failed: ' + error.message); return; }
   if (API_BASE) { try { api('mine/notify', { study_id: s.id }); } catch (e) {} }
   mineState.lastTitle = s.title; mineState.lastPay = s.pay || 0; await mineHydrate('responder'); mineRoute('r-done');
@@ -6508,6 +6540,14 @@ function _clientResultsHtml(d) {
   /* SEAM:BANNER — the banner header names the cut and its groups before any
      number appears, so nobody reads a segment percentage without knowing what
      n it rests on. */
+  /* SEAM:PROFILE — two-rail law for segments: whenever any row was
+     reconstructed, the report says how many, so a reconstructed cut is never
+     read as a captured one. */
+  if (d.segments_note && d.segments_note.derived > 0) {
+    h += '<div class="mr-priv" style="margin:2px 0 8px">Segments: ' + d.segments_note.captured
+      + ' captured at response time \u00B7 ' + d.segments_note.derived
+      + ' reconstructed from current responder profiles.</div>';
+  }
   if (d.banner && d.banner.groups && d.banner.groups.length) {
     h += '<div class="ma-sum"><div class="ma-q">Cut by: ' + safe(d.banner.banner.prompt) + '</div>'
       + '<div class="ma-chiprow" style="margin-top:6px">'

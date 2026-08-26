@@ -973,6 +973,40 @@ function aggregateResponses(rows, questions, floor) {
   return { n, floor: lim, floor_met: true, questions: out };
 }
 
+/* SEAM:PROFILE — PURE. One label law for both rails. The client capture helper
+ * mirrors this exactly (proof_profile.js enforces parity), so a captured
+ * segment and a derived one are indistinguishable in content and distinguished
+ * only by provenance, which is the point. */
+function profileSegments(p) {
+  if (!p) return [];
+  const out = [];
+  if (p.age_range && String(p.age_range).trim()) out.push('Age ' + String(p.age_range).trim().slice(0, 40));
+  if (p.location && String(p.location).trim()) out.push('Near ' + String(p.location).trim().slice(0, 40));
+  for (const it of (Array.isArray(p.interests) ? p.interests : []).slice(0, 4)) {
+    const t = String(it).trim();
+    if (t) out.push(t.slice(0, 40));
+  }
+  return out.slice(0, 8).map(x => x.slice(0, 60));
+}
+
+/* SEAM:PROFILE — PURE over its inputs; mutates rows in place. Fills derived
+ * segments where none were captured and STRIPS responder_id from every row on
+ * every branch, so nothing downstream can leak what only the join needed.
+ * Returns the provenance split for the report to name. */
+function deriveRowSegments(rows, profMap) {
+  let captured = 0, derived = 0;
+  for (const r of (rows || [])) {
+    if (Array.isArray(r.segments) && r.segments.length) {
+      captured++;
+    } else {
+      const d = profileSegments(profMap && r.responder_id ? profMap[r.responder_id] : null);
+      if (d.length) { r.segments = d; derived++; }
+    }
+    delete r.responder_id;
+  }
+  return { captured, derived };
+}
+
 /* SEAM:BANNER — PURE. Two-proportion z-test. Compares one group against its
  * own complement; testing a group against a total that contains it understates
  * every difference. Returns null when either side is too thin to test, and a
@@ -1336,10 +1370,19 @@ async function mineTokenRespond(request, env, origin) {
   for (let k = 0; k < seed.length; k++) hsh = ((hsh * 33) ^ seed.charCodeAt(k)) >>> 0;
   const anon = 'GUEST-' + String(1000 + (hsh % 9000));
 
+  /* SEAM:PROFILE — invited rail snapshot. If the invite email belongs to a
+   * registered responder, capture their profile segments at submission time.
+   * The lookup selects only what the labels need; a failure degrades to
+   * today's empty array and never blocks the response. */
+  let _tokSeg = [];
+  try {
+    const _pp = await sbRest(env, `responder_profile?email=eq.${encodeURIComponent(i.email)}&select=age_range,location,interests`);
+    if (_pp && _pp[0]) _tokSeg = profileSegments(_pp[0]);
+  } catch (e) {}
   const now = new Date().toISOString();
   try {
     await sbRest(env, 'response', { method: 'POST', headers: { Prefer: 'return=minimal' },
-      body: { study_id: i.study_id, anon_id: anon, segments: [],
+      body: { study_id: i.study_id, anon_id: anon, segments: _tokSeg,
         answers, guest_email: i.email, status: 'submitted',
         invite_id: i.id, duration_ms: isNaN(dur) ? null : dur,
         started_at: body.started_at || null,
@@ -1419,10 +1462,30 @@ async function mineClientResults(body, env, origin, user) {
     if (!st) return json({ ok: false, error: 'study_not_found' }, 200, origin, env);
     const qs = await sbRest(env,
       `study_question?study_id=eq.${sid}&select=id,ord,type,prompt,options,asset_key,asset_name&order=ord`) || [];
-    // No email, no ZIP, no responder_id crosses this line — a client read can
-    // never carry PII because the select never asks for it.
+    // SEAM:PROFILE — the PII law, restated: no email, no name, no ZIP is ever
+    // selected on this path. responder_id enters the worker ONLY to join
+    // responder_profile for segment derivation, and deriveRowSegments deletes
+    // it from every row before any aggregation or payload is built.
     const rows = await sbRest(env,
-      `response?study_id=eq.${sid}&select=anon_id,segments,answers,clicks,quality_status,submitted_at&limit=2000`) || [];
+      `response?study_id=eq.${sid}&select=anon_id,segments,answers,clicks,quality_status,submitted_at,responder_id&limit=2000`) || [];
+    /* SEAM:PROFILE — derive-for-history. Rows with captured segments pass
+     * through untouched; rows without get a reconstruction from the current
+     * profile. Chunked lookups keep the in.() URL bounded. A failed lookup
+     * ships the numbers without the derivation and still strips the join key,
+     * because a degraded read must never become a leaking one. */
+    let _segProv = null;
+    try {
+      const _ids = [...new Set(rows.map(r => r.responder_id).filter(Boolean))];
+      const _profMap = {};
+      for (let _i = 0; _i < _ids.length; _i += 100) {
+        const _chunk = _ids.slice(_i, _i + 100);
+        const _ps = await sbRest(env, `responder_profile?user_id=in.(${_chunk.join(',')})&select=user_id,age_range,location,interests`) || [];
+        for (const _p of _ps) _profMap[_p.user_id] = _p;
+      }
+      _segProv = deriveRowSegments(rows, _profMap);
+    } catch (e) {
+      for (const _r of rows) delete _r.responder_id;
+    }
     /* SEAM:ANALYSIS_RAIL — segment lens. The census is always computed from
      * the FULL set (so the filter UI knows what exists); the aggregate runs
      * on the filtered set, and the floor law applies to the filtered n —
@@ -1516,7 +1579,7 @@ async function mineClientResults(body, env, origin, user) {
     const out = { ok: true, role, study: { id: st.id, title: st.title, goal: st.goal,
       target_n: st.target_n || null, status: st.status },
       n: agg.n, floor: agg.floor, floor_met: agg.floor_met, questions: agg.questions,
-      segment: agg.segment, segments: agg.segments, insight };
+      segment: agg.segment, segments: agg.segments, segments_note: _segProv, insight };
     if (agg.floor_met && body.crosstab)
       out.crosstab = crossTab(rows, String(body.crosstab), 5);
     /* SEAM:BANNER — the banner rides the same floor law as every other number:

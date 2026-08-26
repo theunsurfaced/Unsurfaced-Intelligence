@@ -459,6 +459,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:BANNER",
    "purpose": "client room: Compare-by selector fed by worker banner_options, cut header names every group with its n and lists suppressed cells by name, \u25b2\u25bc at p<.05 render under each question\u2019s top answers with group n beside them \u2014 an unmarked number is genuinely unremarkable, not merely untested; switching the banner refetches so the floor law and the PII select law both stay server-side"
+  },
+  "SEAM:PROFILE": {
+   "file": "worker/src/index.js",
+   "purpose": "two-rail segments, zero migration \u2014 responder_profile carried age_range/location/interests since launch and this wires them: profileSegments is the one label law (client capture mirrors it exactly, proof_profile.js holds the parity), deriveRowSegments fills DERIVED segments where none were CAPTURED and strips responder_id from every row on every branch including failure; results path chunks profile lookups selecting only user_id,age_range,location,interests \u2014 never email or name \u2014 and segments_note provenance rides the payload; invited rail snapshots by invite email at write time, a failed lookup degrades to the empty array; PII law restated not weakened: responder_id enters the worker only to make the join and is deleted before any aggregation or payload"
+  },
+  "SEAM:PROFILE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PROFILE",
+   "purpose": "the snapshot rail: _profileSegments(meResponder()) captured into segments at panel submission, with a lossless fallback that runs the exact pre-patch insert on any error \u2014 a response is never lost to this feature; the client report renders the provenance line only when something was reconstructed: N captured at response time, M reconstructed from current responder profiles \u2014 a reconstructed cut is never read as a captured one"
   }
  },
  "planned": [
