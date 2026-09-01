@@ -87,6 +87,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
 #gate h2{font-weight:800;font-size:24px;margin-bottom:10px;}
 #gate p{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:18px;}
 #engine{display:none;}
+.take .adj{width:100%;border:0;border-top:1px solid var(--border);background:var(--surface2);color:var(--deep2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 0;cursor:pointer;}
+.adjrow{display:flex;gap:8px;margin-top:10px;align-items:center;}
+.adjrow input{flex:1;background:var(--surface2);border:1px solid var(--deep2);color:var(--text);padding:9px 11px;font-family:'Syne',sans-serif;font-size:13px;outline:none;}
+.ref video,.upick video{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
+.upick{position:relative;}
+.upick .uvid{position:absolute;bottom:2px;right:3px;font-family:'Space Mono',monospace;font-size:7px;letter-spacing:.1em;color:var(--deep2);background:rgba(10,10,15,.8);padding:1px 3px;}
 .exp{display:flex;gap:10px;flex-wrap:wrap;}
 </style>
 </head>
@@ -132,7 +138,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
       </div>
       <label class="f">Reference images (optional)</label>
       <div class="refs" id="refs"></div>
-      <label class="refbtn">Add reference photos<input type="file" id="ref-file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadRefs(this.files)"></label>
+      <label class="refbtn">Add references (photo / video)<input type="file" id="ref-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" multiple style="display:none" onchange="uploadRefs(this.files)"></label>
       <div class="refup" id="refup">UPLOADING&hellip;</div>
       <p class="note">Upload the actual product, talent, or location. Renders with a reference attached are conditioned on the photo instead of the model guessing from words. Photos guide the engine today; video references join a later cut.</p>
       <div style="margin-top:18px"><button class="btn" id="go1" onclick="develop()">Develop direction &rarr;</button></div>
@@ -160,10 +166,17 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
     <!-- V · EXPORT -->
     <div class="stage locked" id="st5">
       <span class="snum">Stage V</span><div class="stitle">Export</div>
-      <div class="exp">
-        <button class="btn" onclick="exportSheet()">Call sheet (.txt)</button>
+      <!-- SEAM:PLAY_ASSEMBLE_UI — selected video takes, in unit order, stitched into one film -->
+      <div class="exp" style="margin-bottom:12px">
+        <button class="btn" onclick="assembleFilm()">Assemble film →</button>
+      </div>
+      <div class="busy" id="busyF">STITCHING…</div><div class="err" id="errF"></div>
+      <div class="takes" id="film-row"></div>
+      <div class="exp" style="margin-top:14px">
+        <button class="btn ghost" onclick="exportSheet()">Call sheet (.txt)</button>
         <button class="btn ghost" onclick="exportJson()">Project (.json)</button>
         <button class="btn ghost" onclick="resetProject()">New project</button>
+        <!-- export set continues -->
       </div>
     </div>
     <p class="note">The read is free. The moves are yours.</p>
@@ -251,13 +264,15 @@ async function uploadRefs(files) {
   show('refup', true);
   for (var i = 0; i < files.length; i++) {
     var fl = files[i];
-    if (['image/jpeg','image/png','image/webp'].indexOf(fl.type) < 0) continue;
-    if (fl.size > 8 * 1024 * 1024) { alert(fl.name + ' is over 8MB'); continue; }
+    var isVid = fl.type === 'video/mp4' || fl.type === 'video/quicktime';
+    if (!isVid && ['image/jpeg','image/png','image/webp'].indexOf(fl.type) < 0) continue;
+    var cap = isVid ? 30 * 1024 * 1024 : 8 * 1024 * 1024;
+    if (fl.size > cap) { alert(fl.name + ' is over ' + (isVid ? '30' : '8') + 'MB'); continue; }
     try {
       var hh = await _authHeader(); hh['Content-Type'] = fl.type;
       var r = await fetch(API_BASE + '/play/upload-ref', { method: 'POST', headers: hh, body: fl });
       var d = await r.json();
-      if (d && d.ok && d.data && d.data.url) { S.refs.push({ url: d.data.url, name: fl.name }); }
+      if (d && d.ok && d.data && d.data.url) { S.refs.push({ url: d.data.url, name: fl.name, kind: isVid ? 'video' : 'image' }); }
       else { alert('Upload failed: ' + ((d && d.error) || r.status)); }
     } catch (e) { alert('Upload failed: ' + e.message); }
   }
@@ -270,8 +285,14 @@ function paintRefs() {
   host.innerHTML = '';
   S.refs.forEach(function (rf, i) {
     var d = document.createElement('div'); d.className = 'ref';
-    d.innerHTML = '<img alt="reference"><button class="rx" title="Remove">&times;</button>';
-    d.querySelector('img').src = API_BASE + rf.url;
+    if (rf.kind === 'video' || refIsVideo(rf.url)) {
+      d.innerHTML = '<video muted loop playsinline></video><button class="rx" title="Remove">&times;</button>';
+      var rv = d.querySelector('video'); rv.src = API_BASE + rf.url;
+      rv.onmouseenter = function(){ rv.play(); }; rv.onmouseleave = function(){ rv.pause(); };
+    } else {
+      d.innerHTML = '<img alt="reference"><button class="rx" title="Remove">&times;</button>';
+      d.querySelector('img').src = API_BASE + rf.url;
+    }
     d.querySelector('.rx').onclick = function () {
       S.refs.splice(i, 1);
       for (var k in S.units) if (S.units[k].ref === rf.url) S.units[k].ref = '';
@@ -322,24 +343,45 @@ async function breakUnits() {
   show('busy2', false);
 }
 
+/* Compile runs ONE UNIT PER CALL. One call for five structured prompts is how
+ * the model returned nested objects and truncated arrays — small asks parse
+ * clean. _flatPrompt is the net: an object prompt flattens to its strings. */
+function _flatPrompt(p) {
+  if (typeof p === 'string') return p;
+  if (p && typeof p === 'object') {
+    var parts = [];
+    for (var k in p) if (typeof p[k] === 'string' && p[k]) parts.push(p[k]);
+    return parts.join(', ');
+  }
+  return '';
+}
 async function compileAll() {
-  save(); clearFail(3); show('busy3', true);
-  try {
+  save(); clearFail(3);
+  var busy = document.getElementById('busy3'); busy.style.display = 'block';
+  var failures = 0;
+  for (var j = 0; j < S.units.length; j++) {
+    var u = S.units[j];
+    busy.textContent = 'COMPILING ' + (j + 1) + ' / ' + S.units.length + '…';
     var ask = laneBriefText() + ' Direction: ' + S.direction
-      + ' Units: ' + JSON.stringify(S.units.map(function (u) { return { id: u.id, title: u.title, desc: u.desc }; }))
-      + ' For every unit write one generation-ready prompt for a diffusion '
-      + (S.lane === 'film' ? 'video' : 'image') + ' model: subject, composition, lens, light, palette, texture'
+      + ' Unit: ' + JSON.stringify({ id: u.id, title: u.title, desc: u.desc })
+      + ' Write ONE generation-ready prompt for a diffusion '
+      + (S.lane === 'film' ? 'video' : 'image') + ' model covering subject, composition, lens, light, palette, texture'
       + (S.style ? ', honoring the locked style: ' + S.style : '')
-      + '. Return a JSON array shaped exactly like [{"id":"u1","prompt":"..."}].';
-    var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json' });
-    var arr = d.data && d.data.json;
-    if (!Array.isArray(arr)) throw new Error('bad_prompts');
-    var map = {};
-    for (var i = 0; i < arr.length; i++) if (arr[i] && arr[i].id) map[arr[i].id] = String(arr[i].prompt || '');
-    for (var j = 0; j < S.units.length; j++) if (map[S.units[j].id]) S.units[j].prompt = map[S.units[j].id];
-    save(); renderUnits();
-  } catch (e) { fail(3, e); }
-  show('busy3', false);
+      + '. The prompt is one flat string. Return exactly: {"id":"' + u.id + '","prompt":"..."}';
+    var got = '';
+    for (var attempt = 0; attempt < 2 && !got; attempt++) {
+      try {
+        var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json' });
+        var jx = d.data && d.data.json;
+        if (Array.isArray(jx)) jx = jx[0];
+        if (jx) got = _flatPrompt(jx.prompt).trim();
+      } catch (e) { /* retry once, then count it */ }
+    }
+    if (got) { u.prompt = got; save(); } else { failures++; }
+  }
+  busy.style.display = 'none'; busy.textContent = 'COMPILING…';
+  renderUnits();
+  if (failures) fail(3, failures + ' unit(s) did not compile. Press again to retry just by recompiling, or write those prompts by hand.');
 }
 
 /* SEAM:PLAY_RENDER_RAIL — fal submits, polling, takes ------------------- */
@@ -359,7 +401,8 @@ function unitCard(u, i) {
     + '<button class="btn sm ghost" data-a="final">Render final</button>'
     + (S.lane === 'film' ? '<label class="kf"><input type="checkbox" checked> keyframe first</label>' : '')
     + (S.lane === 'film' ? '<label class="kf kf-drive"><input type="checkbox"> ref drives motion</label>' : '')
-    + '</div><div class="err"></div><div class="takes"></div>';
+    + '</div><div class="err"></div><div class="takes"></div>'
+    + '<div class="adjrow" style="display:none"><input type="text" placeholder="Describe the change: swap the hat to navy, warmer light, slower push-in"><button class="btn sm">Adjust render</button><button class="btn sm ghost adjx">Cancel</button></div>';
   d.querySelector('h4').textContent = u.title;
   d.querySelector('p.desc').textContent = u.desc;
   var ta = d.querySelector('textarea'); ta.value = u.prompt || '';
@@ -373,7 +416,12 @@ function unitCard(u, i) {
     up.appendChild(lab);
     S.refs.forEach(function (rf) {
       var p = document.createElement('div'); p.className = 'upick' + (u.ref === rf.url ? ' on' : '');
-      p.innerHTML = '<img alt="ref">'; p.querySelector('img').src = API_BASE + rf.url;
+      if (rf.kind === 'video' || refIsVideo(rf.url)) {
+        p.innerHTML = '<video muted playsinline></video><span class="uvid">VID</span>';
+        p.querySelector('video').src = API_BASE + rf.url;
+      } else {
+        p.innerHTML = '<img alt="ref">'; p.querySelector('img').src = API_BASE + rf.url;
+      }
       p.title = rf.name || 'reference';
       p.onclick = function () { u.ref = (u.ref === rf.url) ? '' : rf.url; save(); renderUnits(); };
       up.appendChild(p);
@@ -385,13 +433,21 @@ function unitCard(u, i) {
 
 async function startRender(u, tier, card) {
   var errEl = card.querySelector('.err'); errEl.style.display = 'none';
-  var prompt = (u.prompt || '').trim() || (u.title + '. ' + u.desc);
+  var prompt = styleSpine() + ((u.prompt || '').trim() || (u.title + '. ' + u.desc));
   var isFilm = S.lane === 'film';
   var kf = isFilm && card.querySelector('.kf input') && card.querySelector('.kf input').checked;
   var drive = isFilm && card.querySelector('.kf-drive input') && card.querySelector('.kf-drive input').checked;
   var refAbs = u.ref ? (/^https?:/.test(u.ref) ? u.ref : (API_BASE + u.ref)) : '';
+  var vidRef = refAbs && refIsVideo(refAbs);
   try {
-    if (isFilm && drive && refAbs) {
+    if (isFilm && vidRef) {
+      // SEAM:PLAY_REF — a VIDEO reference routes through Seedance reference-to-video:
+      // motion and style flow from the clip itself. Keyframe/drive toggles do not apply.
+      var vr = await api('play/render', { pool: 'video.' + tier,
+        prompt: prompt + ' Match the motion and style of @Video1.',
+        aspect: S.aspect, seconds: u.seconds, video_urls: [refAbs], project: projSlug(), unit: u.id });
+      trackTake(u, vr.request_id, 'video.' + tier, card);
+    } else if (isFilm && drive && refAbs) {
       // SEAM:PLAY_REF — the uploaded photo IS the first frame; motion from it
       var vd = await api('play/render', { pool: 'video.' + tier, prompt: prompt, aspect: S.aspect,
         seconds: u.seconds, image_url: refAbs, project: projSlug(), unit: u.id });
@@ -399,7 +455,7 @@ async function startRender(u, tier, card) {
     } else if (isFilm && kf) {
       // keyframe-first chain: still (reference-conditioned when a ref is picked), then motion
       addTake(u, { id: 'kf-pending', status: 'keyframe…', pool: 'image.draft' }, card);
-      var kb = { pool: 'image.draft', prompt: prompt, aspect: S.aspect, project: projSlug(), unit: u.id };
+      var kb = { pool: 'image.draft', prompt: prompt, aspect: S.aspect, project: projSlug(), unit: u.id, seed: projSeed() };
       if (refAbs) kb.image_url = refAbs;
       var k = await api('play/render', kb);
       var kAsset = await waitDone(k.request_id);
@@ -411,8 +467,8 @@ async function startRender(u, tier, card) {
     } else {
       var pool = (isFilm ? 'video.' : 'image.') + tier;
       var body = { pool: pool, prompt: prompt, aspect: S.aspect, project: projSlug(), unit: u.id };
-      if (isFilm) body.seconds = u.seconds;
-      if (refAbs) body.image_url = refAbs; // still/social conditioned; film i2v driven
+      if (isFilm) body.seconds = u.seconds; else body.seed = projSeed();
+      if (refAbs && !vidRef) body.image_url = refAbs; // still/social conditioned; film i2v driven (video refs never feed image pools)
       var r = await api('play/render', body);
       trackTake(u, r.request_id, pool, card);
     }
@@ -421,6 +477,12 @@ async function startRender(u, tier, card) {
   }
 }
 function projSlug() { return (S.brand || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) || 'engine'; }
+/* One visual law across every unit: the style lock rides every render prompt,
+ * and image pools share a stable per-project seed. Consistency is a system,
+ * not a hope. */
+function styleSpine() { var st = (S.style || '').trim(); return st ? ('Style law for every frame: ' + st + '. ') : ''; }
+function projSeed() { var h = 5381, str = projSlug(); for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h % 2147483647; }
+function refIsVideo(url) { return /\.mp4(\?|$)/i.test(String(url || '')); }
 
 function trackTake(u, reqId, pool, card) {
   addTake(u, { id: reqId, status: 'queued…', pool: pool }, card);
@@ -450,6 +512,42 @@ function waitDone(reqId) {
   });
 }
 function stopPoll(id) { if (_polls[id]) { clearInterval(_polls[id]); delete _polls[id]; } }
+
+/* SEAM:PLAY_ADJUST — edit-after-render. A finished take goes back into the
+ * pipe with a change note: image takes route through the FLUX edit endpoint
+ * (the take is the reference), video takes route through Seedance
+ * reference-to-video (the take is @Video1). The adjusted result lands as a
+ * NEW take beside the original — nothing is overwritten, every version stays. */
+function openAdjust(u, t, card) {
+  var row = card.querySelector('.adjrow'); if (!row) return;
+  row.style.display = 'flex';
+  card._adjTake = t;
+  var inp = row.querySelector('input'); inp.value = ''; inp.focus();
+  row.querySelector('button').onclick = function () { runAdjust(u, card); };
+  row.querySelector('.adjx').onclick = function () { row.style.display = 'none'; card._adjTake = null; };
+  inp.onkeydown = function (ev) { if (ev.key === 'Enter') runAdjust(u, card); };
+}
+async function runAdjust(u, card) {
+  var row = card.querySelector('.adjrow'); var t = card._adjTake;
+  var change = row ? row.querySelector('input').value.trim() : '';
+  if (!t || !change) return;
+  row.style.display = 'none'; card._adjTake = null;
+  var errEl = card.querySelector('.err'); errEl.style.display = 'none';
+  var full = /^https?:/.test(t.asset) ? t.asset : (API_BASE + t.asset);
+  var isVid = t.pool.indexOf('video') === 0;
+  try {
+    var body;
+    if (isVid) {
+      body = { pool: t.pool, prompt: styleSpine() + change + ' Apply this change to @Video1 and keep everything else identical.',
+        aspect: S.aspect, seconds: u.seconds || 4, video_urls: [full], project: projSlug(), unit: u.id };
+    } else {
+      body = { pool: t.pool, prompt: styleSpine() + change,
+        aspect: S.aspect, image_url: full, project: projSlug(), unit: u.id, seed: projSeed() };
+    }
+    var r = await api('play/render', body);
+    trackTake(u, r.request_id, t.pool, card);
+  } catch (e) { errEl.textContent = String(e.message || e); errEl.style.display = 'block'; }
+}
 
 function addTake(u, t, card) { (S.takes[u.id] = S.takes[u.id] || []).push(t); save(); paintTakes(u, card); }
 function replaceTake(u, oldId, t, card) {
@@ -483,6 +581,7 @@ function paintTakes(u, card) {
         + '<div class="t">' + t.pool + '</div>'
         + '<div class="lnks"><a href="' + full + '" target="_blank" rel="noopener">Open</a>'
         + '<a href="' + dl + '">Download</a></div>'
+        + '<button class="adj">Adjust</button>'
         + '<button class="pick">' + (t.sel ? 'Selected' : 'Select') + '</button>';
       var v = el.querySelector('video'); if (v) { v.onmouseenter = function(){ v.play(); }; v.onmouseleave = function(){ v.pause(); }; }
       var med = el.querySelector('video,img');
@@ -490,6 +589,7 @@ function paintTakes(u, card) {
       el.querySelector('.pick').onclick = function () {
         arr.forEach(function (x) { x.sel = false; }); t.sel = true; save(); paintTakes(u, card);
       };
+      el.querySelector('.adj').onclick = function () { openAdjust(u, t, card); };
     } else {
       el.innerHTML = '<div class="st">' + (t.status || 'queued…') + '</div><div class="t">' + t.pool + '</div>';
     }
@@ -521,6 +621,37 @@ function download(name, text, type) {
   var b = new Blob([text], { type: type });
   var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
+}
+/* SEAM:PLAY_ASSEMBLE_UI — collect the selected video take of every unit, in
+ * order, and stitch them server-side into the full film. The film lands in
+ * project storage like any take: open it, download it, ship it. */
+async function assembleFilm() {
+  save();
+  var errEl = document.getElementById('errF'); errEl.style.display = 'none';
+  var clips = [];
+  S.units.forEach(function (u) {
+    var sel = (S.takes[u.id] || []).filter(function (t) { return t.sel && t.asset && t.pool.indexOf('video') === 0; })[0];
+    if (sel) clips.push(/^https?:/.test(sel.asset) ? sel.asset : (API_BASE + sel.asset));
+  });
+  if (clips.length < 2) {
+    errEl.textContent = 'Select a finished video take on at least two units first. The film assembles from your selects, in unit order.';
+    errEl.style.display = 'block'; return;
+  }
+  show('busyF', true);
+  try {
+    var r = await api('play/assemble', { video_urls: clips, project: projSlug() });
+    var asset = await waitDone(r.request_id);
+    var full = /^https?:/.test(asset) ? asset : (API_BASE + asset);
+    var host = document.getElementById('film-row'); host.innerHTML = '';
+    var el = document.createElement('div'); el.className = 'take sel'; el.style.width = '280px';
+    var fname = projSlug() + '-film.mp4';
+    var dl = full + (full.indexOf('?') < 0 ? '?' : '&') + 'download=1&name=' + encodeURIComponent(fname);
+    el.innerHTML = '<video controls muted playsinline src="' + full + '" style="height:158px"></video>'
+      + '<div class="t">THE FILM · ' + clips.length + ' units</div>'
+      + '<div class="lnks"><a href="' + full + '" target="_blank" rel="noopener">Open</a><a href="' + dl + '">Download</a></div>';
+    host.appendChild(el);
+  } catch (e) { errEl.textContent = String(e.message || e); errEl.style.display = 'block'; }
+  show('busyF', false);
 }
 function resetProject() {
   if (!confirm('Start a new project? The current one clears.')) return;

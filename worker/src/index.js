@@ -37,7 +37,7 @@ const PLAY_SYSTEM = {
   naming:   'You generate brand/product name candidates. Return 8 options with a one-line rationale each.',
   'engine-concept': 'You are the PLAY creative engine for Unsurfaced. Develop exactly the creative direction the brief asks for. Declarative and specific. No em dashes. No hedging. No agency-speak.',
   'engine-units':   'You are the PLAY creative engine for Unsurfaced. Break the approved creative direction into concrete production units exactly as instructed. Follow the requested JSON shape precisely. No commentary.',
-  'engine-compile': 'You are the PLAY creative engine for Unsurfaced, acting as a senior art director writing generation-ready prompts: subject, composition, lens, light, palette, texture. Never use quality-bait words like 8k, stunning, masterpiece, or cinematic as an adjective. No em dashes. Follow the requested JSON shape precisely.',
+  'engine-compile': 'You are the PLAY creative engine for Unsurfaced, acting as a senior art director writing generation-ready prompts: subject, composition, lens, light, palette, texture. Never use quality-bait words like 8k, stunning, masterpiece, or cinematic as an adjective. No em dashes. Follow the requested JSON shape precisely. The prompt field is always one single flat string, never a nested object.',
 };
 
 export default {
@@ -127,6 +127,7 @@ export default {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
         case '/play/render':         return playRender(body, env, origin, user);
+        case '/play/assemble':       return playAssemble(body, env, origin, user);
         case '/play/upload-ref':     return playUploadRef(request, env, origin, user);
         case '/excavate/synthesize': return synthesize(body, env, origin);
         case '/mine/notify':        return mineNotify(body, env, origin, user);
@@ -249,8 +250,12 @@ async function playImage(body, env, origin, user) {
 const RENDER_POOL = {
   'image.draft': { id: 'fal-ai/flux/schnell',   ref: 'fal-ai/flux-2/turbo/edit', kind: 'image', sec: 2 },
   'image.final': { id: 'fal-ai/flux-pro/v1.1',  ref: 'fal-ai/flux-2-pro/edit',   kind: 'image', sec: 6 }, // swap base to FLUX.2 [pro] id from dashboard when ready
-  'video.draft': { id: 'bytedance/seedance-2.0/fast/text-to-video', i2v: 'bytedance/seedance-2.0/fast/image-to-video', kind: 'video' },
-  'video.final': { id: 'fal-ai/kling-video/v3/standard/text-to-video', i2v: 'fal-ai/kling-video/v3/standard/image-to-video', kind: 'video' } // VERIFY id in dashboard before first use
+  /* dur dialect: Seedance 2.0 takes duration as a STRING ('4','auto'); sending an
+   * integer 422s \u2014 which is why video drafts died while Kling finals rendered.
+   * ref: Seedance reference-to-video (both tiers) \u2014 up to 9 images + 3 clips via
+   * @Image1/@Video1 prompt syntax; also the video EDIT path (take as @Video1). */
+  'video.draft': { id: 'bytedance/seedance-2.0/fast/text-to-video', i2v: 'bytedance/seedance-2.0/fast/image-to-video', ref: 'bytedance/seedance-2.0/fast/reference-to-video', kind: 'video', dur: 'str' },
+  'video.final': { id: 'fal-ai/kling-video/v3/standard/text-to-video', i2v: 'fal-ai/kling-video/v3/standard/image-to-video', ref: 'bytedance/seedance-2.0/reference-to-video', kind: 'video', dur: 'num' }
 };
 const RENDER_ASPECTS = { '16:9': 'landscape_16_9', '9:16': 'portrait_16_9', '1:1': 'square_hd', '4:5': 'portrait_4_3', '3:4': 'portrait_4_3', '4:3': 'landscape_4_3' };
 
@@ -275,24 +280,49 @@ async function playRender(body, env, origin, user) {
     ? Math.min(Math.max(parseInt(body.seconds, 10) || 4, 2), 10)
     : pool.sec;
   if (!(await renderBudget(env, user.id, seconds))) return json({ ok: false, error: 'render_budget' }, 429, origin, env);
-  const imageUrl = /^https:\/\//.test(String(body.image_url || '')) ? String(body.image_url).slice(0, 600) : '';
-  /* SEAM:PLAY_REF \u2014 reference-guided generation. An image_url on an IMAGE
-   * pool routes to the pool's FLUX.2 edit endpoint (image_urls array), so the
-   * actual product conditions the frame instead of the model guessing from
-   * words. On VIDEO pools image_url stays the i2v start frame \u2014 an uploaded
-   * reference can drive motion directly. Text-only renders are untouched. */
-  const model = imageUrl ? ((pool.kind === 'video' && pool.i2v) ? pool.i2v : (pool.ref || pool.id)) : pool.id;
+  const httpsOnly = u => /^https:\/\//.test(String(u || ''));
+  const imageUrl = httpsOnly(body.image_url) ? String(body.image_url).slice(0, 600) : '';
+  const imageUrls = (Array.isArray(body.image_urls) ? body.image_urls : []).filter(httpsOnly).map(u => String(u).slice(0, 600)).slice(0, 9);
+  const videoUrls = (Array.isArray(body.video_urls) ? body.video_urls : []).filter(httpsOnly).map(u => String(u).slice(0, 600)).slice(0, 3);
+  const seed = Number.isFinite(parseInt(body.seed, 10)) ? Math.abs(parseInt(body.seed, 10)) % 2147483647 : 0;
+  /* SEAM:PLAY_REF \u2014 reference-guided generation, video-capable.
+   * IMAGE pool + image_url \u2192 the pool's FLUX.2 edit endpoint (image_urls array):
+   * this is also the ADJUST path \u2014 a finished take goes back in as the reference
+   * with the change described in the prompt.
+   * VIDEO pool routing, in order:
+   *   video_urls or image_urls present \u2192 the pool's Seedance reference-to-video
+   *     endpoint (@Image1/@Video1 syntax composed client-side). A finished video
+   *     take passed as @Video1 with a change note is the video ADJUST path.
+   *   single image_url \u2192 i2v start-frame (the keyframe-first chain, unchanged).
+   *   text only \u2192 the base model.
+   * Duration ships in each model's dialect (dur flag) \u2014 the string/integer
+   * mismatch is what silently killed every video draft. */
+  const useVideoRef = pool.kind === 'video' && pool.ref && (videoUrls.length || imageUrls.length);
+  const model = useVideoRef ? pool.ref
+    : imageUrl ? ((pool.kind === 'video' && pool.i2v) ? pool.i2v : (pool.ref || pool.id))
+    : pool.id;
   const input = { prompt };
-  if (pool.kind === 'video') {
-    input.duration = seconds;
+  const durOf = p => p.dur === 'str' ? String(seconds) : seconds;
+  if (useVideoRef) {
+    if (imageUrls.length) input.image_urls = imageUrls;
+    if (videoUrls.length) input.video_urls = videoUrls;
+    input.duration = String(seconds);
     input.resolution = '720p';
     input.aspect_ratio = RENDER_ASPECTS[body.aspect] ? String(body.aspect) : '16:9';
-    if (imageUrl) input.image_url = imageUrl; // keyframe-first chain or direct reference drive
+    input.generate_audio = true;
+  } else if (pool.kind === 'video') {
+    input.duration = durOf(pool);
+    input.resolution = '720p';
+    input.aspect_ratio = RENDER_ASPECTS[body.aspect] ? String(body.aspect) : '16:9';
+    if (pool.dur === 'str') input.generate_audio = true; // free on the Seedance fast tier
+    if (imageUrl) input.image_url = imageUrl; // keyframe-first chain, unchanged
   } else if (imageUrl && pool.ref) {
     input.image_urls = [imageUrl];
     input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
+    if (seed) input.seed = seed;
   } else {
     input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
+    if (seed) input.seed = seed; // stable project seed \u2192 one visual law across units
   }
   const r = await fetch('https://queue.fal.run/' + model, {
     method: 'POST',
@@ -329,7 +359,7 @@ async function playRenderStatus(reqId, env, origin, user) {
   }
   const out = await fetch(rec.response_url, { headers: hdr }).then(x => x.json()).catch(() => null);
   const url = (out && ((out.images && out.images[0] && out.images[0].url)
-    || (out.video && out.video.url) || (out.image && out.image.url) || out.url)) || '';
+    || (out.video && out.video.url) || (out.image && out.image.url) || out.video_url || out.url)) || '';
   if (!url) return json({ ok: true, status: 'failed' }, 200, origin, env);
   const ext = rec.kind === 'video' ? 'mp4' : 'jpg';
   const key = `play/${user.id}/${rec.project}/${reqId}.${ext}`;
@@ -347,23 +377,51 @@ async function playRenderStatus(reqId, env, origin, user) {
   return json({ ok: true, status: 'done', asset }, 200, origin, env);
 }
 
-/* SEAM:PLAY_REF \u2014 POST /play/upload-ref (raw image body)
- * Headers: Content-Type image/jpeg|png|webp. Cap 8MB. Lands in R2 at
- * play/{user}/refs/ and returns the public /media/ URL that fal can fetch.
- * No fal spend; not budget-metered. Photos only in v1 \u2014 video references
- * ride a later cut (motion-reference models take different inputs). */
+/* SEAM:PLAY_REF \u2014 POST /play/upload-ref (raw image OR video body)
+ * Headers: Content-Type image/jpeg|png|webp (cap 8MB) or video/mp4|quicktime
+ * (cap 30MB \u2014 Seedance's reference limit). Lands in R2 at play/{user}/refs/
+ * and returns the public /media/ URL that fal can fetch. No fal spend. */
 async function playUploadRef(request, env, origin, user) {
   if (!env.MEDIA) return json({ ok: false, error: 'media_unconfigured' }, 503, origin, env);
   const ctype = String(request.headers.get('Content-Type') || '').toLowerCase();
-  const ext = ctype === 'image/jpeg' ? 'jpg' : ctype === 'image/png' ? 'png' : ctype === 'image/webp' ? 'webp' : '';
+  const ext = ctype === 'image/jpeg' ? 'jpg' : ctype === 'image/png' ? 'png' : ctype === 'image/webp' ? 'webp'
+    : (ctype === 'video/mp4' || ctype === 'video/quicktime') ? 'mp4' : '';
   if (!ext) return json({ ok: false, error: 'unsupported_type' }, 415, origin, env);
   const buf = await request.arrayBuffer();
   if (!buf || !buf.byteLength) return json({ ok: false, error: 'empty' }, 400, origin, env);
-  if (buf.byteLength > 8 * 1024 * 1024) return json({ ok: false, error: 'too_large' }, 413, origin, env);
+  const cap = ext === 'mp4' ? 30 * 1024 * 1024 : 8 * 1024 * 1024;
+  if (buf.byteLength > cap) return json({ ok: false, error: 'too_large' }, 413, origin, env);
   const key = `play/${user.id}/refs/${Date.now()}.${ext}`;
   await env.MEDIA.put(key, buf, { httpMetadata: { contentType: ctype } });
   await logEvent(env, 'play', null, 'ref_uploaded', null, { bytes: buf.byteLength, type: ctype });
   return json({ ok: true, data: { url: `/media/${key}` } }, 200, origin, env);
+}
+
+/* SEAM:PLAY_ASSEMBLE \u2014 POST /play/assemble { video_urls:[2..12], project? }
+ * The full film: selected takes, in unit order, stitched into one mp4 through
+ * fal-ai/ffmpeg-api/merge-videos ($0 per compute second \u2014 the stitch is free).
+ * Rides the same rr: record + /play/render/:id poll + R2 landing as any render,
+ * so the frontend tracks the film exactly like a take. Budget weight: 1s. */
+async function playAssemble(body, env, origin, user) {
+  if (!env.FAL_KEY) return json({ ok: false, error: 'render_unconfigured' }, 503, origin, env);
+  const httpsOnly = u => /^https:\/\//.test(String(u || ''));
+  const urls = (Array.isArray(body.video_urls) ? body.video_urls : []).filter(httpsOnly).map(u => String(u).slice(0, 600)).slice(0, 12);
+  if (urls.length < 2) return json({ ok: false, error: 'need_two_clips' }, 400, origin, env);
+  if (!(await renderBudget(env, user.id, 1))) return json({ ok: false, error: 'render_budget' }, 429, origin, env);
+  const r = await fetch('https://queue.fal.run/fal-ai/ffmpeg-api/merge-videos', {
+    method: 'POST',
+    headers: { Authorization: 'Key ' + env.FAL_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ video_urls: urls })
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || !j.request_id)
+    return json({ ok: false, error: 'fal_' + r.status, detail: String((j && (j.detail || j.message)) || '').slice(0, 300) }, 502, origin, env);
+  const project = String(body.project || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'engine';
+  const rec = { model: 'fal-ai/ffmpeg-api/merge-videos', kind: 'video', status_url: j.status_url, response_url: j.response_url,
+    user: user.id, project, unit: 'film', at: Date.now() };
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + j.request_id, JSON.stringify(rec), { expirationTtl: 259200 });
+  await logEvent(env, 'play', null, 'assemble_submit', null, { clips: urls.length });
+  return json({ ok: true, request_id: j.request_id }, 200, origin, env);
 }
 
 /* --------------------------- EXCAVATE --------------------------- */
