@@ -202,10 +202,14 @@ async function playGenerate(body, env, origin) {
   };
   if (wantJson) req.temperature = 0.15; // cold decode for structured output
   const out = await env.AI.run(CONFIG.TEXT_MODEL, req);
-  const text = (out && out.response) || '';
+  // Workers AI may return `response` as a STRING or, when the model emits pure
+  // JSON, as an already-parsed object/array. Honor both shapes; never let a
+  // live object be stringified into '[object Object]' on its way to the parser.
+  const raw = out && out.response;
+  const text = typeof raw === 'string' ? raw : (raw != null ? JSON.stringify(raw) : '');
   if (wantJson) {
-    const parsed = extractJson(text);
-    if (!parsed) return json({ ok: false, error: 'bad_model_json', detail: text.slice(0, 200) }, 502, origin, env);
+    const parsed = (raw !== null && typeof raw === 'object') ? raw : extractJson(text);
+    if (!parsed) return json({ ok: false, error: 'bad_model_json', detail: String(text).slice(0, 200) }, 502, origin, env);
     return json({ ok: true, data: { json: parsed, text } }, 200, origin, env);
   }
   return json({ ok: true, data: { text } }, 200, origin, env);
@@ -674,6 +678,19 @@ async function serveMedia(path, env, origin, request) {
   obj.writeHttpMetadata(headers);
   headers.set('Accept-Ranges', 'bytes');
   headers.set('Cache-Control', 'public, max-age=3600');
+  // SEAM:PLAY_RENDER — external use: ?download=1 serves the asset as an
+  // attachment so finished takes save cleanly cross-origin (the `download`
+  // attribute is ignored on cross-origin anchors, so the server must say it).
+  // Optional ?name= sets the saved filename, strictly sanitized; fallback is
+  // the object's own basename. View mode (no param) is untouched.
+  try {
+    const q = new URL(request.url).searchParams;
+    if (q.get('download') === '1') {
+      let fname = String(q.get('name') || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 90);
+      if (!fname) fname = key.split('/').pop() || 'asset';
+      headers.set('Content-Disposition', 'attachment; filename="' + fname + '"');
+    }
+  } catch (e) {}
   /* SEAM:STIMULUS — uploaded HTML (mock landing pages) is a first-class
      stimulus. Served with a CSP sandbox: scripts, forms, and clicks all work,
      but the document runs with an opaque origin — no storage, no credentialed

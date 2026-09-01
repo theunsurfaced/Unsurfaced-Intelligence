@@ -66,6 +66,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
 .take .pick{width:100%;border:0;border-top:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 0;cursor:pointer;}
 .take.sel .pick{color:var(--deep2);}
 .take .st{font-family:'Space Mono',monospace;font-size:10px;color:var(--deep2);padding:38px 8px;text-align:center;}
+.take .lnks{display:flex;border-top:1px solid var(--border);}
+.take .lnks a{flex:1;text-align:center;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);text-decoration:none;padding:6px 0;}
+.take .lnks a+a{border-left:1px solid var(--border);}
+.take .lnks a:hover{color:var(--deep2);}
 #gate{display:none;border:1px solid var(--border2);background:var(--surface);padding:34px;text-align:center;}
 #gate h2{font-weight:800;font-size:24px;margin-bottom:10px;}
 #gate p{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:18px;}
@@ -389,11 +393,22 @@ function paintTakes(u, card) {
     if (t.asset) {
       var full = /^https?:/.test(t.asset) ? t.asset : (API_BASE + t.asset);
       var isVid = t.pool.indexOf('video') === 0;
+      /* SEAM:PLAY_RENDER_RAIL — external use: every finished take opens
+         full-size and downloads with a project-named file. Download rides the
+         worker's ?download=1 attachment mode (cross-origin anchors ignore the
+         download attribute, so the server sets the disposition). */
+      var ext = isVid ? 'mp4' : 'jpg';
+      var fname = projSlug() + '-' + u.id + '.' + ext;
+      var dl = full + (full.indexOf('?') < 0 ? '?' : '&') + 'download=1&name=' + encodeURIComponent(fname);
       el.innerHTML = (isVid ? '<video muted loop playsinline src="' + full + '"></video>'
                             : '<img alt="take" src="' + full + '">')
         + '<div class="t">' + t.pool + '</div>'
+        + '<div class="lnks"><a href="' + full + '" target="_blank" rel="noopener">Open</a>'
+        + '<a href="' + dl + '">Download</a></div>'
         + '<button class="pick">' + (t.sel ? 'Selected' : 'Select') + '</button>';
       var v = el.querySelector('video'); if (v) { v.onmouseenter = function(){ v.play(); }; v.onmouseleave = function(){ v.pause(); }; }
+      var med = el.querySelector('video,img');
+      if (med) { med.style.cursor = 'zoom-in'; med.onclick = function(){ window.open(full, '_blank', 'noopener'); }; }
       el.querySelector('.pick').onclick = function () {
         arr.forEach(function (x) { x.sel = false; }); t.sel = true; save(); paintTakes(u, card);
       };
