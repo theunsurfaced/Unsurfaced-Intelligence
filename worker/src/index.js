@@ -27,6 +27,7 @@ const CONFIG = {
   MAX_TOKENS:  800,
   DAILY_LIMIT: 300,   // AI inference calls per user per day (engine sessions are multi-stage; Workers AI text is cheap)
   RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
+  SIGNAL_DAILY_DOLLARS: 1.5, // SEAM:SIGNAL_POOL \u2014 house cap on paid signal spend per day, tracked in REAL dollars from the provider's own costDollars
 };
 
 const PLAY_SYSTEM = {
@@ -377,8 +378,8 @@ async function synthesize(body, env, origin) {
     const query  = String(body.query || '').slice(0, 300);
     const corpus = body.corpus.slice(0, 28);
     // Server-side connectors (keyless, not CORS-bound): live news (GDELT) + practitioner signal (HN).
-    const added = await gatherServerSignals(query);
-    const merged = corpus.concat(added.map(a => ({ lens: a.signalType === 'news' ? 'culture' : 'consumer', source: a.source, title: a.title, text: a.snippet, url: a.url }))).slice(0, 40);
+    const added = (await gatherServerSignals(query)).concat(await gatherPaidSignals(query, env));
+    const merged = corpus.concat(added.map(a => ({ lens: (a.signalType === 'news' || a.signalType === 'web') ? 'culture' : 'consumer', source: a.source, title: a.title, text: a.snippet, url: a.url }))).slice(0, 40);
     if (!merged.length) return json({ ok: false, error: 'no_corpus' }, 200, origin, env);
 
     const evidence = merged.map((c, i) =>
@@ -571,8 +572,77 @@ async function gatherServerSignals(q) {
 
 function serverConnectors(added) {
   const by = {};
-  (added || []).forEach(a => { const k = a.source === 'Hacker News' ? 'Hacker News' : 'GDELT News'; (by[k] = by[k] || []).push(a); });
+  (added || []).forEach(a => { const k = a.signalType === 'social' ? 'Hacker News' : (a.signalType === 'web' ? 'Exa Web' : 'GDELT News'); (by[k] = by[k] || []).push(a); });
   return Object.keys(by).map(k => ({ source: k, status: 'ok', count: by[k].length, url: (by[k][0] && by[k][0].url) || '#' }));
+}
+
+/* SEAM:SIGNAL_POOL \u2014 paid signal rail, phase 1: Exa (semantic web discovery).
+ * Live-read enrichment ONLY \u2014 the cron spine stays on the free wire, so paid
+ * dollars are never spent on a path nobody is watching (two-speed law).
+ * Budget law runs on REAL money: Exa returns costDollars.total per request and
+ * actual spend accumulates in KV (sigd:{day}) against SIGNAL_DAILY_DOLLARS.
+ * Cache law: sg:{hash} for 6h \u2014 a hit costs nothing and calls nobody.
+ * Graceful absence: no EXA_KEY, no budget, or an upstream wobble all degrade
+ * to [] and the free connectors carry the read alone.
+ * Provenance: items enter the wire shape as signalType 'web' with the page's
+ * own domain as source \u2014 the real-stats law holds through THE READ. */
+async function gatherPaidSignals(q, env) {
+  if (!env.EXA_KEY) return [];
+  const term = String(q || '').slice(0, 200).trim();
+  if (!term) return [];
+  const day = new Date().toISOString().slice(0, 10);
+  let cacheKey = '';
+  try {
+    cacheKey = 'sg:' + (await _deepHash('exa|' + term.toLowerCase()));
+    const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(cacheKey) : null;
+    if (hit) { const j = JSON.parse(hit); if (Array.isArray(j)) return j; }
+  } catch (e) {}
+  try {
+    const spent = parseFloat((env.RATE_LIMIT && await env.RATE_LIMIT.get('sigd:' + day)) || '0') || 0;
+    const cap = parseFloat(env.SIGNAL_DAILY_DOLLARS) || CONFIG.SIGNAL_DAILY_DOLLARS;
+    if (spent >= cap) return [];
+  } catch (e) {}
+  let out = null;
+  try {
+    const r = await fetch('https://api.exa.ai/search', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + env.EXA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: term, type: 'auto', numResults: 6, moderation: true,
+        contents: { highlights: true } }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (r.ok) out = await r.json().catch(() => null);
+  } catch (e) {}
+  if (!out || !Array.isArray(out.results)) return [];
+  const items = _exaToWire(out.results);
+  const cost = (out.costDollars && Number(out.costDollars.total)) || 0;
+  try {
+    if (env.RATE_LIMIT) {
+      const spent = parseFloat(await env.RATE_LIMIT.get('sigd:' + day) || '0') || 0;
+      await env.RATE_LIMIT.put('sigd:' + day, (spent + cost).toFixed(4), { expirationTtl: 60 * 60 * 26 });
+      if (cacheKey) await env.RATE_LIMIT.put(cacheKey, JSON.stringify(items), { expirationTtl: 60 * 60 * 6 });
+    }
+  } catch (e) {}
+  try { await logEvent(env, 'intelligence', 'excavate', 'signal_scan', null, { n: items.length, cost }); } catch (e) {}
+  return items;
+}
+
+// Pure mapper: Exa /search results to the house wire shape. Highlights are the
+// payload; the source is the page's own domain, never the provider's name.
+function _exaToWire(results) {
+  return (results || []).slice(0, 6).map(x => {
+    let host = '';
+    try { host = new URL(x.url).hostname.replace(/^www\./, ''); } catch (e) {}
+    return {
+      signalType: 'web',
+      source: host || 'Open Web',
+      title: String(x.title || '').slice(0, 180),
+      snippet: (Array.isArray(x.highlights) ? x.highlights.join(' ') : '').slice(0, 320),
+      url: x.url || '',
+      image: x.image || '',
+      lang: ''
+    };
+  }).filter(x => x.title && x.url);
 }
 
 

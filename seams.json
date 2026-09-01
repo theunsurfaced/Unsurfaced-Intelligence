@@ -493,6 +493,10 @@
    "tag": "SEAM:PLAY_REF",
    "file": "play/index.html",
    "purpose": "reference uploader, per-unit ref picker, ref-drives-motion toggle"
+  },
+  "SEAM:SIGNAL_POOL": {
+   "file": "worker/src/index.js",
+   "purpose": "paid signal rail: Exa semantic discovery into synthesize, real-dollar budget, 6h cache, graceful absence"
   }
  },
  "planned": [
