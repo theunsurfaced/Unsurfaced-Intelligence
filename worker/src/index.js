@@ -196,14 +196,16 @@ async function playGenerate(body, env, origin) {
   const wantJson = body.format === 'json';
   const sys = (PLAY_SYSTEM[body.kind] || PLAY_SYSTEM.default)
     + (wantJson ? ' Output STRICT JSON only. No markdown fences, no prose outside the JSON.' : '');
-  const out = await env.AI.run(CONFIG.TEXT_MODEL, {
+  const req = {
     messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }],
     max_tokens: engine ? 1800 : CONFIG.MAX_TOKENS
-  });
+  };
+  if (wantJson) req.temperature = 0.15; // cold decode for structured output
+  const out = await env.AI.run(CONFIG.TEXT_MODEL, req);
   const text = (out && out.response) || '';
   if (wantJson) {
     const parsed = extractJson(text);
-    if (!parsed) return json({ ok: false, error: 'bad_model_json' }, 502, origin, env);
+    if (!parsed) return json({ ok: false, error: 'bad_model_json', detail: text.slice(0, 200) }, 502, origin, env);
     return json({ ok: true, data: { json: parsed, text } }, 200, origin, env);
   }
   return json({ ok: true, data: { text } }, 200, origin, env);
@@ -441,17 +443,40 @@ async function synthesize(body, env, origin) {
   return json({ ok: true, data: { text: out.response || '' } }, 200, origin, env);
 }
 
-// Robust JSON extraction from an LLM reply (handles ```json fences and stray
-// prose). One harvester for the whole worker: EXCAVATE objects and the PLAY
-// engine's unit/prompt arrays both pass through here (SEAM:PLAY_RENDER).
+// Robust JSON extraction from an LLM reply. One harvester for the whole
+// worker: EXCAVATE objects and the PLAY engine's unit/prompt arrays both pass
+// through here (SEAM:PLAY_RENDER). Fences are stripped GLOBALLY (models often
+// preface the fence with prose, so anchored stripping misses it), and every
+// failed parse gets one repair pass: trailing commas removed, curly quotes
+// straightened. Strict parse is always attempted first; repair never runs on
+// text that already parses, so well-formed replies are untouched.
+function jsonRepair(t) {
+  return t
+    .replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'")
+    .replace(/,\s*([}\]])/g, '$1');
+}
+function tryParse(t) {
+  try { return JSON.parse(t); } catch (e) {}
+  try { return JSON.parse(jsonRepair(t)); } catch (e) {}
+  return null;
+}
 function extractJson(s) {
   if (!s) return null;
-  let t = String(s).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  try { return JSON.parse(t); } catch (e) {}
+  const t = String(s).replace(/```(?:json)?/gi, '').trim();
+  let out = tryParse(t);
+  if (out !== null) return out;
+  // Slice by whichever opener comes FIRST: an array wrapped in prose must not
+  // have its first element harvested as if the payload were that one object.
   const a = t.indexOf('{'), b = t.lastIndexOf('}');
-  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
   const c = t.indexOf('['), d = t.lastIndexOf(']');
-  if (c >= 0 && d > c) { try { return JSON.parse(t.slice(c, d + 1)); } catch (e) {} }
+  const objFirst = a >= 0 && (c < 0 || a < c);
+  const tries = objFirst
+    ? [[a, b], [c, d]]
+    : [[c, d], [a, b]];
+  for (let i = 0; i < tries.length; i++) {
+    const lo = tries[i][0], hi = tries[i][1];
+    if (lo >= 0 && hi > lo) { out = tryParse(t.slice(lo, hi + 1)); if (out !== null) return out; }
+  }
   return null;
 }
 
