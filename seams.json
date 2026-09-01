@@ -509,6 +509,26 @@
   "SEAM:PLAY_ADJUST": {
    "file": "play/index.html",
    "purpose": "edit-after-render: image takes back through FLUX edit, video takes through reference-to-video as @Video1"
+  },
+  "SEAM:PLAY_INTERPRET": {
+   "file": "worker/src/index.js",
+   "purpose": "edit interpreter voice: negation inverted to affirmative end-state before any edit render"
+  },
+  "SEAM:PLAY_INTERPRET_UI": {
+   "file": "play/index.html",
+   "purpose": "adjust notes run through the interpreter; style spine off edits; interpreting state on the take tile"
+  },
+  "SEAM:PLAY_PROMOTE": {
+   "file": "play/index.html",
+   "purpose": "draft-to-final fidelity: the selected draft conditions its own final render; approved frame is the paid frame"
+  },
+  "SEAM:PLAY_BUDGET": {
+   "file": "worker/src/index.js",
+   "purpose": "GET /play/budget: real used/cap render seconds from the budget ledger"
+  },
+  "SEAM:PLAY_BUDGET_UI": {
+   "file": "play/index.html",
+   "purpose": "live budget strip; hot state at 80 percent; refreshed on every submit"
   }
  },
  "planned": [

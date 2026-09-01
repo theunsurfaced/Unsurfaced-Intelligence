@@ -87,6 +87,12 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
 #gate h2{font-weight:800;font-size:24px;margin-bottom:10px;}
 #gate p{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:18px;}
 #engine{display:none;}
+.budget{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.budget b{color:var(--deep2);font-weight:700;}
+.budget.hot b{color:var(--accent);}
+.take .promo{width:100%;border:0;border-top:1px solid var(--deep2);background:var(--deep-glow);color:var(--deep2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 0;cursor:pointer;font-weight:700;}
+.upolish{border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;cursor:pointer;}
+.upolish:hover{color:var(--deep2);border-color:var(--deep2);}
 .take .adj{width:100%;border:0;border-top:1px solid var(--border);background:var(--surface2);color:var(--deep2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 0;cursor:pointer;}
 .adjrow{display:flex;gap:8px;margin-top:10px;align-items:center;}
 .adjrow input{flex:1;background:var(--surface2);border:1px solid var(--deep2);color:var(--text);padding:9px 11px;font-family:'Syne',sans-serif;font-size:13px;outline:none;}
@@ -113,6 +119,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
     <h1 class="verb">PLAY &mdash; The Engine</h1>
     <p class="lede">One brief in, finished frames out. Pick a lane, set the brief, approve the direction, and render every unit through the studio pipe. Draft is the default. Final is a decision.</p>
 
+    <!-- SEAM:PLAY_BUDGET_UI \u2014 real seconds, live, before the 429 -->
+    <div class="budget mono" id="budget"></div>
     <div class="lanes" id="lanes">
       <div class="lane on" data-lane="film" onclick="setLane('film')">FILM<small>brief &rarr; shots &rarr; motion</small></div>
       <div class="lane" data-lane="still" onclick="setLane('still')">STILL<small>brief &rarr; frames &rarr; keys</small></div>
@@ -355,33 +363,44 @@ function _flatPrompt(p) {
   }
   return '';
 }
+async function compileOne(u) {
+  var ask = laneBriefText() + ' Direction: ' + S.direction
+    + ' Unit: ' + JSON.stringify({ id: u.id, title: u.title, desc: u.desc })
+    + (u.prompt ? ' The person\'s current prompt to improve: "' + u.prompt.slice(0, 500) + '"' : '')
+    + ' Write ONE generation-ready prompt for a diffusion '
+    + (S.lane === 'film' ? 'video' : 'image') + ' model covering subject, composition, lens, light, palette, texture'
+    + (S.style ? ', honoring the locked style: ' + S.style : '')
+    + '. The prompt is one flat string. Return exactly: {"id":"' + u.id + '","prompt":"..."}';
+  for (var attempt = 0; attempt < 2; attempt++) {
+    try {
+      var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json' });
+      var jx = d.data && d.data.json;
+      if (Array.isArray(jx)) jx = jx[0];
+      if (jx) { var got = _flatPrompt(jx.prompt).trim(); if (got) return got; }
+    } catch (e) { /* retry once */ }
+  }
+  return '';
+}
 async function compileAll() {
   save(); clearFail(3);
   var busy = document.getElementById('busy3'); busy.style.display = 'block';
   var failures = 0;
   for (var j = 0; j < S.units.length; j++) {
-    var u = S.units[j];
     busy.textContent = 'COMPILING ' + (j + 1) + ' / ' + S.units.length + '…';
-    var ask = laneBriefText() + ' Direction: ' + S.direction
-      + ' Unit: ' + JSON.stringify({ id: u.id, title: u.title, desc: u.desc })
-      + ' Write ONE generation-ready prompt for a diffusion '
-      + (S.lane === 'film' ? 'video' : 'image') + ' model covering subject, composition, lens, light, palette, texture'
-      + (S.style ? ', honoring the locked style: ' + S.style : '')
-      + '. The prompt is one flat string. Return exactly: {"id":"' + u.id + '","prompt":"..."}';
-    var got = '';
-    for (var attempt = 0; attempt < 2 && !got; attempt++) {
-      try {
-        var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json' });
-        var jx = d.data && d.data.json;
-        if (Array.isArray(jx)) jx = jx[0];
-        if (jx) got = _flatPrompt(jx.prompt).trim();
-      } catch (e) { /* retry once, then count it */ }
-    }
-    if (got) { u.prompt = got; save(); } else { failures++; }
+    var got = await compileOne(S.units[j]);
+    if (got) { S.units[j].prompt = got; save(); } else { failures++; }
   }
   busy.style.display = 'none'; busy.textContent = 'COMPILING…';
   renderUnits();
   if (failures) fail(3, failures + ' unit(s) did not compile. Press again to retry just by recompiling, or write those prompts by hand.');
+}
+/* Per-unit Polish: the same craft pass, one unit, honoring what the person
+ * already wrote \u2014 a hand prompt gets the laws without a full recompile. */
+async function polishUnit(u, card) {
+  var btn = card.querySelector('.upolish'); if (btn) { btn.textContent = 'POLISHING\u2026'; btn.disabled = true; }
+  var got = await compileOne(u);
+  if (got) { u.prompt = got; save(); var ta = card.querySelector('textarea'); if (ta) ta.value = got; }
+  if (btn) { btn.textContent = 'Polish prompt'; btn.disabled = false; }
 }
 
 /* SEAM:PLAY_RENDER_RAIL — fal submits, polling, takes ------------------- */
@@ -397,6 +416,7 @@ function unitCard(u, i) {
     + '<textarea placeholder="Compiled prompt lands here — or write your own"></textarea>'
     + '<div class="upicks"></div>'
     + '<div class="rail">'
+    + '<button class="upolish">Polish prompt</button>'
     + '<button class="btn sm" data-a="draft">Render draft</button>'
     + '<button class="btn sm ghost" data-a="final">Render final</button>'
     + (S.lane === 'film' ? '<label class="kf"><input type="checkbox" checked> keyframe first</label>' : '')
@@ -408,6 +428,7 @@ function unitCard(u, i) {
   var ta = d.querySelector('textarea'); ta.value = u.prompt || '';
   ta.onchange = function () { u.prompt = ta.value; save(); };
   d.querySelector('[data-a=draft]').onclick = function () { startRender(u, 'draft', d); };
+  var po = d.querySelector('.upolish'); if (po) po.onclick = function () { polishUnit(u, d); };
   d.querySelector('[data-a=final]').onclick = function () { startRender(u, 'final', d); };
   // per-unit reference picker — click a thumb to condition this unit on it
   var up = d.querySelector('.upicks');
@@ -476,6 +497,32 @@ async function startRender(u, tier, card) {
     errEl.textContent = String(e.message || e); errEl.style.display = 'block';
   }
 }
+/* SEAM:PLAY_PROMOTE \u2014 the draft is the decision, the final is the execution.
+ * A selected draft goes to the final pool CONDITIONED ON ITSELF: image drafts
+ * through FLUX.2 pro edit (the draft is the reference), video drafts through
+ * Seedance reference-to-video (the draft is @Video1). Composition, subject,
+ * palette, and motion are pinned \u2014 the frame you approved is the frame you
+ * pay for. Pressing "Render final" cold still re-rolls; Promote never does. */
+async function promoteTake(u, t, card) {
+  var errEl = card.querySelector('.err'); errEl.style.display = 'none';
+  var full = /^https?:/.test(t.asset) ? t.asset : (API_BASE + t.asset);
+  var isVid = t.pool.indexOf('video') === 0;
+  var pool = isVid ? 'video.final' : 'image.final';
+  try {
+    var body;
+    if (isVid) {
+      body = { pool: pool,
+        prompt: 'Recreate this exact shot at maximum quality. Preserve the motion, timing, subject, framing, and palette of @Video1 precisely.',
+        aspect: S.aspect, seconds: u.seconds || 4, video_urls: [full], project: projSlug(), unit: u.id };
+    } else {
+      body = { pool: pool,
+        prompt: 'Recreate this exact image at maximum fidelity and detail. Identical composition, subject, palette, and light.',
+        aspect: S.aspect, image_url: full, project: projSlug(), unit: u.id };
+    }
+    var r = await api('play/render', body);
+    trackTake(u, r.request_id, pool, card, t.prompt || '');
+  } catch (e) { errEl.textContent = String(e.message || e); errEl.style.display = 'block'; }
+}
 function projSlug() { return (S.brand || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) || 'engine'; }
 /* One visual law across every unit: the style lock rides every render prompt,
  * and image pools share a stable per-project seed. Consistency is a system,
@@ -484,8 +531,12 @@ function styleSpine() { var st = (S.style || '').trim(); return st ? ('Style law
 function projSeed() { var h = 5381, str = projSlug(); for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h % 2147483647; }
 function refIsVideo(url) { return /\.mp4(\?|$)/i.test(String(url || '')); }
 
-function trackTake(u, reqId, pool, card) {
-  addTake(u, { id: reqId, status: 'queued…', pool: pool }, card);
+function trackTake(u, reqId, pool, card, promptUsed) {
+  addTake(u, { id: reqId, status: 'queued…', pool: pool, prompt: (promptUsed || '').slice(0, 600) }, card);
+  pollTake(u, reqId, card);
+  refreshBudget();
+}
+function pollTake(u, reqId, card) {
   var tries = 0;
   _polls[reqId] = setInterval(async function () {
     tries++;
@@ -513,6 +564,16 @@ function waitDone(reqId) {
 }
 function stopPoll(id) { if (_polls[id]) { clearInterval(_polls[id]); delete _polls[id]; } }
 
+/* SEAM:PLAY_BUDGET_UI \u2014 the meter reads the worker's own ledger. */
+async function refreshBudget() {
+  try {
+    var b = await apiGet('play/budget');
+    var el = document.getElementById('budget'); if (!el) return;
+    el.innerHTML = 'Render budget today: <b>' + b.used + ' / ' + b.cap + 's</b>';
+    el.className = 'budget mono' + (b.used >= b.cap * 0.8 ? ' hot' : '');
+  } catch (e) { /* meter is a convenience, never a blocker */ }
+}
+
 /* SEAM:PLAY_ADJUST — edit-after-render. A finished take goes back into the
  * pipe with a change note: image takes route through the FLUX edit endpoint
  * (the take is the reference), video takes route through Seedance
@@ -527,6 +588,23 @@ function openAdjust(u, t, card) {
   row.querySelector('.adjx').onclick = function () { row.style.display = 'none'; card._adjTake = null; };
   inp.onkeydown = function (ev) { if (ev.key === 'Enter') runAdjust(u, card); };
 }
+/* SEAM:PLAY_INTERPRET_UI \u2014 the person types human; the pipe speaks model.
+ * Every edit note runs through the interpreter (a free Workers AI pass) that
+ * inverts negation into affirmative end-state and appends a preservation
+ * clause. The style spine deliberately stays OFF edits: the source take
+ * already carries the style, and re-injecting scene language fights the
+ * preservation goal (it can re-summon exactly what the edit is clearing). */
+async function interpretEdit(change, isVid, u) {
+  try {
+    var ask = 'Media: ' + (isVid ? 'video clip' : 'photograph')
+      + '. Scene: ' + u.title + '. ' + u.desc
+      + ' Edit note from the person: "' + change + '"';
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-adjust' });
+    var out = (d.data && d.data.text || '').trim().replace(/^["']|["']$/g, '').slice(0, 600);
+    if (out.length > 15) return out;
+  } catch (e) { /* interpreter down: fall through to the raw note */ }
+  return change + ' Everything else in the frame stays exactly identical.';
+}
 async function runAdjust(u, card) {
   var row = card.querySelector('.adjrow'); var t = card._adjTake;
   var change = row ? row.querySelector('input').value.trim() : '';
@@ -535,18 +613,24 @@ async function runAdjust(u, card) {
   var errEl = card.querySelector('.err'); errEl.style.display = 'none';
   var full = /^https?:/.test(t.asset) ? t.asset : (API_BASE + t.asset);
   var isVid = t.pool.indexOf('video') === 0;
+  addTake(u, { id: 'adj-pending', status: 'interpreting\u2026', pool: t.pool }, card);
   try {
+    var instruction = await interpretEdit(change, isVid, u);
     var body;
     if (isVid) {
-      body = { pool: t.pool, prompt: styleSpine() + change + ' Apply this change to @Video1 and keep everything else identical.',
+      body = { pool: t.pool, prompt: instruction + ' Apply this to @Video1. Everything not named stays exactly as in @Video1.',
         aspect: S.aspect, seconds: u.seconds || 4, video_urls: [full], project: projSlug(), unit: u.id };
     } else {
-      body = { pool: t.pool, prompt: styleSpine() + change,
+      body = { pool: t.pool, prompt: instruction,
         aspect: S.aspect, image_url: full, project: projSlug(), unit: u.id, seed: projSeed() };
     }
     var r = await api('play/render', body);
-    trackTake(u, r.request_id, t.pool, card);
-  } catch (e) { errEl.textContent = String(e.message || e); errEl.style.display = 'block'; }
+    replaceTake(u, 'adj-pending', { id: r.request_id, status: 'queued\u2026', pool: t.pool }, card);
+    pollTake(u, r.request_id, card);
+  } catch (e) {
+    replaceTake(u, 'adj-pending', { id: 'adj-failed-' + Date.now(), status: 'failed', pool: t.pool }, card);
+    errEl.textContent = String(e.message || e); errEl.style.display = 'block';
+  }
 }
 
 function addTake(u, t, card) { (S.takes[u.id] = S.takes[u.id] || []).push(t); save(); paintTakes(u, card); }
@@ -582,6 +666,7 @@ function paintTakes(u, card) {
         + '<div class="lnks"><a href="' + full + '" target="_blank" rel="noopener">Open</a>'
         + '<a href="' + dl + '">Download</a></div>'
         + '<button class="adj">Adjust</button>'
+        + (t.sel && t.pool.indexOf('.draft') > 0 ? '<button class="promo">Promote \u2192</button>' : '')
         + '<button class="pick">' + (t.sel ? 'Selected' : 'Select') + '</button>';
       var v = el.querySelector('video'); if (v) { v.onmouseenter = function(){ v.play(); }; v.onmouseleave = function(){ v.pause(); }; }
       var med = el.querySelector('video,img');
@@ -590,6 +675,8 @@ function paintTakes(u, card) {
         arr.forEach(function (x) { x.sel = false; }); t.sel = true; save(); paintTakes(u, card);
       };
       el.querySelector('.adj').onclick = function () { openAdjust(u, t, card); };
+      var pm = el.querySelector('.promo');
+      if (pm) pm.onclick = function () { promoteTake(u, t, card); };
     } else {
       el.innerHTML = '<div class="st">' + (t.status || 'queued…') + '</div><div class="t">' + t.pool + '</div>';
     }
@@ -678,6 +765,7 @@ function resetProject() {
   put('b-scale', S.scale); put('b-aspect', S.aspect); put('d-text', S.direction);
   if (S.direction) unlock('st2');
   if (S.units && S.units.length) { renderUnits(); unlock('st3'); unlock('st5'); }
+  refreshBudget();
 })();
 function setLaneUI() {
   var tabs = document.querySelectorAll('.lane');

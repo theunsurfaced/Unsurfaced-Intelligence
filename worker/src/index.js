@@ -38,6 +38,10 @@ const PLAY_SYSTEM = {
   'engine-concept': 'You are the PLAY creative engine for Unsurfaced. Develop exactly the creative direction the brief asks for. Declarative and specific. No em dashes. No hedging. No agency-speak.',
   'engine-units':   'You are the PLAY creative engine for Unsurfaced. Break the approved creative direction into concrete production units exactly as instructed. Follow the requested JSON shape precisely. No commentary.',
   'engine-compile': 'You are the PLAY creative engine for Unsurfaced, acting as a senior art director writing generation-ready prompts: subject, composition, lens, light, palette, texture. Never use quality-bait words like 8k, stunning, masterpiece, or cinematic as an adjective. No em dashes. Follow the requested JSON shape precisely. The prompt field is always one single flat string, never a nested object.',
+  /* SEAM:PLAY_INTERPRET \u2014 the edit interpreter. Diffusion models are blind to
+   * negation: 'remove the people' steers ATTENTION TOWARD people. Every edit
+   * note is translated to the desired END STATE before it touches a render. */
+  'engine-adjust': 'You translate a person\'s plain edit note into ONE generation-ready edit instruction for a diffusion model. Craft laws: NEVER use negation words (remove, delete, without, no, not, erase, get rid of); describe the desired end state affirmatively and name what fills the space instead. Example: \'remove the people from the background\' becomes \'the background is empty behind the subject, clean walls and fixtures visible, the subject is the only person in frame\'. Keep the given subject and action anchors. One flat declarative instruction under 60 words, then end with a short preservation clause naming what stays identical. Do not mention @Video1 or @Image1. No em dashes. Output the instruction only, no preamble.',
 };
 
 export default {
@@ -121,6 +125,7 @@ export default {
 
       if (request.method === 'GET' && path.startsWith('/play/render/'))
         return playRenderStatus(decodeURIComponent(path.slice('/play/render/'.length)), env, origin, user);
+      if (request.method === 'GET' && path === '/play/budget') return playBudget(env, origin, user);
 
       const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref') ? await safeJson(request) : {};
       switch (path) {
@@ -267,6 +272,15 @@ async function renderBudget(env, userId, seconds) {
   if (cur + seconds > CONFIG.RENDER_DAILY_SECONDS) return false;
   await env.RATE_LIMIT.put(key, String(cur + seconds), { expirationTtl: 60 * 60 * 26 });
   return true;
+}
+
+/* SEAM:PLAY_BUDGET \u2014 GET /play/budget \u2192 { ok, used, cap }. The person sees
+ * their real remaining render seconds instead of discovering the cap as a 429.
+ * Reads the same KV the budget law writes; costs nothing. */
+async function playBudget(env, origin, user) {
+  const day = new Date().toISOString().slice(0, 10);
+  const used = env.RATE_LIMIT ? (parseInt(await env.RATE_LIMIT.get(`fal:${user.id}:${day}`), 10) || 0) : 0;
+  return json({ ok: true, used, cap: CONFIG.RENDER_DAILY_SECONDS }, 200, origin, env);
 }
 
 /* POST /play/render { pool, prompt, aspect?, seconds?, image_url?, project?, unit? }
