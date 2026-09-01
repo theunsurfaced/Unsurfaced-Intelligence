@@ -468,6 +468,22 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:PROFILE",
    "purpose": "the snapshot rail: _profileSegments(meResponder()) captured into segments at panel submission, with a lossless fallback that runs the exact pre-patch insert on any error \u2014 a response is never lost to this feature; the client report renders the provenance line only when something was reconstructed: N captured at response time, M reconstructed from current responder profiles \u2014 a reconstructed cut is never read as a captured one"
+  },
+  "SEAM:PLAY_RENDER": {
+   "file": "worker/src/index.js",
+   "purpose": "fal.ai render rail: pools, seconds budget, queue submit, poll, R2 landing"
+  },
+  "SEAM:PLAY_DOOR": {
+   "file": "intelligence/index.html",
+   "purpose": "quick-create console keeps its shape; door opens the full Engine at /play/"
+  },
+  "SEAM:PLAY_ENGINE": {
+   "file": "play/index.html",
+   "purpose": "three-lane engine surface: FILM/STILL/SOCIAL, brief to units to prompts"
+  },
+  "SEAM:PLAY_RENDER_RAIL": {
+   "file": "play/index.html",
+   "purpose": "per-unit draft/final renders, keyframe-first chain, takes strip, polling"
   }
  },
  "planned": [

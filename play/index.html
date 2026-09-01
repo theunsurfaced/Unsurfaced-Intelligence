@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PLAY — The Engine · Unsurfaced™</title>
+<meta name="description" content="One brief to finished frames. FILM, STILL, SOCIAL — the Unsurfaced generative engine.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* SEAM:PLAY_ENGINE — the three-lane engine surface. Same tokens as the hub. */
+:root{
+  --bg:#0A0A0F;--surface:#111118;--surface2:#18181F;--surface3:#1F1F28;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#F0EFE8;--text2:#8E8D99;--text3:#5A5966;
+  --accent:#FF3B3B;--deep:#7C3AED;--deep2:#A78BFA;--deep-glow:rgba(124,58,237,0.15);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;}
+a{color:var(--deep2);}
+.mono{font-family:'Space Mono',monospace;}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 120px;}
+header.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:34px;}
+.back{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);text-decoration:none;}
+.back:hover{color:var(--deep2);}
+.brand{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--text3);}
+h1.verb{font-weight:800;font-size:clamp(34px,6vw,56px);line-height:1.02;color:var(--deep2);}
+.lede{color:var(--text2);font-size:15px;line-height:1.6;margin:12px 0 26px;max-width:640px;}
+.lanes{display:flex;gap:8px;margin-bottom:26px;}
+.lane{flex:1;padding:14px 10px;text-align:center;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-weight:800;letter-spacing:.06em;color:var(--text2);}
+.lane small{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:400;margin-top:4px;color:var(--text3);}
+.lane.on{border-color:var(--deep2);color:var(--deep2);background:var(--deep-glow);}
+.stage{border:1px solid var(--border2);background:var(--surface);padding:22px;margin-bottom:18px;}
+.stage.locked{opacity:.38;pointer-events:none;}
+.snum{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--deep2);}
+.stitle{font-weight:800;font-size:20px;margin:6px 0 14px;}
+label.f{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);margin:14px 0 6px;}
+input[type=text],textarea,select{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:11px 12px;font-family:'Syne',sans-serif;font-size:14px;outline:none;}
+textarea{min-height:92px;line-height:1.6;resize:vertical;}
+input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
+.row{display:flex;gap:12px;flex-wrap:wrap;}
+.row>div{flex:1;min-width:150px;}
+.btn{display:inline-block;background:var(--deep);border:1px solid var(--deep);color:#fff;padding:11px 20px;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;cursor:pointer;letter-spacing:.02em;}
+.btn:hover{background:var(--deep2);border-color:var(--deep2);}
+.btn.ghost{background:transparent;color:var(--deep2);}
+.btn.ghost:hover{background:var(--deep-glow);}
+.btn.sm{padding:7px 12px;font-size:12px;}
+.btn[disabled]{opacity:.4;pointer-events:none;}
+.note{font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);line-height:1.6;margin-top:12px;}
+.err{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);margin-top:10px;display:none;white-space:pre-wrap;}
+.busy{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--deep2);margin-top:10px;display:none;}
+.unit{border:1px solid var(--border);background:var(--surface2);padding:16px;margin-top:12px;}
+.unit h4{font-size:15px;font-weight:800;}
+.unit .meta{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:4px 0 8px;}
+.unit p.desc{font-size:13px;color:var(--text2);line-height:1.55;}
+.unit textarea{margin-top:10px;min-height:74px;font-size:13px;}
+.rail{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+.kf{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer;}
+.takes{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.take{width:168px;border:1px solid var(--border2);background:var(--bg);}
+.take img,.take video{width:100%;height:96px;object-fit:cover;display:block;background:#000;}
+.take .t{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--text3);padding:6px 8px;word-break:break-all;}
+.take.sel{border-color:var(--deep2);}
+.take .pick{width:100%;border:0;border-top:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:6px 0;cursor:pointer;}
+.take.sel .pick{color:var(--deep2);}
+.take .st{font-family:'Space Mono',monospace;font-size:10px;color:var(--deep2);padding:38px 8px;text-align:center;}
+#gate{display:none;border:1px solid var(--border2);background:var(--surface);padding:34px;text-align:center;}
+#gate h2{font-weight:800;font-size:24px;margin-bottom:10px;}
+#gate p{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:18px;}
+#engine{display:none;}
+.exp{display:flex;gap:10px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="back" href="../intelligence/">&larr; Intelligence</a>
+    <span class="brand">Unsurfaced&trade; &middot; Generative Studio</span>
+  </header>
+
+  <div id="gate">
+    <h2>The Engine is behind the door.</h2>
+    <p>Sign in on the Intelligence hub, then come back. Your session carries over.</p>
+    <a class="btn" href="../intelligence/">Open the hub &rarr;</a>
+  </div>
+
+  <div id="engine">
+    <h1 class="verb">PLAY &mdash; The Engine</h1>
+    <p class="lede">One brief in, finished frames out. Pick a lane, set the brief, approve the direction, and render every unit through the studio pipe. Draft is the default. Final is a decision.</p>
+
+    <div class="lanes" id="lanes">
+      <div class="lane on" data-lane="film" onclick="setLane('film')">FILM<small>brief &rarr; shots &rarr; motion</small></div>
+      <div class="lane" data-lane="still" onclick="setLane('still')">STILL<small>brief &rarr; frames &rarr; keys</small></div>
+      <div class="lane" data-lane="social" onclick="setLane('social')">SOCIAL<small>brief &rarr; assets &rarr; feed</small></div>
+    </div>
+
+    <!-- I · BRIEF -->
+    <div class="stage" id="st1">
+      <span class="snum">Stage I</span><div class="stitle">The brief</div>
+      <div class="row">
+        <div><label class="f">Brand / project</label><input type="text" id="b-brand" placeholder="Who is this for" onchange="save()"></div>
+        <div><label class="f">Style lock (optional)</label><input type="text" id="b-style" placeholder="e.g. 35mm, hard flash, court-side documentary" onchange="save()"></div>
+      </div>
+      <label class="f">Brief</label>
+      <textarea id="b-brief" placeholder="What are we making, for whom, and what should it do" onchange="save()"></textarea>
+      <div class="row">
+        <div><label class="f" id="b-scale-label">Total duration (seconds)</label><input type="text" id="b-scale" value="24" onchange="save()"></div>
+        <div><label class="f">Aspect</label>
+          <select id="b-aspect" onchange="save()">
+            <option value="16:9">16:9</option><option value="9:16">9:16</option>
+            <option value="1:1">1:1</option><option value="4:5">4:5</option><option value="4:3">4:3</option>
+          </select></div>
+      </div>
+      <div style="margin-top:18px"><button class="btn" id="go1" onclick="develop()">Develop direction &rarr;</button></div>
+      <div class="busy" id="busy1">DEVELOPING&hellip;</div><div class="err" id="err1"></div>
+    </div>
+
+    <!-- II · DIRECTION -->
+    <div class="stage locked" id="st2">
+      <span class="snum">Stage II</span><div class="stitle">The direction</div>
+      <textarea id="d-text" style="min-height:150px" onchange="save()"></textarea>
+      <div style="margin-top:14px"><button class="btn" onclick="breakUnits()">Approve &amp; break into units &rarr;</button>
+      <button class="btn ghost" onclick="develop()">Re-develop</button></div>
+      <div class="busy" id="busy2">BREAKING&hellip;</div><div class="err" id="err2"></div>
+    </div>
+
+    <!-- III/IV · UNITS + RENDER RAIL -->
+    <div class="stage locked" id="st3">
+      <span class="snum">Stage III &middot; IV</span><div class="stitle">Units, prompts, renders</div>
+      <div id="units"></div>
+      <div style="margin-top:16px"><button class="btn ghost" onclick="compileAll()">Compile all prompts</button></div>
+      <div class="busy" id="busy3">COMPILING&hellip;</div><div class="err" id="err3"></div>
+      <p class="note">Draft renders run on the fast pool. Final is an explicit press and spends real budget. FILM units can chain keyframe-first: the still renders on the draft image pool, then drives the motion model.</p>
+    </div>
+
+    <!-- V · EXPORT -->
+    <div class="stage locked" id="st5">
+      <span class="snum">Stage V</span><div class="stitle">Export</div>
+      <div class="exp">
+        <button class="btn" onclick="exportSheet()">Call sheet (.txt)</button>
+        <button class="btn ghost" onclick="exportJson()">Project (.json)</button>
+        <button class="btn ghost" onclick="resetProject()">New project</button>
+      </div>
+    </div>
+    <p class="note">The read is free. The moves are yours.</p>
+  </div>
+</div>
+
+<script>
+/* SEAM:PLAY_ENGINE — session, state, generation ------------------------- */
+var SUPABASE_URL = 'https://uxbhafkqungklmnrfdhp.supabase.co';
+var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmhhZmtxdW5na2xtbnJmZGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjI5NDgsImV4cCI6MjA5NzgzODk0OH0.2PufodDCcrV1PaOe4L1ke0Oy2u5OynY-u6jK5YNAGtw';
+var API_BASE = 'https://api.unsurfaced-intelligence.com';
+var _sb = null;
+try { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch (e) { _sb = null; }
+
+async function _authHeader() {
+  if (!_sb) return {};
+  try { var r = await _sb.auth.getSession(); var t = r.data && r.data.session && r.data.session.access_token;
+        return t ? { Authorization: 'Bearer ' + t } : {}; } catch (e) { return {}; }
+}
+async function api(action, payload) {
+  var h = await _authHeader();
+  var r = await fetch(API_BASE + '/' + action, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, h),
+    body: JSON.stringify(payload || {})
+  });
+  var d = await r.json().catch(function(){ return null; });
+  if (!r.ok || !d || d.ok === false) throw new Error((d && (d.error + (d.detail ? ': ' + d.detail : ''))) || ('http_' + r.status));
+  return d;
+}
+async function apiGet(pathTail) {
+  var h = await _authHeader();
+  var r = await fetch(API_BASE + '/' + pathTail, { headers: h });
+  var d = await r.json().catch(function(){ return null; });
+  if (!r.ok || !d || d.ok === false) throw new Error((d && d.error) || ('http_' + r.status));
+  return d;
+}
+
+var LANES = {
+  film:   { scaleLabel: 'Total duration (seconds)', scaleDefault: '24', aspect: '16:9',
+            unitNoun: 'shot', unitPlural: 'shots' },
+  still:  { scaleLabel: 'Number of frames', scaleDefault: '4', aspect: '4:5',
+            unitNoun: 'frame', unitPlural: 'frames' },
+  social: { scaleLabel: 'Number of assets', scaleDefault: '5', aspect: '9:16',
+            unitNoun: 'asset', unitPlural: 'assets' }
+};
+var S = { lane: 'film', brand: '', style: '', brief: '', scale: '24', aspect: '16:9',
+          direction: '', units: [], takes: {} }; // takes[unitId] = [{id,asset,pool,status,sel}]
+var _polls = {};
+
+function save() {
+  S.brand = val('b-brand'); S.style = val('b-style'); S.brief = val('b-brief');
+  S.scale = val('b-scale'); S.aspect = val('b-aspect'); S.direction = val('d-text');
+  try { localStorage.setItem('play_engine_v1', JSON.stringify(S)); } catch (e) {}
+}
+function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+function put(id, v) { var el = document.getElementById(id); if (el) el.value = v || ''; }
+function show(id, on) { var el = document.getElementById(id); if (el) el.style.display = on ? 'block' : 'none'; }
+function unlock(id) { var el = document.getElementById(id); if (el) el.classList.remove('locked'); }
+function fail(n, e) { var el = document.getElementById('err' + n); el.textContent = String(e && e.message || e); el.style.display = 'block'; }
+function clearFail(n) { show('err' + n, false); }
+
+function setLane(l) {
+  S.lane = l;
+  var tabs = document.querySelectorAll('.lane');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-lane') === l);
+  document.getElementById('b-scale-label').textContent = LANES[l].scaleLabel;
+  put('b-scale', LANES[l].scaleDefault); put('b-aspect', LANES[l].aspect);
+  save();
+}
+
+function laneBriefText() {
+  var L = LANES[S.lane];
+  return 'Lane: ' + S.lane.toUpperCase()
+    + '. Brand: ' + (S.brand || 'unnamed')
+    + '. Brief: ' + S.brief
+    + (S.style ? '. Locked style: ' + S.style : '')
+    + '. Scale: ' + S.scale + ' ' + (S.lane === 'film' ? 'seconds total' : L.unitPlural)
+    + '. Aspect: ' + S.aspect + '.';
+}
+
+async function develop() {
+  save(); clearFail(1);
+  if (!S.brief.trim()) { fail(1, 'Write the brief first.'); return; }
+  show('busy1', true);
+  try {
+    var ask = laneBriefText() + ' Write the creative direction in under 180 words: the single idea, the world it lives in, the tone, and what every '
+      + LANES[S.lane].unitNoun + ' must share. Address it to a production team.';
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-concept' });
+    put('d-text', (d.data && d.data.text || '').trim());
+    save(); unlock('st2');
+    document.getElementById('st2').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { fail(1, e); }
+  show('busy1', false);
+}
+
+async function breakUnits() {
+  save(); clearFail(2); show('busy2', true);
+  var L = LANES[S.lane];
+  var count = S.lane === 'film' ? Math.max(2, Math.min(8, Math.round((parseInt(S.scale, 10) || 24) / 4)))
+                                : Math.max(1, Math.min(10, parseInt(S.scale, 10) || 4));
+  try {
+    var shape = S.lane === 'film'
+      ? '[{"id":"u1","title":"...","desc":"what happens in the shot","seconds":4}]'
+      : '[{"id":"u1","title":"...","desc":"what the ' + L.unitNoun + ' shows"}]';
+    var ask = laneBriefText() + ' Approved direction: ' + S.direction
+      + ' Break this into exactly ' + count + ' ' + L.unitPlural
+      + '. Return a JSON array shaped exactly like ' + shape
+      + (S.lane === 'film' ? ' where seconds are integers 2 to 10 summing near ' + S.scale + '.' : '.');
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-units', format: 'json' });
+    var arr = d.data && d.data.json;
+    if (!Array.isArray(arr) || !arr.length) throw new Error('bad_units');
+    S.units = arr.slice(0, 12).map(function (u, i) {
+      return { id: String(u.id || ('u' + (i + 1))), title: String(u.title || ('Unit ' + (i + 1))),
+               desc: String(u.desc || ''), seconds: Math.min(Math.max(parseInt(u.seconds, 10) || 4, 2), 10), prompt: '' };
+    });
+    S.takes = {}; save(); renderUnits(); unlock('st3'); unlock('st5');
+    document.getElementById('st3').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { fail(2, e); }
+  show('busy2', false);
+}
+
+async function compileAll() {
+  save(); clearFail(3); show('busy3', true);
+  try {
+    var ask = laneBriefText() + ' Direction: ' + S.direction
+      + ' Units: ' + JSON.stringify(S.units.map(function (u) { return { id: u.id, title: u.title, desc: u.desc }; }))
+      + ' For every unit write one generation-ready prompt for a diffusion '
+      + (S.lane === 'film' ? 'video' : 'image') + ' model: subject, composition, lens, light, palette, texture'
+      + (S.style ? ', honoring the locked style: ' + S.style : '')
+      + '. Return a JSON array shaped exactly like [{"id":"u1","prompt":"..."}].';
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json' });
+    var arr = d.data && d.data.json;
+    if (!Array.isArray(arr)) throw new Error('bad_prompts');
+    var map = {};
+    for (var i = 0; i < arr.length; i++) if (arr[i] && arr[i].id) map[arr[i].id] = String(arr[i].prompt || '');
+    for (var j = 0; j < S.units.length; j++) if (map[S.units[j].id]) S.units[j].prompt = map[S.units[j].id];
+    save(); renderUnits();
+  } catch (e) { fail(3, e); }
+  show('busy3', false);
+}
+
+/* SEAM:PLAY_RENDER_RAIL — fal submits, polling, takes ------------------- */
+function renderUnits() {
+  var host = document.getElementById('units'); host.innerHTML = '';
+  for (var i = 0; i < S.units.length; i++) host.appendChild(unitCard(S.units[i], i));
+}
+function unitCard(u, i) {
+  var d = document.createElement('div'); d.className = 'unit'; d.id = 'unit-' + u.id;
+  var meta = S.lane === 'film' ? (u.seconds + 's · ' + S.aspect) : S.aspect;
+  d.innerHTML = '<h4></h4><div class="meta">' + (i + 1) + ' / ' + S.units.length + ' · ' + meta + '</div>'
+    + '<p class="desc"></p>'
+    + '<textarea placeholder="Compiled prompt lands here — or write your own"></textarea>'
+    + '<div class="rail">'
+    + '<button class="btn sm" data-a="draft">Render draft</button>'
+    + '<button class="btn sm ghost" data-a="final">Render final</button>'
+    + (S.lane === 'film' ? '<label class="kf"><input type="checkbox" checked> keyframe first</label>' : '')
+    + '</div><div class="err"></div><div class="takes"></div>';
+  d.querySelector('h4').textContent = u.title;
+  d.querySelector('p.desc').textContent = u.desc;
+  var ta = d.querySelector('textarea'); ta.value = u.prompt || '';
+  ta.onchange = function () { u.prompt = ta.value; save(); };
+  d.querySelector('[data-a=draft]').onclick = function () { startRender(u, 'draft', d); };
+  d.querySelector('[data-a=final]').onclick = function () { startRender(u, 'final', d); };
+  paintTakes(u, d);
+  return d;
+}
+
+async function startRender(u, tier, card) {
+  var errEl = card.querySelector('.err'); errEl.style.display = 'none';
+  var prompt = (u.prompt || '').trim() || (u.title + '. ' + u.desc);
+  var isFilm = S.lane === 'film';
+  var kf = isFilm && card.querySelector('.kf input') && card.querySelector('.kf input').checked;
+  try {
+    if (isFilm && kf) {
+      // keyframe-first chain: draft still, then motion from it
+      addTake(u, { id: 'kf-pending', status: 'keyframe…', pool: 'image.draft' }, card);
+      var k = await api('play/render', { pool: 'image.draft', prompt: prompt, aspect: S.aspect,
+        project: projSlug(), unit: u.id });
+      var kAsset = await waitDone(k.request_id);
+      replaceTake(u, 'kf-pending', { id: k.request_id, asset: kAsset, pool: 'image.draft', status: 'done' }, card);
+      var imageUrl = /^https?:/.test(kAsset) ? kAsset : (API_BASE + kAsset);
+      var v = await api('play/render', { pool: 'video.' + tier, prompt: prompt, aspect: S.aspect,
+        seconds: u.seconds, image_url: imageUrl, project: projSlug(), unit: u.id });
+      trackTake(u, v.request_id, 'video.' + tier, card);
+    } else {
+      var pool = (isFilm ? 'video.' : 'image.') + tier;
+      var body = { pool: pool, prompt: prompt, aspect: S.aspect, project: projSlug(), unit: u.id };
+      if (isFilm) body.seconds = u.seconds;
+      var r = await api('play/render', body);
+      trackTake(u, r.request_id, pool, card);
+    }
+  } catch (e) {
+    errEl.textContent = String(e.message || e); errEl.style.display = 'block';
+  }
+}
+function projSlug() { return (S.brand || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) || 'engine'; }
+
+function trackTake(u, reqId, pool, card) {
+  addTake(u, { id: reqId, status: 'queued…', pool: pool }, card);
+  var tries = 0;
+  _polls[reqId] = setInterval(async function () {
+    tries++;
+    try {
+      var st = await apiGet('play/render/' + encodeURIComponent(reqId));
+      if (st.status === 'done') { stopPoll(reqId); updTake(u, reqId, { asset: st.asset, status: 'done' }, card); }
+      else if (st.status === 'failed') { stopPoll(reqId); updTake(u, reqId, { status: 'failed' }, card); }
+      else if (tries > 120) { stopPoll(reqId); updTake(u, reqId, { status: 'timeout' }, card); }
+      else updTake(u, reqId, { status: st.queue != null ? ('queue ' + st.queue) : 'rendering…' }, card);
+    } catch (e) { if (tries > 6) { stopPoll(reqId); updTake(u, reqId, { status: 'failed' }, card); } }
+  }, 3000);
+}
+function waitDone(reqId) {
+  return new Promise(function (res, rej) {
+    var tries = 0;
+    var t = setInterval(async function () {
+      tries++;
+      try {
+        var st = await apiGet('play/render/' + encodeURIComponent(reqId));
+        if (st.status === 'done') { clearInterval(t); res(st.asset); }
+        else if (st.status === 'failed' || tries > 120) { clearInterval(t); rej(new Error('render_failed')); }
+      } catch (e) { if (tries > 6) { clearInterval(t); rej(e); } }
+    }, 3000);
+  });
+}
+function stopPoll(id) { if (_polls[id]) { clearInterval(_polls[id]); delete _polls[id]; } }
+
+function addTake(u, t, card) { (S.takes[u.id] = S.takes[u.id] || []).push(t); save(); paintTakes(u, card); }
+function replaceTake(u, oldId, t, card) {
+  var arr = S.takes[u.id] || [];
+  for (var i = 0; i < arr.length; i++) if (arr[i].id === oldId) arr[i] = t;
+  save(); paintTakes(u, card);
+}
+function updTake(u, id, patch, card) {
+  var arr = S.takes[u.id] || [];
+  for (var i = 0; i < arr.length; i++) if (arr[i].id === id) for (var k in patch) arr[i][k] = patch[k];
+  save(); paintTakes(u, card);
+}
+function paintTakes(u, card) {
+  var host = card.querySelector('.takes'); if (!host) return;
+  host.innerHTML = '';
+  var arr = S.takes[u.id] || [];
+  arr.forEach(function (t) {
+    var el = document.createElement('div'); el.className = 'take' + (t.sel ? ' sel' : '');
+    if (t.asset) {
+      var full = /^https?:/.test(t.asset) ? t.asset : (API_BASE + t.asset);
+      var isVid = t.pool.indexOf('video') === 0;
+      el.innerHTML = (isVid ? '<video muted loop playsinline src="' + full + '"></video>'
+                            : '<img alt="take" src="' + full + '">')
+        + '<div class="t">' + t.pool + '</div>'
+        + '<button class="pick">' + (t.sel ? 'Selected' : 'Select') + '</button>';
+      var v = el.querySelector('video'); if (v) { v.onmouseenter = function(){ v.play(); }; v.onmouseleave = function(){ v.pause(); }; }
+      el.querySelector('.pick').onclick = function () {
+        arr.forEach(function (x) { x.sel = false; }); t.sel = true; save(); paintTakes(u, card);
+      };
+    } else {
+      el.innerHTML = '<div class="st">' + (t.status || 'queued…') + '</div><div class="t">' + t.pool + '</div>';
+    }
+    host.appendChild(el);
+  });
+}
+
+/* Export ---------------------------------------------------------------- */
+function exportSheet() {
+  save();
+  var L = [];
+  L.push('UNSURFACED — PLAY / THE ENGINE');
+  L.push('Lane: ' + S.lane.toUpperCase() + '   Brand: ' + (S.brand || '—') + '   Aspect: ' + S.aspect);
+  if (S.style) L.push('Style lock: ' + S.style);
+  L.push(''); L.push('DIRECTION'); L.push(S.direction); L.push('');
+  S.units.forEach(function (u, i) {
+    L.push('— UNIT ' + (i + 1) + ' · ' + u.title + (S.lane === 'film' ? ' (' + u.seconds + 's)' : ''));
+    L.push('  ' + u.desc);
+    if (u.prompt) L.push('  PROMPT: ' + u.prompt);
+    var sel = (S.takes[u.id] || []).filter(function (t) { return t.sel && t.asset; })[0];
+    if (sel) L.push('  SELECTED TAKE: ' + (/^https?:/.test(sel.asset) ? sel.asset : API_BASE + sel.asset) + '  [' + sel.pool + ']');
+    L.push('');
+  });
+  L.push('The read is free. The moves are yours.');
+  download('unsurfaced-callsheet.txt', L.join('\n'), 'text/plain');
+}
+function exportJson() { save(); download('unsurfaced-play-project.json', JSON.stringify(S, null, 2), 'application/json'); }
+function download(name, text, type) {
+  var b = new Blob([text], { type: type });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function resetProject() {
+  if (!confirm('Start a new project? The current one clears.')) return;
+  try { localStorage.removeItem('play_engine_v1'); } catch (e) {}
+  location.reload();
+}
+
+/* Boot ------------------------------------------------------------------ */
+(async function boot() {
+  var h = await _authHeader();
+  if (!h.Authorization) { show('gate', true); return; }
+  show('engine', true);
+  try {
+    var raw = localStorage.getItem('play_engine_v1');
+    if (raw) {
+      var prev = JSON.parse(raw);
+      if (prev && typeof prev === 'object') { S = Object.assign(S, prev); }
+    }
+  } catch (e) {}
+  setLaneUI();
+  put('b-brand', S.brand); put('b-style', S.style); put('b-brief', S.brief);
+  put('b-scale', S.scale); put('b-aspect', S.aspect); put('d-text', S.direction);
+  if (S.direction) unlock('st2');
+  if (S.units && S.units.length) { renderUnits(); unlock('st3'); unlock('st5'); }
+})();
+function setLaneUI() {
+  var tabs = document.querySelectorAll('.lane');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-lane') === S.lane);
+  document.getElementById('b-scale-label').textContent = LANES[S.lane].scaleLabel;
+}
+</script>
+</body>
+</html>

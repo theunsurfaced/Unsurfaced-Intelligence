@@ -1472,6 +1472,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     </div>
     <div id="play-output" class="play-output" style="display:none"></div>
     <p class="uai-note">Pick a starter or describe your own, then Create. PLAY generates live once the studio backend is connected; until then this stays a preview.</p>
+    <!-- SEAM:PLAY_DOOR — quick create above; the full three-lane Engine (FILM / STILL / SOCIAL) is its own surface -->
+    <a class="uai-engine-door" href="../play/">Open the Engine →<span>FILM · STILL · SOCIAL — one brief to finished frames</span></a>
   </div>
 </div>
 
@@ -1648,6 +1650,11 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 </div>
 
 <style>
+/* PLAY engine door (SEAM:PLAY_DOOR) */
+.uai-engine-door{display:block;margin-top:16px;padding:14px 18px;border:1px solid var(--deep2);color:var(--deep2);text-decoration:none;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.02em;transition:background .18s,color .18s;}
+.uai-engine-door span{display:block;font-family:'Space Mono',monospace;font-size:10px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);margin-top:5px;}
+.uai-engine-door:hover{background:var(--deep2);color:#fff;}
+.uai-engine-door:hover span{color:rgba(255,255,255,.78);}
 /* PLAY output */
 .play-output{margin-top:22px;border:1px solid var(--border2);background:var(--surface);padding:20px;max-height:440px;overflow:auto;}
 .play-text{font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;}

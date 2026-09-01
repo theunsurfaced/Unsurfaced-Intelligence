@@ -26,6 +26,7 @@ const CONFIG = {
   IMAGE_MODEL: '@cf/black-forest-labs/flux-1-schnell',    // upgrade to FLUX.2/Leonardo later (adjust output parsing)
   MAX_TOKENS:  800,
   DAILY_LIMIT: 100,   // AI calls per user per day (cost guardrail)
+  RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
 };
 
 const PLAY_SYSTEM = {
@@ -33,6 +34,9 @@ const PLAY_SYSTEM = {
   headline: 'You write punchy brand headlines. Return 5 numbered options, nothing else.',
   concept:  'You develop campaign concepts. Give a concept name and a two-sentence pitch.',
   naming:   'You generate brand/product name candidates. Return 8 options with a one-line rationale each.',
+  'engine-concept': 'You are the PLAY creative engine for Unsurfaced. Develop exactly the creative direction the brief asks for. Declarative and specific. No em dashes. No hedging. No agency-speak.',
+  'engine-units':   'You are the PLAY creative engine for Unsurfaced. Break the approved creative direction into concrete production units exactly as instructed. Follow the requested JSON shape precisely. No commentary.',
+  'engine-compile': 'You are the PLAY creative engine for Unsurfaced, acting as a senior art director writing generation-ready prompts: subject, composition, lens, light, palette, texture. Never use quality-bait words like 8k, stunning, masterpiece, or cinematic as an adjective. No em dashes. Follow the requested JSON shape precisely.',
 };
 
 export default {
@@ -108,10 +112,14 @@ export default {
       const _aiPath = path.startsWith('/play') || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
       if (_aiPath && !(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
 
+      if (request.method === 'GET' && path.startsWith('/play/render/'))
+        return playRenderStatus(decodeURIComponent(path.slice('/play/render/'.length)), env, origin, user);
+
       const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
+        case '/play/render':         return playRender(body, env, origin, user);
         case '/excavate/synthesize': return synthesize(body, env, origin);
         case '/mine/notify':        return mineNotify(body, env, origin, user);
         case '/mine/invites':       return mineInvites(body, env, origin, user);
@@ -182,15 +190,25 @@ async function underLimit(env, userId) {
 
 /* ----------------------------- PLAY ----------------------------- */
 async function playGenerate(body, env, origin) {
-  const prompt = String(body.prompt || '').slice(0, 2000);
+  const prompt = String(body.prompt || '').slice(0, 6000);
   if (!prompt) return json({ ok: false, error: 'prompt_required' }, 400, origin, env);
-  const sys = PLAY_SYSTEM[body.kind] || PLAY_SYSTEM.default;
+  const engine = String(body.kind || '').indexOf('engine') === 0;
+  const wantJson = body.format === 'json';
+  const sys = (PLAY_SYSTEM[body.kind] || PLAY_SYSTEM.default)
+    + (wantJson ? ' Output STRICT JSON only. No markdown fences, no prose outside the JSON.' : '');
   const out = await env.AI.run(CONFIG.TEXT_MODEL, {
     messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }],
-    max_tokens: CONFIG.MAX_TOKENS
+    max_tokens: engine ? 1800 : CONFIG.MAX_TOKENS
   });
-  return json({ ok: true, data: { text: out.response || '' } }, 200, origin, env);
+  const text = (out && out.response) || '';
+  if (wantJson) {
+    const parsed = extractJson(text);
+    if (!parsed) return json({ ok: false, error: 'bad_model_json' }, 502, origin, env);
+    return json({ ok: true, data: { json: parsed, text } }, 200, origin, env);
+  }
+  return json({ ok: true, data: { text } }, 200, origin, env);
 }
+
 
 async function playImage(body, env, origin, user) {
   const prompt = String(body.prompt || '').slice(0, 2000);
@@ -202,6 +220,109 @@ async function playImage(body, env, origin, user) {
   const key = `play/${user.id}/${Date.now()}.jpg`;
   if (env.MEDIA) await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
   return json({ ok: true, data: { url: `/media/${key}` } }, 200, origin, env);
+}
+
+/* SEAM:PLAY_RENDER \u2014 fal.ai render rail.
+ * Queue API: POST https://queue.fal.run/{model-id} with `Authorization: Key FAL_KEY`
+ *   \u2192 { request_id, status_url, response_url, cancel_url }. Poll status_url;
+ * on COMPLETED fetch response_url and land the asset in R2 (MEDIA) immediately \u2014
+ * Unsurfaced owns the file, fal CDN retention is not ours.
+ * Two-speed law: draft pools are the default; final is always an explicit press.
+ * Model ids are swapped HERE only. flux/schnell + seedance-2.0/fast verified in
+ * the fal catalog at cut time; confirm the *.final ids in your fal dashboard
+ * before the first final render (a wrong id fails loud with fal_404, spends $0).
+ * Requires: `npx wrangler secret put FAL_KEY` + hard spend cap in fal dashboard. */
+const RENDER_POOL = {
+  'image.draft': { id: 'fal-ai/flux/schnell',   kind: 'image', sec: 2 },
+  'image.final': { id: 'fal-ai/flux-pro/v1.1',  kind: 'image', sec: 6 }, // swap to FLUX.2 [pro] id from dashboard when ready
+  'video.draft': { id: 'bytedance/seedance-2.0/fast/text-to-video', i2v: 'bytedance/seedance-2.0/fast/image-to-video', kind: 'video' },
+  'video.final': { id: 'fal-ai/kling-video/v3/standard/text-to-video', i2v: 'fal-ai/kling-video/v3/standard/image-to-video', kind: 'video' } // VERIFY id in dashboard before first use
+};
+const RENDER_ASPECTS = { '16:9': 'landscape_16_9', '9:16': 'portrait_16_9', '1:1': 'square_hd', '4:5': 'portrait_4_3', '3:4': 'portrait_4_3', '4:3': 'landscape_4_3' };
+
+async function renderBudget(env, userId, seconds) {
+  if (!env.RATE_LIMIT) return true; // no KV bound \u2192 skip (configure for production)
+  const day = new Date().toISOString().slice(0, 10);
+  const key = `fal:${userId}:${day}`;
+  const cur = parseInt((await env.RATE_LIMIT.get(key)) || '0', 10);
+  if (cur + seconds > CONFIG.RENDER_DAILY_SECONDS) return false;
+  await env.RATE_LIMIT.put(key, String(cur + seconds), { expirationTtl: 60 * 60 * 26 });
+  return true;
+}
+
+/* POST /play/render { pool, prompt, aspect?, seconds?, image_url?, project?, unit? }
+ *   \u2192 { ok, request_id }   (429 render_budget when the daily seconds cap is spent) */
+async function playRender(body, env, origin, user) {
+  if (!env.FAL_KEY) return json({ ok: false, error: 'render_unconfigured' }, 503, origin, env);
+  const pool = RENDER_POOL[String(body.pool || '')];
+  const prompt = String(body.prompt || '').slice(0, 2500);
+  if (!pool || !prompt) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  const seconds = pool.kind === 'video'
+    ? Math.min(Math.max(parseInt(body.seconds, 10) || 4, 2), 10)
+    : pool.sec;
+  if (!(await renderBudget(env, user.id, seconds))) return json({ ok: false, error: 'render_budget' }, 429, origin, env);
+  const imageUrl = /^https:\/\//.test(String(body.image_url || '')) ? String(body.image_url).slice(0, 600) : '';
+  const model = (imageUrl && pool.i2v) ? pool.i2v : pool.id;
+  const input = { prompt };
+  if (pool.kind === 'video') {
+    input.duration = seconds;
+    input.resolution = '720p';
+    input.aspect_ratio = RENDER_ASPECTS[body.aspect] ? String(body.aspect) : '16:9';
+    if (imageUrl) input.image_url = imageUrl; // keyframe-first chain: STILL feeds FILM
+  } else {
+    input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
+  }
+  const r = await fetch('https://queue.fal.run/' + model, {
+    method: 'POST',
+    headers: { Authorization: 'Key ' + env.FAL_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(input)
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || !j.request_id)
+    return json({ ok: false, error: 'fal_' + r.status, detail: String((j && (j.detail || j.message)) || '').slice(0, 300) }, 502, origin, env);
+  const project = String(body.project || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'engine';
+  const rec = { model, kind: pool.kind, status_url: j.status_url, response_url: j.response_url,
+    user: user.id, project, unit: String(body.unit || '').slice(0, 40), at: Date.now() };
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + j.request_id, JSON.stringify(rec), { expirationTtl: 259200 });
+  await logEvent(env, 'play', null, 'render_submit', null, { pool: String(body.pool), model });
+  return json({ ok: true, request_id: j.request_id }, 200, origin, env);
+}
+
+/* GET /play/render/:request_id \u2192 { ok, status: running|done|failed, asset?, queue? }
+ * On first COMPLETED poll the asset is streamed into R2 and served from /media/. */
+async function playRenderStatus(reqId, env, origin, user) {
+  if (!env.FAL_KEY) return json({ ok: false, error: 'render_unconfigured' }, 503, origin, env);
+  if (!/^[A-Za-z0-9-]{8,80}$/.test(reqId)) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  const raw = env.RATE_LIMIT ? await env.RATE_LIMIT.get('rr:' + reqId) : null;
+  let rec = null;
+  try { rec = raw ? JSON.parse(raw) : null; } catch (e) { rec = null; }
+  if (!rec || rec.user !== user.id) return json({ ok: false, error: 'not_found' }, 404, origin, env);
+  if (rec.asset) return json({ ok: true, status: 'done', asset: rec.asset }, 200, origin, env);
+  const hdr = { Authorization: 'Key ' + env.FAL_KEY };
+  const st = await fetch(rec.status_url, { headers: hdr }).then(x => x.json()).catch(() => null);
+  const status = (st && st.status) || 'UNKNOWN';
+  if (status !== 'COMPLETED') {
+    const failed = /FAILED|ERROR|CANCEL/i.test(status);
+    return json({ ok: true, status: failed ? 'failed' : 'running', queue: st && st.queue_position }, 200, origin, env);
+  }
+  const out = await fetch(rec.response_url, { headers: hdr }).then(x => x.json()).catch(() => null);
+  const url = (out && ((out.images && out.images[0] && out.images[0].url)
+    || (out.video && out.video.url) || (out.image && out.image.url) || out.url)) || '';
+  if (!url) return json({ ok: true, status: 'failed' }, 200, origin, env);
+  const ext = rec.kind === 'video' ? 'mp4' : 'jpg';
+  const key = `play/${user.id}/${rec.project}/${reqId}.${ext}`;
+  let asset = url;
+  if (env.MEDIA) {
+    const a = await fetch(url);
+    if (a.ok) {
+      await env.MEDIA.put(key, a.body, { httpMetadata: { contentType: rec.kind === 'video' ? 'video/mp4' : 'image/jpeg' } });
+      asset = '/media/' + key;
+    }
+  }
+  rec.asset = asset;
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + reqId, JSON.stringify(rec), { expirationTtl: 259200 });
+  await logEvent(env, 'play', null, 'render_done', null, { model: rec.model, kind: rec.kind });
+  return json({ ok: true, status: 'done', asset }, 200, origin, env);
 }
 
 /* --------------------------- EXCAVATE --------------------------- */
@@ -320,13 +441,17 @@ async function synthesize(body, env, origin) {
   return json({ ok: true, data: { text: out.response || '' } }, 200, origin, env);
 }
 
-// Robust JSON extraction from an LLM reply (handles ```json fences and stray prose).
+// Robust JSON extraction from an LLM reply (handles ```json fences and stray
+// prose). One harvester for the whole worker: EXCAVATE objects and the PLAY
+// engine's unit/prompt arrays both pass through here (SEAM:PLAY_RENDER).
 function extractJson(s) {
   if (!s) return null;
   let t = String(s).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   try { return JSON.parse(t); } catch (e) {}
   const a = t.indexOf('{'), b = t.lastIndexOf('}');
   if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
+  const c = t.indexOf('['), d = t.lastIndexOf(']');
+  if (c >= 0 && d > c) { try { return JSON.parse(t.slice(c, d + 1)); } catch (e) {} }
   return null;
 }
 

@@ -92,10 +92,15 @@ print("  quotes  scanned")
 # ── 5b. Worker syntax ────────────────────────────────────────────────────
 for f in worker_js:
     try:
-        r = subprocess.run(["node", "--check", f], capture_output=True, text=True)
+        # Module mode (.mjs) matters: the worker ships as an ES module, where
+        # duplicate top-level declarations are fatal but script mode allows them.
+        with tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False, encoding="utf-8") as t:
+            t.write(load(f)); mjs = t.name
+        r = subprocess.run(["node", "--check", mjs], capture_output=True, text=True)
+        os.unlink(mjs)
         if r.returncode != 0:
             FAIL.append(f"[js] {f}: {r.stderr.strip().splitlines()[0][:140]}")
-        print(f"  js      {f}: checked")
+        print(f"  js      {f}: checked (module mode)")
     except FileNotFoundError:
         print("  js      worker: Node.js not installed locally - deferred to CI")
 
