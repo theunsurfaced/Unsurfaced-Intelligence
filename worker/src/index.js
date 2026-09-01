@@ -25,7 +25,7 @@ const CONFIG = {
   TEXT_MODEL:  '@cf/meta/llama-4-scout-17b-16e-instruct', // alt: '@cf/openai/gpt-oss-20b'
   IMAGE_MODEL: '@cf/black-forest-labs/flux-1-schnell',    // upgrade to FLUX.2/Leonardo later (adjust output parsing)
   MAX_TOKENS:  800,
-  DAILY_LIMIT: 100,   // AI calls per user per day (cost guardrail)
+  DAILY_LIMIT: 300,   // AI inference calls per user per day (engine sessions are multi-stage; Workers AI text is cheap)
   RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
 };
 
@@ -109,7 +109,13 @@ export default {
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
       if (!user) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
-      const _aiPath = path.startsWith('/play') || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
+      /* SEAM:PLAY_RENDER \u2014 the daily AI limit meters AI INFERENCE only.
+       * /play/render POST is governed by its own seconds budget (renderBudget);
+       * /play/render/:id GET polls and /play/upload-ref are KV/R2 reads that
+       * fire dozens of times per render \u2014 metering them exhausted the daily
+       * cap mid-session and 429'd the whole PLAY surface. */
+      const _aiPath = path === '/play/generate' || path === '/play/generate-image'
+        || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
       if (_aiPath && !(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
 
       if (request.method === 'GET' && path.startsWith('/play/render/'))
