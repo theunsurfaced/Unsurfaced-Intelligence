@@ -484,6 +484,15 @@
   "SEAM:PLAY_RENDER_RAIL": {
    "file": "play/index.html",
    "purpose": "per-unit draft/final renders, keyframe-first chain, takes strip, polling"
+  },
+  "SEAM:PLAY_REF": {
+   "file": "worker/src/index.js",
+   "purpose": "reference-guided renders: raw upload to R2, FLUX.2 edit routing, i2v reference drive"
+  },
+  "SEAM:PLAY_REF_UI": {
+   "tag": "SEAM:PLAY_REF",
+   "file": "play/index.html",
+   "purpose": "reference uploader, per-unit ref picker, ref-drives-motion toggle"
   }
  },
  "planned": [

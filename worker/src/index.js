@@ -115,11 +115,12 @@ export default {
       if (request.method === 'GET' && path.startsWith('/play/render/'))
         return playRenderStatus(decodeURIComponent(path.slice('/play/render/'.length)), env, origin, user);
 
-      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj') ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return playGenerate(body, env, origin);
         case '/play/generate-image': return playImage(body, env, origin, user);
         case '/play/render':         return playRender(body, env, origin, user);
+        case '/play/upload-ref':     return playUploadRef(request, env, origin, user);
         case '/excavate/synthesize': return synthesize(body, env, origin);
         case '/mine/notify':        return mineNotify(body, env, origin, user);
         case '/mine/invites':       return mineInvites(body, env, origin, user);
@@ -239,8 +240,8 @@ async function playImage(body, env, origin, user) {
  * before the first final render (a wrong id fails loud with fal_404, spends $0).
  * Requires: `npx wrangler secret put FAL_KEY` + hard spend cap in fal dashboard. */
 const RENDER_POOL = {
-  'image.draft': { id: 'fal-ai/flux/schnell',   kind: 'image', sec: 2 },
-  'image.final': { id: 'fal-ai/flux-pro/v1.1',  kind: 'image', sec: 6 }, // swap to FLUX.2 [pro] id from dashboard when ready
+  'image.draft': { id: 'fal-ai/flux/schnell',   ref: 'fal-ai/flux-2/turbo/edit', kind: 'image', sec: 2 },
+  'image.final': { id: 'fal-ai/flux-pro/v1.1',  ref: 'fal-ai/flux-2-pro/edit',   kind: 'image', sec: 6 }, // swap base to FLUX.2 [pro] id from dashboard when ready
   'video.draft': { id: 'bytedance/seedance-2.0/fast/text-to-video', i2v: 'bytedance/seedance-2.0/fast/image-to-video', kind: 'video' },
   'video.final': { id: 'fal-ai/kling-video/v3/standard/text-to-video', i2v: 'fal-ai/kling-video/v3/standard/image-to-video', kind: 'video' } // VERIFY id in dashboard before first use
 };
@@ -268,13 +269,21 @@ async function playRender(body, env, origin, user) {
     : pool.sec;
   if (!(await renderBudget(env, user.id, seconds))) return json({ ok: false, error: 'render_budget' }, 429, origin, env);
   const imageUrl = /^https:\/\//.test(String(body.image_url || '')) ? String(body.image_url).slice(0, 600) : '';
-  const model = (imageUrl && pool.i2v) ? pool.i2v : pool.id;
+  /* SEAM:PLAY_REF \u2014 reference-guided generation. An image_url on an IMAGE
+   * pool routes to the pool's FLUX.2 edit endpoint (image_urls array), so the
+   * actual product conditions the frame instead of the model guessing from
+   * words. On VIDEO pools image_url stays the i2v start frame \u2014 an uploaded
+   * reference can drive motion directly. Text-only renders are untouched. */
+  const model = imageUrl ? ((pool.kind === 'video' && pool.i2v) ? pool.i2v : (pool.ref || pool.id)) : pool.id;
   const input = { prompt };
   if (pool.kind === 'video') {
     input.duration = seconds;
     input.resolution = '720p';
     input.aspect_ratio = RENDER_ASPECTS[body.aspect] ? String(body.aspect) : '16:9';
-    if (imageUrl) input.image_url = imageUrl; // keyframe-first chain: STILL feeds FILM
+    if (imageUrl) input.image_url = imageUrl; // keyframe-first chain or direct reference drive
+  } else if (imageUrl && pool.ref) {
+    input.image_urls = [imageUrl];
+    input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
   } else {
     input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
   }
@@ -329,6 +338,25 @@ async function playRenderStatus(reqId, env, origin, user) {
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + reqId, JSON.stringify(rec), { expirationTtl: 259200 });
   await logEvent(env, 'play', null, 'render_done', null, { model: rec.model, kind: rec.kind });
   return json({ ok: true, status: 'done', asset }, 200, origin, env);
+}
+
+/* SEAM:PLAY_REF \u2014 POST /play/upload-ref (raw image body)
+ * Headers: Content-Type image/jpeg|png|webp. Cap 8MB. Lands in R2 at
+ * play/{user}/refs/ and returns the public /media/ URL that fal can fetch.
+ * No fal spend; not budget-metered. Photos only in v1 \u2014 video references
+ * ride a later cut (motion-reference models take different inputs). */
+async function playUploadRef(request, env, origin, user) {
+  if (!env.MEDIA) return json({ ok: false, error: 'media_unconfigured' }, 503, origin, env);
+  const ctype = String(request.headers.get('Content-Type') || '').toLowerCase();
+  const ext = ctype === 'image/jpeg' ? 'jpg' : ctype === 'image/png' ? 'png' : ctype === 'image/webp' ? 'webp' : '';
+  if (!ext) return json({ ok: false, error: 'unsupported_type' }, 415, origin, env);
+  const buf = await request.arrayBuffer();
+  if (!buf || !buf.byteLength) return json({ ok: false, error: 'empty' }, 400, origin, env);
+  if (buf.byteLength > 8 * 1024 * 1024) return json({ ok: false, error: 'too_large' }, 413, origin, env);
+  const key = `play/${user.id}/refs/${Date.now()}.${ext}`;
+  await env.MEDIA.put(key, buf, { httpMetadata: { contentType: ctype } });
+  await logEvent(env, 'play', null, 'ref_uploaded', null, { bytes: buf.byteLength, type: ctype });
+  return json({ ok: true, data: { url: `/media/${key}` } }, 200, origin, env);
 }
 
 /* --------------------------- EXCAVATE --------------------------- */

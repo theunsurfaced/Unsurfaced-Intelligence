@@ -70,6 +70,19 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
 .take .lnks a{flex:1;text-align:center;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);text-decoration:none;padding:6px 0;}
 .take .lnks a+a{border-left:1px solid var(--border);}
 .take .lnks a:hover{color:var(--deep2);}
+.refs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.ref{width:92px;border:1px solid var(--border2);background:var(--bg);position:relative;}
+.ref img{width:100%;height:64px;object-fit:cover;display:block;}
+.ref .rx{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:var(--text2);border:0;font-family:'Space Mono',monospace;font-size:10px;width:18px;height:18px;cursor:pointer;line-height:1;}
+.ref .rx:hover{color:var(--accent);}
+.refbtn{display:inline-block;border:1px dashed var(--border2);color:var(--text2);padding:10px 16px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;}
+.refbtn:hover{border-color:var(--deep2);color:var(--deep2);}
+.refup{font-family:'Space Mono',monospace;font-size:10px;color:var(--deep2);letter-spacing:.1em;display:none;margin-top:8px;}
+.upicks{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+.upick{width:56px;height:40px;border:1px solid var(--border2);cursor:pointer;opacity:.55;}
+.upick img{width:100%;height:100%;object-fit:cover;display:block;}
+.upick.on{border-color:var(--deep2);opacity:1;}
+.upick-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-right:4px;}
 #gate{display:none;border:1px solid var(--border2);background:var(--surface);padding:34px;text-align:center;}
 #gate h2{font-weight:800;font-size:24px;margin-bottom:10px;}
 #gate p{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:18px;}
@@ -117,6 +130,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
             <option value="1:1">1:1</option><option value="4:5">4:5</option><option value="4:3">4:3</option>
           </select></div>
       </div>
+      <label class="f">Reference images (optional)</label>
+      <div class="refs" id="refs"></div>
+      <label class="refbtn">Add reference photos<input type="file" id="ref-file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadRefs(this.files)"></label>
+      <div class="refup" id="refup">UPLOADING&hellip;</div>
+      <p class="note">Upload the actual product, talent, or location. Renders with a reference attached are conditioned on the photo instead of the model guessing from words. Photos guide the engine today; video references join a later cut.</p>
       <div style="margin-top:18px"><button class="btn" id="go1" onclick="develop()">Develop direction &rarr;</button></div>
       <div class="busy" id="busy1">DEVELOPING&hellip;</div><div class="err" id="err1"></div>
     </div>
@@ -193,7 +211,7 @@ var LANES = {
             unitNoun: 'asset', unitPlural: 'assets' }
 };
 var S = { lane: 'film', brand: '', style: '', brief: '', scale: '24', aspect: '16:9',
-          direction: '', units: [], takes: {} }; // takes[unitId] = [{id,asset,pool,status,sel}]
+          direction: '', units: [], takes: {}, refs: [] }; // takes[unitId]=[{id,asset,pool,status,sel}]; refs=[{url,name}]
 var _polls = {};
 
 function save() {
@@ -225,6 +243,42 @@ function laneBriefText() {
     + (S.style ? '. Locked style: ' + S.style : '')
     + '. Scale: ' + S.scale + ' ' + (S.lane === 'film' ? 'seconds total' : L.unitPlural)
     + '. Aspect: ' + S.aspect + '.';
+}
+
+/* SEAM:PLAY_REF — reference uploads: raw-body POST, thumbnails, per-unit picks */
+async function uploadRefs(files) {
+  if (!files || !files.length) return;
+  show('refup', true);
+  for (var i = 0; i < files.length; i++) {
+    var fl = files[i];
+    if (['image/jpeg','image/png','image/webp'].indexOf(fl.type) < 0) continue;
+    if (fl.size > 8 * 1024 * 1024) { alert(fl.name + ' is over 8MB'); continue; }
+    try {
+      var hh = await _authHeader(); hh['Content-Type'] = fl.type;
+      var r = await fetch(API_BASE + '/play/upload-ref', { method: 'POST', headers: hh, body: fl });
+      var d = await r.json();
+      if (d && d.ok && d.data && d.data.url) { S.refs.push({ url: d.data.url, name: fl.name }); }
+      else { alert('Upload failed: ' + ((d && d.error) || r.status)); }
+    } catch (e) { alert('Upload failed: ' + e.message); }
+  }
+  save(); paintRefs(); renderUnits();
+  show('refup', false);
+  var inp = document.getElementById('ref-file'); if (inp) inp.value = '';
+}
+function paintRefs() {
+  var host = document.getElementById('refs'); if (!host) return;
+  host.innerHTML = '';
+  S.refs.forEach(function (rf, i) {
+    var d = document.createElement('div'); d.className = 'ref';
+    d.innerHTML = '<img alt="reference"><button class="rx" title="Remove">&times;</button>';
+    d.querySelector('img').src = API_BASE + rf.url;
+    d.querySelector('.rx').onclick = function () {
+      S.refs.splice(i, 1);
+      for (var k in S.units) if (S.units[k].ref === rf.url) S.units[k].ref = '';
+      save(); paintRefs(); renderUnits();
+    };
+    host.appendChild(d);
+  });
 }
 
 async function develop() {
@@ -299,10 +353,12 @@ function unitCard(u, i) {
   d.innerHTML = '<h4></h4><div class="meta">' + (i + 1) + ' / ' + S.units.length + ' · ' + meta + '</div>'
     + '<p class="desc"></p>'
     + '<textarea placeholder="Compiled prompt lands here — or write your own"></textarea>'
+    + '<div class="upicks"></div>'
     + '<div class="rail">'
     + '<button class="btn sm" data-a="draft">Render draft</button>'
     + '<button class="btn sm ghost" data-a="final">Render final</button>'
     + (S.lane === 'film' ? '<label class="kf"><input type="checkbox" checked> keyframe first</label>' : '')
+    + (S.lane === 'film' ? '<label class="kf kf-drive"><input type="checkbox"> ref drives motion</label>' : '')
     + '</div><div class="err"></div><div class="takes"></div>';
   d.querySelector('h4').textContent = u.title;
   d.querySelector('p.desc').textContent = u.desc;
@@ -310,6 +366,19 @@ function unitCard(u, i) {
   ta.onchange = function () { u.prompt = ta.value; save(); };
   d.querySelector('[data-a=draft]').onclick = function () { startRender(u, 'draft', d); };
   d.querySelector('[data-a=final]').onclick = function () { startRender(u, 'final', d); };
+  // per-unit reference picker — click a thumb to condition this unit on it
+  var up = d.querySelector('.upicks');
+  if (up && S.refs.length) {
+    var lab = document.createElement('span'); lab.className = 'upick-label'; lab.textContent = 'Ref:';
+    up.appendChild(lab);
+    S.refs.forEach(function (rf) {
+      var p = document.createElement('div'); p.className = 'upick' + (u.ref === rf.url ? ' on' : '');
+      p.innerHTML = '<img alt="ref">'; p.querySelector('img').src = API_BASE + rf.url;
+      p.title = rf.name || 'reference';
+      p.onclick = function () { u.ref = (u.ref === rf.url) ? '' : rf.url; save(); renderUnits(); };
+      up.appendChild(p);
+    });
+  }
   paintTakes(u, d);
   return d;
 }
@@ -319,12 +388,20 @@ async function startRender(u, tier, card) {
   var prompt = (u.prompt || '').trim() || (u.title + '. ' + u.desc);
   var isFilm = S.lane === 'film';
   var kf = isFilm && card.querySelector('.kf input') && card.querySelector('.kf input').checked;
+  var drive = isFilm && card.querySelector('.kf-drive input') && card.querySelector('.kf-drive input').checked;
+  var refAbs = u.ref ? (/^https?:/.test(u.ref) ? u.ref : (API_BASE + u.ref)) : '';
   try {
-    if (isFilm && kf) {
-      // keyframe-first chain: draft still, then motion from it
+    if (isFilm && drive && refAbs) {
+      // SEAM:PLAY_REF — the uploaded photo IS the first frame; motion from it
+      var vd = await api('play/render', { pool: 'video.' + tier, prompt: prompt, aspect: S.aspect,
+        seconds: u.seconds, image_url: refAbs, project: projSlug(), unit: u.id });
+      trackTake(u, vd.request_id, 'video.' + tier, card);
+    } else if (isFilm && kf) {
+      // keyframe-first chain: still (reference-conditioned when a ref is picked), then motion
       addTake(u, { id: 'kf-pending', status: 'keyframe…', pool: 'image.draft' }, card);
-      var k = await api('play/render', { pool: 'image.draft', prompt: prompt, aspect: S.aspect,
-        project: projSlug(), unit: u.id });
+      var kb = { pool: 'image.draft', prompt: prompt, aspect: S.aspect, project: projSlug(), unit: u.id };
+      if (refAbs) kb.image_url = refAbs;
+      var k = await api('play/render', kb);
       var kAsset = await waitDone(k.request_id);
       replaceTake(u, 'kf-pending', { id: k.request_id, asset: kAsset, pool: 'image.draft', status: 'done' }, card);
       var imageUrl = /^https?:/.test(kAsset) ? kAsset : (API_BASE + kAsset);
@@ -335,6 +412,7 @@ async function startRender(u, tier, card) {
       var pool = (isFilm ? 'video.' : 'image.') + tier;
       var body = { pool: pool, prompt: prompt, aspect: S.aspect, project: projSlug(), unit: u.id };
       if (isFilm) body.seconds = u.seconds;
+      if (refAbs) body.image_url = refAbs; // still/social conditioned; film i2v driven
       var r = await api('play/render', body);
       trackTake(u, r.request_id, pool, card);
     }
@@ -463,6 +541,8 @@ function resetProject() {
     }
   } catch (e) {}
   setLaneUI();
+  if (!Array.isArray(S.refs)) S.refs = [];
+  paintRefs();
   put('b-brand', S.brand); put('b-style', S.style); put('b-brief', S.brief);
   put('b-scale', S.scale); put('b-aspect', S.aspect); put('d-text', S.direction);
   if (S.direction) unlock('st2');
