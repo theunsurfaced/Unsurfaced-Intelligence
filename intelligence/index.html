@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; frame-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://*.workers.dev https://api.perplexity.ai https://api.openalex.org https://openalex.org https://api.gdeltproject.org https://api.semanticscholar.org https://www.semanticscholar.org https://en.wikipedia.org https://*.wikipedia.org https://www.wikidata.org https://query.wikidata.org https://export.arxiv.org https://arxiv.org https://hn.algolia.com https://api.crossref.org https://search.crossref.org https://api.worldbank.org https://data.worldbank.org https://content.guardianapis.com https://www.theguardian.com https://openlibrary.org https://api.patentsview.org https://patentsview.org https://www.reddit.com https://eutils.ncbi.nlm.nih.gov https://pubmed.ncbi.nlm.nih.gov https://doi.org">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; frame-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://*.workers.dev https://api.openalex.org https://openalex.org https://api.gdeltproject.org https://api.semanticscholar.org https://www.semanticscholar.org https://en.wikipedia.org https://*.wikipedia.org https://www.wikidata.org https://query.wikidata.org https://export.arxiv.org https://arxiv.org https://hn.algolia.com https://api.crossref.org https://search.crossref.org https://api.worldbank.org https://data.worldbank.org https://content.guardianapis.com https://www.theguardian.com https://openlibrary.org https://api.patentsview.org https://patentsview.org https://www.reddit.com https://eutils.ncbi.nlm.nih.gov https://pubmed.ncbi.nlm.nih.gov https://doi.org">
 <title>Unsurfaced™ Intelligence · Consumer & Market Intelligence</title>
 <meta name="description" content="One intelligence, three spaces. EXCAVATE digs the public surface, MINE goes straight to the source, PLAY makes what comes next. Real answers from real people.">
 <meta property="og:title" content="Unsurfaced™ Intelligence">
@@ -44,28 +44,6 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
 
 /* ── DEEP GATE ── */
-#deep-gate{position:fixed;inset:0;background:rgba(5,3,10,0.96);z-index:500;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(8px);}
-#deep-gate.open{display:flex;}
-.dgate-box{max-width:540px;width:100%;background:var(--surface);border:1px solid rgba(124,58,237,0.35);padding:48px;position:relative;}
-.dgate-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--deep),var(--deep2),var(--accent3));}
-.dgate-logo{font-family:'Space Mono',monospace;font-weight:700;font-size:16px;color:var(--deep2);letter-spacing:0.15em;margin-bottom:4px;}
-.dgate-byline{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.2em;margin-bottom:28px;}
-.dgate-title{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);margin-bottom:10px;line-height:1.15;}
-.dgate-sub{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:24px;}
-.dgate-sub a{color:var(--accent3);text-decoration:none;border-bottom:1px solid rgba(90,200,245,0.3);}
-.dgate-input-wrap{position:relative;margin-bottom:10px;}
-.dgate-input{width:100%;background:var(--surface2);border:1px solid rgba(124,58,237,0.35);color:var(--text);font-family:'Space Mono',monospace;font-size:13px;padding:14px 48px 14px 16px;outline:none;letter-spacing:0.04em;transition:border-color 0.2s,box-shadow 0.2s;}
-.dgate-input:focus{border-color:var(--deep2);box-shadow:0 0 0 3px var(--deep-glow);}
-.dgate-input::placeholder{color:var(--text3);}
-.dgate-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;}
-.dgate-eye:hover{color:var(--text2);}
-.dgate-error{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent2);letter-spacing:0.06em;display:none;margin-bottom:10px;}
-.dgate-btn{width:100%;background:var(--deep);border:none;color:#fff;font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:0.12em;padding:16px;cursor:pointer;transition:all 0.2s;margin-bottom:14px;}
-.dgate-btn:hover:not(:disabled){background:#6d28d9;}
-.dgate-btn:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
-.dgate-notice{display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-left:2px solid var(--deep2);padding:12px 14px;font-size:11px;color:var(--text3);line-height:1.6;font-family:'Space Mono',monospace;letter-spacing:0.04em;}
-.dgate-skip{display:block;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:0.1em;cursor:pointer;margin-top:14px;transition:color 0.2s;}
-.dgate-skip:hover{color:var(--text2);}
 
 /* ── NAV ── */
 nav{position:sticky;top:0;z-index:100;background:rgba(10,10,15,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 40px;height:60px;display:flex;align-items:center;justify-content:space-between;}
@@ -75,9 +53,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(10,10,15,0.92);backdrop-fi
 .nav-links a{font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text2);text-decoration:none;transition:color 0.2s;}
 .nav-links a:hover,.nav-links a.active{color:var(--text);}
 .nav-right{display:flex;gap:10px;align-items:center;}
-.deep-toggle-nav{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;padding:7px 14px;border:1px solid var(--border2);cursor:pointer;transition:all 0.25s;color:var(--text3);background:none;}
-.deep-toggle-nav:hover{border-color:var(--deep2);color:var(--deep2);}
-.deep-toggle-nav.on{border-color:rgba(124,58,237,0.5);color:var(--deep2);background:rgba(124,58,237,0.08);}
 .api-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background 0.3s;}
 .api-dot.on{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,0.5);animation:dotpulse 2s ease-in-out infinite;}
 @keyframes dotpulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
@@ -110,15 +85,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .search-bar{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:'Syne',sans-serif;font-size:17px;padding:20px 200px 20px 24px;outline:none;transition:border-color 0.3s,box-shadow 0.3s;caret-color:var(--accent);}
 .search-bar::placeholder{color:var(--text3);}
 .search-bar:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
-.search-bar.deep-active:focus{border-color:var(--deep2);box-shadow:0 0 0 3px var(--deep-glow);}
 .search-actions{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:6px;align-items:center;}
 .search-btn{background:var(--accent);border:none;color:#fff;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:0.1em;padding:11px 20px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
 .search-btn:hover{filter:brightness(1.12);}
-.search-btn.deep-btn{background:var(--deep);}
-.deep-pill-toggle{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text3);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.1em;padding:6px 10px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-.deep-pill-toggle:hover{border-color:var(--deep2);color:var(--deep2);}
-.deep-pill-toggle.on{background:rgba(124,58,237,0.1);border-color:rgba(124,58,237,0.4);color:var(--deep2);}
-.deep-pill-toggle .pdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
 
 /* source pills row */
 .source-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
@@ -189,7 +158,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .result-stat-label{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;}
 .mode-pill{display:inline-flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.14em;padding:4px 12px;margin-bottom:8px;font-weight:700;}
 .mode-pill.basic{background:rgba(255,59,59,0.1);color:var(--accent);border:1px solid rgba(255,59,59,0.25);}
-.mode-pill.deep{background:rgba(124,58,237,0.15);color:var(--deep2);border:1px solid rgba(124,58,237,0.3);}
 .mode-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
 
 /* sources strip below results header */
@@ -218,11 +186,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .results-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px;}
 
 /* ── DEEP UPGRADE CTA (inline, subtle) ── */
-.deep-cta-strip{background:linear-gradient(90deg,rgba(124,58,237,0.06),rgba(124,58,237,0.02));border:1px solid rgba(124,58,237,0.18);padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
-.deep-cta-text{font-size:13px;color:var(--text2);line-height:1.5;}
-.deep-cta-text strong{color:var(--deep2);}
-.deep-cta-btn{flex-shrink:0;background:none;border:1px solid rgba(124,58,237,0.4);color:var(--deep2);font-family:'Space Mono',monospace;font-weight:700;font-size:10px;letter-spacing:0.1em;padding:9px 18px;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-.deep-cta-btn:hover{background:rgba(124,58,237,0.1);}
 
 /* ── IDEAS ── */
 .ideas-section{background:var(--surface2);border:1px solid var(--border);padding:32px;position:relative;overflow:hidden;}
@@ -243,9 +206,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .loader-ring.r1{border-top-color:var(--accent);animation:spin 1s linear infinite;}
 .loader-ring.r2{inset:12px;border-right-color:var(--accent2);animation:spin 1.4s linear infinite reverse;}
 .loader-ring.r3{inset:24px;border-bottom-color:var(--accent3);animation:spin 1.8s linear infinite;}
-.loader-ring.d1{border-top-color:var(--deep);}
-.loader-ring.d2{border-right-color:var(--deep2);}
-.loader-ring.d3{border-bottom-color:var(--accent3);}
 @keyframes spin{to{transform:rotate(360deg);}}
 .loader-label{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:0.12em;margin-bottom:6px;}
 .loader-query{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:20px;}
@@ -372,7 +332,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   .results-stats{flex-direction:column;gap:8px;}
   .modal-options{grid-template-columns:1fr;}
   .brand-row{flex-direction:column;}
-  .deep-cta-strip{flex-direction:column;}
   .idb-overlay,.idb-content{padding-left:14px !important;padding-right:14px !important;}
   .idb-title{font-size:clamp(22px,7vw,30px) !important;}
   button,.mr-btn,.brand-card-btn{min-height:40px;}
@@ -1786,26 +1745,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   </div>
 </div>
 
-<!-- DEEP GATE OVERLAY -->
-<div id="deep-gate">
-  <div class="dgate-box">
-    <div class="dgate-logo">EXCAVATE DEEP</div>
-    <div class="dgate-byline">by Unsurfaced™ — Powered by Perplexity Sonar Pro</div>
-    <h2 class="dgate-title">Unlock real-time,<br>cited intelligence</h2>
-    <p class="dgate-sub">Deep Search uses <a href="https://www.perplexity.ai/settings/api" target="_blank">Perplexity Sonar Pro</a> to search the live web in real time — returning structured insights with real, clickable citations drawn from the sources it surfaces. Your key stays in sessionStorage only; never stored or shared.</p>
-    <div class="dgate-input-wrap">
-      <input type="password" class="dgate-input" id="deep-key-input" placeholder="pplx-••••••••••••••••••••••••••••••••••" autocomplete="off" spellcheck="false"/>
-      <button class="dgate-eye" id="deep-eye-btn">👁</button>
-    </div>
-    <div class="dgate-error" id="deep-error"></div>
-    <button class="dgate-btn" id="deep-connect-btn" onclick="connectDeep()">ACTIVATE DEEP SEARCH →</button>
-    <div class="dgate-notice">
-      <span style="color:var(--deep2);flex-shrink:0;">🔒</span>
-      <span>Key stored in <strong>sessionStorage</strong> — clears on tab close. All calls go directly from your browser to <strong>api.perplexity.ai</strong>. Get your key at <a href="https://www.perplexity.ai/settings/api" target="_blank" style="color:var(--accent3)">perplexity.ai/settings/api</a>.</span>
-    </div>
-    <span class="dgate-skip" onclick="closeDeepGate()">← Continue with Basic Search</span>
-  </div>
-</div>
 
 <!-- NAV -->
 <nav>
@@ -1824,10 +1763,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <li><button class="nlb" id="nav-deploy" onclick="navTo('deploy')">Deploy</button></li>
   </ul>
   <div class="nav-right">
-    <button class="deep-toggle-nav" id="nav-deep-toggle" onclick="navDeepToggle()">
-      <span class="api-dot" id="nav-api-dot"></span>
-      <span id="nav-deep-label">DEEP SEARCH</span>
-    </button>
     <button class="btn-ghost">Save Board</button>
     <button class="btn-accent" onclick="openModal('new-report')">New Report</button>
   </div>
@@ -1865,21 +1800,13 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 <section class="hero">
   <p class="hero-eyebrow">Consumer & Market Intelligence Platform</p>
   <h1 class="hero-title">The signal<br>in all the <em>noise.</em></h1>
-  <p class="hero-sub">Real-time consumer truth, marketplace dynamics, and cultural momentum — excavated from Wikipedia, OpenAlex, arXiv, Reddit, Hacker News, GDELT News, and the Open Library. Upgrade to Deep Search for Perplexity-powered live intelligence at any time.</p>
+  <p class="hero-sub">A real-time pulse on people and marketplaces. Search any brand, category, behavior, or name. EXCAVATE reads the Unsurfaced lake, the live wire, and the open web, and writes THE READ with every source attached.</p>
 
   <div class="search-shell">
     <div class="search-wrapper">
       <input type="text" class="search-bar" id="search-input" placeholder="Search any brand, behavior, category, or cultural trend…" oninput="toggleClearBtn()"/>
       <button class="search-clear" id="search-clear-btn" onclick="clearSearch()" title="Clear search">✕</button>
       <div class="search-actions">
-        <button class="deep-pill-toggle" id="inline-live-toggle" onclick="inlineLiveToggle()" title="Pull real-time signals from Reddit, YouTube, the web, and trend data (requires the proxy)">
-          <span class="pdot"></span>
-          <span id="inline-live-label">LIVE</span>
-        </button>
-        <button class="deep-pill-toggle" id="inline-deep-toggle" onclick="inlineDeepToggle()">
-          <span class="pdot"></span>
-          <span id="inline-deep-label">DEEP</span>
-        </button>
         <button class="search-btn" id="search-btn" onclick="runSearch()">EXCAVATE →</button>
       </div>
     </div>
@@ -2050,7 +1977,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   <div class="results-sources-strip" id="results-sources-strip"></div>
   <!-- SEAM:VOICE@intelligence -->
   <div id="voice-strip"></div>
-  <div id="deep-cta-container"></div>
   <!-- 5-LENS TAB BAR -->
   <div class="results-lens-bar" id="results-lens-bar">
     <button class="rlb active cat-consumer" id="rlb-consumer" onclick="switchResultsLens('consumer')">Consumer Behavior <span class="rlb-count" id="rlb-count-consumer">—</span></button>
@@ -2809,134 +2735,12 @@ async function _sbPickAsset(input) {
 // ════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════
-const KEY_SESSION = 'excavate_pplx_key';
-let deepMode = false;
-let liveMode = false;
+// SEAM:ONE_RAIL — one search, one pipeline. No modes, no keys, no upgrade.
 let lastSources = [];
-let lastMode = 'basic';
+let lastMode = 'live';
 window._lastInsights = [];
 
-const getKey = () => sessionStorage.getItem(KEY_SESSION);
 
-// ════════════════════════════════════════════
-//  DEEP TOGGLE (nav + inline + gate)
-// ════════════════════════════════════════════
-function navDeepToggle(){
-  if(deepMode){ disableDeep(); }
-  else { if(getKey()){ enableDeep(); } else { openDeepGate(); } }
-}
-
-function inlineDeepToggle(){
-  if(deepMode){ disableDeep(); }
-  else { if(getKey()){ enableDeep(); } else { openDeepGate(); } }
-}
-
-function enableDeep(){
-  deepMode = true;
-  if(liveMode) disableLive();
-  document.getElementById('nav-deep-toggle').classList.add('on');
-  document.getElementById('nav-api-dot').classList.add('on');
-  document.getElementById('nav-deep-label').textContent = 'DEEP: ON';
-  document.getElementById('inline-deep-toggle').classList.add('on');
-  document.getElementById('inline-deep-label').textContent = 'DEEP ON';
-  document.getElementById('search-bar') && (document.getElementById('search-bar').className = 'search-bar deep-active');
-  document.getElementById('search-input').classList.add('deep-active');
-  document.getElementById('search-btn').className = 'search-btn deep-btn';
-  document.getElementById('search-btn').textContent = 'DEEP →';
-  showToast('Deep Search activated');
-}
-
-function disableDeep(){
-  deepMode = false;
-  document.getElementById('nav-deep-toggle').classList.remove('on');
-  document.getElementById('nav-api-dot').classList.remove('on');
-  document.getElementById('nav-deep-label').textContent = 'DEEP SEARCH';
-  document.getElementById('inline-deep-toggle').classList.remove('on');
-  document.getElementById('inline-deep-label').textContent = 'DEEP';
-  document.getElementById('search-input').classList.remove('deep-active');
-  document.getElementById('search-btn').className = 'search-btn';
-  document.getElementById('search-btn').textContent = 'EXCAVATE →';
-  showToast('Returned to Basic Search');
-}
-
-function openDeepGate(){ document.getElementById('deep-gate').classList.add('open'); }
-function closeDeepGate(){ document.getElementById('deep-gate').classList.remove('open'); }
-
-// ════════════════════════════════════════════
-//  LIVE SOURCES TOGGLE — real-time connector pipeline (/insights)
-// ════════════════════════════════════════════
-function inlineLiveToggle(){
-  if(liveMode){ disableLive(); return; }
-  if(!API_BASE){
-    showToast('Live Sources need the proxy deployed — set API_BASE to your Worker URL');
-    return;
-  }
-  enableLive();
-}
-function enableLive(){
-  liveMode = true;
-  if(deepMode) disableDeep();
-  const t=document.getElementById('inline-live-toggle'); if(t) t.classList.add('on');
-  const l=document.getElementById('inline-live-label'); if(l) l.textContent='LIVE ON';
-  showToast('Live Sources activated — real-time social, web & trend signals');
-}
-function disableLive(){
-  liveMode = false;
-  const t=document.getElementById('inline-live-toggle'); if(t) t.classList.remove('on');
-  const l=document.getElementById('inline-live-label'); if(l) l.textContent='LIVE';
-}
-
-// deep-eye-btn and deep-key-input listeners wired in DOMContentLoaded below
-
-function connectDeep() {
-  const key  = (document.getElementById('deep-key-input')?.value || '').trim();
-  const errEl = document.getElementById('deep-error');
-  const btn  = document.getElementById('deep-connect-btn');
-
-  // Reset state
-  if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
-
-  // Validate key format
-  if (!key) {
-    if (errEl) { errEl.textContent = '⚠ Please enter your Perplexity API key'; errEl.style.display = 'block'; }
-    return;
-  }
-  if (!key.startsWith('pplx-')) {
-    if (errEl) { errEl.textContent = '⚠ Key must start with "pplx-" — find yours at perplexity.ai/settings/api'; errEl.style.display = 'block'; }
-    return;
-  }
-  if (key.length < 20) {
-    if (errEl) { errEl.textContent = '⚠ Key appears too short — copy the full key from perplexity.ai/settings/api'; errEl.style.display = 'block'; }
-    return;
-  }
-
-  if (btn) { btn.disabled = true; btn.textContent = 'VERIFYING KEY…'; }
-
-  // Test against sonar-pro — the same model used in search
-  fetch('https://api.perplexity.ai/chat/completions', {
-    method:  'POST',
-    headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ model: 'sonar-pro', max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] }),
-  })
-  .then(r => {
-    if (r.status === 401) throw new Error('Invalid API key — check you copied it correctly from perplexity.ai/settings/api');
-    if (r.status === 402) throw new Error('No credits on this key — add payment at perplexity.ai/settings/billing');
-    if (r.status === 403) throw new Error('Key does not have access to Sonar Pro — upgrade your Perplexity plan');
-    if (r.status === 429) throw new Error('Rate limit hit — wait a few seconds and try again');
-    if (!r.ok) throw new Error('Verification failed (HTTP ' + r.status + ') — try again');
-    return r.json();
-  })
-  .then(() => {
-    sessionStorage.setItem(KEY_SESSION, key);
-    closeDeepGate();
-    if (btn) { btn.disabled = false; btn.textContent = 'ACTIVATE DEEP SEARCH →'; }
-    enableDeep();
-  })
-  .catch(err => {
-    if (btn) { btn.disabled = false; btn.textContent = 'ACTIVATE DEEP SEARCH →'; }
-    if (errEl) { errEl.textContent = '⚠ ' + err.message; errEl.style.display = 'block'; }
-  });
-}
 
 // ════════════════════════════════════════════
 //  SEARCH ENTRY
@@ -2953,9 +2757,7 @@ function runSearch(){
   document.getElementById('main-dashboard').style.display='none';
   document.getElementById('live-results').style.display='none';
   document.getElementById('error-banner').style.display='none';
-  if(deepMode && getKey()){ runDeepSearch(q); }
-  else if(liveMode && API_BASE){ runLiveSearch(q); }
-  else { runBasicSearch(q); }
+  runLiveSearch(q);   // SEAM:ONE_RAIL — the full pipeline, every time; runBasicSearch is the worker-down degraded path only
 }
 
 // ════════════════════════════════════════════
@@ -3024,7 +2826,7 @@ function _liveBrief(q, items, connectors){
   if(byType.web)    parts.push(byType.web+' web results');
   if(byType.trend)  parts.push('a demand-trend reading');
   if(byType.news)   parts.push(byType.news+' news items');
-  return `Real-time scan of "${q}" across ${ok.length} live source${ok.length===1?'':'s'} (${ok.join(', ')||'none'}) surfaced ${parts.join(', ')||'limited signal'}. These are unranked raw signals straight from the open social and web layer — use them to see where the conversation is actually happening right now, then run Deep Search to quantify and cite the strongest threads.`;
+  return `Real-time scan of "${q}" across ${ok.length} live source${ok.length===1?'':'s'} (${ok.join(', ')||'none'}) surfaced ${parts.join(', ')||'limited signal'}. These are unranked raw signals straight from the open social and web layer — use them to see where the conversation is actually happening right now.`;
 }
 
 // Render a /insights response: prefer the AI-synthesized fused read, fall back
@@ -3045,16 +2847,16 @@ function _renderLive(q, data){
     }));
     ideas = (Array.isArray(syn.ideas)&&syn.ideas.length)
       ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||''}))
-      : buildIdeas(q,insights,'live');
+      : [];   // SEAM:ONE_RAIL — no move is invented; the compiler earns it or the section says so
     brief = syn.brief || _liveBrief(q,items,data.connectors);
     synthd=true;
   } else {
     insights=_liveToInsights(items);
-    ideas=buildIdeas(q,insights,'live');
+    ideas=[];
     brief=_liveBrief(q,items,data.connectors);
   }
   const sources=(data.sources&&data.sources.length)?data.sources:_liveSources(data.connectors,q);
-  renderResults(q,{insights,ideas,sources,brief,mode:'live'},'live');
+  renderResults(q,{insights,ideas,sources,brief,mode:synthd?'live':'basic'},synthd?'live':'basic');   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -3136,17 +2938,15 @@ function showLoader(q,mode,steps){
   const ss=document.getElementById('searching-state');
   ss.style.display='block';
   const rings=document.getElementById('loader-rings');
-  rings.innerHTML=mode==='deep'
-    ?'<div class="loader-ring d1"></div><div class="loader-ring d2"></div><div class="loader-ring d3"></div>'
-    :'<div class="loader-ring r1"></div><div class="loader-ring r2"></div><div class="loader-ring r3"></div>';
-  document.getElementById('loader-label').textContent=mode==='deep'?'DEEP SEARCHING — PERPLEXITY SONAR PRO':(mode==='live'?'PULLING LIVE SIGNALS — REAL-TIME PIPELINE':'EXCAVATING OPEN DATA SOURCES');
+  rings.innerHTML='<div class="loader-ring r1"></div><div class="loader-ring r2"></div><div class="loader-ring r3"></div>';
+  document.getElementById('loader-label').textContent=mode==='live'?'READING THE LAKE AND THE LIVE WIRE':'GATHERING OPEN SIGNALS';
   const qEl=document.getElementById('loader-query');
   qEl.textContent='"'+q+'"';
-  qEl.className='loader-query '+(mode==='deep'?'deep':'basic');
+  qEl.className='loader-query basic';
   const stepsEl=document.getElementById('loader-steps');
   stepsEl.innerHTML=steps.map((s,i)=>`<div class="lstep" id="ls${i}">${s}</div>`).join('');
   const bar=document.getElementById('fetch-bar');
-  bar.className='fetch-bar-fill'+(mode==='deep'?' deep':'');
+  bar.className='fetch-bar-fill';
   bar.style.width='0%';
   progressVal=0;
   clearInterval(progressTimer);
@@ -3156,9 +2956,9 @@ function showLoader(q,mode,steps){
   stepTimer=setInterval(()=>{
     if(si>0){ const p=document.getElementById('ls'+(si-1)); if(p)p.className='lstep done'; }
     const c=document.getElementById('ls'+si);
-    if(c){ c.className='lstep active'+(mode==='deep'?' deep-step':''); si++; }
+    if(c){ c.className='lstep active'; si++; }
     else clearInterval(stepTimer);
-  }, mode==='deep'?700:600);
+  }, 600);
 }
 
 function hideLoader(){
@@ -3457,204 +3257,21 @@ function buildBasicSynthesis(q, raw){
     insights.push({
       category:cat||'consumer',
       title:`Evidence thin: "${q.split(' ').slice(0,4).join(' ')}"`,
-      excerpt:`The open sources answered lightly here — not enough corroboration to state findings. That is a signal in itself: this conversation is early, niche, or living on closed platforms. Deep Search reaches further.`,
+      excerpt:`The open sources answered lightly here — not enough corroboration to state findings. That is a signal in itself: this conversation is early, niche, or living on closed platforms. Add a track and let the lake accumulate.`,
       stat:'insufficient evidence',confidence:'Low',source:'Excavate',sourceUrl:null,
     });
   }
 
   // ── IDEAS — grounded in actual findings ──
-  const ideas=buildIdeas(q, insights, 'basic');
+  const ideas=[];   // SEAM:ONE_RAIL — degraded path carries signals, never template moves
 
   // ── BRIEF ──
   const topInsight=insights[0];
-  const brief=`Open-source intelligence on "${q}" surfaces converging signals across ${sources.length} data streams: academic research momentum (${raw.openAlex.status==='fulfilled'?raw.openAlex.value?.meta?.count?.toLocaleString()||'multiple':''} open-access papers), practitioner discourse activity, and global news coverage. The highest-leverage brand opportunity is entering this conversation with educationally-positioned content before paid media investment, targeting communities already generating organic signal. Run Deep Search to layer real-time web statistics and clickable citations on top of these open-source signals.`;
+  const brief=`Open-source intelligence on "${q}" surfaces converging signals across ${sources.length} data streams: academic research momentum (${raw.openAlex.status==='fulfilled'?raw.openAlex.value?.meta?.count?.toLocaleString()||'multiple':''} open-access papers), practitioner discourse activity, and global news coverage. The highest-leverage brand opportunity is entering this conversation with educationally-positioned content before paid media investment, targeting communities already generating organic signal..`;
 
   return {insights,ideas,sources,brief,mode:'basic'};
 }
 
-// ── IDEAS GENERATOR ────────────────────────────────────
-function buildIdeas(q, insights, mode){
-  const topCat=insights.slice(0,3).map(i=>i.category);
-  const hasCulture=topCat.includes('culture');
-  const hasMarket=topCat.includes('market');
-  const hasConsumer=topCat.includes('consumer');
-
-  return [
-    {type:'Campaign Strategy',headline:`Lead With Curiosity, Not Claims`,body:`Open-source signals reveal active academic and community inquiry around "${q}". Build campaigns that position your brand as a thinking partner — surfacing the questions your audience is already asking rather than broadcasting pre-formed answers. Earned curiosity outperforms awareness at this signal stage.`},
-    {type:'Creative Direction',headline:`Authority Through Evidence`,body:`Research depth from ${insights.filter(i=>['OpenAlex','arXiv','Semantic Scholar'].includes(i.source)).length} academic sources indicates this topic has serious intellectual weight. Commission long-form creative that references real research — whitepapers, data storytelling, expert collaboration. Credibility is the creative brief.`},
-    {type:'Audience Strategy',headline:`Map Where the Conversation Lives`,body:`Practitioner and community discourse signals show active audience engagement across forums and news media. Before paid investment, map the specific communities — subreddits, LinkedIn groups, Substack newsletters — where "${q.split(' ').slice(0,3).join(' ')}" is discussed organically. Enter there first.`},
-    {type:'Media Planning',headline:`Earned Before Paid: Seed the Signal`,body:`${hasCulture?'Cultural momentum signals':'Academic research activity'} suggest this topic has earned media potential. Prioritize creator seeding, editorial partnerships, and thought-leadership content to ride organic wave before committing paid budget. Test signal amplification with minimal spend first.`},
-    {type:'Brand Experience',headline:`Build for Depth, Not Just Discovery`,body:`With ${insights.filter(i=>i.source==='arXiv'||i.source==='OpenAlex'||i.source==='Semantic Scholar').length} academic research streams active on this topic, your audience rewards intellectual depth. Design brand experiences that offer real learning — workshops, data tools, research reports — not just product exposure. Depth creates advocates.`},
-    {type:'Innovation Brief',headline:mode==='basic'?`Activate Deep Search for Quantified Intelligence`:`Scale Insight to Validated Opportunity`,body:mode==='basic'?`Basic Search has surfaced the landscape from open data. Activate Deep Search (powered by your Perplexity Sonar Pro key) to add real-time web statistics and clickable citations from authoritative sources, turning these open signals into a quantified strategic brief.`:`Cross-reference these Perplexity findings with proprietary consumer research to identify the whitespace between what the market knows and what your brand can uniquely claim. First-mover authority in a validated category commands premium positioning.`},
-  ].map((idea,i)=>({...idea,num:'0'+(i+1)}));
-}
-
-// ════════════════════════════════════════════
-//  DEEP SEARCH — Perplexity Sonar Pro
-// ════════════════════════════════════════════
-const DEEP_SYSTEM = `You are Excavate, a consumer and market intelligence analyst built for brands, marketers, and advertising agencies. Surface quantified, cited intelligence grounded ONLY in the live sources your search actually returns.
-
-Return ONLY valid JSON — no markdown, no code fences, no preamble, no trailing text.
-
-Required JSON structure:
-{"summary":"2-3 sentence executive summary; include statistics and named sources only where the live results support them","insights":[{"category":"consumer","title":"Precise headline max 12 words","excerpt":"2-3 sentences. Use specific percentages or dollar figures only when they appear in a real source you found; otherwise describe the signal qualitatively.","stat":"Key metric drawn from a real result, e.g. \u2191 34% YoY or $2.4B market","confidence":"High","source":"The actual source you found"}],"ideas":[{"type":"Campaign Strategy","headline":"Actionable title max 8 words","body":"2-3 sentences of strategic recommendation grounded in the specific data."}],"brief":"3-4 sentence strategic brief."}
-
-Rules:
-1. Generate EXACTLY 6 insights covering consumer (2), market (1), culture (1), brand (1), any (1)
-2. Generate EXACTLY 6 ideas: Campaign Strategy, Creative Direction, Audience Strategy, Media Planning, Brand Experience, Innovation Brief
-3. NEVER invent a statistic, citation, or source name. Name a specific source (e.g. Nielsen, McKinsey, Edelman, WARC) ONLY when that source genuinely appears in your live results. If a claim is your own inference rather than a cited figure, set "source" to "Excavate analysis" and lower its confidence.
-4. Category values must be exactly one of: consumer, market, culture, brand
-5. Confidence must be exactly: High, Medium, or Low — and must reflect how well the live evidence supports the claim
-6. Prefer authoritative sources when available (Nielsen, Edelman, McKinsey, WARC, Kantar, eMarketer, Pew Research, Forrester, Gartner, Statista, peer-reviewed journals), but accuracy and verifiability always outrank name recognition`;
-async function runDeepSearch(q) {
-  showLoader(q, 'deep', [
-    'Connecting to Perplexity Sonar Pro',
-    'Searching the live web in real time',
-    'Extracting statistics & clickable citations',
-    'Verifying sources before attributing them',
-    'Structuring insights across all four intelligence lenses',
-    'Building strategic action framework',
-  ]);
-
-  try {
-    const _deepBody = {
-      model:       'sonar-pro',
-      max_tokens:  4000,
-      temperature: 0.2,
-      messages: [
-        { role: 'system',  content: DEEP_SYSTEM },
-        { role: 'user',    content: `Excavate comprehensive consumer and market intelligence for: "${q}". Pull real, current data from the live web, preferring authoritative sources (Nielsen, Edelman, McKinsey, WARC, Kantar, eMarketer, Pew Research, Forrester, Harvard Business Review, peer-reviewed studies) where they exist. Cite only what you actually find — never fabricate a statistic or a source. Return structured JSON only.` },
-      ],
-    };
-    // When API_BASE is set, the call routes through your Worker (which holds
-    // the key server-side or forwards the BYOK key) and mirrors the upstream
-    // status code, so the 401/402/429 handling below is unchanged. When
-    // API_BASE is empty, it calls Perplexity directly with the user's key.
-    const res = API_BASE
-      ? await fetch(API_BASE.replace(/\/$/,'') + '/deep', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: getKey(), payload: _deepBody }),
-        })
-      : await fetch('https://api.perplexity.ai/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + getKey(),
-            'Content-Type':  'application/json',
-          },
-          body: JSON.stringify(_deepBody),
-        });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      const status  = res.status;
-      if (status === 401) throw new Error('Invalid API key — check your Perplexity key at perplexity.ai/settings/api');
-      if (status === 402) throw new Error('Perplexity account has no credits — add billing at perplexity.ai/settings/billing');
-      if (status === 429) throw new Error('Rate limit reached — wait a moment and try again');
-      throw new Error(`API error ${status}: ${errText.slice(0, 200)}`);
-    }
-
-    const data      = await res.json();
-    const citations = data.citations || [];
-    const raw       = data.choices?.[0]?.message?.content || '';
-
-    // ── Robust JSON extraction ─────────────────────────────────────
-    // Perplexity sometimes wraps in code fences or adds preamble text
-    let parsed = null;
-    const attempts = [
-      raw.trim(),
-      raw.trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim(),
-      raw.trim().replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim(),
-      (raw.match(/\{[\s\S]+\}/) || [])[0] || '',
-    ];
-    for (const attempt of attempts) {
-      try { parsed = JSON.parse(attempt); break; } catch(e) { /* try next */ }
-    }
-    if (!parsed) throw new Error('Response was not valid JSON. The model may have returned plain text. Try again.');
-
-    // ── Map citations to source objects ──────────────────────────────
-    const sources = citations.slice(0, 10).map((url, i) => {
-      let display = url, label = url;
-      try { const u = new URL(url); display = u.hostname.replace('www.', ''); label = display; } catch(e) {}
-      return { num: i+1, label, desc: 'Live citation — Perplexity Sonar Pro', url, display };
-    });
-
-    // ── Ensure insights have required category field ─────────────────
-    const insights = (parsed.insights || []).map(ins => ({
-      ...ins,
-      category: (ins.category || 'consumer').toLowerCase().replace(/[^a-z]/g,'').replace(/^(consumer|market|cultur|brand).*/, m => m.startsWith('cultur') ? 'culture' : m.slice(0,6) === 'market' ? 'market' : m.startsWith('brand') ? 'brand' : 'consumer'),
-    }));
-    /* SEAM:INSIGHT_COMPILER — the deep path keeps only what Sonar actually
-       returned. Fewer than six real findings beats six with filler. */
-    if (!insights.length) {
-      insights.push({
-        category: 'consumer',
-        title: `Deep Search returned no structured findings`,
-        excerpt: `Sonar answered but the response carried no extractable findings for this query. Refine the query or retry — nothing has been invented to fill the space.`,
-        stat: 'no findings', confidence: 'Low', source: 'Excavate',
-      });
-    }
-
-
-    const ideas    = parsed.ideas    || buildIdeas(q, insights, 'deep');
-    const summary  = parsed.summary  || parsed.brief || '';
-    const allSources = sources;
-    lastSources = allSources;
-
-    hideLoader();
-    await new Promise(r => setTimeout(r, 300));
-
-    // ── Render results in the 5-lens tab UI ─────────────────────────
-    // Deep search distributes insights across lenses by their category field
-    const lensesByCat = {};
-    CATS.forEach(cat => {
-      const catInsights = insights.filter(i => i.category === cat);
-      const catIdeas    = ideas.filter((_, idx) => idx % 4 === CATS.indexOf(cat));
-      lensesByCat[cat] = {
-        insights: catInsights.length ? catInsights : insights.slice(CATS.indexOf(cat), CATS.indexOf(cat) + 2),
-        ideas:    catIdeas.length   ? catIdeas    : ideas.slice(0, 3),
-        sources:  allSources,
-        brief:    summary,
-        cat,
-      };
-    });
-
-    // Build Signal Truth from deep search results
-    const truth = {
-      headline:    `"${q}" — Live Intelligence · Perplexity Sonar Pro`,
-      body:        summary || `Real-time intelligence from ${sources.length} live citations across consumer, market, cultural, and brand lenses. Sourced from the live web citations listed below, via Perplexity Sonar Pro.`,
-      allInsights: insights,
-      allIdeas:    ideas,
-      allSources,
-      velocity:    'strong',
-    };
-
-    window._lastTruth   = truth;
-    window._lensResults = lensesByCat;
-    _renderResultsV2(q, lensesByCat, truth, 'deep');
-
-    // Override the mode pill and meta for deep search
-    const pill = document.getElementById('results-mode-pill');
-    if (pill) pill.innerHTML = '<div class="mode-pill deep">DEEP SEARCH — PERPLEXITY SONAR PRO — LIVE WEB INTELLIGENCE</div>';
-    const meta = document.getElementById('results-meta');
-    if (meta) meta.textContent = 'PERPLEXITY SONAR PRO — ' + sources.length + ' LIVE CITATIONS · ' + new Date().toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
-
-    // Show deep CTA as disabled (already in deep mode)
-    const cta = document.getElementById('deep-cta-container');
-    if (cta) cta.innerHTML = `<div class="deep-cta-strip" style="border-color:var(--deep2);background:rgba(124,58,237,0.06)"><div class="deep-cta-text" style="color:var(--text2)"><span style="color:var(--deep2);font-weight:700">● DEEP SEARCH ACTIVE</span> — Perplexity Sonar Pro · ${sources.length} live citations · Real-time web intelligence</div><button class="deep-cta-btn" style="background:var(--surface3);color:var(--text3)" onclick="disableDeep()">Return to Basic Search</button></div>`;
-
-    _saveReport(q, { insights, ideas, sources: allSources, brief: summary }, 'deep');
-
-  } catch(err) {
-    hideLoader();
-    // Provide specific, actionable error messages
-    showError(err.message.includes('pplx') || err.message.includes('API') || err.message.includes('key') || err.message.includes('billing') || err.message.includes('limit')
-      ? err.message
-      : `Deep Search failed: ${err.message}. Check your Perplexity API key and connection.`
-    );
-    document.getElementById('main-dashboard').style.display = 'grid';
-  }
-}
 
 // ════════════════════════════════════════════
 //  RENDER
@@ -3759,14 +3376,12 @@ function renderResults(q, data, mode){
 
   document.getElementById('live-results').style.display='block';
   document.getElementById('results-query').textContent=q;
-  document.getElementById('results-meta').textContent=(mode==='deep'?'PERPLEXITY SONAR PRO — REAL-TIME WEB · ':(mode==='live'?'LIVE SOURCES — REAL-TIME SOCIAL, WEB & TREND · ':'OPEN-SOURCE DATA — 7 VERIFIED APIS · '))+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
+  document.getElementById('results-meta').textContent=((data.sources||[]).length+' SOURCES · '+(data.insights||[]).length+' FINDINGS · '+(mode==='live'?'LIVE READ':'GATHERED SIGNALS, LIVE ANALYSIS UNAVAILABLE')+' · ')+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
 
   const pill=document.getElementById('results-mode-pill');
-  pill.innerHTML=mode==='deep'
-    ?'<div class="mode-pill deep">DEEP SEARCH — PERPLEXITY SONAR PRO</div>'
-    :(mode==='live'
-      ?'<div class="mode-pill basic">LIVE SOURCES — REAL-TIME PIPELINE</div>'
-      :'<div class="mode-pill basic">BASIC SEARCH — OPEN-SOURCE INTELLIGENCE</div>');
+  pill.innerHTML=mode==='live'
+    ?'<div class="mode-pill basic">THE READ — LAKE + LIVE WIRE + OPEN WEB</div>'
+    :'<div class="mode-pill basic">GATHERED SIGNALS — LIVE ANALYSIS UNAVAILABLE</div>';
 
   renderVoiceStrip(q);   // fire and forget: the strip never blocks the page
   document.getElementById('res-sources').textContent=lastSources.length||'—';
@@ -3776,13 +3391,8 @@ function renderResults(q, data, mode){
   // Sources strip
   const strip=document.getElementById('results-sources-strip');
   strip.innerHTML=`<span class="strip-label">SOURCES USED:</span>`+
-    lastSources.map(s=>`<a class="strip-chip ${mode==='deep'?'deep-chip':'ok'}" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${safe(s.display||s.label)}</a>`).join('');
+    lastSources.map(s=>`<a class="strip-chip ok" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${safe(s.display||s.label)}</a>`).join('');
 
-  // Deep CTA for basic mode
-  const cta=document.getElementById('deep-cta-container');
-  if(mode!=='deep'){
-    cta.innerHTML=`<div class="deep-cta-strip"><div class="deep-cta-text"><strong>Upgrade to Deep Search</strong> — pull real-time, quantified intelligence with real, clickable citations from across the live web. Powered by Perplexity Sonar Pro.</div><button class="deep-cta-btn" onclick="navDeepToggle();runSearch()">ACTIVATE DEEP SEARCH →</button></div>`;
-  } else { cta.innerHTML=''; }
 
   // Result cards
   const grid=document.getElementById('results-grid');
@@ -3806,8 +3416,10 @@ function renderResults(q, data, mode){
     </div>
   `).join('');
 
-  // Ideas
-  document.getElementById('ideas-grid').innerHTML=(data.ideas||[]).map((idea,i)=>`
+  // Ideas — SEAM:ONE_RAIL: a move is earned from evidence or it is not shown
+  document.getElementById('ideas-grid').innerHTML=!(data.ideas||[]).length
+    ? `<div class="idea-card" style="grid-column:1/-1;opacity:.8"><div class="idea-type">NO MOVE EARNED YET</div><div class="idea-body">The evidence on this query is too thin to name a move. Nothing has been invented to fill the space. Widen the query or add a track and let the lake accumulate.</div></div>`
+    : (data.ideas||[]).map((idea,i)=>`
     <div class="idea-card" style="animation:fadeIn 0.4s ease ${0.3+i*0.07}s both">
       <div class="idea-num">${safe(idea.num||('0'+(i+1)))}</div>
       <div class="idea-type">${safe(idea.type)}</div>
@@ -3819,7 +3431,7 @@ function renderResults(q, data, mode){
   `).join('');
 
   if(data.brief){
-    document.getElementById('builder-result').innerHTML=`<strong>${mode==='deep'?'Deep Search':'Basic Search'} Brief — ${safe(q)}:</strong> ${safe(data.brief)}`;
+    document.getElementById('builder-result').innerHTML=`<strong>THE READ — ${safe(q)}:</strong> ${safe(data.brief)}`;
   }
   window.scrollTo({top:document.getElementById('live-results').offsetTop-80,behavior:'smooth'});
   _saveReport(q, data, mode);
@@ -3827,9 +3439,8 @@ function renderResults(q, data, mode){
 
 function openInsightModal(i){
   const ins=window._lastInsights[i]; if(!ins) return;
-  const isDeep=lastMode==='deep';
   showModal(`
-    <div style="margin-bottom:6px;font-family:'Space Mono',monospace;font-size:10px;color:${isDeep?'var(--deep2)':'var(--accent)'};letter-spacing:0.15em;">${isDeep?'DEEP':'BASIC'} · INSIGHT DETAIL</div>
+    <div style="margin-bottom:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.15em;">INSIGHT DETAIL</div>
     <h2 class="modal-title" style="font-size:22px">${safe(ins.title)}</h2>
     <div class="modal-sub">${safe(CAT_LABELS[ins.category]||'Insight')} · ${safe(ins.confidence)} Confidence · ${safe(ins.stat)}${ins.source?' · '+safe(ins.source):''}</div>
     <p class="modal-body">${safe(ins.excerpt)}</p>
@@ -3839,28 +3450,26 @@ function openInsightModal(i){
       <div class="modal-option" onclick="showToast('Added to brief');closeModalDirect();"><div class="modal-option-title">Add to Brief</div><div class="modal-option-desc">Export to strategy doc</div></div>
       <div class="modal-option" onclick="showToast('Shared with team');closeModalDirect();"><div class="modal-option-title">Share with Team</div><div class="modal-option-desc">Send via workspace</div></div>
     </div>
-    <button class="modal-action ${isDeep?'deep':''}" onclick="closeModalDirect()">Close →</button>
+    <button class="modal-action" onclick="closeModalDirect()">Close →</button>
   `);
 }
 
 function openSourcesModal(){
-  const isDeep=lastMode==='deep';
   showModal(`
-    <div style="margin-bottom:6px;font-family:'Space Mono',monospace;font-size:10px;color:${isDeep?'var(--deep2)':'var(--accent)'};letter-spacing:0.15em;">SOURCE VALIDATION</div>
+    <div style="margin-bottom:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.15em;">SOURCE VALIDATION</div>
     <h2 class="modal-title">Proof Points</h2>
-    <div class="modal-sub">${isDeep?'PERPLEXITY SONAR PRO — LIVE CITATIONS':'OPEN-SOURCE — 7 FREE PUBLIC APIs'}</div>
-    <p class="modal-body">${isDeep?'These are the live web sources Perplexity searched and synthesized in real time. Each links to the original source document.':'These are open, free public data sources queried directly from your browser — no account or key required. Each link opens the primary source.'}</p>
+    <div class="modal-sub">${(window._lastSources||[]).length} SOURCES USED IN THIS READ</div>
+    <p class="modal-body">Every source that contributed evidence to this read. Each links to the original document.</p>
     ${renderSourcesBlock(window._lastSources,lastMode)}
-    ${!isDeep?`<button class="modal-action deep" onclick="closeModalDirect();navDeepToggle();runSearch()">Upgrade to Deep Search →</button>`:''}
   `);
 }
 
 function renderSourcesBlock(sources, mode){
   if(!sources||!sources.length) return `<p style="font-size:13px;color:var(--text3);margin-bottom:16px;">Sources not available for this query.</p>`;
-  const col=mode==='deep'?'var(--deep2)':'var(--accent)';
+  const col='var(--accent)';
   return `
     <div class="sources-block" style="border-left-color:${col}">
-      <div class="sources-title" style="color:${col}">${mode==='deep'?'⌗ Live Citations — Perplexity Sonar Pro':'⌗ Open-Source Data — Free Public APIs'}</div>
+      <div class="sources-title" style="color:${col}">⌗ Sources used</div>
       ${sources.map(s=>`
         <div class="source-row-item">
           <div class="source-info">
@@ -3957,7 +3566,7 @@ function downloadReport(id) {
   const ds = now.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
   const ins = rpt.insights || [];
   const clbls = {consumer:'Consumer Behavior',market:'Market Dynamics',culture:'Cultural Signal',brand:'Brand Health'};
-  const ideas = rpt.ideas || buildIdeas(rpt.query, ins.length?ins:[{category:'brand',title:'Analysis',excerpt:rpt.summary||'',stat:'',confidence:'Medium',source:''}], 'basic');
+  const ideas = rpt.ideas || [];
   const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + rpt.type + ': ' + rpt.query + ' — Excavate</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Georgia,serif;color:#1a1a1a;background:#fff;max-width:780px;margin:0 auto;padding:64px 52px;line-height:1.75;}@media print{body{padding:40px;}}.brand{font-family:Courier New,monospace;font-size:10px;letter-spacing:.22em;color:#FF3B3B;margin-bottom:5px;text-transform:uppercase;}.meta{font-family:Courier New,monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:36px;padding-bottom:20px;border-bottom:1px solid #eee;}h1{font-size:36px;line-height:1.1;margin-bottom:10px;color:#0a0a0f;}h2{font-size:22px;font-weight:700;margin:32px 0 12px;color:#0a0a0f;border-bottom:2px solid #FF3B3B;padding-bottom:6px;}p{font-size:14px;color:#444;margin-bottom:14px;line-height:1.75;}.exec{background:#f8f8f8;border-left:4px solid #FF3B3B;padding:20px 24px;margin:24px 0;font-style:italic;font-size:14px;color:#333;line-height:1.75;}.disc{background:#fffbf0;border:1px solid #f5a55a;border-left:4px solid #f5a55a;padding:14px 18px;font-size:12px;color:#666;margin-bottom:32px;line-height:1.65;}.finding{padding:16px 0;border-bottom:1px solid #eee;}.finding:last-child{border-bottom:none;}.fcat{font-family:Courier New,monospace;font-size:9px;color:#FF3B3B;letter-spacing:.16em;text-transform:uppercase;margin-bottom:5px;}.ftitle{font-size:17px;font-weight:700;color:#0a0a0f;margin-bottom:6px;line-height:1.3;}.ftext{font-size:13px;color:#555;line-height:1.7;margin-bottom:5px;}.fstat{font-family:Courier New,monospace;font-size:11px;color:#FF3B3B;font-weight:700;}.idea{padding:14px;background:#f9f9f9;margin-bottom:10px;border-left:3px solid #eee;}.itype{font-family:Courier New,monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px;}.ihl{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:5px;}.ibody{font-size:13px;color:#555;line-height:1.65;}.srcrow{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#444;}.srcrow a{color:#5AC8F5;text-decoration:none;}ol li{font-size:14px;color:#444;margin-bottom:9px;padding-left:4px;}.footer{margin-top:60px;padding-top:20px;border-top:1px solid #eee;font-family:Courier New,monospace;font-size:9px;color:#bbb;text-align:center;letter-spacing:.1em;line-height:1.8;}</style></head><body>'
     + '<div class="brand">Excavate by Unsurfaced™</div>'
     + '<div class="meta">' + rpt.type.toUpperCase() + '  ·  ' + rpt.mode.toUpperCase() + ' SEARCH  ·  Generated ' + ds + '</div>'
@@ -3977,7 +3586,7 @@ function downloadReport(id) {
     + '<div class="srcrow"><strong>Semantic Scholar API</strong> — Allen AI index · <a href="https://semanticscholar.org">semanticscholar.org</a></div>'
     + '<div class="srcrow"><strong>Wikidata API</strong> — Knowledge graph entities · <a href="https://wikidata.org">wikidata.org</a></div>'
     + '<h2>Recommendations</h2><ol>'
-    + '<li>Validate open-source signals with primary consumer research or activate Perplexity Deep Search for quantified industry data</li>'
+    + '<li>Validate open signals with primary consumer research through MINE before committing budget</li>'
     + '<li>Map organic community touchpoints before committing paid media budget</li>'
     + '<li>Leverage academic research depth as a creative authority signal in brand communications</li>'
     + '<li>Prioritize earned media seeding before paid amplification to ride organic signal momentum</li>'
@@ -4008,7 +3617,7 @@ function downloadBrief(id) {
     + '<li><strong>Month 3:</strong> Evaluate paid amplification based on earned media performance signals</li>'
     + '</ol>'
     + '<h2>Next Steps</h2>'
-    + '<p>Activate Deep Search (Perplexity Sonar Pro) within Excavate for real-time web statistics and clickable citations from authoritative sources, drawn live from each query.</p>'
+    + '<p>Validate with primary consumer research through MINE before deployment.</p>'
     + '<div class="footer">Excavate by Unsurfaced™  ·  ' + ds + '</div>'
     + '</body></html>';
   _dlFile(html, 'Excavate_Brief_' + rpt.query.replace(/[^a-zA-Z0-9]/g,'_').slice(0,36) + '_' + now.toISOString().slice(0,10) + '.html');
@@ -4509,7 +4118,7 @@ function generateReport() {
   const q = (document.getElementById('rg-input') || {}).value?.trim();
   if (!q) { document.getElementById('rg-input')?.focus(); return; }
   const id = 'rpt_' + Date.now();
-  const newRpt = {id, query:q, type:_activeReportType, status:'generating', progress:0, created:new Date(), mode:deepMode?'deep':'basic', summary:'', insights:[], ideas:[]};
+  const newRpt = {id, query:q, type:_activeReportType, status:'generating', progress:0, created:new Date(), mode:'live', summary:'', insights:[], ideas:[]};
   _reportStore.unshift(newRpt);
   renderReportCards();
   
@@ -4596,7 +4205,7 @@ async function _completeReport(id, q) {
       + (rpt._oaCount ? rpt._oaCount.toLocaleString() + ' academic papers indexed. ' : '')
       + (rpt._hnCount ? rpt._hnCount.toLocaleString() + ' practitioner discussions. ' : '');
     rpt.insights = (rpt.insights || []).map(x => Object.assign({}, x, { confidence: 'Unverified' }));
-    rpt.ideas = buildIdeas(q, rpt.insights.length ? rpt.insights : [{category:'brand',title:'',excerpt:'',stat:'',confidence:'Unverified',source:''}], 'basic');
+    rpt.ideas = [];
   }
   renderReportCards();
   _addToDeployQueue(q, rpt.type, rpt.mode);
@@ -4715,7 +4324,7 @@ function renderDeployQueue() {
 
 function createDeliverable(type) {
   const name = (document.getElementById('search-input')?.value || 'Latest Research').slice(0,40);
-  _depStore[type].unshift({name, meta:(_DEP_TYPES.find(d=>d.key===type)?.label||'Deliverable')+' · '+(deepMode?'DEEP':'BASIC'), status:'queued', created:new Date()});
+  _depStore[type].unshift({name, meta:(_DEP_TYPES.find(d=>d.key===type)?.label||'Deliverable')+' · LIVE', status:'queued', created:new Date()});
   renderDeployCards();
   renderDeployQueue();
   showToast('Added to deploy queue');
@@ -4753,9 +4362,9 @@ function downloadDeliverable(type, name) {
 <h1>${name}</h1>
 <div class="box">This deliverable was generated from Excavate's intelligence pipeline. All strategic recommendations are grounded in open-source data signals from 7 verified public APIs.</div>
 <h2>Deliverable Components</h2>
-${(templates[type]||[]).map((t,i)=>`<div class="item"><div class="it">${i+1}. ${t}</div><div class="ib">Developed from open-source intelligence synthesis for "${name}". Validate with primary consumer research or Perplexity Deep Search before full deployment.</div></div>`).join('')}
+${(templates[type]||[]).map((t,i)=>`<div class="item"><div class="it">${i+1}. ${t}</div><div class="ib">Developed from open-source intelligence synthesis for "${name}". Validate with primary consumer research through MINE before full deployment.</div></div>`).join('')}
 <h2>Next Steps</h2>
-<ol><li>Review with key stakeholders and align on strategic priorities</li><li>Validate signals with primary consumer research or activate Deep Search for quantified industry data</li><li>Brief creative and media teams using this document as the intelligence foundation</li><li>Set KPIs aligned with the identified opportunity signals</li></ol>
+<ol><li>Review with key stakeholders and align on strategic priorities</li><li>Validate signals with primary consumer research through MINE</li><li>Brief creative and media teams using this document as the intelligence foundation</li><li>Set KPIs aligned with the identified opportunity signals</li></ol>
 <div class="footer">Excavate by Unsurfaced™ &nbsp;·&nbsp; ${dateStr}</div>
 
 </body></html>`;
@@ -5360,7 +4969,7 @@ function _synthesiseLens(q, cat, raw) {
   if (!insights.length) {
     insights.push({
       category:cat, title:`${catLabel}: evidence thin for "${q.split(' ').slice(0,4).join(' ')}"`,
-      excerpt: `The open sources answered lightly on this lens — not enough corroboration to state a finding. That is itself a signal: the conversation here is early, niche, or happening on closed platforms. Deep Search reaches further.`,
+      excerpt: `The open sources answered lightly on this lens — not enough corroboration to state a finding. That is itself a signal: the conversation here is early, niche, or happening on closed platforms. Add a track and let the lake accumulate.`,
       stat: 'insufficient evidence', confidence:'Low', source:'Excavate', sourceUrl:null,
     });
   }
@@ -5409,7 +5018,7 @@ function _buildSignalTruth(q, lenses) {
 
   return {
     headline: `"${q.split(' ').slice(0,4).join(' ')}" — ${velocity==='strong'?'High-Velocity Cross-Signal Intelligence':velocity==='active'?'Active Intelligence Signal Detected':'Emerging Signal — Monitor Closely'}`,
-    body: `Cross-signal synthesis across all four lenses surfaces ${highConf} high-confidence findings from ${totalSrc} data sources. ${velocity==='strong'?'Strong convergence indicates significant strategic weight.':velocity==='active'?'Active signals indicate meaningful opportunity.':'Signal is emerging — activate Deep Search for quantified intelligence.'} `,
+    body: `Cross-signal synthesis across all four lenses surfaces ${highConf} high-confidence findings from ${totalSrc} data sources. ${velocity==='strong'?'Strong convergence indicates significant strategic weight.':velocity==='active'?'Active signals indicate meaningful opportunity.':'Signal is emerging — evidence is thin, track it before acting.'} `,
     allInsights, allIdeas, allSources, velocity,
   };
 }
@@ -5441,8 +5050,6 @@ function _renderResultsV2(q, lenses, truth, mode) {
     strip.innerHTML='<span class="strip-label">SOURCES:</span>'+uniq.map(s=>`<a class="strip-chip ok" href="${s.url}" target="_blank" rel="noopener">${s.display||s.label}</a>`).join('');
   }
 
-  const cta=document.getElementById('deep-cta-container');
-  if(cta) cta.innerHTML='<div class="deep-cta-strip"><div class="deep-cta-text"><strong>Upgrade to Deep Search</strong> — pull real-time, quantified intelligence with real, clickable citations from across the live web.</div><button class="deep-cta-btn" onclick="navDeepToggle();runSearch()">ACTIVATE DEEP SEARCH →</button></div>';
 
   CATS.forEach(cat=>{
     const data=lenses[cat]||{insights:[],ideas:[],sources:[]};
@@ -5871,12 +5478,6 @@ document.addEventListener('DOMContentLoaded', function() {
     brandInput.addEventListener('keydown', function(e) { if(e.key==='Enter') searchBrand(); });
     brandInput.addEventListener('input', toggleBrandClearBtn);
   }
-  const eyeBtn = document.getElementById('deep-eye-btn');
-  if (eyeBtn) eyeBtn.addEventListener('click', function() {
-    const i=document.getElementById('deep-key-input'); if(i) i.type=i.type==='password'?'text':'password';
-  });
-  const deepKeyInput = document.getElementById('deep-key-input');
-  if (deepKeyInput) deepKeyInput.addEventListener('keydown', function(e){ if(e.key==='Enter') connectDeep(); });
   if (typeof Chart !== 'undefined') { buildChart('30d'); }
   else {
     const cs=document.querySelector('script[src*="chart.umd"]');

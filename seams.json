@@ -344,10 +344,6 @@
    "tag": "SEAM:EVOLUTION_1",
    "purpose": "consent version 2026-08-behavior (new words, new version); milestone mail reaches granted clients at exactly the floor crossing and the target \u2014 the two moments the results room is most worth opening"
   },
-  "SEAM:DEEP_RAIL": {
-   "file": "worker/src/index.js",
-   "purpose": "the /deep route the page has called since birth: house PPLX key preferred with BYOK fallback, global + per-IP daily budget in KV answering 429, 6h response cache by payload hash (hits cost no budget), upstream status mirrored because the page's 401/402/429 copy branches on it, errors never cached"
-  },
   "SEAM:INSIGHT_COMPILER": {
    "file": "worker/src/index.js",
    "purpose": "synthesize report mode: THE READ two-liner (reframe then move), per-insight implication, anti-metadata law in the prompt (never restate counts as findings, name disagreements), EARNED confidence from evidence density per category (3+ High / 2 Medium / 1 Low) \u2014 never hardcoded, never the model's self-grade"
@@ -529,6 +525,15 @@
   "SEAM:PLAY_BUDGET_UI": {
    "file": "play/index.html",
    "purpose": "live budget strip; hot state at 80 percent; refreshed on every submit"
+  },
+  "SEAM:ONE_RAIL": {
+   "file": "intelligence/index.html",
+   "purpose": "one search, one pipeline: Deep Search, Perplexity BYOK, LIVE/DEEP modes and template ideas retired; runSearch always runs the full lake + live wire + Exa read; moves are earned or the section says so"
+  },
+  "SEAM:ONE_RAIL@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:ONE_RAIL",
+   "purpose": "/deep route and deepSearch removed; synthesize rides callModel (t3 report voice, t1 structured) instead of a hardcoded Workers AI call"
   }
  },
  "planned": [
