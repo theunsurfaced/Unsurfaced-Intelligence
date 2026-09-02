@@ -114,7 +114,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .tag:hover{border-color:var(--accent);color:var(--accent);}
 
 /* ── MAIN LAYOUT ── */
-.main{position:relative;z-index:var(--z-page);max-width:1400px;margin:0 auto;padding:40px;display:grid;grid-template-columns:1fr 340px;gap:32px;}
+.main{position:relative;z-index:var(--z-page);max-width:1400px;margin:0 auto;padding:8px 40px 40px;display:flex;flex-direction:column;gap:56px;}
+.hub-block{min-width:0;}
+.hub-meta{display:flex;align-items:center;gap:12px;margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;}
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .section-title{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text2);display:flex;align-items:center;gap:10px;}
 .section-title::before{content:'';width:8px;height:8px;background:var(--accent);transform:rotate(45deg);}
@@ -237,8 +239,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .fetch-label{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.08em;}
 
 /* ── SIDEBAR ── */
-.sidebar{display:flex;flex-direction:column;gap:24px;}
-.sidebar-panel{background:var(--surface);border:1px solid var(--border);padding:24px;}
 .signal-list{display:flex;flex-direction:column;gap:14px;}
 .signal-item{display:flex;flex-direction:column;gap:6px;}
 .signal-row{display:flex;align-items:center;justify-content:space-between;}
@@ -246,13 +246,13 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .signal-val{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;}
 .signal-track{height:3px;background:var(--surface3);}
 .signal-fill{height:100%;transition:width 1s ease;}
-.trend-list{display:flex;flex-direction:column;}
-.trend-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:padding-left 0.2s;}
-.trend-item:hover{padding-left:6px;}
-.trend-item:last-child{border-bottom:none;}
-.trend-rank{font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);width:20px;flex-shrink:0;}
-.trend-info{flex:1;}
-.trend-kw{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.trend-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.trend-item{display:flex;align-items:flex-start;gap:14px;padding:20px 22px;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:border-color .25s,transform .2s;position:relative;overflow:hidden;}
+.trend-item::after{content:'';position:absolute;top:0;right:0;width:40px;height:40px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);pointer-events:none;}
+.trend-item:hover{border-color:var(--border2);transform:translateY(-2px);}
+.trend-rank{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);width:22px;flex-shrink:0;padding-top:3px;}
+.trend-info{flex:1;min-width:0;}
+.trend-kw{font-family:'DM Serif Display',serif;font-size:19px;color:var(--text);margin-bottom:4px;line-height:1.2;}
 .trend-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.04em;}
 .trend-badge{font-family:'Space Mono',monospace;font-size:10px;padding:3px 8px;font-weight:700;}
 .trend-badge.up{background:rgba(255,59,59,0.1);color:var(--accent);}
@@ -263,14 +263,27 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .audience-cell:hover{border-color:var(--accent);}
 .audience-pct{font-family:'DM Serif Display',serif;font-size:26px;display:block;margin-bottom:2px;}
 .audience-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;}
-.builder-panel{background:linear-gradient(135deg,rgba(255,59,59,0.05),rgba(10,10,15,0));border:1px solid rgba(255,59,59,0.2);padding:24px;position:relative;}
+.builder-panel{background:linear-gradient(135deg,rgba(255,59,59,0.05),rgba(10,10,15,0));border:1px solid rgba(255,59,59,0.2);padding:28px;position:relative;}
+.builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin:18px 0 22px;}
+.builder-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--text3);margin-bottom:12px;}
+.rpt-cats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.rpt-cat{background:var(--surface);border:1px solid var(--border);padding:14px 14px 12px;cursor:pointer;text-align:left;transition:border-color .2s,transform .2s;color:var(--text);}
+.rpt-cat:hover{border-color:var(--accent);transform:translateY(-2px);}
+.rpt-cat-title{font-family:'DM Serif Display',serif;font-size:15px;margin-bottom:3px;}
+.rpt-cat-desc{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.04em;line-height:1.5;}
+.rpt-rows{display:flex;flex-direction:column;border:1px solid var(--border);background:var(--surface);}
+.rpt-row{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .2s;}
+.rpt-row:last-child{border-bottom:none;}
+.rpt-row:hover{background:var(--surface2);}
+.rpt-row-q{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rpt-row-meta{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em;white-space:nowrap;}
+.rpt-row-empty{padding:22px 16px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.06em;line-height:1.7;}
 .builder-panel::before{content:'LIVE';position:absolute;top:12px;right:12px;background:var(--accent2);color:#fff;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.15em;padding:3px 8px;font-weight:700;}
-.builder-title{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:6px;}
-.builder-sub{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:16px;}
+.builder-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:0;max-width:720px;}
 .builder-result{background:var(--surface);border:1px solid var(--border);padding:16px;font-size:13px;line-height:1.65;color:var(--text2);margin-bottom:14px;min-height:80px;font-style:italic;}
 .builder-result strong{color:var(--accent);font-style:normal;font-weight:600;}
-.builder-actions{display:flex;gap:8px;}
-.builder-btn{flex:1;padding:10px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;cursor:pointer;border:none;transition:all 0.2s;font-weight:700;}
+.builder-actions{display:flex;gap:8px;max-width:520px;}
+.builder-btn{flex:1;padding:11px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;cursor:pointer;border:none;transition:all 0.2s;font-weight:700;}
 .builder-btn.primary{background:var(--accent);color:#fff;}
 .builder-btn.primary:hover{background:#ff5555;}
 .builder-btn.secondary{background:none;border:1px solid var(--border2);color:var(--text2);}
@@ -313,7 +326,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 
-@media(max-width:1100px){.main{grid-template-columns:1fr;}.insights-grid{grid-template-columns:1fr;}.results-grid{grid-template-columns:1fr 1fr;}.ideas-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:1100px){.results-grid{grid-template-columns:1fr 1fr;}.ideas-grid{grid-template-columns:1fr 1fr;}}
 /* SEAM:MOBILE_RAIL — portrait is a first-class citizen. The old breakpoint
    DELETED the nav under 700px (display:none, no replacement) — the reason
    phones had to rotate. Replaced with the snap-scroll rail: every tab one
@@ -326,7 +339,10 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   .search-actions{position:static;transform:none;justify-content:flex-end;margin-top:8px;}
   .search-btn{width:100%;justify-content:center;}
 }
+@media(max-width:1100px){.trend-grid{grid-template-columns:repeat(2,1fr);}.builder-grid{grid-template-columns:1fr;}}
 @media(max-width:700px){
+  .trend-grid,.rpt-cats{grid-template-columns:1fr;}
+  .main{gap:40px;}
   nav{padding:0 14px;gap:10px;}
   .nav-links{display:flex;overflow-x:auto;white-space:nowrap;gap:18px;padding:4px 2px 8px;margin:0;
     scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1;min-width:0;}
@@ -1856,16 +1872,17 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 
 <!-- MAIN DASHBOARD -->
 <div class="main" id="main-dashboard">
-  <div>
+  <!-- SEAM:HUB_FLOW — the front page is one column in the outline's order:
+       pulse (ticker above), headline, search, featured 4x2, trending 3x2, insight builder.
+       The sidebar is retired. Every renderer that fed it still mounts here by id. -->
+
+  <section class="hub-block">
     <div class="section-header">
       <span class="section-title">Featured Insights</span>
-      <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.08em;margin-left:10px;align-self:center">CURATED BRIEFINGS · ENRICHED WITH LIVE OPEN-SOURCE SIGNAL</span>
-      <div style="display:flex;align-items:center;gap:12px;margin-left:auto">
-        <span class="fi-live-badge" id="fi-live-badge" style="display:none">
-          <span class="fi-live-dot"></span>LIVE
-        </span>
-        <span class="fi-refresh-label" id="fi-refresh-label" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em"></span>
-        <span class="section-action" onclick="forceRefreshFeatured()" style="cursor:pointer">REFRESH →</span>
+      <div class="hub-meta">
+        <span class="fi-live-badge" id="fi-live-badge" style="display:none"><span class="fi-live-dot"></span>LIVE</span>
+        <span class="fi-refresh-label" id="fi-refresh-label"></span>
+        <span class="section-action" onclick="forceRefreshFeatured()">REFRESH →</span>
       </div>
     </div>
     <!-- SEAM:ARRIVAL_LIVE — the read and the state strip mount here when the
@@ -1880,27 +1897,38 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
       <div class="fi-skeleton"></div>
       <div class="fi-skeleton"></div>
     </div>
-
     <div id="lake-signal-block"></div>
-    <!-- SEAM:SURFACE_LAW: Signal Trend (modeled series) and Audience Intelligence (modeled scores) removed. Computed pulse arrives in Arc 6. -->
-    </div>
-  </div>
+  </section>
 
-  <div class="sidebar">
-    <div class="sidebar-panel">
-      <div class="section-header"><span class="section-title">Trending Now</span><span class="section-action">ALL →</span></div>
-      <div class="trend-list" id="trending-now-list"><!-- populated by renderTrendingNow() --></div>
+  <section class="hub-block">
+    <div class="section-header">
+      <span class="section-title">Trending Now</span>
+      <span class="section-action" onclick="navTo('brands')">ALL →</span>
     </div>
-    <div class="sidebar-panel builder-panel">
-      <h3 class="builder-title">Insight Builder</h3>
-      <p class="builder-sub">Run a search to generate a strategic brief from your findings.</p>
-      <div class="builder-result" id="builder-result"><strong>Ready.</strong> Run a search above to generate a strategic brief with audience mapping and channel recommendations.</div>
-      <div class="builder-actions">
-        <button class="builder-btn primary" onclick="exportBrief()">EXPORT BRIEF ↗</button>
-        <button class="builder-btn secondary" onclick="showToast('Copied to clipboard')">COPY</button>
+    <div class="trend-grid" id="trending-now-list"><!-- populated by renderTrendingNow() --></div>
+  </section>
+
+  <section class="hub-block builder-panel">
+    <div class="section-header" style="margin-bottom:6px">
+      <span class="section-title">Insight Builder</span>
+    </div>
+    <p class="builder-sub">Custom reports by category, and every report this session has produced. Reports run the full read: lake, live wire, open web, compiler.</p>
+    <div class="builder-grid">
+      <div>
+        <div class="builder-label">CUSTOM REPORTS BY CATEGORY</div>
+        <div class="rpt-cats" id="hub-rpt-cats"><!-- populated by renderHubBuilder() --></div>
+      </div>
+      <div>
+        <div class="builder-label">EXISTING REPORTS</div>
+        <div class="rpt-rows" id="hub-rpt-rows"><!-- populated by renderHubBuilder() --></div>
       </div>
     </div>
-  </div>
+    <div class="builder-result" id="builder-result"><strong>Ready.</strong> Run a search above and THE READ brief lands here, exportable.</div>
+    <div class="builder-actions">
+      <button class="builder-btn primary" onclick="exportBrief()">EXPORT BRIEF ↗</button>
+      <button class="builder-btn secondary" onclick="copyBrief()">COPY</button>
+    </div>
+  </section>
 </div>
 
 <!-- RESULTS PANEL -->
@@ -3467,6 +3495,44 @@ function openModal(type){
   }
 }
 
+/* SEAM:HUB_FLOW — Insight Builder on the hub. Categories start a real report (the compiler path);
+   existing reports list what this session produced. No seeded, invented reports. */
+const _RPT_CAT_DESC = {
+  'Brand Analysis':'Health, perception, equity',
+  'Consumer Study':'Behavior, sentiment, intent',
+  'Market Landscape':'Category, competition, white space',
+  'Cultural Mapping':'Trends, signals, moments',
+  'Competitive Intel':'Set, share of voice, moves',
+  'Media Strategy':'Channels, formats, timing'
+};
+function renderHubBuilder(){
+  const cats=document.getElementById('hub-rpt-cats'), rows=document.getElementById('hub-rpt-rows');
+  if(cats) cats.innerHTML=_RPT_TYPES.map(t=>`<button class="rpt-cat" onclick="startReportFor('${t}')"><div class="rpt-cat-title">${t}</div><div class="rpt-cat-desc">${_RPT_CAT_DESC[t]||''}</div></button>`).join('');
+  if(rows){
+    const list=_reportStore.slice(0,6);
+    rows.innerHTML=list.length?list.map(r=>`<div class="rpt-row" onclick="${r.status==='ready'?`openRptModal('${r.id}')`:`navTo('reports')`}">
+        <span class="rpt-row-q">${safe(r.query)}</span>
+        <span class="rpt-row-meta">${safe(r.type)} · ${r.status==='ready'?'READY':'GENERATING '+(r.progress||0)+'%'}</span>
+        ${r.status==='ready'?`<button class="builder-btn secondary" style="flex:0 0 auto;padding:6px 10px" onclick="event.stopPropagation();downloadReport('${r.id}')">↓</button>`:''}
+      </div>`).join('')
+      :`<div class="rpt-row-empty">No reports yet this session.<br>Pick a category on the left, or run any search and press Download Report.</div>`;
+  }
+}
+function startReportFor(type){
+  _activeReportType=type;
+  navTo('reports');
+  setTimeout(()=>{
+    document.querySelectorAll('#rg-types button').forEach(b=>{ if(b.textContent.trim()===type) selectRptType(b,type); });
+    const inp=document.getElementById('rg-input'); if(inp){ inp.focus(); inp.placeholder=`${type}: name the brand, category, behavior, or person…`; }
+  },60);
+}
+function copyBrief(){
+  const b=document.getElementById('builder-result').textContent;
+  if(b.includes('Ready.')){ showToast('Run a search first'); return; }
+  navigator.clipboard?.writeText(b.trim()).then(()=>showToast('Brief copied'),()=>showToast('Copy failed'));
+}
+document.addEventListener('DOMContentLoaded',renderHubBuilder);
+
 function exportBrief(){
   const b=document.getElementById('builder-result').textContent;
   if(b.includes('Ready.')){ showToast('Run a search first'); return; }
@@ -4023,7 +4089,6 @@ function excavateAudience(gen) {
 const _RPT_TYPES = ['Brand Analysis','Consumer Study','Market Landscape','Cultural Mapping','Competitive Intel','Media Strategy'];
 
 function initReportsPage() {
-  if (_reportStore.length === 0) _seedInitialReports();
   const typeEl = document.getElementById('rg-types');
   if (typeEl) {
     typeEl.innerHTML = _RPT_TYPES.map(t =>
@@ -4050,18 +4115,7 @@ function selectRptType(btn, type) {
   btn.style.background = 'rgba(255,59,59,.05)';
 }
 
-function _seedInitialReports() {
-  _reportStore.push(
-    {id:'r_seed1', query:'Creator economy monetization', type:'Market Landscape', status:'ready', progress:100, created:new Date(Date.now()-172800000), mode:'basic',
-     summary:'Open-source intelligence surfaces convergent signals across 7 data streams. 847 academic papers indexed. 12,400+ practitioner discussions. Strategic opportunities across brand partnership, platform diversification, and audience ownership.',
-     insights:[{category:'market',title:'Creator Economy Exceeded $250B Globally',excerpt:'Platform monetization data and academic research corroborate sustained growth. Three dominant models: subscription, tipping, and brand partnership revenue.',stat:'$250B global market',confidence:'High',source:'OpenAlex'}],
-     ideas:[{type:'Campaign Strategy',headline:'Lead With Curiosity, Not Claims',body:'Enter creator communities as a participant, not an advertiser. Earned curiosity outperforms broadcast awareness.'}]},
-    {id:'r_seed2', query:'Gen Z brand trust 2025', type:'Consumer Study', status:'ready', progress:100, created:new Date(Date.now()-7200000), mode:'basic',
-     summary:'Consumer research synthesis reveals structural shift away from traditional advertising toward peer-led discovery. 1,200+ academic papers corroborate community discourse patterns.',
-     insights:[{category:'consumer',title:'68% of Gen Z Cite Creator Recommendation as Primary Purchase Driver',excerpt:'Peer influence now outweighs brand advertising in purchase decisions for ages 18–27 across all major product categories.',stat:'68% creator-influenced',confidence:'High',source:'OpenAlex'}],
-     ideas:[{type:'Audience Strategy',headline:'Map Organic Communities First',body:'Before paid investment, identify the forums and newsletters where your audience already talks.'}]}
-  );
-}
+// SEAM:HUB_FLOW — _seedInitialReports retired: it planted two invented reports (847 papers, 68% of Gen Z). Empty is honest.
 
 function generateReport() {
   const q = (document.getElementById('rg-input') || {}).value?.trim();
@@ -4162,6 +4216,7 @@ async function _completeReport(id, q) {
 }
 
 function renderReportCards() {
+  if (typeof renderHubBuilder==='function') renderHubBuilder();   // SEAM:HUB_FLOW — hub mirror
   const grid = document.getElementById('report-grid');
   if (!grid) return;
   if (!_reportStore.length) { grid.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:20px;font-family:Space Mono,monospace">No reports yet. Generate one above.</p>'; return; }
@@ -9146,7 +9201,7 @@ function renderTrendingNow() {
         <span class="trend-rank">${rank}</span>
         <div class="trend-info">
           <div class="trend-kw">${t.kw}</div>
-          <div class="trend-sub">${t.sub}</div>
+          <div class="trend-sub">${t.sub} · RUN THE READ →</div>
         </div>
       </div>`;
   }).join('');

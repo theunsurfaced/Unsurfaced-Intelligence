@@ -538,6 +538,10 @@
   "SEAM:SURFACE_LAW": {
    "file": "intelligence/index.html",
    "purpose": "stacking ladder as :root tokens (gate-enforced), wordmark canonical viewBox, dead Save Board removed and nav fits 390, search bar geometry post one-rail with sub-480 stacking, lake telemetry ticker replacing ten hardcoded figures, trending badges and MODELED panels removed"
+  },
+  "SEAM:HUB_FLOW": {
+   "file": "intelligence/index.html",
+   "purpose": "front page is one column in the outline order: pulse, headline, search, featured 4x2, trending 3x2 cards, Insight Builder full-width with custom reports by category and existing reports; sidebar retired; stray closing div from SURFACE_LAW fixed; seeded invented reports removed"
   }
  },
  "planned": [
