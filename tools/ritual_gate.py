@@ -10,6 +10,7 @@ Checks:
   3. Font identity    Black Ops One @font-face byte-identical across carriers
   4. Link integrity   every internal href resolves to a real file
   5. Quote scan       curly quotes in importmap/JSON script blocks (silent killers)
+  5c. Stacking law   every z-index on intelligence/index.html is a --z-* token
   6. Seam registry    every registered seam exists; every SEAM: tag is registered
 """
 import re, sys, json, glob, base64, hashlib, subprocess, tempfile, os
@@ -103,6 +104,22 @@ for f in worker_js:
         print(f"  js      {f}: checked (module mode)")
     except FileNotFoundError:
         print("  js      worker: Node.js not installed locally - deferred to CI")
+
+# ── 5c. Stacking law (SURFACE_LAW seam, intelligence surface) ────────────
+# Every z-index on the EXCAVATE surface is a --z-* token defined in :root.
+# A literal (z-index:400, z-index:999999) is a stacking-law violation.
+_zf = "intelligence/index.html"
+if os.path.exists(_zf):
+    _zs = load(_zf)
+    _zbad = [m.group(0).strip() for m in re.finditer(r"z-index\s*:(?!\s*var\(--z-)[^;\"'}]+", _zs)]
+    if _zbad:
+        FAIL.append(f"[z] {_zf}: {len(_zbad)} z-index literal(s), not --z-* tokens: {_zbad[:3]}")
+    _ztok = set(re.findall(r"--z-([a-z-]+)\s*:", _zs))
+    _zuse = set(re.findall(r"var\(--z-([a-z-]+)\)", _zs))
+    _zmiss = sorted(_zuse - _ztok)
+    if _zmiss:
+        FAIL.append(f"[z] {_zf}: z tokens used but not defined in :root: {_zmiss}")
+    print(f"  z       {_zf}: {len(_zuse)} tokens in use, {len(_zbad)} literals")
 
 # ── 6. Seam registry (surfaces + worker source) ──────────────────────────
 found = {}  # (file, tag) presence

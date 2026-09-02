@@ -534,6 +534,10 @@
    "file": "worker/src/index.js",
    "tag": "SEAM:ONE_RAIL",
    "purpose": "/deep route and deepSearch removed; synthesize rides callModel (t3 report voice, t1 structured) instead of a hardcoded Workers AI call"
+  },
+  "SEAM:SURFACE_LAW": {
+   "file": "intelligence/index.html",
+   "purpose": "stacking ladder as :root tokens (gate-enforced), wordmark canonical viewBox, dead Save Board removed and nav fits 390, search bar geometry post one-rail with sub-480 stacking, lake telemetry ticker replacing ten hardcoded figures, trending badges and MODELED panels removed"
   }
  },
  "planned": [
