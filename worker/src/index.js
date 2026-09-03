@@ -27,6 +27,7 @@ const CONFIG = {
   MAX_TOKENS:  800,
   DAILY_LIMIT: 300,   // AI inference calls per user per day (engine sessions are multi-stage; Workers AI text is cheap)
   RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
+  PPLX_DAILY_DOLLARS: 0.40,  // SEAM:PPLX_RAIL \u2014 house cap on Perplexity spend per day (about 50 fresh reads; cached reads are free)
   SIGNAL_DAILY_DOLLARS: 1.5, // SEAM:SIGNAL_POOL \u2014 house cap on paid signal spend per day, tracked in REAL dollars from the provider's own costDollars
 };
 
@@ -5438,6 +5439,34 @@ const RAIL_FNS = {
     const j = await railFetch('https://factchecktools.googleapis.com/v1alpha1/claims:search?pageSize=5&languageCode=en&query=' + encodeURIComponent(q) + '&key=' + key);
     return ((j && j.claims) || []).map(c => { const r = (c.claimReview || [])[0] || {}; return envelope(rail, { url: r.url, title: (r.textualRating ? '[' + r.textualRating + '] ' : '') + env1(c.text).slice(0, 200), text: 'Claimed by ' + (c.claimant || 'unknown') + '. Reviewed by ' + ((r.publisher || {}).name || 'unknown'), published_at: r.reviewDate || c.claimDate, kind: 'truth', source_name: (r.publisher || {}).name || 'Fact check' }); });
   },
+  /* SEAM:PPLX_RAIL — Perplexity Sonar as a house rail. Not Deep Search: no user key, no mode, no upgrade copy.
+     One capped, cached, provenance-stamped rail in the pool beside Exa. Sources come from the API's search_results
+     (title, url, date); the model's own prose is never evidence, it rides as a labeled framing in meta. */
+  async pplx(env, q, ctx, rail) {
+    const key = env.PPLX_API_KEY; if (!key) return [];
+    const day = new Date().toISOString().slice(0, 10);
+    const capD = parseFloat(env.PPLX_DAILY_DOLLARS) || CONFIG.PPLX_DAILY_DOLLARS;
+    const COST = 0.008;   // sonar, low context: request fee plus tokens, rounded up
+    let ck = ''; try { ck = 'sg:' + (await _deepHash('pplx|' + q.toLowerCase())); const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(ck) : null; if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.items)) { ctx.meta.pplx = j.meta || null; return j.items; } } } catch (e) {}
+    try {
+      const spent = parseFloat((env.RATE_LIMIT && await env.RATE_LIMIT.get('pplxd:' + day)) || '0') || 0;
+      if (spent + COST > capD) { ctx.meta.pplx_cap = true; return []; }
+      if (env.RATE_LIMIT) await env.RATE_LIMIT.put('pplxd:' + day, String(Math.round((spent + COST) * 10000) / 10000), { expirationTtl: 90000 });
+    } catch (e) {}
+    const r = await fetch('https://api.perplexity.ai/chat/completions', { method: 'POST', headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': GATHER_UA },
+      body: JSON.stringify({ model: 'sonar', temperature: 0.1, max_tokens: 400, search_recency_filter: 'month',
+        messages: [{ role: 'system', content: 'You are a research librarian. Answer in at most three plain sentences naming what the most recent reporting says about the topic. Cite sources. No advice, no hedging, no em dashes.' }, { role: 'user', content: String(q).slice(0, 200) }] }) }).catch(() => null);
+    if (!r || !r.ok) return [];
+    const j = await r.json().catch(() => null); if (!j) return [];
+    const answer = env1((((j.choices || [])[0] || {}).message || {}).content || '').slice(0, 600);
+    const results = Array.isArray(j.search_results) ? j.search_results : [];
+    const cites = Array.isArray(j.citations) ? j.citations : [];
+    let items = results.filter(s => s && s.url).slice(0, 8).map(s => envelope(rail, { url: s.url, title: s.title || s.url, text: env1(s.snippet || ''), published_at: s.date || null, source_name: (() => { try { return new URL(s.url).hostname.replace(/^www\./, ''); } catch (e) { return 'web'; } })(), kind: 'web' }));
+    if (!items.length && cites.length) items = cites.slice(0, 8).map(u => envelope(rail, { url: u, title: u, text: '', source_name: (() => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'web'; } })(), kind: 'web' }));
+    ctx.meta.pplx = { framing: answer, sources: items.length, model: j.model || 'sonar', usage: j.usage || null };
+    try { if (ck && env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, JSON.stringify({ items, meta: ctx.meta.pplx }), { expirationTtl: 6 * 3600 }); } catch (e) {}
+    return items;
+  },
   async exa(env, q, ctx, rail) {
     const got = await gatherPaidSignals(q, env);
     return (got || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.snippet || a.text || '', published_at: a.published_at || a.date || null, source_name: a.source || 'Exa', image: a.image }));
@@ -5467,6 +5496,7 @@ const RAILS = [
   { id: 'openlibrary',   name: 'Open Library',           tier: 2, kind: 'reference', classes: ['category','behavior'], cap: 800 },
   { id: 'factcheck',     name: 'Fact Check Tools',       tier: 1, kind: 'truth',     classes: ['brand','event','category','behavior'], cap: 800 },
   { id: 'exa',           name: 'Exa Web',                tier: 3, kind: 'web',       classes: ['brand','category','behavior','territory','event','talent'], cap: 400 },
+  { id: 'pplx',          name: 'Perplexity Sonar',       tier: 3, kind: 'web',       classes: ['brand','category','behavior','territory','event','talent'], cap: 200 },
   { id: 'reddit',        name: 'Reddit',                 tier: 3, kind: 'discourse', classes: [], cap: 0 }
 ];
 const RAIL_BY_ID = Object.fromEntries(RAILS.map(r => [r.id, r]));

@@ -5004,11 +5004,13 @@ function _renderReadBlock(q, data, mode){
   if(vol&&vol.points) facts.push(`GDELT coverage series, ${vol.points} points over 3 months`);
   if(meta.cls) facts.push(`read as ${meta.cls}`);
   if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered`);
+  const _px=meta.meta&&meta.meta.pplx; const _pxHtml=(_px&&_px.framing)?`<p class="read-interp" style="font-size:12px;color:var(--text3)"><strong style="color:var(--text2)">What the wire says right now</strong> (Perplexity Sonar, ${safe(String(_px.sources||0))} sources, framing not evidence). ${safe(_px.framing)}</p>`:'';   // SEAM:PPLX_RAIL
   el.innerHTML=`<div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${data.brief?`<p class="read-interp"><strong>The interpretation.</strong> ${safe(data.brief)}</p>`:''}
     ${facts.length?`<p class="read-interp" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3)">${facts.map(safe).join(' · ')}</p>`:''}
+    ${_pxHtml}
     <div class="read-deeper">
       <button onclick="switchResultsLens('consumer');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CONSUMER</button>
       <button onclick="switchResultsLens('market');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · MARKET</button>

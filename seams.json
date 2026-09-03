@@ -616,6 +616,15 @@
   "SEAM:KEYED_RAILS": {
    "file": "worker/src/index.js",
    "purpose": "Podcast Index, FRED, US Census, Spotify, TMDB adapters behind their secrets; quiet without a key"
+  },
+  "SEAM:PPLX_RAIL": {
+   "file": "worker/src/index.js",
+   "purpose": "Perplexity Sonar as a house rail in the pool: capped in dollars per day (PPLX_DAILY_DOLLARS), cached 6h per query, sources from search_results into the envelope with provenance; the model framing rides in meta, never as evidence; no user keys, no mode"
+  },
+  "SEAM:PPLX_RAIL@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PPLX_RAIL",
+   "purpose": "the read block shows the Sonar framing as a labeled line with its source count, marked framing not evidence"
   }
  },
  "planned": [
