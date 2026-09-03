@@ -422,6 +422,26 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 /* SEAM:READ_SURFACE — every lens visible on the first pass; tabs become filters */
 #live-results.show-all .results-lens-panel{display:block;padding:8px 0 28px;border-bottom:1px solid var(--border);}
 #live-results.show-all .results-lens-panel:last-of-type{border-bottom:none;}
+#live-results.show-all #results-grid-truth{display:none;}   /* the six cards already read above; truth carries claims and the moves */
+#live-results.show-all .results-lens-panel:not(#rlp-truth){display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:24px;align-items:start;}
+#live-results.show-all .results-lens-panel:not(#rlp-truth) .lens-panel-head{grid-column:1/-1;margin-bottom:0;}
+#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+#live-results.show-all .results-lens-panel:not(#rlp-truth) .lens-ideas-strip{margin-top:0;}
+@media(max-width:1000px){#live-results.show-all .results-lens-panel:not(#rlp-truth){grid-template-columns:1fr;}}
+.truth-claim{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--surface);border:1px solid var(--border);margin-bottom:8px;}
+.truth-claim-rating{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--deep2);border:1px solid var(--deep2);padding:3px 7px;flex-shrink:0;}
+.truth-claim-text{font-size:13px;color:var(--text);line-height:1.5;}
+.truth-claim-meta{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);margin-top:4px;}
+.truth-empty{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.06em;padding:14px 0 6px;line-height:1.7;}
+.card-img{height:190px;object-position:center top;}
+.card-img.wide{object-fit:contain;background:#050507;padding:18px;box-sizing:border-box;height:120px;}
+.lens-idea-from{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--text3);margin-top:8px;}
+.rail-voice{margin:0 0 18px;padding:22px 26px;background:var(--surface);border:1px solid var(--border);}
+.rail-voice-head{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--accent);margin-bottom:12px;}
+.rail-voice-cut{font-size:14px;color:var(--text);line-height:1.55;margin-bottom:10px;border-left:2px solid var(--accent);padding-left:12px;}
+.rail-voice-sample{font-size:13px;color:var(--text2);line-height:1.55;padding:6px 0;border-bottom:1px solid var(--border);}
+.rail-voice-sample:last-child{border-bottom:none;}
+.rail-voice-note{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em;margin-top:10px;}
 .lens-panel-head{display:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);margin:18px 0 12px;}
 #live-results.show-all .lens-panel-head{display:block;}
 .lens-panel-head.cat-market{color:var(--accent3);} .lens-panel-head.cat-culture{color:var(--accent4);} .lens-panel-head.cat-brand{color:var(--accent2);} .lens-panel-head.cat-consumer{color:var(--accent);}
@@ -2008,8 +2028,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent2)">Brand Actions</span></div><div class="lens-ideas-row" id="lens-ideas-brand"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-truth">
-    <div class="truth-panel"><div class="truth-label">Cross-Signal Intelligence Synthesis</div><div class="truth-headline" id="truth-headline"></div><div class="truth-body" id="truth-body"></div><div class="truth-signals" id="truth-signals"></div></div>
+    <div class="truth-panel" id="truth-panel" style="display:none"><div class="truth-label">Cross-Signal Intelligence Synthesis</div><div class="truth-headline" id="truth-headline"></div><div class="truth-body" id="truth-body"></div><div class="truth-signals" id="truth-signals"></div></div>
     <div class="lens-panel-head cat-truth">Signal Truth</div>
+    <div id="truth-claims"></div>
     <div class="results-grid" id="results-grid-truth"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--deep2)">Strategic Actions</span></div><div class="lens-ideas-row" id="lens-ideas-truth"></div></div>
   </div>
@@ -2853,7 +2874,7 @@ function _renderLive(q, data){
       sourceUrl: ins.sourceUrl||null,
     }));
     ideas = (Array.isArray(syn.ideas)&&syn.ideas.length)
-      ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||''}))
+      ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||'',from:Number.isInteger(d.from)?d.from:null}))   // SEAM:READ_QUALITY — a move keeps its finding
       : [];   // SEAM:ONE_RAIL — no move is invented; the compiler earns it or the section says so
     brief = syn.brief || _liveBrief(q,items,data.connectors);
     synthd=true;
@@ -2937,7 +2958,7 @@ async function runLiveSearch(q){
     }
     let synthesis=null;
     try {
-      const d = await api('excavate/synthesize', { query:q, corpus:g.corpus });
+      const d = await api('excavate/synthesize', { query:q, mode:'report', cls:(window._gatherMeta||{}).cls||null, corpus:g.corpus });   // SEAM:READ_QUALITY — THE READ compiles on every live search
       const dd = (d && d.ok && d.data) ? d.data : null;
       if(dd){
         if(Array.isArray(dd.signals) && dd.signals.length) g.items = g.items.concat(dd.signals);
@@ -3416,8 +3437,13 @@ function renderResults(q, data, mode){
 
   // Sources strip
   const strip=document.getElementById('results-sources-strip');
+  const _norm=x=>String(x||'').toLowerCase().replace(/^www\./,'').replace(/\.(org|com|net|co|io|gov|edu)$/,'').replace(/[^a-z0-9]/g,'');
+  const _seenSrc=new Set();
+  const _uniqSrc=lastSources.filter(sv=>{ const k=_norm(sv.display||sv.label); if(!k||_seenSrc.has(k)) return false; _seenSrc.add(k); return true; });
+  const _rails=(window._gatherMeta&&window._gatherMeta.rails)||[]; const _answered=_rails.filter(r=>r.n>0).length;
   strip.innerHTML=`<span class="strip-label">SOURCES USED:</span>`+
-    lastSources.map(s=>`<a class="strip-chip ok" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${safe(s.display||s.label)}</a>`).join('');
+    _uniqSrc.map(sv=>`<a class="strip-chip ok" href="${safeUrl(sv.url)}" target="_blank" rel="noopener">${safe(sv.display||sv.label)}</a>`).join('')+
+    (_rails.length?`<span class="strip-label" style="margin-left:auto">${_answered} OF ${_rails.length} RAILS ANSWERED</span>`:'');
 
 
   // SEAM:LENS_PANELS — the compiled read lands in the five-lens layout, grouped by the category the compiler earned.
@@ -3427,7 +3453,8 @@ function renderResults(q, data, mode){
   const readLines=Array.isArray(data.read)?data.read:[];
   const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources };
   _fillLensPanels(lenses, truth);
-  const trH=document.getElementById('truth-headline'); if(trH&&!truth.headline){ trH.textContent='THE READ'; }
+  _renderTruthClaims(window._gatherItems||[]);
+  _renderRailVoices(window._gatherItems||[]);
 
   if(data.brief){
     document.getElementById('builder-result').innerHTML=`<strong>THE READ — ${safe(q)}:</strong> ${safe(data.brief)}`;
@@ -5062,7 +5089,7 @@ function _fillLensPanels(lenses, truth){
   const card=(ins,i,cat)=>{
     const gi=all.indexOf(ins); const idx=gi>=0?gi:i;
     return `<div class="insight-card" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
-        ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(ins.imageSource||ins.source||'source')}</div>`:''}
+        ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(ins.imageSource||ins.source||'source')}</div>`:''}
         <span class="card-cat ${ins.category||cat}">● ${safe(CAT_LABELS[ins.category||cat]||'Insight')}</span>
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
@@ -5083,6 +5110,7 @@ function _fillLensPanels(lenses, truth){
         <div class="lens-idea-type">${safe(idea.type||'')}</div>
         <div class="lens-idea-headline">${safe(idea.headline||'')}</div>
         <div class="lens-idea-body">${safe(idea.body||'')}</div>
+        ${Number.isInteger(idea.from)&&all[idea.from]?`<div class="lens-idea-from">FROM · ${safe(all[idea.from].title)}</div>`:''}
       </div>`).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">Nothing invented to fill the space.</div></div>`;
   });
   const tH=document.getElementById('truth-headline'),tB=document.getElementById('truth-body');
@@ -5112,6 +5140,28 @@ function _attachImages(insights, items){
   });
   return insights;
 }
+/* SEAM:READ_QUALITY — Signal Truth carries what its name says: claims reviewed by fact-checkers (the Fact Check rail),
+   with rating, reviewer and date. No claims returned means the panel says so. */
+function _renderTruthClaims(items){
+  const el=document.getElementById('truth-claims'); if(!el) return;
+  const claims=(items||[]).filter(it=>it&&it.kind==='truth'&&it.title);
+  if(!claims.length){ el.innerHTML=`<div class="truth-empty">No published fact-checks touch this query. That is a finding: nobody has had to correct the record on it yet.</div>`; return; }
+  el.innerHTML=claims.slice(0,6).map(c=>{ const m=String(c.title).match(/^\[([^\]]+)\]\s*(.*)$/); const rating=m?m[1]:'REVIEWED', text=m?m[2]:c.title;
+    return `<a class="truth-claim" href="${safeUrl(c.url||'#')}" target="_blank" rel="noopener"><span class="truth-claim-rating">${safe(rating)}</span><span><div class="truth-claim-text">${safe(text)}</div><div class="truth-claim-meta">${safe(c.text||'')}${c.published_at?' · '+safe(String(c.published_at).slice(0,10)):''}</div></span></a>`; }).join('');
+}
+/* SEAM:READ_QUALITY — the voice law reaches every discourse rail. YouTube comments and Mastodon arrive as aggregates
+   (counted, sampled, dated); each gets the same shape the Bluesky strip earned: a count, a cut, the samples, the note. */
+function _renderRailVoices(items){
+  let host=document.getElementById('rail-voices');
+  if(!host){ const v=document.getElementById('voice-strip'); if(!v) return; host=document.createElement('div'); host.id='rail-voices'; v.insertAdjacentElement('afterend',host); }
+  const agg=(items||[]).filter(it=>it&&it.kind==='discourse'&&/^(YouTube comments|Mastodon)$/i.test(it.source_name||it.source||'')&&/sampled|posts in window/i.test(it.title||''));
+  host.innerHTML=agg.map(it=>{ const n=(String(it.title).match(/(\d+)\s+(sampled|posts)/)||[])[1]||'0'; const samples=String(it.text||'').replace(/^.*?Sample:\s*/,'').split(' | ').map(x=>x.trim()).filter(Boolean).slice(0,3);
+    const src=(it.source_name||it.source||'').toUpperCase(); const isYT=/YOUTUBE/.test(src);
+    return `<div class="rail-voice"><div class="rail-voice-head">● CONSUMER VOICE · ${safe(src)} · ${isYT?'TOP 2 VIDEOS':'PUBLIC TAG TIMELINE'}</div>
+      <div class="rail-voice-cut">${safe(n)} ${isYT?'comments sampled':'public posts in the window'}. ${isYT?'Ranked by the platform for relevance, not filtered for on-topic yet; read them as raw voice.':'Tag match, not topic match; a tag can carry a coincidence.'}</div>
+      ${samples.map(x=>`<div class="rail-voice-sample">${safe(x)}</div>`).join('')}
+      <div class="rail-voice-note">${it.url?`<a href="${safeUrl(it.url)}" target="_blank" rel="noopener">open the source ↗</a>`:''}${it.published_at?' · newest '+safe(String(it.published_at).slice(0,10)):''}</div></div>`; }).join('');
+}
 function _renderReadBlock(q, data, mode){
   const el=document.getElementById('read-block'); if(!el) return;
   const lines=Array.isArray(data.read)?data.read.filter(Boolean):[];
@@ -5121,6 +5171,7 @@ function _renderReadBlock(q, data, mode){
   if(att&&att.last_30d!=null) facts.push(`${att.last_30d.toLocaleString()} Wikipedia views in 30 days (${att.prev_30d.toLocaleString()} the 30 before)`);
   if(vol&&vol.points) facts.push(`GDELT coverage series, ${vol.points} points over 3 months`);
   if(meta.cls) facts.push(`read as ${meta.cls}`);
+  if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered`);
   el.innerHTML=`<div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}

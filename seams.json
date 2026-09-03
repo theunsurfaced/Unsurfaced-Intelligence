@@ -572,6 +572,15 @@
   "SEAM:READ_SURFACE": {
    "file": "intelligence/index.html",
    "purpose": "the first pass carries everything: THE READ block with both lines, the interpretation, computed attention facts, and go-deeper buttons above the sources; all five lenses stacked by default with tabs as filters; source images ride on cards with attribution; voice samples open on arrival"
+  },
+  "SEAM:READ_QUALITY": {
+   "file": "worker/src/index.js",
+   "purpose": "house voice law at the compiler: declarative, specific, evidence-named excerpts, no agency-speak, no em dashes; moves carry the finding they derive from; live search compiles in report mode; Wikipedia runs before Pageviews so attention facts land"
+  },
+  "SEAM:READ_QUALITY@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:READ_QUALITY",
+   "purpose": "sources strip deduped on normalized domain with rails-answered tally; duplicate READ block at the bottom retired; Signal Truth carries fact-checked claims plus the moves once; findings and moves side by side per lens; portrait-safe crops and contained wordmarks; YouTube and Mastodon voice strips"
   }
  },
  "planned": [

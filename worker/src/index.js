@@ -467,10 +467,17 @@ async function synthesize(body, env, origin) {
       `${String(c.text || '').slice(0, 320)} {source:${String(c.source || '').slice(0, 80)}|url:${String(c.url || '').slice(0, 200)}}`
     ).join('\n');
 
+    /* SEAM:READ_QUALITY — the house voice law, applied at the compiler. Declarative and specific. No hedging,
+       no agency-speak, no em dashes. Every excerpt stands on named evidence. Every move points at its finding. */
     const sys = 'You are Excavate, a senior consumer-insights strategist who fuses numbered evidence into a sharp, ' +
-      'decision-useful read for a brand team. Ground EVERY insight in the evidence — never invent facts, numbers, ' +
+      'decision-useful read for a brand team. Ground EVERY insight in the evidence: never invent facts, numbers, ' +
       'sources, or URLs. Copy each insight\'s "source" and "sourceUrl" verbatim from the evidence item you used. ' +
-      'Output STRICT JSON only — no markdown fences, no prose outside the JSON object.';
+      'VOICE LAW: write in declarative, specific sentences. Name the concrete thing (a number, a date, a product, a place, ' +
+      'a quoted phrase) from the evidence in every excerpt. Never write "should focus on", "leverage", "continue to", ' +
+      '"stay competitive", "strong presence", "prominent player", or any sentence that could describe any brand. ' +
+      'No hedging ("may", "could potentially"). Never use the em dash character. A move names an action a specific ' +
+      'team could start Monday and says which finding it comes from. ' +
+      'Output STRICT JSON only: no markdown fences, no prose outside the JSON object.';
 
     /* SEAM:INSIGHT_COMPILER — report mode adds the house shape. The two-liner
      * law is Unsurfaced's own: line one reframes what the evidence actually
@@ -488,8 +495,8 @@ async function synthesize(body, env, origin) {
       '"source":"copied from evidence",' +
       '"sourceUrl":"copied from evidence"}],' +
       '"ideas":[{"type":"Positioning|Product|Campaign|Content|Partnership","headline":"<=9 words",' +
-      '"body":"1-2 sentence recommendation tied to the insights"}],' +
-      '"brief":"3-4 sentence executive read of where the conversation actually is and what to do about it"}\n' +
+      '"body":"1-2 sentences: the concrete action and the evidence it stands on","from":<index of the insight it derives from, 0-based>}],' +
+      '"brief":"3-4 sentences a strategist would say out loud: where this conversation actually is right now, what specifically the evidence shows, and the one thing to do first. Name evidence, not generalities."}\n' +
       (isReport ? 'Never restate source counts or citation totals as findings — say what the evidence MEANS. ' +
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
@@ -638,7 +645,8 @@ async function gatherServerSignals(q) {
         url: a.url || '',
         image: a.socialimage || '',            // key visual straight from the source
         lang: a.language || ''                 // e.g. "English", "Spanish" (GDELT names)
-      }));
+      ,
+      from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null }));
     }
   } catch (e) {}
   // Hacker News (Algolia) — operator / practitioner discourse, keyless.
@@ -5497,9 +5505,16 @@ async function gatherOpenSignals(env, q, opts) {
   const cls = opts.cls || classifyQuery(query, ctx.meta.kg);
   const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id]);
   // Wikipedia before pageviews (title dependency); everything else parallel in chunks.
-  const ordered = chosen.filter(r => r.id === 'wikipedia').concat(chosen.filter(r => r.id !== 'wikipedia'));
+  // SEAM:READ_QUALITY — Wikipedia runs alone first so Pageviews has a title to read; the rest fan out.
+  const wiki = chosen.find(r => r.id === 'wikipedia');
+  const ordered = chosen.filter(r => r.id !== 'wikipedia');
   const stats = [{ id: 'kg', n: kgItems.length, ms: 0, ok: true }];
   let items = kgItems.slice();
+  if (wiki && await railAllowed(env, wiki, day)) {
+    const t0 = Date.now();
+    try { const got = await RAIL_FNS.wikipedia(env, query, ctx, wiki); stats.push({ id: 'wikipedia', n: got.length, ms: Date.now() - t0, ok: true }); items = items.concat(got); }
+    catch (e) { stats.push({ id: 'wikipedia', n: 0, ms: Date.now() - t0, ok: false }); }
+  }
   for (let i = 0; i < ordered.length; i += GATHER.PAR) {
     const chunk = ordered.slice(i, i + GATHER.PAR);
     const settled = await Promise.allSettled(chunk.map(async r => {
