@@ -542,6 +542,28 @@
   "SEAM:HUB_FLOW": {
    "file": "intelligence/index.html",
    "purpose": "front page is one column in the outline order: pulse, headline, search, featured 4x2, trending 3x2 cards, Insight Builder full-width with custom reports by category and existing reports; sidebar retired; stray closing div from SURFACE_LAW fixed; seeded invented reports removed"
+  },
+  "SEAM:GATHER_SERVER": {
+   "file": "worker/src/index.js",
+   "purpose": "one gather, every rail, one envelope: query classified, class chooses rails (20 adapters: Wikipedia, Wikidata, Wikimedia Pageviews, GDELT news+volume, Guardian, OpenAlex, Semantic Scholar, arXiv, CrossRef, PubMed, HN, Mastodon, YouTube, SEC EDGAR, MusicBrainz, Open Library, Knowledge Graph, Fact Check, Exa; Reddit flagged off); KV daily caps and yield ledger; POST /excavate/gather"
+  },
+  "SEAM:GATHER_SERVER@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:GATHER_SERVER",
+   "purpose": "the worker envelope joins the client corpus and sources on every read; corpus widened to 40"
+  },
+  "SEAM:READ_LEDGER": {
+   "file": "worker/src/index.js",
+   "purpose": "every compiled read persists to reads; live wire and corpus items enter signals at raw with provenance live_read and read_id; migration 0024"
+  },
+  "SEAM:DESK": {
+   "file": "worker/src/index.js",
+   "purpose": "the pulse thinks for the house: 30-minute scoring on house relevance, client relevance, velocity, recurrence; 06:00 edition of twenty lines, four per lens, tenure 24/48/72h by state, three-slot breaking lane; house_focus and tracks steer; GET /excavate/pulse; POST /excavate/desk admin"
+  },
+  "SEAM:DESK@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:DESK",
+   "purpose": "THE PULSE ticker renders the edition with lens, breaking flag, counts on hover, click runs the read; lake telemetry remains the fallback before the first edition"
   }
  },
  "planned": [

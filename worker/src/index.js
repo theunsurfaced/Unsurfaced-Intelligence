@@ -59,7 +59,10 @@ export default {
       ctx.waitUntil(runDailyPipeline(env)
         .then(s => console.log('daily_pipeline', JSON.stringify(s)))
         .catch(e => console.log('daily_pipeline_error', String(e && e.message)))
-        .then(() => editionWatchdog(env)));
+        .then(() => editionWatchdog(env))
+        .then(() => deskEdition(env))   // SEAM:DESK — the 06:00 edition, after DAILY composes
+        .then(s => console.log('desk_edition', JSON.stringify(s)))
+        .catch(e => console.log('desk_edition_error', String(e && e.message))));
     } else {
       // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
       // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
@@ -69,7 +72,10 @@ export default {
       // that did not exist. 46/50 return identical work: 42 is saturation.
       ctx.waitUntil(runDailySpine(env, { feeds: 6, gdelt: 1, advance: 42 })
         .then(s => console.log('spine_slice', JSON.stringify(s)))
-        .catch(e => console.log('spine_slice_error', String(e && e.message))));
+        .catch(e => console.log('spine_slice_error', String(e && e.message)))
+        .then(() => deskScore(env))   // SEAM:DESK — score every 30 minutes, after the slice lands
+        .then(s => console.log('desk_score', JSON.stringify(s)))
+        .catch(e => console.log('desk_score_error', String(e && e.message))));
     }
   },
   async fetch(request, env) {
@@ -101,6 +107,9 @@ export default {
       if (path === '/excavate/propose' && request.method === 'POST') return excavatePropose(request, env, origin);
       if (path === '/excavate/voice' && request.method === 'POST') return excavateVoice(request, env, origin);
       if (path === '/excavate/anchors' && request.method === 'POST') return excavateAnchors(request, env, origin);
+      if (path === '/excavate/gather' && request.method === 'POST') return excavateGather(request, env, origin);    // SEAM:GATHER_SERVER
+      if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
+      if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
@@ -447,7 +456,7 @@ async function synthesize(body, env, origin) {
   // ── Structured EXCAVATE mode: fuse the client-gathered open-data corpus ──
   if (Array.isArray(body.corpus)) {
     const query  = String(body.query || '').slice(0, 300);
-    const corpus = body.corpus.slice(0, 28);
+    const corpus = body.corpus.slice(0, 40);   // SEAM:GATHER_SERVER — the server envelope rides in the corpus now
     // Server-side connectors (keyless, not CORS-bound): live news (GDELT) + practitioner signal (HN).
     const added = (await gatherServerSignals(query)).concat(await gatherPaidSignals(query, env));
     const merged = corpus.concat(added.map(a => ({ lens: (a.signalType === 'news' || a.signalType === 'web') ? 'culture' : 'consumer', source: a.source, title: a.title, text: a.snippet, url: a.url }))).slice(0, 40);
@@ -518,7 +527,18 @@ async function synthesize(body, env, origin) {
       body: String(x.body || '').slice(0, 400)
     })).filter(x => x.headline);
     const brief = String(parsed.brief || '').slice(0, 1200);
-    return json({ ok: true, data: { insights, ideas, brief, read: read.length === 2 ? read : null,
+    // SEAM:READ_LEDGER — persist the read, then let its live signals enter the lake at raw.
+    let readId = null;
+    try {
+      readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
+        cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
+        connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
+        evidence_n: merged.length, meta: { lake: (body.lake || []).length, corpus: corpus.length, added: (added || []).length } });
+      const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: 'news', published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
+        .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: 3, kind: c.lens || 'open', rail: 'client' })));
+      await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
+    } catch (e) {}
+    return json({ ok: true, data: { insights, ideas, brief, read: read.length === 2 ? read : null, read_id: readId,
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added) } }, 200, origin, env);
   }
 
@@ -5204,6 +5224,502 @@ async function dailyHealth(env, nowMs) {
       last_stats: lastSpine ? lastSpine.meta : null, runs_seen: spineRuns.length },
     feeds, edition
   };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SEAM:GATHER_SERVER — one gather, every rail, one envelope.
+ * The browser used to fan out to fourteen public APIs on its own. Now the
+ * worker owns the gather: a query is classified, the class chooses the rails,
+ * every rail returns the same envelope, every rail has a daily cap in KV and
+ * a yield row, and a missing key or a dead provider makes a rail quiet, never
+ * a read broken. Keyless rails identify the platform with one user-agent.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const GATHER_UA = 'unsurfaced-excavate/1.0 (johnnie@unsurfacedside.com)';
+const GATHER = { TIMEOUT_MS: 6500, PAR: 6, MAX_ITEMS: 60, CAP_DEFAULT: 400, YT_SEARCH_CAP: 60 };
+const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artificial-intelligence',
+  'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
+  'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'];
+
+async function railFetch(url, opts, ms) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms || GATHER.TIMEOUT_MS);
+  try {
+    const o = Object.assign({ signal: ctl.signal, cf: { cacheTtl: 900 } }, opts || {});
+    o.headers = Object.assign({ 'User-Agent': GATHER_UA, 'Accept': 'application/json' }, (opts && opts.headers) || {});
+    const r = await fetch(url, o);
+    if (!r.ok) return null;
+    const ct = r.headers.get('content-type') || '';
+    return ct.includes('json') ? await r.json().catch(() => null) : await r.text().catch(() => null);
+  } catch (e) { return null; }
+  finally { clearTimeout(t); }
+}
+function stripHtml(s) { return String(s || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ').replace(/\s+/g, ' ').trim(); }
+function env1(x) { return String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); }
+function hintsOf(text, q) {
+  // Cheap entity hints: capitalized n-grams plus the query terms. ENTITY (Arc 5) resolves them.
+  const caps = (String(text || '').match(/\b([A-Z][a-zA-Z0-9&'.-]+(?:\s+[A-Z][a-zA-Z0-9&'.-]+){0,2})\b/g) || []);
+  const seen = new Set(); const out = [];
+  for (const c of caps.concat(String(q || '').split(/\s+/))) {
+    const k = c.trim(); if (k.length < 3 || seen.has(k.toLowerCase())) continue;
+    seen.add(k.toLowerCase()); out.push(k); if (out.length >= 8) break;
+  }
+  return out;
+}
+function envelope(rail, o) {
+  return {
+    url: env1(o.url).slice(0, 600) || null,
+    title: env1(o.title).slice(0, 300),
+    text: env1(o.text).slice(0, 700),
+    source_name: env1(o.source_name || rail.name).slice(0, 80),
+    source_tier: rail.tier,
+    kind: o.kind || rail.kind,
+    published_at: o.published_at || null,
+    image: (o.image && /^https:\/\//.test(o.image)) ? String(o.image).slice(0, 600) : null,
+    license: o.license || rail.license || null,
+    entity_hints: o.entity_hints || hintsOf((o.title || '') + ' ' + (o.text || ''), ''),
+    provenance: 'live',
+    rail: rail.id
+  };
+}
+
+/* ── Rail adapters. Each: async (env, q, ctx) => envelope[]  (ctx.meta collects series) ── */
+const RAIL_FNS = {
+  async wikipedia(env, q, ctx, rail) {
+    const j = await railFetch('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=4&srsearch=' + encodeURIComponent(q));
+    const hits = (j && j.query && j.query.search) || [];
+    if (hits[0]) ctx.meta.wiki_title = hits[0].title;
+    const out = [];
+    for (const h of hits.slice(0, 3)) {
+      const s = await railFetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(h.title.replace(/ /g, '_')));
+      out.push(envelope(rail, { url: (s && s.content_urls && s.content_urls.desktop && s.content_urls.desktop.page) || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(h.title)),
+        title: h.title, text: (s && s.extract) || stripHtml(h.snippet), image: s && s.thumbnail && s.thumbnail.source, published_at: s && s.timestamp, license: 'CC BY-SA 4.0' }));
+    }
+    return out;
+  },
+  async wikidata(env, q, ctx, rail) {
+    const j = await railFetch('https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&limit=4&search=' + encodeURIComponent(q));
+    return ((j && j.search) || []).map(e => envelope(rail, { url: e.concepturi, title: e.label, text: e.description || '', kind: 'entity', entity_hints: [e.label], license: 'CC0' }));
+  },
+  async openalex(env, q, ctx, rail) {
+    const j = await railFetch('https://api.openalex.org/works?per-page=6&sort=relevance_score:desc&mailto=johnnie@unsurfacedside.com&search=' + encodeURIComponent(q));
+    if (j && j.meta) ctx.meta.openalex_count = j.meta.count;
+    return ((j && j.results) || []).map(w => envelope(rail, { url: w.doi || w.id, title: w.display_name,
+      text: (w.primary_location && w.primary_location.source && w.primary_location.source.display_name) ? 'Published in ' + w.primary_location.source.display_name : '',
+      published_at: w.publication_date, source_name: 'OpenAlex' }));
+  },
+  async arxiv(env, q, ctx, rail) {
+    const t = await railFetch('https://export.arxiv.org/api/query?max_results=4&search_query=all:' + encodeURIComponent(q), { headers: { Accept: 'application/atom+xml' } });
+    if (typeof t !== 'string') return [];
+    return (t.match(/<entry>[\s\S]*?<\/entry>/g) || []).map(e => {
+      const g = re => { const m = e.match(re); return m ? stripHtml(m[1]) : ''; };
+      return envelope(rail, { url: g(/<id>(.*?)<\/id>/), title: g(/<title>([\s\S]*?)<\/title>/), text: g(/<summary>([\s\S]*?)<\/summary>/).slice(0, 400), published_at: g(/<published>(.*?)<\/published>/) });
+    });
+  },
+  async semanticscholar(env, q, ctx, rail) {
+    const j = await railFetch('https://api.semanticscholar.org/graph/v1/paper/search?limit=4&fields=title,abstract,url,year,venue&query=' + encodeURIComponent(q));
+    return ((j && j.data) || []).map(p => envelope(rail, { url: p.url, title: p.title, text: p.abstract || (p.venue ? 'Venue: ' + p.venue : ''), published_at: p.year ? String(p.year) + '-01-01' : null }));
+  },
+  async crossref(env, q, ctx, rail) {
+    const j = await railFetch('https://api.crossref.org/works?rows=4&select=title,URL,created,container-title&query=' + encodeURIComponent(q));
+    return (((j && j.message) || {}).items || []).map(w => envelope(rail, { url: w.URL, title: (w.title || [])[0], text: (w['container-title'] || [])[0] ? 'In ' + w['container-title'][0] : '', published_at: w.created && w.created['date-time'] }));
+  },
+  async pubmed(env, q, ctx, rail) {
+    const s = await railFetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=4&term=' + encodeURIComponent(q));
+    const ids = (((s || {}).esearchresult || {}).idlist || []);
+    if (!ids.length) return [];
+    const j = await railFetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=' + ids.join(','));
+    const r = (j && j.result) || {};
+    return ids.map(id => r[id]).filter(Boolean).map(p => envelope(rail, { url: 'https://pubmed.ncbi.nlm.nih.gov/' + p.uid + '/', title: p.title, text: (p.source ? p.source + '. ' : '') + (p.pubdate || ''), published_at: p.sortpubdate ? p.sortpubdate.replace(/\//g, '-').slice(0, 10) : null }));
+  },
+  async hn(env, q, ctx, rail) {
+    const j = await railFetch('https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=6&query=' + encodeURIComponent(q));
+    return ((j && j.hits) || []).map(h => envelope(rail, { url: h.url || ('https://news.ycombinator.com/item?id=' + h.objectID), title: h.title, text: (h.points || 0) + ' points, ' + (h.num_comments || 0) + ' comments', published_at: h.created_at, kind: 'discourse' }));
+  },
+  async gdelt(env, q, ctx, rail) {
+    const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&maxrecords=10&format=json&sort=hybridrel&timespan=1month&query=' + encodeURIComponent(q + ' sourcelang:english'));
+    return ((j && j.articles) || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.domain ? 'via ' + a.domain : '', image: a.socialimage, source_name: a.domain || 'GDELT',
+      published_at: a.seendate ? a.seendate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z') : null }));
+  },
+  async gdelt_volume(env, q, ctx, rail) {
+    // No items: the article-volume series for the last 3 months feeds the velocity component and Trajectory.
+    const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=timelinevol&format=json&timespan=3months&query=' + encodeURIComponent(q + ' sourcelang:english'));
+    const tl = j && j.timeline && j.timeline[0] && j.timeline[0].data;
+    if (Array.isArray(tl) && tl.length) ctx.meta.volume = { source: 'GDELT DOC timelinevol', points: tl.length, series: tl.slice(-90).map(p => ({ d: String(p.date).slice(0, 8), v: p.value })) };
+    return [];
+  },
+  async wikimedia_pageviews(env, q, ctx, rail) {
+    // Attention curve for the entity's article, 90 days. Depends on the wikipedia rail having found a title.
+    const title = ctx.meta.wiki_title; if (!title) return [];
+    const d = new Date(); const end = d.toISOString().slice(0, 10).replace(/-/g, '');
+    d.setDate(d.getDate() - 90); const start = d.toISOString().slice(0, 10).replace(/-/g, '');
+    const j = await railFetch('https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/' + encodeURIComponent(title.replace(/ /g, '_')) + '/daily/' + start + '/' + end);
+    const items = (j && j.items) || [];
+    if (!items.length) return [];
+    const series = items.map(i => ({ d: i.timestamp.slice(0, 8), v: i.views }));
+    const last30 = series.slice(-30).reduce((a, b) => a + b.v, 0), prev30 = series.slice(-60, -30).reduce((a, b) => a + b.v, 0);
+    ctx.meta.attention = { article: title, source: 'Wikimedia Pageviews', last_30d: last30, prev_30d: prev30, series };
+    return [];
+  },
+  async mastodon(env, q, ctx, rail) {
+    // VOICE aggregate law: one row per tag per window, never per-post noise.
+    const tag = String(q).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40); if (!tag) return [];
+    const posts = await railFetch('https://mastodon.social/api/v1/timelines/tag/' + tag + '?limit=20&local=false');
+    if (!Array.isArray(posts) || !posts.length) return [];
+    const ex = posts.slice(0, 3).map(p => stripHtml(p.content).slice(0, 140));
+    const newest = posts[0].created_at, oldest = posts[posts.length - 1].created_at;
+    return [envelope(rail, { url: 'https://mastodon.social/tags/' + tag, title: '#' + tag + ' on Mastodon: ' + posts.length + ' posts in window', kind: 'discourse',
+      text: 'Aggregate of ' + posts.length + ' public posts between ' + String(oldest).slice(0, 10) + ' and ' + String(newest).slice(0, 10) + '. Sample: ' + ex.join(' | '), published_at: newest })];
+  },
+  async sec_edgar(env, q, ctx, rail) {
+    const j = await railFetch('https://efts.sec.gov/LATEST/search-index?forms=10-K,10-Q&q=' + encodeURIComponent('"' + q + '"'), { headers: { 'User-Agent': GATHER_UA } });
+    const hits = (((j || {}).hits || {}).hits || []).slice(0, 4);
+    return hits.map(h => { const s = h._source || {}; const idp = String(h._id || '').split(':'); const adsh = idp[0] || ''; const file = idp[1] || '';
+      const cik = (s.ciks && s.ciks[0]) ? String(parseInt(s.ciks[0], 10)) : '';
+      const url = (cik && adsh && file) ? 'https://www.sec.gov/Archives/edgar/data/' + cik + '/' + adsh.replace(/-/g, '') + '/' + file : 'https://efts.sec.gov/LATEST/search-index?q=' + encodeURIComponent(q);
+      return envelope(rail, { url, title: ((s.display_names || [])[0] || 'SEC filing') + ' · ' + (s.form || ''), text: 'Filed ' + (s.file_date || '') + (s.period_ending ? ', period ending ' + s.period_ending : ''), published_at: s.file_date, kind: 'filing' }); });
+  },
+  async musicbrainz(env, q, ctx, rail) {
+    const j = await railFetch('https://musicbrainz.org/ws/2/artist/?fmt=json&limit=3&query=' + encodeURIComponent(q));
+    return ((j && j.artists) || []).filter(a => (a.score || 0) >= 80).map(a => envelope(rail, { url: 'https://musicbrainz.org/artist/' + a.id, title: a.name, text: [a.type, a.country, a.disambiguation].filter(Boolean).join(' · '), kind: 'entity', entity_hints: [a.name], license: 'CC0' }));
+  },
+  async openlibrary(env, q, ctx, rail) {
+    const j = await railFetch('https://openlibrary.org/search.json?limit=4&fields=key,title,author_name,first_publish_year,cover_i&q=' + encodeURIComponent(q));
+    return ((j && j.docs) || []).map(b => envelope(rail, { url: 'https://openlibrary.org' + b.key, title: b.title, text: ((b.author_name || []).slice(0, 2).join(', ')) + (b.first_publish_year ? ' · ' + b.first_publish_year : ''), image: b.cover_i ? 'https://covers.openlibrary.org/b/id/' + b.cover_i + '-M.jpg' : null, published_at: b.first_publish_year ? b.first_publish_year + '-01-01' : null }));
+  },
+  async guardian(env, q, ctx, rail) {
+    const j = await railFetch('https://content.guardianapis.com/search?api-key=test&page-size=6&show-fields=thumbnail,trailText&order-by=relevance&q=' + encodeURIComponent(q));
+    return ((((j || {}).response || {}).results) || []).map(a => envelope(rail, { url: a.webUrl, title: a.webTitle, text: stripHtml(a.fields && a.fields.trailText), image: a.fields && a.fields.thumbnail, published_at: a.webPublicationDate, source_name: 'The Guardian' }));
+  },
+  async youtube(env, q, ctx, rail) {
+    const key = env.GOOGLE_API_KEY || env.GOOGLE_YT_KEY; if (!key) return [];
+    const day = new Date().toISOString().slice(0, 10);
+    const ck = 'railcap:yt_search:' + day;
+    const used = parseInt((env.RATE_LIMIT && await env.RATE_LIMIT.get(ck)) || '0', 10) || 0;
+    if (used >= GATHER.YT_SEARCH_CAP) return [];
+    const s = await railFetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&order=relevance&relevanceLanguage=en&q=' + encodeURIComponent(q) + '&key=' + key);
+    if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, String(used + 1), { expirationTtl: 90000 }).catch(() => {});
+    const vids = ((s && s.items) || []).filter(v => v.id && v.id.videoId);
+    const out = vids.map(v => envelope(rail, { url: 'https://www.youtube.com/watch?v=' + v.id.videoId, title: v.snippet.title, text: stripHtml(v.snippet.description).slice(0, 300) + ' · ' + (v.snippet.channelTitle || ''), image: v.snippet.thumbnails && (v.snippet.thumbnails.high || v.snippet.thumbnails.medium || {}).url, published_at: v.snippet.publishedAt, source_name: 'YouTube' }));
+    // Discourse aggregate: comments on the top two videos, counted, three excerpts.
+    let n = 0, ex = [];
+    for (const v of vids.slice(0, 2)) {
+      const c = await railFetch('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&maxResults=20&order=relevance&textFormat=plainText&videoId=' + v.id.videoId + '&key=' + key);
+      for (const t of ((c && c.items) || [])) { n++; if (ex.length < 3) ex.push(env1(t.snippet.topLevelComment.snippet.textDisplay).slice(0, 120)); }
+    }
+    if (n) out.push(envelope(rail, { url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q), title: 'YouTube comments on "' + q + '": ' + n + ' sampled', kind: 'discourse', text: 'Sample: ' + ex.join(' | '), source_name: 'YouTube comments' }));
+    return out;
+  },
+  async kg(env, q, ctx, rail) {
+    const key = env.GOOGLE_KG_KEY; if (!key) return [];
+    const j = await railFetch('https://kgsearch.googleapis.com/v1/entities:search?limit=3&languages=en&query=' + encodeURIComponent(q) + '&key=' + key);
+    const els = ((j && j.itemListElement) || []).map(e => e.result).filter(Boolean);
+    if (els[0]) ctx.meta.kg = { name: els[0].name, types: els[0]['@type'] || [], description: els[0].description || '', id: els[0]['@id'] || '' };
+    return els.map(e => envelope(rail, { url: (e.detailedDescription && e.detailedDescription.url) || ('https://www.google.com/search?kgmid=' + encodeURIComponent((e['@id'] || '').replace('kg:', ''))), title: e.name, text: (e.description ? e.description + '. ' : '') + ((e.detailedDescription && e.detailedDescription.articleBody) || '').slice(0, 300), image: e.image && e.image.contentUrl, kind: 'entity', entity_hints: [e.name], license: e.detailedDescription && e.detailedDescription.license }));
+  },
+  async factcheck(env, q, ctx, rail) {
+    const key = env.GOOGLE_FC_KEY; if (!key) return [];
+    const j = await railFetch('https://factchecktools.googleapis.com/v1alpha1/claims:search?pageSize=5&languageCode=en&query=' + encodeURIComponent(q) + '&key=' + key);
+    return ((j && j.claims) || []).map(c => { const r = (c.claimReview || [])[0] || {}; return envelope(rail, { url: r.url, title: (r.textualRating ? '[' + r.textualRating + '] ' : '') + env1(c.text).slice(0, 200), text: 'Claimed by ' + (c.claimant || 'unknown') + '. Reviewed by ' + ((r.publisher || {}).name || 'unknown'), published_at: r.reviewDate || c.claimDate, kind: 'truth', source_name: (r.publisher || {}).name || 'Fact check' }); });
+  },
+  async exa(env, q, ctx, rail) {
+    const got = await gatherPaidSignals(q, env);
+    return (got || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.snippet || a.text || '', published_at: a.published_at || a.date || null, source_name: a.source || 'Exa', image: a.image }));
+  },
+  async reddit(env, q, ctx, rail) { return []; }   // flag: off until credentials exist (Responsible Builder approval)
+};
+
+/* Rail registry: id, display, source tier (1 strongest), kind, query classes it serves, daily cap. */
+const RAILS = [
+  { id: 'kg',            name: 'Google Knowledge Graph', tier: 2, kind: 'entity',    classes: ['brand','talent','category','event'], cap: 2000 },
+  { id: 'wikipedia',     name: 'Wikipedia',              tier: 2, kind: 'reference', classes: ['brand','talent','category','behavior','territory','event'], cap: 1500 },
+  { id: 'wikidata',      name: 'Wikidata',               tier: 2, kind: 'entity',    classes: ['brand','talent'], cap: 1500 },
+  { id: 'wikimedia_pageviews', name: 'Wikimedia Pageviews', tier: 2, kind: 'attention', classes: ['brand','talent','category','territory'], cap: 1500 },
+  { id: 'gdelt',         name: 'GDELT News',             tier: 4, kind: 'news',      classes: ['brand','category','territory','event','behavior'], cap: 1200 },
+  { id: 'gdelt_volume',  name: 'GDELT Volume',           tier: 4, kind: 'attention', classes: ['brand','category','territory','event'], cap: 1200 },
+  { id: 'guardian',      name: 'The Guardian',           tier: 1, kind: 'news',      classes: ['brand','category','territory','event','behavior'], cap: 400 },
+  { id: 'openalex',      name: 'OpenAlex',               tier: 1, kind: 'research',  classes: ['category','behavior'], cap: 1500 },
+  { id: 'semanticscholar', name: 'Semantic Scholar',     tier: 1, kind: 'research',  classes: ['behavior'], cap: 400 },
+  { id: 'arxiv',         name: 'arXiv',                  tier: 1, kind: 'research',  classes: ['category','behavior'], cap: 600 },
+  { id: 'crossref',      name: 'CrossRef',               tier: 1, kind: 'research',  classes: ['category'], cap: 600 },
+  { id: 'pubmed',        name: 'PubMed',                 tier: 1, kind: 'research',  classes: ['behavior'], cap: 600 },
+  { id: 'hn',            name: 'Hacker News',            tier: 3, kind: 'discourse', classes: ['brand','category','event'], cap: 1500 },
+  { id: 'mastodon',      name: 'Mastodon',               tier: 3, kind: 'discourse', classes: ['brand','talent','category','behavior','territory','event'], cap: 1500 },
+  { id: 'youtube',       name: 'YouTube',                tier: 3, kind: 'discourse', classes: ['brand','talent','category','behavior'], cap: 400 },
+  { id: 'sec_edgar',     name: 'SEC EDGAR',              tier: 1, kind: 'filing',    classes: ['brand'], cap: 600 },
+  { id: 'musicbrainz',   name: 'MusicBrainz',            tier: 2, kind: 'entity',    classes: ['talent'], cap: 800 },
+  { id: 'openlibrary',   name: 'Open Library',           tier: 2, kind: 'reference', classes: ['category','behavior'], cap: 800 },
+  { id: 'factcheck',     name: 'Fact Check Tools',       tier: 1, kind: 'truth',     classes: ['brand','event','category','behavior'], cap: 800 },
+  { id: 'exa',           name: 'Exa Web',                tier: 3, kind: 'web',       classes: ['brand','category','behavior','territory','event','talent'], cap: 400 },
+  { id: 'reddit',        name: 'Reddit',                 tier: 3, kind: 'discourse', classes: [], cap: 0 }
+];
+const RAIL_BY_ID = Object.fromEntries(RAILS.map(r => [r.id, r]));
+
+// PURE: the query class picks the rails. Knowledge Graph type wins when present.
+function classifyQuery(q, kg) {
+  const s = String(q || '').toLowerCase();
+  const types = ((kg && kg.types) || []).join(' ');
+  if (/Person|MusicGroup|Movie|TVSeries|Book|VideoGame/.test(types)) return 'talent';
+  if (/Corporation|Organization|Brand|SportsTeam|Product/.test(types)) return 'brand';
+  if (/\b(gen ?z|gen ?alpha|millennials?|boomers?|consumers?|shoppers?|buyers?|behaviou?r|trust|intent|loyalty|sentiment|habits?|attitudes?)\b/.test(s)) return 'behavior';
+  if (/\b(festival|launch|super bowl|olympics|world cup|election|fashion week|awards?|premiere|tour|summit|expo)\b/.test(s)) return 'event';
+  if (TERRITORY_SLUGS.some(t => s === t || s === t.replace(/-/g, ' ') || t.split('-').every(w => s.includes(w)))) return 'territory';
+  if (/\b(inc|corp|co|ltd|llc|brand|company)\b/.test(s)) return 'brand';
+  return 'category';
+}
+
+async function railAllowed(env, rail, day) {
+  if (!rail.cap) return false;
+  if (!env.RATE_LIMIT) return true;
+  const k = 'railcap:' + rail.id + ':' + day;
+  const used = parseInt((await env.RATE_LIMIT.get(k)) || '0', 10) || 0;
+  if (used >= rail.cap) return false;
+  env.RATE_LIMIT.put(k, String(used + 1), { expirationTtl: 90000 }).catch(() => {});
+  return true;
+}
+async function bumpYield(env, day, stats) {
+  if (!env.RATE_LIMIT) return;
+  try {
+    const k = 'yield:' + day; const cur = JSON.parse((await env.RATE_LIMIT.get(k)) || '{}');
+    for (const s of stats) { const y = cur[s.id] || { calls: 0, gathered: 0, ms: 0, errors: 0 }; y.calls++; y.gathered += s.n; y.ms += s.ms; if (!s.ok) y.errors++; cur[s.id] = y; }
+    await env.RATE_LIMIT.put(k, JSON.stringify(cur), { expirationTtl: 8 * 86400 });
+  } catch (e) {}
+}
+
+async function gatherOpenSignals(env, q, opts) {
+  opts = opts || {};
+  const query = String(q || '').slice(0, 200).trim();
+  if (!query) return { ok: false, error: 'empty_query' };
+  const day = new Date().toISOString().slice(0, 10);
+  const ctx = { meta: {} };
+  // Pass 1: entity resolution first, because the class depends on it.
+  const kgRail = RAIL_BY_ID.kg; let kgItems = [];
+  if (await railAllowed(env, kgRail, day)) { try { kgItems = await RAIL_FNS.kg(env, query, ctx, kgRail); } catch (e) {} }
+  const cls = opts.cls || classifyQuery(query, ctx.meta.kg);
+  const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id]);
+  // Wikipedia before pageviews (title dependency); everything else parallel in chunks.
+  const ordered = chosen.filter(r => r.id === 'wikipedia').concat(chosen.filter(r => r.id !== 'wikipedia'));
+  const stats = [{ id: 'kg', n: kgItems.length, ms: 0, ok: true }];
+  let items = kgItems.slice();
+  for (let i = 0; i < ordered.length; i += GATHER.PAR) {
+    const chunk = ordered.slice(i, i + GATHER.PAR);
+    const settled = await Promise.allSettled(chunk.map(async r => {
+      const t0 = Date.now();
+      if (!(await railAllowed(env, r, day))) return { id: r.id, n: 0, ms: 0, ok: true, skipped: 'cap', items: [] };
+      try { const got = await RAIL_FNS[r.id](env, query, ctx, r); return { id: r.id, n: got.length, ms: Date.now() - t0, ok: true, items: got }; }
+      catch (e) { return { id: r.id, n: 0, ms: Date.now() - t0, ok: false, items: [] }; }
+    }));
+    for (const s of settled) { const v = s.status === 'fulfilled' ? s.value : { id: '?', n: 0, ms: 0, ok: false, items: [] }; stats.push({ id: v.id, n: v.n, ms: v.ms, ok: v.ok, skipped: v.skipped }); items = items.concat(v.items); }
+  }
+  // Dedupe by url, keep the strongest tier, cap the envelope.
+  const byUrl = new Map();
+  for (const it of items) { if (!it.title) continue; const k = it.url || (it.rail + ':' + it.title); const prev = byUrl.get(k); if (!prev || it.source_tier < prev.source_tier) byUrl.set(k, it); }
+  items = [...byUrl.values()].slice(0, GATHER.MAX_ITEMS);
+  await bumpYield(env, day, stats.filter(s => s.id !== '?'));
+  const rails = stats.map(s => ({ id: s.id, name: (RAIL_BY_ID[s.id] || {}).name || s.id, n: s.n, ok: s.ok, ms: s.ms, skipped: s.skipped || null }));
+  return { ok: true, query, cls, items, rails, meta: ctx.meta };
+}
+
+async function excavateGather(request, env, origin) {
+  let body = {}; try { body = await request.json(); } catch (e) {}
+  const q = String(body.query || body.q || '').slice(0, 200).trim();
+  if (!q) return json({ ok: false, error: 'missing_query' }, 200, origin, env);
+  const g = await gatherOpenSignals(env, q, { cls: body.cls });
+  if (g.ok && body.capture !== false) { try { await lakeCapture(env, g.items, { provenance: 'live_gather', query: q, cls: g.cls }); } catch (e) {} }
+  return json(g, 200, origin, env);
+}
+
+/* ═══ SEAM:READ_LEDGER — every read persists; every live signal enters the lake at raw. ═══ */
+function territoryGuess(text) {
+  const s = String(text || '').toLowerCase();
+  for (const t of TERRITORY_SLUGS) { if (t.split('-').some(w => w.length > 4 && s.includes(w))) return t; }
+  return null;
+}
+async function lakeCapture(env, items, prov) {
+  const rows = []; const seen = new Set();
+  for (const it of (items || [])) {
+    if (!it || !it.url || !/^https?:\/\//.test(it.url) || !it.title) continue;
+    if (it.kind === 'entity') continue;                       // entities are not signals
+    const hash = await sha256hex(hashInput(it.title, it.url));
+    if (seen.has(hash)) continue; seen.add(hash);
+    rows.push({ content_hash: hash, title: String(it.title).slice(0, 300), url: String(it.url).slice(0, 600),
+      summary: String(it.text || '').slice(0, 600), image: it.image || null, published_at: it.published_at || null,
+      source_name: String(it.source_name || 'live').slice(0, 80), source_tier: Math.min(4, Math.max(1, it.source_tier || 3)),
+      territory: prov.territory || territoryGuess(it.title + ' ' + (it.text || '')), status: 'raw',
+      momentum: { provenance: prov.provenance || 'live_read', rail: it.rail || null, kind: it.kind || null, read_id: prov.read_id || null,
+        query: prov.query || null, cls: prov.cls || null, entity_hints: (it.entity_hints || []).slice(0, 8), license: it.license || null } });
+    if (rows.length >= 40) break;
+  }
+  if (!rows.length) return 0;
+  const back = await sbRest(env, 'signals?on_conflict=content_hash&select=id', {
+    method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' }, body: rows }) || [];
+  return back.length;
+}
+async function ledgerWrite(env, row) {
+  try { const back = await sbRest(env, 'reads?select=id', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [row] }) || []; return back[0] ? back[0].id : null; }
+  catch (e) { return null; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SEAM:DESK — the pulse thinks for the house.
+ * Every 30 minutes the desk scores every active cluster on four computed
+ * components: house relevance (house_focus weights), client relevance
+ * (tracked entities), velocity (recent vs prior week), recurrence (weeks
+ * touched, published record). At 06:00 it assembles an edition of twenty
+ * lines, four per lens, each holding its slot for 24/48/72 hours by state.
+ * Between editions a three-slot breaking lane can open for a velocity spike.
+ * Every component is a count and rides to the surface with the line.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const DESK = { SCORE_KEY: 'desk:scores', EDITION_KEY: 'desk:edition', N: 20, PER_LENS: 4, BREAK_SLOTS: 3, BREAK_MIN_7D: 8,
+  TENURE_H: { ACCELERATING: 24, EMERGING: 48, DEFAULT: 72 }, WINDOW_D: 28, TOP: 60,
+  W: { house: 0.35, client: 0.25, velocity: 0.25, recurrence: 0.15 } };
+const LENSES = ['consumer', 'market', 'culture', 'brand', 'truth'];
+const LENS_OF_TERRITORY = { 'fashion-beauty': 'consumer', 'sneakers-streetwear': 'consumer', 'food-hospitality': 'consumer', 'sustainability-impact': 'consumer',
+  'advertising-marketing': 'market', 'business-economics': 'market', 'technology-innovation': 'market', 'artificial-intelligence': 'market', 'entrepreneurship-creator': 'market',
+  'music': 'culture', 'art-design': 'culture', 'entertainment-gaming': 'culture', 'architecture-cities': 'culture', 'global-diaspora': 'culture' };
+const DEFAULT_FOCUS = { weights: Object.fromEntries(TERRITORY_SLUGS.map(t => [t, 1])), exclude: [] };
+
+async function loadHouseFocus(env) {
+  try { const rows = await sbRest(env, 'house_focus?select=territory,weight,note&limit=100') || []; if (rows.length) { const f = { weights: Object.assign({}, DEFAULT_FOCUS.weights), exclude: [] }; for (const r of rows) { if (r.weight === 0) f.exclude.push(r.territory); f.weights[r.territory] = Number(r.weight); } return f; } } catch (e) {}
+  return DEFAULT_FOCUS;
+}
+async function loadTracks(env) {
+  try { return (await sbRest(env, 'tracks?select=id,name,aliases,kind,active&active=eq.true&limit=200')) || []; } catch (e) { return []; }
+}
+// PURE: does this cluster touch a tracked entity? Returns the matched track name or null.
+function trackMatch(text, tracks) {
+  const s = ' ' + String(text || '').toLowerCase() + ' ';
+  for (const t of tracks || []) { const names = [t.name].concat(t.aliases || []).filter(Boolean); for (const n of names) { if (n.length >= 3 && s.includes(' ' + String(n).toLowerCase() + ' ')) return t.name; } }
+  return null;
+}
+// PURE: lens assignment. Brand if a track is touched, truth if contested, else by territory.
+function lensOf(theme, tracked) {
+  if (tracked) return 'brand';
+  if (theme.state === 'CONTESTED') return 'truth';
+  const t = (theme.territories || [])[0];
+  return LENS_OF_TERRITORY[t] || 'culture';
+}
+// PURE: score one theme. Every component in [0,1], every input a count.
+function deskComponents(theme, focus, tracks, maxW) {
+  const terr = (theme.territories || [])[0] || null;
+  const w = terr ? (focus.weights[terr] == null ? 1 : focus.weights[terr]) : 0.5;
+  const house = Math.max(0, Math.min(1, w / (maxW || 1)));
+  const tracked = trackMatch((theme.exemplar && theme.exemplar.title) || '', tracks);
+  const client = tracked ? 1 : 0;
+  const recent = theme.recent_7d || 0, prior = theme.prior_7d || 0;
+  const velocity = Math.max(0, Math.min(1, (recent / Math.max(prior, 1)) / 4)) * (recent > 0 ? 1 : 0);
+  const recurrence = Math.max(0, Math.min(1, ((theme.weeks_touched || 0) + (theme.published || 0)) / 8));
+  const score = DESK.W.house * house + DESK.W.client * client + DESK.W.velocity * velocity + DESK.W.recurrence * recurrence;
+  return { house, client, velocity, recurrence, score: Math.round(score * 1000) / 1000, tracked, counts: { recent_7d: recent, prior_7d: prior, weeks: theme.weeks_touched || 0, published: theme.published || 0, members: theme.members || 0, sources: theme.sources || 0, weight: w } };
+}
+async function deskScore(env) {
+  const nowMs = Date.now();
+  const rows = await fetchRecurrenceRows(env, DESK.WINDOW_D, null);
+  const themes = recurrenceRollup(rows, DESK.TOP, 1);
+  const focus = await loadHouseFocus(env); const tracks = await loadTracks(env);
+  const maxW = Math.max(1, ...Object.values(focus.weights));
+  const scored = [];
+  for (const t of themes) {
+    const terr = (t.territories || [])[0];
+    if (terr && focus.exclude.includes(terr)) continue;
+    const state = clusterState(t, nowMs);
+    const c = deskComponents(Object.assign({}, t, { state }), focus, tracks, maxW);
+    scored.push({ cluster_id: t.cluster_id, state, lens: lensOf(Object.assign({}, t, { state }), c.tracked), territory: terr || null,
+      title: (t.exemplar && t.exemplar.title) || '', url: (t.exemplar && t.exemplar.url) || null, source_name: (t.exemplar && t.exemplar.source_name) || null,
+      published_at: t.last_seen || null, image: (t.exemplar && t.exemplar.image) || null, components: c, score: c.score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 40);
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(DESK.SCORE_KEY, JSON.stringify({ at: new Date().toISOString(), n: scored.length, top }), { expirationTtl: 3 * 86400 }).catch(() => {});
+  // Breaking lane between editions: a velocity spike that beats the edition floor.
+  try {
+    const ed = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null');
+    if (ed && Array.isArray(ed.items)) {
+      const inEd = new Set(ed.items.map(i => i.cluster_id));
+      const floor = Math.min(...ed.items.filter(i => !i.breaking).map(i => i.score), 1);
+      const breaking = ed.items.filter(i => i.breaking && new Date(i.expires_at).getTime() > nowMs);
+      const cands = top.filter(t => !inEd.has(t.cluster_id) && t.components.counts.recent_7d >= DESK.BREAK_MIN_7D && t.score > floor).slice(0, DESK.BREAK_SLOTS - breaking.length);
+      if (cands.length) {
+        const lines = await deskCompile(env, cands);
+        const fresh = cands.map((c, i) => Object.assign({}, c, { line: lines[i] || c.title, breaking: true, entered_at: new Date().toISOString(), expires_at: new Date(nowMs + 24 * 36e5).toISOString() }));
+        ed.items = ed.items.filter(i => !i.breaking).concat(breaking, fresh);
+        await env.RATE_LIMIT.put(DESK.EDITION_KEY, JSON.stringify(ed), { expirationTtl: 8 * 86400 });
+        await persistPulse(env, ed.date, fresh);
+      }
+    }
+  } catch (e) {}
+  return { scored: scored.length, top: top.length };
+}
+// PURE: assemble the next edition from the previous one and today's scores.
+function deskAssemble(prev, top, nowMs, dateStr) {
+  const kept = ((prev && prev.items) || []).filter(i => new Date(i.expires_at).getTime() > nowMs && !i.breaking);
+  const have = new Set(kept.map(i => i.cluster_id));
+  const perLens = Object.fromEntries(LENSES.map(l => [l, kept.filter(i => i.lens === l).length]));
+  const fresh = [];
+  // Pass 0 honors the lens quota; pass 1 lets a lens reach twice its quota; pass 2 fills by score alone.
+  for (const cap of [DESK.PER_LENS, DESK.PER_LENS * 2, Infinity]) {
+    for (const t of top) {
+      if (kept.length + fresh.length >= DESK.N) break;
+      if (have.has(t.cluster_id)) continue;
+      if ((perLens[t.lens] || 0) >= cap) continue;
+      const tenure = DESK.TENURE_H[t.state] || DESK.TENURE_H.DEFAULT;
+      fresh.push(Object.assign({}, t, { breaking: false, entered_at: new Date(nowMs).toISOString(), expires_at: new Date(nowMs + tenure * 36e5).toISOString(), tenure_h: tenure }));
+      have.add(t.cluster_id); perLens[t.lens] = (perLens[t.lens] || 0) + 1;
+    }
+  }
+  const items = kept.concat(fresh);
+  items.sort((a, b) => LENSES.indexOf(a.lens) - LENSES.indexOf(b.lens) || b.score - a.score);
+  return { date: dateStr, assembled_at: new Date(nowMs).toISOString(), items, fresh_ids: fresh.map(f => f.cluster_id) };
+}
+async function deskCompile(env, items) {
+  if (!items.length) return [];
+  const sys = 'You write one-line cultural intelligence reads for a strategy house. Declarative, specific, no hedging, no agency-speak, no em dashes, under 18 words, no numbers you were not given. Return ONLY a JSON array of strings, one per item, same order.';
+  const usr = items.map((it, i) => (i + 1) + '. [' + it.lens.toUpperCase() + ' · ' + (it.state || '') + '] "' + it.title + '" (' + (it.source_name || 'source') + '; ' + (it.components.counts.recent_7d) + ' captures this week, ' + it.components.counts.weeks + ' weeks in view' + (it.components.tracked ? '; touches ' + it.components.tracked : '') + ')').join('\n');
+  try {
+    const out = await callModel(env, 't1', [{ role: 'system', content: sys }, { role: 'user', content: usr }], { max_tokens: 900 });
+    const arr = extractJson(out);
+    if (Array.isArray(arr)) return arr.map(s => String(s || '').replace(/\u2014/g, ',').slice(0, 160));
+  } catch (e) {}
+  return items.map(it => it.title);
+}
+async function persistPulse(env, date, items) {
+  if (!items.length) return;
+  try {
+    await sbRest(env, 'pulse_items', { method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: items.map(i => ({ edition_date: date, cluster_id: i.cluster_id, lens: i.lens, territory: i.territory, state: i.state, line: i.line, title: i.title, url: i.url,
+        source_name: i.source_name, published_at: i.published_at, image: i.image, score: i.score, components: i.components, breaking: !!i.breaking, entered_at: i.entered_at, expires_at: i.expires_at })) });
+  } catch (e) {}
+}
+async function deskEdition(env) {
+  const nowMs = Date.now(); const date = new Date(nowMs).toISOString().slice(0, 10);
+  let scores = null, prev = null;
+  try { scores = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.SCORE_KEY)) || 'null'); } catch (e) {}
+  if (!scores || !Array.isArray(scores.top)) { await deskScore(env); try { scores = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.SCORE_KEY)) || 'null'); } catch (e) {} }
+  try { prev = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null'); } catch (e) {}
+  const ed = deskAssemble(prev, (scores && scores.top) || [], nowMs, date);
+  const fresh = ed.items.filter(i => ed.fresh_ids.includes(i.cluster_id));
+  const lines = await deskCompile(env, fresh);
+  fresh.forEach((f, i) => { f.line = lines[i] || f.title; });
+  ed.items = ed.items.map(i => (i.line ? i : Object.assign({}, i, { line: i.title })));
+  delete ed.fresh_ids;
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(DESK.EDITION_KEY, JSON.stringify(ed), { expirationTtl: 8 * 86400 }).catch(() => {});
+  await persistPulse(env, date, fresh);
+  try { await logEvent(env, 'intelligence', 'desk', 'edition', null, { date, items: ed.items.length, fresh: fresh.length }); } catch (e) {}
+  return { date, items: ed.items.length, fresh: fresh.length };
+}
+async function excavatePulse(env, origin) {
+  let ed = null; try { ed = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null'); } catch (e) {}
+  if (!ed || !Array.isArray(ed.items) || !ed.items.length) return json({ ok: true, edition: null, items: [], note: 'FIRST EDITION AT 06:00' }, 200, origin, env);
+  const nowMs = Date.now();
+  const items = ed.items.filter(i => new Date(i.expires_at).getTime() > nowMs).map(i => ({ cluster_id: i.cluster_id, lens: i.lens, state: i.state, territory: i.territory, line: i.line, title: i.title, url: i.url, source_name: i.source_name, published_at: i.published_at, image: i.image, score: i.score, counts: i.components && i.components.counts, tracked: i.components && i.components.tracked, breaking: !!i.breaking, entered_at: i.entered_at, expires_at: i.expires_at }));
+  return json({ ok: true, edition: ed.date, assembled_at: ed.assembled_at, items }, 200, origin, env);
+}
+async function deskRunGuarded(request, env, origin) {
+  const key = request.headers.get('x-field-key') || '';
+  if (!env.FIELD_API_KEY || key !== env.FIELD_API_KEY) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) {}
+  const which = String(body.run || 'score');
+  const out = which === 'edition' ? await deskEdition(env) : await deskScore(env);
+  return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
 /* SEAM:MODEL_POOL — the single routing function every LLM call passes through.

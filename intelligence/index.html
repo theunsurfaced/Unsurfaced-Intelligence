@@ -74,6 +74,11 @@ nav{position:sticky;top:0;z-index:var(--z-nav);background:rgba(10,10,15,0.92);ba
 .ticker-track{display:flex;gap:48px;animation:ticker 45s linear infinite;white-space:nowrap;padding:0 24px;}
 .ticker-label::after{content:'';position:absolute;right:-24px;top:0;bottom:0;width:24px;background:linear-gradient(90deg,var(--surface2),transparent);pointer-events:none;}
 .ticker-track.paused{animation:none;}
+.ticker-line{cursor:pointer;}
+.ticker-line:hover{color:var(--text);}
+.ticker-lens{font-size:8px;letter-spacing:.14em;color:var(--accent);margin-right:8px;opacity:.85;}
+.ticker-line.breaking .ticker-lens{color:#fff;background:var(--accent);padding:1px 5px;}
+.ticker-edition{color:var(--text);}
 .ticker-item{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:8px;}
 .ticker-item .up{color:var(--accent);}
 .ticker-item .dn{color:var(--accent4);}
@@ -1802,7 +1807,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 
 <!-- TICKER — SEAM:SURFACE_LAW: every figure is a count from GET /daily/lake; nothing typed by hand -->
 <div class="ticker-bar">
-  <div class="ticker-label">LAKE PULSE</div>
+  <div class="ticker-label">THE PULSE</div>
   <div class="ticker-track" id="lake-ticker-track"><div class="ticker-item"><span class="ticker-dot"></span>Reading the lake…</div></div>
 </div>
 
@@ -2866,8 +2871,26 @@ async function _excGather(q){
       if(key && !srcMap[key]) srcMap[key]={ num:0, label:s.label||s.display||s.source||'Source', display:s.display||s.label||s.source||'Source', desc:s.desc||'open data', url:s.url||'#' };
     });
   });
-  const sources=Object.values(srcMap).slice(0,12).map((s,i)=>{ s.num=i+1; return s; });
-  return { items, corpus:corpus.slice(0,28), sources };
+  // SEAM:GATHER_SERVER — the worker's gather joins the corpus. One call, every rail the query class earns.
+  try{
+    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});
+    const g=r.ok?await r.json():null;
+    if(g&&g.ok&&Array.isArray(g.items)){
+      window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{}};
+      const seen=new Set(corpus.map(c=>c.url).filter(Boolean));
+      g.items.forEach(it=>{
+        if(!it||!it.title||it.kind==='entity') return;
+        if(it.url&&seen.has(it.url)) return; if(it.url) seen.add(it.url);
+        const lens=it.kind==='truth'?'brand':(it.kind==='discourse'?'culture':(it.kind==='research'?'consumer':(it.kind==='filing'?'market':'market')));
+        items.push({ signalType:it.kind==='news'?'news':(it.kind==='discourse'?'social':'web'), title:it.title, snippet:it.text||'', source:it.source_name||'', url:it.url||null, image:it.image||null, published_at:it.published_at||null });
+        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'' });
+        const key=(it.source_name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:it.source_name, display:it.source_name, desc:it.kind||'live', url:it.url||'' };
+      });
+      (g.rails||[]).forEach(rl=>{ if(rl.n>0){ const key=(rl.name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:rl.name, display:rl.name, desc:rl.n+' gathered', url:'' }; } });
+    }
+  }catch(e){}
+  const sources=Object.values(srcMap).slice(0,16).map((s,i)=>{ s.num=i+1; return s; });
+  return { items, corpus:corpus.slice(0,40), sources };
 }
 
 async function runLiveSearch(q){
@@ -9178,7 +9201,29 @@ async function renderLakeTicker(){
     track.classList.add('paused');
   }
 }
-document.addEventListener('DOMContentLoaded',()=>{ renderLakeTicker(); setInterval(renderLakeTicker,10*60*1000); });
+/* SEAM:DESK — the pulse is an edition: twenty lines the desk assembled at 06:00, each holding its slot
+   for one to three days by state, four per lens, a breaking lane between editions. Every count rides
+   on the line as a title tooltip. A click runs the read on that topic. No edition yet: lake telemetry. */
+let _pulseEdition=null;
+async function renderPulse(){
+  const track=document.getElementById('lake-ticker-track'); if(!track) return;
+  try{
+    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/pulse',{cache:'no-store'}); const d=await r.json();
+    if(!d||!d.ok||!Array.isArray(d.items)||!d.items.length){ return renderLakeTicker(); }
+    _pulseEdition=d;
+    const esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const ed=new Date(d.edition+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase();
+    const head=`<div class="ticker-item ticker-edition"><span class="ticker-dot"></span>EDITION · ${ed} · ${d.items.length} LINES</div>`;
+    const lines=d.items.map(it=>{
+      const c=it.counts||{}; const tip=`${it.state||''} · ${c.recent_7d||0} captures 7d vs ${c.prior_7d||0} prior · ${c.weeks||0} weeks · ${c.sources||0} sources${it.tracked?' · tracks '+it.tracked:''} · ${it.source_name||''}`;
+      const topic=(it.title||it.line||'').replace(/'/g,'');
+      return `<div class="ticker-item ticker-line${it.breaking?' breaking':''}" title="${esc(tip)}" onclick="setSearch('${esc(topic).slice(0,120)}');runSearch()"><span class="ticker-dot"></span><span class="ticker-lens">${esc(String(it.lens||'').toUpperCase())}</span>${it.breaking?'<span class="ticker-lens">BREAKING</span>':''}${esc(it.line||it.title)}</div>`;
+    }).join('');
+    track.innerHTML=head+lines+head+lines;
+    track.classList.remove('paused');
+  }catch(e){ renderLakeTicker(); }
+}
+document.addEventListener('DOMContentLoaded',()=>{ renderPulse(); setInterval(renderPulse,60*1000); });
 
 function renderTrendingNow() {
   const list = document.getElementById('trending-now-list');
