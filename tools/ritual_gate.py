@@ -11,6 +11,7 @@ Checks:
   4. Link integrity   every internal href resolves to a real file
   5. Quote scan       curly quotes in importmap/JSON script blocks (silent killers)
   5c. Stacking law   every z-index on intelligence/index.html is a --z-* token
+  5d. Content law    no hand-typed content pools render on intelligence/index.html
   6. Seam registry    every registered seam exists; every SEAM: tag is registered
 """
 import re, sys, json, glob, base64, hashlib, subprocess, tempfile, os
@@ -120,6 +121,18 @@ if os.path.exists(_zf):
     if _zmiss:
         FAIL.append(f"[z] {_zf}: z tokens used but not defined in :root: {_zmiss}")
     print(f"  z       {_zf}: {len(_zuse)} tokens in use, {len(_zbad)} literals")
+
+# ── 5d. Content contract (HUB_FEED seam, intelligence surface) ───────────
+# Hand-typed content pools do not render on the EXCAVATE surface. The feed,
+# the desk, the tracks table and the lake are the only sources of cards.
+_cf = "intelligence/index.html"
+if os.path.exists(_cf):
+    _cs = load(_cf)
+    _cbad = [n for n in ("_TRENDING_POOL", "_AUD_DATA", "_BRAND_DATA", "_seedInitialReports(") if n in _cs]
+    _cbad += [m.group(0) for m in re.finditer(r"const _[A-Z_]+_POOL\s*=\s*\[\s*\{", _cs)]
+    if _cbad:
+        FAIL.append(f"[content] {_cf}: hand-typed pools present: {_cbad[:4]}")
+    print(f"  content {_cf}: {len(_cbad)} typed pools")
 
 # ── 6. Seam registry (surfaces + worker source) ──────────────────────────
 found = {}  # (file, tag) presence

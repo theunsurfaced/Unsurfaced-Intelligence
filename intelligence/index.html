@@ -2174,19 +2174,19 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <button class="bcat-chip" onclick="filterBrandsByCategory('cpg',this)">CPG & Food</button>
   </div>
 
-  <!-- Brand grid -->
-  <div class="brands-grid-wrap">
-    <div class="brands-grid-label">Featured Brands — click any card to excavate full intelligence</div>
-    <div class="brands-grid" id="brand-tracker-grid"></div>
-  </div>
-
   <!-- Intelligence feed -->
   <div class="brands-feed-section">
     <div class="brands-feed-header">
-      <span class="brands-feed-title">Brand Intelligence Feed</span>
-      <button class="brands-feed-refresh" onclick="renderBrandFeed()">REFRESH ↺</button>
+      <span class="brands-feed-title">What is emerging on tracked brands</span>
+      <button class="brands-feed-refresh" onclick="_loadTracks()">REFRESH ↺</button>
     </div>
     <div class="brands-feed-grid" id="brand-feed-grid"></div>
+  </div>
+
+  <!-- Brand grid -->
+  <div class="brands-grid-wrap">
+    <div class="brands-grid-label">Tracked brands — every number is a count from the lake</div>
+    <div class="brands-grid" id="brand-tracker-grid"></div>
   </div>
 
 </div>
@@ -3709,125 +3709,6 @@ function _saveReport(q, data, mode) {
 //  BRANDS PAGE — live intelligence with auto-query pipeline
 // ══════════════════════════════════════════════════════════════
 
-const _BRAND_DATA = [
-  /* SEAM:INSIGHT_COMPILER — these scores are MODELED fixtures until EVO-3
-     computes them from the lake (state, momentum, recurrence) and MINE
-     (primary research). The card renderer badges them accordingly \u2014 a
-     number without lineage never again renders as a measurement. */
-  { name:"Nike",          ticker:"NKE",  sector:"Lifestyle & Apparel", cat:"lifestyle",
-    desc:"Athletic footwear, apparel & equipment", col:"var(--accent)",
-    scores:{trust:88,relevance:92,momentum:84,equity:91}, trend:"+2.1%",
-    query:"Nike brand consumer perception athletic apparel marketing strategy",
-    deck:"Nike is the world's leading athletic footwear and apparel brand. This dashboard excavates live consumer trust, cultural momentum, and brand equity signals across all four intelligence lenses." },
-
-  { name:"Jordan Brand",  ticker:"JB",   sector:"Lifestyle & Apparel", cat:"lifestyle",
-    desc:"Premium athletic & streetwear", col:"var(--accent)",
-    scores:{trust:91,relevance:89,momentum:96,equity:94}, trend:"+5.8%",
-    query:"Jordan Brand consumer culture streetwear brand equity sneaker market",
-    deck:"Jordan Brand operates at the intersection of sport, culture, and fashion. This dashboard surfaces consumer loyalty, cultural signal, and brand health intelligence across creator communities and resale markets." },
-
-  { name:"Walmart",       ticker:"WMT",  sector:"Retail", cat:"retail",
-    desc:"Mass-market retail & e-commerce", col:"var(--accent3)",
-    scores:{trust:79,relevance:91,momentum:72,equity:83}, trend:"+1.4%",
-    query:"Walmart consumer trust retail brand perception value positioning strategy",
-    deck:"Walmart serves more consumers than any retailer on earth. This dashboard excavates consumer behavior, market dynamics, and brand health signals for the world's largest retailer." },
-
-  { name:"Costco",        ticker:"COST", sector:"Retail", cat:"retail",
-    desc:"Membership warehouse retail", col:"var(--accent3)",
-    scores:{trust:94,relevance:88,momentum:81,equity:90}, trend:"+3.7%",
-    query:"Costco consumer loyalty membership retail brand trust value perception",
-    deck:"Costco consistently ranks among the most trusted brands in America. This dashboard surfaces the consumer psychology, market dynamics, and cultural signals behind its extraordinary loyalty rates." },
-
-  { name:"Robinhood",     ticker:"HOOD", sector:"Finance", cat:"finance",
-    desc:"Retail investing & fintech", col:"var(--accent4)",
-    scores:{trust:61,relevance:74,momentum:68,equity:58}, trend:"-4.2%",
-    query:"Robinhood brand trust fintech consumer perception retail investing market",
-    deck:"Robinhood democratized retail investing and became a cultural flashpoint. This dashboard excavates consumer trust dynamics, market positioning, and brand health signals in the competitive fintech landscape." },
-
-  { name:"Apple",         ticker:"AAPL", sector:"Technology", cat:"tech",
-    desc:"Consumer technology & ecosystem", col:"var(--accent3)",
-    scores:{trust:95,relevance:93,momentum:88,equity:97}, trend:"+1.9%",
-    query:"Apple brand equity consumer trust technology ecosystem marketing strategy",
-    deck:"Apple is the world's most valuable brand by most measures. This dashboard excavates consumer trust, cultural signal, and market dynamics for the brand that defined modern consumer technology." },
-
-  { name:"Nvidia",        ticker:"NVDA", sector:"Technology", cat:"tech",
-    desc:"AI chips & computing infrastructure", col:"var(--accent3)",
-    scores:{trust:86,relevance:97,momentum:99,equity:89}, trend:"+18.4%",
-    query:"Nvidia brand consumer perception AI technology market positioning brand equity",
-    deck:"Nvidia has become the defining brand of the AI era. This dashboard surfaces the market dynamics, cultural momentum, and consumer perception signals driving one of history's fastest brand ascents." },
-
-  { name:"Microsoft",     ticker:"MSFT", sector:"Technology", cat:"tech",
-    desc:"Enterprise software, cloud & AI", col:"var(--accent3)",
-    scores:{trust:91,relevance:94,momentum:87,equity:93}, trend:"+6.2%",
-    query:"Microsoft brand consumer enterprise perception AI cloud brand strategy equity",
-    deck:"Microsoft has executed one of the most successful brand reinventions in corporate history. This dashboard excavates enterprise trust, consumer perception, and cultural signals across the Copilot era." },
-
-  { name:"Meta",          ticker:"META", sector:"Technology", cat:"tech",
-    desc:"Social platforms & AR/VR", col:"var(--accent2)",
-    scores:{trust:58,relevance:88,momentum:79,equity:67}, trend:"+8.1%",
-    query:"Meta Facebook brand trust consumer perception social media brand health",
-    deck:"Meta controls the largest social media platforms on earth while navigating persistent trust deficits. This dashboard surfaces consumer perception, cultural signal, and brand health intelligence across its platform portfolio." },
-
-  { name:"Patagonia",     ticker:"PAT",  sector:"Lifestyle & Apparel", cat:"lifestyle",
-    desc:"Outdoor gear & environmental advocacy", col:"var(--accent)",
-    scores:{trust:93,relevance:78,momentum:82,equity:91}, trend:"+4.9%",
-    query:"Patagonia brand trust sustainability consumer values environmental advocacy",
-    deck:"Patagonia is the most studied example of values-led brand building. This dashboard excavates consumer trust, cultural signal, and brand health for a company that has made activism its primary brand strategy." },
-
-  { name:"Lululemon",     ticker:"LULU", sector:"Lifestyle & Apparel", cat:"lifestyle",
-    desc:"Premium activewear & community", col:"var(--accent)",
-    scores:{trust:87,relevance:86,momentum:83,equity:88}, trend:"+3.3%",
-    query:"Lululemon brand consumer loyalty activewear premium community brand equity",
-    deck:"Lululemon built a premium lifestyle brand from a single product category. This dashboard surfaces the consumer psychology, cultural signal, and market dynamics behind its community-driven expansion strategy." },
-
-  { name:"Spotify",       ticker:"SPOT", sector:"Media & Entertainment", cat:"media",
-    desc:"Audio streaming & creator platform", col:"var(--accent2)",
-    scores:{trust:84,relevance:91,momentum:88,equity:82}, trend:"+4.7%",
-    query:"Spotify brand consumer loyalty audio streaming creator economy platform",
-    deck:"Spotify has become infrastructure for audio culture. This dashboard excavates consumer behavior, cultural signal, and brand health across its creator economy, podcast, and music streaming positioning." },
-
-  { name:"Netflix",       ticker:"NFLX", sector:"Media & Entertainment", cat:"media",
-    desc:"Streaming & entertainment", col:"var(--accent2)",
-    scores:{trust:81,relevance:89,momentum:76,equity:79}, trend:"+1.2%",
-    query:"Netflix brand consumer streaming entertainment brand trust loyalty",
-    deck:"Netflix created the streaming category and now fights to defend it. This dashboard surfaces consumer loyalty dynamics, competitive market signals, and brand health across the evolving streaming landscape." },
-
-  { name:"OpenAI",        ticker:"OAI",  sector:"Technology", cat:"tech",
-    desc:"AI research & products", col:"var(--deep2)",
-    scores:{trust:72,relevance:99,momentum:98,equity:81}, trend:"+24.6%",
-    query:"OpenAI brand consumer trust AI technology ChatGPT perception brand health",
-    deck:"OpenAI created the AI consumer era with ChatGPT. This dashboard excavates the fastest-growing brand signal in recent history — consumer trust, cultural momentum, and the competitive brand health landscape for AI." },
-
-  { name:"Glossier",      ticker:"GLS",  sector:"Lifestyle & Apparel", cat:"lifestyle",
-    desc:"DTC beauty & community", col:"var(--accent)",
-    scores:{trust:81,relevance:74,momentum:69,equity:78}, trend:"-2.8%",
-    query:"Glossier brand DTC beauty consumer trust community brand health perception",
-    deck:"Glossier pioneered community-led DTC beauty. This dashboard excavates consumer loyalty signals, cultural momentum, and brand health as the brand navigates post-hype category maturation." },
-
-  { name:"Duolingo",      ticker:"DUOL", sector:"Media & Entertainment", cat:"media",
-    desc:"Edtech & gamified learning", col:"var(--accent4)",
-    scores:{trust:86,relevance:84,momentum:92,equity:83}, trend:"+9.4%",
-    query:"Duolingo brand consumer engagement education marketing brand equity culture",
-    deck:"Duolingo has executed one of the most successful social media brand strategies in the past five years. This dashboard surfaces consumer engagement, cultural signal, and brand health for the owl that built a meme empire." },
-
-  { name:"Target",        ticker:"TGT",  sector:"Retail", cat:"retail",
-    desc:"Mass-market retail & branded experience", col:"var(--accent)",
-    scores:{trust:84,relevance:87,momentum:79,equity:83}, trend:"+2.6%",
-    query:"Target brand consumer trust retail experience brand equity marketing strategy",
-    deck:"Target has built one of the strongest brand-to-retail identities in the country — distinct from Walmart on design, distinct from specialty retailers on price. This dashboard excavates consumer trust, cultural signal, and market dynamics for America's most brand-conscious mass retailer." },
-
-  { name:"Visa",          ticker:"V",    sector:"Finance", cat:"finance",
-    desc:"Global payments infrastructure & brand", col:"var(--accent3)",
-    scores:{trust:89,relevance:86,momentum:77,equity:91}, trend:"+3.1%",
-    query:"Visa brand consumer trust payments fintech digital financial brand equity",
-    deck:"Visa is among the most trusted financial brands on earth — infrastructure that consumers rarely think about and can't live without. This dashboard surfaces consumer trust dynamics, market positioning, and cultural signal as digital payments reshape the category." },
-
-  { name:"Starbucks",     ticker:"SBUX", sector:"Lifestyle & Apparel", cat:"lifestyle",
-    desc:"Coffee, community & loyalty ecosystem", col:"var(--accent4)",
-    scores:{trust:82,relevance:89,momentum:74,equity:84}, trend:"-1.4%",
-    query:"Starbucks brand consumer loyalty coffee experience brand trust perception",
-    deck:"Starbucks invented the third-place concept and built the most successful loyalty program in food & beverage. This dashboard excavates consumer trust, cultural signal, and brand health as the brand navigates pricing pressure and brand authenticity challenges." },
-];
 
 let _activeBrandCat = 'all';
 let _brandSearchActive = false;
@@ -3836,8 +3717,8 @@ let _brandSearchActive = false;
 function initBrandsPage() {
   // Update grid label with live count
   const label = document.querySelector('.brands-grid-label');
-  if (label) label.textContent = _BRAND_DATA.length + ' Brands Tracked — click any card to excavate full intelligence';
-  renderBrandGrid(_BRAND_DATA);
+  if (label) label.textContent = 'Tracked brands — every number is a count from the lake';
+  _loadTracks();
   renderBrandFeed();
 }
 
@@ -3873,57 +3754,46 @@ function filterBrandsByCategory(cat, btn) {
   _activeBrandCat = cat;
   document.querySelectorAll('.bcat-chip').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const filtered = cat === 'all' ? _BRAND_DATA : _BRAND_DATA.filter(b => b.cat === cat);
+  const filtered = cat === 'all' ? _TRACKS : _TRACKS.filter(b => b.cat === cat);
   renderBrandGrid(filtered);
 }
 
 // ── Brand grid render ────────────────────────────────────────────
+/* SEAM:TRACKS — the Brands page is inverted: what is emerging about tracked brands first, then the tracks
+   themselves as computed cards. Every number is a lake count. Admins add tracks; anyone can excavate one. */
+let _TRACKS = [];
+const _SECTOR_CAT = { 'Technology': 'tech', 'Retail': 'retail', 'Finance': 'finance', 'Lifestyle & Apparel': 'lifestyle', 'Media & Entertainment': 'media', 'CPG & Food': 'cpg' };
+async function _loadTracks() {
+  try {
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/tracks', { cache: 'no-store' }); const j = r.ok ? await r.json() : null;
+    _TRACKS = ((j && j.tracks) || []).map(t => Object.assign({}, t, { cat: _SECTOR_CAT[t.sector] || 'other', query: t.query || t.name }));
+    renderBrandFeed((j && j.emerging) || []);
+    renderBrandGrid(_activeBrandCat && _activeBrandCat !== 'all' ? _TRACKS.filter(b => b.cat === _activeBrandCat) : _TRACKS);
+  } catch (e) { renderBrandFeed([]); renderBrandGrid([]); }
+}
 function renderBrandGrid(brands) {
   const grid = document.getElementById('brand-tracker-grid');
   if (!grid) return;
-  if (!brands.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text3)">No brands in this category yet.</div>`;
-    return;
-  }
-  grid.innerHTML = brands.map((b, i) => {
-    const trendUp = b.trend.startsWith('+');
-    const trendCol = trendUp ? 'var(--accent)' : 'var(--accent4)';
-    return `
-      <div class="brand-card" style="animation:fadeIn .35s ease ${i*0.04}s both"
-           onclick="excavateBrand('${b.name}')">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${b.col}"></div>
-        <div class="brand-card-ticker">${b.ticker} · ${b.sector}</div>
-        <div class="brand-card-name">${b.name}</div>
-        <div class="brand-card-sector">${b.desc}</div>
-        <div class="brand-score-row">
-          <div class="brand-score-item">
-            <span class="brand-score-val" style="color:${b.col}">${b.scores.trust}</span>
-            <span class="brand-score-lbl">Trust</span>
-          </div>
-          <div class="brand-score-item">
-            <span class="brand-score-val" style="color:var(--text2)">${b.scores.relevance}</span>
-            <span class="brand-score-lbl">Relevance</span>
-          </div>
-          <div class="brand-score-item">
-            <span class="brand-score-val" style="color:var(--text2)">${b.scores.momentum}</span>
-            <span class="brand-score-lbl">Momentum</span>
-          </div>
-          <div class="brand-score-item">
-            <span class="brand-score-val" style="color:var(--text2)">${b.scores.equity}</span>
-            <span class="brand-score-lbl">Equity</span>
-          </div>
-        </div>
-        <div class="brand-card-bar">
-          <div class="brand-card-bar-fill" style="width:${b.scores.trust}%;background:${b.col}"></div>
-        </div>
-        <div class="brand-card-trend" style="color:${trendCol}">
-          ${trendUp ? '▲' : '▼'} ${b.trend} &nbsp;<span style="color:var(--text3)">30-day signal · modeled</span>
-        </div>
-        <button class="brand-card-btn" onclick="event.stopPropagation();excavateBrand('${b.name}')">
-          EXCAVATE INTELLIGENCE →
-        </button>
-      </div>`;
-  }).join('');
+  if (!brands.length) { grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text3)">No tracks yet. An admin can add one below, or search any brand above.</div>`; return; }
+  grid.innerHTML = brands.map((b, i) => `
+    <div class="insight-card" style="animation:fadeIn .35s ease ${i*0.05}s both;cursor:pointer" onclick="setSearch('${safe(b.query).replace(/'/g,'')}');navTo('explore');runSearch()">
+      ${b.image?`<img class="card-img" src="${safeUrl(b.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(b.image_license||'source')}</div>`:''}
+      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">${safe(b.sector||b.kind||'')}</p>
+      <h2 class="card-title">${safe(b.name)}</h2>
+      <p class="card-excerpt">${safe(b.description||'')}</p>
+      <div class="fi-receipts">${b.counts.captures_7d} CAPTURES 7D · ${b.counts.captures_30d} IN 30D${b.latest?' · LATEST '+safe(String(b.latest).slice(0,10)):''}</div>
+      <div class="card-meta"><span style="color:var(--text3)">EXCAVATE →</span></div>
+    </div>`).join('') + `<div class="insight-card" style="opacity:.85"><div class="idea-type">ADD A TRACK</div><p class="card-excerpt">Signed-in admins can add a brand, person, or category the house should follow.</p><div style="display:flex;gap:8px;margin-top:10px"><input id="track-add-name" placeholder="Name" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;font-size:13px"><button class="builder-btn primary" style="flex:0 0 auto;padding:8px 12px" onclick="trackThis(document.getElementById('track-add-name').value)">ADD</button></div></div>`;
+}
+async function trackThis(name) {
+  name = String(name||'').trim(); if (!name) { showToast('Name the track first'); return; }
+  try {
+    const hh = await _authHeader(); if (!hh.Authorization) { showToast('Sign in to add a track'); return; }
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/track', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh), body: JSON.stringify({ name, query: name }) });
+    const j = r.ok ? await r.json() : null;
+    if (j && j.ok) { showToast('Tracking ' + name + '. Counts land at 06:00.'); if (typeof _loadTracks === 'function') _loadTracks(); }
+    else showToast((j && j.error === 'auth_required') ? 'Sign in to add a track' : 'Could not add that track');
+  } catch (e) { showToast('Could not add that track'); }
 }
 
 // ── Click a brand card ───────────────────────────────────────────
@@ -4010,7 +3880,7 @@ async function _brandLakeLoad(name) {
 }
 function excavateBrand(name) {
   // Find brand data for this brand
-  const brand = _BRAND_DATA.find(b => b.name === name);
+  const brand = _TRACKS.find(b => b.name === name);
   if (brand) {
     // Open full intelligence dashboard with brand-specific query
     setTimeout(function () { try { _brandLakeLoad(brand.name); } catch (e) {} }, 1400);
@@ -4033,99 +3903,61 @@ function excavateBrand(name) {
 }
 
 // ── Intelligence feed ────────────────────────────────────────────
-function renderBrandFeed() {
+function renderBrandFeed(emerging) {
   const feed = document.getElementById('brand-feed-grid');
   if (!feed) return;
-  const seed = Date.now();
-  // Pick 3 brands from different categories for variety
-  const cats = ['tech','retail','lifestyle','finance','media'];
-  const picks = [];
-  for (const cat of cats) {
-    const catBrands = _BRAND_DATA.filter(b=>b.cat===cat);
-    if (catBrands.length) picks.push(seededShuffle([...catBrands], seed + cats.indexOf(cat))[0]);
-    if (picks.length >= 3) break;
-  }
-
-  const lensLabels = [
-    {lens:'consumer', label:'Consumer Trust', col:'var(--accent)',  key:'trust'},
-    {lens:'market',   label:'Market Signal',  col:'var(--accent3)', key:'relevance'},
-    {lens:'culture',  label:'Cultural Momentum', col:'var(--accent4)', key:'momentum'},
-  ];
-
-  feed.innerHTML = picks.map((b, i) => {
-    const ll = lensLabels[i % lensLabels.length];
-    const score = b.scores[ll.key];
-    const tier = score >= 90 ? 'top-tier' : score >= 80 ? 'strong' : score >= 70 ? 'mid-tier' : 'emerging';
-    const trendUp = b.trend.startsWith('+');
-    return `
-      <div class="brand-feed-card" style="animation:fadeIn .4s ease ${i*0.09}s both"
-           onclick="excavateBrand('${b.name}')">
-        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${ll.col}"></div>
-        <span class="card-cat ${ll.lens}" style="margin-bottom:10px;display:inline-flex">● ${ll.label}</span>
-        <h3 style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:7px;color:var(--text);line-height:1.2">${b.name} — ${ll.label} Analysis</h3>
-        <p style="font-size:12px;color:var(--text2);line-height:1.68;margin-bottom:14px">${b.name}'s ${ll.label} score of <strong style="color:${ll.col}">${score}</strong> places it in the <strong>${tier}</strong> for its category. ${b.desc}. ${trendUp ? 'Positive' : 'Negative'} 30-day signal of ${b.trend}. Click to open the full intelligence dashboard with live data across Consumer Behavior, Market Dynamics, Cultural Signal, and Brand Health.</p>
-        <div style="display:flex;align-items:center;gap:12px;font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:12px">
-          <span style="color:${trendUp ? 'var(--accent)' : 'var(--accent4)'};font-weight:700">${b.trend} 30D</span>
-          <span>${b.ticker}</span>
-          <span>${b.sector}</span>
-        </div>
-        <div style="height:2px;background:var(--surface3)"><div style="height:100%;background:${ll.col};width:${score}%"></div></div>
-      </div>`;
-  }).join('');
+  const items = Array.isArray(emerging) ? emerging : [];
+  if (!items.length) { feed.innerHTML = `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">NOTHING EMERGING ON TRACKED BRANDS YET</div><p class="card-excerpt">The desk flags a tracked brand when a recurring cluster touches it. The first edition assembles at 06:00.</p></div>`; return; }
+  feed.innerHTML = items.slice(0, 6).map((it, i) => `
+    <div class="insight-card" style="animation:fadeIn .35s ease ${i*0.06}s both;cursor:pointer" onclick="setSearch('${safe(it.title||it.track).replace(/'/g,'')}');navTo('explore');runSearch()">
+      ${it.image?`<img class="card-img" src="${safeUrl(it.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(it.source_name||'source')}</div>`:''}
+      <span class="fi-state-tag">${safe(it.state||'')}</span>
+      <span class="card-cat ${CATS.includes(it.lens)?it.lens:'brand'}">● ${safe(it.track||'')}</span>
+      <h2 class="card-title">${safe(it.line||it.title||'')}</h2>
+      <p class="card-excerpt">${safe(it.title||'')}</p>
+      <div class="fi-receipts">${(it.counts||{}).recent_7d||0} CAPTURES 7D · ${(it.counts||{}).weeks||0}W · ${(it.counts||{}).sources||0} SRC${it.published_at?' · '+safe(String(it.published_at).slice(0,10)):''}</div>
+      ${it.url?`<div class="card-meta"><span style="color:var(--text3)">${safe(it.source_name||'')}</span><a class="proof-link" href="${safeUrl(it.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a></div>`:''}
+    </div>`).join('');
 }
 
 
 // ══ AUDIENCES PAGE ══
-const _AUD_DATA = [
-  {gen:'Gen Z', range:'18–27', col:'var(--accent)', pct:'38%', size:'~92M US', scores:{trust:62,creator:94,brand:41,digital:97}},
-  {gen:'Millennial', range:'28–43', col:'var(--accent3)', pct:'31%', size:'~72M US', scores:{trust:71,creator:78,brand:68,digital:91}},
-  {gen:'Gen X', range:'44–59', col:'var(--accent4)', pct:'19%', size:'~65M US', scores:{trust:79,creator:61,brand:74,digital:82}},
-  {gen:'Boomer', range:'60+', col:'var(--text2)', pct:'12%', size:'~69M US', scores:{trust:84,creator:42,brand:81,digital:68}},
-];
 const _AUD_CATS = [{n:'Skincare & Beauty',v:[78,71,54,62]},{n:'Food & Beverage',v:[81,76,72,68]},{n:'Technology',v:[94,88,79,71]},{n:'Travel',v:[72,81,77,65]},{n:'Fitness & Wellness',v:[88,74,69,58]}];
 const _AUD_MEDIA = [{n:'Short-form video',v:[94,76,58,44]},{n:'Streaming',v:[91,88,82,71]},{n:'Podcasts',v:[68,74,71,62]},{n:'Social feeds',v:[96,84,68,52]},{n:'Linear TV',v:[31,48,67,84]}];
 const _AUD_DRIVERS = [{n:'Peer recommendation',v:[89,74,61,52]},{n:'Brand authenticity',v:[84,71,68,64]},{n:'Price & value',v:[78,82,79,84]},{n:'Social proof',v:[91,76,62,48]},{n:'Creator endorsement',v:[86,67,44,31]}];
 
-function initAudiencesPage() {
-  const grid = document.getElementById('aud-grid');
+/* SEAM:AUDIENCES — cohorts on evidence. Outlet coverage counts from the lake (30 days, title match), sources named
+   and dated, top territories per cohort. Census baselines arrive with the Census rail; MINE findings with fielded studies.
+   A cohort with nothing this month says so. */
+async function initAudiencesPage() {
+  const grid = document.getElementById('aud-grid'); const detail = document.getElementById('aud-detail');
   if (!grid) return;
-  grid.innerHTML = _AUD_DATA.map((a,i) => `
-    <div style="background:var(--surface);border:1px solid var(--border);padding:20px;cursor:pointer;transition:all .2s;animation:fadeIn .35s ease ${i*0.07}s both"
-         onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='var(--border2)'"
-         onmouseout="this.style.transform='';this.style.borderColor='var(--border)'"
-         onclick="excavateAudience('${a.gen}')">
-      <div style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:2px">${a.gen}</div>
-      <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.12em;margin-bottom:12px">Ages ${a.range}</div>
-      <div style="font-family:'DM Serif Display',serif;font-size:38px;color:${a.col};margin-bottom:3px;display:block;line-height:1">${a.pct}</div>
-      <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:12px">${a.size}</div>
-      ${Object.entries({trust:'Brand Trust',creator:'Creator Influence',digital:'Digital Native'}).map(([k,lbl]) => `
-        <div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)">${lbl}</span>
-            <span style="font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:${a.col}">${a.scores[k]}%</span>
-          </div>
-          <div style="height:2px;background:var(--surface3)"><div style="height:100%;background:${a.col};width:${a.scores[k]}%"></div></div>
-        </div>`).join('')}
-    </div>`).join('');
-  
-  const detail = document.getElementById('aud-detail');
-  if (!detail) return;
-  detail.innerHTML = [
-    {title:'Top Categories by Audience', data:_AUD_CATS},
-    {title:'Media Consumption', data:_AUD_MEDIA},
-    {title:'Purchase Drivers', data:_AUD_DRIVERS},
-  ].map(sec => `
-    <div style="background:var(--surface);border:1px solid var(--border);padding:20px">
-      <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;background:var(--accent);transform:rotate(45deg);display:inline-block"></span>${sec.title}</div>
-      ${sec.data.map(row => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:12px;color:var(--text)">${row.n}</span>
-          <div style="display:flex;align-items:center;gap:7px;flex:1;margin-left:10px">
-            <div style="flex:1;height:2px;background:var(--surface3)"><div style="height:100%;background:var(--accent);width:${row.v[0]}%"></div></div>
-            <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);font-weight:700;min-width:28px;text-align:right">${row.v[0]}%</span>
-          </div>
-        </div>`).join('')}
-    </div>`).join('');
+  grid.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Counting coverage…</div>`;
+  let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/audiences', { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) {}
+  const cohorts = (j && j.cohorts) || {};
+  const keys = Object.keys(cohorts);
+  if (!keys.length) { grid.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Coverage counts assemble at 06:00.</div>`; return; }
+  window._audData = cohorts;
+  grid.innerHTML = keys.map((k, i) => { const c = cohorts[k]; const terr = (c.top_territories||[]).map(t => String(t.territory).replace(/-/g,' ')).slice(0,3).join(', ');
+    return `<div class="insight-card" style="animation:fadeIn .35s ease ${i*0.06}s both;cursor:pointer" onclick="showAudienceDetail('${k}')">
+      <h2 class="card-title">${safe(c.label)}</h2>
+      <div class="fi-receipts">${c.mentions_30d} OUTLET MENTIONS · 30D · ${c.outlets} OUTLETS</div>
+      <p class="card-excerpt">${c.mentions_30d ? 'Most covered in ' + safe(terr||'no territory yet') + '.' : 'No outlet coverage captured this month. That is the finding.'}</p>
+      <div class="card-meta"><span style="color:var(--text3)">${j.census ? 'CENSUS BASELINE ON' : 'CENSUS BASELINE ARRIVES WITH THE CENSUS RAIL'}</span></div>
+    </div>`; }).join('');
+  if (detail) detail.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.06em">Pick a cohort for its latest sourced coverage. ${safe(j.note||'')}${j.computed_at?' · computed '+safe(String(j.computed_at).slice(0,16)).replace('T',' '):''}</div>`;
+}
+function showAudienceDetail(key) {
+  const c = (window._audData||{})[key]; const detail = document.getElementById('aud-detail'); if (!c || !detail) return;
+  const latest = c.latest||[];
+  detail.innerHTML = (latest.length ? latest.map((it, i) => `
+    <div class="insight-card" style="animation:fadeIn .3s ease ${i*0.05}s both;cursor:pointer" onclick="setSearch('${safe(c.label).replace(/'/g,'')} ${safe(it.title||'').replace(/'/g,'').slice(0,60)}');navTo('explore');runSearch()">
+      ${it.image?`<img class="card-img" src="${safeUrl(it.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(it.source_name||'source')}</div>`:''}
+      <span class="card-cat consumer">● ${safe(c.label)}</span>
+      <h2 class="card-title" style="font-size:16px">${safe(it.title||'')}</h2>
+      <div class="card-meta"><span style="color:var(--text3)">${safe(it.source_name||'')}${it.published_at?' · '+safe(String(it.published_at).slice(0,10)):''}</span>${it.url?`<a class="proof-link" href="${safeUrl(it.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
+    </div>`).join('') : `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">NO COVERAGE THIS MONTH</div><p class="card-excerpt">${safe(c.label)} did not appear in captured outlet titles in the last 30 days.</p></div>`)
+    + `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">TOP SOURCES</div><p class="card-excerpt">${(c.top_sources||[]).map(x=>safe(x.source)+' ('+x.n+')').join(' · ')||'none'}</p><div class="idea-type" style="margin-top:10px">FIELDED EVIDENCE</div><p class="card-excerpt">No MINE study fielded on ${safe(c.label)} this quarter. A study through MINE is the only honest source for a cohort percentage.</p></div>`;
 }
 
 function excavateAudience(gen) {
@@ -5184,6 +5016,8 @@ function _renderReadBlock(q, data, mode){
       <button onclick="switchResultsLens('brand');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · BRAND</button>
       <button onclick="openSourcesModal()">EVERY SOURCE</button>
       <button onclick="downloadReport()">DOWNLOAD THE READ</button>
+      <button onclick="trackThis(document.getElementById('search-input').value)">TRACK THIS</button>
+      <button onclick="window.open('../play/?brief='+encodeURIComponent((document.getElementById('read-block').innerText||'').split('\n').filter(Boolean).slice(1,3).join(' ')),'_blank')">MAKE WITH PLAY</button>
     </div>`;
   el.style.display='block';
 }
@@ -8575,7 +8409,7 @@ document.addEventListener('keydown', function(e) {
 const _FI_CACHE_KEY  = 'unsurfaced_fi_v3'; // v3: cache may carry a lake field read
 let   _FI_LAKE        = null;   // live PROPOSE payload when the lake owns the grid
 let   _fiStateFilter  = null;   // active state-strip filter, null = all
-const _FI_LAKE_MIN    = 4;      // cold-start law: below this many proposed cards, pool paints
+const _FI_LAKE_MIN    = 2;      // SEAM:HUB_FEED — fewer honest cards beat a padded eight; below two, the grid says the lake is filling
 const _FI_STATE_META  = {
   EMERGING:     { cls:'st-emerging',     label:'EMERGING' },
   ACCELERATING: { cls:'st-accelerating', label:'ACCELERATING' },
@@ -8832,28 +8666,6 @@ function openFeaturedCard(id) {
 
 
 // ── Trending Now pool — 20 topics, 6 shown at a time, daily rotation ──
-const _TRENDING_POOL = [
-  { kw:'Creator monetization',   sub:'Creator economy signal',   badge:'hot',         query:'creator economy monetization brand revenue trends' },
-  { kw:'Functional beverages',   sub:'CPG category signal',       badge:'up:+47%',     query:'functional beverages Gen Z market growth category' },
-  { kw:'AI brand voice',         sub:'B2B + B2C signal',          badge:'new',         query:'AI brand voice strategy marketing B2B B2C' },
-  { kw:'Sports betting culture', sub:'Entertainment signal',      badge:'up:+29%',     query:'sports betting culture mainstream consumer media' },
-  { kw:'Youth wellness anxiety', sub:'Health category signal',    badge:'hot',         query:'youth wellness anxiety mental health brand marketing' },
-  { kw:'Millennial nostalgia',   sub:'Culture signal',            badge:'up:+14%',     query:'millennial nostalgia retro brand marketing culture' },
-  { kw:'Quiet luxury',           sub:'Fashion + culture signal',  badge:'hot',         query:'quiet luxury consumer aesthetic brand logoless' },
-  { kw:'Dupe culture',           sub:'Market disruption signal',  badge:'up:+38%',     query:'dupe culture premium brand alternatives consumer' },
-  { kw:'Employer branding',      sub:'Talent + brand signal',     badge:'new',         query:'employer brand consumer perception talent attraction' },
-  { kw:'Retail media',           sub:'Media market signal',       badge:'up:+61%',     query:'retail media network advertising brand investment' },
-  { kw:'Gen Alpha influence',    sub:'Emerging consumer signal',  badge:'new',         query:'Gen Alpha consumer behaviour brand household influence' },
-  { kw:'Sonic identity',         sub:'Brand signal',              badge:'emerging',    query:'sonic branding audio identity brand recognition' },
-  { kw:'Social commerce',        sub:'Channel signal',            badge:'up:+52%',     query:'social commerce TikTok Instagram purchase discovery' },
-  { kw:'Purpose fatigue',        sub:'Brand trust signal',        badge:'hot',         query:'brand purpose consumer fatigue values authenticity' },
-  { kw:'Subscription churn',     sub:'Retention signal',          badge:'up:+23%',     query:'subscription fatigue consumer cancellation brand' },
-  { kw:'Female economy',         sub:'Market opportunity signal', badge:'strong',      query:'female consumer economy spending power brand' },
-  { kw:'TikTok algorithms',      sub:'Cultural signal',           badge:'hot',         query:'TikTok algorithm culture consumer taste trend brand' },
-  { kw:'Health premiumisation',  sub:'CPG growth signal',         badge:'up:+44%',     query:'health premium consumer market functional category' },
-  { kw:'Brand collaboration',    sub:'Creative signal',           badge:'up:+31%',     query:'brand collaboration partnership campaign performance' },
-  { kw:'AI creative consumer',   sub:'Culture + brand signal',    badge:'new',         query:'AI generated content consumer attitude authenticity brand' },
-];
 
 // ── Core init function — called by navTo('explore') ───────────────
 function initFeaturedInsights() {
@@ -8884,6 +8696,10 @@ function _renderFeaturedGrid(isLive) {
     && _lakeC.lake.proposed.length >= _FI_LAKE_MIN;
   if (_lakeFresh) { _FI_LAKE = _lakeC.lake; _renderLakeGrid(_FI_LAKE); return; }
   _hideFieldChrome();
+  // SEAM:HUB_FEED — no pool paint. The grid is the lake's or it says so.
+  grid.innerHTML = `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">THE LAKE IS FILLING</div><p class="card-excerpt">Featured reads are chosen from what the lake has captured and what recurs. The first field assembles at 06:00; until then nothing here is typed by hand.</p></div>`;
+  const _lbl = document.getElementById('fi-refresh-label'); if (_lbl) _lbl.textContent = 'FIELD READ · PENDING';
+  return;
 
   // Pick cards: use date-seeded rotation so same day = same 8 cards
   const today    = new Date();
@@ -8980,6 +8796,11 @@ function _renderFeaturedCard(card, live, delay, showAsPending) {
 // call, cached 24h beside the pool cache it replaces.
 
 async function _fetchLakeField() {
+  // SEAM:HUB_FEED — the public feed door first: same field, no session required.
+  try {
+    const r0 = await Promise.race([fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store' }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 9000))]);
+    if (r0 && r0.ok) { const j0 = await r0.json(); if (j0 && j0.ok && Array.isArray(j0.proposed) && j0.proposed.length >= _FI_LAKE_MIN) { window._hubFeed = j0; return j0; } if (j0 && Array.isArray(j0.trending)) window._hubFeed = j0; }
+  } catch (e) {}
   try {
     const hh = await _authHeader();
     if (!hh.Authorization) return null;               // no session, no lake
@@ -9043,15 +8864,17 @@ function _renderLakeCard(card, i) {
     <div class="insight-card fi-card-enter" style="animation-delay:${delay}s;position:relative" onclick="openFeaturedCard('${card.id}')">
       <span class="fi-state-tag ${meta.cls}">${meta.label}</span>
       <span class="card-cat ${lens}">● ${CAT_LABELS[lens]}</span>
+      ${card.image?`<img class="card-img" src="${safeUrl(card.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe((card.exemplar&&card.exemplar.source_name)||'source')}</div>`:''}
       <h2 class="card-title">${card.title}</h2>
       <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">${card.subtitle || ''}</p>
-      <p class="card-excerpt">${card.hook || card.deck || ''}</p>
+      <p class="card-excerpt">${card.line ? safe(card.line) : (card.hook || card.deck || '')}</p>
+      ${card.exemplar&&card.exemplar.url?`<p class="card-excerpt" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)">${safe(card.exemplar.source_name||'')}${card.exemplar.published_at||card.evidence&&card.evidence.last_seen?' · '+safe(String(card.evidence.last_seen||'').slice(0,10)):''} · <a class="proof-link" href="${safeUrl(card.exemplar.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a></p>`:''}
       <div class="fi-receipts">${bits.join(' · ')}</div>
       <div class="card-meta">
         <span class="card-stat">${card.stat || ''}</span>
         <span style="color:var(--text3)">Click for full dashboard →</span>
       </div>
-      ${card.bar != null ? `<div class="card-bar"><div class="card-bar-fill" style="width:${card.bar}%"></div></div>` : ''}
+      ${'' /* SEAM:HUB_FEED — the recurrence bar was relative to the set, not a measurement; the receipts above carry the counts */}
     </div>`;
 }
 
@@ -9123,6 +8946,7 @@ async function _checkAndRefreshFeatured(force) {
       gotLiveData = true;
       return;
     }
+    return;   // SEAM:HUB_FEED — the pool enrichment path below is retired; nothing invented fills the grid
 
     // Pick 2 topics to fetch live — one from the current day's selection
     const dayIndex = Math.floor(Date.now() / _FI_TTL_MS);
@@ -9324,28 +9148,23 @@ document.addEventListener('DOMContentLoaded',()=>{ renderPulse(); setInterval(re
 function renderTrendingNow() {
   const list = document.getElementById('trending-now-list');
   if (!list) return;
-
-  // Rotate 6 from 20 using day index
-  const dayIndex = Math.floor(Date.now() / _FI_TTL_MS);
-  const pool     = _TRENDING_POOL;
-  const start    = (dayIndex * 3) % pool.length;
-  const picks    = [];
-  for (let i = 0; i < 6; i++) {
-    picks.push(pool[(start + i) % pool.length]);
-  }
-
-  list.innerHTML = picks.map((t, i) => {
-    const rank  = String(i + 1).padStart(2, '0');
-    // SEAM:SURFACE_LAW — badges carried invented deltas; the six queries stay as entry points, the badge is gone until Arc 6 computes velocity
-    return `
-      <div class="trend-item" onclick="setSearch('${t.query}');runSearch()">
+  // SEAM:HUB_FEED — trending is territories by capture velocity, counted from the field. No typed list.
+  const paint = (feed) => {
+    const tr = (feed && Array.isArray(feed.trending)) ? feed.trending.slice(0, 6) : [];
+    if (!tr.length) { list.innerHTML = `<div class="trend-item" style="grid-column:1/-1;opacity:.8"><div class="trend-info"><div class="trend-kw">Trending assembles at 06:00</div><div class="trend-sub">Territories rank by captures this week against last. Nothing here is typed by hand.</div></div></div>`; return; }
+    list.innerHTML = tr.map((t, i) => {
+      const rank = String(i + 1).padStart(2, '0'); const name = String(t.territory || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const delta = (t.recent_7d || 0) - (t.prior_7d || 0);
+      return `<div class="trend-item" onclick="setSearch('${safe(name).replace(/'/g,'')}');runSearch()">
         <span class="trend-rank">${rank}</span>
         <div class="trend-info">
-          <div class="trend-kw">${t.kw}</div>
-          <div class="trend-sub">${t.sub} · RUN THE READ →</div>
+          <div class="trend-kw">${safe(name)}</div>
+          <div class="trend-sub">${t.recent_7d || 0} captures this week · ${delta >= 0 ? '+' : ''}${delta} vs last · ${t.clusters || 0} recurring themes · RUN THE READ →</div>
         </div>
-      </div>`;
-  }).join('');
+      </div>`; }).join('');
+  };
+  if (window._hubFeed) return paint(window._hubFeed);
+  fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) window._hubFeed = j; paint(j); }).catch(() => paint(null));
 }
 
 </script>

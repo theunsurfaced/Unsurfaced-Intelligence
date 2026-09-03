@@ -62,7 +62,10 @@ export default {
         .then(() => editionWatchdog(env))
         .then(() => deskEdition(env))   // SEAM:DESK — the 06:00 edition, after DAILY composes
         .then(s => console.log('desk_edition', JSON.stringify(s)))
-        .catch(e => console.log('desk_edition_error', String(e && e.message))));
+        .catch(e => console.log('desk_edition_error', String(e && e.message)))
+        .then(() => feedWarm(env)).then(() => tracksRefresh(env)).then(() => audiencesRefresh(env)).then(() => backfillAttention(env))   // SEAM:HUB_FEED / TRACKS / AUDIENCES / BACKFILL
+        .then(s => console.log('hub_refresh', JSON.stringify(s)))
+        .catch(e => console.log('hub_refresh_error', String(e && e.message))));
     } else {
       // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
       // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
@@ -109,6 +112,10 @@ export default {
       if (path === '/excavate/anchors' && request.method === 'POST') return excavateAnchors(request, env, origin);
       if (path === '/excavate/gather' && request.method === 'POST') return excavateGather(request, env, origin);    // SEAM:GATHER_SERVER
       if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
+      if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
+      if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
+      if (path === '/excavate/track' && request.method === 'POST') return excavateTrackAdd(request, env, origin);    // SEAM:TRACKS (signed in)
+      if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
@@ -4405,7 +4412,7 @@ async function fetchRecurrenceRows(env, days, territory) {
   const base = 'signals?status=in.(connected,published)&cluster_id=not.is.null' +
     (territory ? '&territory=eq.' + territory : '') +
     '&order=captured_at.desc&limit=' + RECUR.SLICE_ROWS +
-    '&select=id,cluster_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id';
+    '&select=id,cluster_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id,image';   // SEAM:HUB_FEED — image rides the rollup
   const fetches = [];
   for (let i = 0; i < RECUR.SLICES; i++) {
     const hi = new Date(nowMs - i * sliceMs).toISOString();
@@ -4448,7 +4455,7 @@ function recurrenceRollup(rows, top, minWeeks) {
     if (r.captured_at >= c.last_seen) {
       c.last_seen = r.captured_at;
       c.exemplar = { id: r.id, title: r.title, url: r.url,
-        source_name: r.source_name, territory: r.territory };
+        source_name: r.source_name, territory: r.territory, image: r.image || null };
     }
     if (r.edition_item_id) c.published++;
     if (r.source_tier && r.source_tier < c.best_tier) c.best_tier = r.source_tier;
@@ -4925,9 +4932,11 @@ async function excavateVoice(request, env, origin) {
   }
 }
 
-async function excavatePropose(request, env, origin) {
-  const gate = await excavateAuth(request, env, origin);
-  if (gate.err) return gate.err;
+async function excavatePropose(request, env, origin, internal) {
+  if (internal !== true) {   // SEAM:HUB_FEED — the feed door warms this computation without a session
+    const gate = await excavateAuth(request, env, origin);
+    if (gate.err) return gate.err;
+  }
   let body = {};
   try { body = await request.json(); } catch (e) {}
   const days = Math.min(180, Math.max(7, parseInt(body.days, 10) || RECUR.WINDOW_D));
@@ -5733,9 +5742,203 @@ async function deskRunGuarded(request, env, origin) {
   if (!env.FIELD_API_KEY || key !== env.FIELD_API_KEY) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
-  const out = which === 'edition' ? await deskEdition(env) : await deskScore(env);
+  const out = which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SEAM:HUB_FEED — the hub feeds itself, for everyone.
+ * PROPOSE already computes the ranked field (recurrence, state, receipts) and
+ * caches it 24h, but only for signed-in callers. The feed door serves that
+ * same computation to any visitor, warms it at 06:00, and adds the desk's
+ * lines so the featured grid, Trending, and Brands all draw from one ranked
+ * source. Trending is territories by velocity, computed from the same field.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const FEED = { DAYS: RECUR.WINDOW_D, WANT: 8, MIN_WEEKS: RECUR.MIN_WEEKS, TRACKS_KEY: 'tracks:stats', AUD_KEY: 'aud:stats', ATTN_PREFIX: 'attention:' };
+function feedCacheKey() { return 'prop:v3:' + FEED.DAYS + ':' + FEED.WANT + ':' + FEED.MIN_WEEKS; }
+async function feedWarm(env) {
+  // Internal PROPOSE: same computation, same cache, no session. Runs at 06:00 and on a cold read.
+  const req = new Request('https://internal/excavate/propose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: FEED.WANT, days: FEED.DAYS, min_weeks: FEED.MIN_WEEKS, refresh: true }) });
+  try { const r = await excavatePropose(req, env, '', true); return r && r.ok ? await r.json() : null; } catch (e) { return null; }
+}
+async function excavateFeed(env, origin) {
+  let out = null;
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(feedCacheKey()) : null; if (hit) out = JSON.parse(hit); } catch (e) {}
+  if (!out) out = await feedWarm(env);
+  if (!out || !Array.isArray(out.proposed)) return json({ ok: true, proposed: [], field: null, trending: [], note: 'THE LAKE IS FILLING' }, 200, origin, env);
+  // Trending: territories by recent velocity across the whole field, counts only.
+  const terr = {};
+  for (const p of out.proposed.concat([])) { const ev = p.evidence || {}; const ts = ev.territories || []; for (const t of ts) { const o = terr[t] || { territory: t, clusters: 0, recent_7d: 0, prior_7d: 0 }; o.clusters++; o.recent_7d += ev.recent_7d || 0; o.prior_7d += ev.prior_7d || 0; terr[t] = o; } }
+  let trending = Object.values(terr).sort((a, b) => (b.recent_7d - b.prior_7d) - (a.recent_7d - a.prior_7d) || b.recent_7d - a.recent_7d).slice(0, 6);
+  // Desk lines ride along when the edition has them for the same clusters.
+  let ed = null; try { ed = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null'); } catch (e) {}
+  const lineBy = new Map(((ed && ed.items) || []).map(i => [i.cluster_id, i]));
+  const proposed = out.proposed.map(p => { const d = lineBy.get(p.cluster_id); return Object.assign({}, p, { line: d ? d.line : null, lens: d ? d.lens : null, image: (p.exemplar && p.exemplar.image) || null }); });
+  return json({ ok: true, proposed, field: out.field || null, trending, generated_at: out.generated_at || null, cached: !!out }, 200, origin, env);
+}
+
+/* ═══ SEAM:TRACKS — the house's tracked entities as computed cards. ═══
+ * Stats are counts from the lake (title match on name and aliases, 7d and 30d),
+ * resolved once a day. Knowledge Graph gives each track its description, type
+ * and licensed image the first time it is seen. Nothing here is a score. */
+function ilikeOr(names) {
+  return 'or=(' + names.map(n => 'title.ilike.*' + encodeURIComponent(String(n).replace(/[%,()]/g, ' ')) + '*').join(',') + ')';
+}
+async function tracksRefresh(env) {
+  const tracks = await loadTracks(env);
+  if (!tracks.length) return { tracks: 0 };
+  const now = Date.now(); const d7 = new Date(now - 7 * 864e5).toISOString(), d30 = new Date(now - 30 * 864e5).toISOString();
+  const stats = {};
+  for (const t of tracks) {
+    const names = [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3);
+    let n7 = 0, n30 = 0, latest = null, image = null, states = {};
+    try {
+      const rows = await sbRest(env, 'signals?select=id,title,captured_at,image,territory,momentum,cluster_id&' + ilikeOr(names) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=200') || [];
+      n30 = rows.length; n7 = rows.filter(r => r.captured_at >= d7).length; latest = rows[0] ? rows[0].captured_at : null;
+      image = (rows.find(r => r.image) || {}).image || null;
+    } catch (e) {}
+    // Knowledge Graph resolution, once.
+    if (!t.kg_id && env.GOOGLE_KG_KEY) {
+      try {
+        const ctx = { meta: {} }; await RAIL_FNS.kg(env, t.name, ctx, RAIL_BY_ID.kg);
+        const kg = ctx.meta.kg;
+        if (kg && kg.id) {
+          const j = await railFetch('https://kgsearch.googleapis.com/v1/entities:search?limit=1&languages=en&query=' + encodeURIComponent(t.name) + '&key=' + env.GOOGLE_KG_KEY);
+          const e = j && j.itemListElement && j.itemListElement[0] && j.itemListElement[0].result;
+          const patch = { kg_id: kg.id, description: t.description || kg.description || null };
+          if (e && e.image && e.image.contentUrl) { patch.image = e.image.contentUrl; patch.image_license = (e.image.license || 'per source'); }
+          await sbRest(env, 'tracks?id=eq.' + t.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch });
+          if (patch.image) t.image = patch.image;
+        }
+      } catch (e) {}
+    }
+    stats[t.id] = { n7, n30, latest, image: t.image || image, states };
+  }
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(FEED.TRACKS_KEY, JSON.stringify({ at: new Date().toISOString(), stats }), { expirationTtl: 3 * 86400 }).catch(() => {});
+  return { tracks: tracks.length };
+}
+async function excavateTracks(env, origin) {
+  const tracks = await loadTracks(env);
+  let st = {}; try { st = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) {}
+  let ed = null; try { ed = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null'); } catch (e) {}
+  const emerging = ((ed && ed.items) || []).filter(i => i.components && i.components.tracked).map(i => ({ track: i.components.tracked, line: i.line, title: i.title, url: i.url, source_name: i.source_name, published_at: i.published_at, image: i.image, state: i.state, lens: i.lens, counts: i.components.counts, entered_at: i.entered_at }));
+  const out = tracks.map(t => ({ id: t.id, name: t.name, kind: t.kind, sector: t.sector, description: t.description, query: t.query, image: t.image || (st[t.id] || {}).image || null, image_license: t.image_license || null,
+    counts: { captures_7d: (st[t.id] || {}).n7 || 0, captures_30d: (st[t.id] || {}).n30 || 0 }, latest: (st[t.id] || {}).latest || null }));
+  return json({ ok: true, tracks: out, emerging, computed_at: null }, 200, origin, env);
+}
+async function excavateTrackAdd(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) {}
+  const name = String(body.name || '').trim().slice(0, 80); if (name.length < 2) return json({ ok: false, error: 'name_required' }, 200, origin, env);
+  const row = { name, kind: ['brand', 'person', 'category', 'territory'].includes(body.kind) ? body.kind : 'brand', aliases: (Array.isArray(body.aliases) ? body.aliases : []).map(a => String(a).slice(0, 60)).slice(0, 8), sector: String(body.sector || '').slice(0, 80) || null, query: String(body.query || name).slice(0, 160), created_by: user.id, active: true };
+  try {
+    const back = await sbRest(env, 'tracks?select=id,name', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [row] }) || [];
+    if (!back[0]) return json({ ok: false, error: 'exists_or_denied' }, 200, origin, env);
+    await logEvent(env, 'intelligence', 'excavate', 'track_add', user.id, { name });
+    return json({ ok: true, track: back[0] }, 200, origin, env);
+  } catch (e) { return json({ ok: false, error: 'insert_failed' }, 200, origin, env); }
+}
+
+/* ═══ SEAM:AUDIENCES — cohorts on evidence: outlet coverage counts from the lake, dated and sourced. ═══ */
+const COHORTS = [
+  { key: 'gen_alpha', label: 'Gen Alpha', terms: ['gen alpha', 'generation alpha'] },
+  { key: 'gen_z', label: 'Gen Z', terms: ['gen z', 'gen-z', 'generation z', 'zoomers'] },
+  { key: 'millennials', label: 'Millennials', terms: ['millennial', 'millennials'] },
+  { key: 'gen_x', label: 'Gen X', terms: ['gen x', 'generation x'] },
+  { key: 'boomers', label: 'Boomers', terms: ['boomer', 'baby boomer'] }
+];
+async function audiencesRefresh(env) {
+  const d30 = new Date(Date.now() - 30 * 864e5).toISOString(); const out = {};
+  for (const c of COHORTS) {
+    try {
+      const rows = await sbRest(env, 'signals?select=id,title,url,source_name,source_tier,territory,captured_at,published_at,image&' + ilikeOr(c.terms) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=120') || [];
+      const terr = {}; const src = {};
+      rows.forEach(r => { if (r.territory) terr[r.territory] = (terr[r.territory] || 0) + 1; if (r.source_name) src[r.source_name] = (src[r.source_name] || 0) + 1; });
+      out[c.key] = { label: c.label, mentions_30d: rows.length, outlets: Object.keys(src).length,
+        top_territories: Object.entries(terr).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => ({ territory: k, n: v })),
+        top_sources: Object.entries(src).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => ({ source: k, n: v })),
+        latest: rows.slice(0, 3).map(r => ({ title: r.title, url: r.url, source_name: r.source_name, published_at: r.published_at || r.captured_at, image: r.image })) };
+    } catch (e) { out[c.key] = { label: c.label, mentions_30d: 0, outlets: 0, top_territories: [], top_sources: [], latest: [] }; }
+  }
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(FEED.AUD_KEY, JSON.stringify({ at: new Date().toISOString(), cohorts: out }), { expirationTtl: 3 * 86400 }).catch(() => {});
+  return { cohorts: COHORTS.length };
+}
+async function excavateAudiences(env, origin) {
+  let j = null; try { j = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.AUD_KEY)) || 'null'); } catch (e) {}
+  if (!j) { await audiencesRefresh(env); try { j = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.AUD_KEY)) || 'null'); } catch (e) {} }
+  return json({ ok: true, computed_at: j ? j.at : null, cohorts: (j && j.cohorts) || {}, census: !!env.CENSUS_KEY, note: 'counts are lake captures in the last 30 days whose title carries the cohort term; sources named, dated' }, 200, origin, env);
+}
+
+/* ═══ SEAM:BACKFILL — attention curves, 90 days deep, per track. Pageviews is keyless and honest. ═══ */
+async function backfillAttention(env) {
+  const tracks = await loadTracks(env); let n = 0;
+  for (const t of tracks.slice(0, 40)) {
+    try {
+      const ctx = { meta: {} };
+      await RAIL_FNS.wikipedia(env, t.name, ctx, RAIL_BY_ID.wikipedia);
+      await RAIL_FNS.wikimedia_pageviews(env, t.name, ctx, RAIL_BY_ID.wikimedia_pageviews);
+      if (ctx.meta.attention && env.RATE_LIMIT) { await env.RATE_LIMIT.put(FEED.ATTN_PREFIX + 'track:' + t.id, JSON.stringify(Object.assign({ at: new Date().toISOString() }, ctx.meta.attention)), { expirationTtl: 8 * 86400 }); n++; }
+    } catch (e) {}
+  }
+  return { attention: n };
+}
+
+/* ═══ SEAM:KEYED_RAILS — the free list that needs a key. Each is quiet without its secret. ═══ */
+Object.assign(RAIL_FNS, {
+  async podcastindex(env, q, ctx, rail) {
+    const key = env.PODCASTINDEX_KEY, sec = env.PODCASTINDEX_SECRET; if (!key || !sec) return [];
+    const ts = Math.floor(Date.now() / 1000);
+    const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(key + sec + ts));
+    const auth = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    const j = await railFetch('https://api.podcastindex.org/api/1.0/search/byterm?max=8&q=' + encodeURIComponent(q), { headers: { 'X-Auth-Key': key, 'X-Auth-Date': String(ts), 'Authorization': auth } });
+    const feeds = (j && j.feeds) || []; if (feeds.length) ctx.meta.podcasts = { n: feeds.length };
+    return feeds.slice(0, 6).map(f => envelope(rail, { url: f.link || f.url, title: f.title, text: stripHtml(f.description).slice(0, 400), image: f.image || f.artwork, published_at: f.newestItemPubdate ? new Date(f.newestItemPubdate * 1000).toISOString() : null, source_name: 'Podcast Index', kind: 'discourse' }));
+  },
+  async fred(env, q, ctx, rail) {
+    const key = env.FRED_KEY; if (!key) return [];
+    const j = await railFetch('https://api.stlouisfed.org/fred/series/search?file_type=json&limit=3&order_by=popularity&sort_order=desc&api_key=' + key + '&search_text=' + encodeURIComponent(q));
+    const out = [];
+    for (const x of ((j && j.seriess) || []).slice(0, 3)) {
+      const o = await railFetch('https://api.stlouisfed.org/fred/series/observations?file_type=json&sort_order=desc&limit=1&api_key=' + key + '&series_id=' + encodeURIComponent(x.id));
+      const ob = (((o || {}).observations) || []).find(v => v.value !== '.');
+      out.push(envelope(rail, { url: 'https://fred.stlouisfed.org/series/' + x.id, title: x.title + (ob ? ': ' + ob.value + ' ' + env1(x.units_short || x.units || '') : ''), text: (ob ? 'Latest observation ' + ob.date + '. ' : '') + env1(x.notes).slice(0, 300), published_at: ob ? ob.date : x.last_updated, source_name: 'FRED', kind: 'statistic' }));
+    }
+    return out;
+  },
+  async census(env, q, ctx, rail) {
+    const key = env.CENSUS_KEY; if (!key) return [];
+    // National population by broad age group, ACS 1-year, the honest baseline behind any cohort claim.
+    const j = await railFetch('https://api.census.gov/data/2023/acs/acs1?get=NAME,B01001_001E,B01001_007E,B01001_008E,B01001_009E,B01001_010E,B01001_031E,B01001_032E,B01001_033E,B01001_034E&for=us:1&key=' + key);
+    if (!Array.isArray(j) || j.length < 2) return [];
+    const r = j[1]; const total = +r[1]; const y18to24 = [2, 3, 4, 5, 6, 7, 8, 9].reduce((a, i) => a + (+r[i] || 0), 0);
+    ctx.meta.census = { total, age_18_24: y18to24, share_18_24: total ? Math.round(1000 * y18to24 / total) / 10 : null, source: 'ACS 1-year 2023' };
+    return [envelope(rail, { url: 'https://data.census.gov/', title: 'US population ' + total.toLocaleString() + ', ages 18 to 24: ' + y18to24.toLocaleString(), text: 'American Community Survey 1-year estimates, 2023. Table B01001.', published_at: '2024-09-12', source_name: 'US Census Bureau', kind: 'statistic' })];
+  },
+  async spotify(env, q, ctx, rail) {
+    const id = env.SPOTIFY_CLIENT_ID, sec = env.SPOTIFY_CLIENT_SECRET; if (!id || !sec) return [];
+    let tok = null;
+    try { const k = 'spotify:token'; tok = env.RATE_LIMIT ? await env.RATE_LIMIT.get(k) : null;
+      if (!tok) { const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + btoa(id + ':' + sec) }, body: 'grant_type=client_credentials' });
+        const t = r.ok ? await r.json() : null; tok = t && t.access_token; if (tok && env.RATE_LIMIT) await env.RATE_LIMIT.put(k, tok, { expirationTtl: 3000 }); } } catch (e) {}
+    if (!tok) return [];
+    const j = await railFetch('https://api.spotify.com/v1/search?type=artist&limit=3&q=' + encodeURIComponent(q), { headers: { Authorization: 'Bearer ' + tok } });
+    return ((((j || {}).artists || {}).items) || []).map(a => envelope(rail, { url: a.external_urls && a.external_urls.spotify, title: a.name + ': popularity ' + a.popularity + ', ' + (a.followers && a.followers.total ? a.followers.total.toLocaleString() + ' followers' : ''), text: (a.genres || []).slice(0, 4).join(', '), image: a.images && a.images[0] && a.images[0].url, source_name: 'Spotify', kind: 'entity', entity_hints: [a.name] }));
+  },
+  async tmdb(env, q, ctx, rail) {
+    const tok = env.TMDB_TOKEN; if (!tok) return [];
+    const j = await railFetch('https://api.themoviedb.org/3/search/multi?include_adult=false&language=en-US&page=1&query=' + encodeURIComponent(q), { headers: { Authorization: 'Bearer ' + tok } });
+    return (((j || {}).results) || []).slice(0, 4).map(r => envelope(rail, { url: 'https://www.themoviedb.org/' + r.media_type + '/' + r.id, title: (r.title || r.name || '') + (r.release_date || r.first_air_date ? ' (' + String(r.release_date || r.first_air_date).slice(0, 4) + ')' : ''), text: 'TMDB popularity ' + Math.round(r.popularity || 0) + (r.overview ? '. ' + String(r.overview).slice(0, 240) : ''), image: r.poster_path ? 'https://image.tmdb.org/t/p/w500' + r.poster_path : (r.profile_path ? 'https://image.tmdb.org/t/p/w500' + r.profile_path : null), published_at: r.release_date || r.first_air_date || null, source_name: 'TMDB', kind: 'entity', entity_hints: [r.title || r.name], license: 'TMDB attribution' }));
+  }
+});
+RAILS.push(
+  { id: 'podcastindex', name: 'Podcast Index', tier: 3, kind: 'discourse', classes: ['brand', 'talent', 'category', 'territory', 'behavior'], cap: 800 },
+  { id: 'fred',         name: 'FRED',          tier: 1, kind: 'statistic', classes: ['category', 'territory'], cap: 800 },
+  { id: 'census',       name: 'US Census',     tier: 1, kind: 'statistic', classes: ['behavior'], cap: 200 },
+  { id: 'spotify',      name: 'Spotify',       tier: 2, kind: 'entity',    classes: ['talent'], cap: 800 },
+  { id: 'tmdb',         name: 'TMDB',          tier: 2, kind: 'entity',    classes: ['talent', 'category'], cap: 800 }
+);
+for (const r of RAILS) RAIL_BY_ID[r.id] = r;
 
 /* SEAM:MODEL_POOL — the single routing function every LLM call passes through.
  * Tiers: t1/t2 = bulk transform on PUBLIC data; t3 = final voice.

@@ -581,6 +581,41 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:READ_QUALITY",
    "purpose": "sources strip deduped on normalized domain with rails-answered tally; duplicate READ block at the bottom retired; Signal Truth carries fact-checked claims plus the moves once; findings and moves side by side per lens; portrait-safe crops and contained wordmarks; YouTube and Mastodon voice strips"
+  },
+  "SEAM:HUB_FEED": {
+   "file": "worker/src/index.js",
+   "purpose": "public feed door: PROPOSE computation served to any visitor and warmed at 06:00; trending as territories by capture velocity; desk lines and exemplar images ride the field; internal propose bypass"
+  },
+  "SEAM:HUB_FEED@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:HUB_FEED",
+   "purpose": "featured grid draws from the public feed first with a two-card floor and an honest empty state; pool paint and pool enrichment retired; trending computed; recurrence bar removed; images and source links on lake cards"
+  },
+  "SEAM:TRACKS": {
+   "file": "worker/src/index.js",
+   "purpose": "tracks as computed cards: lake counts 7d/30d by name and alias, latest capture, Knowledge Graph description and licensed image resolved once; GET /excavate/tracks with the emerging list from the desk; POST /excavate/track for signed-in adds"
+  },
+  "SEAM:TRACKS@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:TRACKS",
+   "purpose": "Brands page inverted: emerging on tracked brands first, then tracks as computed cards, add-a-track form; _BRAND_DATA retired; TRACK THIS on the read"
+  },
+  "SEAM:AUDIENCES": {
+   "file": "worker/src/index.js",
+   "purpose": "cohort coverage counts from the lake, 30 days, title match, top territories and sources, latest items dated; GET /excavate/audiences"
+  },
+  "SEAM:AUDIENCES@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:AUDIENCES",
+   "purpose": "Audiences page on evidence: cohort cards with outlet mention counts, detail with sourced dated coverage, honest empty state, Census and MINE stated as the only rails for a baseline or a percentage; _AUD_DATA retired"
+  },
+  "SEAM:BACKFILL": {
+   "file": "worker/src/index.js",
+   "purpose": "90-day Wikimedia attention curve per track stored in KV at 06:00; the baseline Trajectory needs"
+  },
+  "SEAM:KEYED_RAILS": {
+   "file": "worker/src/index.js",
+   "purpose": "Podcast Index, FRED, US Census, Spotify, TMDB adapters behind their secrets; quiet without a key"
   }
  },
  "planned": [
