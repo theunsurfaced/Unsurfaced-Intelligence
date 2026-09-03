@@ -564,6 +564,14 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:DESK",
    "purpose": "THE PULSE ticker renders the edition with lens, breaking flag, counts on hover, click runs the read; lake telemetry remains the fallback before the first edition"
+  },
+  "SEAM:LENS_PANELS": {
+   "file": "intelligence/index.html",
+   "purpose": "one filler for the five-lens results layout shared by the live read and the degraded path; live renderer no longer writes into hidden legacy containers; invented card bars removed; modal index resolves to the clicked card; THE READ lines head the Signal Truth panel"
+  },
+  "SEAM:READ_SURFACE": {
+   "file": "intelligence/index.html",
+   "purpose": "the first pass carries everything: THE READ block with both lines, the interpretation, computed attention facts, and go-deeper buttons above the sources; all five lenses stacked by default with tabs as filters; source images ride on cards with attribution; voice samples open on arrival"
   }
  },
  "planned": [

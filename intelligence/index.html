@@ -419,6 +419,23 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rlb.active.cat-truth .rlb-count{background:var(--deep2);}
 .results-lens-panel{display:none;padding:20px 0 0;}
 .results-lens-panel.active{display:block;}
+/* SEAM:READ_SURFACE — every lens visible on the first pass; tabs become filters */
+#live-results.show-all .results-lens-panel{display:block;padding:8px 0 28px;border-bottom:1px solid var(--border);}
+#live-results.show-all .results-lens-panel:last-of-type{border-bottom:none;}
+.lens-panel-head{display:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);margin:18px 0 12px;}
+#live-results.show-all .lens-panel-head{display:block;}
+.lens-panel-head.cat-market{color:var(--accent3);} .lens-panel-head.cat-culture{color:var(--accent4);} .lens-panel-head.cat-brand{color:var(--accent2);} .lens-panel-head.cat-consumer{color:var(--accent);}
+.read-block{margin:0 0 4px;padding:26px 28px;background:linear-gradient(135deg,rgba(255,59,59,0.06),rgba(10,10,15,0));border:1px solid rgba(255,59,59,0.22);}
+.read-kicker{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--accent);margin-bottom:12px;}
+.read-line{font-family:'DM Serif Display',serif;font-size:24px;line-height:1.25;color:var(--text);margin:0 0 8px;}
+.read-line.two{color:var(--text2);font-size:20px;}
+.read-interp{font-size:14px;line-height:1.65;color:var(--text2);margin:14px 0 0;max-width:880px;}
+.read-interp strong{color:var(--text);}
+.read-deeper{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}
+.read-deeper button{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:8px 12px;cursor:pointer;}
+.read-deeper button:hover{border-color:var(--accent);}
+.card-img{width:100%;height:150px;object-fit:cover;display:block;margin:-24px -24px 14px;width:calc(100% + 48px);border-bottom:1px solid var(--border);filter:saturate(.9);}
+.card-img-src{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.08em;color:var(--text3);margin:-8px 0 10px;}
 .lens-ideas-strip{border-top:1px solid var(--border);padding-top:20px;margin-top:8px;}
 .lens-ideas-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;}
 .lens-idea-card{background:var(--surface);border:1px solid var(--border);padding:16px;}
@@ -1956,35 +1973,43 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
       </div>
     </div>
   </div>
+  <!-- SEAM:READ_SURFACE — the first pass carries everything: THE READ, the interpretation, then findings with images, then sources. Nothing behind a dropdown. -->
+  <div class="read-block" id="read-block" style="display:none"></div>
   <div class="results-sources-strip" id="results-sources-strip"></div>
   <!-- SEAM:VOICE@intelligence -->
   <div id="voice-strip"></div>
   <!-- 5-LENS TAB BAR -->
   <div class="results-lens-bar" id="results-lens-bar">
-    <button class="rlb active cat-consumer" id="rlb-consumer" onclick="switchResultsLens('consumer')">Consumer Behavior <span class="rlb-count" id="rlb-count-consumer">—</span></button>
+    <button class="rlb active cat-all" id="rlb-all" onclick="switchResultsLens('all')">All Lenses <span class="rlb-count" id="rlb-count-all">—</span></button>
+    <button class="rlb cat-consumer" id="rlb-consumer" onclick="switchResultsLens('consumer')">Consumer Behavior <span class="rlb-count" id="rlb-count-consumer">—</span></button>
     <button class="rlb cat-market"          id="rlb-market"   onclick="switchResultsLens('market')">Market Dynamics <span class="rlb-count" id="rlb-count-market">—</span></button>
     <button class="rlb cat-culture"         id="rlb-culture"  onclick="switchResultsLens('culture')">Cultural Signal <span class="rlb-count" id="rlb-count-culture">—</span></button>
     <button class="rlb cat-brand"           id="rlb-brand"    onclick="switchResultsLens('brand')">Brand Health <span class="rlb-count" id="rlb-count-brand">—</span></button>
     <button class="rlb cat-truth"           id="rlb-truth"    onclick="switchResultsLens('truth')">Signal Truth <span class="rlb-count" id="rlb-count-truth">—</span></button>
   </div>
-  <div class="results-lens-panel active" id="rlp-consumer">
+  <div class="results-lens-panel" id="rlp-consumer">
+    <div class="lens-panel-head cat-consumer">Consumer Behavior</div>
     <div class="results-grid" id="results-grid-consumer"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent)">Consumer Actions</span></div><div class="lens-ideas-row" id="lens-ideas-consumer"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-market">
+    <div class="lens-panel-head cat-market">Market Dynamics</div>
     <div class="results-grid" id="results-grid-market"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent3)">Market Actions</span></div><div class="lens-ideas-row" id="lens-ideas-market"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-culture">
+    <div class="lens-panel-head cat-culture">Cultural Signal</div>
     <div class="results-grid" id="results-grid-culture"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent4)">Cultural Actions</span></div><div class="lens-ideas-row" id="lens-ideas-culture"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-brand">
+    <div class="lens-panel-head cat-brand">Brand Health</div>
     <div class="results-grid" id="results-grid-brand"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent2)">Brand Actions</span></div><div class="lens-ideas-row" id="lens-ideas-brand"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-truth">
     <div class="truth-panel"><div class="truth-label">Cross-Signal Intelligence Synthesis</div><div class="truth-headline" id="truth-headline"></div><div class="truth-body" id="truth-body"></div><div class="truth-signals" id="truth-signals"></div></div>
+    <div class="lens-panel-head cat-truth">Signal Truth</div>
     <div class="results-grid" id="results-grid-truth"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--deep2)">Strategic Actions</span></div><div class="lens-ideas-row" id="lens-ideas-truth"></div></div>
   </div>
@@ -2838,7 +2863,7 @@ function _renderLive(q, data){
     brief=_liveBrief(q,items,data.connectors);
   }
   const sources=(data.sources&&data.sources.length)?data.sources:_liveSources(data.connectors,q);
-  renderResults(q,{insights,ideas,sources,brief,mode:synthd?'live':'basic'},synthd?'live':'basic');   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
+  renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic'},synthd?'live':'basic');   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -2877,6 +2902,7 @@ async function _excGather(q){
     const g=r.ok?await r.json():null;
     if(g&&g.ok&&Array.isArray(g.items)){
       window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{}};
+      window._gatherItems=g.items;
       const seen=new Set(corpus.map(c=>c.url).filter(Boolean));
       g.items.forEach(it=>{
         if(!it||!it.title||it.kind==='entity') return;
@@ -3361,8 +3387,8 @@ async function renderVoiceStrip(q){
       `<span class="voice-theme">${safe(t)}</span>`).join('')}</div>` : ''}
     ${(v.samples || []).length ? `<div class="voice-samples" onclick="
       var d=this.nextElementSibling; d.style.display = d.style.display==='none' ? 'block':'none';">
-      ▸ ${v.samples.length} posts — read them</div>
-      <div style="display:none">${v.samples.map(s => `<div class="voice-sample">${safe(s.text)}
+      ▾ ${v.samples.length} posts, open</div>
+      <div style="display:block">${v.samples.map(s => `<div class="voice-sample">${safe(s.text)}
         ${s.url ? `<br><a href="${safeUrl(s.url)}" target="_blank" rel="noopener">@${safe(s.handle)} · ${s.likes} likes ↗</a>` : ''}
       </div>`).join('')}</div>` : ''}
   </div>`;
@@ -3394,41 +3420,14 @@ function renderResults(q, data, mode){
     lastSources.map(s=>`<a class="strip-chip ok" href="${safeUrl(s.url)}" target="_blank" rel="noopener">${safe(s.display||s.label)}</a>`).join('');
 
 
-  // Result cards
-  const grid=document.getElementById('results-grid');
-  grid.innerHTML=(data.insights||[]).map((ins,i)=>`
-    <div class="insight-card" style="animation:fadeIn 0.4s ease ${i*0.07}s both" onclick="openInsightModal(${i})">
-      <span class="card-cat ${CATS.includes(ins.category)?ins.category:'consumer'}">● ${safe(CAT_LABELS[ins.category]||'Insight')}</span>
-      <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title)}</h3>
-      <p class="card-excerpt">${safe(ins.excerpt)}</p>
-      <div class="card-meta">
-        ${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}
-        <span>${safe(ins.confidence)} Confidence</span>
-        ${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}
-        <span class="proof-link" onclick="event.stopPropagation();openSourcesModal()">View Sources</span>
-        ${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open Source ↗</a>`:''}
-      </div>
-      ${'' /* The bar that used to sit here took its width from the loop index -
-              first card 50 percent, each one after it eight more. Position,
-              drawn as data, on a page shown to brand leadership. Nothing on an
-              insight card is measured, so nothing draws. The voice strip above
-              is the measurement. Do not restore this without a number behind it. */}
-    </div>
-  `).join('');
-
-  // Ideas — SEAM:ONE_RAIL: a move is earned from evidence or it is not shown
-  document.getElementById('ideas-grid').innerHTML=!(data.ideas||[]).length
-    ? `<div class="idea-card" style="grid-column:1/-1;opacity:.8"><div class="idea-type">NO MOVE EARNED YET</div><div class="idea-body">The evidence on this query is too thin to name a move. Nothing has been invented to fill the space. Widen the query or add a track and let the lake accumulate.</div></div>`
-    : (data.ideas||[]).map((idea,i)=>`
-    <div class="idea-card" style="animation:fadeIn 0.4s ease ${0.3+i*0.07}s both">
-      <div class="idea-num">${safe(idea.num||('0'+(i+1)))}</div>
-      <div class="idea-type">${safe(idea.type)}</div>
-      <div class="idea-headline">${safe(idea.headline)}</div>
-      <div class="idea-body">${safe(idea.body)}</div>
-      <div style="margin-bottom:12px;"><span class="proof-link" onclick="openSourcesModal()">View supporting sources</span></div>
-      <button class="idea-deploy" data-hl="${safeAttr(idea.headline)}" onclick="deployIdea(event,this.dataset.hl)">DEPLOY THIS IDEA →</button>
-    </div>
-  `).join('');
+  // SEAM:LENS_PANELS — the compiled read lands in the five-lens layout, grouped by the category the compiler earned.
+  const _ins=_attachImages((data.insights||[]), window._gatherItems||[]), _ideas=(data.ideas||[]);
+  _renderReadBlock(q, data, mode);
+  const lenses={}; CATS.forEach((c,ci)=>{ lenses[c]={ insights:_ins.filter(x=>(CATS.includes(x.category)?x.category:'consumer')===c), ideas:_ideas.filter((x,k)=>k%CATS.length===ci), sources:[] }; });
+  const readLines=Array.isArray(data.read)?data.read:[];
+  const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources };
+  _fillLensPanels(lenses, truth);
+  const trH=document.getElementById('truth-headline'); if(trH&&!truth.headline){ trH.textContent='THE READ'; }
 
   if(data.brief){
     document.getElementById('builder-result').innerHTML=`<strong>THE READ — ${safe(q)}:</strong> ${safe(data.brief)}`;
@@ -4498,8 +4497,11 @@ function switchResultsLens(lens) {
   document.querySelectorAll('.rlb').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.results-lens-panel').forEach(p => p.classList.remove('active'));
   const btn   = document.getElementById('rlb-' + lens);
-  const panel = document.getElementById('rlp-' + lens);
   if (btn)   btn.classList.add('active');
+  const root = document.getElementById('live-results');
+  if (lens === 'all') { if (root) root.classList.add('show-all'); return; }   // SEAM:READ_SURFACE — everything visible, tabs filter
+  if (root) root.classList.remove('show-all');
+  const panel = document.getElementById('rlp-' + lens);
   if (panel) panel.classList.add('active');
 }
 
@@ -5050,6 +5052,91 @@ function _buildSignalTruth(q, lenses) {
   };
 }
 
+/* SEAM:LENS_PANELS — one filler for the five-lens results layout, shared by the live read and the
+   degraded path. The live renderer used to write into two hidden legacy containers, so a compiled read
+   showed a header and an empty body. Bars that drew width from the loop index are gone: nothing on an
+   insight card is measured, so nothing draws. The modal opens the card you clicked, not the same index in
+   a different list. */
+function _fillLensPanels(lenses, truth){
+  const all=truth.allInsights||[];
+  const card=(ins,i,cat)=>{
+    const gi=all.indexOf(ins); const idx=gi>=0?gi:i;
+    return `<div class="insight-card" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
+        ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(ins.imageSource||ins.source||'source')}</div>`:''}
+        <span class="card-cat ${ins.category||cat}">● ${safe(CAT_LABELS[ins.category||cat]||'Insight')}</span>
+        <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
+        <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
+        ${ins.implication?`<p class="card-excerpt" style="color:var(--text);opacity:.9"><strong>So:</strong> ${safe(ins.implication)}</p>`:''}
+        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
+      </div>`;
+  };
+  CATS.forEach(cat=>{
+    const data=lenses[cat]||{insights:[],ideas:[],sources:[]};
+    const insights=data.insights||[], ideas=data.ideas||[];
+    const badge=document.getElementById('rlb-count-'+cat);
+    if(badge) badge.textContent=insights.length||'—';
+    const grid=document.getElementById('results-grid-'+cat);
+    if(grid) grid.innerHTML=insights.map((ins,i)=>card(ins,i,cat)).join('')||`<p style="color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:24px 0">No ${safe(CAT_LABELS[cat])} finding compiled for this query. The evidence did not land on this lens.</p>`;
+    const ideasEl=document.getElementById('lens-ideas-'+cat);
+    if(ideasEl) ideasEl.innerHTML=ideas.slice(0,3).map(idea=>`
+      <div class="lens-idea-card">
+        <div class="lens-idea-type">${safe(idea.type||'')}</div>
+        <div class="lens-idea-headline">${safe(idea.headline||'')}</div>
+        <div class="lens-idea-body">${safe(idea.body||'')}</div>
+      </div>`).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">Nothing invented to fill the space.</div></div>`;
+  });
+  const tH=document.getElementById('truth-headline'),tB=document.getElementById('truth-body');
+  if(tH) tH.textContent=truth.headline||'';
+  if(tB) tB.textContent=truth.body||'';
+  const tS=document.getElementById('truth-signals');
+  if(tS) tS.innerHTML=CATS.map(cat=>{const top=(lenses[cat]?.insights||[])[0]||{};return`<div class="truth-signal-card ${cat}"><div class="truth-signal-label">${safe(CAT_LABELS[cat])}</div><div class="truth-signal-title">${safe(top.title||'No finding on this lens')}</div></div>`;}).join('');
+  const tG=document.getElementById('results-grid-truth');
+  if(tG) tG.innerHTML=all.map((ins,i)=>card(ins,i,ins.category||'consumer')).join('');
+  const tI=document.getElementById('lens-ideas-truth');
+  if(tI) tI.innerHTML=(truth.allIdeas||[]).slice(0,6).map(idea=>`
+    <div class="lens-idea-card"><div class="lens-idea-type">${safe(idea.type||'')}</div><div class="lens-idea-headline">${safe(idea.headline||'')}</div><div class="lens-idea-body">${safe(idea.body||'')}</div></div>`).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">The evidence on this query is too thin to name a move.</div></div>`;
+  const badge=document.getElementById('rlb-count-truth');
+  if(badge) badge.textContent=all.length||'—';
+  const bAll=document.getElementById('rlb-count-all'); if(bAll) bAll.textContent=all.length||'—';
+  switchResultsLens('all');
+}
+/* SEAM:READ_SURFACE — an image for a finding comes from the source that produced it: the gathered item with the
+   same URL, else the same source name, else nothing. Never a stock image, never a guess. */
+function _attachImages(insights, items){
+  const byUrl=new Map(), bySrc=new Map();
+  (items||[]).forEach(it=>{ if(!it||!it.image) return; if(it.url) byUrl.set(it.url,it); const k=(it.source||it.source_name||'').toLowerCase(); if(k&&!bySrc.has(k)) bySrc.set(k,it); });
+  (insights||[]).forEach(ins=>{
+    if(ins.image) return;
+    const hit=(ins.sourceUrl&&byUrl.get(ins.sourceUrl))||bySrc.get((ins.source||'').toLowerCase());
+    if(hit){ ins.image=hit.image; ins.imageSource=hit.source||hit.source_name||ins.source; }
+  });
+  return insights;
+}
+function _renderReadBlock(q, data, mode){
+  const el=document.getElementById('read-block'); if(!el) return;
+  const lines=Array.isArray(data.read)?data.read.filter(Boolean):[];
+  if(mode!=='live'||(!lines.length&&!data.brief)){ el.style.display='none'; el.innerHTML=''; return; }
+  const meta=window._gatherMeta||{}; const att=meta.meta&&meta.meta.attention; const vol=meta.meta&&meta.meta.volume;
+  const facts=[];
+  if(att&&att.last_30d!=null) facts.push(`${att.last_30d.toLocaleString()} Wikipedia views in 30 days (${att.prev_30d.toLocaleString()} the 30 before)`);
+  if(vol&&vol.points) facts.push(`GDELT coverage series, ${vol.points} points over 3 months`);
+  if(meta.cls) facts.push(`read as ${meta.cls}`);
+  el.innerHTML=`<div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>
+    ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
+    ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
+    ${data.brief?`<p class="read-interp"><strong>The interpretation.</strong> ${safe(data.brief)}</p>`:''}
+    ${facts.length?`<p class="read-interp" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3)">${facts.map(safe).join(' · ')}</p>`:''}
+    <div class="read-deeper">
+      <button onclick="switchResultsLens('consumer');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CONSUMER</button>
+      <button onclick="switchResultsLens('market');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · MARKET</button>
+      <button onclick="switchResultsLens('culture');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CULTURE</button>
+      <button onclick="switchResultsLens('brand');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · BRAND</button>
+      <button onclick="openSourcesModal()">EVERY SOURCE</button>
+      <button onclick="downloadReport()">DOWNLOAD THE READ</button>
+    </div>`;
+  el.style.display='block';
+}
+
 function _renderResultsV2(q, lenses, truth, mode) {
   lastMode    = mode;
   lastSources = truth.allSources||[];
@@ -5078,49 +5165,7 @@ function _renderResultsV2(q, lenses, truth, mode) {
   }
 
 
-  CATS.forEach(cat=>{
-    const data=lenses[cat]||{insights:[],ideas:[],sources:[]};
-    const insights=data.insights||[], ideas=data.ideas||[];
-    const badge=document.getElementById('rlb-count-'+cat);
-    if(badge) badge.textContent=insights.length;
-    const grid=document.getElementById('results-grid-'+cat);
-    if(grid) grid.innerHTML=insights.map((ins,i)=>`
-      <div class="insight-card" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${i})">
-        <span class="card-cat ${ins.category||cat}">● ${CAT_LABELS[ins.category||cat]||'Insight'}</span>
-        <h3 class="card-title" style="font-size:16px;line-height:1.25">${ins.title||''}</h3>
-        <p class="card-excerpt">${ins.excerpt||''}</p>
-        <div class="card-meta"><span class="card-stat">${ins.stat||''}</span><span>${ins.confidence||''} Confidence</span>${ins.source?`<span style="color:var(--text3)">${ins.source}</span>`:''}<span class="proof-link" onclick="event.stopPropagation();openSourcesModal()">Sources</span>${ins.sourceUrl?`<a class="proof-link" href="${ins.sourceUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open ↗</a>`:''}</div>
-        <div class="card-bar"><div class="card-bar-fill" style="width:${50+i*8}%"></div></div>
-      </div>`).join('')||`<p style="color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:24px 0">No ${CAT_LABELS[cat]} data returned — sources may be temporarily unavailable.</p>`;
-    const ideasEl=document.getElementById('lens-ideas-'+cat);
-    if(ideasEl) ideasEl.innerHTML=ideas.slice(0,3).map(idea=>`
-      <div class="lens-idea-card">
-        <div class="lens-idea-type">${idea.type||''}</div>
-        <div class="lens-idea-headline">${idea.headline||''}</div>
-        <div class="lens-idea-body">${idea.body||''}</div>
-      </div>`).join('');
-  });
-
-  const tH=document.getElementById('truth-headline'),tB=document.getElementById('truth-body');
-  if(tH) tH.textContent=truth.headline||'';
-  if(tB) tB.textContent=truth.body||'';
-  const tS=document.getElementById('truth-signals');
-  if(tS) tS.innerHTML=CATS.map(cat=>{const top=(lenses[cat]?.insights||[])[0]||{};return`<div class="truth-signal-card ${cat}"><div class="truth-signal-label">${CAT_LABELS[cat]}</div><div class="truth-signal-finding">${(top.title||'No data').slice(0,72)}</div><div class="truth-signal-stat">${top.stat||'—'}</div></div>`;}).join('');
-  const tG=document.getElementById('results-grid-truth');
-  if(tG) tG.innerHTML=(truth.allInsights||[]).map((ins,i)=>`
-    <div class="insight-card" style="animation:fadeIn 0.4s ease ${i*0.05}s both" onclick="openInsightModal(${i})">
-      <span class="card-cat ${ins.category||'consumer'}">● ${CAT_LABELS[ins.category]||'Insight'}</span>
-      <h3 class="card-title" style="font-size:15px">${ins.title||''}</h3>
-      <p class="card-excerpt">${ins.excerpt||''}</p>
-      <div class="card-meta"><span class="card-stat">${ins.stat||''}</span>${ins.source?`<span style="color:var(--text3)">${ins.source}</span>`:''}</div>
-      <div class="card-bar"><div class="card-bar-fill" style="width:${48+i*5}%"></div></div>
-    </div>`).join('');
-  const tI=document.getElementById('lens-ideas-truth');
-  if(tI) tI.innerHTML=(truth.allIdeas||[]).slice(0,6).map(idea=>`
-    <div class="lens-idea-card"><div class="lens-idea-type">${idea.type||''}</div><div class="lens-idea-headline">${idea.headline||''}</div><div class="lens-idea-body">${idea.body||''}</div></div>`).join('');
-  const badge=document.getElementById('rlb-count-truth');
-  if(badge) badge.textContent=truth.allInsights?.length||'—';
-
+  _fillLensPanels(lenses, truth);
   switchResultsLens('consumer');
   const br=document.getElementById('builder-result');
   if(br&&truth.body) br.innerHTML=`<strong>Signal Truth — ${q}:</strong> ${truth.body}`;
