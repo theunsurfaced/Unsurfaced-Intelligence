@@ -47,17 +47,19 @@ const PLAY_SYSTEM = {
 
 export default {
   async scheduled(event, env, ctx) {
-    // Three crons, one worker: 05:15 capture · every 30' drain · 06:00 compose.
+    // Three crons, one worker: 05:15 capture · every 30' drain · 06:10 compose.
+    // Compose sits ten minutes off the :00 drain so the two never share a
+    // minute on the database (2026-09-12: the stacked burst was the 504).
     const cron = String(event && event.cron || '');
     if (cron === '15 5 * * *') {
-      ctx.waitUntil(runDailySpine(env)
+      await (runDailySpine(env)
         .then(s => console.log('spine_capture', JSON.stringify(s)))
         .catch(e => console.log('spine_capture_error', String(e && e.message))));
-    } else if (cron === '0 6 * * *') {
+    } else if (cron === '10 6 * * *') {
       // .then after .catch, not .finally: the catch resolves, so the watchdog
       // runs whether compose succeeded, threw, or quietly produced nothing —
-      // and waitUntil still covers the returned chain.
-      ctx.waitUntil(runDailyPipeline(env)
+      // and the await holds the invocation open for the whole chain.
+      await (runDailyPipeline(env)
         .then(s => console.log('daily_pipeline', JSON.stringify(s)))
         .catch(e => console.log('daily_pipeline_error', String(e && e.message)))
         .then(() => editionWatchdog(env))
@@ -74,7 +76,7 @@ export default {
       // binding on the separate 1000 ceiling. 26 was sized as if AI calls spent
       // the scarce budget — they never did, and CONNECT starved for five calls
       // that did not exist. 46/50 return identical work: 42 is saturation.
-      ctx.waitUntil(runDailySpine(env, { feeds: 6, gdelt: 1, advance: 42 })
+      await (runDailySpine(env, { feeds: 6, gdelt: 1, advance: 42 })
         .then(s => console.log('spine_slice', JSON.stringify(s)))
         .catch(e => console.log('spine_slice_error', String(e && e.message)))
         .then(() => deskScore(env))   // SEAM:DESK — score every 30 minutes, after the slice lands
@@ -963,17 +965,47 @@ async function stripeApi(env, path, method, params) {
 }
 
 // --- privileged Supabase REST (service role; bypasses RLS for bookkeeping only) ---
+// Transient gateway failures are retried, but only where a replay is safe:
+// GET/HEAD/PATCH/DELETE, and POST upserts (on_conflict= in the path). A plain
+// POST insert is never replayed: a 504 can mean the row landed and the
+// gateway gave up waiting. opts.retry true/false overrides the rule.
+// 2026-09-12: one 504 on the editions read took the paper dark for a day.
+const SB_RETRY_STATUS = new Set([502, 503, 504, 520, 522, 524]);
+const SB_RETRY_WAIT_MS = [1500, 4000];
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+function sbReplaySafe(method, path) {
+  if (method === 'GET' || method === 'HEAD' || method === 'PATCH' || method === 'DELETE') return true;
+  return method === 'POST' && /[?&]on_conflict=/.test(path);
+}
 async function sbRest(env, path, opts) {
   opts = opts || {};
-  const r = await fetch(env.SUPABASE_URL + '/rest/v1/' + path, {
-    method: opts.method || 'GET',
+  const method = opts.method || 'GET';
+  const canRetry = opts.retry === true ? true : opts.retry === false ? false : sbReplaySafe(method, path);
+  const tries = canRetry ? SB_RETRY_WAIT_MS.length + 1 : 1;
+  const init = {
+    method,
     headers: Object.assign({
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
       Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY,
       'Content-Type': 'application/json'
     }, opts.headers || {}),
     body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
+  };
+  let r = null;
+  for (let attempt = 0; attempt < tries; attempt++) {
+    let netErr = null;
+    try { r = await fetch(env.SUPABASE_URL + '/rest/v1/' + path, init); }
+    catch (e) { netErr = e; r = null; }
+    const transient = netErr ? true : SB_RETRY_STATUS.has(r.status);
+    if (!transient || attempt + 1 >= tries) {
+      if (netErr) throw new Error('sb_network');
+      break;
+    }
+    // table name only in the log: filters can carry emails and ids.
+    console.log('sb_retry', JSON.stringify({ method, table: path.split('?')[0].slice(0, 40),
+      status: netErr ? 'network' : r.status, attempt: attempt + 1 }));
+    await sleep(SB_RETRY_WAIT_MS[attempt]);
+  }
   if (!r.ok) throw new Error('sb_' + r.status);
   if (r.status === 204) return null;
   return r.json().catch(() => null);
@@ -5146,7 +5178,7 @@ async function dailyLakePublic(env, origin) {
 const HEALTH = {
   EVENTS: 40, PROBE: 200, WINDOW_H: 24,
   CAPTURE_STALE_MIN: 45,     // drain cron fires every 30' — 45' of silence is a missed beat
-  EDITION_DUE_UTC: 7,        // compose runs 06:00 UTC; 07:00 with no paper is late
+  EDITION_DUE_UTC: 7,        // compose runs 06:10 UTC; 07:00 with no paper is late
   DEAD_FEED_ERRORS: 3,       // three sightings in the event window = a dying feed
   EMBED_BACKLOG: 150         // raw-unembedded probe depth that flags a clogged drain
 };
@@ -5176,13 +5208,17 @@ async function dailyHealth(env, nowMs) {
     if (r.territory) winTerr[r.territory] = (winTerr[r.territory] || 0) + 1;
   });
 
-  // 2 · backlog depths — what the drain still owes, probe-capped
-  const probe = (q) => sbRest(env, `signals?${q}&select=id&limit=${HEALTH.PROBE}`)
-    .then(r => (r || []).length).catch(() => -1);
+  // 2 · backlog depths — what the drain still owes, probe-capped.
+  //     A probe that fails returns null and names its error; -1 was a
+  //     number that never happened, printed as if it had (real-stats law).
+  const probeErr = {};
+  const probe = (k, q) => sbRest(env, `signals?${q}&select=id&limit=${HEALTH.PROBE}`)
+    .then(r => (r || []).length)
+    .catch(e => { probeErr[k] = String(e && e.message).slice(0, 40); return null; });
   const backlog = {
-    to_embed:   await probe('status=eq.raw&embedding=is.null'),
-    to_filter:  await probe('status=eq.raw&embedding=not.is.null'),
-    to_connect: await probe('status=eq.filtered')
+    to_embed:   await probe('to_embed',   'status=eq.raw&embedding=is.null'),
+    to_filter:  await probe('to_filter',  'status=eq.raw&embedding=not.is.null'),
+    to_connect: await probe('to_connect', 'status=eq.filtered')
   };
 
   // 3 · the heartbeat — recent daily events from the activity log
@@ -5229,7 +5265,8 @@ async function dailyHealth(env, nowMs) {
   else if (now - new Date(lastSpine.created_at).getTime() > HEALTH.CAPTURE_STALE_MIN * 60e3)
     flags.push('capture_stale');
   if (spineRuns.length && fresh24 === 0) flags.push('lake_quiet_24h');
-  if (backlog.to_embed >= HEALTH.EMBED_BACKLOG) flags.push('embed_backlog');
+  if (backlog.to_embed != null && backlog.to_embed >= HEALTH.EMBED_BACKLOG) flags.push('embed_backlog');
+  Object.keys(probeErr).forEach(k => flags.push('probe_failed:' + k + ':' + probeErr[k]));
   Object.keys(feeds).forEach(n => {
     if (feeds[n].errors >= HEALTH.DEAD_FEED_ERRORS) flags.push('dead_feed:' + n);
   });
@@ -5237,7 +5274,7 @@ async function dailyHealth(env, nowMs) {
   return {
     ok: true, at: new Date(now).toISOString(), flags,
     lake: { window_hours: HEALTH.WINDOW_H, intake: win.length, fresh_24h: fresh24,
-      by_status: winStatus, by_territory: winTerr, backlog },
+      by_status: winStatus, by_territory: winTerr, backlog, backlog_errors: probeErr },
     spine: { last_run: lastSpine ? lastSpine.created_at : null,
       last_stats: lastSpine ? lastSpine.meta : null, runs_seen: spineRuns.length },
     feeds, edition
@@ -6148,6 +6185,8 @@ async function editionWatchdog(env) {
 function watchdogEmailHtml(level, date, why, health) {
   const h = health || {};
   const b = (h.lake && h.lake.backlog) || {};
+  const be = (h.lake && h.lake.backlog_errors) || {};
+  const depth = (k) => b[k] == null ? 'unknown (' + (be[k] || 'probe failed') + ')' : b[k];
   const dark = level === 'DARK';
   const flags = (h.flags || []).map(f =>
     `<code style="background:#F5F0E8;padding:2px 6px;border-radius:3px;font-size:12px">${esc(f)}</code>`
@@ -6161,16 +6200,16 @@ function watchdogEmailHtml(level, date, why, health) {
     </div>
     <p style="margin:0 0 18px">${esc(why)}</p>
     <table style="border-collapse:collapse;font-size:14px;margin:0 0 18px">
-      ${row('to embed', b.to_embed)}
-      ${row('to filter', b.to_filter)}
-      ${row('to connect', b.to_connect)}
+      ${row('to embed', depth('to_embed'))}
+      ${row('to filter', depth('to_filter'))}
+      ${row('to connect', depth('to_connect'))}
       ${row('intake 24h', h.lake ? h.lake.fresh_24h : null)}
       ${row('spine runs seen', h.spine ? h.spine.runs_seen : null)}
       ${row('last spine run', h.spine ? (h.spine.last_run || 'never') : null)}
     </table>
     <p style="margin:0 0 6px;font-size:12px;color:#666;letter-spacing:.06em">FLAGS</p>
     <p style="margin:0 0 20px">${flags}</p>
-    <p style="margin:0;font-size:12px;color:#888">SEAM:EDITION_WATCHDOG · 06:00 compose cron</p>
+    <p style="margin:0;font-size:12px;color:#888">SEAM:EDITION_WATCHDOG · 06:10 compose cron</p>
   </div>`;
 }
 

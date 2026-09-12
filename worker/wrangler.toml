@@ -50,6 +50,6 @@ enabled = true
 #    ALLOWED_ORIGINS, EMAIL_FROM, APP_URL,
 #    LEADERBOARD_HMAC_SECRET  (add after this deploy)
 
-# ── Cron: DAILY pipeline (06:00 UTC daily) ──────────────────────────
+# ── Cron: DAILY pipeline (06:10 UTC daily, off the :00 drain minute) ──────────────────────────
 [triggers]
-crons = ["*/30 * * * *", "15 5 * * *", "0 6 * * *"]
+crons = ["*/30 * * * *", "15 5 * * *", "10 6 * * *"]
