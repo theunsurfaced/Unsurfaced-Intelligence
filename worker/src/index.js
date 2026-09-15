@@ -66,6 +66,9 @@ export default {
         .then(() => deskEdition(env))   // SEAM:DESK — the 06:00 edition, after DAILY composes
         .then(s => console.log('desk_edition', JSON.stringify(s)))
         .catch(e => console.log('desk_edition_error', String(e && e.message)))
+        .then(() => railSpendLedger(env))   // yesterday's real rail spend, before the KV ledgers expire (audit F2)
+        .then(s => console.log('rail_spend', JSON.stringify(s)))
+        .catch(e => console.log('rail_spend_error', String(e && e.message)))
         .then(() => feedWarm(env)).then(() => tracksRefresh(env)).then(() => audiencesRefresh(env)).then(() => backfillAttention(env))   // SEAM:HUB_FEED / TRACKS / AUDIENCES / BACKFILL
         .then(s => console.log('hub_refresh', JSON.stringify(s)))
         .catch(e => console.log('hub_refresh_error', String(e && e.message))));
@@ -933,8 +936,8 @@ async function serveMedia(path, env, origin, request) {
 }
 
 /* ----------------------- stripe webhook ------------------------- */
-// Stub for the payments sprint. TODO: verify the Stripe-Signature header with
-// stripeWebhook + payments/email handlers are defined in the payments section below.
+// stripeWebhook (signature-verified, fail-closed) and the payments/email
+// handlers are defined in the payments section below.
 
 /* =====================  PAYMENTS (Stripe Connect) + EMAIL (Resend)  ===================== */
 // Responders onboard a Stripe Connect Express account and get paid per response via
@@ -2227,10 +2230,12 @@ function inviteEmailHtml(study, url, paid) {
 async function stripeWebhook(request, env, origin) {
   const sig = request.headers.get('stripe-signature') || '';
   const payload = await request.text();
-  if (env.STRIPE_WEBHOOK_SECRET) {
-    const ok = await verifyStripeSig(payload, sig, env.STRIPE_WEBHOOK_SECRET);
-    if (!ok) return new Response('bad signature', { status: 400 });
-  }
+  // Fail closed. Without the webhook secret the worker cannot tell Stripe from
+  // anyone, so it accepts nothing. A missing secret is a deploy error, not an
+  // open door. (Audit 2026-09-14, F1: this used to skip verification.)
+  if (!env.STRIPE_WEBHOOK_SECRET) return new Response('webhook secret not configured', { status: 500 });
+  const ok = await verifyStripeSig(payload, sig, env.STRIPE_WEBHOOK_SECRET);
+  if (!ok) return new Response('bad signature', { status: 400 });
   let evt; try { evt = JSON.parse(payload); } catch (e) { return new Response('bad json', { status: 400 }); }
   try {
     const o = (evt.data && evt.data.object) || {};
@@ -5180,7 +5185,8 @@ const HEALTH = {
   CAPTURE_STALE_MIN: 45,     // drain cron fires every 30' — 45' of silence is a missed beat
   EDITION_DUE_UTC: 7,        // compose runs 06:10 UTC; 07:00 with no paper is late
   DEAD_FEED_ERRORS: 3,       // three sightings in the event window = a dying feed
-  EMBED_BACKLOG: 150         // raw-unembedded probe depth that flags a clogged drain
+  EMBED_BACKLOG: 150,        // raw-unembedded probe depth that flags a clogged drain
+  GDELT_QUIET_RUNS: 8        // consecutive drain slices with gdelt:null = the breadth rail is quiet
 };
 
 async function dailyHealthGuarded(request, env, origin) {
@@ -5270,13 +5276,23 @@ async function dailyHealth(env, nowMs) {
   Object.keys(feeds).forEach(n => {
     if (feeds[n].errors >= HEALTH.DEAD_FEED_ERRORS) flags.push('dead_feed:' + n);
   });
+  // GDELT is the tier-4 breadth sweep. An empty return is not a feed_error,
+  // so a dead GDELT never shows as dead_feed. Count consecutive null slices
+  // newest-first; the streak breaks at the first slice that saw anything.
+  let gdeltNull = 0;
+  for (const e of spineRuns) {
+    if (!e.meta || !('gdelt' in e.meta)) continue;
+    if (e.meta.gdelt == null) gdeltNull++; else break;
+  }
+  if (gdeltNull >= HEALTH.GDELT_QUIET_RUNS) flags.push('gdelt_quiet:' + gdeltNull);
 
   return {
     ok: true, at: new Date(now).toISOString(), flags,
     lake: { window_hours: HEALTH.WINDOW_H, intake: win.length, fresh_24h: fresh24,
       by_status: winStatus, by_territory: winTerr, backlog, backlog_errors: probeErr },
     spine: { last_run: lastSpine ? lastSpine.created_at : null,
-      last_stats: lastSpine ? lastSpine.meta : null, runs_seen: spineRuns.length },
+      last_stats: lastSpine ? lastSpine.meta : null, runs_seen: spineRuns.length,
+      gdelt_null_streak: gdeltNull },
     feeds, edition
   };
 }
@@ -6129,6 +6145,36 @@ async function dailyRunGuarded(request, env, origin) {
  *            Only lake items do; legacy ingest has none. The paper shipped,
  *            the intelligence engine fed it nothing, and OPS looks green.
  * Needs ALERT_EMAIL. Unset, it still speaks — to the log stream.  */
+/* railSpendLedger: the paid-rail caps run on KV ledgers that expire in about
+ * 25 hours (pplxd:<day> at 90,000 s, sigd:<day> at 26 h). The caps work; the
+ * memory of what they governed did not survive the day. Once a day at 06:10,
+ * before yesterday's keys expire, copy the two totals into activity_events
+ * as rail_spend. Idempotent per day. A key that was never written means no
+ * spend and records 0; a KV read that fails records null, never 0.
+ * (Audit 2026-09-14, F2.) */
+async function railSpendLedger(env) {
+  const day = new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
+  const have = await sbRest(env,
+    `activity_events?platform=eq.daily&event=eq.rail_spend&meta->>day=eq.${day}&select=id&limit=1`
+  ).catch(() => null);
+  if (have && have.length) return { day, skipped: 'already_logged' };
+  const read = async (prefix) => {
+    try {
+      if (!env.RATE_LIMIT) return null;
+      const v = await env.RATE_LIMIT.get(prefix + day);
+      return v == null ? 0 : (parseFloat(v) || 0);
+    } catch (e) { return null; }
+  };
+  const pplx = await read('pplxd:');
+  const exa = await read('sigd:');
+  const caps = {
+    pplx: parseFloat(env.PPLX_DAILY_DOLLARS) || CONFIG.PPLX_DAILY_DOLLARS,
+    exa: parseFloat(env.SIGNAL_DAILY_DOLLARS) || CONFIG.SIGNAL_DAILY_DOLLARS
+  };
+  await logEvent(env, 'daily', null, 'rail_spend', null, { day, pplx, exa, caps });
+  return { day, pplx, exa };
+}
+
 async function editionWatchdog(env) {
   const today = new Date().toISOString().slice(0, 10);
   try {
