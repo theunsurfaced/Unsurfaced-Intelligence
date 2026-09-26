@@ -6818,18 +6818,33 @@ function readImgUrl(raw, base) {
 async function readImgFetch(href, accept) {
   try {
     return await fetch(href, { redirect: 'follow', headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; UnsurfacedRead/1.0; +https://unsurfaced-intelligence.com)', 'Accept': accept } });
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 UnsurfacedRead/1.1',
+      'Accept': accept } });
   } catch (e) {
     console.log('img_relay_unreachable', href.slice(0, 120));
     return null;
   }
+}
+/* SEAM:READ_DESIGN full-size second chance: the same image with its resize
+ * parameters removed (?w=237&h=158, -300x200.jpg). Null when nothing changed. */
+function readImgLarger(href) {
+  let t;
+  try { t = new URL(href); }
+  catch (e) { return null; }
+  let changed = false;
+  for (const q of ['w', 'h', 'width', 'height', 'resize', 'fit', 'crop', 'sz', 'size', 'quality', 'q']) {
+    if (t.searchParams.has(q)) { t.searchParams.delete(q); changed = true; }
+  }
+  const p = t.pathname.replace(/-\d{2,4}x\d{2,4}(\.(?:jpe?g|png|webp))$/i, '$1');
+  if (p !== t.pathname) { t.pathname = p; changed = true; }
+  return changed ? readImgUrl(t.href) : null;
 }
 async function readImageRelay(path, env) {
   const hdr = ttl => ({ 'Cache-Control': 'public, max-age=' + ttl, 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
   const id = (/^\/img\/s\/(\d{1,9})$/.exec(path) || [])[1];
   if (!id) return new Response('not found', { status: 404, headers: hdr(3600) });
   const cache = caches.default;
-  const key = new Request('https://img.unsurfaced-intelligence.com/s/' + id);
+  const key = new Request('https://img.unsurfaced-intelligence.com/v2/s/' + id);   // v2: everything cached small is fetched again
   const hit = await cache.match(key);
   if (hit) return hit;
   const miss = async why => {
@@ -6849,12 +6864,17 @@ async function readImageRelay(path, env) {
     if (res && res.ok && /text\/html|xhtml/.test(res.headers.get('content-type') || '')) {
       const html = (await res.text()).slice(0, READ_IMG.HTML_BYTES);
       const og = readImgUrl(pvMeta(html, 'og:image') || pvMeta(html, 'twitter:image'), res.url || page);
-      if (og) tries.push(og);
+      if (og) tries.push({ href: og, from: 'og' });
     }
   }
-  const stored = readImgUrl(row.image_url);
-  if (stored && tries.indexOf(stored) < 0) tries.push(stored);
-  for (const href of tries) {
+  const stored = readImgUrl(row.image_url), full = stored && readImgLarger(stored);
+  if (full) tries.push({ href: full, from: 'full' });
+  if (stored) tries.push({ href: stored, from: 'stored' });
+  const seen = {};
+  for (const t of tries) {
+    if (seen[t.href]) continue;
+    seen[t.href] = 1;
+    const href = t.href;
     const res = await readImgFetch(href, 'image/avif,image/webp,image/*');
     if (!res || !res.ok) continue;
     const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
@@ -6862,7 +6882,8 @@ async function readImageRelay(path, env) {
     if (parseInt(res.headers.get('content-length') || '0', 10) > READ_IMG.MAX_BYTES) continue;
     const buf = await res.arrayBuffer();
     if (!buf.byteLength || buf.byteLength > READ_IMG.MAX_BYTES) continue;
-    const out = new Response(buf, { status: 200, headers: Object.assign({ 'Content-Type': type }, hdr(READ_IMG.TTL)) });
+    const out = new Response(buf, { status: 200, headers: Object.assign({ 'Content-Type': type, 'X-Img-From': t.from,
+      'Access-Control-Expose-Headers': 'X-Img-From' }, hdr(READ_IMG.TTL)) });
     await cache.put(key, out.clone());
     return out;
   }

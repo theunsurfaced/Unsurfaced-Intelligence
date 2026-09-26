@@ -653,7 +653,7 @@
   },
   "SEAM:READ_DESIGN": {
    "file": "worker/src/index.js",
-   "purpose": "readImageRelay: public GET /img/s/<id>, published DAILY stories only, og:image then stored image_url, https, private hosts refused, image/* under 6 MB, edge cache 7 days (misses 1 day), CORS open, no AI; readValidate keeps lead_image/cover_image only from the evidence pack; READ_CONTRACT asks for dek, lead_image, cover_image"
+   "purpose": "readImageRelay: public GET /img/s/<id>, published DAILY stories only; og:image, then the stored image at full size (resize parameters removed), then the stored image; https, private hosts refused, image/* under 6 MB, edge cache v2 7 days (misses 1 day), CORS open, X-Img-From, no AI. The page's photo quality law: a minimum source width per slot, next candidate or type-only design, never a stretched photo. readValidate keeps lead_image/cover_image only from the evidence pack; READ_CONTRACT asks for dek, lead_image, cover_image"
   }
  },
  "planned": [
