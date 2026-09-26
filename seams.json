@@ -671,6 +671,10 @@
   "SEAM:LAKE_TRUTH": {
    "file": "worker/src/index.js",
    "purpose": "lake numbers you can trust: EXCAVATE reads match_signals_read (no rejected rows, publish dates; DAILY's match_signals untouched); lakeWhen dates a row by publish date, live captures without one never count toward brand momentum, track or audience counts; live searches capture only news/web/discourse/video; looksEnglish at the door; rejection merges momentum; Guardian key from env; 0027 lets MINE's tier 0 into the lake"
+  },
+  "SEAM:EXCAVATE_ARRIVAL": {
+   "file": "worker/src/index.js",
+   "purpose": "the arrival grid: PROPOSE names up to 12 recurring patterns; arrivalTiles fills to 12 from the desk's scored edition (real clusters, real counts, 'From the desk'); a tile keeps its own lens; state chips count every tile"
   }
  },
  "planned": [

@@ -5138,7 +5138,7 @@ async function excavatePropose(request, env, origin, internal) {
   let body = {};
   try { body = await request.json(); } catch (e) {}
   const days = Math.min(180, Math.max(7, parseInt(body.days, 10) || RECUR.WINDOW_D));
-  const want = Math.min(8, Math.max(1, parseInt(body.count, 10) || 6));
+  const want = Math.min(12, Math.max(1, parseInt(body.count, 10) || 6));   // SEAM:EXCAVATE_ARRIVAL: up to 12 patterns
   const minWeeks = Math.min(6, Math.max(1, parseInt(body.min_weeks, 10) || RECUR.MIN_WEEKS));
   const ck = 'prop:v3:' + days + ':' + want + ':' + minWeeks;
 
@@ -5223,7 +5223,7 @@ async function excavatePropose(request, env, origin, internal) {
       const reply = await callModel(env, 't3', [
         { role: 'system', content: sys },
         { role: 'user', content: brief }
-      ], { max_tokens: 1400 });
+      ], { max_tokens: 2400 });   // room for 12 named patterns
       const j = parseModelJson(reply);
       written = (j && Array.isArray(j.themes)) ? j.themes : [];
       fieldRead = (j && typeof j.read === 'string') ? j.read.slice(0, 400) : '';
@@ -6006,12 +6006,40 @@ async function deskRunGuarded(request, env, origin) {
  * lines so the featured grid, Trending, and Brands all draw from one ranked
  * source. Trending is territories by velocity, computed from the same field.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const FEED = { DAYS: RECUR.WINDOW_D, WANT: 8, MIN_WEEKS: RECUR.MIN_WEEKS, TRACKS_KEY: 'tracks:stats', AUD_KEY: 'aud:stats', ATTN_PREFIX: 'attention:' };
+const FEED = { DAYS: RECUR.WINDOW_D, WANT: 12, MIN_WEEKS: RECUR.MIN_WEEKS, TRACKS_KEY: 'tracks:stats', AUD_KEY: 'aud:stats', ATTN_PREFIX: 'attention:' };
 function feedCacheKey() { return 'prop:v3:' + FEED.DAYS + ':' + FEED.WANT + ':' + FEED.MIN_WEEKS; }
 async function feedWarm(env) {
   // Internal PROPOSE: same computation, same cache, no session. Runs at 06:00 and on a cold read.
   const req = new Request('https://internal/excavate/propose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: FEED.WANT, days: FEED.DAYS, min_weeks: FEED.MIN_WEEKS, refresh: true }) });
   try { const r = await excavatePropose(req, env, '', true); return r && r.ok ? await r.json() : null; } catch (e) { return null; }
+}
+/* SEAM:EXCAVATE_ARRIVAL: the arrival grid holds 8 to 12 tiles. Recurring
+ * patterns lead. When fewer than 12 recur, the desk's scored edition fills the
+ * rest: real clusters, real counts, marked "From the desk". Nothing is invented
+ * to pad the grid; a thin lake shows fewer tiles, honestly. */
+const ARRIVAL = { MAX: 12 };
+function arrivalTiles(proposed, deskItems) {
+  const tiles = (proposed || []).slice(0, ARRIVAL.MAX);
+  const have = new Set(tiles.map(t => t.cluster_id));
+  const fill = (deskItems || []).filter(i => i && i.cluster_id && i.title && !have.has(i.cluster_id))
+    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .slice(0, Math.max(0, ARRIVAL.MAX - tiles.length))
+    .map(i => {
+      const k = (i.components && i.components.counts) || {};
+      return {
+        id: 'desk-' + String(i.cluster_id).slice(0, 8), cluster_id: i.cluster_id,
+        lens: PROPOSE_LENS.includes(i.lens) ? i.lens : 'culture',
+        title: String(i.title).slice(0, 90),
+        subtitle: 'From the desk' + (i.territory ? ' · ' + String(i.territory).replace(/-/g, ' ') : ''),
+        line: i.line || null, deck: '', hook: '', query: String(i.title).slice(0, 160),
+        stat: k.recent_7d ? '↑ ' + k.recent_7d + ' signals this week' : '',
+        state: i.state || 'STEADY', shape: null,
+        evidence: { sources: k.sources || 0, weeks_touched: k.weeks || 0, members: k.members || 0 },
+        exemplar: i.url ? { url: i.url, source_name: i.source_name || '', published_at: i.published_at || null } : null,
+        image: i.image || null, provenance: 'desk'
+      };
+    });
+  return tiles.concat(fill);
 }
 async function excavateFeed(env, origin) {
   let out = null;
@@ -6025,8 +6053,13 @@ async function excavateFeed(env, origin) {
   // Desk lines ride along when the edition has them for the same clusters.
   let ed = null; try { ed = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null'); } catch (e) {}
   const lineBy = new Map(((ed && ed.items) || []).map(i => [i.cluster_id, i]));
-  const proposed = out.proposed.map(p => { const d = lineBy.get(p.cluster_id); return Object.assign({}, p, { line: d ? d.line : null, lens: d ? d.lens : null, image: (p.exemplar && p.exemplar.image) || null }); });
-  return json({ ok: true, proposed, field: out.field || null, trending, generated_at: out.generated_at || null, cached: !!out }, 200, origin, env);
+  // SEAM:EXCAVATE_ARRIVAL: a tile keeps its own lens unless the desk names one (it used to become null).
+  const proposed = out.proposed.map(p => { const d = lineBy.get(p.cluster_id); return Object.assign({}, p, { line: d ? d.line : null, lens: (d && d.lens) || p.lens || null, image: (p.exemplar && p.exemplar.image) || null }); });
+  const tiles = arrivalTiles(proposed, (ed && ed.items) || []);
+  const states = {};
+  tiles.forEach(t => { const st = t.state || 'STEADY'; states[st] = (states[st] || 0) + 1; });
+  const field = out.field ? Object.assign({}, out.field, { states }) : { read: '', states };
+  return json({ ok: true, proposed: tiles, field, trending, generated_at: out.generated_at || null, cached: !!out }, 200, origin, env);
 }
 
 /* ═══ SEAM:TRACKS — the house's tracked entities as computed cards. ═══

@@ -1148,6 +1148,10 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .fi-state-tag.st-cooling{color:var(--text3,#545268)}
 .fi-state-tag.st-contested{color:var(--accent4,#F55A8C)}
 .fi-state-tag.st-steady{color:var(--text2,#8988A0)}
+/* EXCAVATE_ARRIVAL: the photo leads a tile; the tag rides on a dark plate, the corner ornament steps aside */
+.insight-card.has-img::after{display:none}
+.insight-card.has-img .fi-state-tag{background:rgba(8,8,10,.82);z-index:var(--z-raise)}
+.insight-card .card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .fi-receipts{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3,#545268);letter-spacing:.08em;margin:2px 0 8px;text-transform:uppercase}
 
 /* Skeleton loading state */
@@ -8410,7 +8414,7 @@ document.addEventListener('keydown', function(e) {
 //  • renderTrendingNow(): sidebar rotation from a 20-topic pool
 // ════════════════════════════════════════════════════════════════
 
-const _FI_CACHE_KEY  = 'unsurfaced_fi_v3'; // v3: cache may carry a lake field read
+const _FI_CACHE_KEY  = 'unsurfaced_fi_v4'; // v4: EXCAVATE_ARRIVAL, 8 to 12 tiles, photo-led layout
 let   _FI_LAKE        = null;   // live PROPOSE payload when the lake owns the grid
 let   _fiStateFilter  = null;   // active state-strip filter, null = all
 const _FI_LAKE_MIN    = 2;      // SEAM:HUB_FEED — fewer honest cards beat a padded eight; below two, the grid says the lake is filling
@@ -8865,11 +8869,11 @@ function _renderLakeCard(card, i) {
   if (card.shape)        bits.push(String(card.shape).toUpperCase());
   const delay = i * 0.06;
   return `
-    <div class="insight-card fi-card-enter" style="animation-delay:${delay}s;position:relative" onclick="openFeaturedCard('${card.id}')">
+    <div class="insight-card fi-card-enter${card.image?' has-img':''}" style="animation-delay:${delay}s;position:relative" onclick="openFeaturedCard('${card.id}')">
+      ${card.image?`<img class="card-img" src="${safeUrl(card.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var k=this.closest('.insight-card');if(k)k.classList.remove('has-img');var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe((card.exemplar&&card.exemplar.source_name)||'source')}</div>`:''}
       <span class="fi-state-tag ${meta.cls}">${meta.label}</span>
       <span class="card-cat ${lens}">● ${CAT_LABELS[lens]}</span>
-      ${card.image?`<img class="card-img" src="${safeUrl(card.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe((card.exemplar&&card.exemplar.source_name)||'source')}</div>`:''}
-      <h2 class="card-title">${card.title}</h2>
+      <h2 class="card-title">${safe(card.title)}</h2>
       <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">${card.subtitle || ''}</p>
       <p class="card-excerpt">${card.line ? safe(card.line) : (card.hook || card.deck || '')}</p>
       ${card.exemplar&&card.exemplar.url?`<p class="card-excerpt" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)">${safe(card.exemplar.source_name||'')}${card.exemplar.published_at||card.evidence&&card.evidence.last_seen?' · '+safe(String(card.evidence.last_seen||'').slice(0,10)):''} · <a class="proof-link" href="${safeUrl(card.exemplar.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a></p>`:''}
