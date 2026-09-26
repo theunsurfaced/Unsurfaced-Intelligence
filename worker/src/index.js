@@ -67,6 +67,9 @@ export default {
         .then(() => deskEdition(env))   // SEAM:DESK — the 06:00 edition, after DAILY composes
         .then(s => console.log('desk_edition', JSON.stringify(s)))
         .catch(e => console.log('desk_edition_error', String(e && e.message)))
+        .then(() => readCadence(env))   // SEAM:READ_ENGINE: Monday weekly, 1st monthly, after DAILY composes
+        .then(s => console.log('read_cadence', JSON.stringify(s)))
+        .catch(e => console.log('read_cadence_error', String(e && e.message)))
         .then(() => railSpendLedger(env))   // yesterday's real rail spend, before the KV ledgers expire (audit F2)
         .then(s => console.log('rail_spend', JSON.stringify(s)))
         .catch(e => console.log('rail_spend_error', String(e && e.message)))
@@ -6736,6 +6739,26 @@ async function readTick(env) {
   return out;
 }
 
+/* SEAM:READ_ENGINE once-law: a window with a live read (queued, compiling,
+ * ready, held, published) is never queued again by the cadence or THE RECORD.
+ * Only a failed window is retried. Nothing is paid for twice. */
+async function readQueueOnce(env, kind, win, meta) {
+  const live = await sbRest(env, 'house_reads?kind=eq.' + kind + '&window_start=eq.' + win.start + '&window_end=eq.' + win.end +
+    '&status=in.(queued,compiling,ready,held,published)&select=id,status&limit=1') || [];
+  if (live[0]) return { skipped: live[0].status, id: live[0].id };
+  const q = await readQueue(env, kind, win, meta);
+  return { queued: q.row ? q.row.id : null };
+}
+/* SEAM:READ_ENGINE cadence: rides the 06:10 UTC compose cron, after DAILY.
+ * Monday: the Weekly Read for the week that just closed (Mon to Sun).
+ * The 1st: the Monthly Read for the month that just closed. */
+async function readCadence(env, now) {
+  const d = now || new Date(), out = {};
+  if (d.getUTCDay() === 1) out.weekly = await readQueueOnce(env, 'weekly', readWindow('weekly', null, d), { plan: 'cadence' });
+  if (d.getUTCDate() === 1) out.monthly = await readQueueOnce(env, 'monthly', readWindow('monthly', null, d), { plan: 'cadence' });
+  if (out.weekly || out.monthly) out.tick = await readTick(env);
+  return out;
+}
 async function readQueue(env, kind, win, meta) {
   const prev = await sbRest(env, 'house_reads?kind=eq.' + kind + '&window_start=eq.' + win.start + '&window_end=eq.' + win.end +
     '&select=id,version,status&order=version.desc&limit=1') || [];
@@ -6813,11 +6836,11 @@ async function readRoute(path, body, env, origin, user) {
     const lastDay = readDay(b);
     for (const w of readWeeksBetween(a, b)) {
       if (readDay(w.end) > lastDay) continue;
-      await readQueue(env, 'weekly', w, { plan: 'record' }); made.weekly++;
+      const rw = await readQueueOnce(env, 'weekly', w, { plan: 'record' }); if (rw.queued) made.weekly++; else made.kept = (made.kept || 0) + 1;
     }
     for (const m of readMonthsBetween(a, b)) {
       const mm = readDay(m.end) > lastDay ? { start: m.start, end: b, label: m.label + ' (through ' + readShort(lastDay) + ')' } : m;
-      await readQueue(env, 'monthly', mm, { plan: 'record' }); made.monthly++;
+      const rm = await readQueueOnce(env, 'monthly', mm, { plan: 'record' }); if (rm.queued) made.monthly++; else made.kept = (made.kept || 0) + 1;
     }
     await readQueue(env, 'record', { start: a, end: b, label: 'DAILY: The Record' }, { plan: 'record' }); made.record++;
     const tick = await readTick(env);
