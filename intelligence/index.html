@@ -1148,6 +1148,42 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .fi-state-tag.st-cooling{color:var(--text3,#545268)}
 .fi-state-tag.st-contested{color:var(--accent4,#F55A8C)}
 .fi-state-tag.st-steady{color:var(--text2,#8988A0)}
+/* EXCAVATE_MEANING: meanings on each finding, the moves as briefs, All Lenses full width */
+.mean-block{border-top:1px solid var(--border);margin:12px 0 10px;padding-top:10px}
+.mean-head{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.mean-row{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:5px 0;border-top:1px dashed var(--border)}
+.mean-row:first-of-type{border-top:0}
+.mean-k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding-top:2px}
+.mean-v{font-size:12.5px;line-height:1.5;color:var(--text)}
+.moves-section{margin:28px 0 8px;padding-top:20px;border-top:1px solid var(--border)}
+.moves-section:empty{display:none}
+.moves-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.moves-title{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text)}
+.moves-sub{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+.moves-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.move-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:18px 20px}
+.move-top{display:flex;justify-content:space-between;gap:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.move-type{color:var(--accent)}
+.move-head{font-family:'DM Serif Display',serif;font-size:19px;line-height:1.25;color:var(--text);margin-bottom:6px}
+.move-body{font-size:13px;line-height:1.55;color:var(--text2);margin-bottom:10px}
+.move-rows{border-top:1px solid var(--border)}
+.move-row{display:grid;grid-template-columns:80px 1fr;gap:10px;padding:7px 0;border-bottom:1px dashed var(--border)}
+.move-k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding-top:2px}
+.move-v{font-size:12.5px;line-height:1.5;color:var(--text)}
+#live-results.show-all .results-lens-panel:not(#rlp-truth){display:block;grid-template-columns:none}
+#live-results.show-all .results-lens-panel:not(#rlp-truth) .lens-panel-head{margin-bottom:12px}
+#live-results.show-all #rlp-truth{padding-top:4px}
+#live-results.show-all #rlp-truth .truth-panel{display:none!important}
+#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#live-results.show-all .lens-ideas-strip{display:none}
+#live-results.show-all #results-grid-truth{display:none}
+#live-results.show-all .results-lens-panel.empty{display:none}
+#live-results:not(.show-all) #moves-section{display:none}
+.results-lens-panel.active .lens-ideas-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+.results-sources-strip:empty{display:none}
+@media(max-width:1000px){.moves-grid{grid-template-columns:1fr}#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:1fr}.mean-row,.move-row{grid-template-columns:1fr}}
+
 /* EXCAVATE_ARRIVAL: the photo leads a tile; the tag rides on a dark plate, the corner ornament steps aside */
 .insight-card.has-img::after{display:none}
 .insight-card.has-img .fi-state-tag{background:rgba(8,8,10,.82);z-index:var(--z-raise)}
@@ -2000,8 +2036,6 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   <!-- SEAM:READ_SURFACE — the first pass carries everything: THE READ, the interpretation, then findings with images, then sources. Nothing behind a dropdown. -->
   <div class="read-block" id="read-block" style="display:none"></div>
   <div class="results-sources-strip" id="results-sources-strip"></div>
-  <!-- SEAM:VOICE@intelligence -->
-  <div id="voice-strip"></div>
   <!-- 5-LENS TAB BAR -->
   <div class="results-lens-bar" id="results-lens-bar">
     <button class="rlb active cat-all" id="rlb-all" onclick="switchResultsLens('all')">All Lenses <span class="rlb-count" id="rlb-count-all">—</span></button>
@@ -2038,6 +2072,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <div class="results-grid" id="results-grid-truth"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--deep2)">Strategic Actions</span></div><div class="lens-ideas-row" id="lens-ideas-truth"></div></div>
   </div>
+  <div class="moves-section" id="moves-section"></div>
+  <!-- SEAM:VOICE@intelligence -->
+  <div id="voice-strip"></div>
   <div id="results-grid" style="display:none"></div>
   <div id="ideas-grid" style="display:none"></div>
   <div id="ideas-section" style="display:none"></div>
@@ -3364,8 +3401,7 @@ async function renderVoiceStrip(q){
   if (!v || !v.ok) return;
 
   if (v.enabled === false) {
-    el.innerHTML = `<div class="voice-strip"><div class="voice-head">● CONSUMER VOICE</div>
-      <div class="voice-note">${safe(v.note || 'unavailable')}</div></div>`;
+    el.innerHTML = '';   // EXCAVATE_MEANING: an unavailable voice takes no panel
     return;
   }
   if (!v.mentions) {
@@ -3374,8 +3410,7 @@ async function renderVoiceStrip(q){
     // 'the category may be moving without the brand in it' is nonsense on a
     // query like 'streaming ad fatigue'. Report the absence, let the analyst
     // read it.
-    el.innerHTML = `<div class="voice-strip"><div class="voice-head">● CONSUMER VOICE · BLUESKY · ${v.window_days} DAYS</div>
-      <div class="voice-note">No posts matched “${safe(entity)}” in the last ${v.window_days} days.</div></div>`;
+    el.innerHTML = '';   // EXCAVATE_MEANING: an empty voice says nothing, so it takes no panel
     return;
   }
 
@@ -3447,17 +3482,17 @@ function renderResults(q, data, mode){
   const _seenSrc=new Set();
   const _uniqSrc=lastSources.filter(sv=>{ const k=_norm(sv.display||sv.label); if(!k||_seenSrc.has(k)) return false; _seenSrc.add(k); return true; });
   const _rails=(window._gatherMeta&&window._gatherMeta.rails)||[]; const _answered=_rails.filter(r=>r.n>0).length;
-  strip.innerHTML=`<span class="strip-label">SOURCES USED:</span>`+
-    _uniqSrc.map(sv=>`<a class="strip-chip ok" href="${safeUrl(sv.url)}" target="_blank" rel="noopener">${safe(sv.display||sv.label)}</a>`).join('')+
-    (_rails.length?`<span class="strip-label" style="margin-left:auto">${_answered} OF ${_rails.length} RAILS ANSWERED</span>`:'');
+  // EXCAVATE_MEANING: no sources section. Every finding carries its own source.
+  strip.innerHTML='';
 
 
   // SEAM:LENS_PANELS — the compiled read lands in the five-lens layout, grouped by the category the compiler earned.
   const _ins=_attachImages((data.insights||[]), window._gatherItems||[]), _ideas=(data.ideas||[]);
   _renderReadBlock(q, data, mode);
-  const lenses={}; CATS.forEach((c,ci)=>{ lenses[c]={ insights:_ins.filter(x=>(CATS.includes(x.category)?x.category:'consumer')===c), ideas:_ideas.filter((x,k)=>k%CATS.length===ci), sources:[] }; });
+  const lenses={}; CATS.forEach((c,ci)=>{ lenses[c]={ insights:_ins.filter(x=>(CATS.includes(x.category)?x.category:'consumer')===c), ideas:_ideas.filter(x=>Number.isInteger(x.from)&&_ins[x.from]&&(CATS.includes(_ins[x.from].category)?_ins[x.from].category:'consumer')===c), sources:[] }; });   // EXCAVATE_MEANING: a lens shows the moves from its own findings
   const readLines=Array.isArray(data.read)?data.read:[];
-  const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources };
+  window._lastFrame=data.frame||null;
+  const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources, dropped:data.moves_dropped||0 };
   _fillLensPanels(lenses, truth);
   _renderTruthClaims(window._gatherItems||[]);
   _renderRailVoices(window._gatherItems||[]);
@@ -4922,16 +4957,31 @@ function _buildSignalTruth(q, lenses) {
    showed a header and an empty body. Bars that drew width from the loop index are gone: nothing on an
    insight card is measured, so nothing draws. The modal opens the card you clicked, not the same index in
    a different list. */
+/* EXCAVATE_MEANING: a finding says what it means three ways; a move reads as a brief. */
+function _meaningBlock(ins){
+  const m=ins&&ins.meaning, f=window._lastFrame||{};
+  if(!m) return ins&&ins.implication?`<p class="card-excerpt" style="color:var(--text);opacity:.9"><strong>So:</strong> ${safe(ins.implication)}</p>`:'';
+  const rows=[['Culture',m.culture],[f.category||'The category',m.category],[f.audience||'The consumer',m.consumer]].filter(r=>r[1]);
+  return rows.length?`<div class="mean-block"><div class="mean-head">What it means</div>${rows.map(r=>`<div class="mean-row"><span class="mean-k">${safe(r[0])}</span><span class="mean-v">${safe(r[1])}</span></div>`).join('')}</div>`:'';
+}
+function _moveCard(m, all){
+  const rows=[['Why now',m.because],['Proof',m.proof],['Watch',m.measure],['Risk',m.risk]].filter(r=>r[1]);
+  const src=Number.isInteger(m.from)&&all[m.from]?all[m.from]:null;
+  return `<div class="move-card"><div class="move-top"><span class="move-type">${safe(m.type||'Move')}</span>${m.for?`<span class="move-for">For ${safe(m.for)}</span>`:''}</div>
+    <div class="move-head">${safe(m.headline||'')}</div><div class="move-body">${safe(m.body||'')}</div>
+    ${rows.length?`<div class="move-rows">${rows.map(r=>`<div class="move-row"><span class="move-k">${r[0]}</span><span class="move-v">${safe(r[1])}</span></div>`).join('')}</div>`:''}
+    ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}</div>`;
+}
 function _fillLensPanels(lenses, truth){
   const all=truth.allInsights||[];
   const card=(ins,i,cat)=>{
     const gi=all.indexOf(ins); const idx=gi>=0?gi:i;
-    return `<div class="insight-card" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
+    return `<div class="insight-card${ins.image?' has-img':''}" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
         ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(ins.imageSource||ins.source||'source')}</div>`:''}
         <span class="card-cat ${ins.category||cat}">● ${safe(CAT_LABELS[ins.category||cat]||'Insight')}</span>
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
-        ${ins.implication?`<p class="card-excerpt" style="color:var(--text);opacity:.9"><strong>So:</strong> ${safe(ins.implication)}</p>`:''}
+        ${_meaningBlock(ins)}
         <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
       </div>`;
   };
@@ -4943,13 +4993,8 @@ function _fillLensPanels(lenses, truth){
     const grid=document.getElementById('results-grid-'+cat);
     if(grid) grid.innerHTML=insights.map((ins,i)=>card(ins,i,cat)).join('')||`<p style="color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:24px 0">No ${safe(CAT_LABELS[cat])} finding compiled for this query. The evidence did not land on this lens.</p>`;
     const ideasEl=document.getElementById('lens-ideas-'+cat);
-    if(ideasEl) ideasEl.innerHTML=ideas.slice(0,3).map(idea=>`
-      <div class="lens-idea-card">
-        <div class="lens-idea-type">${safe(idea.type||'')}</div>
-        <div class="lens-idea-headline">${safe(idea.headline||'')}</div>
-        <div class="lens-idea-body">${safe(idea.body||'')}</div>
-        ${Number.isInteger(idea.from)&&all[idea.from]?`<div class="lens-idea-from">FROM · ${safe(all[idea.from].title)}</div>`:''}
-      </div>`).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">Nothing invented to fill the space.</div></div>`;
+    if(ideasEl) ideasEl.innerHTML=ideas.slice(0,4).map(m=>_moveCard(m,all)).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">No move from this lens met the bar. Nothing invented to fill the space.</div></div>`;
+    const lp=document.getElementById('rlp-'+cat); if(lp) lp.classList.toggle('empty', !insights.length);
   });
   const tH=document.getElementById('truth-headline'),tB=document.getElementById('truth-body');
   if(tH) tH.textContent=truth.headline||'';
@@ -4959,8 +5004,11 @@ function _fillLensPanels(lenses, truth){
   const tG=document.getElementById('results-grid-truth');
   if(tG) tG.innerHTML=all.map((ins,i)=>card(ins,i,ins.category||'consumer')).join('');
   const tI=document.getElementById('lens-ideas-truth');
-  if(tI) tI.innerHTML=(truth.allIdeas||[]).slice(0,6).map(idea=>`
-    <div class="lens-idea-card"><div class="lens-idea-type">${safe(idea.type||'')}</div><div class="lens-idea-headline">${safe(idea.headline||'')}</div><div class="lens-idea-body">${safe(idea.body||'')}</div></div>`).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">The evidence on this query is too thin to name a move.</div></div>`;
+  // EXCAVATE_MEANING: one THE MOVES section closes All Lenses; each move reads as a brief.
+  const ms=document.getElementById('moves-section');
+  if(ms){ const mv=truth.allIdeas||[], dr=truth.dropped||0;
+    ms.innerHTML=(mv.length||dr)?`<div class="moves-head"><span class="moves-title">The moves</span><span class="moves-sub">${mv.length} earned${dr?' · '+dr+' did not meet the bar: no evidence, or nothing concrete':''}</span></div><div class="moves-grid">${mv.map(m=>_moveCard(m,all)).join('')}</div>`:''; }
+  if(tI) tI.innerHTML=(truth.allIdeas||[]).slice(0,6).map(m=>_moveCard(m,all)).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">The evidence on this query is too thin to name a move.</div></div>`;
   const badge=document.getElementById('rlb-count-truth');
   if(badge) badge.textContent=all.length||'—';
   const bAll=document.getElementById('rlb-count-all'); if(bAll) bAll.textContent=all.length||'—';

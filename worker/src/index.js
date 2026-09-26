@@ -538,7 +538,8 @@ async function synthesize(body, env, origin) {
      * that separates intelligence from retrieval — every finding must answer
      * "so what does a brand DO about this". */
     const isReport = body.mode === 'report';
-    const usr = `Topic: "${query}"\n\nEVIDENCE:\n${evidence}\n\n` +
+    // SEAM:EXCAVATE_MEANING: report mode asks for the frame, the three meanings and the move brief.
+    const usrPlain = `Topic: "${query}"\n\nEVIDENCE:\n${evidence}\n\n` +
       'Return JSON exactly shaped as:\n' +
       '{' + (isReport ? '"read":["line 1: one sharp sentence reframing what the evidence actually shows",' +
       '"line 2: one sentence naming the move it implies"],' : '') +
@@ -554,10 +555,12 @@ async function synthesize(body, env, origin) {
       (isReport ? 'Never restate source counts or citation totals as findings: say what the evidence MEANS. ' +
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
+    const usr = isReport ? excReportPrompt(query, evidence) : usrPlain;
 
     // SEAM:ONE_RAIL — THE READ rides the model pool: report mode is voice (t3), structured mode is bulk (t1).
     const outText = await callModel(env, isReport ? 't3' : 't1',
-      [{ role: 'system', content: sys }, { role: 'user', content: usr }], { max_tokens: isReport ? 2800 : 1600 });   // SEAM:EXCAVATE_WIRE: room for a whole report
+      [{ role: 'system', content: isReport ? sys + ' ' + EXC_MOVE_LAW : sys }, { role: 'user', content: usr }],
+      { max_tokens: isReport ? 3600 : 1600 });   // SEAM:EXCAVATE_MEANING: room for meanings and move briefs
     const parsed = extractJson(outText || '');
     if (!parsed || !Array.isArray(parsed.insights)) {
       // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read.
@@ -578,7 +581,8 @@ async function synthesize(body, env, origin) {
         category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer',
         title: String(x.title || '').slice(0, 120),
         excerpt: String(x.excerpt || '').slice(0, 400),
-        implication: String(x.implication || '').slice(0, 300) || null,
+        implication: (String(x.implication || '').slice(0, 300) || (x.meaning && x.meaning.category ? String(x.meaning.category).slice(0, 300) : '')) || null,
+        meaning: isReport ? excMeaning(x.meaning) : null,
         confidence: earned(ns),
         evidence: ns,
         source: String((first && first.source) || x.source || '').slice(0, 120),
@@ -588,12 +592,19 @@ async function synthesize(body, env, origin) {
     }).filter(x => x.title);
     const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2)
       .map(x => String(x || '').slice(0, 220)).filter(Boolean);
-    const ideas = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 6).map(x => ({
+    const ideasAll = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 6).map(x => ({
       type: String(x.type || 'Strategy').slice(0, 40),
       headline: String(x.headline || '').slice(0, 120),
       body: String(x.body || '').slice(0, 400),
-      from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null   // SEAM:EXCAVATE_WIRE: back where it belongs
+      from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null,   // SEAM:EXCAVATE_WIRE: back where it belongs
+      for: excShort(x.for), because: String(x.because || '').slice(0, 280), proof: String(x.proof || '').slice(0, 280),
+      measure: String(x.measure || '').slice(0, 240), risk: String(x.risk || '').slice(0, 240), evidence: cited(x)
     })).filter(x => x.headline);
+    // SEAM:EXCAVATE_MEANING: the move law, enforced. Weak moves are dropped and counted, never shown.
+    const guard = isReport ? excMoveGuard(ideasAll, query) : { kept: ideasAll, dropped: 0 };
+    const ideas = guard.kept, movesDropped = guard.dropped;
+    const frameIn = (parsed.frame && typeof parsed.frame === 'object') ? parsed.frame : {};
+    const frame = isReport ? { category: excShort(frameIn.category), audience: excShort(frameIn.audience) } : null;
     const brief = String(parsed.brief || '').slice(0, 1200);
     // SEAM:READ_LEDGER — persist the read, then let its live signals enter the lake at raw.
     let readId = null;
@@ -601,12 +612,12 @@ async function synthesize(body, env, origin) {
       readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
-        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length } });
+        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped } });
       const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: 'news', published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: 3, kind: c.lens || 'open', rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
     } catch (e) {}
-    return json({ ok: true, data: { insights, ideas, brief, read: read.length === 2 ? read : null, read_id: readId,
+    return json({ ok: true, data: { insights, ideas, brief, read: read.length === 2 ? read : null, read_id: readId, frame, moves_dropped: movesDropped,
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added) } }, 200, origin, env);
   }
 
@@ -679,6 +690,85 @@ function extractJson(s) {
 
 // Server-side connectors — fetched by the Worker itself (keyless, and not subject
 // to browser CORS, so they enrich the corpus with sources the client can't reach).
+/* SEAM:EXCAVATE_MEANING: the report contract. A finding says what it means for
+ * the culture, the category and the consumer; a move is a brief with its
+ * mechanism, proof, watch signal and risk. The MOVE LAW is asked of the model
+ * and then enforced here: excMoveGuard drops a move with no evidence or nothing
+ * concrete in it, and a generic move needs two concrete anchors to stay. */
+const EXC_MOVE_LAW = 'MOVE LAW: a move is a brief a team could start Monday, not a category of activity. ' +
+  'It names a mechanism taken from the evidence: a named brand, retailer, channel, format, price point, number or quoted phrase. ' +
+  'Moves any brand in any category could run are forbidden, including: partner with influencers, leverage social media, ' +
+  'eco-friendly packaging, launch a new line, authentic brand storytelling, build awareness, engage Gen Z, create content. ' +
+  'A move that cannot name its mechanism is left out. The difference, shown in another category (never reuse it): ' +
+  'weak "Collaborate with influencers to promote the sneaker drop"; strong "Gate the next drop behind proof of tour attendance, ' +
+  'the mechanic that sold out the waitlist in evidence 12".';
+function excReportPrompt(query, evidence) {
+  return 'Topic: "' + query + '"\n\nEVIDENCE:\n' + evidence + '\n\n' +
+    'Return JSON exactly shaped as:\n' +
+    '{"frame":{"category":"the category this topic sits in, 1 to 3 words","audience":"the people that category serves here, 1 to 3 words"},' +
+    '"read":["line 1: one sharp sentence reframing what the evidence actually shows","line 2: one sentence naming the move it implies"],' +
+    '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
+    '"excerpt":"1-2 sentences: what happened, naming the concrete thing from the evidence",' +
+    '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
+    '"meaning":{"culture":"1 sentence: what this says about the culture right now",' +
+    '"category":"1 sentence: what it changes for the category: its products, pricing, shelf, channel or rivals",' +
+    '"consumer":"1 sentence: what it means for the people the category serves, in their terms"}}],' +
+    '"ideas":[{"type":"Positioning|Product|Campaign|Content|Partnership|Channel|Pricing",' +
+    '"for":"brand|product|creative|media|retail|partnerships",' +
+    '"headline":"verb-first action, at most 10 words",' +
+    '"body":"1-2 sentences: exactly what to do, where, and for whom",' +
+    '"because":"1 sentence: the tension in the evidence this move resolves",' +
+    '"proof":"1 sentence naming the evidence it stands on: a brand, number, retailer, channel or quote",' +
+    '"measure":"1 sentence: the signal that shows it is working within 60 days",' +
+    '"risk":"1 sentence: the counter-signal that would make it fail",' +
+    '"evidence":[1-based numbers],"from":<0-based index of the insight it comes from>}],' +
+    '"brief":"3-4 sentences a strategist would say out loud: where the conversation is, what the evidence specifically shows, and the one thing to do first."}\n' +
+    'Never restate source counts or citation totals as findings: say what the evidence MEANS. ' +
+    'If evidence items disagree, make one insight name the disagreement plainly. ' +
+    'Give 6-8 insights across the lenses the evidence supports, and 3-5 moves that obey the MOVE LAW. JSON only.';
+}
+function excShort(v) {
+  const t = String(v || '').replace(/["“”]/g, '').replace(/\s+/g, ' ').trim();
+  return t && t.length <= 28 ? t : null;
+}
+function excMeaning(m) {
+  if (!m || typeof m !== 'object') return null;
+  const o = { culture: String(m.culture || '').slice(0, 260).trim(), category: String(m.category || '').slice(0, 260).trim(),
+    consumer: String(m.consumer || '').slice(0, 260).trim() };
+  return (o.culture || o.category || o.consumer) ? o : null;
+}
+const EXC_GENERIC = new RegExp([
+  '\\b(?:collaborat|partner)\\w* with (?:social media |micro-?|key )?influencers?\\b',
+  '\\bleverag\\w* social(?: media)?\\b', '\\beco-?friendly packaging\\b',
+  '\\b(?:launch|develop|introduc|creat)\\w* (?:a |an )?(?:new )?[\\w-]+(?: [\\w-]+)? (?:line|range|collection)\\b',
+  '\\b(?:authentic\\w*|authenticity-focused) (?:brand )?storytelling\\b', '\\bbuild\\w* (?:brand )?awareness\\b',
+  '\\bengag\\w* (?:with )?(?:gen ?z|consumers|audiences|customers)\\b', '\\bcreat\\w* (?:engaging |relevant |authentic )?content\\b',
+  '\\bsocial media (?:campaign|strategy|presence|platforms?)\\b'].join('|'), 'i');
+const EXC_STOP = new Set(['Gen', 'Millennials', 'Boomers', 'Brands', 'Brand', 'Consumers', 'Consumer', 'The', 'This', 'That', 'Their',
+  'Our', 'We', 'It', 'Its', 'Monday', 'Develop', 'Launch', 'Create', 'Partner', 'Build', 'Use', 'Make', 'Put', 'Run', 'Test']);
+function excAnchors(text, query) {
+  const q = new Set(String(query || '').toLowerCase().match(/[a-z0-9]+/g) || []);
+  const t = String(text || '');
+  let n = (t.match(/\d[\d,.]*%?/g) || []).length + (t.match(/["“][^"”]{3,}["”]/g) || []).length;
+  for (const sent of t.split(/(?<=[.!?])\s+/)) {
+    for (const raw of sent.split(/\s+/).slice(1)) {
+      const w = raw.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9&'-]+$/g, '');
+      if (/^[A-Z][A-Za-z0-9&'-]+$/.test(w) && !q.has(w.toLowerCase()) && !EXC_STOP.has(w)) n++;
+    }
+  }
+  return n;
+}
+function excMoveGuard(moves, query) {
+  const kept = [];
+  let dropped = 0;
+  for (const m of moves || []) {
+    const cited = (Array.isArray(m.evidence) && m.evidence.length > 0) || Number.isInteger(m.from);
+    const a = excAnchors([m.headline, m.body, m.proof].join('. '), query);
+    const generic = EXC_GENERIC.test(m.headline + ' ' + m.body);
+    if (cited && a >= 1 && !(generic && a < 2)) kept.push(m); else dropped++;
+  }
+  return { kept, dropped };
+}
 /* SEAM:EXCAVATE_WIRE: the evidence budget. The corpus used to be cut at 40
  * before the lake and the server's own wire (GDELT, HN, paid Exa) were added,
  * so the best evidence was the first thrown away, after it was paid for.

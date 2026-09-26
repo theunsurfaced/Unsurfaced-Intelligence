@@ -1,6 +1,7 @@
 /**
  * proof_excavate_wire.mjs  --  EX1 + EX1b: EXCAVATE does what it was built to do,
  * and the lake's numbers can be trusted. Runs the real functions on fake wires.
+ * v2 (EX1d): report mode has room for meanings and briefs (3600); test moves meet the move law.
  */
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
@@ -9,7 +10,7 @@ const mig = fs.readFileSync('supabase/migrations/0027_lake_truth.sql', 'utf-8');
 let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
 const between = (a, b) => { const i = w.indexOf(a), j = w.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return w.slice(i, j); };
-const helpers = between('/* SEAM:EXCAVATE_WIRE: the evidence budget', 'async function gatherServerSignals(');
+const helpers = between('/* SEAM:EXCAVATE_MEANING: the report contract.', 'async function gatherServerSignals(');
 const H = new Function(helpers + '; return { excBudget, looksEnglish, gatherOrder, lakeWhen, LIVE_KINDS, EXC_BUDGET };')();
 
 // ── W1 GDELT arrives ──────────────────────────────────────────────────────
@@ -47,7 +48,8 @@ const modelOut = JSON.stringify({ read: ['Access outsold the object.', 'Price th
     { category: 'culture', title: 'Rooms beat reach', excerpt: 'x', implication: 'y', evidence: [1, 12, 13, 99, 'x'], source: 'made up', sourceUrl: 'https://made.up' },
     { category: 'market', title: 'One source only', excerpt: 'x', evidence: [15], source: 'a', sourceUrl: '' },
     { category: 'brand', title: 'No citation', excerpt: 'x', source: 's', sourceUrl: 'https://ok.example' }],
-  ideas: [{ type: 'Campaign', headline: 'Sell the room', body: 'b', from: 0 }, { type: 'Product', headline: 'Bad from', body: 'b', from: 42 }],
+  ideas: [{ type: 'Campaign', headline: 'Gate the merch drop behind Ticketmaster stubs', body: 'Sell the tour capsule at the 3 stadium dates only.', proof: 'Billboard reported the sell-out.', evidence: [1], from: 0 },
+          { type: 'Product', headline: 'Price the room at $40 for Live Nation buyers', body: 'A members table at each show.', evidence: [2], from: 42 }],
   brief: 'b' });
 const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'callModel', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
   helpers + xj + synth + '; return synthesize;')(
@@ -58,7 +60,7 @@ const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'call
   async (env, row) => { ledger = row; return 77; }, async () => 'h', async (env, items) => { captured = items; }, (a) => a.map(x => x.source), {});
 const res = await S({ query: 'fan access', mode: 'report', corpus: lake10.slice(0, 10).concat(open40) }, {}, '');
 const d = res.o.data;
-ok(modelCall.opts.max_tokens === 2800 && modelCall.tier === 't3', 'W6 report mode has room for a whole report (2800)');
+ok(modelCall.opts.max_tokens === 3600 && modelCall.tier === 't3', 'W6 report mode has room for a whole report (3600)');
 ok(/"evidence":\[the 1-based numbers/.test(modelCall.msgs[1].content), 'W7 the model is asked which evidence each insight stands on');
 ok(d.evidence_n === 44 && /\[1\] \(lake\)/.test(modelCall.msgs[1].content), 'W8 the model reads 44 items, lake first');
 ok(d.signals.length === 2 && !d.signals.some(s => /es\.example/.test(s.url)), 'W9 the server wire is read, and a Spanish item is stopped at the door');

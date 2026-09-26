@@ -675,6 +675,10 @@
   "SEAM:EXCAVATE_ARRIVAL": {
    "file": "worker/src/index.js",
    "purpose": "the arrival grid: PROPOSE names up to 12 recurring patterns; arrivalTiles fills to 12 from the desk's scored edition (real clusters, real counts, 'From the desk'); a tile keeps its own lens; state chips count every tile"
+  },
+  "SEAM:EXCAVATE_MEANING": {
+   "file": "worker/src/index.js",
+   "purpose": "the live read says what it means: the query's frame (category, audience); each finding's meaning for the culture, the category and the consumer; each move as a brief (for, action, why now, proof, watch, risk) under the MOVE LAW, enforced by excMoveGuard (no evidence or nothing concrete is dropped; generic patterns need two anchors); the page drops the sources strip, shows All Lenses full width, ends on THE MOVES, maps moves to their own lens"
   }
  },
  "planned": [
