@@ -1,6 +1,7 @@
 /**
  * proof_read_print.mjs  --  arc 8: the platform-rendered PDF, its ticket, its
- * keep-and-reuse, the size guard (8.1), and the page's render mode with lean photos.
+ * keep-and-reuse, the size guard (8.1), Cloudflare's timeout limits (8.2), and the
+ * page's render mode with lean photos.
  */
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
@@ -30,6 +31,8 @@ ok(c.url === 'https://api.cloudflare.com/client/v4/accounts/acct/browser-renderi
 ok(c.body.pdfOptions.format === 'letter' && c.body.pdfOptions.printBackground === true && c.body.pdfOptions.displayHeaderFooter === false &&
    c.body.pdfOptions.margin.top === '0', 'R2 letter pages, backgrounds on, no headers or footers, no margins');
 ok(c.body.waitForSelector.selector === 'html[data-print-ready="1"]', 'R3 waits for the page to say every photo has settled');
+ok(c.body.gotoOptions.timeout <= 60000 && c.body.waitForSelector.timeout <= 60000 && c.body.gotoOptions.waitUntil === 'domcontentloaded' &&
+   c.body.pdfOptions.timeout <= 300000, 'R3b every wait sits inside Cloudflare limits (60 s load and selector, 5 min PDF)');
 ok(/\/intelligence\/read\/\?id=3&rt=[0-9a-f]{64}$/.test(c.body.url) && c.ticketLive === 1, 'R4 the page opens with a live 32-byte ticket');
 ok(kv.size === 0, 'R5 the ticket is spent after the render');
 const key = patches[0].meta.pdf.key;
@@ -43,9 +46,9 @@ ok(!out.fresh && calls.length === 1, 'R8 publishing alone does not re-render');
 out = await P.readPdf(env, Object.assign({}, kept, { read: { title: 'Changed' } }));
 ok(out.fresh && calls.length === 2 && !r2.has(key), 'R9 a changed read renders fresh and the old file is removed');
 
-reset(); answer = { body: '{"success":false,"errors":[{"message":"Timeout"}]}', type: 'application/json', status: 422 };
+reset(); answer = { body: '{"success":false,"errors":[{"code":7001,"message":"Timeout"}]}', type: 'application/json', status: 422 };
 let err = null; try { await P.readPdf(env, row); } catch (e) { err = String(e.message); }
-ok(err && /render_failed 422/.test(err) && /Timeout/.test(err) && r2.size === 0, 'L1 a failed render is an error, never a stored file');
+ok(err && /^render_failed 422: 7001 Timeout$/.test(err) && r2.size === 0, 'L1 a failed render is an error in plain words, never a stored file');
 err = null; try { await P.readPdf({ MEDIA: env.MEDIA, RATE_LIMIT: env.RATE_LIMIT }, row); } catch (e) { err = String(e.message); }
 ok(err && /print_not_configured/.test(err), 'L2 missing secrets fail loud');
 reset(); answer = { body: pdf, type: 'application/pdf', headers: { 'content-length': String(200 * 1024 * 1024) } };

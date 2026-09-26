@@ -6897,7 +6897,9 @@ async function readImageRelay(path, env) {
  * the file is kept in R2 under an unguessable key recorded on the read. The
  * same file serves every download until the read or the page revision changes.
  * Fail loud: no secrets, a failed render or a non-PDF answer is an error. */
-const READ_PRINT = { REV: 'p2', MAX_BYTES: 60 * 1024 * 1024, TICKET_TTL: 300, PAGE: 'https://unsurfaced-intelligence.com/intelligence/read/', WAIT_MS: 75000 };   // cold photos: the page allows 40 s, the browser 75 s
+const READ_PRINT = { REV: 'p2', MAX_BYTES: 60 * 1024 * 1024, TICKET_TTL: 300, PAGE: 'https://unsurfaced-intelligence.com/intelligence/read/', LOAD_MS: 30000, WAIT_MS: 58000, PDF_MS: 120000 };
+// Browser Run limits: goToOptions and waitForSelector at most 60 s, pdfOptions.timeout at most 5 min.
+// The page gives cold photos 40 s before stepping a slot down, inside the 58 s wait.
 function readHex(bytes) { return Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join(''); }
 async function readStamp(row) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(row.read || {}) + '|' + (row.status === 'held' ? 'held' : 'live')));
@@ -6928,10 +6930,10 @@ async function readPdf(env, row) {
     headers: { Authorization: 'Bearer ' + env.CF_BROWSER_TOKEN, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       url: READ_PRINT.PAGE + '?id=' + row.id + '&rt=' + rt,
-      gotoOptions: { waitUntil: 'networkidle0', timeout: READ_PRINT.WAIT_MS },
+      gotoOptions: { waitUntil: 'domcontentloaded', timeout: READ_PRINT.LOAD_MS },
       waitForSelector: { selector: 'html[data-print-ready="1"]', timeout: READ_PRINT.WAIT_MS },
       viewport: { width: 1280, height: 1000 },
-      pdfOptions: { format: 'letter', printBackground: true, preferCSSPageSize: true, displayHeaderFooter: false,
+      pdfOptions: { format: 'letter', printBackground: true, preferCSSPageSize: true, displayHeaderFooter: false, timeout: READ_PRINT.PDF_MS,
         margin: { top: '0', right: '0', bottom: '0', left: '0' } }
     })
   });
@@ -6945,7 +6947,15 @@ async function readPdf(env, row) {
   const bytes = await res.arrayBuffer();
   const head = new TextDecoder().decode(bytes.slice(0, 5));
   if (!res.ok || head !== '%PDF-') {
-    const why = /json|text/.test(type) ? new TextDecoder().decode(bytes.slice(0, 300)) : type;
+    let why = type;
+    if (/json|text/.test(type)) {
+      const t = new TextDecoder().decode(bytes.slice(0, 4000));
+      why = t;
+      try {
+        const e0 = (JSON.parse(t).errors || [])[0];
+        if (e0) why = (e0.code ? e0.code + ' ' : '') + String(e0.message || '');
+      } catch (e) { why = t; }   // not JSON: keep the raw text
+    }
     console.log('read_pdf_failed', row.id, res.status, why);
     throw new Error('render_failed ' + res.status + ': ' + why.replace(/\s+/g, ' ').slice(0, 120));
   }
