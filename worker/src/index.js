@@ -29,6 +29,7 @@ const CONFIG = {
   RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
   PPLX_DAILY_DOLLARS: 0.40,  // SEAM:PPLX_RAIL \u2014 house cap on Perplexity spend per day (about 50 fresh reads; cached reads are free)
   SIGNAL_DAILY_DOLLARS: 1.5, // SEAM:SIGNAL_POOL \u2014 house cap on paid signal spend per day, tracked in REAL dollars from the provider's own costDollars
+  RENDER_GLOBAL_SECONDS: 480, // SEAM:RENDER_CEILING: render seconds across EVERYONE per day (four full personal allowances); env RENDER_GLOBAL_SECONDS overrides without a code change
 };
 
 const PLAY_SYSTEM = {
@@ -84,7 +85,10 @@ export default {
         .catch(e => console.log('spine_slice_error', String(e && e.message)))
         .then(() => deskScore(env))   // SEAM:DESK — score every 30 minutes, after the slice lands
         .then(s => console.log('desk_score', JSON.stringify(s)))
-        .catch(e => console.log('desk_score_error', String(e && e.message))));
+        .catch(e => console.log('desk_score_error', String(e && e.message)))
+        .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
+        .then(s => console.log('claude_drain', JSON.stringify(s)))
+        .catch(e => console.log('claude_drain_error', String(e && e.message))));
     }
   },
   async fetch(request, env) {
@@ -183,6 +187,9 @@ export default {
         case '/knowledge/list':      return kbList(env, origin, user);
         case '/knowledge/search':    return kbSearch(body, env, origin, user);
         case '/knowledge/delete':    return kbDelete(body, env, origin, user);
+        case '/claude/ping':         // SEAM:CLAUDE_ROUTE admin doors: ping, ledger, kill switch
+        case '/claude/ledger':
+        case '/claude/kill':         return claudeRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
         case '/pay/responder':       return payResponder(body, env, origin, user);
@@ -285,13 +292,27 @@ const RENDER_POOL = {
 };
 const RENDER_ASPECTS = { '16:9': 'landscape_16_9', '9:16': 'portrait_16_9', '1:1': 'square_hd', '4:5': 'portrait_4_3', '3:4': 'portrait_4_3', '4:3': 'landscape_4_3' };
 
+/* SEAM:RENDER_CEILING: the house ceiling. RENDER_DAILY_SECONDS bounds one
+ * person; nothing bounded the platform, so N people meant N allowances of fal
+ * spend. fal:all:<day> counts every render second across everyone and
+ * RENDER_GLOBAL_SECONDS caps it. The house is checked before the person, and
+ * neither counter moves on a refusal, so a refused render costs nobody seconds. */
+function renderHouseCap(env) {
+  const v = parseInt(env && env.RENDER_GLOBAL_SECONDS, 10);
+  return v > 0 ? v : CONFIG.RENDER_GLOBAL_SECONDS;
+}
 async function renderBudget(env, userId, seconds) {
-  if (!env.RATE_LIMIT) return true; // no KV bound \u2192 skip (configure for production)
+  if (!env.RATE_LIMIT) return true; // no KV bound: skip (configure for production)
   const day = new Date().toISOString().slice(0, 10);
-  const key = `fal:${userId}:${day}`;
-  const cur = parseInt((await env.RATE_LIMIT.get(key)) || '0', 10);
+  const key = `fal:${userId}:${day}`, houseKey = `fal:all:${day}`;
+  const [cur, house] = (await Promise.all([env.RATE_LIMIT.get(key), env.RATE_LIMIT.get(houseKey)]))
+    .map(v => parseInt(v || '0', 10) || 0);
+  if (house + seconds > renderHouseCap(env)) return false;
   if (cur + seconds > CONFIG.RENDER_DAILY_SECONDS) return false;
-  await env.RATE_LIMIT.put(key, String(cur + seconds), { expirationTtl: 60 * 60 * 26 });
+  await Promise.all([
+    env.RATE_LIMIT.put(key, String(cur + seconds), { expirationTtl: 60 * 60 * 26 }),
+    env.RATE_LIMIT.put(houseKey, String(house + seconds), { expirationTtl: 60 * 60 * 26 })
+  ]);
   return true;
 }
 
@@ -301,7 +322,8 @@ async function renderBudget(env, userId, seconds) {
 async function playBudget(env, origin, user) {
   const day = new Date().toISOString().slice(0, 10);
   const used = env.RATE_LIMIT ? (parseInt(await env.RATE_LIMIT.get(`fal:${user.id}:${day}`), 10) || 0) : 0;
-  return json({ ok: true, used, cap: CONFIG.RENDER_DAILY_SECONDS }, 200, origin, env);
+  const house_used = env.RATE_LIMIT ? (parseInt(await env.RATE_LIMIT.get(`fal:all:${day}`), 10) || 0) : 0;
+  return json({ ok: true, used, cap: CONFIG.RENDER_DAILY_SECONDS, house_used, house_cap: renderHouseCap(env) }, 200, origin, env);
 }
 
 /* POST /play/render { pool, prompt, aspect?, seconds?, image_url?, project?, unit? }
@@ -6040,6 +6062,306 @@ async function callModel(env, tier, messages, opts) {
     max_tokens: opts.max_tokens || CONFIG.MAX_TOKENS
   });
   return out.response || '';
+}
+
+/* SEAM:CLAUDE_ROUTE: the paid lane, opt-in only.
+ * callModel above never reaches Claude. t1/t2/t3 stay on Workers AI, so DAILY,
+ * STUDIO and EXCAVATE run exactly as before. Claude is reachable only through
+ * callClaude and claudeBatchSubmit with a named tier:
+ *   doc     Fable 5.1   Weekly Read, Monthly Read, the recap
+ *   ingest  Sonnet 5    FEED pages the free extractor cannot read (scans, decks)
+ * Laws:
+ *   1. Every request carries the workspace header, so billing lands in the
+ *      Unsurfaced workspace and under its Console spend limit (ceiling two).
+ *   2. A monthly dollar cap per tier (ceiling one), checked BEFORE the call
+ *      against real spend plus this call's worst case. Batch reserves its
+ *      estimate at submit and trues up to real usage at drain, so the ledger
+ *      never runs behind reality.
+ *   3. Fail loud, never downgrade. Off, capped, unkeyed or erroring returns
+ *      ok:false with a named error. No path falls back to Workers AI: a
+ *      document holds rather than ships in a weaker voice.
+ *   4. Kill switch lives in KV, so it needs no deploy and survives one:
+ *        npx wrangler kv key put --binding=RATE_LIMIT claude:kill 1 --remote
+ *      or POST /claude/kill {on:true}. Delete the key to reopen.
+ *   5. Every request is a durable claude_jobs row (0025) with usage and cost.
+ *      KV holds only the fast month counter; the table is the memory.
+ * PRICE is USD per million tokens; batch halves every line. Verify against the
+ * Console price page whenever a model id changes. */
+const CLAUDE = {
+  API: 'https://api.anthropic.com/v1',
+  VERSION: '2023-06-01',
+  TIERS: {
+    doc:    { model: 'claude-fable-5-1', cap: 15, env: 'CLAUDE_DOC_MONTHLY' },
+    ingest: { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_INGEST_MONTHLY' }
+  },
+  PRICE: {
+    'claude-fable-5-1': { in: 10, out: 50, cw: 12.5, cr: 0.25 },
+    'claude-sonnet-5':  { in: 2,  out: 10, cw: 2.5,  cr: 0.2 }
+  },
+  MAX_TOKENS: 16000,
+  BATCH_MAX: 100,
+  DRAIN_ROWS: 150,
+  LIVE_TIMEOUT_MS: 120000
+};
+function claudeMonth(d) { return (d || new Date()).toISOString().slice(0, 7); }
+function claudeCap(env, tier) {
+  const t = CLAUDE.TIERS[tier];
+  const v = parseFloat(env && env[t.env]);
+  return Number.isFinite(v) && v >= 0 ? v : t.cap;
+}
+function claudeRound(x) { return Math.round(x * 1e6) / 1e6; }
+function claudeCost(model, usage, batch) {
+  const p = CLAUDE.PRICE[model];
+  if (!p || !usage) return 0;
+  const usd = ((usage.input_tokens || 0) * p.in + (usage.output_tokens || 0) * p.out
+    + (usage.cache_creation_input_tokens || 0) * p.cw
+    + (usage.cache_read_input_tokens || 0) * p.cr) / 1e6;
+  return claudeRound(usd * (batch ? 0.5 : 1));
+}
+function claudeText(msg) {
+  return ((msg && msg.content) || []).filter(b => b && b.type === 'text').map(b => b.text).join('');
+}
+function claudeParams(tier, req) {
+  const r = req || {};
+  const p = {
+    model: CLAUDE.TIERS[tier].model,
+    max_tokens: Math.min(Math.max(parseInt(r.max_tokens, 10) || 1024, 1), CLAUDE.MAX_TOKENS),
+    messages: Array.isArray(r.messages) ? r.messages : [{ role: 'user', content: String(r.prompt || '') }]
+  };
+  // cache:true marks the system prompt (the Method) as the cached prefix.
+  if (r.system) p.system = r.cache
+    ? [{ type: 'text', text: String(r.system), cache_control: { type: 'ephemeral' } }]
+    : String(r.system);
+  if (Number.isFinite(r.temperature)) p.temperature = r.temperature;
+  return p;
+}
+function claudeEstimate(params, batch) {
+  // Worst case: every input char at 3.5 chars per token, uncached, plus the full output budget.
+  const p = CLAUDE.PRICE[params.model] || { in: 0, out: 0 };
+  const chars = JSON.stringify(params.system || '').length + JSON.stringify(params.messages || []).length;
+  return claudeRound((Math.ceil(chars / 3.5) * p.in + params.max_tokens * p.out) / 1e6 * (batch ? 0.5 : 1));
+}
+function claudeHeaders(env) {
+  const h = { 'x-api-key': env.ANTHROPIC_KEY, 'anthropic-version': CLAUDE.VERSION, 'content-type': 'application/json' };
+  if (env.ANTHROPIC_WORKSPACE_ID) h['anthropic-workspace-id'] = env.ANTHROPIC_WORKSPACE_ID;
+  return h;
+}
+async function claudeSpent(env, tier, month) {
+  if (!env.RATE_LIMIT) return 0;
+  return parseFloat(await env.RATE_LIMIT.get('cl$:' + tier + ':' + (month || claudeMonth()))) || 0;
+}
+async function claudeLedgerAdd(env, tier, usd, month) {
+  if (!env.RATE_LIMIT || !usd) return;
+  const k = 'cl$:' + tier + ':' + (month || claudeMonth());
+  const cur = parseFloat(await env.RATE_LIMIT.get(k)) || 0;
+  await env.RATE_LIMIT.put(k, String(Math.max(0, claudeRound(cur + usd))), { expirationTtl: 60 * 60 * 24 * 40 });
+}
+async function claudeGate(env, tier, est) {
+  if (!CLAUDE.TIERS[tier]) return { ok: false, error: 'claude_bad_tier' };
+  if (!env.ANTHROPIC_KEY) return { ok: false, error: 'claude_unconfigured' };
+  try {
+    if (env.RATE_LIMIT && await env.RATE_LIMIT.get('claude:kill')) return { ok: false, error: 'claude_off' };
+    const spent = await claudeSpent(env, tier), cap = claudeCap(env, tier);
+    if (spent + est > cap) return { ok: false, error: 'claude_cap', spent, cap, est };
+    return { ok: true, spent, cap };
+  } catch (e) {
+    return { ok: false, error: 'claude_ledger_unreadable' };   // cannot see the ledger: do not spend
+  }
+}
+async function claudeRecord(env, rows) {
+  try {
+    const back = await sbRest(env, 'claude_jobs?select=id', { method: 'POST',
+      headers: { Prefer: 'return=representation' }, body: rows }) || [];
+    return back.map(r => r.id);
+  } catch (e) {
+    console.log('claude_record_error', String(e && e.message));
+    return null;
+  }
+}
+
+/* Live: one request, answered now. For short work only; documents ride batch. */
+async function callClaude(env, tier, req) {
+  if (!CLAUDE.TIERS[tier]) return { ok: false, error: 'claude_bad_tier' };
+  const params = claudeParams(tier, req);
+  const est = claudeEstimate(params, false);
+  const gate = await claudeGate(env, tier, est);
+  if (!gate.ok) return gate;
+  const kind = String((req && req.kind) || 'live').slice(0, 40);
+  let r = null, j = null;
+  try {
+    r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env),
+      body: JSON.stringify(params), signal: AbortSignal.timeout(CLAUDE.LIVE_TIMEOUT_MS) });
+    j = await r.json().catch(() => null);
+  } catch (e) {
+    return { ok: false, error: 'claude_network' };
+  }
+  if (!r.ok || !j) {
+    const detail = String((j && j.error && j.error.message) || '').slice(0, 300);
+    await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',
+      error: ('claude_' + r.status + ' ' + detail).slice(0, 300), est_usd: est, cost_usd: 0,
+      ended_at: new Date().toISOString() }]);
+    return { ok: false, error: 'claude_' + r.status, detail };
+  }
+  const usage = j.usage || {}, cost = claudeCost(params.model, usage, false), text = claudeText(j);
+  await claudeLedgerAdd(env, tier, cost);
+  const ids = await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'done',
+    result: text, usage, stop_reason: j.stop_reason || null, est_usd: est, cost_usd: cost,
+    meta: { msg_id: j.id || null }, ended_at: new Date().toISOString() }]);
+  return { ok: true, text, usage, cost_usd: cost, stop_reason: j.stop_reason || null,
+    truncated: j.stop_reason === 'max_tokens', job_id: ids && ids[0] || null };
+}
+
+/* Batch: half price, answered within the hour as a rule. items are
+ * [{ custom_id, system?, cache?, prompt? | messages?, max_tokens?, meta? }].
+ * Reserves the estimate now; claudeBatchDrain trues it up to real usage. */
+async function claudeBatchSubmit(env, tier, kind, items) {
+  if (!CLAUDE.TIERS[tier]) return { ok: false, error: 'claude_bad_tier' };
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length || list.length > CLAUDE.BATCH_MAX) return { ok: false, error: 'claude_bad_batch' };
+  const seen = new Set(), reqs = [];
+  for (const it of list) {
+    const cid = String((it && it.custom_id) || '');
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(cid) || seen.has(cid)) return { ok: false, error: 'claude_bad_custom_id' };
+    seen.add(cid);
+    reqs.push({ custom_id: cid, params: claudeParams(tier, it) });
+  }
+  const ests = reqs.map(q => claudeEstimate(q.params, true));
+  const est = claudeRound(ests.reduce((a, b) => a + b, 0));
+  const gate = await claudeGate(env, tier, est);
+  if (!gate.ok) return gate;
+  let r = null, j = null;
+  try {
+    r = await fetch(CLAUDE.API + '/messages/batches', { method: 'POST', headers: claudeHeaders(env),
+      body: JSON.stringify({ requests: reqs }) });
+    j = await r.json().catch(() => null);
+  } catch (e) {
+    return { ok: false, error: 'claude_network' };
+  }
+  if (!r.ok || !j || !j.id) {
+    return { ok: false, error: 'claude_' + (r ? r.status : 0),
+      detail: String((j && j.error && j.error.message) || '').slice(0, 300) };
+  }
+  await claudeLedgerAdd(env, tier, est);   // reserve now, true up at drain
+  const k = String(kind || 'batch').slice(0, 40);
+  const ids = await claudeRecord(env, reqs.map((q, i) => ({ tier, kind: k, mode: 'batch',
+    model: q.params.model, batch_id: j.id, custom_id: q.custom_id, status: 'submitted',
+    est_usd: ests[i], meta: (list[i] && list[i].meta) || {} })));
+  if (!ids) {
+    // No rows means the drain could never collect it: cancel and refund, loudly.
+    try { await fetch(CLAUDE.API + '/messages/batches/' + encodeURIComponent(j.id) + '/cancel',
+      { method: 'POST', headers: claudeHeaders(env) }); } catch (e) {}
+    await claudeLedgerAdd(env, tier, -est);
+    return { ok: false, error: 'claude_record_failed', batch_id: j.id };
+  }
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put('claude:open', '1');
+  logEvent(env, 'intelligence', 'claude', 'batch_submit', null, { tier, kind: k, n: reqs.length, est_usd: est });
+  return { ok: true, batch_id: j.id, n: reqs.length, est_usd: est };
+}
+
+/* Drain: rides the 30-minute cron. Costs one KV read when nothing is open. */
+async function claudeBatchDrain(env) {
+  if (!env.ANTHROPIC_KEY || !env.RATE_LIMIT) return { skipped: 'unconfigured' };
+  if (!(await env.RATE_LIMIT.get('claude:open'))) return { skipped: 'none_open' };
+  const open = await sbRest(env,
+    'claude_jobs?status=eq.submitted&mode=eq.batch&select=batch_id&order=created_at.asc&limit=500') || [];
+  const ids = Array.from(new Set(open.map(r => r.batch_id).filter(Boolean))).slice(0, 4);
+  const out = { open: ids.length, ended: 0, done: 0, failed: 0, usd: 0 };
+  let budget = CLAUDE.DRAIN_ROWS;
+  for (const bid of ids) {
+    if (budget <= 0) break;
+    let b = null;
+    try {
+      const r = await fetch(CLAUDE.API + '/messages/batches/' + encodeURIComponent(bid), { headers: claudeHeaders(env) });
+      b = r.ok ? await r.json() : null;
+    } catch (e) { b = null; }
+    if (!b || b.processing_status !== 'ended' || !b.results_url) continue;
+    out.ended++;
+    let body = '';
+    try {
+      const r = await fetch(b.results_url, { headers: claudeHeaders(env) });
+      body = r.ok ? await r.text() : '';
+    } catch (e) { body = ''; }
+    if (!body) continue;
+    const rows = await sbRest(env, 'claude_jobs?batch_id=eq.' + encodeURIComponent(bid) +
+      '&status=eq.submitted&select=id,tier,custom_id,model,est_usd,created_at') || [];
+    const byCid = {};
+    rows.forEach(x => { byCid[x.custom_id] = x; });
+    for (const line of body.split('\n')) {
+      if (budget <= 0) break;
+      if (!line.trim()) continue;
+      let x = null;
+      try { x = JSON.parse(line); } catch (e) { continue; }
+      const row = byCid[x && x.custom_id];
+      if (!row) continue;
+      budget--;
+      const res = x.result || {};
+      const month = String(row.created_at || '').slice(0, 7) || claudeMonth();
+      const est = parseFloat(row.est_usd) || 0;
+      let patch;
+      if (res.type === 'succeeded') {
+        const msg = res.message || {}, usage = msg.usage || {};
+        const cost = claudeCost(row.model, usage, true);
+        await claudeLedgerAdd(env, row.tier, claudeRound(cost - est), month);
+        patch = { status: 'done', result: claudeText(msg), usage, cost_usd: cost, stop_reason: msg.stop_reason || null };
+        out.done++; out.usd = claudeRound(out.usd + cost);
+      } else {
+        // errored, canceled, expired: nothing billed, the reservation comes back.
+        await claudeLedgerAdd(env, row.tier, -est, month);
+        const em = res.error && ((res.error.error && res.error.error.message) || res.error.message);
+        patch = { status: 'failed', cost_usd: 0, error: String((res.type || 'unknown') + (em ? ' ' + em : '')).slice(0, 300) };
+        out.failed++;
+      }
+      patch.ended_at = new Date().toISOString();
+      await sbRest(env, 'claude_jobs?id=eq.' + row.id, { method: 'PATCH', body: patch });
+    }
+  }
+  const left = await sbRest(env, 'claude_jobs?status=eq.submitted&mode=eq.batch&select=id&limit=1') || [];
+  if (!left.length) await env.RATE_LIMIT.delete('claude:open');
+  if (out.done || out.failed) logEvent(env, 'intelligence', 'claude', 'batch_drain', null, out);
+  return out;
+}
+
+/* The admin doors. /claude/ledger shows both ceilings' inputs: the KV month
+ * counter and the durable sum from claude_jobs, side by side. */
+async function claudeLedger(env) {
+  const month = claudeMonth(), tiers = {};
+  for (const t of Object.keys(CLAUDE.TIERS)) {
+    const spent = await claudeSpent(env, t, month).catch(() => null), cap = claudeCap(env, t);
+    tiers[t] = { model: CLAUDE.TIERS[t].model, spent, cap,
+      remaining: spent == null ? null : claudeRound(Math.max(0, cap - spent)) };
+  }
+  let jobs = [], durable = null;
+  try {
+    jobs = await sbRest(env, 'claude_jobs?select=id,tier,kind,mode,status,est_usd,cost_usd,stop_reason,created_at,ended_at&order=created_at.desc&limit=12') || [];
+    const rows = await sbRest(env, 'claude_jobs?created_at=gte.' + month + '-01&select=tier,status,est_usd,cost_usd&limit=5000') || [];
+    durable = {};
+    rows.forEach(r => {
+      const v = r.status === 'submitted' ? parseFloat(r.est_usd) || 0 : parseFloat(r.cost_usd) || 0;
+      durable[r.tier] = claudeRound((durable[r.tier] || 0) + v);
+    });
+  } catch (e) { durable = null; }
+  let kill = null, open = null;
+  try { kill = env.RATE_LIMIT ? !!(await env.RATE_LIMIT.get('claude:kill')) : null;
+        open = env.RATE_LIMIT ? !!(await env.RATE_LIMIT.get('claude:open')) : null; } catch (e) {}
+  return { ok: true, month, key: !!env.ANTHROPIC_KEY, workspace: !!env.ANTHROPIC_WORKSPACE_ID,
+    kill, batches_open: open, tiers, durable, jobs };
+}
+async function claudeRoute(path, body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  if (path === '/claude/ledger') return json(await claudeLedger(env), 200, origin, env);
+  if (path === '/claude/kill') {
+    if (!env.RATE_LIMIT) return json({ ok: false, error: 'kv_unbound' }, 200, origin, env);
+    const on = !(body && body.on === false);
+    if (on) await env.RATE_LIMIT.put('claude:kill', '1'); else await env.RATE_LIMIT.delete('claude:kill');
+    logEvent(env, 'intelligence', 'claude', on ? 'kill_on' : 'kill_off', null, { by: user.id });
+    return json({ ok: true, kill: on }, 200, origin, env);
+  }
+  // /claude/ping: prove the lane end to end for about a tenth of a cent.
+  const tier = CLAUDE.TIERS[body && body.tier] ? body.tier : 'doc';
+  const req = { kind: 'ping', max_tokens: 16, prompt: 'Reply with the word LIVE.' };
+  if (body && body.batch)
+    return json(await claudeBatchSubmit(env, tier, 'ping', [Object.assign({ custom_id: 'ping-' + Date.now() }, req)]), 200, origin, env);
+  return json(await callClaude(env, tier, req), 200, origin, env);
 }
 
 /* A COMPLETE SENTENCE UNDER EVERY HEADLINE. firstSentences keeps only

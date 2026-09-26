@@ -625,6 +625,14 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:PPLX_RAIL",
    "purpose": "the read block shows the Sonar framing as a labeled line with its source count, marked framing not evidence"
+  },
+  "SEAM:CLAUDE_ROUTE": {
+   "file": "worker/src/index.js",
+   "purpose": "the paid lane, opt-in only: callModel never reaches Claude; callClaude and claudeBatchSubmit take a named tier (doc = Fable 5.1 for the Weekly/Monthly Reads and recap, ingest = Sonnet 5 for FEED scans and decks); workspace header on every request; monthly dollar cap per tier checked before the call with batch reserve-then-true-up; fail loud, never downgrade to Workers AI; KV kill switch (claude:kill) needs no deploy; every request a durable claude_jobs row (0025); drain rides the 30-minute cron; admin doors /claude/ping, /claude/ledger, /claude/kill"
+  },
+  "SEAM:RENDER_CEILING": {
+   "file": "worker/src/index.js",
+   "purpose": "the house ceiling on fal render seconds: fal:all:<day> counts across everyone, RENDER_GLOBAL_SECONDS caps it (env override), checked before the personal allowance, neither counter moves on a refusal; /play/budget reports house_used/house_cap"
   }
  },
  "planned": [
