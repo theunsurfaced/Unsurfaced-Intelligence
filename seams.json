@@ -644,12 +644,16 @@
   },
   "SEAM:READ_PAGE": {
    "file": "intelligence/read/index.html",
-   "purpose": "the house read designed: library of every read; one read as a letter-size document (cover with SQL numbers, the rough, the read with moves by role, cross-currents, contradiction, whitespace, advertising read, the return, receipts, closer) printed to PDF by the browser; the Weekly Read's social frames drawn 1080x1350 as PNGs and a LinkedIn carousel PDF; publish and re-land; admin session only"
+   "purpose": "the house read designed as an editorial magazine: library of every read; one read as letter-size pages (photo cover, how to read this, section bands that explain each section, one photo-led spread per pattern with dek and the move by role, cross-currents, counter-signal and whitespace, advertising read, the return, by the numbers as bars, photo receipts, closer) printed to PDF by the browser; the social frames drawn 1080x1350 over story photographs as PNGs and a LinkedIn carousel PDF; publish and re-land; admin session only"
   },
   "SEAM:READ_PAGE@worker": {
    "file": "worker/src/index.js",
    "tag": "SEAM:READ_PAGE",
    "purpose": "readReceipts: /reads/get resolves every cited S-id to its real headline, source, date and issue"
+  },
+  "SEAM:READ_DESIGN": {
+   "file": "worker/src/index.js",
+   "purpose": "readImageRelay: public GET /img/s/<id>, published DAILY stories only, og:image then stored image_url, https, private hosts refused, image/* under 6 MB, edge cache 7 days (misses 1 day), CORS open, no AI; readValidate keeps lead_image/cover_image only from the evidence pack; READ_CONTRACT asks for dek, lead_image, cover_image"
   }
  },
  "planned": [

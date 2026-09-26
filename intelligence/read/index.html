@@ -9,10 +9,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<!-- SEAM:READ_PAGE: the house read, designed. Library of every read, one read
-     as a document (Download PDF prints it through the browser's own PDF engine),
-     and the Weekly Read's social frames drawn as ready-to-post images. Admin
-     only: every call goes through /reads/* with the signed-in session. -->
+<!-- SEAM:READ_PAGE: the house read, designed as a magazine. Library of every
+     read; one read as a letter-size issue (photo cover, how to read it and
+     contents, section openers with house explainers, pattern spreads with each
+     story's own photo, by-the-numbers charts from SQL, photo receipts, closer);
+     Download PDF prints it through the browser's own PDF engine; the Weekly
+     Read's social frames drawn 1080 x 1350 over the stories' photos. Photos
+     come through the Worker's closed relay (/img/s/<story id>). Admin only. -->
 <style>
   :root {
     --void: #0A0A0A; --matte: #1A1A1A; --ivory: #FAF7F2; --cream: #F5F0E8; --paper: #EDE7DA;
@@ -23,6 +26,7 @@
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { background: var(--void); color: var(--ivory); font-family: var(--display); min-height: 100vh; }
   a { color: inherit; }
+  img { display: block; }
   .bar { position: sticky; top: 0; z-index: 10; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
          padding: 14px 20px; background: rgba(10,10,10,.94); border-bottom: 1px solid #2A2A2A; font-family: var(--mono); font-size: 12px; letter-spacing: 2px; }
   .bar .who { margin-right: auto; text-transform: uppercase; opacity: .8; }
@@ -45,49 +49,119 @@
   .card .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: #9A9A9A; text-transform: uppercase; margin-bottom: 10px; }
   .card .ttl { font-weight: 800; font-size: 20px; line-height: 1.15; margin-bottom: 12px; }
 
-  /* The document */
+  /* The issue */
   .doc { max-width: 8.5in; margin: 28px auto 80px; }
-  .page { background: var(--ivory); color: var(--ink); padding: 0.75in 0.8in; margin-bottom: 18px; position: relative; }
-  .page.cover { background: var(--void); color: var(--ivory); min-height: 11in; display: flex; flex-direction: column; }
-  .rp-mark { width: 3.4in; height: auto; display: block; color: var(--ivory); }
-  .cover .kind { font-family: var(--mono); font-size: 12px; letter-spacing: 5px; color: var(--red); margin-top: 1.1in; text-transform: uppercase; }
-  .cover h1 { font-weight: 800; font-size: 60px; line-height: .98; margin: 18px 0 26px; letter-spacing: -1px; }
-  .cover .thesis { font-size: 20px; line-height: 1.45; color: var(--cream); max-width: 6in; }
-  .cover .foot { margin-top: auto; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; border-top: 2px solid var(--red); padding-top: 14px; }
-  .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: .45in; border-top: 1px solid #2A2A2A; }
-  .nums div { padding: 16px 12px 0 0; }
-  .nums b { display: block; font-weight: 800; font-size: 40px; line-height: 1; }
-  .nums span { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
-  .sec { font-family: var(--mono); font-size: 11px; letter-spacing: 5px; color: var(--red); text-transform: uppercase; margin: 0 0 14px; display: flex; align-items: center; gap: 10px; }
-  .sec::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; }
-  .body { font-size: 15px; line-height: 1.7; margin-bottom: 18px; }
-  h2.name { font-weight: 800; font-size: 30px; line-height: 1.08; margin: 4px 0 14px; letter-spacing: -.3px; }
-  .pat { padding: 0 0 26px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
-  .page.inner .pat:only-of-type, .page.inner .pat:last-child { border-bottom: 0; }
-  .pat:last-child { border-bottom: 0; }
-  .pnum { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--mute); }
-  .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--ink); padding: 2px 6px; margin-left: 8px; }
-  .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--mute); margin: 10px 0 4px; }
-  .ev { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1px; color: var(--mute); line-height: 1.6; margin-top: 8px; }
-  .moves { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 22px; margin-top: 14px; }
-  .moves div { border-top: 2px solid var(--ink); padding-top: 8px; font-size: 13.5px; line-height: 1.55; }
-  .moves b { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin-bottom: 4px; }
-  .pull { font-weight: 800; font-size: 24px; line-height: 1.25; border-left: 4px solid var(--red); padding-left: 18px; margin: 8px 0 22px; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
-  ul.watch { list-style: none; } ul.watch li { font-size: 15px; line-height: 1.6; padding: 10px 0; border-top: 1px solid var(--line); }
-  ul.watch li::before { content: "→ "; color: var(--red); font-family: var(--mono); }
-  .rc { font-size: 12px; line-height: 1.5; padding: 7px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 64px 1fr; gap: 10px; break-inside: avoid; }
-  .rc .id { font-family: var(--mono); font-size: 10px; color: var(--mute); padding-top: 2px; }
-  .rc .src { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: var(--mute); text-transform: uppercase; }
-  .page.inner .pat h2.name { font-size: 42px; line-height: 1.02; margin: 10px 0 22px; }
-  .page.inner .pat .body { font-size: 16.5px; line-height: 1.75; }
-  .page.inner .pat .moves { gap: 16px 26px; margin-top: 26px; }
-  .page.inner .pat .moves div { font-size: 14.5px; }
+  .page { background: var(--ivory); color: var(--ink); padding: 0.7in 0.75in; margin-bottom: 18px; position: relative; overflow: hidden; }
+  .page.dark { background: var(--void); color: var(--ivory); }
   table.flow { width: 100%; border-collapse: collapse; }
   table.flow td { padding: 0; vertical-align: top; }
   table.flow td.sp { height: 0; }
-  .closer { background: var(--void); color: var(--ivory); text-align: left; }
-  .closer .big { font-weight: 800; font-size: 44px; line-height: 1.02; margin: .3in 0 .25in; }
+  .rp-mark { width: 3.2in; height: auto; display: block; color: var(--ivory); }
+  .credit { font-family: var(--mono); font-size: 8.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); margin-top: 5px; }
+  .dark .credit { color: #9A9A9A; }
+  .ph { width: 100%; object-fit: cover; background: var(--matte); }
+  .ph.blank { display: block; background: repeating-linear-gradient(135deg, var(--paper) 0 7px, var(--line) 7px 14px); }
+
+  /* Cover */
+  .cover { background: var(--void); color: var(--ivory); min-height: 11in; padding: 0; display: flex; flex-direction: column; }
+  .cover .photo { position: absolute; inset: 0; }
+  .cover .photo img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(.25) contrast(1.05); }
+  .cover .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,10,.55) 0%, rgba(10,10,10,.15) 32%, rgba(10,10,10,.75) 62%, rgba(10,10,10,.97) 100%); }
+  .cover .in { position: relative; padding: 0.6in 0.7in; display: flex; flex-direction: column; min-height: 11in; }
+  .cover .kind { font-family: var(--mono); font-size: 11px; letter-spacing: 5px; color: var(--red); text-transform: uppercase; margin-top: auto; }
+  .cover h1 { font-weight: 800; font-size: 64px; line-height: .95; margin: 14px 0 20px; letter-spacing: -1.5px; }
+  .cover .thesis { font-size: 17px; line-height: 1.5; color: var(--cream); max-width: 6.2in; }
+  .cover .foot { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; border-top: 2px solid var(--red); padding-top: 12px; margin-top: 26px; }
+  .nums { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 22px; }
+  .nums b { display: block; font-weight: 800; font-size: 36px; line-height: 1; }
+  .nums span { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: #B8B2A6; }
+
+  /* How to read + contents */
+  .how { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+  .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 5px; color: var(--red); text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .kicker::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--red); display: inline-block; }
+  .loop div { border-top: 2px solid var(--ink); padding: 10px 0 14px; }
+  .loop b { font-family: var(--mono); font-size: 11px; letter-spacing: 3px; color: var(--red); display: block; margin-bottom: 4px; }
+  .loop p { font-size: 14px; line-height: 1.55; }
+  .toc div { display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .toc .n { font-family: var(--mono); font-size: 11px; color: var(--red); padding-top: 3px; }
+  .toc .t { font-weight: 700; font-size: 15px; line-height: 1.3; }
+  .toc .t small { display: block; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: 1px; color: var(--mute); margin-top: 2px; text-transform: uppercase; }
+  .intro { font-size: 13px; line-height: 1.6; color: var(--mute); margin-top: 18px; }
+
+  /* Section band and openers */
+  .band { background: var(--void); color: var(--ivory); margin: -0.7in -0.75in 0.4in; padding: 0.45in 0.75in 0.4in; }
+  .inner .band { margin-top: 0; }
+  .band .no { font-family: var(--mono); font-size: 11px; letter-spacing: 4px; color: var(--red); }
+  .band h2 { font-weight: 800; font-size: 44px; line-height: 1; margin: 8px 0 12px; letter-spacing: -.5px; }
+  .band p { font-size: 14px; line-height: 1.55; color: #CFC8BA; max-width: 5.6in; }
+  .opener { background: var(--void); color: var(--ivory); min-height: 11in; display: flex; flex-direction: column; justify-content: flex-end; padding: 0.8in 0.75in; }
+  .opener .no { font-family: var(--mono); font-size: 12px; letter-spacing: 5px; color: var(--red); }
+  .opener h2 { font-weight: 800; font-size: 96px; line-height: .9; margin: 14px 0 26px; letter-spacing: -2px; }
+  .opener p { font-size: 18px; line-height: 1.5; color: #CFC8BA; max-width: 5.8in; margin-bottom: 30px; }
+  .opener ol { list-style: none; border-top: 1px solid #333; }
+  .opener li { display: grid; grid-template-columns: 40px 1fr; padding: 12px 0; border-bottom: 1px solid #222; font-weight: 700; font-size: 18px; }
+  .opener li span { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--red); padding-top: 5px; }
+
+  /* Body type */
+  .body { font-size: 14.5px; line-height: 1.72; margin-bottom: 14px; }
+  .lead { font-size: 17px; line-height: 1.6; }
+  .cols { column-count: 2; column-gap: 0.32in; }
+  .cols .body { break-inside: auto; }
+  .cols .lead { font-size: 15.5px; line-height: 1.58; }
+  .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin: 0 0 6px; break-after: avoid; }
+  .mosaic { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
+  .mosaic figure { break-inside: avoid; }
+  .mosaic figure .ph { height: 1.3in; }
+  .mosaic figcaption { font-size: 10.5px; line-height: 1.35; margin-top: 5px; }
+
+  /* Pattern spreads */
+  .hero { margin: -0.7in -0.75in 0.32in; position: relative; }
+  .inner .hero { margin-top: 0; }
+  .hero .ph { height: 4.1in; }
+  .hero .tag { position: absolute; left: 0.75in; bottom: 16px; font-family: var(--mono); font-size: 10px; letter-spacing: 3px; color: var(--ivory); background: var(--red); padding: 5px 9px; text-transform: uppercase; }
+  .hero .credit { position: absolute; right: 0.75in; bottom: -16px; }
+  .hero.none { height: 1.2in; background: var(--void); }
+  .pname { font-weight: 800; font-size: 44px; line-height: 1.0; letter-spacing: -.6px; margin: 6px 0 14px; }
+  .dek { font-weight: 700; font-size: 20px; line-height: 1.35; border-left: 4px solid var(--red); padding-left: 16px; margin: 0 0 22px; }
+  .signal { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--ink); padding: 2px 6px; margin-left: 8px; vertical-align: middle; }
+  .movebox { background: var(--void); color: var(--ivory); padding: 20px 22px; margin: 22px 0 18px; break-inside: avoid; }
+  .movebox .h { font-family: var(--mono); font-size: 10px; letter-spacing: 4px; color: var(--red); margin-bottom: 4px; }
+  .movebox .s { font-size: 12px; color: #B8B2A6; margin-bottom: 12px; }
+  .movebox .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 22px; }
+  .movebox .grid div { border-top: 1px solid #333; padding-top: 8px; font-size: 12.5px; line-height: 1.5; }
+  .movebox b { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin-bottom: 3px; }
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; break-inside: avoid; }
+  .strip figure .ph { height: 0.95in; }
+  .strip figcaption { font-size: 9.5px; line-height: 1.3; margin-top: 4px; }
+  .strip figcaption span { font-family: var(--mono); color: var(--mute); }
+  .ev { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1px; color: var(--mute); line-height: 1.6; margin-top: 10px; }
+
+  .thread { display: grid; grid-template-columns: 1.3in 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); break-inside: avoid; }
+  .thread .ph { height: 1.3in; }
+  .thread p { font-weight: 700; font-size: 17px; line-height: 1.35; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .two .pull { font-size: 19px; line-height: 1.25; }
+  .pull { font-weight: 800; font-size: 26px; line-height: 1.2; margin: 6px 0 22px; }
+  ul.watch { list-style: none; } ul.watch li { font-size: 15px; line-height: 1.6; padding: 12px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 30px 1fr; }
+  ul.watch li span { font-family: var(--mono); color: var(--red); font-size: 12px; padding-top: 3px; }
+
+  .bars div { display: grid; grid-template-columns: 1.7in 1fr 40px; align-items: center; gap: 10px; padding: 5px 0; font-size: 12px; }
+  .bars i { display: block; height: 12px; background: var(--ink); }
+  .bars i.r { background: var(--red); }
+  .bars b { font-family: var(--mono); font-size: 11px; text-align: right; }
+  .bigs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 26px; }
+  .bigs div { border-top: 3px solid var(--ink); padding-top: 8px; }
+  .bigs b { display: block; font-weight: 800; font-size: 40px; line-height: 1; }
+  .bigs span { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); }
+
+  .rc { display: grid; grid-template-columns: 0.7in 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); break-inside: avoid; }
+  .rc .ph, .rc .noimg { height: 0.5in; }
+  .noimg { background: var(--paper); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 9px; color: var(--mute); }
+  .rc .hl { font-size: 11.5px; line-height: 1.4; }
+  .rc .src { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--mute); text-transform: uppercase; }
+  .closer { background: var(--void); color: var(--ivory); min-height: 11in; display: flex; flex-direction: column; justify-content: center; }
+  .closer .big { font-weight: 800; font-size: 56px; line-height: 1; margin: .35in 0 .3in; }
   .closer .url { font-family: var(--mono); font-size: 12px; letter-spacing: 3px; color: var(--red); text-transform: uppercase; }
   .hold { background: #2A1A08; color: #F2C48D; font-family: var(--mono); font-size: 12px; line-height: 1.7; padding: 14px 18px; margin-bottom: 18px; border: 1px solid #F2994A; }
 
@@ -105,15 +179,17 @@
     body { background: var(--ivory); }
     .bar, .social, .noprint { display: none !important; }
     .doc { max-width: none; margin: 0; }
-    .page { margin: 0; min-height: 11in; break-after: page; box-shadow: none; }
-    .page.inner { padding-top: 0; padding-bottom: 0; }
-    table.flow td.sp { height: 0.7in; }
+    .page { margin: 0; min-height: 11in; break-after: page; }
     .page:last-child { break-after: auto; }
+    .page.inner { padding-top: 0; padding-bottom: 0; }
+    table.flow td.sp { height: 0.6in; }
   }
   @media (max-width: 700px) {
-    .page { padding: 28px 22px; } .page.cover { min-height: auto; }
-    .cover h1 { font-size: 40px; } .nums { grid-template-columns: repeat(2, 1fr); }
-    .moves, .two { grid-template-columns: 1fr; }
+    .page { padding: 28px 22px; } .cover .in { padding: 28px 22px; min-height: 100vh; } .cover { min-height: 100vh; }
+    .cover h1 { font-size: 40px; } .nums, .bigs { grid-template-columns: repeat(2, 1fr); }
+    .how, .two, .movebox .grid { grid-template-columns: 1fr; } .cols { column-count: 1; }
+    .band, .hero { margin-left: -22px; margin-right: -22px; } .opener h2 { font-size: 56px; } .opener { min-height: auto; }
+    .mosaic, .strip { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -142,6 +218,8 @@
   }
   var KIND = { weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record" };
   var ROLES = ["creative", "marketer", "founder", "exec", "talent"];
+  /* a photograph that fails keeps its frame as a quiet blank, so no layout collapses */
+  window.phGone = function (el) { var d = document.createElement("div"); d.className = el.className + " blank"; el.replaceWith(d); };
   var MARK = "<path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 177.9375 313.964844 C 173.789062 313.964844 170.40625 312.566406 167.789062 309.769531 C 165.171875 306.972656 163.863281 302.992188 163.863281 297.820312 L 163.863281 275.269531 L 172.976562 275.269531 L 172.707031 297.097656 C 172.765625 299.804688 173.457031 301.910156 174.78125 303.410156 C 176.101562 304.914062 178.117188 305.667969 180.824219 305.667969 C 183.828125 305.667969 186.191406 304.796875 187.90625 303.050781 C 189.617188 301.308594 190.535156 298.902344 190.65625 295.832031 L 190.476562 275.269531 L 199.585938 275.269531 L 199.585938 313.152344 L 190.382812 313.152344 L 190.746094 306.207031 C 189.484375 308.671875 187.753906 310.582031 185.558594 311.9375 C 183.363281 313.289062 180.824219 313.964844 177.9375 313.964844 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 221.246094 288.066406 L 212.5 288.066406 C 212.101562 288.066406 211.714844 288.042969 211.339844 288.007812 L 211.339844 313.152344 L 220.449219 313.152344 L 220.269531 292.585938 C 220.335938 290.882812 220.667969 289.378906 221.246094 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 237.726562 288.066406 C 238.027344 289.054688 238.226562 290.164062 238.308594 291.414062 L 238.128906 313.152344 L 247.238281 313.152344 L 247.238281 290.691406 C 247.238281 289.773438 247.183594 288.910156 247.097656 288.066406 Z M 237.726562 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 282.597656 293.757812 C 281.367188 292.855469 280.042969 292.167969 278.628906 291.683594 C 277.214844 291.203125 275.757812 290.78125 274.253906 290.421875 C 272.691406 290.0625 271.398438 289.699219 270.375 289.339844 C 269.351562 288.976562 268.539062 288.617188 267.941406 288.257812 C 267.839844 288.195312 267.75 288.128906 267.65625 288.066406 L 257.960938 288.066406 C 258.117188 288.914062 258.359375 289.6875 258.695312 290.378906 C 259.324219 291.671875 260.167969 292.765625 261.21875 293.667969 C 262.273438 294.570312 263.472656 295.308594 264.828125 295.878906 C 266.179688 296.453125 267.546875 296.917969 268.933594 297.277344 C 270.554688 297.578125 271.9375 297.894531 273.082031 298.222656 C 274.222656 298.554688 275.171875 298.933594 275.921875 299.351562 C 276.675781 299.773438 277.214844 300.222656 277.546875 300.707031 C 277.875 301.1875 278.042969 301.820312 278.042969 302.597656 C 278.042969 303.863281 277.515625 304.886719 276.464844 305.667969 C 275.410156 306.449219 273.742188 306.871094 271.457031 306.929688 C 269.292969 306.929688 267.355469 306.492188 265.640625 305.621094 C 263.925781 304.75 262.527344 303.410156 261.445312 301.605469 L 255.039062 306.117188 C 256.304688 308.164062 258.363281 309.980469 261.21875 311.574219 C 264.074219 313.167969 267.667969 313.964844 272 313.964844 C 274.707031 313.964844 276.992188 313.648438 278.855469 313.015625 C 280.71875 312.386719 282.238281 311.546875 283.410156 310.492188 C 284.582031 309.441406 285.425781 308.191406 285.9375 306.75 C 286.445312 305.304688 286.703125 303.773438 286.703125 302.148438 C 286.703125 300.164062 286.328125 298.496094 285.574219 297.140625 C 284.824219 295.789062 283.828125 294.660156 282.597656 293.757812 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 322.109375 288.066406 L 322.179688 295.832031 C 322.058594 298.902344 321.140625 301.308594 319.429688 303.050781 C 317.714844 304.796875 315.351562 305.667969 312.347656 305.667969 C 309.640625 305.667969 307.625 304.914062 306.304688 303.410156 C 304.980469 301.910156 304.289062 299.804688 304.230469 297.097656 L 304.339844 288.066406 L 295.390625 288.066406 L 295.390625 297.820312 C 295.390625 302.992188 296.695312 306.972656 299.3125 309.769531 C 301.929688 312.566406 305.3125 313.964844 309.460938 313.964844 C 312.347656 313.964844 314.886719 313.289062 317.082031 311.9375 C 319.277344 310.582031 321.007812 308.675781 322.269531 306.207031 L 321.910156 313.152344 L 331.109375 313.152344 L 331.109375 288.066406 Z M 322.109375 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 352.988281 288.066406 L 342.863281 288.066406 L 342.863281 313.152344 L 351.972656 313.152344 L 351.613281 294.75 C 351.769531 291.992188 352.230469 289.769531 352.988281 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 381.332031 288.066406 L 381.332031 313.152344 L 390.445312 313.152344 L 390.21875 288.066406 Z M 381.332031 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 431.222656 299.894531 C 431.222656 302 430.378906 303.652344 428.699219 304.855469 C 427.011719 306.058594 424.820312 306.660156 422.113281 306.660156 C 417.300781 306.660156 414.898438 305.003906 414.898438 301.699219 C 414.898438 300.015625 415.496094 298.796875 416.703125 298.042969 C 417.902344 297.292969 419.496094 296.917969 421.480469 296.917969 L 431.222656 296.917969 Z M 431 288.066406 C 431.144531 288.976562 431.222656 289.996094 431.222656 291.144531 L 420.851562 290.601562 C 418.6875 290.601562 416.703125 290.828125 414.898438 291.277344 C 413.09375 291.730469 411.527344 292.421875 410.207031 293.355469 C 408.882812 294.285156 407.84375 295.457031 407.09375 296.871094 C 406.339844 298.285156 405.964844 299.984375 405.964844 301.96875 C 405.964844 304.074219 406.328125 305.894531 407.046875 307.425781 C 407.769531 308.957031 408.746094 310.207031 409.980469 311.167969 C 411.210938 312.132812 412.65625 312.835938 414.3125 313.289062 C 415.964844 313.738281 417.722656 313.964844 419.585938 313.964844 C 422.414062 313.964844 424.757812 313.4375 426.625 312.386719 C 428.488281 311.335938 430.082031 309.785156 431.40625 307.742188 L 431.222656 313.152344 L 440.335938 313.152344 L 440.335938 290.78125 C 440.335938 289.832031 440.269531 288.9375 440.171875 288.066406 Z M 431 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 475.429688 304.71875 C 473.988281 305.53125 472.125 305.9375 469.839844 305.9375 C 466.410156 305.9375 463.75 304.839844 461.855469 302.644531 C 459.960938 300.449219 459.015625 297.636719 459.015625 294.210938 C 459.015625 291.875 459.464844 289.832031 460.347656 288.066406 L 450.546875 288.066406 C 449.941406 289.992188 449.632812 292.039062 449.632812 294.210938 C 449.632812 297.039062 450.144531 299.667969 451.167969 302.101562 C 452.191406 304.539062 453.601562 306.628906 455.40625 308.371094 C 457.210938 310.117188 459.34375 311.484375 461.8125 312.476562 C 464.277344 313.46875 466.953125 313.964844 469.839844 313.964844 C 473.507812 313.964844 476.542969 313.347656 478.949219 312.117188 C 481.355469 310.882812 483.492188 309.214844 485.355469 307.109375 L 479.128906 302.238281 C 478.109375 303.082031 476.875 303.90625 475.429688 304.71875 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 529.265625 288.066406 L 520.195312 288.066406 C 520.5625 288.964844 520.859375 289.917969 521.027344 290.964844 L 499.472656 291.144531 C 499.691406 290.015625 500.007812 288.992188 500.417969 288.066406 L 491.390625 288.066406 C 490.769531 289.992188 490.449219 292.035156 490.449219 294.210938 C 490.449219 297.039062 490.960938 299.667969 491.984375 302.105469 C 493.007812 304.539062 494.433594 306.628906 496.269531 308.371094 C 498.101562 310.117188 500.34375 311.484375 502.988281 312.476562 C 505.632812 313.46875 508.582031 313.964844 511.828125 313.964844 C 515.617188 313.964844 518.789062 313.378906 521.34375 312.207031 C 523.898438 311.03125 526.140625 309.574219 528.066406 307.832031 L 522.742188 302.238281 C 521.480469 303.261719 519.960938 304.195312 518.1875 305.035156 C 516.414062 305.878906 514.265625 306.296875 511.738281 306.296875 C 508.25 306.296875 505.515625 305.484375 503.527344 303.863281 C 501.546875 302.238281 500.222656 299.925781 499.558594 296.917969 L 530.230469 296.554688 C 530.410156 293.730469 530.09375 290.917969 529.28125 288.121094 C 529.277344 288.101562 529.269531 288.085938 529.265625 288.066406 \"/><path fill-rule=\"nonzero\" fill=\"currentColor\" fill-opacity=\"1\" d=\"M 567.59375 288.066406 C 568.5 289.792969 568.964844 291.804688 568.964844 294.121094 C 568.964844 297.730469 567.96875 300.601562 565.988281 302.734375 C 564 304.871094 561.324219 305.9375 557.957031 305.9375 C 554.652344 305.9375 552.035156 304.871094 550.109375 302.734375 C 548.183594 300.601562 547.164062 297.730469 547.042969 294.121094 C 547.125 291.804688 547.628906 289.792969 548.53125 288.066406 L 538.617188 288.066406 C 538.085938 289.949219 537.796875 291.96875 537.753906 294.121094 C 537.8125 297.007812 538.308594 299.652344 539.242188 302.058594 C 540.171875 304.464844 541.433594 306.554688 543.03125 308.328125 C 544.621094 310.101562 546.503906 311.484375 548.667969 312.476562 C 550.832031 313.46875 553.148438 313.964844 555.613281 313.964844 C 558.800781 313.964844 561.503906 313.257812 563.730469 311.847656 C 565.957031 310.433594 567.667969 308.582031 568.875 306.296875 L 568.601562 313.152344 L 577.710938 313.152344 L 577.710938 288.066406 Z M 567.59375 288.066406 \"/><g fill=\"currentColor\" fill-opacity=\"1\"><path style=\"fill:currentColor;stroke:none\" transform=\"translate(583.2915,291.6675)\" d=\"M 0.453125 -18.4375 L 10.53125 -18.4375 L 10.53125 -16 L 6.9375 -16 L 6.9375 -8.1875 L 3.984375 -8.1875 L 3.984375 -16 L 0.453125 -16 Z M 11.703125 -18.4375 L 16.1875 -18.4375 L 17.609375 -12.84375 L 19.109375 -18.4375 L 23.46875 -18.4375 L 23.46875 -8.1875 L 20.6875 -8.1875 L 20.6875 -15.4375 L 18.765625 -8.1875 L 16.4375 -8.1875 L 14.53125 -15.4375 L 14.53125 -8.1875 L 11.703125 -8.1875 Z M 11.703125 -18.4375 \"/><\/g>";   // the DAILY mark, copied from daily/index.html at apply time
   function mark(cls) { return '<svg class="' + cls + '" viewBox="162.68 272.12 445.04 42.80" aria-hidden="true">' + MARK + "</svg>"; }
   function stat(stats, path) {
@@ -152,6 +230,22 @@
     var m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"], x = new Date(String(d) + "T00:00:00Z");
     return isNaN(x) ? String(d) : m[x.getUTCMonth()] + " " + x.getUTCDate() + ", " + x.getUTCFullYear();
   }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function firstSentence(t) { var m = String(t || "").match(/^.+?[.!?](\s|$)/); return m ? m[0].trim() : String(t || ""); }
+  function sids(text) { var out = [], re = /\bS(\d+)\b/g, m; while ((m = re.exec(String(text || "")))) out.push("S" + m[1]); return out; }
+
+  /* The house explainers: what each part of a read is. Fixed copy, every issue. */
+  var EXPLAIN = {
+    rough: "What surfaced. The stories as DAILY reported them this week, before anyone connected them.",
+    read: "What it means. Each pattern is a claim about people, proved by the stories that carry it. S-numbers point to the receipts at the back.",
+    move: "One action per role that a team could start this week.",
+    cross: "Threads that ran across territories. Smaller than a pattern, too consistent to ignore.",
+    tension: "The evidence that pushes the other way, and the space nobody in the evidence claimed. A read is only as strong as the contradiction it can name.",
+    ad: "What the week means for the work: creative, media and brand.",
+    ret: "What we watch. The signals that will prove this read right or wrong, so the next read can keep score.",
+    nums: "Counted by the database from every published DAILY story in the window. No number on this page was written by a model.",
+    receipts: "Every story this read stands on, with its source, date and issue."
+  };
 
   /* ── Library ─────────────────────────────────────────────────────────── */
   function library() {
@@ -189,95 +283,186 @@
         return say(KIND[row.kind] + ", " + row.label + ": " + row.status.toUpperCase() +
           (row.error ? ". " + row.error : "") + ". The read is not written yet; this page fills in when it lands.");
       }
-      var cited = {};
-      function inner(html) { return '<section class="page inner"><table class="flow"><thead><tr><td class="sp"></td></tr></thead><tbody><tr><td>' +
-        html + '</td></tr></tbody><tfoot><tr><td class="sp"></td></tr></tfoot></table></section>'; }
-      function ev(list) {
-        list = (list || []).filter(function (s) { return rc[s]; });
-        list.forEach(function (s) { cited[s] = 1; });
+      var cited = {}, used = {};
+      function real(s) { return rc[s] ? s : null; }
+      function img(s) { return rc[s] && rc[s].has_image !== false ? API + "/img/s/" + String(s).slice(1) : null; }
+      function credit(s) { return rc[s] ? "Photo: " + esc(rc[s].source_name || "") : ""; }
+      function photo(s, cls, alt) {
+        var u = img(s); if (!u) return "";
+        return '<img class="ph ' + (cls || "") + '" src="' + u + '" alt="' + esc(alt || (rc[s] && rc[s].headline) || "") + '" loading="eager" referrerpolicy="no-referrer" onerror="phGone(this)">';
+      }
+      function pickImage(list, avoid) {
+        list = (list || []).filter(real);
+        for (var i = 0; i < list.length; i++) if (img(list[i]) && !(avoid && avoid[list[i]])) return list[i];
+        for (var j = 0; j < list.length; j++) if (img(list[j])) return list[j];
+        return null;
+      }
+      function evline(list) {
+        list = (list || []).filter(real); list.forEach(function (s) { cited[s] = 1; });
         if (!list.length) return "";
         return '<div class="ev">RECEIPTS · ' + list.map(function (s) { return esc(s) + " " + esc((rc[s].source_name || "").toUpperCase()); }).join(" · ") + "</div>";
       }
-      function moves(m) {
-        if (!m) return "";
-        return '<div class="moves">' + ROLES.filter(function (r) { return m[r]; }).map(function (r) {
-          return "<div><b>" + r + "</b>" + esc(m[r]) + "</div>";
-        }).join("") + "</div>";
-      }
-      function pattern(p, i) {
-        return '<div class="pat"><div class="pnum">' + String(i + 1).padStart(2, "0") +
-          (p.strength === "signal" ? '<span class="tag">Signal</span>' : "") +
-          (p.held_from_weekly ? '<span class="tag">Held from weekly</span>' : "") + "</div>" +
-          '<h2 class="name">' + esc(p.name) + "</h2>" +
-          (p.what_happened ? '<div class="lbl">What happened</div><p class="body">' + esc(p.what_happened) + "</p>" : "") +
-          (p.why_it_matters ? '<div class="lbl">Why it matters</div><p class="body">' + esc(p.why_it_matters) + "</p>" : "") +
-          (p.line ? '<p class="body">' + esc(p.line) + "</p>" : "") +
-          ev(p.evidence) + moves(p.moves) + "</div>";
-      }
+      function inner(html) { return '<section class="page inner"><table class="flow"><thead><tr><td class="sp"></td></tr></thead><tbody><tr><td>' +
+        html + '</td></tr></tbody><tfoot><tr><td class="sp"></td></tr></tfoot></table></section>'; }
+      function band(no, name, text) { return '<div class="band"><div class="no">' + no + '</div><h2>' + esc(name) + "</h2><p>" + esc(text) + "</p></div>"; }
+
+      var main = x.patterns || x.features || x.held || [];
+      var sec = 0, contents = [];
+      var rough = x.the_week || x.the_month || x.the_arc;
+      var watch = Array.isArray(x.watch) ? x.watch : (x.watch ? String(x.watch).match(/[^.!?]+[.!?]+/g) || [x.watch] : []);
+      if (rough) contents.push(["The Rough", "What surfaced"]);
+      if (main.length) contents.push(["The Read", main.length + " patterns"]);
+      if (x.cross_currents && x.cross_currents.length) contents.push(["Cross-currents", "Threads across territories"]);
+      if (x.contradiction || x.whitespace) contents.push(["The counter-signal and the whitespace", "What pushes back, what is unclaimed"]);
+      if (x.advertising_read) contents.push(["The advertising read", "Creative, media, brand"]);
+      if (watch.length) contents.push(["The Return", "What we watch"]);
+      contents.push(["By the numbers", "Counted by the database"]);
+      contents.push(["Receipts", "Every story cited"]);
+
+      var h = "";
+      if (row.status === "held") h += '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>";
+
+      /* Cover */
+      var coverS = real(x.cover_image) && img(x.cover_image) ? x.cover_image : pickImage(main[0] && (main[0].lead_image ? [main[0].lead_image].concat(main[0].evidence || []) : main[0].evidence));
+      if (coverS) used[coverS] = 1;
       var issues = st.issues && st.issues.first ? "Issues " + String(st.issues.first).padStart(3, "0") + " to " + String(st.issues.last).padStart(3, "0") : "";
       var nums = [["stories", "Stories read"], ["editions", "Editions"], ["sources_distinct", "Sources"], ["threads_total", "Recurring threads"]]
         .filter(function (n) { return stat(st, n[0]) !== null; })
         .map(function (n) { return "<div><b>" + stat(st, n[0]).toLocaleString("en-US") + "</b><span>" + n[1] + "</span></div>"; }).join("");
-      var h = "";
-      if (row.status === "held") h += '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>";
-      h += '<section class="page cover">' + mark("rp-mark") +
-        '<div class="kind">' + KIND[row.kind] + " · " + esc(row.label) + "</div>" +
-        "<h1>" + esc(x.title) + "</h1><p class=\"thesis\">" + esc(x.thesis) + "</p>" +
-        (nums ? '<div class="nums">' + nums + "</div>" : "") +
-        '<div class="foot"><span>' + esc(issues) + "</span><span>" + fmtDate(row.window_start) + " · " + fmtDate(row.window_end) + "</span></div></section>";
+      h += '<section class="page cover">' + (coverS ? '<div class="photo">' + photo(coverS, "", "") + '</div><div class="shade"></div>' : "") +
+        '<div class="in">' + mark("rp-mark") + '<div class="kind">' + KIND[row.kind] + " · " + esc(row.label) + "</div>" +
+        "<h1>" + esc(x.title) + '</h1><p class="thesis">' + esc(x.thesis) + "</p>" + (nums ? '<div class="nums">' + nums + "</div>" : "") +
+        '<div class="foot"><span>' + esc(issues) + "</span><span>" + fmtDate(row.window_start) + " · " + fmtDate(row.window_end) + "</span>" +
+        (coverS ? "<span>Cover: " + esc(rc[coverS].source_name || "") + "</span>" : "") + "</div></div></section>";
 
-      var rough = x.the_week || x.the_month || x.the_arc;
-      var p1 = "";
-      if (rough) p1 += '<div class="sec">The Rough</div><p class="body" style="font-size:17px">' + esc(rough).replace(/\n\n/g, "</p><p class=\"body\" style=\"font-size:17px\">") + "</p>";
-      if (x.by_the_numbers && x.by_the_numbers.length) {
-        var bn = x.by_the_numbers.filter(function (b) { return stat(st, b.stat) !== null; });
-        if (bn.length) p1 += '<div class="sec" style="margin-top:26px">By the numbers</div><div class="nums" style="border-color:var(--line);margin-top:0">' +
-          bn.slice(0, 8).map(function (b) { return "<div><b style=\"color:var(--ink)\">" + stat(st, b.stat).toLocaleString("en-US") + '</b><span style="color:var(--mute);text-transform:none;letter-spacing:0;font-size:11px">' + esc(b.line) + "</span></div>"; }).join("") + "</div>";
+      /* How to read this + contents */
+      h += inner('<div class="how"><div><div class="kicker">How to read this</div><div class="loop">' +
+        "<div><b>THE ROUGH</b><p>What surfaced: the week's stories as reported.</p></div>" +
+        "<div><b>THE READ</b><p>What it means: the patterns underneath, each proved by its stories.</p></div>" +
+        "<div><b>THE MOVE</b><p>What to do: one action per role, startable this week.</p></div>" +
+        "<div><b>THE RETURN</b><p>What we watch: the signals that will prove the read right or wrong.</p></div>" +
+        '</div><p class="intro">Numbers come from the database, never from the writer. S-numbers such as S739 point to the receipts at the back: the headline, source, date and DAILY issue each claim stands on.</p></div>' +
+        '<div><div class="kicker">In this issue</div><div class="toc">' + contents.map(function (c, i) {
+          return '<div><span class="n">' + pad(i + 1) + '</span><span class="t">' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></div>"; }).join("") +
+        "</div></div></div>");
+
+      /* The Rough */
+      if (rough) {
+        sec++;
+        var rs = sids(rough).filter(real), mos = [];
+        rs.forEach(function (s) { if (mos.length < 3 && img(s) && !used[s] && mos.indexOf(s) < 0) mos.push(s); });
+        rs.forEach(function (s) { cited[s] = 1; });
+        h += inner(band(pad(sec), "The Rough", EXPLAIN.rough) +
+          (mos.length ? '<div class="mosaic">' + mos.map(function (s) { return "<figure>" + photo(s) + "<figcaption>" + esc(rc[s].headline) + '<div class="credit">' + credit(s) + "</div></figcaption></figure>"; }).join("") + "</div>" : "") +
+          '<div class="cols" style="margin-top:22px">' + String(rough).split(/\n\n+/).map(function (p) { return '<p class="body lead">' + esc(p) + "</p>"; }).join("") + "</div>");
       }
-      if (p1) h += inner(p1);
 
-      var main = x.patterns || x.features || x.held || [];
-      main.forEach(function (p, i) { h += inner('<div class="sec">' + (x.held ? "What held" : "The Read") + " · " + (i + 1) + " of " + main.length + "</div>" + pattern(p, i)); });
+      /* The Read: opener, then one spread per pattern */
+      if (main.length) {
+        sec++;
+        h += '<section class="page opener"><div class="no">' + pad(sec) + " · " + (x.held ? "What held" : "The Read") + "</div><h2>" + (x.held ? "What held." : "The Read.") +
+          "</h2><p>" + esc(EXPLAIN.read) + "</p><ol>" + main.map(function (p, i) { return "<li><span>" + pad(i + 1) + "</span>" + esc(p.name) + "</li>"; }).join("") + "</ol></section>";
+        main.forEach(function (p, i) {
+          var ev = (p.evidence || []).filter(real);
+          var lead = (p.lead_image && real(p.lead_image) && img(p.lead_image)) ? p.lead_image : pickImage(ev, used);
+          if (lead) used[lead] = 1;
+          var rest = ev.filter(function (s) { return s !== lead && img(s); }).slice(0, 4);
+          var dek = p.dek || firstSentence(p.why_it_matters || p.line);
+          var why = p.why_it_matters && !p.dek ? String(p.why_it_matters).slice(firstSentence(p.why_it_matters).length).trim() : p.why_it_matters;
+          h += inner((lead ? '<div class="hero">' + photo(lead) + '<span class="tag">' + (x.held ? "What held" : "The Read") + " · " + (i + 1) + " of " + main.length + '</span><div class="credit">' + credit(lead) + "</div></div>"
+                           : '<div class="hero none"></div>') +
+            '<div class="pname">' + esc(p.name) + (p.strength === "signal" ? '<span class="signal">Signal</span>' : "") + "</div>" +
+            (dek ? '<p class="dek">' + esc(dek) + "</p>" : "") +
+            '<div class="cols">' +
+              (p.what_happened ? '<div class="lbl">What happened</div><p class="body">' + esc(p.what_happened) + "</p>" : "") +
+              (why ? '<div class="lbl">Why it matters</div><p class="body">' + esc(why) + "</p>" : "") +
+              (p.line ? '<p class="body">' + esc(p.line) + "</p>" : "") +
+            "</div>" +
+            (p.moves ? '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="s">' + esc(EXPLAIN.move) + '</div><div class="grid">' +
+              ROLES.filter(function (r) { return p.moves[r]; }).map(function (r) { return "<div><b>" + r + "</b>" + esc(p.moves[r]) + "</div>"; }).join("") + "</div></div>" : "") +
+            (rest.length ? '<div class="strip">' + rest.map(function (s) { return "<figure>" + photo(s) + "<figcaption>" + esc(rc[s].headline) + " <span>" + esc(s) + "</span></figcaption></figure>"; }).join("") + "</div>" : "") +
+            evline(p.evidence));
+        });
+      }
       var extra = "";
-      if (x.faded && x.faded.length) extra += '<div class="sec">What faded</div>' + x.faded.map(pattern).join("");
-      if (x.emerged && x.emerged.length) extra += '<div class="sec">What emerged</div>' + x.emerged.map(pattern).join("");
-      if (x.territory_briefs && x.territory_briefs.length) extra += '<div class="sec">Territory briefs</div>' + x.territory_briefs.map(function (t) {
-        return '<div class="pat"><div class="lbl">' + esc(String(t.territory).replace(/-/g, " ")) + '</div><p class="body">' + esc(t.line) + "</p>" + ev(t.evidence) + "</div>"; }).join("");
+      if (x.faded && x.faded.length) extra += '<div class="kicker">What faded</div>' + x.faded.map(function (f) { return '<p class="pull">' + esc(f.name) + '</p><p class="body">' + esc(f.line) + "</p>" + evline(f.evidence); }).join("");
+      if (x.emerged && x.emerged.length) extra += '<div class="kicker">What emerged</div>' + x.emerged.map(function (f) { return '<p class="pull">' + esc(f.name) + '</p><p class="body">' + esc(f.line) + "</p>" + evline(f.evidence); }).join("");
+      if (x.territory_briefs && x.territory_briefs.length) extra += '<div class="kicker">Territory briefs</div>' + x.territory_briefs.map(function (t) {
+        return '<div class="thread"><div>' + (pickImage(t.evidence) ? photo(pickImage(t.evidence)) : "") + '</div><div><div class="lbl">' + esc(String(t.territory).replace(/-/g, " ")) + '</div><p class="body">' + esc(t.line) + "</p>" + evline(t.evidence) + "</div></div>"; }).join("");
       if (extra) h += inner(extra);
 
-      var p3 = "";
-      if (x.cross_currents && x.cross_currents.length) p3 += '<div class="sec">Cross-currents</div>' + x.cross_currents.map(function (c) {
-        return '<p class="pull">' + esc(c.thread) + "</p>" + ev(c.evidence); }).join("");
-      var pair = "";
-      if (x.contradiction) pair += '<div><div class="sec">The contradiction</div><p class="body">' + esc(x.contradiction) + "</p></div>";
-      if (x.whitespace) pair += '<div><div class="sec">The whitespace</div><p class="body">' + esc(x.whitespace) + "</p></div>";
-      if (pair) p3 += '<div class="two" style="margin-top:22px">' + pair + "</div>";
-      if (x.scoreboard) p3 += '<div class="sec" style="margin-top:22px">The scoreboard</div><p class="body">' + esc(x.scoreboard) + "</p>";
-      if (x.advertising_read) p3 += '<div class="sec" style="margin-top:22px">The advertising read</div><p class="body" style="font-size:17px">' + esc(x.advertising_read) + "</p>";
-      var watch = Array.isArray(x.watch) ? x.watch : (x.watch ? [x.watch] : []);
-      if (watch.length) p3 += '<div class="sec" style="margin-top:22px">The Return: what we watch</div><ul class="watch">' + watch.map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul>";
-      if (p3) h += inner(p3);
+      if (x.cross_currents && x.cross_currents.length) {
+        sec++;
+        h += inner(band(pad(sec), "Cross-currents", EXPLAIN.cross) + x.cross_currents.map(function (c) {
+          var s = pickImage(c.evidence, used);
+          return '<div class="thread"><div>' + (s ? photo(s) : '<div class="noimg ph" style="height:1.3in">NO IMAGE</div>') + "</div><div><p>" + esc(c.thread) + "</p>" + evline(c.evidence) + "</div></div>";
+        }).join(""));
+      }
+      if (x.contradiction || x.whitespace) {
+        sec++;
+        h += inner(band(pad(sec), "The counter-signal and the whitespace", EXPLAIN.tension) + '<div class="two">' +
+          (x.contradiction ? '<div><div class="kicker">The counter-signal</div><p class="pull">' + esc(firstSentence(x.contradiction)) + '</p><p class="body">' + esc(String(x.contradiction).slice(firstSentence(x.contradiction).length).trim()) + "</p>" + evline(sids(x.contradiction)) + "</div>" : "") +
+          (x.whitespace ? '<div><div class="kicker">The whitespace</div><p class="pull">' + esc(firstSentence(x.whitespace)) + '</p><p class="body">' + esc(String(x.whitespace).slice(firstSentence(x.whitespace).length).trim()) + "</p>" + evline(sids(x.whitespace)) + "</div>" : "") +
+          "</div>");
+      }
+      if (x.advertising_read) {
+        sec++;
+        h += inner(band(pad(sec), "The advertising read", EXPLAIN.ad) + '<p class="pull" style="font-size:30px">' + esc(firstSentence(x.advertising_read)) + "</p>" +
+          '<div class="cols"><p class="body lead">' + esc(String(x.advertising_read).slice(firstSentence(x.advertising_read).length).trim()) + "</p></div>" + evline(sids(x.advertising_read)));
+      }
+      if (watch.length || x.scoreboard) {
+        sec++;
+        h += inner(band(pad(sec), "The Return", EXPLAIN.ret) +
+          (watch.length ? '<ul class="watch">' + watch.map(function (w, i) { return "<li><span>" + pad(i + 1) + "</span>" + esc(String(w).trim()) + "</li>"; }).join("") + "</ul>" : "") +
+          (x.scoreboard ? '<div class="kicker" style="margin-top:26px">The scoreboard</div><p class="body">' + esc(x.scoreboard) + "</p>" : ""));
+      }
 
+      /* By the numbers: every bar a database count */
+      sec++;
+      function bars(obj, top, fmt) {
+        var rows = Object.keys(obj || {}).map(function (k) { return [k, obj[k]]; }).filter(function (r) { return typeof r[1] === "number"; })
+          .sort(function (a, b) { return b[1] - a[1]; }).slice(0, top);
+        var mx = rows.length ? rows[0][1] : 1;
+        return '<div class="bars">' + rows.map(function (r, i) {
+          return "<div><span>" + esc(fmt ? fmt(r[0]) : r[0]) + '</span><i class="' + (i === 0 ? "r" : "") + '" style="width:' + Math.max(3, Math.round(r[1] / mx * 100)) + '%"></i><b>' + r[1] + "</b></div>"; }).join("") + "</div>";
+      }
+      var src = {}; (st.top_sources || []).forEach(function (s) { src[s.source] = s.stories; });
+      var bn = (x.by_the_numbers || []).filter(function (b) { return stat(st, b.stat) !== null; });
+      h += inner(band(pad(sec), "By the numbers", EXPLAIN.nums) +
+        '<div class="bigs">' + [["stories", "Stories"], ["editions", "Editions"], ["sources_distinct", "Sources"], ["lake_captured", "Signals captured"]]
+          .filter(function (n) { return stat(st, n[0]) !== null; }).map(function (n) { return "<div><b>" + stat(st, n[0]).toLocaleString("en-US") + "</b><span>" + n[1] + "</span></div>"; }).join("") + "</div>" +
+        (bn.length ? '<div class="two" style="margin-bottom:22px">' + bn.slice(0, 6).map(function (b) { return '<div><div class="lbl">' + stat(st, b.stat).toLocaleString("en-US") + '</div><p class="body">' + esc(b.line) + "</p></div>"; }).join("") + "</div>" : "") +
+        '<div class="two"><div><div class="kicker">Stories by territory</div>' + bars(st.by_territory, 10, function (k) { return k.replace(/-/g, " "); }) +
+        '</div><div><div class="kicker">Top sources</div>' + bars(src, 8) + "</div></div>" +
+        '<div style="margin-top:22px"><div class="kicker">Stories by format</div>' + bars(st.by_format, 6) + "</div>");
+
+      /* Receipts */
       var ids = Object.keys(cited).sort(function (a, b) { return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10); });
-      if (ids.length) h += inner('<div class="sec">Receipts: every story this read stands on</div>' + ids.map(function (s) {
-        var r = rc[s]; return '<div class="rc"><span class="id">' + esc(s) + '</span><span>' + esc(r.headline) + '<br><span class="src">' + esc(r.source_name || "") +
-          (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + "</span></span></div>"; }).join(""));
+      sec++;
+      if (ids.length) h += inner(band(pad(sec), "Receipts", EXPLAIN.receipts) + ids.map(function (s) {
+        var r = rc[s];
+        return '<div class="rc">' + (img(s) ? photo(s) : '<div class="noimg">' + esc(s) + "</div>") + '<div><div class="hl">' + esc(r.headline) + '</div><div class="src">' + esc(s) + " · " + esc(r.source_name || "") +
+          (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + "</div></div></div>"; }).join(""));
       h += '<section class="page closer">' + mark("rp-mark") + '<div class="big">The read is free.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/daily</div></section>';
       app.innerHTML = '<div class="doc">' + h + "</div>";
-      if (x.social && x.social.frames && x.social.frames.length) social(row, x.social);
+      if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, coverS);
       bind(row);
     });
   }
+  function imagesReady() {
+    var imgs = Array.prototype.slice.call(document.querySelectorAll(".doc img"));
+    return Promise.all(imgs.map(function (im) { return im.complete ? null : new Promise(function (r) { im.addEventListener("load", r); im.addEventListener("error", r); }); }));
+  }
   function bind(row) {
-    var p = document.getElementById("pdf"); if (p) p.onclick = function () { window.print(); };
+    var p = document.getElementById("pdf"); if (p) p.onclick = function () { p.textContent = "Preparing"; imagesReady().then(function () { p.textContent = "Download PDF"; window.print(); }); };
     var pub = document.getElementById("pub"); if (pub) pub.onclick = function () {
       pub.disabled = true; call("/reads/publish", { id: row.id }).then(function (d) { pub.textContent = d && d.ok ? "Published" : "Publish failed"; }); };
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
       rl.disabled = true; call("/reads/reland", { id: row.id }).then(function () { openRead(row.id); }); };
   }
 
-  /* ── Social: the Unsurfaced DAILY issue, drawn ───────────────────────── */
-  var C = { void: "#0A0A0A", ivory: "#FAF7F2", cream: "#F5F0E8", red: "#C41230", ink: "#141414", mute: "#6B6455" };
+  /* ── Social: the Unsurfaced DAILY issue, drawn over the stories' photos ── */
+  var C = { void: "#0A0A0A", ivory: "#FAF7F2", cream: "#F5F0E8", red: "#C41230", ink: "#141414" };
   function wrap(ctx, text, x, y, w, size, lh, maxLines, font) {
     var s = size, lines;
     for (; s >= size * 0.6; s -= 2) {
@@ -293,38 +478,54 @@
     lines.forEach(function (l, i) { ctx.fillText(l, x, y + i * s * lh); });
     return y + lines.length * s * lh;
   }
-  function frame(kind, data, label) {
+  function loadImg(u) {
+    return new Promise(function (res) { if (!u) return res(null); var im = new Image(); im.crossOrigin = "anonymous";
+      im.onload = function () { res(im); }; im.onerror = function () { res(null); }; im.src = u; });
+  }
+  function cover(c, im, x, y, w, h) {
+    var r = Math.max(w / im.width, h / im.height), iw = im.width * r, ih = im.height * r;
+    c.drawImage(im, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+  }
+  function frame(kind, data, label, im) {
     var cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1350;
-    var c = cv.getContext("2d"), paper = kind === "paper";
-    c.fillStyle = paper ? C.cream : C.void; c.fillRect(0, 0, 1080, 1350);
-    var fg = paper ? C.ink : C.ivory;
+    var c = cv.getContext("2d");
+    c.fillStyle = C.void; c.fillRect(0, 0, 1080, 1350);
+    if (im) {
+      if (kind === "story") { cover(c, im, 0, 0, 1080, 760); var g = c.createLinearGradient(0, 420, 0, 780); g.addColorStop(0, "rgba(10,10,10,0)"); g.addColorStop(1, "rgba(10,10,10,1)"); c.fillStyle = g; c.fillRect(0, 420, 1080, 360); }
+      else { cover(c, im, 0, 0, 1080, 1350); c.fillStyle = "rgba(10,10,10,.62)"; c.fillRect(0, 0, 1080, 1350); }
+    }
     c.textBaseline = "alphabetic";
-    c.fillStyle = fg; c.font = "700 24px 'Space Mono'"; c.fillText("UNSURFACED™ DAILY", 84, 110);
+    c.fillStyle = C.ivory; c.font = "700 24px 'Space Mono'"; c.fillText("UNSURFACED™ DAILY", 84, 110);
     c.textAlign = "right"; c.fillText(data.n || "", 996, 110); c.textAlign = "left";
     if (kind === "cover") {
-      c.fillStyle = C.red; c.beginPath(); c.arc(96, 520, 12, 0, 7); c.fill();
-      c.fillStyle = C.ivory; var y = wrap(c, data.headline, 84, 640, 912, 118, 1.0, 5, "800 {s}px Syne");
-      c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText(label.toUpperCase(), 84, y + 40);
+      c.fillStyle = C.red; c.beginPath(); c.arc(96, 560, 12, 0, 7); c.fill();
+      c.fillStyle = C.ivory; var y = wrap(c, data.headline, 84, 680, 912, 116, 1.0, 5, "800 {s}px Syne");
+      c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText(label.toUpperCase(), 84, Math.min(y + 40, 1180));
       c.fillStyle = C.ivory; c.font = "400 22px 'Space Mono'"; c.fillText("THE WEEKLY READ · SWIPE", 84, 1270);
     } else if (kind === "closer") {
       c.fillStyle = C.ivory; wrap(c, "The read is free. The moves are yours.", 84, 560, 912, 100, 1.05, 4, "800 {s}px Syne");
       c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText("UNSURFACED-INTELLIGENCE.COM/DAILY", 84, 1270);
     } else {
-      c.fillStyle = C.red; c.beginPath(); c.arc(92, 212, 8, 0, 7); c.fill();
-      c.font = "700 26px 'Space Mono'"; c.fillText(String(data.kicker || "").toUpperCase(), 116, 222);
-      c.fillStyle = fg; var y2 = wrap(c, data.headline, 84, 360, 912, 88, 1.06, 5, "800 {s}px Syne");
-      c.fillStyle = paper ? "#4A4A4A" : C.cream; wrap(c, data.line, 84, Math.max(y2 + 50, 860), 912, 32, 1.5, 6, "400 {s}px 'Space Mono'");
+      var top = im ? 800 : 300;
+      c.fillStyle = C.red; c.beginPath(); c.arc(92, top - 12, 8, 0, 7); c.fill();
+      c.font = "700 26px 'Space Mono'"; c.fillText(String(data.kicker || "").toUpperCase(), 116, top - 2);
+      c.fillStyle = C.ivory; var y2 = wrap(c, data.headline, 84, top + 90, 912, im ? 70 : 88, 1.06, im ? 3 : 5, "800 {s}px Syne");
+      c.fillStyle = C.cream; wrap(c, data.line, 84, Math.max(y2 + 30, im ? 1060 : 860), 912, 28, 1.45, im ? 4 : 6, "400 {s}px 'Space Mono'");
       c.fillStyle = C.red; c.fillRect(84, 1236, 912, 3);
-      c.fillStyle = fg; c.font = "400 20px 'Space Mono'"; c.fillText(label.toUpperCase(), 84, 1290);
+      c.fillStyle = C.ivory; c.font = "400 20px 'Space Mono'"; c.fillText(label.toUpperCase(), 84, 1290);
+      if (data.credit) { c.textAlign = "right"; c.fillText(data.credit.toUpperCase(), 996, 1290); c.textAlign = "left"; }
     }
     return cv;
   }
-  function social(row, s) {
+  function social(row, s, rc, img, coverS) {
     var fonts = ["800 80px Syne", "700 24px 'Space Mono'", "400 24px 'Space Mono'"];
-    Promise.all(fonts.map(function (f) { return document.fonts.load(f); })).then(function () {
-      var label = row.label, frames = [frame("cover", { headline: s.cover_line, n: "" }, label)];
-      s.frames.forEach(function (f, i) { frames.push(frame(i % 3 === 1 ? "paper" : "dark", { kicker: f.kicker, headline: f.headline, line: f.line, n: (i + 1) + " / " + s.frames.length }, label)); });
-      frames.push(frame("closer", { n: "" }, label));
+    var pick = s.frames.map(function (f) { var e = (f.evidence || []).filter(function (x) { return rc[x] && img(x); }); return e[0] || null; });
+    Promise.all(fonts.map(function (f) { return document.fonts.load(f); }).concat([loadImg(coverS && img(coverS))], pick.map(function (p) { return loadImg(p && img(p)); }))).then(function (res) {
+      var coverIm = res[fonts.length], ims = res.slice(fonts.length + 1), label = row.label;
+      var frames = [frame("cover", { headline: s.cover_line, n: "" }, label, coverIm)];
+      s.frames.forEach(function (f, i) { frames.push(frame("story", { kicker: f.kicker, headline: f.headline, line: f.line, n: (i + 1) + " / " + s.frames.length,
+        credit: ims[i] && pick[i] ? "Photo: " + (rc[pick[i]].source_name || "") : "" }, label, ims[i])); });
+      frames.push(frame("closer", { n: "" }, label, null));
       var wrapEl = document.createElement("section"); wrapEl.className = "social";
       wrapEl.innerHTML = '<h2>The Unsurfaced DAILY issue · ' + frames.length + ' frames, 1080 × 1350</h2><div class="frames"></div>' +
         '<button class="btn red" id="carousel">Download carousel PDF (LinkedIn)</button> <button class="btn" id="pngs">Download all PNGs (Instagram)</button>' +
@@ -334,9 +535,9 @@
       frames.forEach(function (cv, i) {
         var fig = document.createElement("figure"); fig.appendChild(cv);
         var cap = document.createElement("figcaption"), a = document.createElement("a");
-        a.className = "btn"; a.textContent = "PNG"; a.download = slug + "-" + String(i + 1).padStart(2, "0") + ".png";
-        a.href = cv.toDataURL("image/png");
-        cap.innerHTML = "<span>" + String(i + 1).padStart(2, "0") + "</span>"; cap.appendChild(a); fig.appendChild(cap); grid.appendChild(fig);
+        a.className = "btn"; a.textContent = "PNG"; a.download = slug + "-" + pad(i + 1) + ".png";
+        try { a.href = cv.toDataURL("image/png"); } catch (e) { a.textContent = "PNG blocked"; }
+        cap.innerHTML = "<span>" + pad(i + 1) + "</span>"; cap.appendChild(a); fig.appendChild(cap); grid.appendChild(fig);
       });
       document.getElementById("pngs").onclick = function () {
         grid.querySelectorAll("a.btn").forEach(function (a, i) { setTimeout(function () { a.click(); }, i * 400); });
@@ -352,7 +553,7 @@
     var enc = new TextEncoder(), parts = [], offs = [], len = 0;
     function push(x) { var b = typeof x === "string" ? enc.encode(x) : x; parts.push(b); len += b.length; }
     function obj(n, body) { offs[n] = len; push(n + " 0 obj\n"); body(); push("\nendobj\n"); }
-    var imgs = frames.map(function (cv) { var d = atob(cv.toDataURL("image/jpeg", 0.92).split(",")[1]), u = new Uint8Array(d.length);
+    var imgs = frames.map(function (cv) { var d = atob(cv.toDataURL("image/jpeg", 0.9).split(",")[1]), u = new Uint8Array(d.length);
       for (var i = 0; i < d.length; i++) u[i] = d.charCodeAt(i); return u; });
     var W = 1080 * 0.6, H = 1350 * 0.6, n = frames.length, kids = [];
     push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");

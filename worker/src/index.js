@@ -134,6 +134,7 @@ export default {
       if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
+      if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/s/')) return readImageRelay(path, env);   // SEAM:READ_DESIGN
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
       if (path.startsWith('/s/') && request.method === 'GET') return mineSharePage(path, env);
@@ -6498,7 +6499,8 @@ const READ_CONTRACT = {
     '"title": the read in 4 to 8 words, stated as a claim; ' +
     '"thesis": 2 sentences on what culture did this week; ' +
     '"the_week": one paragraph of THE ROUGH, naming concrete events; ' +
-    '"patterns": 3 to 5 objects {"name": 4 to 8 words, "what_happened": paragraph, "why_it_matters": paragraph, ' +
+    '"cover_image": the one "S<id>" from the evidence whose photograph should open the issue; ' +
+    '"patterns": 3 to 5 objects {"name": 4 to 8 words, "dek": one sentence that sells the pattern to a reader skimming, "lead_image": the one "S<id>" in its evidence whose photograph leads it, "what_happened": paragraph, "why_it_matters": paragraph, ' +
     '"evidence": ["S<id>", ...], "strength": "pattern" or "signal", "moves": {"creative": s, "marketer": s, "founder": s, "exec": s, "talent": s}}; ' +
     '"cross_currents": 1 to 3 objects {"thread": one sentence, "evidence": ["S<id>", ...]}; ' +
     '"contradiction": one paragraph on the counter-signal; ' +
@@ -6512,7 +6514,8 @@ const READ_CONTRACT = {
     '"title": 4 to 8 words, stated as a claim; "thesis": 2 sentences on what culture did this month; ' +
     '"the_month": two paragraphs of THE ROUGH; ' +
     '"by_the_numbers": 3 to 6 objects {"stat": a key path that exists in STATS, such as "stories" or "by_territory.music", "line": one sentence reading that number}; ' +
-    '"features": 3 to 5 objects {"name", "what_happened", "why_it_matters", "evidence": ["S<id>", ...], "strength": "pattern" or "signal", ' +
+    '"cover_image": the one "S<id>" whose photograph should open the issue; ' +
+    '"features": 3 to 5 objects {"name", "dek": one sentence for a reader skimming, "lead_image": the one "S<id>" in its evidence whose photograph leads it, "what_happened", "why_it_matters", "evidence": ["S<id>", ...], "strength": "pattern" or "signal", ' +
     '"held_from_weekly": true or false, "moves": {"creative", "marketer", "founder", "exec", "talent"}}; ' +
     '"territory_briefs": objects {"territory": a territory key from STATS.by_territory, "line": 1 to 2 sentences, "evidence": ["S<id>", ...]} for territories with real activity; ' +
     '"cross_currents": 1 to 3 objects {"thread", "evidence"}; ' +
@@ -6522,7 +6525,8 @@ const READ_CONTRACT = {
     '"title": 4 to 8 words; "thesis": 2 sentences on what the whole archive shows; ' +
     '"the_arc": three paragraphs, the long view from the first issue to the last; ' +
     '"by_the_numbers": 4 to 8 objects {"stat": a key path in STATS, "line": one sentence}; ' +
-    '"held": 3 to 5 objects {"name", "what_happened", "why_it_matters", "evidence": ["S<id>", ...], "moves": {"creative", "marketer", "founder", "exec", "talent"}} for patterns that held across months; ' +
+    '"cover_image": the one "S<id>" whose photograph should open the record; ' +
+    '"held": 3 to 5 objects {"name", "dek": one sentence for a reader skimming, "lead_image": the one "S<id>" in its evidence whose photograph leads it, "what_happened", "why_it_matters", "evidence": ["S<id>", ...], "moves": {"creative", "marketer", "founder", "exec", "talent"}} for patterns that held across months; ' +
     '"faded": 0 to 4 objects {"name", "line", "evidence"} for patterns that did not hold; ' +
     '"emerged": 0 to 4 objects {"name", "line", "evidence"} for patterns visible only at this distance; ' +
     '"scoreboard": one paragraph from STATS calls only, or an empty string; ' +
@@ -6623,6 +6627,10 @@ function readValidate(kind, read, ground, packIds) {
       const o = {};
       for (const k of Object.keys(v)) o[k] = walk(v[k], path ? path + '.' + k : k);
       return o;
+    }
+    if (/(?:^|\.)(?:lead_image|cover_image)$/.test(path)) {   // SEAM:READ_DESIGN photographs come from the pack
+      if (ids.has(String(v))) return String(v);
+      dropped++; return undefined;
     }
     if (typeof v !== 'string') return v;
     let s = v.replace(/\s*\u2014\s*/g, () => { dashes++; return ': '; });
@@ -6772,21 +6780,93 @@ async function readQueue(env, kind, win, meta) {
  * headline, source, date and issue it stands on. The page prints them. */
 async function readReceipts(env, read) {
   const ids = new Set();
+  const add = x => { const m = /^S(\d+)$/.exec(String(x)); if (m) ids.add(parseInt(m[1], 10)); };
   const walk = (v, key) => {
     if (Array.isArray(v)) {
-      if (/evidence$/.test(key || '')) v.forEach(x => { const m = /^S(\d+)$/.exec(String(x)); if (m) ids.add(parseInt(m[1], 10)); });
+      if (/evidence$/.test(key || '')) v.forEach(add);
       else v.forEach(y => walk(y, ''));
-    } else if (v && typeof v === 'object') Object.keys(v).forEach(k => walk(v[k], k));
+    } else if (v && typeof v === 'object') Object.keys(v).forEach(k => /^(?:lead_image|cover_image)$/.test(k) ? add(v[k]) : walk(v[k], k));
   };
   walk(read || {}, '');
   const list = Array.from(ids).slice(0, 400), out = {};
   for (let i = 0; i < list.length; i += 100) {
     const rows = await sbRest(env, 'edition_items?id=in.(' + list.slice(i, i + 100).join(',') + ')' +
-      '&select=id,headline,source_name,source_url,editions(date,issue_no)') || [];
+      '&select=id,headline,source_name,source_url,image_url,editions(date,issue_no)') || [];
     rows.forEach(r => { out['S' + r.id] = { headline: r.headline, source_name: r.source_name, source_url: r.source_url,
+      has_image: !!(r.image_url || r.source_url),
       date: r.editions ? r.editions.date : null, issue_no: r.editions ? r.editions.issue_no : null }; });
   }
   return out;
+}
+/* SEAM:READ_DESIGN image relay: GET /img/s/<story id>. The read page and its
+ * social frames draw story photographs through this one closed door.
+ *   - Only a story in a published DAILY edition. Nothing else is reachable.
+ *   - The source page's og:image first (full size), the stored image_url second.
+ *   - https only (http is upgraded), private hosts refused, image/* only, 6 MB cap.
+ *   - Cached 7 days at the edge; a miss is cached 1 day so a dead photo is not
+ *     refetched on every page view. CORS open so a canvas can draw it.
+ *   - No AI spend. Every failure is a plain 404, logged, never cached as a photo. */
+const READ_IMG = { MAX_BYTES: 6000000, TTL: 604800, MISS_TTL: 86400, HTML_BYTES: 400000 };
+function readImgUrl(raw, base) {
+  let t;
+  try { t = new URL(String(raw || ''), base || undefined); }
+  catch (e) { return null; }
+  if (t.protocol === 'http:') t.protocol = 'https:';
+  if (t.protocol !== 'https:' || t.port || pvBlockedHost(t.hostname) || t.href.length > 1000) return null;
+  return t.href;
+}
+async function readImgFetch(href, accept) {
+  try {
+    return await fetch(href, { redirect: 'follow', headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; UnsurfacedRead/1.0; +https://unsurfaced-intelligence.com)', 'Accept': accept } });
+  } catch (e) {
+    console.log('img_relay_unreachable', href.slice(0, 120));
+    return null;
+  }
+}
+async function readImageRelay(path, env) {
+  const hdr = ttl => ({ 'Cache-Control': 'public, max-age=' + ttl, 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
+  const id = (/^\/img\/s\/(\d{1,9})$/.exec(path) || [])[1];
+  if (!id) return new Response('not found', { status: 404, headers: hdr(3600) });
+  const cache = caches.default;
+  const key = new Request('https://img.unsurfaced-intelligence.com/s/' + id);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const miss = async why => {
+    console.log('img_relay_miss', id, why);
+    const r = new Response('not found', { status: 404, headers: hdr(READ_IMG.MISS_TTL) });
+    await cache.put(key, r.clone());
+    return r;
+  };
+  const rows = await sbRest(env, 'edition_items?id=eq.' + id +
+    '&select=image_url,source_url,editions!inner(status)&editions.status=eq.published&limit=1') || [];
+  const row = rows[0];
+  if (!row) return miss('not_published');
+  const tries = [];
+  const page = readImgUrl(row.source_url);
+  if (page) {
+    const res = await readImgFetch(page, 'text/html,application/xhtml+xml');
+    if (res && res.ok && /text\/html|xhtml/.test(res.headers.get('content-type') || '')) {
+      const html = (await res.text()).slice(0, READ_IMG.HTML_BYTES);
+      const og = readImgUrl(pvMeta(html, 'og:image') || pvMeta(html, 'twitter:image'), res.url || page);
+      if (og) tries.push(og);
+    }
+  }
+  const stored = readImgUrl(row.image_url);
+  if (stored && tries.indexOf(stored) < 0) tries.push(stored);
+  for (const href of tries) {
+    const res = await readImgFetch(href, 'image/avif,image/webp,image/*');
+    if (!res || !res.ok) continue;
+    const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!/^image\/(?:jpeg|jpg|png|webp|gif|avif)$/.test(type)) continue;
+    if (parseInt(res.headers.get('content-length') || '0', 10) > READ_IMG.MAX_BYTES) continue;
+    const buf = await res.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength > READ_IMG.MAX_BYTES) continue;
+    const out = new Response(buf, { status: 200, headers: Object.assign({ 'Content-Type': type }, hdr(READ_IMG.TTL)) });
+    await cache.put(key, out.clone());
+    return out;
+  }
+  return miss(tries.length ? 'no_image_served' : 'no_candidate');
 }
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
