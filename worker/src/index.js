@@ -6745,6 +6745,26 @@ async function readQueue(env, kind, win, meta) {
   return { row: back[0] || null, prev: prev[0] || null };
 }
 
+/* SEAM:READ_PAGE receipts: every S-id a read cites, resolved to the real
+ * headline, source, date and issue it stands on. The page prints them. */
+async function readReceipts(env, read) {
+  const ids = new Set();
+  const walk = (v, key) => {
+    if (Array.isArray(v)) {
+      if (/evidence$/.test(key || '')) v.forEach(x => { const m = /^S(\d+)$/.exec(String(x)); if (m) ids.add(parseInt(m[1], 10)); });
+      else v.forEach(y => walk(y, ''));
+    } else if (v && typeof v === 'object') Object.keys(v).forEach(k => walk(v[k], k));
+  };
+  walk(read || {}, '');
+  const list = Array.from(ids).slice(0, 400), out = {};
+  for (let i = 0; i < list.length; i += 100) {
+    const rows = await sbRest(env, 'edition_items?id=in.(' + list.slice(i, i + 100).join(',') + ')' +
+      '&select=id,headline,source_name,source_url,editions(date,issue_no)') || [];
+    rows.forEach(r => { out['S' + r.id] = { headline: r.headline, source_name: r.source_name, source_url: r.source_url,
+      date: r.editions ? r.editions.date : null, issue_no: r.editions ? r.editions.issue_no : null }; });
+  }
+  return out;
+}
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
@@ -6756,7 +6776,8 @@ async function readRoute(path, body, env, origin, user) {
   }
   if (path === '/reads/get') {
     const row = await readRow(env, body.id);
-    return json(row ? { ok: true, read: row } : { ok: false, error: 'not_found' }, 200, origin, env);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    return json({ ok: true, read: row, receipts: await readReceipts(env, row.read) }, 200, origin, env);
   }
   if (path === '/reads/reland') {
     // Re-land a held read from the text already stored in claude_jobs. No new spend.

@@ -641,6 +641,15 @@
   "SEAM:PROMPT_SYNC": {
    "file": "worker/src/index.js",
    "purpose": "READ_METHOD is byte-identical to templates/CULTURAL_READ_METHOD.md; the gate fails on drift; tools/sync_method.py re-syncs"
+  },
+  "SEAM:READ_PAGE": {
+   "file": "intelligence/read/index.html",
+   "purpose": "the house read designed: library of every read; one read as a letter-size document (cover with SQL numbers, the rough, the read with moves by role, cross-currents, contradiction, whitespace, advertising read, the return, receipts, closer) printed to PDF by the browser; the Weekly Read's social frames drawn 1080x1350 as PNGs and a LinkedIn carousel PDF; publish and re-land; admin session only"
+  },
+  "SEAM:READ_PAGE@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:READ_PAGE",
+   "purpose": "readReceipts: /reads/get resolves every cited S-id to its real headline, source, date and issue"
   }
  },
  "planned": [
