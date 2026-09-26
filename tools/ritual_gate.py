@@ -13,6 +13,10 @@ Checks:
   5c. Stacking law   every z-index on intelligence/index.html is a --z-* token
   5d. Content law    no hand-typed content pools render on intelligence/index.html
   6. Seam registry    every registered seam exists; every SEAM: tag is registered
+  7. Voice law        no em dash in any worker string literal (glyph or escape)
+  8. Swallow ratchet  empty catches may only go down
+  9. Spender registry every AI-spending function is registered with its guard
+ 10. Proofs           every worker/proofs/*.mjs exits 0
 """
 import re, sys, json, glob, base64, hashlib, subprocess, tempfile, os
 
@@ -149,6 +153,97 @@ for tag, files in found.items():
         if (tag, f) not in registered:
             FAIL.append(f"[seam] {tag} in {f} is unregistered — add to seams.json")
 print(f"  seams   {sum(len(v) for v in found.values())} tags across {len(found)} seam names")
+
+# ── 7. Voice law (worker strings) ────────────────────────────────────────
+# No em dash in any worker string literal: glyph, — escape or &mdash;.
+# Comments are free. The escape form was how 31 strings slipped past a
+# glyph-only scan. pvDecode (outside article text) is the one sanctioned case.
+sys.dont_write_bytecode = True   # no __pycache__ in the repo
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import jsscan
+for f in worker_js:
+    _vd = jsscan.dash_strings(load(f))
+    for _a, _b, _ln, _lit in _vd[:5]:
+        FAIL.append(f"[voice] {f}:{_ln}: em dash in a string: {_lit[:80]}")
+    print(f"  voice   {f}: {len(_vd)} dashed strings")
+
+# ── 8. Swallow ratchet ───────────────────────────────────────────────────
+# An empty catch hides a failure. Some are deliberate (logging must never
+# break a request), so the count is not zero; it can only go down. Lower
+# SWALLOW_CEILING whenever a cut removes some.
+SWALLOW_CEILING = 127
+for f in worker_js:
+    _s = load(f)
+    _sw = len(re.findall(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}", _s)) + len(re.findall(r"\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\{\s*\}|null|undefined|\[\]|''|false)\s*\)", _s))
+    if _sw > SWALLOW_CEILING:
+        FAIL.append(f"[swallow] {f}: {_sw} empty catches > ceiling {SWALLOW_CEILING}")
+    print(f"  swallow {f}: {_sw} (ceiling {SWALLOW_CEILING})")
+
+# ── 9. AI spender registry ───────────────────────────────────────────────
+# Every function that spends on a model or a paid rail is named here with
+# the guard that bounds it. A new spender without an entry fails the gate;
+# an entry whose function stopped spending fails too (stale guard).
+SPENDERS = {
+    'callModel': 'the router itself; public callers pass underLimit (DAILY_LIMIT) at the door',
+    'callClaude': 'claudeGate: tier dollar cap + KV kill switch, fail loud',
+    'claudeBatchSubmit': 'claudeGate on the summed estimate; reservation at submit',
+    'claudeBatchDrain': 'reads results only; trues the ledger up, never submits',
+    'claudeRoute': 'callerIsAdmin at the door',
+    'composeFromLake': 'cron-bounded: 06:10 compose only',
+    'runDailyPipeline': 'cron-bounded; /daily/run is secret-guarded',
+    'spineAdvance': 'cron-bounded: drain slice with a call budget',
+    'deskCompile': 'cron-bounded; /excavate/desk is admin-guarded',
+    'embedQuery': 'callers are gated (excavateAuth, admin, underLimit)',
+    'kbEmbed': 'callerIsAdmin on every /knowledge route',
+    'excavateAnchors': 'callerIsAdmin',
+    'excavatePropose': 'excavateAuth + KV cache (24h)',
+    'excavateVoice': 'excavateAuth + KV cache',
+    'gatherPaidSignals': 'SIGNAL_DAILY_DOLLARS real-dollar cap + 6h cache',
+    'pplx': 'PPLX_DAILY_DOLLARS cap + 6h cache',
+    'mineAsk': 'underLimit (DAILY_LIMIT)',
+    'mineSynthesize': 'underLimit (DAILY_LIMIT)',
+    'mineClientResults': 'client grant + CLIENT_FLOOR + KV-cached read',
+    'minePublishSignal': 'callerIsAdmin',
+    'playGenerate': 'underLimit (DAILY_LIMIT)',
+    'playImage': 'underLimit (DAILY_LIMIT)',
+    'playRender': 'renderBudget: personal seconds + RENDER_CEILING house seconds',
+    'playAssemble': 'renderBudget',
+    'pvTranslate': 'pvTranslateAllowed: per-IP hourly + house daily meter',
+    'synthesize': 'underLimit (DAILY_LIMIT) on /excavate/*',
+    'studioCaption': 'cron-bounded manifest + admin cut-story',
+    'studioMemeLines': 'cron-bounded manifest + admin cut-story',
+}
+_SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|CLAUDE\.API \+")
+_SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")
+_SP_RESET = re.compile(r"^(?:const|let|var|export default)\b|^/\*")
+_SP_KW = {"if", "for", "while", "switch", "catch", "function", "return", "else", "do", "try", "with"}
+for f in worker_js:
+    _cur, _found = None, set()
+    for _l in load(f).split("\n"):
+        if _SP_RESET.match(_l): _cur = None
+        _m = _SP_DECL.match(_l)
+        if _m and (_m.group(1) or _m.group(2)) not in _SP_KW: _cur = _m.group(1) or _m.group(2)
+        if _l.strip().startswith(("//", "*", "/*")): continue
+        if _cur and _SP_MARK.search(_l): _found.add(_cur)
+    for _n in sorted(_found - set(SPENDERS)):
+        FAIL.append(f"[spend] {f}: {_n} spends on AI but is not in SPENDERS with its guard")
+    for _n in sorted(set(SPENDERS) - _found):
+        FAIL.append(f"[spend] {f}: SPENDERS lists {_n} but it no longer spends (stale entry)")
+    print(f"  spend   {f}: {len(_found)} spenders, {len(SPENDERS)} registered")
+
+# ── 10. Proofs runner ────────────────────────────────────────────────────
+# Every behavioral proof in worker/proofs runs on every gate. A proof that
+# only runs when someone remembers is not a proof.
+_proofs = sorted(glob.glob("worker/proofs/*.mjs"))
+for _p in _proofs:
+    try:
+        _r = subprocess.run(["node", _p], capture_output=True, text=True, timeout=120)
+        if _r.returncode != 0:
+            _tail = (_r.stderr or _r.stdout).strip().splitlines()
+            FAIL.append(f"[proof] {_p}: exit {_r.returncode}: {(_tail[-1] if _tail else '')[:120]}")
+    except FileNotFoundError:
+        print("  proofs  Node.js not installed locally - deferred to CI"); break
+print(f"  proofs  {len(_proofs)} run")
 
 # ── verdict ──────────────────────────────────────────────────────────────
 print()

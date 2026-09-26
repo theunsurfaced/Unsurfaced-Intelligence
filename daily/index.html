@@ -923,6 +923,7 @@ route();
     fetch(API + "/preview?lang=en&url=" + encodeURIComponent(url))
       .then(function (r) { return r.json(); })
       .then(function (d) {
+        if (d && (d.error === "translation_busy" || d.error === "translation_failed")) { document.getElementById("pvBody").innerHTML = '<div class="pv-load">TRANSLATION IS CATCHING UP. TRY THIS STORY AGAIN IN A MINUTE.</div>'; return; }
         if (!d || !d.ok || !d.paragraphs || !d.paragraphs.length) { window.open(url, "_blank", "noopener"); close(); return; }
         document.getElementById("pvKicker").textContent = "SOURCE PREVIEW \u00B7 " + esc2((d.site || "").toUpperCase());
         document.getElementById("pvBody").innerHTML =

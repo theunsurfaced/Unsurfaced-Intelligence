@@ -498,7 +498,7 @@ async function synthesize(body, env, origin) {
     if (!merged.length) return json({ ok: false, error: 'no_corpus' }, 200, origin, env);
 
     const evidence = merged.map((c, i) =>
-      `[${i + 1}] (${c.lens || 'general'}) ${String(c.title || '').slice(0, 160)} — ` +
+      `[${i + 1}] (${c.lens || 'general'}) ${String(c.title || '').slice(0, 160)}: ` +
       `${String(c.text || '').slice(0, 320)} {source:${String(c.source || '').slice(0, 80)}|url:${String(c.url || '').slice(0, 200)}}`
     ).join('\n');
 
@@ -532,7 +532,7 @@ async function synthesize(body, env, origin) {
       '"ideas":[{"type":"Positioning|Product|Campaign|Content|Partnership","headline":"<=9 words",' +
       '"body":"1-2 sentences: the concrete action and the evidence it stands on","from":<index of the insight it derives from, 0-based>}],' +
       '"brief":"3-4 sentences a strategist would say out loud: where this conversation actually is right now, what specifically the evidence shows, and the one thing to do first. Name evidence, not generalities."}\n' +
-      (isReport ? 'Never restate source counts or citation totals as findings — say what the evidence MEANS. ' +
+      (isReport ? 'Never restate source counts or citation totals as findings: say what the evidence MEANS. ' +
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
 
@@ -787,7 +787,7 @@ async function mineSynthesize(body, env, origin) {
   const corpus = responses.map((r, i) => `#${i + 1} (${r.anon_id || 'anon'}): ${JSON.stringify(r.answers).slice(0, 600)}`).join('\n');
   const out = await env.AI.run(CONFIG.TEXT_MODEL, {
     messages: [
-      { role: 'system', content: 'You synthesize REAL consumer responses into findings. Every finding must be grounded in the responses provided — never invent. Reference response numbers as evidence.' },
+      { role: 'system', content: 'You synthesize REAL consumer responses into findings. Every finding must be grounded in the responses provided; never invent. Reference response numbers as evidence.' },
       { role: 'user', content: `Business question: ${body.goal || '(unspecified)'}\n\nResponses:\n${corpus}\n\nReturn 3–5 findings. For each: a one-line statement, a one-line implication, and the supporting response numbers.` }
     ],
     max_tokens: CONFIG.MAX_TOKENS
@@ -1576,7 +1576,7 @@ async function mineInvites(body, env, origin, user) {
       if (!pend.length) return json({ ok: true, sent: 0, failed: 0, note: 'no pending invites' }, 200, origin, env);
       if (!env.RESEND_API_KEY)
         return json({ ok: false, error: 'mail_not_configured',
-          note: 'RESEND_API_KEY is not set on the worker \u2014 no email can send until it is' }, 200, origin, env);
+          note: 'RESEND_API_KEY is not set on the worker: no email can send until it is' }, 200, origin, env);
       const payLine = (st2.pay_cents || 0) > 0
         ? '<p style="margin:0 0 14px"><b>$' + ((st2.pay_cents || 0) / 100).toFixed(2).replace(/\.00$/, '')
           + '</b> for your completed response.</p>' : '';
@@ -1594,7 +1594,7 @@ async function mineInvites(body, env, origin, user) {
           + '<h2 style="margin:0 0 10px;font-size:19px">You\u2019re invited: \u201c' + st2.title + '\u201d</h2>'
           + (st2.goal ? '<p style="margin:0 0 14px;color:#444">' + st2.goal + '</p>' : '')
           + payLine
-          + '<p style="margin:0 0 18px">Your link is personal and works once \u2014 a few minutes, real questions, no account needed.</p>'
+          + '<p style="margin:0 0 18px">Your link is personal and works once: a few minutes, real questions, no account needed.</p>'
           + '<p><a href="' + link + '" style="background:#C41230;color:#fff;padding:12px 22px;'
           + 'text-decoration:none;font-weight:700;border-radius:4px;display:inline-block">Take the study \u2192</a></p>'
           + '<p style="margin:18px 0 0;font-size:12px;color:#888">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence</p></div>';
@@ -1602,7 +1602,7 @@ async function mineInvites(body, env, origin, user) {
         try {
           res = await sendEmail(env, { to: iv.email,
             subject: 'You\u2019re invited: \u201c' + st2.title + '\u201d'
-              + ((st2.pay_cents || 0) > 0 ? ' \u2014 paid study' : ''), html });
+              + ((st2.pay_cents || 0) > 0 ? ' (paid study)' : ''), html });
         } catch (e) { res = { ok: false, detail: String(e && e.message).slice(0, 120) }; }
         if (res && res.ok === true) {
           await sbRest(env, `study_invite?id=eq.${iv.id}`, { method: 'PATCH',
@@ -1611,7 +1611,7 @@ async function mineInvites(body, env, origin, user) {
           sent++;
         } else {
           failed++;
-          if (!failDetail) failDetail = (res && res.status ? 'HTTP ' + res.status + ' \u2014 ' : '')
+          if (!failDetail) failDetail = (res && res.status ? 'HTTP ' + res.status + ': ' : '')
             + ((res && res.detail) || (res && res.skipped ? 'no RESEND_API_KEY' : 'unknown'));
           // stays pending — the next send picks it up once the cause is fixed
         }
@@ -1622,7 +1622,7 @@ async function mineInvites(body, env, origin, user) {
         { study: sid, sent, failed, remaining: remain.length });
       return json({ ok: true, sent, failed, remaining: remain.length,
         fail_detail: failed ? failDetail : null,
-        note: failed ? 'provider rejected ' + failed + ' \u2014 common cause: EMAIL_FROM missing or on an unverified Resend domain' : null }, 200, origin, env);
+        note: failed ? 'provider rejected ' + failed + ': common cause: EMAIL_FROM missing or on an unverified Resend domain' : null }, 200, origin, env);
     }
     if (op === 'restore') {
       // The undo. A revoked invite gets a NEW token — the old link stays dead,
@@ -1906,7 +1906,7 @@ async function mineClientResults(body, env, origin, user) {
           let vb = '';
           for (const q of opens) vb += `\nOPEN "${String(q.prompt).slice(0, 80)}" [id ${q.id}]:\n` +
             q.verbatims.slice(0, 16).map(v => '- ' + String(v.text).slice(0, 140)).join('\n');
-          const usr = `Primary research study: "${st.title}". Goal: ${String(st.goal || '').slice(0, 160)}. ${agg.n} quality responses${segReq ? ' (segment: ' + segReq + ')' : ''}.\nCLOSED FINDINGS:\n${lines.join('\n')}\n${vb}\n\nReturn JSON exactly: {"read":["line 1: one sharp sentence on what the field actually said","line 2: the move it implies for the client"],"themes":[{"qid":"<id from OPEN header>","name":"<=5 word theme","quotes":["verbatim copied exactly","verbatim copied exactly"]}]}\nUp to 4 themes per open question. Quotes must be COPIED VERBATIM from the responses above — never paraphrase, never invent. JSON only.`;
+          const usr = `Primary research study: "${st.title}". Goal: ${String(st.goal || '').slice(0, 160)}. ${agg.n} quality responses${segReq ? ' (segment: ' + segReq + ')' : ''}.\nCLOSED FINDINGS:\n${lines.join('\n')}\n${vb}\n\nReturn JSON exactly: {"read":["line 1: one sharp sentence on what the field actually said","line 2: the move it implies for the client"],"themes":[{"qid":"<id from OPEN header>","name":"<=5 word theme","quotes":["verbatim copied exactly","verbatim copied exactly"]}]}\nUp to 4 themes per open question. Quotes must be COPIED VERBATIM from the responses above; never paraphrase, never invent. JSON only.`;
           const out2 = await env.AI.run(CONFIG.TEXT_MODEL, { messages: [
             { role: 'system', content: 'You compile primary research into honest findings. You never invent numbers or quotes.' },
             { role: 'user', content: usr }], max_tokens: 900 });
@@ -2066,7 +2066,7 @@ async function mineMilestone(env, sid) {
     const ur = await fetch(env.SUPABASE_URL + '/auth/v1/admin/users/' + owner, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY } });
     const u = ur.ok ? await ur.json() : null; const to = u && u.email; if (!to) return;
     const base = (env.APP_URL || '').replace(/\/$/, '');
-    await sendEmail(env, { to, subject: atTarget ? `"${s.title}" hit its target \u2014 ${n} responses, study closed` : `"${s.title}" \u2014 ${n} response${n === 1 ? '' : 's'} in`, html: `<div style="font-family:system-ui,sans-serif;line-height:1.6"><h2 style="margin:0 0 8px">${n} response${n === 1 ? '' : 's'} on \u201c${s.title}\u201d</h2><p>${atTarget ? 'Your target was reached and the study auto-closed. The full read is waiting.' : 'Your study is collecting. Open it to generate the Read.'}</p>${base ? `<p><a href="${base}/intelligence/">Open MINE \u2192</a></p>` : ''}</div>` });
+    await sendEmail(env, { to, subject: atTarget ? `"${s.title}" hit its target: ${n} responses, study closed` : `"${s.title}": ${n} response${n === 1 ? '' : 's'} in`, html: `<div style="font-family:system-ui,sans-serif;line-height:1.6"><h2 style="margin:0 0 8px">${n} response${n === 1 ? '' : 's'} on \u201c${s.title}\u201d</h2><p>${atTarget ? 'Your target was reached and the study auto-closed. The full read is waiting.' : 'Your study is collecting. Open it to generate the Read.'}</p>${base ? `<p><a href="${base}/intelligence/">Open MINE \u2192</a></p>` : ''}</div>` });
   } catch (e) {}
   /* SEAM:EVOLUTION_1 — the client's two moments. Floor crossing (n exactly at
    * the floor: findings just opened) and target (study complete). Exact
@@ -2081,13 +2081,13 @@ async function mineMilestone(env, sid) {
       if (!g.email) continue;
       await sendEmail(env, { to: g.email,
         subject: floorHit ? `Findings just opened on \u201c${s.title}\u201d`
-          : `\u201c${s.title}\u201d is complete \u2014 ${n} responses`,
+          : `\u201c${s.title}\u201d is complete: ${n} responses`,
         html: `<div style="font-family:system-ui,sans-serif;line-height:1.6;max-width:520px">`
           + `<div style="font-weight:800;font-size:22px;letter-spacing:-.01em">Unsurfaced</div>`
           + `<div style="height:3px;background:#C41230;margin:8px 0 20px"></div>`
           + `<h2 style="margin:0 0 10px;font-size:19px">${floorHit ? 'Your live results just opened' : 'Your study is complete'}</h2>`
           + `<p style="margin:0 0 14px">${floorHit
-              ? `\u201c${s.title}\u201d crossed ${n} quality responses \u2014 the per-question read, verbatims, and behavior data are now live in your results room.`
+              ? `\u201c${s.title}\u201d crossed ${n} quality responses: the per-question read, verbatims, and behavior data are now live in your results room.`
               : `\u201c${s.title}\u201d reached its target with ${n} responses. The full read is ready.`}</p>`
           + (base2 ? `<p><a href="${base2}/intelligence/" style="background:#C41230;color:#fff;padding:12px 22px;text-decoration:none;font-weight:700;border-radius:4px;display:inline-block">Open your results \u2192</a></p>` : '')
           + `<p style="margin:18px 0 0;font-size:12px;color:#888">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence</p></div>` }).catch(() => {});
@@ -2114,7 +2114,7 @@ async function mineLakeSync(body, env, origin, user) {
   if (!resp.length) return json({ ok: false, error: 'no_responses' }, 200, origin, env);
   const read = String(body.read || '').slice(0, 500);
   const verb = resp.slice(0, 8).map(r => (r.anon_id || 'anon') + ': ' + JSON.stringify(r.answers).slice(0, 90)).join(' \u00B7 ');
-  const summary = ('PRIMARY RESEARCH \u2014 ' + resp.length + ' real responses. GOAL: ' + (s.goal || '') + (read ? ' READ: ' + read : '') + ' VERBATIM: ' + verb).slice(0, 1200);
+  const summary = ('PRIMARY RESEARCH: ' + resp.length + ' real responses. GOAL: ' + (s.goal || '') + (read ? ' READ: ' + read : '') + ' VERBATIM: ' + verb).slice(0, 1200);
   const title = ('MINE: ' + s.title).slice(0, 300);
   const slug = await ensureStudySlug(env, s);
   const url = ((env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '')) + '/s/' + (slug || sid);
@@ -2128,7 +2128,7 @@ async function mineLakeSync(body, env, origin, user) {
     const landed = back[0] || null;
     await logEvent(env, 'intelligence', 'mine', 'lake_sync', null, { study: sid, responses: resp.length, fresh: !!landed });
     return json({ ok: true, promoted: !!landed, already_in_lake: !landed,
-      note: landed ? 'in the lake at raw \u2014 searchable in EXCAVATE after the next slice' : 'this study is already in the lake' }, 200, origin, env);
+      note: landed ? 'in the lake at raw: searchable in EXCAVATE after the next slice' : 'this study is already in the lake' }, 200, origin, env);
   } catch (e) { return json({ ok: false, error: 'sync_failed' }, 200, origin, env); }
 }
 async function mineNotify(body, env, origin, user) {
@@ -2238,14 +2238,14 @@ function payEmailHtml(name, study, cents) {
     <h2 style="margin:0 0 8px">You've been paid ${amt}</h2>
     <p>Hi ${esc(name || 'there')},</p>
     <p>Thanks for your response to <strong>${esc(study || 'a study')}</strong>. Your payout of <strong>${amt}</strong> is on its way to your connected account.</p>
-    <p style="color:#666">— The Unsurfaced team</p></div>`;
+    <p style="color:#666">: The Unsurfaced team</p></div>`;
 }
 function inviteEmailHtml(study, url, paid) {
   return `<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6">
     <h2 style="margin:0 0 8px">You're invited to a ${paid ? 'paid ' : ''}research study</h2>
     <p>A brand wants your honest take on <strong>${esc(study || 'a new study')}</strong>. It takes a couple of minutes${paid ? ", and you'll be paid for your response" : ''}.</p>
     <p><a href="${esc(url)}" style="display:inline-block;background:#FF3B3B;color:#fff;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:600">Take the study →</a></p>
-    <p style="color:#666">— Unsurfaced</p></div>`;
+    <p style="color:#666">: Unsurfaced</p></div>`;
 }
 
 // --- Stripe webhook (signature-verified) ---
@@ -2744,11 +2744,11 @@ function logEvent(env, platform, space, event, sessionId, meta) {
  * Caps are law: one hero piece per story, chosen by story shape;
  * only the lead carries an alt. The engine selects; the admin disposes.
  * ═══════════════════════════════════════════════════════════════════ */
-const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY facts, numbers, and dates that appear in the finding text \u2014 inventing a date, figure, name, or event is the one unforgivable move. If the finding has no number, write without one. '
+const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY facts, numbers, and dates that appear in the finding text: inventing a date, figure, name, or event is the one unforgivable move. If the finding has no number, write without one. '
   + 'Never explain the joke. Banned: engagement-bait ("you won\'t believe", "stop scrolling"), '
   + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy. '
   + 'Editorial standard: meaning over novelty; evidence over hype; tension over generality; '
-  + 'utility over performance \u2014 end where the reader can use what they now see.';
+  + 'utility over performance: end where the reader can use what they now see.';
 /* THE LENGTH CONTRACT \u2014 copy composes to the box; the box never cuts
  * the copy. studioTrimClean is the only knife: within budget \u2192 untouched;
  * over \u2192 cut at the last sentence end inside budget; no sentence end \u2192
@@ -2787,7 +2787,7 @@ function studioFabricated(text, ground) {
   return null;
 }
 function studioSafeCaption(platform, item) {
-  const base = String(item.headline || '') + ' \u2014 ' + studioTrimClean(item.take, 160);
+  const base = String(item.headline || '') + '. ' + studioTrimClean(item.take, 160);
   if (platform === 'linkedin') return base + (item.source_name ? '\nSource: ' + item.source_name : '');
   return base + '\n\n#unsurfaced #' + String(item.kicker || 'signal').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
@@ -2795,9 +2795,9 @@ function studioSafeCaption(platform, item) {
  * legacy items (no format field → no extra instruction). */
 function studioAngle(item) {
   switch (item && item.format) {
-    case 'number':      return ' Anchor the caption on the number in the finding \u2014 the stat is the hook.';
+    case 'number':      return ' Anchor the caption on the number in the finding: the stat is the hook.';
     case 'read':        return ' Frame it as one pattern showing up in more than one place at once.';
-    case 'signal':      return ' Frame it as an early signal from the edge \u2014 say plainly that it is early.';
+    case 'signal':      return ' Frame it as an early signal from the edge: say plainly that it is early.';
     case 'provocation': return ' Lead with the open question the finding leaves behind.';
     case 'drop':        return ' Read the release through identity and behavior, never through PR.';
     default:            return '';
@@ -2805,7 +2805,7 @@ function studioAngle(item) {
 }
 async function studioCaption(env, platform, item) {
   const budget = platform === 'linkedin' ? 600 : platform === 'instagram' ? 500 : 300;
-  const contract = ' Land the whole caption within ' + budget + ' characters. Complete every sentence \u2014 if it will not fit, drop an idea, never a sentence.';
+  const contract = ' Land the whole caption within ' + budget + ' characters. Complete every sentence: if it will not fit, drop an idea, never a sentence.';
   const dialect = (platform === 'linkedin'
     ? 'LinkedIn dialect: the finding leads; 2-3 sentences arguing it; no hashtags.'
     : platform === 'instagram'
@@ -2821,7 +2821,7 @@ async function studioCaption(env, platform, item) {
     let cap = studioTrimClean(out, budget);
     if (studioFabricated(cap, ground) || !studioComplete(cap)) {
       out = await callModel(env, 't1', [
-        { role: 'system', content: 'Rewrite the caption using ONLY the facts in the finding. Remove every date, figure, and name that the finding does not contain. Finish every sentence \u2014 no fragments. ' + dialect + ' Output only the caption text.' },
+        { role: 'system', content: 'Rewrite the caption using ONLY the facts in the finding. Remove every date, figure, and name that the finding does not contain. Finish every sentence: no fragments. ' + dialect + ' Output only the caption text.' },
         { role: 'user', content: user + '\n\nCaption to fix: ' + cap }
       ], { max_tokens: 400 });
       cap = studioTrimClean(out, budget);
@@ -2833,7 +2833,7 @@ async function studioCaption(env, platform, item) {
 async function studioMemeLines(env, item) {
   try {
     const out = await callModel(env, 't1', [
-      { role: 'system', content: 'You write two-line house memes for Unsurfaced. ' + STUDIO_VOICE + ' Formats: "verdict" (line1 = the finding stated flat, line2 = the deadpan read) or "vs" (line1 = the signal, line2 = the noise it replaces). No emoji ever. line1 within 90 characters, line2 within 110 \u2014 complete phrases only, never cut a thought. Output ONLY JSON: {"mformat":"verdict"|"vs","line1":"...","line2":"..."}' },
+      { role: 'system', content: 'You write two-line house memes for Unsurfaced. ' + STUDIO_VOICE + ' Formats: "verdict" (line1 = the finding stated flat, line2 = the deadpan read) or "vs" (line1 = the signal, line2 = the noise it replaces). No emoji ever. line1 within 90 characters, line2 within 110: complete phrases only, never cut a thought. Output ONLY JSON: {"mformat":"verdict"|"vs","line1":"...","line2":"..."}' },
       { role: 'user', content: `Finding: ${item.headline}\nThe take: ${item.take || ''}` }
     ], { max_tokens: 140 });
     const j = JSON.parse(String(out).replace(/```json|```/g, '').trim());
@@ -2854,17 +2854,17 @@ async function studioMemeLines(env, item) {
 function studioSelect(it) {
   switch (it && it.editorial_format || it && it.format) {
     case 'number':      return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
-      why: 'number-led finding \u2014 the stat card is the hero' };
+      why: 'number-led finding: the stat card is the hero' };
     case 'provocation': return { format: 'hand_meme',    platform: 'instagram', lane: 'durable',
-      why: 'open question \u2014 the meme grammar carries it' };
+      why: 'open question: the meme grammar carries it' };
     case 'drop':        return { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable',
-      why: 'release energy \u2014 motion is the native read' };
+      why: 'release energy: motion is the native read' };
     case 'read':        return { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable',
-      why: 'pattern across places \u2014 the moving take' };
+      why: 'pattern across places: the moving take' };
     case 'signal':      return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
-      why: 'early signal \u2014 the flat card, stated plainly' };
+      why: 'early signal: the flat card, stated plainly' };
     default:            return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
-      why: 'dispatch \u2014 the still carries the finding' };
+      why: 'dispatch: the still carries the finding' };
   }
 }
 /* PURE: the slate walk. First story per unseen territory; territory-less
@@ -2911,15 +2911,15 @@ async function buildStudioManifest(env, day, issueNo, items) {
     // Six pieces on a full slate, down from seventeen. Caps are code, not comment.
     const MATRIX = [
       { format: 'the_six', platform: 'instagram', lane: 'perishable', it: null, story: 0,
-        why: 'the edition anchor \u2014 carousel-native feed' },
+        why: 'the edition anchor: carousel-native feed' },
       { format: 'the_six', platform: 'linkedin',  lane: 'perishable', it: null, story: 0,
-        why: 'the edition anchor \u2014 document-post native' },
+        why: 'the edition anchor: document-post native' },
     ];
     if (slate[0]) {
       const hero = studioSelect(slate[0]);
       MATRIX.push({ format: hero.format, platform: hero.platform, lane: hero.lane, it: slate[0], story: 1, why: hero.why });
       MATRIX.push({ format: 'signal_still', platform: 'linkedin', lane: 'perishable', it: slate[0], story: 1,
-        why: 'the lead carries two \u2014 the LinkedIn read' });
+        why: 'the lead carries two: the LinkedIn read' });
     }
     [slate[1], slate[2]].forEach((it, i) => { if (it) {
       const hero = studioSelect(it);
@@ -2962,7 +2962,7 @@ async function studioCutStory(body, env, origin, user) {
     take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9,
     territory: it.territory || null, editorial_format: it.format || 'dispatch',
     apply: it.apply || null, momentum: it.momentum || null,
-    selection: 'admin cut \u2014 ' + hero.why };
+    selection: 'admin cut: ' + hero.why };
   const payload = hero.format === 'hand_meme'
     ? Object.assign({}, base, await studioMemeLines(env, it)) : base;
   const pieces = [
@@ -3324,16 +3324,45 @@ async function pvTranslate(env, srcLang, texts) {
           { role: 'system', content: 'Translate the user text into English. Output only the translation, nothing else.' },
           { role: 'user', content: t.slice(0, 1600) }
         ], { max_tokens: 700 })).trim();
-      } catch (e) { done = t; }
+      } catch (e) { done = null; }
     }
-    out.push(done || t);
+    out.push(done || null);   // English law: untranslatable text is dropped, never passed through
   }
   return out;
+}
+/* SEAM:PREVIEW English law + throttle (audit F7, re-cut 2026-09-25).
+ * Everything a reader sees on an Unsurfaced surface is English. /preview is
+ * the one door foreign text can reach, so it holds three rules:
+ *   1. A foreign article is served translated or not at all. No path returns
+ *      the original text, and a text the translator cannot render is dropped,
+ *      never passed through.
+ *   2. Translation spends Workers AI on a public route, so a miss is metered
+ *      per IP per hour and per house per day. The lines sit far above any
+ *      human reader; they exist to stop a bot. Over the line the answer is
+ *      translation_busy, an English state the reader shows as such.
+ *   3. Cache hits are free and unmetered, and nothing that failed is cached. */
+const PV_THROTTLE = { IP_HOURLY: 60, HOUSE_DAILY: 1500 };
+async function pvTranslateAllowed(env, request) {
+  if (!env.RATE_LIMIT) return true;
+  try {
+    const now = new Date(), day = now.toISOString().slice(0, 10), hour = now.toISOString().slice(0, 13);
+    const ip = (request.headers.get('CF-Connecting-IP') || 'unknown').slice(0, 64);
+    const ipKey = 'pvt:' + ip + ':' + hour, houseKey = 'pvt:all:' + day;
+    const [a, b] = (await Promise.all([env.RATE_LIMIT.get(ipKey), env.RATE_LIMIT.get(houseKey)])).map(v => parseInt(v || '0', 10) || 0);
+    if (a >= PV_THROTTLE.IP_HOURLY || b >= PV_THROTTLE.HOUSE_DAILY) return false;
+    await Promise.all([
+      env.RATE_LIMIT.put(ipKey, String(a + 1), { expirationTtl: 3700 }),
+      env.RATE_LIMIT.put(houseKey, String(b + 1), { expirationTtl: 90000 })
+    ]);
+    return true;
+  } catch (e) {
+    return false;   // cannot see the meter: do not spend
+  }
 }
 async function previewRoute(request, env, origin) {
   const u = new URL(request.url);
   const target = u.searchParams.get('url') || '';
-  const wantEn = (u.searchParams.get('lang') || 'en') === 'en';
+  const wantEn = true;   // English law: the lang parameter cannot opt out
   const metaOnly = u.searchParams.get('meta') === '1';
   let t;
   try { t = new URL(target); } catch (e) { return json({ ok: false, error: 'bad_url' }, 200, origin, env); }
@@ -3359,13 +3388,20 @@ async function previewRoute(request, env, origin) {
 
   let payload;
   if (metaOnly) {
-    payload = { ok: true, url: t.href, site: ex.site, title: ex.title, image: ex.image, lang: ex.lang };
+    // meta serves the key visual; a foreign title is withheld rather than shown untranslated.
+    const foreignMeta = ex.lang && ex.lang !== 'en';
+    payload = { ok: true, url: t.href, site: ex.site, title: foreignMeta ? null : ex.title, image: ex.image, lang: ex.lang };
   } else {
     let translated = false, title = ex.title, paragraphs = ex.paragraphs;
     const foreign = ex.lang && ex.lang !== 'en';
-    if (wantEn && foreign && paragraphs.length) {
+    if (wantEn && foreign) {
+      if (!paragraphs.length) return json({ ok: false, error: 'translation_failed' }, 200, origin, env);
+      if (!(await pvTranslateAllowed(env, request)))
+        return json({ ok: false, error: 'translation_busy' }, 200, origin, env);
       const all = await pvTranslate(env, ex.lang, [title].concat(paragraphs));
-      title = all[0]; paragraphs = all.slice(1); translated = true;
+      const done = all.slice(1).filter(Boolean);
+      if (!done.length) return json({ ok: false, error: 'translation_failed' }, 200, origin, env);
+      title = all[0] || ex.site; paragraphs = done; translated = true;
     }
     payload = { ok: true, url: t.href, site: ex.site, title, image: ex.image,
       lang: ex.lang, translated, paragraphs };
@@ -3423,9 +3459,9 @@ const DAILY_POV = {
     'travel-experiences':'culture', 'media-platforms':'advertising'
   },
   tiers: {
-    1: { role: 'daily signal — original reporting, cross-category influence', cadence: 'daily' },
-    2: { role: 'specialist interpretation — depth, criticism, region',        cadence: 'weekly' },
-    3: { role: 'edge + weak signals — independents, communities, subculture', cadence: 'monitor' },
+    1: { role: 'daily signal: original reporting, cross-category influence', cadence: 'daily' },
+    2: { role: 'specialist interpretation: depth, criticism, region',        cadence: 'weekly' },
+    3: { role: 'edge + weak signals: independents, communities, subculture', cadence: 'monitor' },
     4: { role: 'validation + primary evidence',                               cadence: 'on-demand' }
   },
   // verified:false = candidate feed; CAPTURE tolerates failure per-source.
@@ -3460,13 +3496,13 @@ const DAILY_POV = {
   ],
   gdelt: { tier: 4, role: 'breadth sweep + validation; never sole evidence for a story' },
   resist: [
-    { rule:'trend_laundering',   law:'one celebrity moment, campaign, show or viral post is not a movement — require a second independent appearance' },
-    { rule:'source_echo',        law:'repeated coverage of one announcement is one signal — collapse via hash + embedding dedup' },
+    { rule:'trend_laundering',   law:'one celebrity moment, campaign, show or viral post is not a movement: require a second independent appearance' },
+    { rule:'source_echo',        law:'repeated coverage of one announcement is one signal: collapse via hash + embedding dedup' },
     { rule:'category_myopia',    law:'read every signal for its meaning outside its home industry' },
-    { rule:'scale_bias',         law:'small communities can be influential before they are large — Tier-3 quota protects them' },
-    { rule:'edge_fetish',        law:'not every niche scales — name the broader human need beneath it' },
-    { rule:'tech_determinism',   law:'capability is not adoption — track use, resistance, consequence, uneven access' },
-    { rule:'false_certainty',    law:'distinguish observed fact, editorial inference and emerging hypothesis — label inference' },
+    { rule:'scale_bias',         law:'small communities can be influential before they are large: Tier-3 quota protects them' },
+    { rule:'edge_fetish',        law:'not every niche scales: name the broader human need beneath it' },
+    { rule:'tech_determinism',   law:'capability is not adoption: track use, resistance, consequence, uneven access' },
+    { rule:'false_certainty',    law:'distinguish observed fact, editorial inference and emerging hypothesis: label inference' },
     { rule:'frictionless_optimism', law:'for every adoption signal scan for backlash, fatigue, barriers, unintended effects' }
   ],
   standard: [
@@ -3475,7 +3511,7 @@ const DAILY_POV = {
   ],
   stages: {
     filter: 'You are the FILTER stage of a cultural-intelligence pipeline. Given one captured signal (title, summary, source), output ONLY JSON: {"territory": <one of the configured territories>, "novelty": <0-5, 0=routine 5=genuinely new behavior or condition>, "announcement": <true if routine PR/launch language with no behavioral evidence>, "note": <at most 12 words on what is actually new>}. No prose outside the JSON.',
-    connect: 'Given a small set of signals from different territories, name the one pattern connecting them in at most 2 sentences — a behavior, tension or value appearing in multiple places at once. If no real connection exists, output exactly NONE. Never force it.',
+    connect: 'Given a small set of signals from different territories, name the one pattern connecting them in at most 2 sentences: a behavior, tension or value appearing in multiple places at once. If no real connection exists, output exactly NONE. Never force it.',
     interpret: 'You write the take for Unsurfaced DAILY. 2-4 sentences. Move through the arc without naming its parts: the observable shift, the human tension underneath it, the new expectation forming, and the possibility it opens. Use only facts present in the evidence; if you infer, say so plainly. Declarative, specific, zero hype. The reader should finish smarter, not busier.',
     apply: 'One sentence: why this matters right now and what it could unlock. End with exactly one audience tag in brackets from: [creative] [founder] [marketer] [exec] [talent].'
   },
@@ -4182,7 +4218,7 @@ function mineSignalSummary(study, agg) {
     const fk = q.clicks && q.clicks.first && Object.keys(q.clicks.first).sort((a, b) => q.clicks.first[b] - q.clicks.first[a])[0];
     if (fk) bits.push('first click: ' + String(fk).slice(0, 40));
   }
-  if (bits.length) out += ' \u2014 Field results (' + agg.n + ' quality responses): ' + bits.join(' \u00b7 ');
+  if (bits.length) out += ': Field results (' + agg.n + ' quality responses): ' + bits.join(' \u00b7 ');
   return out.slice(0, 460);
 }
 
@@ -4301,7 +4337,7 @@ async function excavateLake(request, env, origin) {
  *   belongs in the lake, which is what SEAM:PROMOTE is for.  ═══ */
 async function fieldRail(env, q) {
   const off = (note) => ({ enabled: false, provider: null, count: 0, results: [], note });
-  if (!env.FIELD_API_KEY) return off('no field provider attached — set FIELD_API_KEY');
+  if (!env.FIELD_API_KEY) return off('no field provider attached: set FIELD_API_KEY');
   if (!q) return off('no query');
   try {
     // Tavily: POST /search, Bearer auth, 1000 calls/month free. Chosen over
@@ -4392,7 +4428,7 @@ async function excavatePromote(request, env, origin) {
       { tier, territory, provider: row.momentum.promoted.provider, fresh: !!landed });
     return json({ ok: true, promoted: !!landed, already_in_lake: !landed,
       content_hash: hash, id: landed ? landed.id : null,
-      note: landed ? 'entered the lake at raw — embedded on the next slice' : 'already captured; not duplicated'
+      note: landed ? 'entered the lake at raw: embedded on the next slice' : 'already captured; not duplicated'
     }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'promote_failed', detail: String(e && e.message).slice(0, 120) }, 200, origin, env);
@@ -4860,7 +4896,7 @@ async function excavateVoice(request, env, origin) {
     let sess = null;
     try { sess = await bskySession(env); }
     catch (e) { return off('voice provider error: ' + String(e && e.message).slice(0, 60)); }
-    if (!sess) return off('no voice provider — set BSKY_HANDLE and BSKY_APP_PASSWORD');
+    if (!sess) return off('no voice provider: set BSKY_HANDLE and BSKY_APP_PASSWORD');
 
     const since = new Date(Date.now() - days * 864e5).toISOString();
     const url = 'https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=' + encodeURIComponent(entity)
@@ -4868,7 +4904,7 @@ async function excavateVoice(request, env, origin) {
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + sess.jwt } });
     if (r.status === 401 && env.RATE_LIMIT) {                 // stale token: burn it, once
       await env.RATE_LIMIT.delete('voice:sess:v1').catch(function () {});
-      return off('voice_session_expired — retry');
+      return off('voice_session_expired: retry');
     }
     if (!r.ok) return off('voice_http_' + r.status);
     const j = await r.json().catch(function () { return null; });
@@ -4878,7 +4914,7 @@ async function excavateVoice(request, env, origin) {
       const out0 = { ok: true, entity, window_days: days, enabled: true, provider: 'bluesky',
         mentions: 0, authors: 0, engagement: { likes: 0, reposts: 0, replies: 0 },
         trend: null, themes: [], samples: [], provenance: 'voice',
-        note: 'no posts in window — the brand is not in this conversation, which is itself a finding' };
+        note: 'no posts in window: the brand is not in this conversation, which is itself a finding' };
       if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, JSON.stringify(out0), { expirationTtl: 21600 })
         .catch(function () {});
       return json(out0, 200, origin, env);
@@ -5043,7 +5079,7 @@ async function excavatePropose(request, env, origin, internal) {
     }
     if (!themes.length) {
       return json({ ok: true, proposed: [], scanned: rows.length, window_days: days, min_weeks: minWeeks,
-        note: 'no cluster has recurred across ' + minWeeks + '+ weeks in this window yet — '
+        note: 'no cluster has recurred across ' + minWeeks + '+ weeks in this window yet: '
             + 'recurrence needs time; clusters begin at CONNECT' }, 200, origin, env);
     }
 
@@ -5069,7 +5105,7 @@ async function excavatePropose(request, env, origin, internal) {
       + 'resurface across multiple weeks. Name the pattern underneath it.\n\n'
       + DAILY_POV.stages.interpret + '\n\n'
       + 'Return ONLY JSON: {"read":<the field read: exactly 2 sentences, first reframes what the '
-      + 'set of patterns says about the field today, second names the move — under 40 words total, '
+      + 'set of patterns says about the field today, second names the move: under 40 words total, '
       + 'declarative, no colon openers, no em dashes>,"themes":[{"n":<item number>,"lens":<one of ' + PROPOSE_LENS.join('|') + '>,'
       + '"title":<3-5 words, declarative, no colon>,'
       + '"subtitle":<8-14 words naming the actual question>,'
@@ -6643,10 +6679,10 @@ async function runDailyPipeline(env, opts) {
     `{source:${String(c.source || '').slice(0, 80)}|url:${String(c.url || '').slice(0, 200)}}`
   ).join('\n');
 
-  const sys = 'You are the editor of Unsurfaced Daily, a cultural-intelligence brief. You do not summarize the news — ' +
+  const sys = 'You are the editor of Unsurfaced Daily, a cultural-intelligence brief. You do not summarize the news: ' +
     'you INTERPRET it: why now, who benefits, what the second-order effect is. From the numbered evidence, select the ' +
     '6 most significant stories across different beats. For each, write a sharp interpretive take. Ground every item in ' +
-    'the evidence — never invent facts, sources, or URLs. Copy each item\'s source_name and source_url VERBATIM from the ' +
+    'the evidence; never invent facts, sources, or URLs. Copy each item\'s source_name and source_url VERBATIM from the ' +
     'evidence item you used. Output STRICT JSON only, no markdown fences, no prose outside the JSON.';
 
   const usr = `DATE: ${today}\n\nEVIDENCE:\n${evidence}\n\n` +
