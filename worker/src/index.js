@@ -198,6 +198,7 @@ export default {
         case '/reads/get':
         case '/reads/collect':
         case '/reads/publish':
+        case '/reads/reland':
         case '/reads/record':        return readRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
@@ -6143,7 +6144,7 @@ const CLAUDE = {
     'claude-fable-5-1': { in: 10, out: 50, cw: 12.5, cr: 0.25 },
     'claude-sonnet-5':  { in: 2,  out: 10, cw: 2.5,  cr: 0.2 }
   },
-  MAX_TOKENS: 16000,
+  MAX_TOKENS: 32000,
   BATCH_MAX: 100,
   DRAIN_ROWS: 150,
   LIVE_TIMEOUT_MS: 120000
@@ -6178,13 +6179,15 @@ function claudeParams(tier, req) {
     ? [{ type: 'text', text: String(r.system), cache_control: { type: 'ephemeral' } }]
     : String(r.system);
   if (Number.isFinite(r.temperature)) p.temperature = r.temperature;
+  if (r.thinking) p.thinking = r.thinking;   // an explicit thinking budget keeps room to write
   return p;
 }
 function claudeEstimate(params, batch) {
   // Worst case: every input char at 3.5 chars per token, uncached, plus the full output budget.
   const p = CLAUDE.PRICE[params.model] || { in: 0, out: 0 };
-  const chars = JSON.stringify(params.system || '').length + JSON.stringify(params.messages || []).length;
-  return claudeRound((Math.ceil(chars / 3.5) * p.in + params.max_tokens * p.out) / 1e6 * (batch ? 0.5 : 1));
+  const sysChars = JSON.stringify(params.system || '').length, msgChars = JSON.stringify(params.messages || []).length;
+  const sysRate = Array.isArray(params.system) ? (p.cw || p.in) : p.in;   // a cached prefix is written at the cache-write rate
+  return claudeRound((Math.ceil(sysChars / 3.5) * sysRate + Math.ceil(msgChars / 3.5) * p.in + params.max_tokens * p.out) / 1e6 * (batch ? 0.5 : 1));
 }
 function claudeHeaders(env) {
   const h = { 'x-api-key': env.ANTHROPIC_KEY, 'anthropic-version': CLAUDE.VERSION, 'content-type': 'application/json' };
@@ -6347,7 +6350,9 @@ async function claudeBatchDrain(env) {
         const msg = res.message || {}, usage = msg.usage || {};
         const cost = claudeCost(row.model, usage, true);
         await claudeLedgerAdd(env, row.tier, claudeRound(cost - est), month);
-        patch = { status: 'done', result: claudeText(msg), usage, cost_usd: cost, stop_reason: msg.stop_reason || null };
+        const txt = claudeText(msg);
+        patch = { status: 'done', result: txt, usage, cost_usd: cost, stop_reason: msg.stop_reason || null,
+          error: txt ? null : 'no_text:' + (((msg.content || []).map(b => b && b.type).join(',')) || 'empty') };
         out.done++; out.usd = claudeRound(out.usd + cost);
       } else {
         // errored, canceled, expired: nothing billed, the reservation comes back.
@@ -6359,7 +6364,7 @@ async function claudeBatchDrain(env) {
       patch.ended_at = new Date().toISOString();
       await sbRest(env, 'claude_jobs?id=eq.' + row.id, { method: 'PATCH', body: patch });
       if (String(row.kind || '').startsWith('house_') && row.meta && row.meta.house_read_id) {   // SEAM:READ_ENGINE lands its reads here
-        if (patch.status === 'done') await readLand(env, row.meta.house_read_id, patch.result, patch.cost_usd).catch(e => console.log('read_land_error', String(e && e.message)));
+        if (patch.status === 'done') await readLand(env, row.meta.house_read_id, patch.result, patch.cost_usd, patch.stop_reason).catch(e => console.log('read_land_error', String(e && e.message)));
         else await readFail(env, row.meta.house_read_id, patch.error).catch(e => console.log('read_fail_error', String(e && e.message)));
       }
     }
@@ -6475,9 +6480,11 @@ async function editionToday(env, origin) {
 const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 1.0 (draft for Fresco's review). This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Monthly Read, and the Record. It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room: for what people are actually doing, what they are reaching for, and what that means for the work a brand should make next. Every read is written through the creative advertising lens. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and allergic to filler. They should finish a read knowing what happened, what it means, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them. It finds the pattern under the headlines, names it plainly, proves it with the stories themselves, and turns it into moves.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a story, or a count in the stats block. Never estimate, round up, extrapolate or invent a number. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly.\n2. **English only.** Every word of the read is English. Names of people, brands and places stay as they are.\n3. **Evidence is the stories.** A claim stands on story ids from the pack, cited as S-numbers. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two stories disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one story, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The eight questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different stories, on different days, from different sources, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n5. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n6. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n7. **What does it mean for the work?** Translate the pattern for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands, what it makes obsolete.\n8. **What do we do Monday, and what do we watch?** Turn the read into moves by role, and name the signal that would prove it right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in three parts.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES**: every published DAILY story in the window, one per line, with an S-number, the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite stories by S-number in the evidence fields. Never cite a child read as proof of a fact; cite the stories under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Monthly Read**: one month, built on the weekly reads. Three to five feature patterns with more room: what happened, the receipts, why it matters, THE MOVE by role. Territory briefs for the territories with real activity. A scoreboard section on what earlier reads called and how it landed, using only the calls in the stats block. A watchlist for next month.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim; a paragraph on what happened that names at least two stories by their specifics; a paragraph on why it matters that says something a smart reader did not already know; evidence ids; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through (S12, S31, S40). Nostalgia has become a costume, not a memory.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog (S7, S19).\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear.\"\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
 const HOUSE_READ = {
   KINDS: {
-    weekly:  { max_tokens: 7000,  child: null,      take: 420 },
-    monthly: { max_tokens: 12000, child: 'weekly',  take: 240 },
-    record:  { max_tokens: 14000, child: 'monthly', take: 160 }
+    // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
+    // Thinking gets its own budget; the rest of max_tokens is room to write.
+    weekly:  { max_tokens: 20000, think: 6000,  child: null,      take: 420 },
+    monthly: { max_tokens: 28000, think: 8000,  child: 'weekly',  take: 240 },
+    record:  { max_tokens: 32000, think: 10000, child: 'monthly', take: 160 }
   },
   STORY_CAP: 1100,
   TICK_MAX: 6
@@ -6683,7 +6690,8 @@ async function readSubmit(env, row) {
   const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
     custom_id: 'hr-' + row.id + '-v' + row.version,
     system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
-    prompt, max_tokens: K.max_tokens, meta: { house_read_id: row.id } }]);
+    prompt, max_tokens: K.max_tokens, thinking: { type: 'enabled', budget_tokens: K.think },
+    meta: { house_read_id: row.id } }]);
   if (!sub.ok) {
     await readPatch(env, row.id, { status: 'queued', error: sub.error, stats, label });
     return sub;
@@ -6695,15 +6703,17 @@ async function readSubmit(env, row) {
 }
 
 /* Called by claudeBatchDrain when a house_* job lands. */
-async function readLand(env, id, text, cost) {
+async function readLand(env, id, text, cost, stopReason, force) {
   const row = await readRow(env, id);
-  if (!row || row.status !== 'compiling') return { skipped: 'not_compiling' };
+  if (!row || (row.status !== 'compiling' && !force)) return { skipped: 'not_compiling' };
   const items = await readWindowItems(env, row.window_start, row.window_end);
   const ground = JSON.stringify(row.stats || {}) + '\n' + items.map(it => [it.headline, it.take, it.apply, it.date, it.issue_no].join(' ')).join('\n');
-  const v = readValidate(row.kind, parseModelJson(text), ground, row.pack_ids || []);
+  const truncated = stopReason === 'max_tokens';
+  const parsed = truncated ? null : (parseModelJson(text) || extractJson(text));   // fences, curly quotes, trailing commas
+  const v = readValidate(row.kind, parsed, ground, row.pack_ids || []);
   const status = v.read && !v.fatal.length ? 'ready' : 'held';
   await readPatch(env, id, { status, read: v.read, violations: v.fatal.concat(v.notes), cost_usd: cost,
-    error: v.read ? (v.fatal.length ? 'held_for_review' : null) : 'unparsable' });
+    error: v.read ? (v.fatal.length ? 'held_for_review' : null) : (truncated ? 'truncated_max_tokens' : 'unparsable') });
   logEvent(env, 'intelligence', 'reads', 'read_' + status, null, { id, kind: row.kind, fatal: v.fatal.length });
   return { id, status, fatal: v.fatal.length };
 }
@@ -6746,6 +6756,17 @@ async function readRoute(path, body, env, origin, user) {
   if (path === '/reads/get') {
     const row = await readRow(env, body.id);
     return json(row ? { ok: true, read: row } : { ok: false, error: 'not_found' }, 200, origin, env);
+  }
+  if (path === '/reads/reland') {
+    // Re-land a held read from the text already stored in claude_jobs. No new spend.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (row.status !== 'held') return json({ ok: false, error: 'not_held', status: row.status }, 200, origin, env);
+    const jobs = await sbRest(env, 'claude_jobs?kind=eq.house_' + row.kind + '&status=eq.done&meta->>house_read_id=eq.' + row.id +
+      '&select=result,cost_usd,stop_reason&order=id.desc&limit=1') || [];
+    if (!jobs[0]) return json({ ok: false, error: 'no_stored_result' }, 200, origin, env);
+    const r = await readLand(env, row.id, jobs[0].result, parseFloat(jobs[0].cost_usd) || 0, jobs[0].stop_reason, true);
+    return json(Object.assign({ ok: true }, r), 200, origin, env);
   }
   if (path === '/reads/collect') {
     const drain = await claudeBatchDrain(env);
