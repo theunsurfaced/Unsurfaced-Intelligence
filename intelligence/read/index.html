@@ -211,6 +211,10 @@
   var SB_URL = "https://uxbhafkqungklmnrfdhp.supabase.co", SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4YmhhZmtxdW5na2xtbnJmZGhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNjI5NDgsImV4cCI6MjA5NzgzODk0OH0.2PufodDCcrV1PaOe4L1ke0Oy2u5OynY-u6jK5YNAGtw";
   var app = document.getElementById("app"), actions = document.getElementById("actions");
   var sb = null, token = null;
+  /* SEAM:READ_PRINT render mode: Cloudflare's browser opens this page with a
+   * one-time render ticket (?rt=). It reads through /reads/render, skips the
+   * social frames, and raises data-print-ready once every photo has settled. */
+  var Q = new URLSearchParams(location.search), RT = Q.get("rt");
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function say(t) { app.innerHTML = '<div class="msg">' + esc(t) + "</div>"; }
   function call(path, body) {
@@ -315,7 +319,8 @@
 
   /* ── One read ────────────────────────────────────────────────────────── */
   function openRead(id) {
-    call("/reads/get", { id: id }).then(function (d) {
+    (RT ? fetch(API + "/reads/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rt: RT }) }).then(function (r) { return r.json(); })
+        : call("/reads/get", { id: id })).then(function (d) {
       if (!d || !d.ok) return say("This read could not load: " + ((d && d.error) || "no answer") + ".");
       var row = d.read, x = row.read || {}, st = row.stats || {}, rc = d.receipts || {};
       document.title = "Unsurfaced DAILY · " + row.label;
@@ -495,6 +500,7 @@
           (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + "</div></div></div>"; }).join(""));
       h += '<section class="page closer">' + mark("rp-mark") + '<div class="big">The read is free.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/daily</div></section>';
       app.innerHTML = '<div class="doc">' + h + "</div>";
+      if (RT) { imagesReady().then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
       if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, coverPool);
       bind(row);
     });
@@ -512,7 +518,25 @@
     });
   }
   function bind(row) {
-    var p = document.getElementById("pdf"); if (p) p.onclick = function () { p.textContent = "Preparing"; imagesReady().then(function () { p.textContent = "Download PDF"; window.print(); }); };
+    /* Download PDF: the platform renders the file once in Chromium and keeps it.
+     * Nothing depends on this browser's print dialog. */
+    var p = document.getElementById("pdf"); if (p) p.onclick = function () {
+      if (p.disabled) return;
+      p.disabled = true; p.textContent = "Rendering the PDF, about 30 seconds";
+      fetch(API + "/reads/pdf", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ id: row.id }) })
+        .then(function (r) {
+          if ((r.headers.get("content-type") || "").indexOf("application/pdf") === 0) return r.blob();
+          return r.json().then(function (d) { throw new Error((d && d.error) || ("status " + r.status)); });
+        })
+        .then(function (b) {
+          var a = document.createElement("a"), u = URL.createObjectURL(b);
+          a.href = u; a.download = "Unsurfaced-DAILY-" + String(row.label || row.id).replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".pdf";
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(u); }, 60000);
+          p.disabled = false; p.textContent = "Download PDF";
+        })
+        .catch(function (e) { p.disabled = false; p.textContent = "PDF failed: " + String(e && e.message || e).slice(0, 60) + ". Try again"; });
+    };
     var pub = document.getElementById("pub"); if (pub) pub.onclick = function () {
       pub.disabled = true; call("/reads/publish", { id: row.id }).then(function (d) { pub.textContent = d && d.ok ? "Published" : "Publish failed"; }); };
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
@@ -639,13 +663,14 @@
   }
 
   /* ── Boot: admin session or nothing ──────────────────────────────────── */
+  if (RT) { document.documentElement.classList.add("render"); return openRead(Q.get("id")); }
   try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch (e) { sb = null; }
   if (!sb) return say("Sign-in is unavailable on this page.");
   sb.auth.getSession().then(function (r) {
     var s = r && r.data && r.data.session;
     if (!s) return say("Sign in on the Intelligence page first, then return here.");
     token = s.access_token;
-    var id = new URLSearchParams(location.search).get("id");
+    var id = Q.get("id");
     if (id) openRead(id); else library();
   });
 })();

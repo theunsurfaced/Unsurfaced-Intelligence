@@ -135,6 +135,7 @@ export default {
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/s/')) return readImageRelay(path, env);   // SEAM:READ_DESIGN
+      if (path === '/reads/render' && request.method === 'POST') return readRenderTicket(request, env, origin);   // SEAM:READ_PRINT one-time ticket
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
       if (path.startsWith('/s/') && request.method === 'GET') return mineSharePage(path, env);
@@ -203,7 +204,8 @@ export default {
         case '/reads/collect':
         case '/reads/publish':
         case '/reads/reland':
-        case '/reads/record':        return readRoute(path, body, env, origin, user);
+        case '/reads/record':
+        case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
         case '/pay/responder':       return payResponder(body, env, origin, user);
@@ -6889,6 +6891,65 @@ async function readImageRelay(path, env) {
   }
   return miss(tries.length ? 'no_image_served' : 'no_candidate');
 }
+/* SEAM:READ_PRINT: the PDF rendered by the platform, not the viewer's browser.
+ * Cloudflare's Chromium opens the read page with a one-time ticket, waits for
+ * data-print-ready, prints letter pages with backgrounds and no headers, and
+ * the file is kept in R2 under an unguessable key recorded on the read. The
+ * same file serves every download until the read or the page revision changes.
+ * Fail loud: no secrets, a failed render or a non-PDF answer is an error. */
+const READ_PRINT = { REV: 'p1', TICKET_TTL: 300, PAGE: 'https://unsurfaced-intelligence.com/intelligence/read/', WAIT_MS: 50000 };
+function readHex(bytes) { return Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join(''); }
+async function readStamp(row) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(row.read || {}) + '|' + (row.status === 'held' ? 'held' : 'live')));
+  return READ_PRINT.REV + ':' + readHex(d).slice(0, 20);
+}
+async function readRenderTicket(request, env, origin) {
+  const body = await safeJson(request);
+  const rt = String((body && body.rt) || '');
+  if (!/^[0-9a-f]{64}$/.test(rt) || !env.RATE_LIMIT) return json({ ok: false, error: 'bad_ticket' }, 403, origin, env);
+  const id = await env.RATE_LIMIT.get('rpt:' + rt);
+  if (!id) return json({ ok: false, error: 'ticket_expired' }, 403, origin, env);
+  const row = await readRow(env, id);
+  if (!row) return json({ ok: false, error: 'not_found' }, 404, origin, env);
+  return json({ ok: true, read: row, receipts: await readReceipts(env, row.read) }, 200, origin, env);
+}
+async function readPdf(env, row) {
+  if (!env.CF_ACCOUNT_ID || !env.CF_BROWSER_TOKEN) throw new Error('print_not_configured: set CF_ACCOUNT_ID and CF_BROWSER_TOKEN');
+  if (!env.MEDIA || !env.RATE_LIMIT) throw new Error('print_needs_media_and_kv');
+  const stamp = await readStamp(row), kept = (row.meta && row.meta.pdf) || null;
+  if (kept && kept.stamp === stamp && kept.key) {
+    const obj = await env.MEDIA.get(kept.key);
+    if (obj) return { bytes: await obj.arrayBuffer(), fresh: false };
+  }
+  const rt = readHex(crypto.getRandomValues(new Uint8Array(32)));
+  await env.RATE_LIMIT.put('rpt:' + rt, String(row.id), { expirationTtl: READ_PRINT.TICKET_TTL });
+  const res = await fetch('https://api.cloudflare.com/client/v4/accounts/' + env.CF_ACCOUNT_ID + '/browser-rendering/pdf', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.CF_BROWSER_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: READ_PRINT.PAGE + '?id=' + row.id + '&rt=' + rt,
+      gotoOptions: { waitUntil: 'networkidle0', timeout: READ_PRINT.WAIT_MS },
+      waitForSelector: { selector: 'html[data-print-ready="1"]', timeout: READ_PRINT.WAIT_MS },
+      viewport: { width: 1280, height: 1000 },
+      pdfOptions: { format: 'letter', printBackground: true, preferCSSPageSize: true, displayHeaderFooter: false,
+        margin: { top: '0', right: '0', bottom: '0', left: '0' } }
+    })
+  });
+  await env.RATE_LIMIT.delete('rpt:' + rt);
+  const type = res.headers.get('content-type') || '';
+  const bytes = await res.arrayBuffer();
+  const head = new TextDecoder().decode(bytes.slice(0, 5));
+  if (!res.ok || head !== '%PDF-') {
+    const why = /json|text/.test(type) ? new TextDecoder().decode(bytes.slice(0, 300)) : type;
+    console.log('read_pdf_failed', row.id, res.status, why);
+    throw new Error('render_failed ' + res.status + ': ' + why.replace(/\s+/g, ' ').slice(0, 120));
+  }
+  const key = 'reads/pdf/' + row.id + '/' + readHex(crypto.getRandomValues(new Uint8Array(16))) + '.pdf';
+  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'application/pdf' } });
+  await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { pdf: { key, stamp, bytes: bytes.byteLength, at: new Date().toISOString() } }) });
+  if (kept && kept.key && kept.key !== key) await env.MEDIA.delete(kept.key);
+  return { bytes, fresh: true };
+}
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
@@ -6897,6 +6958,20 @@ async function readRoute(path, body, env, origin, user) {
     const rows = await sbRest(env, 'house_reads?select=id,kind,window_start,window_end,version,label,status,error,cost_usd,violations,created_at,updated_at' +
       k + '&order=window_start.desc,version.desc&limit=100') || [];
     return json({ ok: true, reads: rows }, 200, origin, env);
+  }
+  if (path === '/reads/pdf') {
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
+    let out;
+    try { out = await readPdf(env, row); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 200, origin, env); }
+    const h = corsHeaders(origin, env);
+    h.set('Content-Type', 'application/pdf');
+    h.set('Cache-Control', 'no-store');
+    h.set('X-Read-Pdf', out.fresh ? 'rendered' : 'kept');
+    h.set('Access-Control-Expose-Headers', 'X-Read-Pdf');
+    return new Response(out.bytes, { status: 200, headers: h });
   }
   if (path === '/reads/get') {
     const row = await readRow(env, body.id);

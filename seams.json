@@ -654,6 +654,15 @@
   "SEAM:READ_DESIGN": {
    "file": "worker/src/index.js",
    "purpose": "readImageRelay: public GET /img/s/<id>, published DAILY stories only; og:image, then the stored image at full size (resize parameters removed), then the stored image; https, private hosts refused, image/* under 6 MB, edge cache v2 7 days (misses 1 day), CORS open, X-Img-From, no AI. The page's photo quality law: a minimum source width per slot, next candidate or type-only design, never a stretched photo. readValidate keeps lead_image/cover_image only from the evidence pack; READ_CONTRACT asks for dek, lead_image, cover_image"
+  },
+  "SEAM:READ_PRINT": {
+   "file": "intelligence/read/index.html",
+   "purpose": "render mode of the read page: ?rt= one-time ticket reads through /reads/render, skips social frames, raises data-print-ready when every photo has settled; Download PDF fetches the platform-rendered file from /reads/pdf"
+  },
+  "SEAM:READ_PRINT@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:READ_PRINT",
+   "purpose": "readPdf: Cloudflare Browser Rendering REST (letter, backgrounds, no headers) of the read page with a 5-minute KV ticket; the PDF kept in R2 under an unguessable key on house_reads.meta.pdf, re-rendered only when the read or page revision changes; /reads/render trades a ticket for one read; fails loud without CF_ACCOUNT_ID and CF_BROWSER_TOKEN"
   }
  },
  "planned": [
