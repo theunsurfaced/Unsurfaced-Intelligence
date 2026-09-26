@@ -507,10 +507,12 @@ async function synthesize(body, env, origin) {
   // ── Structured EXCAVATE mode: fuse the client-gathered open-data corpus ──
   if (Array.isArray(body.corpus)) {
     const query  = String(body.query || '').slice(0, 300);
-    const corpus = body.corpus.slice(0, 40);   // SEAM:GATHER_SERVER — the server envelope rides in the corpus now
-    // Server-side connectors (keyless, not CORS-bound): live news (GDELT) + practitioner signal (HN).
-    const added = (await gatherServerSignals(query)).concat(await gatherPaidSignals(query, env));
-    const merged = corpus.concat(added.map(a => ({ lens: (a.signalType === 'news' || a.signalType === 'web') ? 'culture' : 'consumer', source: a.source, title: a.title, text: a.snippet, url: a.url }))).slice(0, 40);
+    // SEAM:EXCAVATE_WIRE: server connectors (GDELT, HN, paid Exa) join through the evidence
+    // budget, never after a cut. English at the door. corpus and added below are what was READ.
+    const addedAll = (await gatherServerSignals(query)).concat(await gatherPaidSignals(query, env))
+      .filter(a => a && a.title && looksEnglish(a.title + ' ' + (a.snippet || '')));
+    const plan = excBudget(body.corpus, addedAll);
+    const corpus = plan.open, added = plan.server, merged = plan.merged;
     if (!merged.length) return json({ ok: false, error: 'no_corpus' }, 200, origin, env);
 
     const evidence = merged.map((c, i) =>
@@ -542,6 +544,7 @@ async function synthesize(body, env, origin) {
       '"line 2: one sentence naming the move it implies"],' : '') +
       '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
       '"excerpt":"1-2 sentence finding grounded in the evidence",' +
+      '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
       (isReport ? '"implication":"1 sentence: what this means for a brand decision",' : '') +
       '"source":"copied from evidence",' +
       '"sourceUrl":"copied from evidence"}],' +
@@ -554,35 +557,42 @@ async function synthesize(body, env, origin) {
 
     // SEAM:ONE_RAIL — THE READ rides the model pool: report mode is voice (t3), structured mode is bulk (t1).
     const outText = await callModel(env, isReport ? 't3' : 't1',
-      [{ role: 'system', content: sys }, { role: 'user', content: usr }], { max_tokens: 1600 });
+      [{ role: 'system', content: sys }, { role: 'user', content: usr }], { max_tokens: isReport ? 2800 : 1600 });   // SEAM:EXCAVATE_WIRE: room for a whole report
     const parsed = extractJson(outText || '');
     if (!parsed || !Array.isArray(parsed.insights)) {
       // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read.
       return json({ ok: false, error: 'synthesis_unparsable' }, 200, origin, env);
     }
-    // Earned confidence: density of corroborating evidence in the insight's
-    // own category. Never hardcoded, never the model's opinion of itself.
-    const catDensity = {};
-    for (const c of merged) {
-      const k = ['consumer', 'market', 'culture', 'brand'].includes(c.lens) ? c.lens : 'consumer';
-      catDensity[k] = (catDensity[k] || 0) + 1;
-    }
-    const earned = (cat2) => (catDensity[cat2] || 0) >= 3 ? 'High' : (catDensity[cat2] || 0) === 2 ? 'Medium' : 'Low';
-    const insights = parsed.insights.slice(0, 8).map(x => ({
-      category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer',
-      title: String(x.title || '').slice(0, 120),
-      excerpt: String(x.excerpt || '').slice(0, 400),
-      implication: String(x.implication || '').slice(0, 300) || null,
-      confidence: earned(['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer'),
-      source: String(x.source || '').slice(0, 120),
-      sourceUrl: /^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null
-    })).filter(x => x.title);
+    // SEAM:EXCAVATE_WIRE earned confidence: the number of DISTINCT sources the insight
+    // itself cites. Never the size of its category, never the model's opinion of itself.
+    // Source and link come from the cited evidence, not from the model's copy of it.
+    const cited = x => (Array.isArray(x.evidence) ? x.evidence : []).map(n => parseInt(n, 10))
+      .filter(n => n >= 1 && n <= merged.length).filter((n, i, a) => a.indexOf(n) === i).slice(0, 8);
+    const earned = ns => {
+      const k = new Set(ns.map(n => String(merged[n - 1].source || merged[n - 1].url || n).toLowerCase())).size;
+      return k >= 3 ? 'High' : k === 2 ? 'Medium' : 'Low';
+    };
+    const insights = parsed.insights.slice(0, 8).map(x => {
+      const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null;
+      return {
+        category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer',
+        title: String(x.title || '').slice(0, 120),
+        excerpt: String(x.excerpt || '').slice(0, 400),
+        implication: String(x.implication || '').slice(0, 300) || null,
+        confidence: earned(ns),
+        evidence: ns,
+        source: String((first && first.source) || x.source || '').slice(0, 120),
+        sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url
+          : (/^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null)
+      };
+    }).filter(x => x.title);
     const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2)
       .map(x => String(x || '').slice(0, 220)).filter(Boolean);
     const ideas = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 6).map(x => ({
       type: String(x.type || 'Strategy').slice(0, 40),
       headline: String(x.headline || '').slice(0, 120),
-      body: String(x.body || '').slice(0, 400)
+      body: String(x.body || '').slice(0, 400),
+      from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null   // SEAM:EXCAVATE_WIRE: back where it belongs
     })).filter(x => x.headline);
     const brief = String(parsed.brief || '').slice(0, 1200);
     // SEAM:READ_LEDGER — persist the read, then let its live signals enter the lake at raw.
@@ -591,7 +601,7 @@ async function synthesize(body, env, origin) {
       readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
-        evidence_n: merged.length, meta: { lake: (body.lake || []).length, corpus: corpus.length, added: (added || []).length } });
+        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length } });
       const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: 'news', published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: 3, kind: c.lens || 'open', rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
@@ -669,6 +679,81 @@ function extractJson(s) {
 
 // Server-side connectors — fetched by the Worker itself (keyless, and not subject
 // to browser CORS, so they enrich the corpus with sources the client can't reach).
+/* SEAM:EXCAVATE_WIRE: the evidence budget. The corpus used to be cut at 40
+ * before the lake and the server's own wire (GDELT, HN, paid Exa) were added,
+ * so the best evidence was the first thrown away, after it was paid for.
+ * Now each lane has room: the lake first, then the server wire, then open data
+ * fills what is left. Deduped by URL; the response names only what was read. */
+const EXC_BUDGET = { TOTAL: 44, LAKE: 10, SERVER: 10 };
+function excKey(c) {
+  const u = String((c && c.url) || '').replace(/[#?].*$/, '').replace(/\/+$/, '').toLowerCase();
+  return u || ('t:' + String((c && c.title) || '').toLowerCase().slice(0, 80));
+}
+function excBudget(corpusIn, addedIn) {
+  const seen = new Set();
+  const take = (list, n) => {
+    const out = [];
+    for (const c of list) {
+      if (out.length >= n) break;
+      if (!c || !c.title) continue;
+      const k = excKey(c);
+      if (seen.has(k)) continue;
+      seen.add(k); out.push(c);
+    }
+    return out;
+  };
+  const raw = Array.isArray(corpusIn) ? corpusIn : [];
+  const lake = take(raw.filter(c => c && c.lens === 'lake'), EXC_BUDGET.LAKE);
+  const wire = (addedIn || []).map(a => ({ lens: (a.signalType === 'news' || a.signalType === 'web') ? 'culture' : 'consumer',
+    source: a.source, title: a.title, text: a.snippet, url: a.url, _a: a }));
+  const server = take(wire, EXC_BUDGET.SERVER);
+  const open = take(raw.filter(c => c && c.lens !== 'lake'), EXC_BUDGET.TOTAL - lake.length - server.length);
+  const merged = lake.concat(server, open).map(c => { const o = Object.assign({}, c); delete o._a; return o; });
+  return { merged, lake, open, server: server.map(c => c._a) };
+}
+/* SEAM:LAKE_TRUTH: the English law at the gather door. A cheap, honest test:
+ * mostly non-Latin letters fails; a text whose common words are clearly
+ * another European language fails; short or ambiguous text passes. */
+const EN_WORDS = new Set('the and of to in is for on with that this from by at as are was be it an or its not have has but after how why what who new more will their they'.split(' '));
+const FOREIGN_WORDS = new Set(('el la los las del que y en por para con una es se lo al como pero sus ' +
+  'le les des du et est pour dans une sur qui pas au aux avec ' +
+  'der das und ist nicht mit ein eine zu von für auf dem im ' +
+  'os um uma não com são na da do dos das ' +
+  'il di che per non gli della nel sono').split(' '));
+function looksEnglish(text) {
+  const t = String(text || '');
+  const letters = t.match(/\p{L}/gu) || [];
+  if (!letters.length) return true;
+  const latin = t.match(/[A-Za-zÀ-ɏ]/g) || [];
+  if (latin.length / letters.length < 0.7) return false;
+  const words = t.toLowerCase().match(/[a-zÀ-ɏ']+/g) || [];
+  if (words.length < 6) return true;
+  let en = 0, fo = 0;
+  for (const w of words) { if (EN_WORDS.has(w)) en++; else if (FOREIGN_WORDS.has(w)) fo++; }
+  return !(fo >= 3 && fo > en * 2);
+}
+/* SEAM:EXCAVATE_WIRE: the gather envelope's order before its cap. Strongest
+ * tier first; inside a tier the paid rails first (already paid for); entities
+ * last (they inform the class, they are not evidence). Stable otherwise. */
+const GATHER_PAID = new Set(['exa', 'pplx']);
+function gatherOrder(items) {
+  const tier = it => it.kind === 'entity' ? 9 : (it.source_tier || 3);
+  return (items || []).map((it, i) => ({ it, i })).sort((a, b) =>
+    (tier(a.it) - tier(b.it)) ||
+    ((GATHER_PAID.has(a.it.rail) ? 0 : 1) - (GATHER_PAID.has(b.it.rail) ? 0 : 1)) ||
+    (a.i - b.i)).map(x => x.it);
+}
+/* SEAM:LAKE_TRUTH: the date a lake row speaks for. Its publish date when it has
+ * one; a house capture (the spine) falls back to capture time; a row captured by
+ * a live search with no publish date speaks for no date at all, so searching can
+ * never inflate momentum, track counts or audience counts. */
+function lakeWhen(r) {
+  if (!r) return null;
+  if (r.published_at) return r.published_at;
+  const live = r.momentum && /^live/.test(String(r.momentum.provenance || ''));
+  return live ? null : (r.captured_at || null);
+}
+const LIVE_KINDS = new Set(['news', 'web', 'discourse', 'video']);
 async function gatherServerSignals(q) {
   const out = [];
   // sourcelang:english is GDELT's own documented query filter and it runs on
@@ -696,8 +781,7 @@ async function gatherServerSignals(q) {
         url: a.url || '',
         image: a.socialimage || '',            // key visual straight from the source
         lang: a.language || ''                 // e.g. "English", "Spanish" (GDELT names)
-      ,
-      from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null }));
+      }));   // SEAM:EXCAVATE_WIRE: a stray `from:` line here threw on the first article, so GDELT never arrived
     }
   } catch (e) {}
   // Hacker News (Algolia) — operator / practitioner discourse, keyless.
@@ -4058,7 +4142,7 @@ async function spineAdvance(env, budget) {
         calls++;
         const near = await sbRest(env, 'rpc/match_signals', { method: 'POST', body: { p_query: vec, p_count: 2 } }) || [];
         const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
-        if (echo) { updates.push(Object.assign(carry(r), { status: 'rejected', momentum: { echo_of: echo.id } })); stats.rejected++; continue; }
+        if (echo) { updates.push(Object.assign(carry(r), { status: 'rejected', momentum: Object.assign({}, r.momentum, { echo_of: echo.id }) })); stats.rejected++; continue; }
         calls++;
         const reply = await callModel(env, 't1', [
           { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
@@ -4068,7 +4152,7 @@ async function spineAdvance(env, budget) {
         const territory = DAILY_POV.territories.includes(j.territory) ? j.territory : (r.territory || 'technology-innovation');
         const novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0));
         if (j.announcement === true && novelty <= 1) {
-          updates.push(Object.assign(carry(r), { territory, status: 'rejected', momentum: { novelty, announcement: true } }));
+          updates.push(Object.assign(carry(r), { territory, status: 'rejected', momentum: Object.assign({}, r.momentum, { novelty, announcement: true }) }));
           stats.rejected++;
         } else {
           // merge, never replace: momentum.promoted is the receipt for a hand-
@@ -4191,15 +4275,16 @@ async function excavateAuth(request, env, origin) {
  * or not at all. */
 function computeBrandSignal(rows, nowMs) {
   const now = nowMs || Date.now();
-  const real = (rows || []).filter(r => (r.similarity || 0) >= 0.3);
+  // SEAM:LAKE_TRUTH: a row counts for the date it speaks for (lakeWhen), never for when someone searched.
+  const real = (rows || []).filter(r => (r.similarity || 0) >= 0.3 && lakeWhen(r));
   if (real.length < 3) return { thin: true, matches: real.length };
-  const age = (r) => (now - new Date(r.captured_at).getTime()) / 86400000;
+  const age = (r) => (now - new Date(lakeWhen(r)).getTime()) / 86400000;
   const recent = real.filter(r => age(r) <= 30).length;
   const prior = real.filter(r => age(r) > 30 && age(r) <= 60).length;
   const momentum = prior === 0 ? (recent > 0 ? 100 : 0)
     : Math.round(((recent - prior) / prior) * 100);
   const t1 = real.filter(r => r.source_tier === 1).length;
-  const latest = real.map(r => r.captured_at).sort().pop();
+  const latest = real.map(lakeWhen).sort().pop();
   return {
     thin: false,
     mentions_90d: real.length,
@@ -4285,7 +4370,7 @@ async function brandSignal(request, env, origin) {
   try {
     const vec = await embedQuery(env, brand + ' brand consumer culture');
     if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
-    const rows = await sbRest(env, 'rpc/match_signals', {
+    const rows = await sbRest(env, 'rpc/match_signals_read', {   // SEAM:LAKE_TRUTH: no rejected rows, publish dates
       method: 'POST',
       body: { p_query: vec, p_count: 24, p_territory: null, p_min_tier: 4,
               p_since: new Date(Date.now() - 90 * 86400000).toISOString() }
@@ -4311,7 +4396,7 @@ async function excavateLake(request, env, origin) {
   try {
     const vec = await embedQuery(env, q);          // query side - prefixed
     if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
-    const rows = await sbRest(env, 'rpc/match_signals', {
+    const rows = await sbRest(env, 'rpc/match_signals_read', {   // SEAM:LAKE_TRUTH: no rejected rows, publish dates
       method: 'POST',
       body: { p_query: vec, p_count: count, p_territory: territory, p_min_tier: maxTier,
               p_since: days ? new Date(Date.now() - days * 24 * 3600e3).toISOString() : null }
@@ -4319,10 +4404,11 @@ async function excavateLake(request, env, origin) {
     return json({ ok: true, q, count: rows.length, results: rows.map(r => ({
       id: r.id, title: r.title, url: r.url, summary: r.summary,
       source_name: r.source_name, source_tier: r.source_tier,
-      territory: r.territory, status: r.status, captured_at: r.captured_at,
+      territory: r.territory, status: r.status, captured_at: r.captured_at, published_at: r.published_at || null,
       momentum: r.momentum, similarity: Math.round((r.similarity || 0) * 1000) / 1000,
       provenance: 'lake'
-    })), field: await fieldRail(env, q) }, 200, origin, env);
+    })), field: body.field === true ? await fieldRail(env, q)   // SEAM:EXCAVATE_WIRE: Tavily on request only
+      : { enabled: false, provider: null, count: 0, results: [], note: 'field rail runs on request (field: true)' } }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'lake_unavailable' }, 200, origin, env);
   }
@@ -5532,7 +5618,7 @@ const RAIL_FNS = {
     return ((j && j.docs) || []).map(b => envelope(rail, { url: 'https://openlibrary.org' + b.key, title: b.title, text: ((b.author_name || []).slice(0, 2).join(', ')) + (b.first_publish_year ? ' · ' + b.first_publish_year : ''), image: b.cover_i ? 'https://covers.openlibrary.org/b/id/' + b.cover_i + '-M.jpg' : null, published_at: b.first_publish_year ? b.first_publish_year + '-01-01' : null }));
   },
   async guardian(env, q, ctx, rail) {
-    const j = await railFetch('https://content.guardianapis.com/search?api-key=test&page-size=6&show-fields=thumbnail,trailText&order-by=relevance&q=' + encodeURIComponent(q));
+    const j = await railFetch('https://content.guardianapis.com/search?api-key=' + encodeURIComponent(env.GUARDIAN_KEY || 'test') + '&page-size=6&show-fields=thumbnail,trailText&order-by=relevance&q=' + encodeURIComponent(q));
     return ((((j || {}).response || {}).results) || []).map(a => envelope(rail, { url: a.webUrl, title: a.webTitle, text: stripHtml(a.fields && a.fields.trailText), image: a.fields && a.fields.thumbnail, published_at: a.webPublicationDate, source_name: 'The Guardian' }));
   },
   async youtube(env, q, ctx, rail) {
@@ -5694,13 +5780,21 @@ async function gatherOpenSignals(env, q, opts) {
   // Dedupe by url, keep the strongest tier, cap the envelope.
   const byUrl = new Map();
   for (const it of items) { if (!it.title) continue; const k = it.url || (it.rail + ':' + it.title); const prev = byUrl.get(k); if (!prev || it.source_tier < prev.source_tier) byUrl.set(k, it); }
-  items = [...byUrl.values()].slice(0, GATHER.MAX_ITEMS);
+  // SEAM:EXCAVATE_WIRE: English at the door, then the strongest evidence first, then the cap.
+  const pooled = [...byUrl.values()];
+  const english = pooled.filter(it => it.kind === 'entity' || looksEnglish(it.title + ' ' + (it.text || '')));
+  ctx.meta.non_english = pooled.length - english.length;
+  items = gatherOrder(english).slice(0, GATHER.MAX_ITEMS);
   await bumpYield(env, day, stats.filter(s => s.id !== '?'));
   const rails = stats.map(s => ({ id: s.id, name: (RAIL_BY_ID[s.id] || {}).name || s.id, n: s.n, ok: s.ok, ms: s.ms, skipped: s.skipped || null }));
   return { ok: true, query, cls, items, rails, meta: ctx.meta };
 }
 
 async function excavateGather(request, env, origin) {
+  // SEAM:EXCAVATE_WIRE: signed in and under the daily limit. Gather spends Exa, Perplexity,
+  // YouTube and Knowledge Graph quota and writes the lake; it was open to anyone.
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
   let body = {}; try { body = await request.json(); } catch (e) {}
   const q = String(body.query || body.q || '').slice(0, 200).trim();
   if (!q) return json({ ok: false, error: 'missing_query' }, 200, origin, env);
@@ -5720,6 +5814,7 @@ async function lakeCapture(env, items, prov) {
   for (const it of (items || [])) {
     if (!it || !it.url || !/^https?:\/\//.test(it.url) || !it.title) continue;
     if (it.kind === 'entity') continue;                       // entities are not signals
+    if (/^live/.test(String(prov.provenance || '')) && !LIVE_KINDS.has(it.kind || 'news')) continue;   // SEAM:LAKE_TRUTH: searches feed news, not papers
     const hash = await sha256hex(hashInput(it.title, it.url));
     if (seen.has(hash)) continue; seen.add(hash);
     rows.push({ content_hash: hash, title: String(it.title).slice(0, 300), url: String(it.url).slice(0, 600),
@@ -5950,8 +6045,11 @@ async function tracksRefresh(env) {
     const names = [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3);
     let n7 = 0, n30 = 0, latest = null, image = null, states = {};
     try {
-      const rows = await sbRest(env, 'signals?select=id,title,captured_at,image,territory,momentum,cluster_id&' + ilikeOr(names) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=200') || [];
-      n30 = rows.length; n7 = rows.filter(r => r.captured_at >= d7).length; latest = rows[0] ? rows[0].captured_at : null;
+      const rows = await sbRest(env, 'signals?select=id,title,captured_at,published_at,image,territory,momentum,cluster_id&' + ilikeOr(names) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=200') || [];
+      // SEAM:LAKE_TRUTH: counted by the date each row speaks for, not by when it was captured.
+      const dated = rows.filter(r => { const w = lakeWhen(r); return w && Date.parse(w) >= Date.parse(d30); });
+      n30 = dated.length; n7 = dated.filter(r => Date.parse(lakeWhen(r)) >= Date.parse(d7)).length;
+      latest = dated.map(lakeWhen).sort().pop() || null;
       image = (rows.find(r => r.image) || {}).image || null;
     } catch (e) {}
     // Knowledge Graph resolution, once.
@@ -6009,7 +6107,9 @@ async function audiencesRefresh(env) {
   const d30 = new Date(Date.now() - 30 * 864e5).toISOString(); const out = {};
   for (const c of COHORTS) {
     try {
-      const rows = await sbRest(env, 'signals?select=id,title,url,source_name,source_tier,territory,captured_at,published_at,image&' + ilikeOr(c.terms) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=120') || [];
+      const fetched = await sbRest(env, 'signals?select=id,title,url,source_name,source_tier,territory,captured_at,published_at,image,momentum&' + ilikeOr(c.terms) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=120') || [];
+      // SEAM:LAKE_TRUTH: mentions by the date each row speaks for; live captures without a date do not count.
+      const rows = fetched.filter(r => { const w = lakeWhen(r); return w && Date.parse(w) >= Date.parse(d30); });
       const terr = {}; const src = {};
       rows.forEach(r => { if (r.territory) terr[r.territory] = (terr[r.territory] || 0) + 1; if (r.source_name) src[r.source_name] = (src[r.source_name] || 0) + 1; });
       out[c.key] = { label: c.label, mentions_30d: rows.length, outlets: Object.keys(src).length,

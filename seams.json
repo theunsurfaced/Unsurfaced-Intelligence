@@ -663,6 +663,14 @@
    "file": "worker/src/index.js",
    "tag": "SEAM:READ_PRINT",
    "purpose": "readPdf: Cloudflare Browser Rendering REST (letter, backgrounds, no headers) of the read page with a 5-minute KV ticket; the PDF kept in R2 under an unguessable key on house_reads.meta.pdf, re-rendered only when the read or page revision changes; /reads/render trades a ticket for one read; fails loud without CF_ACCOUNT_ID and CF_BROWSER_TOKEN"
+  },
+  "SEAM:EXCAVATE_WIRE": {
+   "file": "worker/src/index.js",
+   "purpose": "EXCAVATE does what it was built to do: GDELT restored (stray line removed; DAILY tier-4 sweep too); evidence budget (lake 10, server wire 10, open fills to 44, deduped, nothing paid for cut unread); insights cite evidence numbers, source/link from the cited item, confidence = distinct cited sources; report room 2800 tokens; ideas.from; gather signed-in + daily limit; gather English at the door then tier and paid-first order; Tavily on request"
+  },
+  "SEAM:LAKE_TRUTH": {
+   "file": "worker/src/index.js",
+   "purpose": "lake numbers you can trust: EXCAVATE reads match_signals_read (no rejected rows, publish dates; DAILY's match_signals untouched); lakeWhen dates a row by publish date, live captures without one never count toward brand momentum, track or audience counts; live searches capture only news/web/discourse/video; looksEnglish at the door; rejection merges momentum; Guardian key from env; 0027 lets MINE's tier 0 into the lake"
   }
  },
  "planned": [

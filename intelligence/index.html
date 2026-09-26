@@ -2919,7 +2919,7 @@ async function _excGather(q){
   });
   // SEAM:GATHER_SERVER — the worker's gather joins the corpus. One call, every rail the query class earns.
   try{
-    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});
+    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},await _authHeader()),body:JSON.stringify({query:q})});   // EXCAVATE_WIRE: gather is signed-in now
     const g=r.ok?await r.json():null;
     if(g&&g.ok&&Array.isArray(g.items)){
       window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{}};
@@ -2930,14 +2930,16 @@ async function _excGather(q){
         if(it.url&&seen.has(it.url)) return; if(it.url) seen.add(it.url);
         const lens=it.kind==='truth'?'brand':(it.kind==='discourse'?'culture':(it.kind==='research'?'consumer':(it.kind==='filing'?'market':'market')));
         items.push({ signalType:it.kind==='news'?'news':(it.kind==='discourse'?'social':'web'), title:it.title, snippet:it.text||'', source:it.source_name||'', url:it.url||null, image:it.image||null, published_at:it.published_at||null });
-        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'' });
+        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather' });
         const key=(it.source_name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:it.source_name, display:it.source_name, desc:it.kind||'live', url:it.url||'' };
       });
       (g.rails||[]).forEach(rl=>{ if(rl.n>0){ const key=(rl.name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:rl.name, display:rl.name, desc:rl.n+' gathered', url:'' }; } });
     }
   }catch(e){}
   const sources=Object.values(srcMap).slice(0,16).map((s,i)=>{ s.num=i+1; return s; });
-  return { items, corpus:corpus.slice(0,40), sources };
+  // EXCAVATE_WIRE: the server's ranked gather first, the browser's lens items after, then the cap.
+  const ordered=corpus.filter(c=>c.rail==='gather').concat(corpus.filter(c=>c.rail!=='gather'));
+  return { items, corpus:ordered.slice(0,40), sources };
 }
 
 async function runLiveSearch(q){
