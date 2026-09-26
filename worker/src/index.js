@@ -88,7 +88,10 @@ export default {
         .catch(e => console.log('desk_score_error', String(e && e.message)))
         .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
         .then(s => console.log('claude_drain', JSON.stringify(s)))
-        .catch(e => console.log('claude_drain_error', String(e && e.message))));
+        .catch(e => console.log('claude_drain_error', String(e && e.message)))
+        .then(() => readTick(env))   // SEAM:READ_ENGINE: submit queued reads whose children have settled
+        .then(s => console.log('read_tick', JSON.stringify(s)))
+        .catch(e => console.log('read_tick_error', String(e && e.message))));
     }
   },
   async fetch(request, env) {
@@ -190,6 +193,12 @@ export default {
         case '/claude/ping':         // SEAM:CLAUDE_ROUTE admin doors: ping, ledger, kill switch
         case '/claude/ledger':
         case '/claude/kill':         return claudeRoute(path, body, env, origin, user);
+        case '/reads/compile':       // SEAM:READ_ENGINE admin doors
+        case '/reads/list':
+        case '/reads/get':
+        case '/reads/collect':
+        case '/reads/publish':
+        case '/reads/record':        return readRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
         case '/pay/responder':       return payResponder(body, env, origin, user);
@@ -6319,7 +6328,7 @@ async function claudeBatchDrain(env) {
     } catch (e) { body = ''; }
     if (!body) continue;
     const rows = await sbRest(env, 'claude_jobs?batch_id=eq.' + encodeURIComponent(bid) +
-      '&status=eq.submitted&select=id,tier,custom_id,model,est_usd,created_at') || [];
+      '&status=eq.submitted&select=id,tier,kind,meta,custom_id,model,est_usd,created_at') || [];
     const byCid = {};
     rows.forEach(x => { byCid[x.custom_id] = x; });
     for (const line of body.split('\n')) {
@@ -6349,6 +6358,10 @@ async function claudeBatchDrain(env) {
       }
       patch.ended_at = new Date().toISOString();
       await sbRest(env, 'claude_jobs?id=eq.' + row.id, { method: 'PATCH', body: patch });
+      if (String(row.kind || '').startsWith('house_') && row.meta && row.meta.house_read_id) {   // SEAM:READ_ENGINE lands its reads here
+        if (patch.status === 'done') await readLand(env, row.meta.house_read_id, patch.result, patch.cost_usd).catch(e => console.log('read_land_error', String(e && e.message)));
+        else await readFail(env, row.meta.house_read_id, patch.error).catch(e => console.log('read_fail_error', String(e && e.message)));
+      }
     }
   }
   const left = await sbRest(env, 'claude_jobs?status=eq.submitted&mode=eq.batch&select=id&limit=1') || [];
@@ -6441,6 +6454,341 @@ async function editionToday(env, origin) {
   } catch (e) {
     return json({ edition: null, items: [], error: 'unavailable' }, 200, origin, env);
   }
+}
+
+/* SEAM:READ_ENGINE: the house read compiler. One engine, any window:
+ *   weekly   Monday to Sunday of published DAILY (up to 84 stories)
+ *   monthly  a calendar month, built on its weekly reads
+ *   record   the whole archive, built on its monthly reads
+ * The pipeline is fixed and every step is a law:
+ *   1. STATS come from house_read_stats() in SQL. The model never writes a number.
+ *   2. The PACK is every published story in the window, cited as S<id>.
+ *   3. The METHOD (templates/CULTURAL_READ_METHOD.md, SEAM:PROMPT_SYNC) is the
+ *      cached system prompt; the contract for the kind follows it.
+ *   4. Fable writes through the doc tier as a batch (SEAM:CLAUDE_ROUTE).
+ *   5. On landing, readValidate holds any read that quotes a number the
+ *      stats and stories do not contain, drops evidence ids that are not in
+ *      the pack, and strips em dashes. A held read never publishes itself.
+ * Children first: a monthly waits until no weekly inside it is queued or
+ * compiling; the record waits on its monthlies. readTick walks the queue on
+ * the 30-minute cron and on POST /reads/collect. */
+const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 1.0 (draft for Fresco's review). This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Monthly Read, and the Record. It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room: for what people are actually doing, what they are reaching for, and what that means for the work a brand should make next. Every read is written through the creative advertising lens. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and allergic to filler. They should finish a read knowing what happened, what it means, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them. It finds the pattern under the headlines, names it plainly, proves it with the stories themselves, and turns it into moves.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a story, or a count in the stats block. Never estimate, round up, extrapolate or invent a number. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly.\n2. **English only.** Every word of the read is English. Names of people, brands and places stay as they are.\n3. **Evidence is the stories.** A claim stands on story ids from the pack, cited as S-numbers. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two stories disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one story, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The eight questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different stories, on different days, from different sources, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n5. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n6. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n7. **What does it mean for the work?** Translate the pattern for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands, what it makes obsolete.\n8. **What do we do Monday, and what do we watch?** Turn the read into moves by role, and name the signal that would prove it right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in three parts.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES**: every published DAILY story in the window, one per line, with an S-number, the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite stories by S-number in the evidence fields. Never cite a child read as proof of a fact; cite the stories under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Monthly Read**: one month, built on the weekly reads. Three to five feature patterns with more room: what happened, the receipts, why it matters, THE MOVE by role. Territory briefs for the territories with real activity. A scoreboard section on what earlier reads called and how it landed, using only the calls in the stats block. A watchlist for next month.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim; a paragraph on what happened that names at least two stories by their specifics; a paragraph on why it matters that says something a smart reader did not already know; evidence ids; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through (S12, S31, S40). Nostalgia has become a costume, not a memory.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog (S7, S19).\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear.\"\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
+const HOUSE_READ = {
+  KINDS: {
+    weekly:  { max_tokens: 7000,  child: null,      take: 420 },
+    monthly: { max_tokens: 12000, child: 'weekly',  take: 240 },
+    record:  { max_tokens: 14000, child: 'monthly', take: 160 }
+  },
+  STORY_CAP: 1100,
+  TICK_MAX: 6
+};
+const READ_CONTRACT = {
+  weekly: 'CONTRACT (weekly). Return one JSON object with exactly these keys: ' +
+    '"title": the read in 4 to 8 words, stated as a claim; ' +
+    '"thesis": 2 sentences on what culture did this week; ' +
+    '"the_week": one paragraph of THE ROUGH, naming concrete events; ' +
+    '"patterns": 3 to 5 objects {"name": 4 to 8 words, "what_happened": paragraph, "why_it_matters": paragraph, ' +
+    '"evidence": ["S<id>", ...], "strength": "pattern" or "signal", "moves": {"creative": s, "marketer": s, "founder": s, "exec": s, "talent": s}}; ' +
+    '"cross_currents": 1 to 3 objects {"thread": one sentence, "evidence": ["S<id>", ...]}; ' +
+    '"contradiction": one paragraph on the counter-signal; ' +
+    '"whitespace": one paragraph on what nobody in the evidence is doing; ' +
+    '"advertising_read": one paragraph on what the week means for creative, media and brand work; ' +
+    '"watch": 2 to 4 sentences, THE RETURN; ' +
+    '"social": {"cover_line": at most 8 words, "frames": 5 to 7 objects {"kicker": at most 3 words, "headline": at most 12 words, ' +
+    '"line": at most 25 words, "evidence": ["S<id>", ...]}, "caption": at most 600 characters, no hashtags}. ' +
+    'Frames are the Unsurfaced DAILY social issue: each one stands alone in a feed.',
+  monthly: 'CONTRACT (monthly). Return one JSON object with exactly these keys: ' +
+    '"title": 4 to 8 words, stated as a claim; "thesis": 2 sentences on what culture did this month; ' +
+    '"the_month": two paragraphs of THE ROUGH; ' +
+    '"by_the_numbers": 3 to 6 objects {"stat": a key path that exists in STATS, such as "stories" or "by_territory.music", "line": one sentence reading that number}; ' +
+    '"features": 3 to 5 objects {"name", "what_happened", "why_it_matters", "evidence": ["S<id>", ...], "strength": "pattern" or "signal", ' +
+    '"held_from_weekly": true or false, "moves": {"creative", "marketer", "founder", "exec", "talent"}}; ' +
+    '"territory_briefs": objects {"territory": a territory key from STATS.by_territory, "line": 1 to 2 sentences, "evidence": ["S<id>", ...]} for territories with real activity; ' +
+    '"cross_currents": 1 to 3 objects {"thread", "evidence"}; ' +
+    '"scoreboard": one paragraph using only STATS.calls_made and STATS.calls_resolved, or an empty string if both are empty; ' +
+    '"whitespace": one paragraph; "advertising_read": one paragraph; "watch": 3 to 5 sentences for next month.',
+  record: 'CONTRACT (record). Return one JSON object with exactly these keys: ' +
+    '"title": 4 to 8 words; "thesis": 2 sentences on what the whole archive shows; ' +
+    '"the_arc": three paragraphs, the long view from the first issue to the last; ' +
+    '"by_the_numbers": 4 to 8 objects {"stat": a key path in STATS, "line": one sentence}; ' +
+    '"held": 3 to 5 objects {"name", "what_happened", "why_it_matters", "evidence": ["S<id>", ...], "moves": {"creative", "marketer", "founder", "exec", "talent"}} for patterns that held across months; ' +
+    '"faded": 0 to 4 objects {"name", "line", "evidence"} for patterns that did not hold; ' +
+    '"emerged": 0 to 4 objects {"name", "line", "evidence"} for patterns visible only at this distance; ' +
+    '"scoreboard": one paragraph from STATS calls only, or an empty string; ' +
+    '"advertising_read": one paragraph; "watch": 3 to 5 sentences.'
+};
+
+function readIso(d) { return d.toISOString().slice(0, 10); }
+function readDay(s) { const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return isNaN(d) ? null : d; }
+function readAddDays(d, n) { const x = new Date(d.getTime()); x.setUTCDate(x.getUTCDate() + n); return x; }
+function readMonthName(d) {
+  return ['January','February','March','April','May','June','July','August','September','October','November','December'][d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+}
+function readShort(d) {
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()] + ' ' + d.getUTCDate() + ', ' + d.getUTCFullYear();
+}
+/* PURE: the window law. weekly snaps to Monday; default is the last completed
+ * week. monthly snaps to the 1st; default is the last completed month. */
+function readWindow(kind, start, now) {
+  const today = readDay(readIso(now || new Date()));
+  if (kind === 'weekly') {
+    let d = start ? readDay(start) : readAddDays(today, -7);
+    if (!d) return null;
+    d = readAddDays(d, -((d.getUTCDay() + 6) % 7));
+    return { start: readIso(d), end: readIso(readAddDays(d, 6)), label: 'Week of ' + readShort(d) };
+  }
+  if (kind === 'monthly') {
+    let d = start ? readDay(String(start).length === 7 ? start + '-01' : start)
+                  : new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+    if (!d) return null;
+    d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+    const e = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+    return { start: readIso(d), end: readIso(e), label: readMonthName(d) };
+  }
+  return null;
+}
+/* PURE: every Monday-to-Sunday week and every month that overlaps [a, b]. */
+function readWeeksBetween(a, b) {
+  const out = []; const end = readDay(b);
+  let d = readDay(readWindow('weekly', a).start);
+  while (d <= end) { out.push(readWindow('weekly', readIso(d))); d = readAddDays(d, 7); }
+  return out;
+}
+function readMonthsBetween(a, b) {
+  const out = []; const end = readDay(b); const s = readDay(a);
+  let d = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), 1));
+  while (d <= end) { out.push(readWindow('monthly', readIso(d))); d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); }
+  return out;
+}
+
+async function readWindowItems(env, start, end) {
+  const eds = await sbRest(env, 'editions?status=eq.published&date=gte.' + start + '&date=lte.' + end +
+    '&select=id,issue_no,date&order=date.asc&limit=1000') || [];
+  const byId = {}, out = [];
+  eds.forEach(e => { byId[e.id] = e; });
+  for (let i = 0; i < eds.length; i += 40) {
+    const ids = eds.slice(i, i + 40).map(e => e.id).join(',');
+    const rows = await sbRest(env, 'edition_items?edition_id=in.(' + ids + ')' +
+      '&select=id,edition_id,ord,kicker,headline,take,apply,territory,format,source_name&order=edition_id.asc,ord.asc&limit=5000') || [];
+    rows.forEach(r => { const e = byId[r.edition_id]; if (e) out.push(Object.assign(r, { date: e.date, issue_no: e.issue_no })); });
+  }
+  return out.slice(0, HOUSE_READ.STORY_CAP);
+}
+/* PURE: one line per story. The S-number is the only citation a read may use. */
+function readPackLine(it, take) {
+  const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
+  return 'S' + it.id + ' | ' + it.date + ' | #' + String(it.issue_no || '').padStart(3, '0') + ' | ' +
+    (it.territory || 'unassigned') + ' | ' + clean(it.headline) + ' | TAKE: ' + clean(studioTrimClean(clean(it.take), take)) +
+    (it.apply ? ' | APPLY: ' + clean(it.apply) : '') + ' | ' + clean(it.source_name);
+}
+/* PURE: the child reads a larger read builds on, compacted. */
+function readChildDigest(rows) {
+  return (rows || []).map(r => {
+    const x = r.read || {};
+    const pats = (x.patterns || x.features || x.held || []).map(p => ({ name: p.name, what_happened: p.what_happened, evidence: p.evidence }));
+    return JSON.stringify({ window: r.label, title: x.title, thesis: x.thesis, patterns: pats, watch: x.watch });
+  }).join('\n');
+}
+
+/* PURE: the landing law. Returns { read, fatal:[], notes:[] }. */
+function readValidate(kind, read, ground, packIds) {
+  const fatal = [], notes = [];
+  if (!read || typeof read !== 'object') return { read: null, fatal: ['unparsable'], notes };
+  if (!read.title || !read.thesis) fatal.push('missing_title_or_thesis');
+  const ids = new Set((packIds || []).map(n => 'S' + n));
+  const nums = new Set();
+  String(ground || '').replace(/\d[\d,]*(?:\.\d+)?/g, m => { nums.add(m.replace(/,/g, '').replace(/^0+(?=\d)/, '')); return m; });
+  let dashes = 0, dropped = 0;
+  const walk = (v, path) => {
+    if (Array.isArray(v)) {
+      if (/evidence$/.test(path)) {
+        const keep = v.filter(x => ids.has(String(x)));
+        dropped += v.length - keep.length;
+        return keep;
+      }
+      return v.map((x, i) => walk(x, path + '[' + i + ']'));
+    }
+    if (v && typeof v === 'object') {
+      const o = {};
+      for (const k of Object.keys(v)) o[k] = walk(v[k], path ? path + '.' + k : k);
+      return o;
+    }
+    if (typeof v !== 'string') return v;
+    let s = v.replace(/\s*\u2014\s*/g, () => { dashes++; return ': '; });
+    // Moves are recommendations, not data ("a 15-second cut"); every other field quotes the evidence.
+    if (!/\.moves\./.test(path) && !/\.stat$/.test(path)) {
+      const scan = s.replace(/\bS\d+\b/g, ' ');
+      const found = scan.match(/\d[\d,]*(?:\.\d+)?/g) || [];
+      for (const f of found) {
+        const n = f.replace(/,/g, '').replace(/^0+(?=\d)/, '');
+        if (!nums.has(n)) fatal.push('number_not_in_evidence:' + path + ':' + f);
+      }
+    }
+    return s;
+  };
+  const out = walk(read, '');
+  if (dashes) notes.push('em_dashes_replaced:' + dashes);
+  if (dropped) notes.push('evidence_ids_dropped:' + dropped);
+  return { read: out, fatal: fatal.slice(0, 20), notes };
+}
+
+async function readRow(env, id) {
+  const r = await sbRest(env, 'house_reads?id=eq.' + parseInt(id, 10) + '&select=*') || [];
+  return r[0] || null;
+}
+async function readPatch(env, id, patch) {
+  patch.updated_at = new Date().toISOString();
+  await sbRest(env, 'house_reads?id=eq.' + parseInt(id, 10), { method: 'PATCH', body: patch });
+}
+async function readChildrenSettled(env, row) {
+  const child = HOUSE_READ.KINDS[row.kind].child;
+  if (!child) return true;
+  const busy = await sbRest(env, 'house_reads?kind=eq.' + child + '&status=in.(queued,compiling)' +
+    '&window_start=lte.' + row.window_end + '&window_end=gte.' + row.window_start + '&select=id&limit=1') || [];
+  if (busy.length) return false;
+  if (child === 'monthly') {   // the record also waits for every weekly underneath
+    const wk = await sbRest(env, 'house_reads?kind=eq.weekly&status=in.(queued,compiling)' +
+      '&window_start=lte.' + row.window_end + '&window_end=gte.' + row.window_start + '&select=id&limit=1') || [];
+    if (wk.length) return false;
+  }
+  return true;
+}
+
+/* The one spender in this seam: build the pack, submit to the doc tier. */
+async function readSubmit(env, row) {
+  const K = HOUSE_READ.KINDS[row.kind];
+  const stats = await sbRest(env, 'rpc/house_read_stats', { method: 'POST',
+    body: { p_start: row.window_start, p_end: row.window_end } }) || {};
+  const items = await readWindowItems(env, row.window_start, row.window_end);
+  if (!items.length) {
+    await readPatch(env, row.id, { status: 'failed', error: 'empty_window', stats });
+    return { ok: false, error: 'empty_window' };
+  }
+  let children = [];
+  if (K.child) {
+    const kids = await sbRest(env, 'house_reads?kind=eq.' + K.child + '&status=in.(ready,published)' +
+      '&window_start=gte.' + row.window_start + '&window_end=lte.' + row.window_end +
+      '&select=id,label,read,version&order=window_start.asc,version.desc') || [];
+    const seen = new Set();
+    children = kids.filter(k => !seen.has(k.label) && seen.add(k.label));
+  }
+  let label = row.label;
+  if (row.kind === 'record' && stats.issues && stats.issues.first)
+    label = 'DAILY: The Record, Issues ' + String(stats.issues.first).padStart(3, '0') + ' to ' + String(stats.issues.last).padStart(3, '0');
+  const pack = items.map(it => readPackLine(it, K.take)).join('\n');
+  const prompt = 'STATS (exact, computed by the database):\n' + JSON.stringify(stats) +
+    '\n\nSTORIES (' + items.length + '):\n' + pack +
+    (children.length ? '\n\nCHILD READS (' + children.length + '):\n' + readChildDigest(children) : '') +
+    '\n\nWrite the ' + row.kind + ' read for ' + label + '. Return only the JSON object.';
+  const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
+    custom_id: 'hr-' + row.id + '-v' + row.version,
+    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
+    prompt, max_tokens: K.max_tokens, meta: { house_read_id: row.id } }]);
+  if (!sub.ok) {
+    await readPatch(env, row.id, { status: 'queued', error: sub.error, stats, label });
+    return sub;
+  }
+  await readPatch(env, row.id, { status: 'compiling', error: null, stats, label,
+    pack_ids: items.map(it => it.id), meta: Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id) }) });
+  logEvent(env, 'intelligence', 'reads', 'read_submit', null, { id: row.id, kind: row.kind, stories: items.length, children: children.length });
+  return { ok: true, id: row.id, batch_id: sub.batch_id, stories: items.length, children: children.length, est_usd: sub.est_usd };
+}
+
+/* Called by claudeBatchDrain when a house_* job lands. */
+async function readLand(env, id, text, cost) {
+  const row = await readRow(env, id);
+  if (!row || row.status !== 'compiling') return { skipped: 'not_compiling' };
+  const items = await readWindowItems(env, row.window_start, row.window_end);
+  const ground = JSON.stringify(row.stats || {}) + '\n' + items.map(it => [it.headline, it.take, it.apply, it.date, it.issue_no].join(' ')).join('\n');
+  const v = readValidate(row.kind, parseModelJson(text), ground, row.pack_ids || []);
+  const status = v.read && !v.fatal.length ? 'ready' : 'held';
+  await readPatch(env, id, { status, read: v.read, violations: v.fatal.concat(v.notes), cost_usd: cost,
+    error: v.read ? (v.fatal.length ? 'held_for_review' : null) : 'unparsable' });
+  logEvent(env, 'intelligence', 'reads', 'read_' + status, null, { id, kind: row.kind, fatal: v.fatal.length });
+  return { id, status, fatal: v.fatal.length };
+}
+async function readFail(env, id, error) {
+  await readPatch(env, id, { status: 'failed', error: String(error || 'batch_failed').slice(0, 300) });
+}
+
+async function readTick(env) {
+  const q = await sbRest(env, 'house_reads?status=eq.queued&select=*&order=window_start.asc&limit=40') || [];
+  const order = { weekly: 0, monthly: 1, record: 2 };
+  q.sort((a, b) => order[a.kind] - order[b.kind] || String(a.window_start).localeCompare(String(b.window_start)));
+  const out = { queued: q.length, submitted: 0, waiting: 0, refused: 0 };
+  for (const row of q) {
+    if (out.submitted >= HOUSE_READ.TICK_MAX) break;
+    if (!(await readChildrenSettled(env, row))) { out.waiting++; continue; }
+    const r = await readSubmit(env, row);
+    if (r.ok) out.submitted++; else out.refused++;
+  }
+  return out;
+}
+
+async function readQueue(env, kind, win, meta) {
+  const prev = await sbRest(env, 'house_reads?kind=eq.' + kind + '&window_start=eq.' + win.start + '&window_end=eq.' + win.end +
+    '&select=id,version,status&order=version.desc&limit=1') || [];
+  const version = prev[0] ? prev[0].version + 1 : 1;
+  const back = await sbRest(env, 'house_reads?select=*', { method: 'POST', headers: { Prefer: 'return=representation' },
+    body: [{ kind, window_start: win.start, window_end: win.end, version, label: win.label, status: 'queued', meta: meta || {} }] }) || [];
+  return { row: back[0] || null, prev: prev[0] || null };
+}
+
+async function readRoute(path, body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  body = body || {};
+  if (path === '/reads/list') {
+    const k = HOUSE_READ.KINDS[body.kind] ? '&kind=eq.' + body.kind : '';
+    const rows = await sbRest(env, 'house_reads?select=id,kind,window_start,window_end,version,label,status,error,cost_usd,violations,created_at,updated_at' +
+      k + '&order=window_start.desc,version.desc&limit=100') || [];
+    return json({ ok: true, reads: rows }, 200, origin, env);
+  }
+  if (path === '/reads/get') {
+    const row = await readRow(env, body.id);
+    return json(row ? { ok: true, read: row } : { ok: false, error: 'not_found' }, 200, origin, env);
+  }
+  if (path === '/reads/collect') {
+    const drain = await claudeBatchDrain(env);
+    const tick = await readTick(env);
+    return json({ ok: true, drain, tick }, 200, origin, env);
+  }
+  if (path === '/reads/publish') {
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (row.status !== 'ready' && !(row.status === 'held' && body.override === true))
+      return json({ ok: false, error: 'not_ready', status: row.status }, 200, origin, env);
+    await readPatch(env, row.id, { status: 'published', meta: Object.assign({}, row.meta || {}, { published_by: user.id, published_at: new Date().toISOString() }) });
+    return json({ ok: true, id: row.id, status: 'published' }, 200, origin, env);
+  }
+  if (path === '/reads/record') {
+    // THE RECORD: every week and month since issue 001, then the record, chained.
+    const first = await sbRest(env, 'editions?status=eq.published&select=date&order=date.asc&limit=1') || [];
+    const last = await sbRest(env, 'editions?status=eq.published&select=date&order=date.desc&limit=1') || [];
+    if (!first[0]) return json({ ok: false, error: 'no_editions' }, 200, origin, env);
+    const a = first[0].date, b = last[0].date, made = { weekly: 0, monthly: 0, record: 0 };
+    // An unfinished week is not read yet (Monday's cadence writes it); an unfinished month is read to date and says so.
+    const lastDay = readDay(b);
+    for (const w of readWeeksBetween(a, b)) {
+      if (readDay(w.end) > lastDay) continue;
+      await readQueue(env, 'weekly', w, { plan: 'record' }); made.weekly++;
+    }
+    for (const m of readMonthsBetween(a, b)) {
+      const mm = readDay(m.end) > lastDay ? { start: m.start, end: b, label: m.label + ' (through ' + readShort(lastDay) + ')' } : m;
+      await readQueue(env, 'monthly', mm, { plan: 'record' }); made.monthly++;
+    }
+    await readQueue(env, 'record', { start: a, end: b, label: 'DAILY: The Record' }, { plan: 'record' }); made.record++;
+    const tick = await readTick(env);
+    return json({ ok: true, window: { start: a, end: b }, queued: made, tick }, 200, origin, env);
+  }
+  // /reads/compile { kind: weekly | monthly, start? }
+  const kind = body.kind === 'monthly' ? 'monthly' : 'weekly';
+  const win = readWindow(kind, body.start || null);
+  if (!win) return json({ ok: false, error: 'bad_start' }, 200, origin, env);
+  const { row, prev } = await readQueue(env, kind, win, { plan: 'manual' });
+  if (!row) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
+  const settled = await readChildrenSettled(env, row);
+  const sub = settled ? await readSubmit(env, row) : { ok: true, waiting: 'children' };
+  return json(Object.assign({ id: row.id, kind, window: win, version: row.version, replaces: prev ? prev.id : null }, sub), 200, origin, env);
 }
 
 /* SEAM:ARCHIVE — the back-issue shelf. Every published edition stays

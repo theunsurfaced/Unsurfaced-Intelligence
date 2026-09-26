@@ -17,6 +17,7 @@ Checks:
   8. Swallow ratchet  empty catches may only go down
   9. Spender registry every AI-spending function is registered with its guard
  10. Proofs           every worker/proofs/*.mjs exits 0
+ 11. Prompt sync      worker READ_METHOD == templates/CULTURAL_READ_METHOD.md
 """
 import re, sys, json, glob, base64, hashlib, subprocess, tempfile, os
 
@@ -212,6 +213,7 @@ SPENDERS = {
     'synthesize': 'underLimit (DAILY_LIMIT) on /excavate/*',
     'studioCaption': 'cron-bounded manifest + admin cut-story',
     'studioMemeLines': 'cron-bounded manifest + admin cut-story',
+    'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap); admin route or readTick only',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")
@@ -244,6 +246,19 @@ for _p in _proofs:
     except FileNotFoundError:
         print("  proofs  Node.js not installed locally - deferred to CI"); break
 print(f"  proofs  {len(_proofs)} run")
+
+# ── 11. Prompt sync (SEAM:PROMPT_SYNC) ───────────────────────────────────
+# The Method the model reads is the Method in the repo, byte for byte.
+# Edit templates/CULTURAL_READ_METHOD.md, then run tools/sync_method.py.
+_mf = "templates/CULTURAL_READ_METHOD.md"
+for f in worker_js:
+    _pm = re.search(r'^const READ_METHOD = (".*");(?=\s+// SEAM:PROMPT_SYNC)', load(f), re.M)
+    if not _pm: continue
+    if not os.path.exists(_mf):
+        FAIL.append(f"[prompt] {_mf} missing")
+    elif json.loads(_pm.group(1)) != load(_mf):
+        FAIL.append(f"[prompt] {f}: READ_METHOD differs from {_mf}; run tools/sync_method.py")
+    print(f"  prompt  {f}: READ_METHOD {'in sync' if os.path.exists(_mf) and json.loads(_pm.group(1)) == load(_mf) else 'DRIFT'}")
 
 # ── verdict ──────────────────────────────────────────────────────────────
 print()

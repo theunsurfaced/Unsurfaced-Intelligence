@@ -633,13 +633,20 @@
   "SEAM:RENDER_CEILING": {
    "file": "worker/src/index.js",
    "purpose": "the house ceiling on fal render seconds: fal:all:<day> counts across everyone, RENDER_GLOBAL_SECONDS caps it (env override), checked before the personal allowance, neither counter moves on a refusal; /play/budget reports house_used/house_cap"
+  },
+  "SEAM:READ_ENGINE": {
+   "file": "worker/src/index.js",
+   "purpose": "the house read compiler: weekly (Mon-Sun), monthly, record windows over published DAILY; numbers only from house_read_stats() in SQL (0026); stories packed as S<id> citations; the Method as cached system prompt; Fable via the doc tier batch; readValidate holds any read quoting a number outside the evidence, drops unknown evidence ids, strips em dashes; children first (monthly waits on weeklies, record on monthlies); readTick on the 30-minute cron; admin doors /reads/compile list get collect publish record"
+  },
+  "SEAM:PROMPT_SYNC": {
+   "file": "worker/src/index.js",
+   "purpose": "READ_METHOD is byte-identical to templates/CULTURAL_READ_METHOD.md; the gate fails on drift; tools/sync_method.py re-syncs"
   }
  },
  "planned": [
   "SEAM:KNOWLEDGE_INGEST",
   "SEAM:OPS_AUTH",
-  "SEAM:GUARD_SYNC",
-  "SEAM:PROMPT_SYNC"
+  "SEAM:GUARD_SYNC"
  ],
  "note": "planned seams live in /worker; they enter registry as they ship"
 }

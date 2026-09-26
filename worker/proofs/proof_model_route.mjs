@@ -30,9 +30,10 @@ const cm = w.slice(w.indexOf('async function callModel('), cA);
 
 // ── L: isolation ───────────────────────────────────────────────────────
 ok(!/claude|anthropic/i.test(cm), 'L1 callModel carries no Claude path: t1/t2/t3 stay Workers AI');
-const outside = w.slice(0, cA) + w.slice(cB);
+const rA0 = w.indexOf('/* SEAM:READ_ENGINE'), rB0 = rA0 > 0 ? w.indexOf('/* SEAM:ARCHIVE', rA0) : -1;
+const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '');
 ok(!/callClaude\(|claudeBatchSubmit\(/.test(outside.replace(/claudeRoute\(path[^\n]*/g, '')),
-  'L2 no existing surface calls the lane (DAILY, STUDIO, EXCAVATE untouched)');
+  'L2 only the lane and SEAM:READ_ENGINE call Claude (DAILY, STUDIO, EXCAVATE untouched)');
 ok(/case '\/claude\/ping':[\s\S]{0,200}return claudeRoute\(path, body, env, origin, user\);/.test(w), 'L3 admin doors routed');
 ok(/\.then\(\(\) => claudeBatchDrain\(env\)\)/.test(w.slice(w.indexOf('async scheduled('), w.indexOf('async fetch('))),
   'L4 drain rides the scheduled handler');
