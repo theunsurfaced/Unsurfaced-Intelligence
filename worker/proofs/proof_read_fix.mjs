@@ -19,7 +19,7 @@ const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'calle
 
 const K = R.HOUSE_READ.KINDS;
 ok(K.weekly.max_tokens === 20000 && K.monthly.max_tokens === 28000 && K.record.max_tokens === 32000, 'F1 room: 20k weekly, 28k monthly, 32k record');
-ok(['weekly','monthly','record'].every(k => K[k].think > 0 && K[k].max_tokens - K[k].think >= 14000), 'F1b thinking has a budget and at least 14k tokens stay for writing');
+ok(K.weekly.effort === 'medium' && K.monthly.effort === 'medium' && K.record.effort === 'high', 'F1b effort: medium weekly and monthly, high record');
 ok(/MAX_TOKENS: 32000,/.test(w), 'F2 lane ceiling admits the record');
 
 const row = (status) => [{ id: 1, kind: 'weekly', status, window_start: '2026-09-14', window_end: '2026-09-20', stats: { stories: 2 }, pack_ids: [11], label: 'Week' }];
@@ -56,8 +56,9 @@ const cached = L.claudeEstimate(L.claudeParams('doc', { system: sys, cache: true
 const plain = L.claudeEstimate(L.claudeParams('doc', { system: sys, prompt: 'p', max_tokens: 10 }), false);
 ok(cached > plain, 'F12 a cached system prompt is estimated at the cache-write rate');
 
-ok(/thinking: \{ type: 'enabled', budget_tokens: K\.think \}/.test(w), 'F13 every read is submitted with its thinking budget');
-ok(L.claudeParams('doc', { prompt: 'p', thinking: { type: 'enabled', budget_tokens: 6000 } }).thinking.budget_tokens === 6000, 'F14 the lane passes thinking through');
+ok(/thinking: \{ type: 'adaptive' \}, output_config: \{ effort: K\.effort \}/.test(w) && !/type: 'enabled'/.test(w), 'F13 every read asks for adaptive thinking at its effort, never enabled');
+const pa = L.claudeParams('doc', { prompt: 'p', thinking: { type: 'adaptive' }, output_config: { effort: 'high' } });
+ok(pa.thinking.type === 'adaptive' && pa.output_config.effort === 'high', 'F14 the lane passes adaptive thinking and effort through');
 ok(/error: txt \? null : 'no_text:'/.test(w), 'F15 a job that returns no text records its block types');
 
 console.log(`\nproof_read_fix: ${pass} checks PASS`);

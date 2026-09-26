@@ -6179,7 +6179,8 @@ function claudeParams(tier, req) {
     ? [{ type: 'text', text: String(r.system), cache_control: { type: 'ephemeral' } }]
     : String(r.system);
   if (Number.isFinite(r.temperature)) p.temperature = r.temperature;
-  if (r.thinking) p.thinking = r.thinking;   // an explicit thinking budget keeps room to write
+  if (r.thinking) p.thinking = r.thinking;          // Fable: { type: 'adaptive' } only
+  if (r.output_config) p.output_config = r.output_config;   // Fable: { effort } sets how hard it thinks
   return p;
 }
 function claudeEstimate(params, batch) {
@@ -6482,9 +6483,9 @@ const HOUSE_READ = {
   KINDS: {
     // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
     // Thinking gets its own budget; the rest of max_tokens is room to write.
-    weekly:  { max_tokens: 20000, think: 6000,  child: null,      take: 420 },
-    monthly: { max_tokens: 28000, think: 8000,  child: 'weekly',  take: 240 },
-    record:  { max_tokens: 32000, think: 10000, child: 'monthly', take: 160 }
+    weekly:  { max_tokens: 20000, effort: 'medium', child: null,      take: 420 },
+    monthly: { max_tokens: 28000, effort: 'medium', child: 'weekly',  take: 240 },
+    record:  { max_tokens: 32000, effort: 'high',   child: 'monthly', take: 160 }
   },
   STORY_CAP: 1100,
   TICK_MAX: 6
@@ -6690,7 +6691,7 @@ async function readSubmit(env, row) {
   const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
     custom_id: 'hr-' + row.id + '-v' + row.version,
     system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
-    prompt, max_tokens: K.max_tokens, thinking: { type: 'enabled', budget_tokens: K.think },
+    prompt, max_tokens: K.max_tokens, thinking: { type: 'adaptive' }, output_config: { effort: K.effort },
     meta: { house_read_id: row.id } }]);
   if (!sub.ok) {
     await readPatch(env, row.id, { status: 'queued', error: sub.error, stats, label });
