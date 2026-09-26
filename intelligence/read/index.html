@@ -340,7 +340,7 @@
       function photo(s, slot, alts, capMode) {
         var u = img(s); if (!u) return "";
         alts = (alts || []).filter(function (a) { return a !== s && img(a); }).slice(0, slot === "cover" ? 30 : 10);
-        return '<img class="ph ph-wait" src="' + u + IMGV + '" alt="' + esc((rc[s] && rc[s].headline) || "") + '" loading="eager" referrerpolicy="no-referrer"' +
+        return '<img class="ph ph-wait" crossorigin="anonymous" src="' + u + IMGV + '" alt="' + esc((rc[s] && rc[s].headline) || "") + '" loading="eager" referrerpolicy="no-referrer"' +
           ' data-s="' + s + '" data-first="' + s + '" data-min="' + MIN[slot || "thumb"] + '" data-alts="' + alts.join(",") + '"' +
           (capMode ? ' data-cap="' + capMode + '"' : "") + ' onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
       }
@@ -500,16 +500,37 @@
           (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + "</div></div></div>"; }).join(""));
       h += '<section class="page closer">' + mark("rp-mark") + '<div class="big">The read is free.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/daily</div></section>';
       app.innerHTML = '<div class="doc">' + h + "</div>";
-      if (RT) { imagesReady().then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
+      if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
       if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, coverPool);
       bind(row);
     });
+  }
+  /* SEAM:READ_PRINT lean photos: Chromium embeds every photo in a PDF at its
+   * original size, and full-size originals made the file too large to carry.
+   * In render mode each photo is redrawn at twice its printed width (sharp on
+   * paper, never above 2000px) as a JPEG before the PDF is made. */
+  function leanImages() {
+    var list = Array.prototype.slice.call(document.querySelectorAll(".doc img.ph"));
+    return Promise.all(list.map(function (el) {
+      return new Promise(function (done) {
+        var nw = el.naturalWidth, nh = el.naturalHeight;
+        if (!nw || !nh) return done();
+        var tw = Math.min(nw, Math.round(Math.max(el.clientWidth, 120) * 2), 2000), th = Math.max(1, Math.round(nh * tw / nw)), u;
+        try {
+          var c = document.createElement("canvas"); c.width = tw; c.height = th;
+          var g = c.getContext("2d"); g.fillStyle = "#1A1A1A"; g.fillRect(0, 0, tw, th); g.drawImage(el, 0, 0, tw, th);
+          u = c.toDataURL("image/jpeg", 0.82);
+        } catch (e) { return done(); }   // a photo that cannot be redrawn keeps its original
+        el.onload = function () { done(); }; el.onerror = function () { done(); };
+        el.src = u;
+      });
+    }));
   }
   function imagesReady() {
     var t0 = Date.now();
     return new Promise(function (done) {
       (function poll() {
-        if (!document.querySelector(".doc img.ph-wait") || Date.now() - t0 > 20000) {
+        if (!document.querySelector(".doc img.ph-wait") || Date.now() - t0 > (RT ? 40000 : 20000)) {   // render mode waits longer for cold photos
           Array.prototype.slice.call(document.querySelectorAll(".doc img.ph-wait")).forEach(function (el) { phGone(el); });
           return done();
         }

@@ -6897,7 +6897,7 @@ async function readImageRelay(path, env) {
  * the file is kept in R2 under an unguessable key recorded on the read. The
  * same file serves every download until the read or the page revision changes.
  * Fail loud: no secrets, a failed render or a non-PDF answer is an error. */
-const READ_PRINT = { REV: 'p1', TICKET_TTL: 300, PAGE: 'https://unsurfaced-intelligence.com/intelligence/read/', WAIT_MS: 50000 };
+const READ_PRINT = { REV: 'p2', MAX_BYTES: 60 * 1024 * 1024, TICKET_TTL: 300, PAGE: 'https://unsurfaced-intelligence.com/intelligence/read/', WAIT_MS: 75000 };   // cold photos: the page allows 40 s, the browser 75 s
 function readHex(bytes) { return Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join(''); }
 async function readStamp(row) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(row.read || {}) + '|' + (row.status === 'held' ? 'held' : 'live')));
@@ -6919,7 +6919,7 @@ async function readPdf(env, row) {
   const stamp = await readStamp(row), kept = (row.meta && row.meta.pdf) || null;
   if (kept && kept.stamp === stamp && kept.key) {
     const obj = await env.MEDIA.get(kept.key);
-    if (obj) return { bytes: await obj.arrayBuffer(), fresh: false };
+    if (obj) return { body: obj.body, fresh: false };   // streamed from R2, never held in memory
   }
   const rt = readHex(crypto.getRandomValues(new Uint8Array(32)));
   await env.RATE_LIMIT.put('rpt:' + rt, String(row.id), { expirationTtl: READ_PRINT.TICKET_TTL });
@@ -6937,6 +6937,11 @@ async function readPdf(env, row) {
   });
   await env.RATE_LIMIT.delete('rpt:' + rt);
   const type = res.headers.get('content-type') || '';
+  const len = parseInt(res.headers.get('content-length') || '0', 10);
+  if (len > READ_PRINT.MAX_BYTES) {   // refuse by size before reading: a Worker holds 128 MB
+    console.log('read_pdf_too_large', row.id, len);
+    throw new Error('pdf_too_large: ' + Math.round(len / 1048576) + ' MB');
+  }
   const bytes = await res.arrayBuffer();
   const head = new TextDecoder().decode(bytes.slice(0, 5));
   if (!res.ok || head !== '%PDF-') {
@@ -6948,7 +6953,7 @@ async function readPdf(env, row) {
   await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'application/pdf' } });
   await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { pdf: { key, stamp, bytes: bytes.byteLength, at: new Date().toISOString() } }) });
   if (kept && kept.key && kept.key !== key) await env.MEDIA.delete(kept.key);
-  return { bytes, fresh: true };
+  return { body: bytes, fresh: true };
 }
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
@@ -6971,7 +6976,7 @@ async function readRoute(path, body, env, origin, user) {
     h.set('Cache-Control', 'no-store');
     h.set('X-Read-Pdf', out.fresh ? 'rendered' : 'kept');
     h.set('Access-Control-Expose-Headers', 'X-Read-Pdf');
-    return new Response(out.bytes, { status: 200, headers: h });
+    return new Response(out.body, { status: 200, headers: h });
   }
   if (path === '/reads/get') {
     const row = await readRow(env, body.id);

@@ -1,6 +1,6 @@
 /**
  * proof_read_print.mjs  --  arc 8: the platform-rendered PDF, its ticket, its
- * keep-and-reuse, and the page's render mode.
+ * keep-and-reuse, the size guard (8.1), and the page's render mode with lean photos.
  */
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
@@ -13,9 +13,9 @@ let kv, r2, patches, calls, answer;
 const reset = () => { kv = new Map(); r2 = new Map(); patches = []; calls = []; };
 const env = { CF_ACCOUNT_ID: 'acct', CF_BROWSER_TOKEN: 'tok',
   RATE_LIMIT: { get: async k => kv.get(k) || null, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } },
-  MEDIA: { get: async k => r2.has(k) ? { arrayBuffer: async () => r2.get(k) } : null, put: async (k, v) => { r2.set(k, v); }, delete: async k => { r2.delete(k); } } };
+  MEDIA: { get: async k => r2.has(k) ? { body: r2.get(k), size: r2.get(k).byteLength } : null, put: async (k, v) => { r2.set(k, v); }, delete: async k => { r2.delete(k); } } };
 const fakeFetch = async (url, init) => { calls.push({ url, body: JSON.parse(init.body), ticketLive: [...kv.keys()].length });
-  return new Response(answer.body, { status: answer.status || 200, headers: { 'content-type': answer.type } }); };
+  return new Response(answer.body, { status: answer.status || 200, headers: Object.assign({ 'content-type': answer.type }, answer.headers || {}) }); };
 const readRow = async (e, id) => ({ id: 3, read: { title: 'T' }, status: 'published', meta: {} });
 const P = new Function('fetch', 'readRow', 'readReceipts', 'readPatch', 'json', 'safeJson', 'console',
   src + '; return { readPdf, readRenderTicket, readStamp };')(
@@ -48,6 +48,9 @@ let err = null; try { await P.readPdf(env, row); } catch (e) { err = String(e.me
 ok(err && /render_failed 422/.test(err) && /Timeout/.test(err) && r2.size === 0, 'L1 a failed render is an error, never a stored file');
 err = null; try { await P.readPdf({ MEDIA: env.MEDIA, RATE_LIMIT: env.RATE_LIMIT }, row); } catch (e) { err = String(e.message); }
 ok(err && /print_not_configured/.test(err), 'L2 missing secrets fail loud');
+reset(); answer = { body: pdf, type: 'application/pdf', headers: { 'content-length': String(200 * 1024 * 1024) } };
+err = null; try { await P.readPdf(env, row); } catch (e) { err = String(e.message); }
+ok(err && /pdf_too_large: 200 MB/.test(err) && r2.size === 0, 'L3 a PDF over the cap is refused by its size before it is read into memory');
 
 reset(); kv.set('rpt:' + 'a'.repeat(64), '3');
 let t = await P.readRenderTicket({ rt: 'a'.repeat(64) }, env, '');
@@ -64,4 +67,7 @@ ok(/case '\/reads\/pdf':\s+return readRoute/.test(w), 'T5 /reads/pdf sits behind
 ok(/RT \? fetch\(API \+ "\/reads\/render"/.test(page) && /setAttribute\("data-print-ready", "1"\)/.test(page), 'G1 render mode reads by ticket and raises data-print-ready');
 ok(/fetch\(API \+ "\/reads\/pdf"/.test(page) && !/window\.print\(\)/.test(page), 'G2 Download PDF fetches the platform file; the print dialog is gone');
 ok(/PDF failed: /.test(page), 'G3 a failed render shows on the button');
+ok(/imagesReady\(\)\.then\(leanImages\)/.test(page) && /toDataURL\("image\/jpeg", 0\.82\)/.test(page) && /, 2000\)/.test(page), 'G4 render mode redraws photos at twice print width, max 2000px, as JPEG');
+ok(/class="ph ph-wait" crossorigin="anonymous"/.test(page), 'G5 photos load with CORS so they can be redrawn');
+ok(/return new Response\(out\.body, \{ status: 200/.test(w) && /if \(obj\) return \{ body: obj\.body/.test(w), 'G6 a kept PDF streams from R2, never held in memory');
 console.log(`\nproof_read_print: ${pass} checks PASS`);
