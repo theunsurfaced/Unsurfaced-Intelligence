@@ -73,6 +73,9 @@ export default {
         .then(() => railSpendLedger(env))   // yesterday's real rail spend, before the KV ledgers expire (audit F2)
         .then(s => console.log('rail_spend', JSON.stringify(s)))
         .catch(e => console.log('rail_spend_error', String(e && e.message)))
+        .then(() => themePass(env, THEME.NIGHT_ROUNDS, THEME.BATCH))   // SEAM:THEMES: nightly, before the feed warms
+        .then(s => console.log('theme_pass_night', JSON.stringify(s)))
+        .catch(e => console.log('theme_pass_night_error', String(e && e.message)))
         .then(() => feedWarm(env)).then(() => tracksRefresh(env)).then(() => audiencesRefresh(env)).then(() => backfillAttention(env))   // SEAM:HUB_FEED / TRACKS / AUDIENCES / BACKFILL
         .then(s => console.log('hub_refresh', JSON.stringify(s)))
         .catch(e => console.log('hub_refresh_error', String(e && e.message))));
@@ -86,6 +89,9 @@ export default {
       await (runDailySpine(env, { feeds: 6, gdelt: 1, advance: 42 })
         .then(s => console.log('spine_slice', JSON.stringify(s)))
         .catch(e => console.log('spine_slice_error', String(e && e.message)))
+        .then(() => themePass(env, 1, THEME.DRAIN_BATCH))   // SEAM:THEMES: the day joins its themes as it lands
+        .then(s => console.log('theme_pass', JSON.stringify(s)))
+        .catch(e => console.log('theme_pass_error', String(e && e.message)))
         .then(() => deskScore(env))   // SEAM:DESK — score every 30 minutes, after the slice lands
         .then(s => console.log('desk_score', JSON.stringify(s)))
         .catch(e => console.log('desk_score_error', String(e && e.message)))
@@ -4637,12 +4643,13 @@ async function excavateCluster(request, env, origin) {
     return json({ ok: false, error: 'bad_id' }, 200, origin, env);
   try {
     const sigRows = await sbRest(env, `signals?id=eq.${id}` +
-      '&select=id,title,url,summary,source_name,source_tier,territory,status,captured_at,momentum,cluster_id,embedding,edition_item_id');
+      '&select=id,title,url,summary,source_name,source_tier,territory,status,captured_at,momentum,cluster_id,theme_id,embedding,edition_item_id');
     const sig = sigRows && sigRows[0];
     if (!sig) return json({ ok: false, error: 'not_found' }, 200, origin, env);
     const byId = new Map();
-    if (sig.cluster_id) {
-      const kin = await sbRest(env, `signals?cluster_id=eq.${sig.cluster_id}&id=neq.${id}` +
+    if (sig.theme_id || sig.cluster_id) {   // SEAM:THEMES: kin by theme when the story has one
+      const kinQ = sig.theme_id ? `theme_id=eq.${sig.theme_id}` : `cluster_id=eq.${sig.cluster_id}`;
+      const kin = await sbRest(env, `signals?${kinQ}&id=neq.${id}` +
         '&order=captured_at.desc&limit=20' +
         '&select=id,title,url,source_name,source_tier,territory,status,captured_at,momentum,edition_item_id') || [];
       kin.forEach(k => byId.set(k.id, k));
@@ -4694,13 +4701,34 @@ const RECUR = { WINDOW_D: 60, SCAN: 800, MIN_WEEKS: 2, TOP: 12,
  * window in parallel, RECUR.SLICE_ROWS per slice (10 x 120 = 1200 rows,
  * every week represented). A failed slice contributes [] rather than killing
  * the scan — a thin week is data, a dead fetch is not. */
+/* SEAM:THEMES: the lake grouped by subject. theme_assign (0028) puts each
+ * story into the nearest theme at THEME_SIM or starts one; the worker only
+ * schedules it. lakeKey is the one place that decides what a "cluster" means
+ * downstream: the theme when a row has one, the CONNECT cluster when it does
+ * not. DAILY's own clustering is not touched. */
+const THEME = { SIM: 0.65, STEP: 0.015, BATCH: 600, NIGHT_ROUNDS: 8, DRAIN_BATCH: 300 };   // STEP: a theme's bar rises p_step per doubling of its size; batches sized under the API statement timeout
+function lakeKey(r) { return (r && (r.theme_id || r.cluster_id)) || null; }
+async function themePass(env, rounds, batch) {
+  const sim = parseFloat(env.THEME_SIM) || THEME.SIM, step = parseFloat(env.THEME_STEP) || THEME.STEP;
+  const out = { assigned: 0, created: 0, remaining: null, rounds: 0, sim, step };
+  for (let i = 0; i < (rounds || 1); i++) {
+    const rows = await sbRest(env, 'rpc/theme_assign', { method: 'POST', body: { p_limit: batch || THEME.BATCH, p_sim: sim, p_step: step } }) || [];
+    const r = rows[0] || {};
+    out.rounds++;
+    out.assigned += r.assigned || 0;
+    out.created += r.created || 0;
+    out.remaining = Number.isInteger(r.remaining) ? r.remaining : null;
+    if (!out.remaining) break;
+  }
+  return out;
+}
 async function fetchRecurrenceRows(env, days, territory) {
   const nowMs = Date.now();
   const sliceMs = (days * 864e5) / RECUR.SLICES;
   const base = 'signals?status=in.(connected,published)&cluster_id=not.is.null' +
     (territory ? '&territory=eq.' + territory : '') +
     '&order=captured_at.desc&limit=' + RECUR.SLICE_ROWS +
-    '&select=id,cluster_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id,image';   // SEAM:HUB_FEED — image rides the rollup
+    '&select=id,cluster_id,theme_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id,image';   // SEAM:THEMES theme_id rides the rollup; SEAM:HUB_FEED — image rides the rollup
   const fetches = [];
   for (let i = 0; i < RECUR.SLICES; i++) {
     const hi = new Date(nowMs - i * sliceMs).toISOString();
@@ -4726,13 +4754,14 @@ function recurrenceRollup(rows, top, minWeeks) {
   const floor = Math.max(1, parseInt(minWeeks, 10) || RECUR.MIN_WEEKS);
   const by = new Map();
   for (const r of rows || []) {
-    if (!r.cluster_id || !r.captured_at) continue;
-    let c = by.get(r.cluster_id);
+    const key = lakeKey(r);   // SEAM:THEMES: the theme when the row has one, the cluster when it does not
+    if (!key || !r.captured_at) continue;
+    let c = by.get(key);
     if (!c) {
-      c = { cluster_id: r.cluster_id, members: 0, weeks: new Set(), sources: new Set(),
+      c = { cluster_id: key, members: 0, weeks: new Set(), sources: new Set(),
         territories: new Set(), first_seen: r.captured_at, last_seen: r.captured_at,
         published: 0, best_tier: 4, exemplar: null, hits: [] };
-      by.set(r.cluster_id, c);
+      by.set(key, c);
     }
     c.members++;
     c.hits.push(r.captured_at);
@@ -4890,16 +4919,18 @@ function clusterShape(series) {
 async function clusterGeometry(env, ids) {
   const out = {};
   if (!ids || !ids.length) return out;
-  const rows = await sbRest(env, 'signals?cluster_id=in.(' + ids.join(',') + ')' +
+  const idl = ids.join(',');   // SEAM:THEMES: a key may be a theme or a cluster
+  const rows = await sbRest(env, 'signals?or=(theme_id.in.(' + idl + '),cluster_id.in.(' + idl + '))' +
     '&embedding=not.is.null&order=captured_at.desc&limit=' + FIELD.GEO_ROWS +
-    '&select=cluster_id,embedding') || [];
+    '&select=cluster_id,theme_id,embedding') || [];
   const byC = new Map();
   for (const r of rows) {
     let v = r.embedding;
     if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = null; } }
     if (!Array.isArray(v) || !v.length) continue;
-    const a = byC.get(r.cluster_id) || [];
-    if (a.length < FIELD.GEO_MEMBERS) { a.push(v); byC.set(r.cluster_id, a); }
+    const gk = lakeKey(r);
+    const a = byC.get(gk) || [];
+    if (a.length < FIELD.GEO_MEMBERS) { a.push(v); byC.set(gk, a); }
   }
   for (const [cid, vs] of byC) {
     if (vs.length < 2) { out[cid] = { centroid: vs[0] || null, tightness: null }; continue; }
@@ -5230,7 +5261,7 @@ async function excavatePropose(request, env, origin, internal) {
   const days = Math.min(180, Math.max(7, parseInt(body.days, 10) || RECUR.WINDOW_D));
   const want = Math.min(12, Math.max(1, parseInt(body.count, 10) || 6));   // SEAM:EXCAVATE_ARRIVAL: up to 12 patterns
   const minWeeks = Math.min(6, Math.max(1, parseInt(body.min_weeks, 10) || RECUR.MIN_WEEKS));
-  const ck = 'prop:v3:' + days + ':' + want + ':' + minWeeks;
+  const ck = 'prop:v4:' + days + ':' + want + ':' + minWeeks;   // v4: themes
 
   if (body.refresh !== true && env.RATE_LIMIT) {
     const hit = await env.RATE_LIMIT.get(ck).catch(function () { return null; });
@@ -5278,9 +5309,10 @@ async function excavatePropose(request, env, origin, internal) {
     // the cluster's own headlines - free, the rows are already in memory
     const titlesOf = new Map();
     for (const r of rows) {
-      if (!r.cluster_id || !r.title) continue;
-      const a = titlesOf.get(r.cluster_id) || [];
-      if (a.length < 6) { a.push(r.title); titlesOf.set(r.cluster_id, a); }
+      const k = lakeKey(r);   // SEAM:THEMES
+      if (!k || !r.title) continue;
+      const a = titlesOf.get(k) || [];
+      if (a.length < 6) { a.push(r.title); titlesOf.set(k, a); }
     }
 
     const brief = themes.map(function (t, i) {
@@ -6084,7 +6116,7 @@ async function deskRunGuarded(request, env, origin) {
   if (!env.FIELD_API_KEY || key !== env.FIELD_API_KEY) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
-  const out = which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -6097,7 +6129,7 @@ async function deskRunGuarded(request, env, origin) {
  * source. Trending is territories by velocity, computed from the same field.
  * ═══════════════════════════════════════════════════════════════════════════ */
 const FEED = { DAYS: RECUR.WINDOW_D, WANT: 12, MIN_WEEKS: RECUR.MIN_WEEKS, TRACKS_KEY: 'tracks:stats', AUD_KEY: 'aud:stats', ATTN_PREFIX: 'attention:' };
-function feedCacheKey() { return 'prop:v3:' + FEED.DAYS + ':' + FEED.WANT + ':' + FEED.MIN_WEEKS; }
+function feedCacheKey() { return 'prop:v4:' + FEED.DAYS + ':' + FEED.WANT + ':' + FEED.MIN_WEEKS; }
 async function feedWarm(env) {
   // Internal PROPOSE: same computation, same cache, no session. Runs at 06:00 and on a cold read.
   const req = new Request('https://internal/excavate/propose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: FEED.WANT, days: FEED.DAYS, min_weeks: FEED.MIN_WEEKS, refresh: true }) });

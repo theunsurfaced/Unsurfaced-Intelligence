@@ -679,6 +679,10 @@
   "SEAM:EXCAVATE_MEANING": {
    "file": "worker/src/index.js",
    "purpose": "the live read says what it means: the query's frame (category, audience); each finding's meaning for the culture, the category and the consumer; each move as a brief (for, action, why now, proof, watch, risk) under the MOVE LAW, enforced by excMoveGuard (no evidence or nothing concrete is dropped; generic patterns need two anchors); the page drops the sources strip, shows All Lenses full width, ends on THE MOVES, maps moves to their own lens"
+  },
+  "SEAM:THEMES": {
+   "file": "worker/src/index.js",
+   "purpose": "the lake grouped by subject: theme_assign (0028) at THEME_SIM 0.65 (env), run in the 30-minute drain (300) and nightly before the feed warms (8 x 600); lakeKey makes the rollup, PROPOSE, geometry and the cluster dashboard read themes when a row has one and clusters when it does not; DAILY's CONNECT, echo rule and momentum untouched"
   }
  },
  "planned": [
