@@ -144,4 +144,5 @@ ok(/class="move-when \$\{safe\(m\.dated\.band\|\|''\)\}">EVIDENCE/.test(page), '
 ok(/class="read-window"/.test(page) && /window widened: dated evidence was thin/.test(page) && /Compiled on \$\{safe\(mdl\.model\|\|''\)\}/.test(page) && /reserve model/.test(page), 'C5 the read shows its window and its model, and says when the window widened or the reserve compiled');
 ok(/const EXC_PANEL_QUERIES = \[/.test(page) && /async function excPanelRun\(label\)/.test(page) && /function excPanelCompare\(\)/.test(page) && /panel=\(before\|after\|compare\)/.test(page), 'C6 the panel: before, after, compare');
 ok(/\.exc-panel\{position:fixed;inset:0;z-index:var\(--z-board\)/.test(page), 'C7 the panel sits on a stacking token');
+ok(/function _epUnwrap\(j\)/.test(page) && /res\(_epUnwrap\(JSON\.parse\(r\.result\)\)\)/.test(page), 'C8 the compare page reads a panel file as the object itself or as the SQL editor exports it');
 console.log(`\nproof_excavate_intel: ${pass} checks PASS`);

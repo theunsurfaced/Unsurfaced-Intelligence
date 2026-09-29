@@ -3687,7 +3687,9 @@ async function excPanelRun(label){
   _epDownload(`unsurfaced-panel-${label}-${out.at.slice(0,10)}.json`, out);
   log.insertAdjacentHTML('beforeend',`<div class="ep-bar"><span class="ep-line">Saved as unsurfaced-panel-${safe(label)}-${out.at.slice(0,10)}.json (check Downloads).</span><button onclick="location.href=location.pathname+'?panel=compare'">COMPARE</button><button onclick="location.href=location.pathname">CLOSE</button></div>`);
 }
-function _epReadFile(inp){ return new Promise(res=>{ const f=inp.files&&inp.files[0]; if(!f) return res(null); const r=new FileReader(); r.onload=()=>{ try{ res(JSON.parse(r.result)); }catch(e){ res(null); } }; r.readAsText(f); }); }
+// EXC_INTEL: a panel file is the object itself, or the same object as the Supabase editor exports it: [{"panel": {...}}] or {"panel": {...}}.
+function _epUnwrap(j){ if(Array.isArray(j)&&j.length===1&&j[0]&&typeof j[0]==='object'&&!Array.isArray(j[0].queries)){ const k=Object.keys(j[0]); if(k.length===1) return _epUnwrap(j[0][k[0]]); } if(j&&typeof j==='object'&&!Array.isArray(j.queries)&&j.panel) return _epUnwrap(j.panel); return j; }
+function _epReadFile(inp){ return new Promise(res=>{ const f=inp.files&&inp.files[0]; if(!f) return res(null); const r=new FileReader(); r.onload=()=>{ try{ res(_epUnwrap(JSON.parse(r.result))); }catch(e){ res(null); } }; r.readAsText(f); }); }
 function _epSide(rec){
   if(!rec) return '<p class="ep-line">no record</p>'; if(!rec.ok||!rec.data) return `<p class="ep-line">failed: ${safe(rec.error||'')}</p>`;
   const d=rec.data, w=d.window||{}, m=d.model||{};
