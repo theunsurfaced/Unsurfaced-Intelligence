@@ -31,9 +31,12 @@ const cm = w.slice(w.indexOf('async function callModel('), cA);
 // ── L: isolation ───────────────────────────────────────────────────────
 ok(!/claude|anthropic/i.test(cm), 'L1 callModel carries no Claude path: t1/t2/t3 stay Workers AI');
 const rA0 = w.indexOf('/* SEAM:READ_ENGINE'), rB0 = rA0 > 0 ? w.indexOf('/* SEAM:ARCHIVE', rA0) : -1;
-const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '');
+// v2 (EX3a): the EXCAVATE lane (excCompile, SEAM:EXC_INTEL) may call Claude too; it sits behind claudeGate like the rest.
+const xA0 = w.indexOf('/* SEAM:EXC_INTEL: the compiler\'s lane'), xB0 = xA0 > 0 ? w.indexOf('/* SEAM:EXCAVATE_MEANING: the report contract.', xA0) : -1;
+const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '');
 ok(!/callClaude\(|claudeBatchSubmit\(/.test(outside.replace(/claudeRoute\(path[^\n]*/g, '')),
-  'L2 only the lane and SEAM:READ_ENGINE call Claude (DAILY, STUDIO, EXCAVATE untouched)');
+  'L2 only the lane, SEAM:READ_ENGINE and the EXCAVATE lane (SEAM:EXC_INTEL) call Claude (DAILY and STUDIO untouched)');
+ok(xA0 > 0 && /await callClaude\(env, EXC_MODEL\.TIER, req\)/.test(w.slice(xA0, xB0)) && /live:   \{ model: 'claude-sonnet-5'/.test(lane), 'L2b the EXCAVATE lane calls the gate with its own tier');
 ok(/case '\/claude\/ping':[\s\S]{0,200}return claudeRoute\(path, body, env, origin, user\);/.test(w), 'L3 admin doors routed');
 ok(/\.then\(\(\) => claudeBatchDrain\(env\)\)/.test(w.slice(w.indexOf('async scheduled('), w.indexOf('async fetch('))),
   'L4 drain rides the scheduled handler');

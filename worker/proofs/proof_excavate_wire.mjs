@@ -2,6 +2,7 @@
  * proof_excavate_wire.mjs  --  EX1 + EX1b: EXCAVATE does what it was built to do,
  * and the lake's numbers can be trusted. Runs the real functions on fake wires.
  * v2 (EX1d): report mode has room for meanings and briefs (3600); test moves meet the move law.
+ * v3 (EX3a): the read compiles through excCompile; evidence lines are dated; reference kinds are placed.
  */
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
@@ -11,7 +12,7 @@ let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
 const between = (a, b) => { const i = w.indexOf(a), j = w.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return w.slice(i, j); };
 const helpers = between('/* SEAM:EXCAVATE_MEANING: the report contract.', 'async function gatherServerSignals(');
-const H = new Function(helpers + '; return { excBudget, looksEnglish, gatherOrder, lakeWhen, LIVE_KINDS, EXC_BUDGET };')();
+const H = new Function(helpers + '; return { excBudget, looksEnglish, gatherOrder, lakeWhen, LIVE_KINDS, REF_KINDS, EXC_BUDGET };')();
 
 // ── W1 GDELT arrives ──────────────────────────────────────────────────────
 const gss = between('async function gatherServerSignals(', 'function serverConnectors(');
@@ -29,12 +30,12 @@ ok(!/from: Number\.isInteger\(x\.from\)[^\n]*\}\)\);\s*$/m.test(gss), 'W1b the s
 
 // ── W2 the evidence budget ────────────────────────────────────────────────
 const open40 = Array.from({ length: 40 }, (_, i) => ({ lens: 'market', title: 'open ' + i, url: 'https://open.example/' + i }));
-const lake10 = Array.from({ length: 12 }, (_, i) => ({ lens: 'lake', title: 'lake ' + i, url: 'https://lake.example/' + i }));
-const added8 = Array.from({ length: 8 }, (_, i) => ({ signalType: 'web', source: 'exa.example', title: 'paid ' + i, snippet: 's', url: 'https://paid.example/' + i }));
+const lake10 = Array.from({ length: 12 }, (_, i) => ({ lens: 'lake', title: 'lake ' + i, url: 'https://lake.example/' + i, source: 'outlet ' + i, published_at: new Date(Date.now() - (i + 1) * 864e5).toISOString(), tier: 2 }));
+const added8 = Array.from({ length: 8 }, (_, i) => ({ signalType: 'web', source: 'exa.example', title: 'paid ' + i, snippet: 's', url: 'https://paid.example/' + i, published_at: new Date(Date.now() - (i + 2) * 864e5).toISOString() }));
 const dup = { lens: 'market', title: 'same story', url: 'https://lake.example/0?utm=x' };
 const plan = H.excBudget(open40.concat([dup], lake10), added8);
-ok(plan.lake.length === 10 && plan.server.length === 8 && plan.merged.length === 44, 'W2 lake keeps its 10, all 8 paid items are read, open data fills to 44');
-ok(plan.merged[0].lens === 'lake' && !plan.merged.some(c => c._a), 'W3 the lake leads the evidence; no internal fields leak');
+ok(plan.lake.length === 12 && plan.server.length === 8 && plan.merged.length === 44, 'W2 the lake takes its 10 and its two dated rows still waiting displace undated open lines; all 8 paid items are read; 44 in all');
+ok(plan.merged[0].lens === 'lake' && !plan.merged.some(c => c._a), 'W3 dated lake evidence leads the evidence; no internal fields leak');
 ok(plan.open.every(c => c.url !== 'https://lake.example/0?utm=x'), 'W4 a URL already in the lake is not read twice');
 const thin = H.excBudget(open40.slice(0, 5), []);
 ok(thin.merged.length === 5 && thin.server.length === 0, 'W5 a thin corpus is not padded');
@@ -45,30 +46,30 @@ const xj = between('function jsonRepair(', '// Server-side connectors');
 let modelCall = null, ledger = null, captured = null;
 const modelOut = JSON.stringify({ read: ['Access outsold the object.', 'Price the room.'],
   insights: [
-    { category: 'culture', title: 'Rooms beat reach', excerpt: 'x', implication: 'y', evidence: [1, 12, 13, 99, 'x'], source: 'made up', sourceUrl: 'https://made.up' },
+    { category: 'culture', title: 'Rooms beat reach', excerpt: 'x', implication: 'y', evidence: [1, 2, 3, 99, 'x'], source: 'made up', sourceUrl: 'https://made.up' },
     { category: 'market', title: 'One source only', excerpt: 'x', evidence: [15], source: 'a', sourceUrl: '' },
     { category: 'brand', title: 'No citation', excerpt: 'x', source: 's', sourceUrl: 'https://ok.example' }],
   ideas: [{ type: 'Campaign', headline: 'Gate the merch drop behind Ticketmaster stubs', body: 'Sell the tour capsule at the 3 stadium dates only.', proof: 'Billboard reported the sell-out.', evidence: [1], from: 0 },
           { type: 'Product', headline: 'Price the room at $40 for Live Nation buyers', body: 'A members table at each show.', evidence: [2], from: 42 }],
   brief: 'b' });
-const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'callModel', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
+const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
   helpers + xj + synth + '; return synthesize;')(
-  (o, st) => ({ o, st }), async () => [{ signalType: 'news', source: 'news.example', title: 'Stadium tour adds dates', snippet: 'English news about fans and the tour', url: 'https://news.example/a' },
+  (o, st) => ({ o, st }), async () => [{ signalType: 'news', source: 'news.example', title: 'Stadium tour adds dates', snippet: 'English news about fans and the tour', url: 'https://news.example/a', published_at: new Date(Date.now() - 864e5).toISOString() },
     { signalType: 'web', source: 'es.example', title: 'La gira de los artistas en la ciudad y el precio de las entradas', snippet: 'para los fans que están en la ciudad', url: 'https://es.example/x' }],
-  async () => [{ signalType: 'web', source: 'exa.example', title: 'Paid find', snippet: 'paid', url: 'https://paid.example/0' }],
-  async (env, tier, msgs, opts) => { modelCall = { tier, msgs, opts }; return modelOut; },
+  async () => [{ signalType: 'web', source: 'exa.example', title: 'Paid find', snippet: 'paid', url: 'https://paid.example/0', published_at: new Date(Date.now() - 3 * 864e5).toISOString() }],
+  async (env, o) => { modelCall = { o, msgs: [{ content: o.system }, { content: o.prompt }], opts: { max_tokens: o.max_tokens } }; return { text: modelOut, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.03 }; },
   async (env, row) => { ledger = row; return 77; }, async () => 'h', async (env, items) => { captured = items; }, (a) => a.map(x => x.source), {});
 const res = await S({ query: 'fan access', mode: 'report', corpus: lake10.slice(0, 10).concat(open40) }, {}, '');
 const d = res.o.data;
-ok(modelCall.opts.max_tokens === 3600 && modelCall.tier === 't3', 'W6 report mode has room for a whole report (3600)');
+ok(modelCall.opts.max_tokens === 3600 && modelCall.o.reserve === 't3' && modelCall.o.kind === 'excavate_report', 'W6 report mode has room for a whole report (3600) and rides the lane with t3 in reserve');
 ok(/"evidence":\[the 1-based numbers/.test(modelCall.msgs[1].content), 'W7 the model is asked which evidence each insight stands on');
-ok(d.evidence_n === 44 && /\[1\] \(lake\)/.test(modelCall.msgs[1].content), 'W8 the model reads 44 items, lake first');
+ok(d.evidence_n === 44 && /\[1\] \d{4}-\d{2}-\d{2} \u00B7 (?:NOW|RECENT) \u00B7 1d \u00B7 T2 \u00B7 \(lake\)/.test(modelCall.msgs[1].content), 'W8 the model reads 44 items, the freshest dated lake line first, with its date, band, age and tier');
 ok(d.signals.length === 2 && !d.signals.some(s => /es\.example/.test(s.url)), 'W9 the server wire is read, and a Spanish item is stopped at the door');
 const i0 = d.insights[0], i1 = d.insights[1], i2 = d.insights[2];
-ok(i0.evidence.join() === '1,12,13' && i0.confidence === 'High' && i0.sourceUrl === 'https://lake.example/0', 'W10 cited evidence is validated; source and link come from it; 3 sources = High');
+ok(i0.evidence.join() === '1,2,3' && i0.confidence === 'High' && /^https:\/\/lake\.example\//.test(i0.sourceUrl) && /^(?:NOW|RECENT)$/.test(i0.dated.band) && i0.dated.dated === 3, 'W10 cited evidence is validated; source and link come from it; 3 dated outlets = High; the finding knows when it stands');
 ok(i1.confidence === 'Low' && i2.confidence === 'Low' && i2.evidence.length === 0, 'W11 one source = Low; no citation = Low, never High by category');
-ok(d.ideas[0].from === 0 && d.ideas[1].from === null, 'W12 ideas carry `from` again, validated');
-ok(ledger.meta.lake === 10 && ledger.meta.added === 2 && ledger.meta.offered === 2, 'W13 the ledger records what was read, not what was offered');
+ok(d.ideas[0].from === 0 && d.ideas[1].from === null && d.model.lane === 'live' && d.window && (d.window.NOW + d.window.RECENT) >= 12, 'W12 ideas carry `from` again, validated; the read carries its lane and window');
+ok(ledger.meta.lake === 10 && ledger.meta.added === 2 && ledger.meta.offered === 2 && ledger.meta.model.lane === 'live', 'W13 the ledger records what was read, not what was offered, and the lane');
 
 // ── W14 English law ──────────────────────────────────────────────────────
 ok(H.looksEnglish('The stadium tour sold out in a day and added two more dates for fans'), 'W14 English passes');
@@ -101,13 +102,14 @@ const bs = CB(real, now);
 ok(bs.recent_30d === 2 && bs.momentum_pct === 100, 'T5 momentum counts by publish date: an old article captured today is not "recent"');
 const lc = between('async function lakeCapture(', 'async function ledgerWrite(');
 let rows = null;
-const LC = new Function('sha256hex', 'hashInput', 'territoryGuess', 'sbRest', 'LIVE_KINDS', lc + '; return lakeCapture;')(
-  async (x) => x, (a, b) => a + b, () => null, async (env, path, o) => { rows = o.body; return o.body; }, H.LIVE_KINDS);
+const LC = new Function('sha256hex', 'hashInput', 'territoryGuess', 'sbRest', 'LIVE_KINDS', 'REF_KINDS', lc + '; return lakeCapture;')(
+  async (x) => x, (a, b) => a + b, () => null, async (env, path, o) => { rows = o.body; return o.body; }, H.LIVE_KINDS, H.REF_KINDS);
 await LC({}, [{ url: 'https://n.example/1', title: 'news', kind: 'news' }, { url: 'https://p.example/1', title: 'paper', kind: 'research' },
   { url: 'https://w.example/1', title: 'wiki', kind: 'reference' }, { url: 'https://c.example/1', title: 'lens', kind: 'consumer' }], { provenance: 'live_gather' });
-ok(rows.length === 1 && rows[0].title === 'news', 'T6 live searches write news to the lake, not papers, reference pages or lens copies');
+ok(rows.length === 3 && rows.find(r => r.title === 'news').status === 'raw' && rows.find(r => r.title === 'paper').status === 'reference' && rows.find(r => r.title === 'wiki').status === 'reference' && !rows.some(r => r.title === 'lens'),
+   'T6 live searches write news as raw and papers or reference pages as reference; lens copies never enter');
 await LC({}, [{ url: 'https://p.example/2', title: 'paper', kind: 'research' }], { provenance: 'spine' });
-ok(rows.length === 1 && rows[0].title === 'paper', 'T7 the house spine still captures every kind it chooses');
+ok(rows.length === 1 && rows[0].title === 'paper' && rows[0].status === 'raw', 'T7 the house spine still captures every kind it chooses, as raw');
 ok(/'rpc\/match_signals_read'/.test(between('async function brandSignal(', 'async function excavateLake(')) &&
    /'rpc\/match_signals_read'/.test(between('async function excavateLake(', 'async function fieldRail(')), 'T8 brand signal and the lake search read match_signals_read');
 ok((w.match(/'rpc\/match_signals'/g) || []).length >= 3, 'T9 DAILY keeps its own match_signals: its ranking does not move');

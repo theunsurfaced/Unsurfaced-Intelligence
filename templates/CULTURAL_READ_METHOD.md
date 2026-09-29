@@ -13,7 +13,7 @@ We are not a news summary. DAILY already reported the stories. A read connects t
 These are not style preferences. A read that breaks one is held, not published.
 
 1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a story, or a count in the stats block. Never estimate, round up, extrapolate or invent a number. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly.
-2. **English only.** Every word of the read is English. Names of people, brands and places stay as they are.
+2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.
 3. **Evidence is the stories.** A claim stands on story ids from the pack, cited as S-numbers. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.
 4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two stories disagree, say so plainly. Do not smooth the disagreement away.
 5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.

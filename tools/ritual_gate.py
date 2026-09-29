@@ -197,7 +197,7 @@ SPENDERS = {
     'embedQuery': 'callers are gated (excavateAuth, admin, underLimit)',
     'kbEmbed': 'callerIsAdmin on every /knowledge route',
     'excavateAnchors': 'callerIsAdmin',
-    'excavatePropose': 'excavateAuth + KV cache (24h)',
+    'excCompile': 'the EXCAVATE lane: claudeGate on the live tier (cap, kill switch), the overnight share, then the reserve model; callers are gated (excavateAuth, feedWarm cron)',
     'excavateVoice': 'excavateAuth + KV cache',
     'gatherPaidSignals': 'SIGNAL_DAILY_DOLLARS real-dollar cap + 6h cache',
     'pplx': 'PPLX_DAILY_DOLLARS cap + 6h cache',
@@ -214,6 +214,7 @@ SPENDERS = {
     'studioCaption': 'cron-bounded manifest + admin cut-story',
     'studioMemeLines': 'cron-bounded manifest + admin cut-story',
     'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap); admin route or readTick only',
+    'readProof': 'claudeGate on the live tier; called by readLand (the batch drain) and the admin /reads/proof door only',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")

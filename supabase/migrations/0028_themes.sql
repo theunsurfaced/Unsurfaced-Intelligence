@@ -5,8 +5,8 @@
 -- same subject across outlets and weeks. Each theme keeps the running sum of
 -- its members' embeddings (sumvec); cosine similarity ignores magnitude, so
 -- the sum stands in for the centroid with no division. A story joins the
--- nearest theme when it scores at least p_sim (0.65, measured on this lake:
--- 80% of stories have company there, spanning 2.3 outlets) or starts one.
+-- nearest theme whose bar it clears (p_sim 0.65 for a single story, rising
+-- with the theme's size so no theme drifts into a whole territory) or starts one.
 -- Oldest first, so the archive seeds and the new day joins.
 -- DAILY's clusters, echo rule and momentum are untouched; theme_id is a new
 -- column beside cluster_id. Safe on top of 0001-0027. Idempotent.
@@ -30,7 +30,10 @@ alter table public.signals
   add column if not exists theme_id uuid references public.themes(id) on delete set null;
 create index if not exists signals_theme_idx on public.signals (theme_id);
 
-create or replace function public.theme_assign(p_limit int default 1500, p_sim float default 0.65)
+-- Older signature out of the way first: two overloads would make theme_assign(2000) ambiguous.
+drop function if exists public.theme_assign(int, float);
+
+create or replace function public.theme_assign(p_limit int default 1500, p_sim float default 0.65, p_step float default 0.015)
 returns table (assigned int, created int, remaining int)
 language plpgsql
 as $$
@@ -38,6 +41,7 @@ declare
   r record;
   t record;
   tid uuid;
+  bar float;
   c_assigned int := 0;
   c_created  int := 0;
   c_rem      int := 0;
@@ -51,20 +55,32 @@ begin
     order by coalesce(s.published_at, s.captured_at) asc
     limit p_limit
   loop
-    select th.id, 1 - (th.sumvec <=> r.embedding) as sim
-      into t
-      from public.themes th
-      order by th.sumvec <=> r.embedding
-      limit 1;
-    if found and t.sim >= p_sim then
+    tid := null;
+    -- The five nearest themes, closest first. A theme's bar rises with its
+    -- size (p_sim + p_step * log2 n): 0.65 for a single story, 0.71 at 16,
+    -- 0.74 at 64, 0.77 at 256. A big theme takes only close kin, so it cannot
+    -- drift into "sneaker news in general"; a story that misses a giant tries
+    -- the next theme before starting its own.
+    for t in
+      select th.id, th.n, 1 - (th.sumvec <=> r.embedding) as sim
+        from public.themes th
+       order by th.sumvec <=> r.embedding
+       limit 5
+    loop
+      bar := p_sim + p_step * log(2, greatest(t.n, 1)::numeric)::float;
+      if t.sim >= bar then
+        tid := t.id;
+        exit;
+      end if;
+    end loop;
+    if tid is not null then
       update public.themes
          set sumvec = sumvec + r.embedding,
              n = n + 1,
              first_seen = least(first_seen, r.at),
              last_seen = greatest(last_seen, r.at),
              updated_at = now()
-       where id = t.id;
-      tid := t.id;
+       where id = tid;
       c_assigned := c_assigned + 1;
     else
       insert into public.themes (sumvec, n, first_seen, last_seen)
@@ -82,8 +98,8 @@ begin
 end
 $$;
 
-revoke all on function public.theme_assign(int, float) from public, anon, authenticated;
-grant execute on function public.theme_assign(int, float) to service_role;
+revoke all on function public.theme_assign(int, float, float) from public, anon, authenticated;
+grant execute on function public.theme_assign(int, float, float) to service_role;
 
 -- The scoreboard's open calls were made on cluster fragments, never a fair
 -- test; they would all resolve as "faded" against theme keys. Resolved calls

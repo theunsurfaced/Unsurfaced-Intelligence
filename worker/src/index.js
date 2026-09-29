@@ -211,6 +211,7 @@ export default {
         case '/reads/publish':
         case '/reads/reland':
         case '/reads/record':
+        case '/reads/proof':         // SEAM:READ_PROOF recut
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
@@ -513,6 +514,14 @@ async function synthesize(body, env, origin) {
   // ── Structured EXCAVATE mode: fuse the client-gathered open-data corpus ──
   if (Array.isArray(body.corpus)) {
     const query  = String(body.query || '').slice(0, 300);
+    // SEAM:EXC_INTEL: a read compiled on the live lane today is served again as it was; nothing is spent twice.
+    const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || ''));
+    if (env.RATE_LIMIT) {
+      try {
+        const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
+        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights)) { j.model = Object.assign({}, j.model, { cached: true }); return json({ ok: true, data: j }, 200, origin, env); } }
+      } catch (e) { console.log('exc_cache_read', String(e && e.message).slice(0, 80)); }
+    }
     // SEAM:EXCAVATE_WIRE: server connectors (GDELT, HN, paid Exa) join through the evidence
     // budget, never after a cut. English at the door. corpus and added below are what was READ.
     const addedAll = (await gatherServerSignals(query)).concat(await gatherPaidSignals(query, env))
@@ -521,10 +530,8 @@ async function synthesize(body, env, origin) {
     const corpus = plan.open, added = plan.server, merged = plan.merged;
     if (!merged.length) return json({ ok: false, error: 'no_corpus' }, 200, origin, env);
 
-    const evidence = merged.map((c, i) =>
-      `[${i + 1}] (${c.lens || 'general'}) ${String(c.title || '').slice(0, 160)}: ` +
-      `${String(c.text || '').slice(0, 320)} {source:${String(c.source || '').slice(0, 80)}|url:${String(c.url || '').slice(0, 200)}}`
-    ).join('\n');
+    const now = Date.now();
+    const evidence = merged.map((c, i) => excLine(c, i, now)).join('\n');   // SEAM:EXC_INTEL: date, band, age, tier on every line
 
     /* SEAM:READ_QUALITY — the house voice law, applied at the compiler. Declarative and specific. No hedging,
        no agency-speak, no em dashes. Every excerpt stands on named evidence. Every move points at its finding. */
@@ -563,10 +570,10 @@ async function synthesize(body, env, origin) {
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
     const usr = isReport ? excReportPrompt(query, evidence) : usrPlain;
 
-    // SEAM:ONE_RAIL — THE READ rides the model pool: report mode is voice (t3), structured mode is bulk (t1).
-    const outText = await callModel(env, isReport ? 't3' : 't1',
-      [{ role: 'system', content: isReport ? sys + ' ' + EXC_MOVE_LAW : sys }, { role: 'user', content: usr }],
-      { max_tokens: isReport ? 3600 : 1600 });   // SEAM:EXCAVATE_MEANING: room for meanings and move briefs
+    // SEAM:ONE_RAIL, now SEAM:EXC_INTEL: THE READ compiles on the live lane (Sonnet 5) and never fails: the reserve model stands behind it.
+    const compiled = await excCompile(env, { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW, prompt: usr,
+      max_tokens: isReport ? 3600 : 1600, kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1' });
+    const outText = compiled.text;
     const parsed = extractJson(outText || '');
     if (!parsed || !Array.isArray(parsed.insights)) {
       // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read.
@@ -577,9 +584,19 @@ async function synthesize(body, env, origin) {
     // Source and link come from the cited evidence, not from the model's copy of it.
     const cited = x => (Array.isArray(x.evidence) ? x.evidence : []).map(n => parseInt(n, 10))
       .filter(n => n >= 1 && n <= merged.length).filter((n, i, a) => a.indexOf(n) === i).slice(0, 8);
+    // SEAM:EXC_INTEL: corroboration among DATED lines. Three outlets with something under 90 days is High,
+    // two is Medium, one or archive-only is Low. What a finding stands on, and when, rides with it.
+    const bandOf = n => excBand(excWhen(merged[n - 1]), now);
+    const datedOf = ns => {
+      const ds = ns.map(n => excWhen(merged[n - 1])).filter(Boolean).sort((a, b) => b - a);
+      return { newest: ds[0] ? ds[0].toISOString().slice(0, 10) : null, oldest: ds.length ? ds[ds.length - 1].toISOString().slice(0, 10) : null,
+        band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE') };
+    };
     const earned = ns => {
-      const k = new Set(ns.map(n => String(merged[n - 1].source || merged[n - 1].url || n).toLowerCase())).size;
-      return k >= 3 ? 'High' : k === 2 ? 'Medium' : 'Low';
+      const live = ns.filter(n => bandOf(n) !== 'ARCHIVE');
+      const k = new Set(live.map(n => String(merged[n - 1].source || merged[n - 1].url || n).toLowerCase())).size;
+      const fresh = live.some(n => bandOf(n) !== 'CONTEXT');
+      return k >= 3 && fresh ? 'High' : k >= 2 ? 'Medium' : 'Low';
     };
     const insights = parsed.insights.slice(0, 8).map(x => {
       const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null;
@@ -591,6 +608,7 @@ async function synthesize(body, env, origin) {
         meaning: isReport ? excMeaning(x.meaning) : null,
         confidence: earned(ns),
         evidence: ns,
+        dated: datedOf(ns),   // SEAM:EXC_INTEL
         source: String((first && first.source) || x.source || '').slice(0, 120),
         sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url
           : (/^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null)
@@ -604,7 +622,7 @@ async function synthesize(body, env, origin) {
       body: String(x.body || '').slice(0, 400),
       from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null,   // SEAM:EXCAVATE_WIRE: back where it belongs
       for: excShort(x.for), because: String(x.because || '').slice(0, 280), proof: String(x.proof || '').slice(0, 280),
-      measure: String(x.measure || '').slice(0, 240), risk: String(x.risk || '').slice(0, 240), evidence: cited(x)
+      measure: String(x.measure || '').slice(0, 240), risk: String(x.risk || '').slice(0, 240), evidence: cited(x), dated: datedOf(cited(x))
     })).filter(x => x.headline);
     // SEAM:EXCAVATE_MEANING: the move law, enforced. Weak moves are dropped and counted, never shown.
     const guard = isReport ? excMoveGuard(ideasAll, query) : { kept: ideasAll, dropped: 0 };
@@ -618,13 +636,21 @@ async function synthesize(body, env, origin) {
       readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
-        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped } });
-      const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: 'news', published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
-        .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: 3, kind: c.lens || 'open', rail: 'client' })));
+        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped,
+          window: excWindow(merged, now), widened: !!plan.widened, model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cost_usd: compiled.cost_usd } } });   // SEAM:EXC_INTEL
+      const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: a.signalType === 'social' ? 'discourse' : (a.signalType || 'news'), published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
+        .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: excTier(c) || 3, kind: c.kind || c.lens || 'open', published_at: c.published_at || null, rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
     } catch (e) {}
-    return json({ ok: true, data: { insights, ideas, brief, read: read.length === 2 ? read : null, read_id: readId, frame, moves_dropped: movesDropped,
-      evidence_n: merged.length, signals: added, connectors: serverConnectors(added) } }, 200, origin, env);
+    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_id: readId, frame, moves_dropped: movesDropped,
+      evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
+      window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
+      model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cached: false }, compiled_at: new Date().toISOString() };
+    if (env.RATE_LIMIT && compiled.lane === 'live') {
+      try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: EXC_MODEL.CACHE_TTL }); }
+      catch (e) { console.log('exc_cache_write', String(e && e.message).slice(0, 80)); }
+    }
+    return json({ ok: true, data }, 200, origin, env);
   }
 
   // ── Narrative text mode: brief + string corpus (MINE partner preview) ──
@@ -696,6 +722,39 @@ function extractJson(s) {
 
 // Server-side connectors — fetched by the Worker itself (keyless, and not subject
 // to browser CORS, so they enrich the corpus with sources the client can't reach).
+/* SEAM:EXC_INTEL: the compiler's lane. Every EXCAVATE read compiles on the
+ * live Claude tier (Sonnet 5, its own monthly cap) and a call never fails: one
+ * retry on an overloaded or network error, then the reserve model (Workers AI)
+ * compiles the same prompt and the read says so. Overnight work (PROPOSE, the
+ * theme reads to come) may spend only OVERNIGHT_SHARE of the cap, so a client
+ * in the room always has the live lane. A read compiled on the live lane is
+ * kept CACHE_TTL under its query, so a repeat costs nothing. */
+const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i1' };
+function excCacheKey(h) { return 'excr:' + EXC_MODEL.REV + ':' + h; }
+async function excCompile(env, o) {
+  o = o || {};
+  const max_tokens = o.max_tokens || 1600;
+  let why = null;
+  if (o.overnight) {
+    try {
+      const spent = await claudeSpent(env, EXC_MODEL.TIER), cap = claudeCap(env, EXC_MODEL.TIER);
+      if (spent >= cap * EXC_MODEL.OVERNIGHT_SHARE) why = 'overnight_share';
+    } catch (e) { why = 'ledger_unreadable'; }
+  }
+  if (!why) {
+    const req = { system: String(o.system || ''), cache: true, prompt: String(o.prompt || ''), max_tokens, kind: o.kind || 'excavate' };
+    let r = await callClaude(env, EXC_MODEL.TIER, req);
+    if (!r.ok && /^claude_(?:network|429|5\d\d)$/.test(String(r.error || ''))) {
+      await new Promise(res => setTimeout(res, EXC_MODEL.RETRY_MS));
+      r = await callClaude(env, EXC_MODEL.TIER, req);
+    }
+    if (r.ok) return { text: r.text || '', lane: 'live', model: CLAUDE.TIERS[EXC_MODEL.TIER].model, reason: null, cost_usd: r.cost_usd || 0, truncated: !!r.truncated };
+    why = String(r.error || 'claude_failed');
+  }
+  const text = await callModel(env, o.reserve || 't3',
+    [{ role: 'system', content: String(o.system || '') }, { role: 'user', content: String(o.prompt || '') }], { max_tokens });
+  return { text: text || '', lane: 'reserve', model: CONFIG.TEXT_MODEL, reason: why, cost_usd: 0, truncated: false };
+}
 /* SEAM:EXCAVATE_MEANING: the report contract. A finding says what it means for
  * the culture, the category and the consumer; a move is a brief with its
  * mechanism, proof, watch signal and risk. The MOVE LAW is asked of the model
@@ -775,6 +834,73 @@ function excMoveGuard(moves, query) {
   }
   return { kept, dropped };
 }
+/* SEAM:EXC_INTEL: time is a weight, never a filter. Every evidence item is
+ * dated from its publish date, or a date or year in its own text; its band is
+ * NOW (24 hours), RECENT (30 days), CURRENT (90 days), CONTEXT (2 years) or
+ * ARCHIVE (older, or undated). Weight halves every 120 days for news, web and
+ * discourse and every 365 days for academic work and filings; ARCHIVE sits at
+ * a floor. Nothing is ruled out: the old sits lower on the totem pole. */
+const EXC_TIME = { BANDS: [['NOW', 1], ['RECENT', 30], ['CURRENT', 90], ['CONTEXT', 730]], HALF: { fast: 120, slow: 365 },
+  ARCHIVE_W: 0.05, ARCHIVE_MAX: 4, THIN: 12, TIER_W: [1, 1, 0.9, 0.8, 0.7],
+  SLOW: new Set(['academic', 'research', 'book', 'patent', 'filing', 'reference', 'paper']) };
+const EXC_TIME_LAW = 'TIME LAW: every evidence line opens with its date and band. NOW is under 24 hours old, RECENT under 30 days, ' +
+  'CURRENT under 90 days, CONTEXT under 2 years, ARCHIVE older or undated. Lead the read with what changed in the freshest bands. ' +
+  'A "because" names its date and cites a NOW or RECENT line, or a CURRENT line when nothing fresher exists. ' +
+  'ARCHIVE lines may anchor a definition or a meaning; they never support a claim about now, a trend or a move, and they are never presented as news.';
+function excWhen(c) {
+  const p = c && c.published_at;
+  let d = p ? new Date(/^\d{4}$/.test(String(p)) ? p + '-07-01' : p) : null;
+  if (!d || isNaN(d.getTime())) {
+    const t = String(((c && c.title) || '') + ' ' + ((c && c.text) || ''));
+    const iso = t.match(/\b(20[0-3]\d-\d{2}-\d{2})\b/), yr = iso ? null : t.match(/\b(20[0-3]\d)\b/);
+    d = iso ? new Date(iso[1]) : (yr ? new Date(yr[1] + '-07-01') : null);
+  }
+  if (!d || isNaN(d.getTime()) || d.getTime() > Date.now() + 864e5) return null;
+  return d;
+}
+function excBand(d, now) {
+  if (!d) return 'ARCHIVE';
+  const age = ((now || Date.now()) - d.getTime()) / 864e5;
+  for (const b of EXC_TIME.BANDS) if (age <= b[1]) return b[0];
+  return 'ARCHIVE';
+}
+function excAgeLabel(d, now) {
+  if (!d) return 'undated';
+  const days = Math.max(0, Math.round(((now || Date.now()) - d.getTime()) / 864e5));
+  return days < 1 ? 'today' : days < 30 ? days + 'd' : days < 365 ? Math.round(days / 30) + 'mo' : (days / 365).toFixed(1).replace(/\.0$/, '') + 'y';
+}
+function excTier(c) {
+  const t = parseInt(c && (c.tier != null ? c.tier : c.source_tier), 10);
+  return Number.isFinite(t) ? Math.min(4, Math.max(0, t)) : 3;
+}
+function excWeight(c, now) {
+  const d = excWhen(c), band = excBand(d, now);
+  if (band === 'ARCHIVE') return EXC_TIME.ARCHIVE_W;
+  const half = EXC_TIME.SLOW.has(String((c && c.kind) || '').toLowerCase()) ? EXC_TIME.HALF.slow : EXC_TIME.HALF.fast;
+  const age = ((now || Date.now()) - d.getTime()) / 864e5;
+  return Math.max(EXC_TIME.ARCHIVE_W, Math.pow(0.5, Math.max(0, age) / half));
+}
+function excScore(c, i, n, now) {
+  const rel = Number.isFinite(c && c.similarity) ? Math.max(0.2, Math.min(1, c.similarity)) : 1 - 0.4 * (n > 1 ? i / (n - 1) : 0);
+  return rel * excWeight(c, now) * EXC_TIME.TIER_W[excTier(c)];
+}
+function excWindow(items, now) {
+  const w = { NOW: 0, RECENT: 0, CURRENT: 0, CONTEXT: 0, ARCHIVE: 0, undated: 0, newest: null, oldest: null };
+  for (const c of items || []) {
+    const d = excWhen(c); w[excBand(d, now)]++;
+    if (!d) { w.undated++; continue; }
+    const iso = d.toISOString().slice(0, 10);
+    if (!w.newest || iso > w.newest) w.newest = iso;
+    if (!w.oldest || iso < w.oldest) w.oldest = iso;
+  }
+  return w;
+}
+function excLine(c, i, now) {
+  const d = excWhen(c);
+  return '[' + (i + 1) + '] ' + (d ? d.toISOString().slice(0, 10) : 'undated') + ' · ' + excBand(d, now) + ' · ' + excAgeLabel(d, now) +
+    ' · T' + excTier(c) + ' · (' + (c.lens || 'general') + ') ' + String(c.title || '').slice(0, 160) + ': ' +
+    String(c.text || '').slice(0, 320) + ' {source:' + String(c.source || '').slice(0, 80) + '|url:' + String(c.url || '').slice(0, 200) + '}';
+}
 /* SEAM:EXCAVATE_WIRE: the evidence budget. The corpus used to be cut at 40
  * before the lake and the server's own wire (GDELT, HN, paid Exa) were added,
  * so the best evidence was the first thrown away, after it was paid for.
@@ -785,27 +911,51 @@ function excKey(c) {
   const u = String((c && c.url) || '').replace(/[#?].*$/, '').replace(/\/+$/, '').toLowerCase();
   return u || ('t:' + String((c && c.title) || '').toLowerCase().slice(0, 80));
 }
-function excBudget(corpusIn, addedIn) {
+function excBudget(corpusIn, addedIn, nowIn) {
+  // SEAM:EXC_INTEL: each lane is ranked by relevance x recency x tier before its cap; dated evidence
+  // waiting in any lane displaces ARCHIVE lines down to ARCHIVE_MAX; nothing is dropped for being old,
+  // and a read with fewer than THIN dated lines says its window widened.
+  const now = nowIn || Date.now();
   const seen = new Set();
+  // A score is earned once, inside the lane where position means something, and rides the item (_s) to the final order.
+  const rank = list => list.map((c, i) => { if (c && c._s == null) c._s = excScore(c, i, list.length, now); return { c, i }; })
+    .sort((a, b) => (b.c._s - a.c._s) || (a.i - b.i)).map(x => x.c);
   const take = (list, n) => {
-    const out = [];
+    const out = [], rest = [];
     for (const c of list) {
-      if (out.length >= n) break;
       if (!c || !c.title) continue;
       const k = excKey(c);
       if (seen.has(k)) continue;
+      if (out.length >= n) { rest.push(c); continue; }
       seen.add(k); out.push(c);
     }
-    return out;
+    return { out, rest };
   };
+  const isArch = c => excBand(excWhen(c), now) === 'ARCHIVE';
   const raw = Array.isArray(corpusIn) ? corpusIn : [];
-  const lake = take(raw.filter(c => c && c.lens === 'lake'), EXC_BUDGET.LAKE);
+  const L = take(rank(raw.filter(c => c && c.lens === 'lake')), EXC_BUDGET.LAKE);
   const wire = (addedIn || []).map(a => ({ lens: (a.signalType === 'news' || a.signalType === 'web') ? 'culture' : 'consumer',
-    source: a.source, title: a.title, text: a.snippet, url: a.url, _a: a }));
-  const server = take(wire, EXC_BUDGET.SERVER);
-  const open = take(raw.filter(c => c && c.lens !== 'lake'), EXC_BUDGET.TOTAL - lake.length - server.length);
-  const merged = lake.concat(server, open).map(c => { const o = Object.assign({}, c); delete o._a; return o; });
-  return { merged, lake, open, server: server.map(c => c._a) };
+    source: a.source, title: a.title, text: a.snippet, url: a.url, published_at: a.published_at || null,
+    kind: a.signalType === 'social' ? 'discourse' : (a.signalType || 'news'), tier: 3, _a: a }));
+  const S = take(rank(wire), EXC_BUDGET.SERVER);
+  const O = take(rank(raw.filter(c => c && c.lens !== 'lake')), EXC_BUDGET.TOTAL - L.out.length - S.out.length);
+  let lake = L.out, server = S.out, open = O.out;
+  let merged = lake.concat(server, open);
+  // Dated evidence waiting in any lane displaces archive lines, lowest first, down to ARCHIVE_MAX kept for context.
+  const wait = rank(L.rest.concat(S.rest, O.rest).filter(c => !isArch(c)));
+  let archN = merged.filter(isArch).length;
+  while (wait.length && archN > EXC_TIME.ARCHIVE_MAX) {
+    const order = rank(merged.filter(isArch));
+    const drop = order[order.length - 1];
+    lake = lake.filter(c => c !== drop); server = server.filter(c => c !== drop); open = open.filter(c => c !== drop);
+    const add = wait.shift(); seen.add(excKey(add));
+    if (add.lens === 'lake') lake.push(add); else if (add._a) server.push(add); else open.push(add);
+    merged = lake.concat(server, open); archN--;
+  }
+  const datedN = merged.length - archN;
+  const widened = datedN < EXC_TIME.THIN;   // the read says so; nothing is dropped to say it
+  merged = rank(merged).map(c => { const o = Object.assign({}, c); delete o._a; delete o._s; return o; });
+  return { merged, lake, open, server: server.map(c => c._a), widened, dated: datedN };
 }
 /* SEAM:LAKE_TRUTH: the English law at the gather door. A cheap, honest test:
  * mostly non-Latin letters fails; a text whose common words are clearly
@@ -850,6 +1000,7 @@ function lakeWhen(r) {
   return live ? null : (r.captured_at || null);
 }
 const LIVE_KINDS = new Set(['news', 'web', 'discourse', 'video']);
+const REF_KINDS = new Set(['academic', 'research', 'book', 'patent', 'filing', 'reference', 'paper', 'truth']);   // SEAM:EXC_INTEL: placed, never composed
 async function gatherServerSignals(q) {
   const out = [];
   // sourcelang:english is GDELT's own documented query filter and it runs on
@@ -876,6 +1027,7 @@ async function gatherServerSignals(q) {
         snippet: [a.sourcecountry, a.seendate].filter(Boolean).join(' · '),
         url: a.url || '',
         image: a.socialimage || '',            // key visual straight from the source
+        published_at: a.seendate ? String(a.seendate).replace(/^(\d{4})(\d{2})(\d{2})T?(\d{2})?(\d{2})?(\d{2})?Z?$/, (m, y, mo, d, h, mi, se) => y + '-' + mo + '-' + d + (h ? 'T' + h + ':' + (mi || '00') + ':' + (se || '00') + 'Z' : '')) : null,   // SEAM:EXC_INTEL
         lang: a.language || ''                 // e.g. "English", "Spanish" (GDELT names)
       }));   // SEAM:EXCAVATE_WIRE: a stray `from:` line here threw on the first article, so GDELT never arrived
     }
@@ -892,6 +1044,7 @@ async function gatherServerSignals(q) {
         snippet: `${h.points || 0} points · ${h.num_comments || 0} comments`,
         url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
         image: '',
+        published_at: h.created_at || null,   // SEAM:EXC_INTEL
         lang: 'English'
       }));
     }
@@ -969,6 +1122,7 @@ function _exaToWire(results) {
       snippet: (Array.isArray(x.highlights) ? x.highlights.join(' ') : '').slice(0, 320),
       url: x.url || '',
       image: x.image || '',
+      published_at: x.publishedDate || null,   // SEAM:EXC_INTEL
       lang: ''
     };
   }).filter(x => x.title && x.url);
@@ -4204,7 +4358,7 @@ async function spineAdvance(env, budget) {
   if (calls + 3 <= budget) {
     calls++;
     let back = [];
-    try { back = await sbRest(env, 'signals?status=eq.raw&embedding=is.null&order=captured_at.desc&limit=32&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
+    try { back = await sbRest(env, 'signals?status=in.(raw,reference)&embedding=is.null&order=captured_at.desc&limit=32&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
     catch (e) { back = []; }
     for (let i = 0; i < back.length && calls + 2 <= budget; i += SPINE.EMBED_BATCH) {
       const batch = back.slice(i, i + SPINE.EMBED_BATCH);
@@ -5342,11 +5496,9 @@ async function excavatePropose(request, env, origin, internal) {
     let written = [];
     let fieldRead = '';
     try {
-      const reply = await callModel(env, 't3', [
-        { role: 'system', content: sys },
-        { role: 'user', content: brief }
-      ], { max_tokens: 2400 });   // room for 12 named patterns
-      const j = parseModelJson(reply);
+      const compiled = await excCompile(env, { system: sys, prompt: brief, kind: 'excavate_propose',   // SEAM:EXC_INTEL: the field read rides the lane
+        overnight: internal === true, reserve: 't3', max_tokens: 2400 });   // room for 12 named patterns
+      const j = parseModelJson(compiled.text);
       written = (j && Array.isArray(j.themes)) ? j.themes : [];
       fieldRead = (j && typeof j.read === 'string') ? j.read.slice(0, 400) : '';
     } catch (e) {
@@ -5618,6 +5770,7 @@ function hintsOf(text, q) {
   }
   return out;
 }
+function railSince(days) { return new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); }   // SEAM:EXC_INTEL
 function envelope(rail, o) {
   return {
     url: env1(o.url).slice(0, 600) || null,
@@ -5654,9 +5807,14 @@ const RAIL_FNS = {
     return ((j && j.search) || []).map(e => envelope(rail, { url: e.concepturi, title: e.label, text: e.description || '', kind: 'entity', entity_hints: [e.label], license: 'CC0' }));
   },
   async openalex(env, q, ctx, rail) {
-    const j = await railFetch('https://api.openalex.org/works?per-page=6&sort=relevance_score:desc&mailto=johnnie@unsurfacedside.com&search=' + encodeURIComponent(q));
-    if (j && j.meta) ctx.meta.openalex_count = j.meta.count;
-    return ((j && j.results) || []).map(w => envelope(rail, { url: w.doi || w.id, title: w.display_name,
+    // SEAM:EXC_INTEL: two free slices, the last two years first, then all time; the ranker weights them.
+    const base = 'https://api.openalex.org/works?sort=relevance_score:desc&mailto=johnnie@unsurfacedside.com&search=' + encodeURIComponent(q);
+    const j = await railFetch(base + '&per-page=4&filter=from_publication_date:' + railSince(730));
+    const k = await railFetch(base + '&per-page=4');
+    if (k && k.meta) ctx.meta.openalex_count = k.meta.count;
+    const seen = new Set();
+    return ((j && j.results) || []).concat((k && k.results) || []).filter(w => { const u = w.doi || w.id; if (!u || seen.has(u)) return false; seen.add(u); return true; })
+      .map(w => envelope(rail, { url: w.doi || w.id, title: w.display_name,
       text: (w.primary_location && w.primary_location.source && w.primary_location.source.display_name) ? 'Published in ' + w.primary_location.source.display_name : '',
       published_at: w.publication_date, source_name: 'OpenAlex' }));
   },
@@ -5673,7 +5831,7 @@ const RAIL_FNS = {
     return ((j && j.data) || []).map(p => envelope(rail, { url: p.url, title: p.title, text: p.abstract || (p.venue ? 'Venue: ' + p.venue : ''), published_at: p.year ? String(p.year) + '-01-01' : null }));
   },
   async crossref(env, q, ctx, rail) {
-    const j = await railFetch('https://api.crossref.org/works?rows=4&select=title,URL,created,container-title&query=' + encodeURIComponent(q));
+    const j = await railFetch('https://api.crossref.org/works?rows=4&select=title,URL,created,container-title&filter=from-pub-date:' + railSince(730) + '&query=' + encodeURIComponent(q));   // SEAM:EXC_INTEL: the recent slice; older work reaches the lake through OpenAlex
     return (((j && j.message) || {}).items || []).map(w => envelope(rail, { url: w.URL, title: (w.title || [])[0], text: (w['container-title'] || [])[0] ? 'In ' + w['container-title'][0] : '', published_at: w.created && w.created['date-time'] }));
   },
   async pubmed(env, q, ctx, rail) {
@@ -5685,7 +5843,7 @@ const RAIL_FNS = {
     return ids.map(id => r[id]).filter(Boolean).map(p => envelope(rail, { url: 'https://pubmed.ncbi.nlm.nih.gov/' + p.uid + '/', title: p.title, text: (p.source ? p.source + '. ' : '') + (p.pubdate || ''), published_at: p.sortpubdate ? p.sortpubdate.replace(/\//g, '-').slice(0, 10) : null }));
   },
   async hn(env, q, ctx, rail) {
-    const j = await railFetch('https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=6&query=' + encodeURIComponent(q));
+    const j = await railFetch('https://hn.algolia.com/api/v1/search?tags=story&hitsPerPage=6&numericFilters=created_at_i>' + Math.floor((Date.now() - 730 * 864e5) / 1000) + '&query=' + encodeURIComponent(q));   // SEAM:EXC_INTEL: the last two years
     return ((j && j.hits) || []).map(h => envelope(rail, { url: h.url || ('https://news.ycombinator.com/item?id=' + h.objectID), title: h.title, text: (h.points || 0) + ' points, ' + (h.num_comments || 0) + ' comments', published_at: h.created_at, kind: 'discourse' }));
   },
   async gdelt(env, q, ctx, rail) {
@@ -5740,8 +5898,12 @@ const RAIL_FNS = {
     return ((j && j.docs) || []).map(b => envelope(rail, { url: 'https://openlibrary.org' + b.key, title: b.title, text: ((b.author_name || []).slice(0, 2).join(', ')) + (b.first_publish_year ? ' · ' + b.first_publish_year : ''), image: b.cover_i ? 'https://covers.openlibrary.org/b/id/' + b.cover_i + '-M.jpg' : null, published_at: b.first_publish_year ? b.first_publish_year + '-01-01' : null }));
   },
   async guardian(env, q, ctx, rail) {
-    const j = await railFetch('https://content.guardianapis.com/search?api-key=' + encodeURIComponent(env.GUARDIAN_KEY || 'test') + '&page-size=6&show-fields=thumbnail,trailText&order-by=relevance&q=' + encodeURIComponent(q));
-    return ((((j || {}).response || {}).results) || []).map(a => envelope(rail, { url: a.webUrl, title: a.webTitle, text: stripHtml(a.fields && a.fields.trailText), image: a.fields && a.fields.thumbnail, published_at: a.webPublicationDate, source_name: 'The Guardian' }));
+    // SEAM:EXC_INTEL: the recent slice leads (two years), the archive slice follows; the ranker weights them.
+    const gbase = 'https://content.guardianapis.com/search?api-key=' + encodeURIComponent(env.GUARDIAN_KEY || 'test') + '&show-fields=thumbnail,trailText&order-by=relevance&q=' + encodeURIComponent(q);
+    const j = await railFetch(gbase + '&page-size=5&from-date=' + railSince(730));
+    const k = await railFetch(gbase + '&page-size=3');
+    const gseen = new Set();
+    return ((((j || {}).response || {}).results) || []).concat((((k || {}).response || {}).results) || []).filter(a => { if (!a.webUrl || gseen.has(a.webUrl)) return false; gseen.add(a.webUrl); return true; }).map(a => envelope(rail, { url: a.webUrl, title: a.webTitle, text: stripHtml(a.fields && a.fields.trailText), image: a.fields && a.fields.thumbnail, published_at: a.webPublicationDate, source_name: 'The Guardian' }));
   },
   async youtube(env, q, ctx, rail) {
     const key = env.GOOGLE_API_KEY || env.GOOGLE_YT_KEY; if (!key) return [];
@@ -5936,13 +6098,18 @@ async function lakeCapture(env, items, prov) {
   for (const it of (items || [])) {
     if (!it || !it.url || !/^https?:\/\//.test(it.url) || !it.title) continue;
     if (it.kind === 'entity') continue;                       // entities are not signals
-    if (/^live/.test(String(prov.provenance || '')) && !LIVE_KINDS.has(it.kind || 'news')) continue;   // SEAM:LAKE_TRUTH: searches feed news, not papers
+    const kind = String(it.kind || 'news').toLowerCase(), live = /^live/.test(String(prov.provenance || ''));
+    // SEAM:EXC_INTEL: nothing is ruled out. A live search places papers, books, patents, filings and reference
+    // pages as `reference`: dated, tiered, embedded by the drain, findable by EXCAVATE, never composed into DAILY.
+    // Lens copies and entities are not signals and are still left out. SEAM:LAKE_TRUTH: news stays raw.
+    const reference = live && !LIVE_KINDS.has(kind) && REF_KINDS.has(kind);
+    if (live && !LIVE_KINDS.has(kind) && !reference) continue;
     const hash = await sha256hex(hashInput(it.title, it.url));
     if (seen.has(hash)) continue; seen.add(hash);
     rows.push({ content_hash: hash, title: String(it.title).slice(0, 300), url: String(it.url).slice(0, 600),
       summary: String(it.text || '').slice(0, 600), image: it.image || null, published_at: it.published_at || null,
       source_name: String(it.source_name || 'live').slice(0, 80), source_tier: Math.min(4, Math.max(1, it.source_tier || 3)),
-      territory: prov.territory || territoryGuess(it.title + ' ' + (it.text || '')), status: 'raw',
+      territory: prov.territory || territoryGuess(it.title + ' ' + (it.text || '')), status: reference ? 'reference' : 'raw',
       momentum: { provenance: prov.provenance || 'live_read', rail: it.rail || null, kind: it.kind || null, read_id: prov.read_id || null,
         query: prov.query || null, cls: prov.cls || null, entity_hints: (it.entity_hints || []).slice(0, 8), license: it.license || null } });
     if (rows.length >= 40) break;
@@ -6399,7 +6566,8 @@ const CLAUDE = {
   VERSION: '2023-06-01',
   TIERS: {
     doc:    { model: 'claude-fable-5-1', cap: 15, env: 'CLAUDE_DOC_MONTHLY' },
-    ingest: { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_INGEST_MONTHLY' }
+    ingest: { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_INGEST_MONTHLY' },
+    live:   { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' }   // SEAM:EXC_INTEL: EXCAVATE reads, PROPOSE, theme reads
   },
   PRICE: {
     'claude-fable-5-1': { in: 10, out: 50, cw: 12.5, cr: 0.25 },
@@ -6739,7 +6907,7 @@ async function editionToday(env, origin) {
  * Children first: a monthly waits until no weekly inside it is queued or
  * compiling; the record waits on its monthlies. readTick walks the queue on
  * the 30-minute cron and on POST /reads/collect. */
-const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 1.0 (draft for Fresco's review). This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Monthly Read, and the Record. It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room: for what people are actually doing, what they are reaching for, and what that means for the work a brand should make next. Every read is written through the creative advertising lens. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and allergic to filler. They should finish a read knowing what happened, what it means, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them. It finds the pattern under the headlines, names it plainly, proves it with the stories themselves, and turns it into moves.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a story, or a count in the stats block. Never estimate, round up, extrapolate or invent a number. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly.\n2. **English only.** Every word of the read is English. Names of people, brands and places stay as they are.\n3. **Evidence is the stories.** A claim stands on story ids from the pack, cited as S-numbers. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two stories disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one story, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The eight questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different stories, on different days, from different sources, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n5. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n6. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n7. **What does it mean for the work?** Translate the pattern for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands, what it makes obsolete.\n8. **What do we do Monday, and what do we watch?** Turn the read into moves by role, and name the signal that would prove it right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in three parts.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES**: every published DAILY story in the window, one per line, with an S-number, the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite stories by S-number in the evidence fields. Never cite a child read as proof of a fact; cite the stories under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Monthly Read**: one month, built on the weekly reads. Three to five feature patterns with more room: what happened, the receipts, why it matters, THE MOVE by role. Territory briefs for the territories with real activity. A scoreboard section on what earlier reads called and how it landed, using only the calls in the stats block. A watchlist for next month.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim; a paragraph on what happened that names at least two stories by their specifics; a paragraph on why it matters that says something a smart reader did not already know; evidence ids; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through (S12, S31, S40). Nostalgia has become a costume, not a memory.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog (S7, S19).\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear.\"\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
+const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 1.0 (draft for Fresco's review). This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Monthly Read, and the Record. It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room: for what people are actually doing, what they are reaching for, and what that means for the work a brand should make next. Every read is written through the creative advertising lens. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and allergic to filler. They should finish a read knowing what happened, what it means, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them. It finds the pattern under the headlines, names it plainly, proves it with the stories themselves, and turns it into moves.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a story, or a count in the stats block. Never estimate, round up, extrapolate or invent a number. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the stories.** A claim stands on story ids from the pack, cited as S-numbers. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two stories disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one story, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The eight questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different stories, on different days, from different sources, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n5. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n6. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n7. **What does it mean for the work?** Translate the pattern for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands, what it makes obsolete.\n8. **What do we do Monday, and what do we watch?** Turn the read into moves by role, and name the signal that would prove it right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in three parts.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES**: every published DAILY story in the window, one per line, with an S-number, the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite stories by S-number in the evidence fields. Never cite a child read as proof of a fact; cite the stories under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Monthly Read**: one month, built on the weekly reads. Three to five feature patterns with more room: what happened, the receipts, why it matters, THE MOVE by role. Territory briefs for the territories with real activity. A scoreboard section on what earlier reads called and how it landed, using only the calls in the stats block. A watchlist for next month.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim; a paragraph on what happened that names at least two stories by their specifics; a paragraph on why it matters that says something a smart reader did not already know; evidence ids; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through (S12, S31, S40). Nostalgia has become a costume, not a memory.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog (S7, S19).\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear.\"\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
 const HOUSE_READ = {
   KINDS: {
     // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
@@ -6980,14 +7148,182 @@ async function readLand(env, id, text, cost, stopReason, force) {
   const truncated = stopReason === 'max_tokens';
   const parsed = truncated ? null : (parseModelJson(text) || extractJson(text));   // fences, curly quotes, trailing commas
   const v = readValidate(row.kind, parsed, ground, row.pack_ids || []);
-  const status = v.read && !v.fatal.length ? 'ready' : 'held';
-  await readPatch(env, id, { status, read: v.read, violations: v.fatal.concat(v.notes), cost_usd: cost,
-    error: v.read ? (v.fatal.length ? 'held_for_review' : null) : (truncated ? 'truncated_max_tokens' : 'unparsable') });
+  // SEAM:READ_PROOF: the copy desk reads every landing. Spelling costs nothing; the editor rides the live tier; neither can block the landing.
+  const pr = v.read ? await readProofRun(env, row.kind, v.read, ground, row.pack_ids || []) : { read: null, notes: [], receipt: null };
+  const status = pr.read && !v.fatal.length ? 'ready' : 'held';
+  await readPatch(env, id, { status, read: pr.read, violations: v.fatal.concat(v.notes, pr.notes), cost_usd: cost,
+    meta: Object.assign({}, row.meta || {}, pr.receipt ? { proof: pr.receipt } : {}),
+    error: pr.read ? (v.fatal.length ? 'held_for_review' : null) : (truncated ? 'truncated_max_tokens' : 'unparsable') });
   logEvent(env, 'intelligence', 'reads', 'read_' + status, null, { id, kind: row.kind, fatal: v.fatal.length });
   return { id, status, fatal: v.fatal.length };
 }
 async function readFail(env, id, error) {
   await readPatch(env, id, { status: 'failed', error: String(error || 'batch_failed').slice(0, 300) });
+}
+
+/* SEAM:READ_PROOF: the copy desk. Every read is proofread before it is ready, and
+ * any read can be proofread again from the admin bar. Two passes. The house
+ * spelling pass (readAmerican) is deterministic and costs nothing: British
+ * spellings become American, commas and periods move inside closing quotes,
+ * stray spaces go. The copy editor (readProof, Sonnet on the live tier) fixes
+ * typos, doubled or missing words, agreement, homophones and punctuation and
+ * changes nothing else; its output is accepted only when the shape, the S-ids
+ * and the numbers of every field are unchanged and no field moved more than a
+ * fifth in length, then the read laws run on it again. Each change is kept in
+ * meta.proof as a receipt. A failed call never blocks a read. */
+const READ_PROOF = { MAX_TOKENS: 14000, RATIO: 0.2, SLACK: 8, MAX_CHANGES: 400, STASH_TTL: 1800 };
+const READ_PROOF_SYS = 'You are the copy desk at Unsurfaced Intelligence. You proofread a finished read, given as JSON, for American English. ' +
+  'Fix only: misspellings and typos; doubled or missing words; doubled or missing spaces; wrong or missing punctuation; ' +
+  'subject-verb and pronoun agreement; wrong homophones (their, there, they\'re; its, it\'s); British spellings and usage to American ' +
+  '(colour to color, organise to organize, whilst to while); periods and commas inside closing quotation marks. ' +
+  'Change nothing else: not the meaning, not the word choice, not the order of sentences, not the length, not the numbers, ' +
+  'not the S-ids, not the names of people, brands or places, not the JSON keys or structure, not the voice. Never add an em dash. ' +
+  'A sentence that is already correct comes back exactly as it is. ' +
+  'Return one JSON object and nothing else: {"read": <the same object with corrections>, "changes": [{"path": "<dot path>", "from": "<the wrong words>", "to": "<the corrected words>"}]}. No preamble, no fences.';
+const READ_AMERICAN = [
+  ['colour', 'color'], ['colours', 'colors'], ['coloured', 'colored'], ['colourful', 'colorful'], ['colouring', 'coloring'],
+  ['favour', 'favor'], ['favours', 'favors'], ['favoured', 'favored'], ['favourite', 'favorite'], ['favourites', 'favorites'],
+  ['flavour', 'flavor'], ['flavours', 'flavors'], ['flavoured', 'flavored'], ['behaviour', 'behavior'], ['behaviours', 'behaviors'], ['behavioural', 'behavioral'],
+  ['honour', 'honor'], ['honours', 'honors'], ['honoured', 'honored'], ['humour', 'humor'], ['labour', 'labor'], ['labours', 'labors'],
+  ['neighbour', 'neighbor'], ['neighbours', 'neighbors'], ['neighbourhood', 'neighborhood'], ['neighbourhoods', 'neighborhoods'],
+  ['rumour', 'rumor'], ['rumours', 'rumors'], ['harbour', 'harbor'], ['endeavour', 'endeavor'], ['vigour', 'vigor'], ['savour', 'savor'],
+  ['centre', 'center'], ['centres', 'centers'], ['centred', 'centered'], ['theatre', 'theater'], ['theatres', 'theaters'],
+  ['metre', 'meter'], ['metres', 'meters'], ['litre', 'liter'], ['litres', 'liters'], ['fibre', 'fiber'], ['fibres', 'fibers'],
+  ['calibre', 'caliber'], ['sombre', 'somber'], ['spectre', 'specter'], ['catalogue', 'catalog'], ['catalogues', 'catalogs'], ['catalogued', 'cataloged'],
+  ['programme', 'program'], ['programmes', 'programs'], ['defence', 'defense'], ['defences', 'defenses'],
+  ['offence', 'offense'], ['offences', 'offenses'], ['licence', 'license'], ['licences', 'licenses'], ['pretence', 'pretense'],
+  ['organise', 'organize'], ['organises', 'organizes'], ['organised', 'organized'], ['organising', 'organizing'], ['organisation', 'organization'], ['organisations', 'organizations'], ['organiser', 'organizer'], ['organisers', 'organizers'],
+  ['realise', 'realize'], ['realises', 'realizes'], ['realised', 'realized'], ['realising', 'realizing'], ['realisation', 'realization'],
+  ['recognise', 'recognize'], ['recognises', 'recognizes'], ['recognised', 'recognized'], ['recognising', 'recognizing'],
+  ['prioritise', 'prioritize'], ['prioritised', 'prioritized'], ['prioritising', 'prioritizing'], ['optimise', 'optimize'], ['optimised', 'optimized'], ['optimising', 'optimizing'], ['optimisation', 'optimization'],
+  ['monetise', 'monetize'], ['monetised', 'monetized'], ['monetising', 'monetizing'], ['monetisation', 'monetization'],
+  ['customise', 'customize'], ['customised', 'customized'], ['customisation', 'customization'], ['minimise', 'minimize'], ['minimised', 'minimized'], ['maximise', 'maximize'], ['maximised', 'maximized'],
+  ['emphasise', 'emphasize'], ['emphasised', 'emphasized'], ['emphasising', 'emphasizing'], ['characterise', 'characterize'], ['characterised', 'characterized'],
+  ['capitalise', 'capitalize'], ['capitalised', 'capitalized'], ['capitalising', 'capitalizing'], ['specialise', 'specialize'], ['specialised', 'specialized'],
+  ['summarise', 'summarize'], ['summarised', 'summarized'], ['utilise', 'utilize'], ['utilised', 'utilized'], ['mobilise', 'mobilize'], ['mobilised', 'mobilized'],
+  ['normalise', 'normalize'], ['normalised', 'normalized'], ['stabilise', 'stabilize'], ['stabilised', 'stabilized'], ['standardise', 'standardize'], ['standardised', 'standardized'],
+  ['symbolise', 'symbolize'], ['symbolises', 'symbolizes'], ['visualise', 'visualize'], ['visualised', 'visualized'], ['personalise', 'personalize'], ['personalised', 'personalized'], ['personalisation', 'personalization'],
+  ['localise', 'localize'], ['localised', 'localized'], ['globalise', 'globalize'], ['globalised', 'globalized'], ['globalisation', 'globalization'],
+  ['energise', 'energize'], ['energised', 'energized'], ['apologise', 'apologize'], ['apologised', 'apologized'], ['criticise', 'criticize'], ['criticised', 'criticized'],
+  ['analyse', 'analyze'], ['analysed', 'analyzed'], ['analysing', 'analyzing'], ['paralyse', 'paralyze'], ['catalyse', 'catalyze'],
+  ['travelling', 'traveling'], ['travelled', 'traveled'], ['traveller', 'traveler'], ['travellers', 'travelers'], ['cancelled', 'canceled'], ['cancelling', 'canceling'],
+  ['labelled', 'labeled'], ['labelling', 'labeling'], ['modelling', 'modeling'], ['modelled', 'modeled'], ['fuelled', 'fueled'], ['fuelling', 'fueling'],
+  ['signalled', 'signaled'], ['signalling', 'signaling'], ['channelled', 'channeled'], ['channelling', 'channeling'], ['levelled', 'leveled'], ['levelling', 'leveling'],
+  ['grey', 'gray'], ['greys', 'grays'], ['whilst', 'while'], ['amongst', 'among'], ['learnt', 'learned'], ['spelt', 'spelled'],
+  ['aluminium', 'aluminum'], ['jewellery', 'jewelry'], ['mould', 'mold'], ['moulds', 'molds'], ['pyjamas', 'pajamas'], ['kerb', 'curb'], ['tyres', 'tires'],
+  ['artefact', 'artifact'], ['artefacts', 'artifacts'], ['ageing', 'aging'], ['judgement', 'judgment'], ['judgements', 'judgments'], ['enquiry', 'inquiry'], ['enquiries', 'inquiries'],
+  ['sceptic', 'skeptic'], ['sceptics', 'skeptics'], ['sceptical', 'skeptical'], ['scepticism', 'skepticism'], ['manoeuvre', 'maneuver'], ['manoeuvres', 'maneuvers'],
+  ['cosy', 'cozy'], ['aeroplane', 'airplane'], ['draught', 'draft'], ['plough', 'plow'], ['moustache', 'mustache'], ['storeys', 'stories'], ['per cent', 'percent']
+];
+const READ_AMERICAN_RX = READ_AMERICAN.map(([b, a]) => [new RegExp('\\b' + b.replace(' ', '\\s+') + '\\b', 'gi'), a]);
+function readCaseLike(sample, word) {
+  if (sample === sample.toUpperCase() && sample.length > 1) return word.toUpperCase();
+  if (sample[0] === sample[0].toUpperCase()) return word[0].toUpperCase() + word.slice(1);
+  return word;
+}
+function readAmericanText(v, path, changes) {
+  let s = String(v);
+  for (const [rx, to] of READ_AMERICAN_RX) {
+    s = s.replace(rx, (m, off, str) => {
+      // A capitalized match inside a sentence is a name (Labour Party, Centre Pompidou) and stays as it is.
+      const prev = String(str).slice(0, off).replace(/\s+$/, '');
+      if (m[0] !== m[0].toLowerCase() && prev && !/[.!?:;"\u201C(\[]$/.test(prev)) return m;
+      const r = readCaseLike(m, to); if (r !== m) changes.push({ path, from: m, to: r, pass: 'spelling' }); return r;
+    });
+  }
+  // Punctuation the American way: the comma or period sits inside the closing quotation mark.
+  s = s.replace(/([\p{L}\p{N}])(["”])([,.])(?=\s|$)/gu, (m, a, q, pnc) => { changes.push({ path, from: a + q + pnc, to: a + pnc + q, pass: 'spelling' }); return a + pnc + q; });
+  // Stray spaces: two in a row, or one before a comma, period, colon or semicolon.
+  s = s.replace(/ {2,}/g, m => { changes.push({ path, from: m, to: ' ', pass: 'spelling' }); return ' '; })
+       .replace(/ ([,.;:])(?=\s|$)/g, (m, pnc) => { changes.push({ path, from: m, to: pnc, pass: 'spelling' }); return pnc; });
+  return s;
+}
+function readWalk(v, fn, path) {
+  if (Array.isArray(v)) return v.map((x, i) => readWalk(x, fn, path + '[' + i + ']'));
+  if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) o[k] = readWalk(v[k], fn, path ? path + '.' + k : k); return o; }
+  if (typeof v === 'string' && !/(?:^|\.)(?:lead_image|cover_image|stat)$|evidence\[\d+\]$/.test(path)) return fn(v, path);
+  return v;
+}
+function readAmerican(read) {
+  const changes = [];
+  const out = readWalk(read, (v, path) => readAmericanText(v, path, changes), '');
+  return { read: out, changes };
+}
+function readSids(s) { return (String(s).match(/\bS\d+\b/g) || []).sort().join(','); }
+function readNums(s) { return (String(s).replace(/\bS\d+\b/g, ' ').match(/\d[\d,]*(?:\.\d+)?/g) || []).map(x => x.replace(/,/g, '')).sort().join(','); }
+function readProofAccept(a, b) {
+  let why = null;
+  const walk = (x, y, path) => {
+    if (why) return;
+    if (Array.isArray(x)) { if (!Array.isArray(y) || y.length !== x.length) { why = 'shape:' + path; return; } x.forEach((v, i) => walk(v, y[i], path + '[' + i + ']')); return; }
+    if (x && typeof x === 'object') {
+      if (!y || typeof y !== 'object' || Array.isArray(y)) { why = 'shape:' + path; return; }
+      const kx = Object.keys(x).sort().join(','), ky = Object.keys(y).sort().join(',');
+      if (kx !== ky) { why = 'keys:' + (path || 'root'); return; }
+      for (const k of Object.keys(x)) walk(x[k], y[k], path ? path + '.' + k : k);
+      return;
+    }
+    if (typeof x !== 'string') { if (x !== y) why = 'value:' + path; return; }
+    if (typeof y !== 'string') { why = 'type:' + path; return; }
+    if (readSids(x) !== readSids(y)) { why = 'sids:' + path; return; }
+    if (readNums(x) !== readNums(y)) { why = 'numbers:' + path; return; }
+    if (Math.abs(y.length - x.length) > Math.max(READ_PROOF.SLACK, READ_PROOF.RATIO * x.length)) { why = 'length:' + path; return; }
+    if (/—/.test(y)) { why = 'dash:' + path; return; }
+  };
+  walk(a, b, '');
+  return { ok: !why, why };
+}
+function readProofDiff(a, b) {
+  const out = [];
+  const look = (x, y, path) => {
+    if (Array.isArray(x)) { x.forEach((v, i) => look(v, y && y[i], path + '[' + i + ']')); return; }
+    if (x && typeof x === 'object') { for (const k of Object.keys(x)) look(x[k], y && y[k], path ? path + '.' + k : k); return; }
+    if (typeof x !== 'string' || typeof y !== 'string' || x === y) return;
+    const wa = x.split(/\s+/), wb = y.split(/\s+/);
+    let p = 0; while (p < wa.length && p < wb.length && wa[p] === wb[p]) p++;
+    let q = 0; while (q < wa.length - p && q < wb.length - p && wa[wa.length - 1 - q] === wb[wb.length - 1 - q]) q++;
+    const lo = Math.max(0, p - 3);
+    out.push({ path, from: wa.slice(lo, wa.length - q + 3).join(' ').slice(0, 240), to: wb.slice(lo, wb.length - q + 3).join(' ').slice(0, 240), pass: 'editor' });
+  };
+  look(a, b, '');
+  return out;
+}
+async function readProof(env, read) {
+  let r;
+  try {
+    r = await callClaude(env, 'live', { system: READ_PROOF_SYS, cache: true, prompt: JSON.stringify(read),
+      max_tokens: READ_PROOF.MAX_TOKENS, kind: 'read_proof', temperature: 0 });
+  } catch (e) { return { ok: false, error: 'proof_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
+  if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'proof_failed' };
+  if (r.truncated) return { ok: false, error: 'proof_truncated' };
+  const j = parseModelJson(r.text) || extractJson(r.text);
+  if (!j || !j.read || typeof j.read !== 'object') return { ok: false, error: 'proof_unparsable' };
+  return { ok: true, read: j.read, model: CLAUDE.TIERS.live.model, cost_usd: r.cost_usd || 0 };
+}
+async function readProofRun(env, kind, read, ground, packIds) {
+  const notes = [], receipts = [];
+  const a = readAmerican(read);
+  for (const c of a.changes) receipts.push(c);
+  let cur = a.read, lane = null, model = null, reason = null, cost = 0;
+  const ed = await readProof(env, cur);
+  if (ed.ok) {
+    const acc = readProofAccept(cur, ed.read);
+    if (acc.ok) {
+      // The laws run again; the editor may not add a violation the read did not already carry.
+      const had = new Set(readValidate(kind, cur, ground, packIds).fatal), v2 = readValidate(kind, ed.read, ground, packIds);
+      const fresh = v2.fatal.filter(x => !had.has(x));
+      if (v2.read && !fresh.length) { for (const c of readProofDiff(cur, v2.read)) receipts.push(c); cur = v2.read; lane = 'live'; model = ed.model; cost = ed.cost_usd; }
+      else reason = 'editor_broke_a_law:' + (fresh[0] || 'unparsable').slice(0, 60);
+    } else reason = 'editor_rejected:' + acc.why;
+  } else reason = ed.error;
+  if (reason) notes.push('proof_editor_skipped:' + reason);
+  notes.push('proofread:' + receipts.length);
+  return { read: cur, notes, receipt: { at: new Date().toISOString(), model, lane, reason, cost_usd: cost, changes: receipts.length,
+    spelling: receipts.filter(c => c.pass === 'spelling').length, editor: receipts.filter(c => c.pass === 'editor').length,
+    receipts: receipts.slice(0, READ_PROOF.MAX_CHANGES) } };
+}
+function readGroundOf(row, items) {
+  return JSON.stringify(row.stats || {}) + '\n' + (items || []).map(it => [it.headline, it.take, it.apply, it.date, it.issue_no].join(' ')).join('\n');
 }
 
 async function readTick(env) {
@@ -7271,6 +7607,31 @@ async function readRoute(path, body, env, origin, user) {
       return json({ ok: false, error: 'not_ready', status: row.status }, 200, origin, env);
     await readPatch(env, row.id, { status: 'published', meta: Object.assign({}, row.meta || {}, { published_by: user.id, published_at: new Date().toISOString() }) });
     return json({ ok: true, id: row.id, status: 'published' }, 200, origin, env);
+  }
+  if (path === '/reads/proof') {
+    // SEAM:READ_PROOF: proofread a written read. apply:false shows every fix; apply:true writes them, and the
+    // stamp changes so the next Download PDF renders the corrected long form. A dry run is stashed for half an
+    // hour, so applying what was just shown spends nothing twice.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
+    const key = 'rproof:' + row.id + ':' + (await sha256hex(JSON.stringify(row.read))).slice(0, 16);
+    let pr = null;
+    if (env.RATE_LIMIT) { try { const hit = await env.RATE_LIMIT.get(key); if (hit) pr = JSON.parse(hit); } catch (e) { console.log('rproof_stash', String(e && e.message).slice(0, 80)); } }
+    if (!pr) {
+      const items = await readWindowItems(env, row.window_start, row.window_end);
+      pr = await readProofRun(env, row.kind, row.read, readGroundOf(row, items), row.pack_ids || []);
+      if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify(pr), { expirationTtl: READ_PROOF.STASH_TTL }); } catch (e) { console.log('rproof_stash_put', String(e && e.message).slice(0, 80)); } }
+    }
+    let applied = false;
+    if (body.apply === true && pr.receipt && pr.receipt.changes > 0) {
+      await readPatch(env, row.id, { read: pr.read, violations: (Array.isArray(row.violations) ? row.violations : []).concat(pr.notes),
+        meta: Object.assign({}, row.meta || {}, { proof: Object.assign({}, pr.receipt, { applied_by: user.id, applied_at: new Date().toISOString() }) }) });
+      if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(key); } catch (e) { console.log('rproof_stash_del', String(e && e.message).slice(0, 80)); } }
+      logEvent(env, 'intelligence', 'reads', 'read_proofed', null, { id: row.id, kind: row.kind, changes: pr.receipt.changes });
+      applied = true;
+    }
+    return json({ ok: true, id: row.id, applied, proof: pr.receipt, notes: pr.notes }, 200, origin, env);
   }
   if (path === '/reads/record') {
     // THE RECORD: every week and month since issue 001, then the record, chained.

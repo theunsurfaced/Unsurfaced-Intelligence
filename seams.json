@@ -683,6 +683,14 @@
   "SEAM:THEMES": {
    "file": "worker/src/index.js",
    "purpose": "the lake grouped by subject: theme_assign (0028) at THEME_SIM 0.65 (env), run in the 30-minute drain (300) and nightly before the feed warms (8 x 600); lakeKey makes the rollup, PROPOSE, geometry and the cluster dashboard read themes when a row has one and clusters when it does not; DAILY's CONNECT, echo rule and momentum untouched"
+  },
+  "SEAM:EXC_INTEL": {
+   "file": "worker/src/index.js",
+   "purpose": "the intelligent lane and the dated evidence law: every EXCAVATE read and PROPOSE compile through excCompile on the live Claude tier (Sonnet 5, its own cap) with a retry and the reserve model behind it, a live read cached a day per query; evidence is dated (excWhen), banded NOW/RECENT/CURRENT/CONTEXT/ARCHIVE (excBand), weighted by recency decay and tier (excScore) inside excBudget with an ARCHIVE floor and a widening law; the TIME LAW rides the prompt; confidence is corroboration among dated lines; findings and moves carry dated, the read carries window and model; live searches place reference kinds as status reference and rails carry dates with free recent slices"
+  },
+  "SEAM:READ_PROOF": {
+   "file": "worker/src/index.js",
+   "purpose": "the copy desk: every house read is proofread before it is ready (readAmerican, a deterministic American English spelling and punctuation pass; readProof, the copy editor on the live Claude tier, accepted only when shape, S-ids, numbers and length hold and the read laws pass again); meta.proof keeps the receipts; POST /reads/proof {id, apply} shows or applies the fixes on any written read so an issue already out can be recut; the Method's second law is American English only"
   }
  },
  "planned": [

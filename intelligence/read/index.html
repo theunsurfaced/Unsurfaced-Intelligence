@@ -217,6 +217,16 @@
   var Q = new URLSearchParams(location.search), RT = Q.get("rt");
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function say(t) { app.innerHTML = '<div class="msg">' + esc(t) + "</div>"; }
+  /* READ_PROOF: the fixes panel sits between the bar and the read. */
+  function proofPanel(html) {
+    var el = document.getElementById("proof-panel");
+    if (!el) { el = document.createElement("div"); el.id = "proof-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
+    el.innerHTML = html ? '<div style="border:1px solid #C41230;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.55">' + html + "</div>" : "";
+    var rows = el.querySelectorAll(".pf-row"); for (var i = 0; i < rows.length; i++) rows[i].style.cssText = "padding:6px 0;border-top:1px solid rgba(20,20,20,.12)";
+    var paths = el.querySelectorAll(".pf-path"); for (var j = 0; j < paths.length; j++) paths[j].style.cssText += ";color:#C41230;margin-right:8px";
+    var bars = el.querySelectorAll(".pf-bar"); for (var k = 0; k < bars.length; k++) bars[k].style.cssText = "margin-top:12px";
+    var heads = el.querySelectorAll(".pf-head"); for (var m = 0; m < heads.length; m++) heads[m].style.cssText += ";margin-bottom:6px";
+  }
   function call(path, body) {
     return fetch(API + path, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify(body || {}) }).then(function (r) { return r.json(); });
@@ -328,7 +338,9 @@
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF</button>');
       if (row.status === "ready") btns.push('<button class="btn" id="pub">Publish</button>');
       if (row.status === "held") btns.push('<button class="btn" id="reland">Re-land</button>');
+      if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       actions.innerHTML = btns.join(" ");
+      if (row.meta && row.meta.proof && row.meta.proof.applied_at) actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">proofread ' + esc(String(row.meta.proof.applied_at).slice(0, 10)) + ' · ' + esc(String(row.meta.proof.changes || 0)) + ' fixes</span>');   // READ_PROOF receipt
       if (!x.title) {
         return say(KIND[row.kind] + ", " + row.label + ": " + row.status.toUpperCase() +
           (row.error ? ". " + row.error : "") + ". The read is not written yet; this page fills in when it lands.");
@@ -562,6 +574,32 @@
       pub.disabled = true; call("/reads/publish", { id: row.id }).then(function (d) { pub.textContent = d && d.ok ? "Published" : "Publish failed"; }); };
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
       rl.disabled = true; call("/reads/reland", { id: row.id }).then(function () { openRead(row.id); }); };
+    /* READ_PROOF: the copy desk. A dry run lists every fix (spelling pass and editor); Apply writes them and
+       the next Download PDF renders the corrected long form. */
+    var pf = document.getElementById("proof"); if (pf) pf.onclick = function () {
+      if (pf.disabled) return;
+      pf.disabled = true; pf.textContent = "Proofreading, about 40 seconds";
+      call("/reads/proof", { id: row.id, apply: false }).then(function (d) {
+        pf.disabled = false; pf.textContent = "Proofread";
+        if (!d || !d.ok) return proofPanel('<div class="pf-head">Proofread failed: ' + esc((d && d.error) || "no answer") + '</div>');
+        var r = d.proof || {}, list = r.receipts || [];
+        var mono = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase";
+        var html = '<div class="pf-head" style="' + mono + '">' + (r.changes ? r.changes + ' fix' + (r.changes === 1 ? '' : 'es') + ' proposed · spelling ' + (r.spelling || 0) + ' · editor ' + (r.editor || 0) + (r.model ? ' · ' + esc(r.model) : '') : 'Clean: no fixes needed') +
+          (r.reason ? ' · editor skipped: ' + esc(r.reason) : '') + '</div>';
+        html += list.map(function (c) { return '<div class="pf-row"><span class="pf-path" style="' + mono + '">' + esc(c.path) + '</span> <s>' + esc(c.from) + '</s> <b>' + esc(c.to) + '</b></div>'; }).join("");
+        if (r.changes) html += '<div class="pf-bar"><button class="btn red" id="proof-apply">Apply ' + r.changes + ' fix' + (r.changes === 1 ? '' : 'es') + '</button> <button class="btn" id="proof-close" style="color:#141414;border-color:rgba(20,20,20,.45)">Dismiss</button></div>';
+        else html += '<div class="pf-bar"><button class="btn" id="proof-close" style="color:#141414;border-color:rgba(20,20,20,.45)">Dismiss</button></div>';
+        proofPanel(html);
+        var ap = document.getElementById("proof-apply"); if (ap) ap.onclick = function () {
+          ap.disabled = true; ap.textContent = "Applying";
+          call("/reads/proof", { id: row.id, apply: true }).then(function (d2) {
+            if (d2 && d2.ok && d2.applied) { proofPanel(""); openRead(row.id); }
+            else { ap.disabled = false; ap.textContent = "Apply failed: " + esc((d2 && d2.error) || "nothing applied"); }
+          });
+        };
+        var cl = document.getElementById("proof-close"); if (cl) cl.onclick = function () { proofPanel(""); };
+      });
+    };
   }
 
   /* ── Social: the Unsurfaced DAILY issue, drawn over the stories' photos ── */

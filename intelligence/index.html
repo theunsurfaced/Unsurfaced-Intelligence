@@ -1181,6 +1181,37 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 #live-results:not(.show-all) #moves-section{display:none}
 .results-lens-panel.active .lens-ideas-row{grid-template-columns:repeat(2,minmax(0,1fr))}
 .results-sources-strip:empty{display:none}
+/* EXC_INTEL: bands and the read's window */
+.card-when{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+.card-when.NOW,.card-when.RECENT{color:#4ade80}
+.card-when.CURRENT{color:var(--text2)}
+.card-when.ARCHIVE{opacity:.65}
+.move-when{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:8px}
+.move-when.NOW,.move-when.RECENT{color:#4ade80}
+.read-window{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;margin:14px 0 6px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+.read-window .rw-band b{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-right:5px;letter-spacing:0}
+.read-window .rw-band.NOW b,.read-window .rw-band.RECENT b{color:#4ade80}
+.read-window .rw-band.zero{opacity:.45}
+.read-window .rw-note{margin-left:auto;text-transform:none;letter-spacing:.04em}
+.read-foot{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--text3);margin:12px 0 0;line-height:1.7}
+.exc-panel{position:fixed;inset:0;z-index:var(--z-board);background:var(--bg,#0a0a0f);overflow:auto;padding:26px 30px;color:var(--text);font-size:13px}
+.exc-panel h1{font-family:'DM Serif Display',serif;font-size:26px;margin:0 0 6px}
+.exc-panel .ep-sub{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:18px}
+.exc-panel .ep-q{border-top:1px solid var(--border);padding:18px 0}
+.exc-panel .ep-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.exc-panel .ep-col h3{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+.exc-panel .ep-read{font-family:'DM Serif Display',serif;font-size:17px;line-height:1.4;margin:0 0 6px}
+.exc-panel .ep-line{color:var(--text2);line-height:1.6;margin:0 0 8px}
+.exc-panel .ep-k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:10px 0 4px}
+.exc-panel .ep-item{border-left:2px solid var(--border);padding:4px 10px;margin:4px 0;line-height:1.5}
+.exc-panel .ep-item small{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em}
+.exc-panel .ep-verdict{display:flex;gap:14px;align-items:center;margin-top:12px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.exc-panel .ep-verdict label{cursor:pointer;color:var(--text2)}
+.exc-panel .ep-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:14px 0 22px}
+.exc-panel button,.exc-panel .ep-file{background:none;border:1px solid var(--border2);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;padding:9px 16px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase}
+.exc-panel .ep-tally{font-family:'DM Serif Display',serif;font-size:20px;margin-left:auto}
+@media(max-width:860px){.exc-panel .ep-cols{grid-template-columns:1fr}}
+
 @media(max-width:1000px){.moves-grid{grid-template-columns:1fr}#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:1fr}.mean-row,.move-row{grid-template-columns:1fr}}
 
@@ -2313,7 +2344,7 @@ async function api(action, payload) {
       const lr = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/lake', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, _h),
-        body: JSON.stringify({ q: String(payload.query).slice(0, 200), count: 10 })
+        body: JSON.stringify({ q: String(payload.query).slice(0, 200), count: 16 })   // EXC_INTEL: sixteen candidates; the ranker keeps ten
       }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
       if (lr && lr.ok && Array.isArray(lr.results) && lr.results.length) {
         payload = Object.assign({}, payload, {
@@ -2323,7 +2354,8 @@ async function api(action, payload) {
               source: 'Unsurfaced Lake \u00B7 ' + (s.source_name || 'signal') + ' (T' + (s.source_tier || '?') + ')',
               title: String(s.title || '').slice(0, 180),
               text: String(s.summary || '').slice(0, 360),
-              url: s.url || ''
+              url: s.url || '',
+              published_at: s.published_at || null, kind: (s.momentum && s.momentum.kind) || 'news', tier: s.source_tier, similarity: s.similarity   // EXC_INTEL
             };
           }))
         });
@@ -2971,7 +3003,7 @@ async function _excGather(q){
         if(it.url&&seen.has(it.url)) return; if(it.url) seen.add(it.url);
         const lens=it.kind==='truth'?'brand':(it.kind==='discourse'?'culture':(it.kind==='research'?'consumer':(it.kind==='filing'?'market':'market')));
         items.push({ signalType:it.kind==='news'?'news':(it.kind==='discourse'?'social':'web'), title:it.title, snippet:it.text||'', source:it.source_name||'', url:it.url||null, image:it.image||null, published_at:it.published_at||null });
-        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather' });
+        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather', published_at:it.published_at||null, kind:it.kind||null, tier:it.source_tier||null });   // EXC_INTEL
         const key=(it.source_name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:it.source_name, display:it.source_name, desc:it.kind||'live', url:it.url||'' };
       });
       (g.rails||[]).forEach(rl=>{ if(rl.n>0){ const key=(rl.name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:rl.name, display:rl.name, desc:rl.n+' gathered', url:'' }; } });
@@ -3621,6 +3653,71 @@ function copyBrief(){
   if(b.includes('Ready.')){ showToast('Run a search first'); return; }
   navigator.clipboard?.writeText(b.trim()).then(()=>showToast('Brief copied'),()=>showToast('Copy failed'));
 }
+
+/* EXC_INTEL: the ten-query panel. ?panel=before runs the panel and downloads a JSON of every read as it stands;
+   ?panel=after does the same after the deploy; ?panel=compare shows two JSONs side by side with a verdict per
+   query and a tally. The release ships when the after wins. Signed in only: the doors are the doors. */
+const EXC_PANEL_QUERIES = ['gen z haircare', 'sneaker resale market', 'luxury fragrance dupes', 'k-pop fandom commerce',
+  'plant-based protein snacks', 'ai music production tools', 'streetwear collaborations', 'gaming creator economy',
+  'black-owned beauty brands retail', 'college athletes brand deals'];
+function _epDownload(name, obj){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,1)],{type:'application/json'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800); }
+function _epHost(){ let h=document.getElementById('exc-panel'); if(!h){ h=document.createElement('div'); h.id='exc-panel'; h.className='exc-panel'; document.body.appendChild(h); } document.body.style.overflow='hidden'; return h; }
+function _epSlim(d){ if(!d) return null; return { read:d.read||null, brief:d.brief||'', frame:d.frame||null, evidence_n:d.evidence_n||0, moves_dropped:d.moves_dropped||0, window:d.window||null, model:d.model||null, compiled_at:d.compiled_at||null,
+  insights:(d.insights||[]).map(x=>({ title:x.title, excerpt:x.excerpt, category:x.category, confidence:x.confidence, source:x.source, dated:x.dated||null, meaning:x.meaning||null, implication:x.implication||null })),
+  ideas:(d.ideas||[]).map(m=>({ type:m.type, for:m.for||null, headline:m.headline, body:m.body, because:m.because||'', proof:m.proof||'', measure:m.measure||'', risk:m.risk||'', dated:m.dated||null })) }; }
+async function excPanelRun(label){
+  const host=_epHost();
+  host.innerHTML=`<h1>The panel · ${safe(label)}</h1><div class="ep-sub">${EXC_PANEL_QUERIES.length} queries · each compiles as a live read · nothing is edited</div><div id="ep-log"></div>`;
+  const log=document.getElementById('ep-log');
+  const h=await _authHeader(); if(!h.Authorization){ log.innerHTML='<p class="ep-line">Sign in first, then reload this address.</p>'; return; }
+  const out={ label:String(label), at:new Date().toISOString(), site:location.origin, queries:[] };
+  for(const q of EXC_PANEL_QUERIES){
+    const row=document.createElement('div'); row.className='ep-q'; row.innerHTML=`<div class="ep-k">${safe(q)}</div><div class="ep-line">compiling…</div>`; log.appendChild(row);
+    const t0=Date.now(); let rec={ q, ok:false, ms:0, error:null, data:null };
+    try{
+      const g=await _excGather(q);
+      const d=await api('excavate/synthesize',{ query:q, mode:'report', cls:(window._gatherMeta||{}).cls||null, corpus:g.corpus });
+      const dd=(d&&d.ok&&d.data)?d.data:null;
+      if(dd){ rec.ok=true; rec.data=_epSlim(dd); } else { rec.error=(d&&d.error)||'no_data'; }
+    }catch(e){ rec.error=String(e&&e.message||e).slice(0,160); }
+    rec.ms=Date.now()-t0; out.queries.push(rec);
+    row.querySelector('.ep-line').textContent=rec.ok?`${(rec.data.insights||[]).length} findings · ${(rec.data.ideas||[]).length} moves · ${rec.data.model?rec.data.model.model+' ('+rec.data.model.lane+')':'model unknown'} · ${Math.round(rec.ms/1000)}s`:('failed: '+rec.error);
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  _epDownload(`unsurfaced-panel-${label}-${out.at.slice(0,10)}.json`, out);
+  log.insertAdjacentHTML('beforeend',`<div class="ep-bar"><span class="ep-line">Saved as unsurfaced-panel-${safe(label)}-${out.at.slice(0,10)}.json (check Downloads).</span><button onclick="location.href=location.pathname+'?panel=compare'">COMPARE</button><button onclick="location.href=location.pathname">CLOSE</button></div>`);
+}
+function _epReadFile(inp){ return new Promise(res=>{ const f=inp.files&&inp.files[0]; if(!f) return res(null); const r=new FileReader(); r.onload=()=>{ try{ res(JSON.parse(r.result)); }catch(e){ res(null); } }; r.readAsText(f); }); }
+function _epSide(rec){
+  if(!rec) return '<p class="ep-line">no record</p>'; if(!rec.ok||!rec.data) return `<p class="ep-line">failed: ${safe(rec.error||'')}</p>`;
+  const d=rec.data, w=d.window||{}, m=d.model||{};
+  const chip=x=>x&&x.newest?`<small>${safe(x.band||'')} · ${safe(x.newest)}</small>`:(x&&x.archive_only?'<small>ARCHIVE ONLY</small>':'');
+  return `${d.read&&d.read[0]?`<p class="ep-read">${safe(d.read[0])}</p>`:''}${d.read&&d.read[1]?`<p class="ep-line">${safe(d.read[1])}</p>`:''}
+    ${d.brief?`<p class="ep-line">${safe(d.brief)}</p>`:''}
+    <div class="ep-k">${(d.insights||[]).length} findings${d.frame?' · '+safe(d.frame.category||'')+' / '+safe(d.frame.audience||''):''}</div>
+    ${(d.insights||[]).map(x=>`<div class="ep-item"><b>${safe(x.title)}</b> <small>${safe(x.confidence||'')}</small> ${chip(x.dated)}<br>${safe(x.excerpt||'')}${x.meaning&&x.meaning.culture?`<br><small>CULTURE</small> ${safe(x.meaning.culture)}`:''}</div>`).join('')}
+    <div class="ep-k">${(d.ideas||[]).length} moves${d.moves_dropped?' · '+d.moves_dropped+' dropped':''}</div>
+    ${(d.ideas||[]).map(x=>`<div class="ep-item"><b>${safe(x.headline)}</b> ${chip(x.dated)}<br>${safe(x.body||'')}${x.because?`<br><small>WHY NOW</small> ${safe(x.because)}`:''}</div>`).join('')}
+    <div class="ep-k">${d.evidence_n||0} evidence lines${w.NOW!=null?` · NOW ${w.NOW} · RECENT ${w.RECENT} · CURRENT ${w.CURRENT} · CONTEXT ${w.CONTEXT} · ARCHIVE ${w.ARCHIVE}`:' · undated read'}${w.widened?' · widened':''} · ${m.model?safe(m.model)+' ('+safe(m.lane||'')+')':'model unknown'} · ${Math.round((rec.ms||0)/1000)}s</div>`;
+}
+function excPanelCompare(){
+  const host=_epHost();
+  host.innerHTML=`<h1>The panel · compare</h1><div class="ep-sub">before on the left, after on the right · pick one per query · the after must win</div>
+    <div class="ep-bar"><label class="ep-file">BEFORE <input type="file" id="ep-before" accept=".json" hidden></label><label class="ep-file">AFTER <input type="file" id="ep-after" accept=".json" hidden></label><button id="ep-go">SHOW</button><button onclick="location.href=location.pathname">CLOSE</button><span class="ep-tally" id="ep-tally"></span></div><div id="ep-body"></div>`;
+  document.getElementById('ep-go').onclick=async function(){
+    const A=await _epReadFile(document.getElementById('ep-before')), B=await _epReadFile(document.getElementById('ep-after'));
+    if(!A||!B){ document.getElementById('ep-body').innerHTML='<p class="ep-line">Choose both files first.</p>'; return; }
+    const qs=Array.from(new Set((A.queries||[]).map(x=>x.q).concat((B.queries||[]).map(x=>x.q))));
+    const find=(S,q)=>(S.queries||[]).find(x=>x.q===q)||null;
+    document.getElementById('ep-body').innerHTML=qs.map((q,i)=>`<div class="ep-q"><div class="ep-k" style="font-size:12px;color:var(--text)">${i+1}. ${safe(q)}</div><div class="ep-cols"><div class="ep-col"><h3>Before · ${safe(String(A.at||'').slice(0,10))}</h3>${_epSide(find(A,q))}</div><div class="ep-col"><h3>After · ${safe(String(B.at||'').slice(0,10))}</h3>${_epSide(find(B,q))}</div></div>
+      <div class="ep-verdict">VERDICT <label><input type="radio" name="v${i}" value="before"> before</label><label><input type="radio" name="v${i}" value="after"> after</label><label><input type="radio" name="v${i}" value="tie"> tie</label></div></div>`).join('')
+      +`<div class="ep-bar"><button id="ep-save">SAVE VERDICTS</button></div>`;
+    const tally=()=>{ const v={before:0,after:0,tie:0}; qs.forEach((q,i)=>{ const c=document.querySelector(`input[name=v${i}]:checked`); if(c) v[c.value]++; }); document.getElementById('ep-tally').textContent=`after ${v.after} · before ${v.before} · tie ${v.tie} of ${qs.length}`; return v; };
+    document.querySelectorAll('.ep-verdict input').forEach(el=>el.onchange=tally);
+    document.getElementById('ep-save').onclick=()=>{ const v=tally(); _epDownload(`unsurfaced-panel-verdicts-${new Date().toISOString().slice(0,10)}.json`, { at:new Date().toISOString(), before:A.at, after:B.at, tally:v, verdicts:qs.map((q,i)=>{ const c=document.querySelector(`input[name=v${i}]:checked`); return { q, verdict:c?c.value:null }; }) }); };
+  };
+}
+document.addEventListener('DOMContentLoaded',function(){ const m=(location.search.match(/[?&]panel=(before|after|compare)\b/)||[])[1]; if(!m) return; setTimeout(function(){ if(m==='compare') excPanelCompare(); else excPanelRun(m); }, 1500); });
 document.addEventListener('DOMContentLoaded',renderHubBuilder);
 
 function exportBrief(){
@@ -4970,8 +5067,11 @@ function _moveCard(m, all){
   return `<div class="move-card"><div class="move-top"><span class="move-type">${safe(m.type||'Move')}</span>${m.for?`<span class="move-for">For ${safe(m.for)}</span>`:''}</div>
     <div class="move-head">${safe(m.headline||'')}</div><div class="move-body">${safe(m.body||'')}</div>
     ${rows.length?`<div class="move-rows">${rows.map(r=>`<div class="move-row"><span class="move-k">${r[0]}</span><span class="move-v">${safe(r[1])}</span></div>`).join('')}</div>`:''}
+    ${m.dated&&m.dated.newest?`<div class="move-when ${safe(m.dated.band||'')}">EVIDENCE · ${safe(m.dated.band||'')} · NEWEST ${safe(m.dated.newest)}</div>`:''}
     ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}</div>`;
 }
+// EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
+function _whenChip(d){ if(!d) return ''; if(d.newest) return `<span class="card-when ${safe(d.band||'')}">${safe(d.band||'')} · ${safe(d.newest)}</span>`; return d.archive_only?`<span class="card-when ARCHIVE">ARCHIVE ONLY</span>`:''; }
 function _fillLensPanels(lenses, truth){
   const all=truth.allInsights||[];
   const card=(ins,i,cat)=>{
@@ -4982,7 +5082,7 @@ function _fillLensPanels(lenses, truth){
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
         ${_meaningBlock(ins)}
-        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
+        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
       </div>`;
   };
   CATS.forEach(cat=>{
@@ -5058,13 +5158,19 @@ function _renderReadBlock(q, data, mode){
   if(vol&&vol.points) facts.push(`GDELT coverage series, ${vol.points} points over 3 months`);
   if(meta.cls) facts.push(`read as ${meta.cls}`);
   if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered`);
+  // EXC_INTEL: the evidence window (how many lines in each band, newest and oldest) and the lane the read compiled on.
+  const win=data.window||null, mdl=data.model||null, _bands=['NOW','RECENT','CURRENT','CONTEXT','ARCHIVE'];
+  const _winHtml=win?`<div class="read-window">${_bands.map(b=>`<span class="rw-band ${b}${(win[b]||0)?'':' zero'}"><b>${win[b]||0}</b>${b}</span>`).join('')}<span class="rw-note">${win.newest?'newest '+safe(win.newest):''}${win.oldest?' · oldest '+safe(win.oldest):''}${win.widened?' · window widened: dated evidence was thin':''}</span></div>`:'';
+  const _mdlHtml=mdl?`<p class="read-foot">Compiled on ${safe(mdl.model||'')}${mdl.lane==='reserve'?' (reserve model'+(mdl.reason?': '+safe(mdl.reason):'')+')':''}${mdl.cached?' · served from today\'s read':''}${data.compiled_at?' · '+safe(String(data.compiled_at).slice(0,16).replace('T',' '))+' UTC':''} · time is a weight: NOW 24h · RECENT 30d · CURRENT 90d · CONTEXT 2y · ARCHIVE older or undated</p>`:'';
   const _px=meta.meta&&meta.meta.pplx; const _pxHtml=(_px&&_px.framing)?`<p class="read-interp" style="font-size:12px;color:var(--text3)"><strong style="color:var(--text2)">What the wire says right now</strong> (Perplexity Sonar, ${safe(String(_px.sources||0))} sources, framing not evidence). ${safe(_px.framing)}</p>`:'';   // SEAM:PPLX_RAIL
   el.innerHTML=`<div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
+    ${_winHtml}
     ${data.brief?`<p class="read-interp"><strong>The interpretation.</strong> ${safe(data.brief)}</p>`:''}
     ${facts.length?`<p class="read-interp" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3)">${facts.map(safe).join(' · ')}</p>`:''}
     ${_pxHtml}
+    ${_mdlHtml}
     <div class="read-deeper">
       <button onclick="switchResultsLens('consumer');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CONSUMER</button>
       <button onclick="switchResultsLens('market');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · MARKET</button>
