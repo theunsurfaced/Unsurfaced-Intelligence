@@ -115,6 +115,7 @@ export default {
       if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/media/')) return serveMedia(path, env, origin, request);
       if (path === '/stripe/webhook' && request.method === 'POST') return stripeWebhook(request, env, origin);
       if (path.startsWith('/arcade/') && !path.startsWith('/arcade/admin/')) return arcadeRouter(path, request, env, origin);
+      if (path.startsWith('/api/weekly/')) return handleWeekly(request, url, env, origin, { json: (o, st) => json(o, st, origin, env) }); // SEAM:WEEKLY_STAND
       if (path === '/api/edition/today') return editionToday(env, origin);
       if (path === '/api/edition/archive') return editionArchive(env, origin);
       if (path === '/api/edition') return editionByIssue(url, env, origin);
@@ -8000,4 +8001,359 @@ async function publishEdition(env, today, existing, leadHeadline, items, mode, s
   logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: items.length, mode });
   await buildStudioManifest(env, today, issueNo, items).catch(() => {});
   return { ok: true, date: today, issue_no: issueNo, items: items.length, mode, spine };
+}
+
+/* SEAM:WEEKLY_STAND
+ * The Weekly Read stand at /weekly.
+ *   GET  /api/weekly/issues          published issues, newest first (the shelf)
+ *   POST /api/weekly/claim           the cover price: intake form + issue_no -> signed download url
+ *   POST /api/weekly/signin          an account holder: email + password + issue_no -> signed download url
+ *                                    (credentials are checked against Supabase Auth on every download;
+ *                                     the session it opens is closed at once; no token reaches the page)
+ *   GET  /api/weekly/file?n&e&c&s    verifies the signature (issue, expiry, claim id), streams the PDF from R2
+ *
+ * Lives at the end of index.js (the gate checks worker/src/*.js per file for spenders, so a
+ * second file would fail it); every name here carries a wk prefix so nothing collides.
+ * Called from one dispatch line. deps.json(obj, status) is the worker's own CORS-aware JSON responder. Supabase is reached with the service role; the tables carry
+ * RLS with no anon policies, so nothing here is reachable without this worker.
+ *
+ * Abuse controls: honeypot on both doors, Turnstile when TURNSTILE_SECRET is set, and a
+ * per-IP / per-email / per-link throttle backed by KV when the worker has a KV binding
+ * (falls back to an in-isolate counter, which still slows a single-connection attacker).
+ *
+ * Env names (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, MEDIA, RATE_LIMIT) are filled in by
+ * 30_patch_worker.py from the live wrangler.toml and index.js, never typed by hand.
+ */
+
+const WK_LINK_TTL_SECONDS = 600;
+const WK_MAX_FIELD = 120;
+const WK_SITE_ORIGIN_DEFAULT = 'https://unsurfaced-intelligence.com';
+const WK_ROLES = ['Strategist', 'Marketer', 'Researcher', 'Creative', 'Founder or executive', 'Student', 'Other'];
+const WK_FRAME_GROUPS = ['Style', 'Sound and screen', 'Making', 'Systems', 'Living', 'People'];
+const WK_ISSUE_SELECT = 'issue_no,week_start,week_end,lead,page_count,byte_size,published_at';
+const WK_LIMITS = {
+  signin_ip: { limit: 10, ttl: 600 },   // password attempts per IP per 10 minutes
+  signin_email: { limit: 6, ttl: 600 }, // password attempts per email per 10 minutes
+  claim_ip: { limit: 20, ttl: 600 },    // form intakes per IP per 10 minutes
+  file_link: { limit: 6, ttl: WK_LINK_TTL_SECONDS }, // downloads per signed link
+};
+
+async function handleWeekly(request, url, env, origin, deps) {
+  const json = (deps && typeof deps.json === 'function') ? deps.json : wkPlainJson(origin);
+  const path = url.pathname;
+  try {
+    // Preflight for the JSON POSTs, in case the worker's own OPTIONS handling sits after the routes.
+    if (request.method === 'OPTIONS') return json({ ok: true }, 200);
+    if (path === '/api/weekly/issues' && request.method === 'GET') return await wkIssues(env, json);
+    if (path === '/api/weekly/claim' && request.method === 'POST') return await wkClaim(request, env, json);
+    if (path === '/api/weekly/signin' && request.method === 'POST') return await wkSignin(request, env, json);
+    if (path === '/api/weekly/file' && request.method === 'GET') return await wkFile(request, url, env, json);
+    return json({ ok: false, error: 'not found' }, 404);
+  } catch (err) {
+    // A call must never fail loudly. Log the detail for wrangler tail, answer with a name only.
+    console.error('weekly: unhandled', path, String(err && err.stack || err));
+    return json({ ok: false, error: 'stand unavailable' }, 503);
+  }
+}
+
+/* The shelf. Published only; drafts never leak. Cached a minute at the edge. */
+async function wkIssues(env, json) {
+  const rows = await wkSbGet(env, `weekly_issues?status=eq.published&order=issue_no.desc&limit=260&select=${WK_ISSUE_SELECT}`);
+  const res = json({ ok: true, issues: Array.isArray(rows) ? rows : [] }, 200);
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'public, max-age=60');
+  return out;
+}
+
+/* The cover price. */
+async function wkClaim(request, env, json) {
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ ok: false, error: 'bad json' }, 400); }
+  if (!body || typeof body !== 'object') return json({ ok: false, error: 'bad json' }, 400);
+
+  // Honeypot: real readers never see the field, bots fill it.
+  if (wkStr(body.website)) return json({ ok: true, is_returning: false, url: null }, 200);
+
+  const email = wkStr(body.email).toLowerCase();
+  const first = wkStr(body.first_name);
+  const last = wkStr(body.last_name);
+  const company = wkStr(body.company);
+  const role = WK_ROLES.includes(wkStr(body.role)) ? wkStr(body.role) : '';
+  const frameGroup = WK_FRAME_GROUPS.includes(wkStr(body.frame_group)) ? wkStr(body.frame_group) : '';
+  const optIn = body.opt_in === true;
+  const issueNo = Number.parseInt(body.issue_no, 10);
+
+  const missing = [];
+  if (!first) missing.push('first_name');
+  if (!last) missing.push('last_name');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) missing.push('email');
+  if (!Number.isInteger(issueNo) || issueNo < 1) missing.push('issue_no');
+  if (missing.length) return json({ ok: false, error: 'missing', fields: missing }, 422);
+
+  const ipHash = await wkIpHashOf(request, env);
+  if (await wkOverLimit(env, `claim:ip:${ipHash}`, WK_LIMITS.claim_ip)) return json({ ok: false, error: 'slow down' }, 429);
+
+  if (env.TURNSTILE_SECRET) {
+    const passed = await wkVerifyTurnstile(env.TURNSTILE_SECRET, wkStr(body.turnstile), request.headers.get('CF-Connecting-IP'));
+    if (!passed) return json({ ok: false, error: 'verification failed' }, 403);
+  }
+
+  return wkFinishClaim(request, env, json, {
+    email, first, last, company, role, frameGroup, optIn, issueNo, userId: null, via: 'form', ipHash,
+  });
+}
+
+/* Sign in to download. Credentials go to Supabase Auth for this one request; the session that
+ * opens is closed straight after; the page never receives a token, so the next download asks again. */
+async function wkSignin(request, env, json) {
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ ok: false, error: 'bad json' }, 400); }
+  if (!body || typeof body !== 'object') return json({ ok: false, error: 'bad json' }, 400);
+  if (wkStr(body.website)) return json({ ok: true, is_returning: false, url: null }, 200);
+
+  const email = wkStr(body.email).toLowerCase();
+  const password = typeof body.password === 'string' ? body.password.slice(0, 256) : '';
+  const issueNo = Number.parseInt(body.issue_no, 10);
+  const missing = [];
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) missing.push('email');
+  if (!password) missing.push('password');
+  if (!Number.isInteger(issueNo) || issueNo < 1) missing.push('issue_no');
+  if (missing.length) return json({ ok: false, error: 'missing', fields: missing }, 422);
+
+  const ipHash = await wkIpHashOf(request, env);
+  const emailHash = (await wkHmacHex(wkSigningKey(env), `em:${email}`)).slice(0, 32);
+  if (await wkOverLimit(env, `signin:ip:${ipHash}`, WK_LIMITS.signin_ip) || await wkOverLimit(env, `signin:email:${emailHash}`, WK_LIMITS.signin_email)) {
+    return json({ ok: false, error: 'slow down' }, 429);
+  }
+
+  if (env.TURNSTILE_SECRET) {
+    const passed = await wkVerifyTurnstile(env.TURNSTILE_SECRET, wkStr(body.turnstile), request.headers.get('CF-Connecting-IP'));
+    if (!passed) return json({ ok: false, error: 'verification failed' }, 403);
+  }
+
+  const grant = await wkPasswordGrant(env, email, password);
+  if (grant === 'busy') return json({ ok: false, error: 'sign-in busy' }, 503);
+  if (!grant) return json({ ok: false, error: 'sign-in failed' }, 401);
+  const user = grant.user;
+
+  const meta = (user.user_metadata && typeof user.user_metadata === 'object') ? user.user_metadata : {};
+  const full = wkStr(meta.full_name || meta.name || '');
+  const first = wkStr(meta.first_name || (full ? full.split(/\s+/)[0] : ''));
+  const last = wkStr(meta.last_name || (full && full.includes(' ') ? full.slice(full.indexOf(' ') + 1) : ''));
+  const company = wkStr(meta.company || meta.org || meta.organization || '');
+
+  return wkFinishClaim(request, env, json, {
+    email: wkStr(user.email || email).toLowerCase(),
+    first, last, company, role: '', frameGroup: '', optIn: null,
+    issueNo, userId: user.id || null, via: 'signin', ipHash,
+    name: first || full || '',
+  });
+}
+
+/* Shared tail: record the claim through the rpc, sign the link. */
+async function wkFinishClaim(request, env, json, c) {
+  const res = await wkSbFetch(env, 'rpc/weekly_claim', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_email: c.email,
+      p_first: c.first,
+      p_last: c.last,
+      p_company: c.company || null,
+      p_role: c.role || null,
+      p_frame_group: c.frameGroup || null,
+      p_opt_in: c.optIn,
+      p_issue_no: c.issueNo,
+      p_ua: (request.headers.get('User-Agent') || '').slice(0, 300),
+      p_ip_hash: c.ipHash,
+      p_referer: (request.headers.get('Referer') || '').slice(0, 300),
+      p_user_id: c.userId,
+      p_via: c.via,
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text();
+    if (res.status === 404 || /not published/i.test(detail)) return json({ ok: false, error: 'issue not on the stand' }, 404);
+    console.error('weekly: rpc weekly_claim', res.status, detail.slice(0, 400));
+    return json({ ok: false, error: 'intake failed' }, 502);
+  }
+
+  const result = await res.json();
+  const claimId = String(result && result.claim_id || '');
+  if (!/^[0-9a-f-]{36}$/.test(claimId)) { console.error('weekly: rpc returned no claim_id', JSON.stringify(result).slice(0, 200)); return json({ ok: false, error: 'intake failed' }, 502); }
+  const expires = Math.floor(Date.now() / 1000) + WK_LINK_TTL_SECONDS;
+  // One link per claim: the signature covers issue, expiry and the claim id, so two readers never share a link.
+  const sig = await wkHmacHex(wkSigningKey(env), `${c.issueNo}.${expires}.${claimId}`);
+  const fileUrl = `/api/weekly/file?n=${c.issueNo}&e=${expires}&c=${claimId}&s=${sig}`;
+  console.log(JSON.stringify({ weekly: 'claim', via: c.via, issue_no: c.issueNo, returning: !!(result && result.is_returning), claim_id: result && result.claim_id }));
+
+  return json({
+    ok: true,
+    via: c.via,
+    is_returning: !!(result && result.is_returning),
+    claim_count: result && result.claim_count,
+    claim_id: result && result.claim_id,
+    issue_no: c.issueNo,
+    name: c.name || undefined,
+    url: fileUrl,
+    expires,
+  }, 200);
+}
+
+/* The download. Signature and clock checked before R2 is touched. A bad or stale link sends the
+ * reader back to the stand with a reason, never to a JSON error on the API host. */
+async function wkFile(request, url, env, json) {
+  const n = Number.parseInt(url.searchParams.get('n') || '', 10);
+  const e = Number.parseInt(url.searchParams.get('e') || '', 10);
+  const c = (url.searchParams.get('c') || '').toLowerCase();
+  const s = (url.searchParams.get('s') || '').toLowerCase();
+  const back = (reason) => wkBackToStand(env, Number.isInteger(n) ? n : null, reason);
+
+  if (!Number.isInteger(n) || !Number.isInteger(e) || !/^[0-9a-f-]{36}$/.test(c) || !/^[0-9a-f]{64}$/.test(s)) return back('bad');
+  if (e < Math.floor(Date.now() / 1000)) return back('expired');
+  const expect = await wkHmacHex(wkSigningKey(env), `${n}.${e}.${c}`);
+  if (!wkTimingSafeEqual(expect, s)) return back('bad');
+  if (await wkOverLimit(env, `file:${c}`, WK_LIMITS.file_link)) return back('expired');
+
+  const rows = await wkSbGet(env, `weekly_issues?issue_no=eq.${n}&status=eq.published&select=issue_no,r2_key&limit=1`);
+  const issue = Array.isArray(rows) && rows[0];
+  if (!issue || !issue.r2_key) return back('missing');
+
+  const obj = await env.MEDIA.get(issue.r2_key);
+  if (!obj) { console.error('weekly: r2 object missing', issue.r2_key); return back('missing'); }
+
+  const label = String(n).padStart(3, '0');
+  const headers = new Headers();
+  headers.set('Content-Type', 'application/pdf');
+  headers.set('Content-Disposition', `attachment; filename="Unsurfaced-Weekly-Read-Issue-${label}.pdf"`);
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('X-Robots-Tag', 'noindex');
+  if (obj.size) headers.set('Content-Length', String(obj.size));
+  if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
+  return new Response(obj.body, { status: 200, headers });
+}
+
+function wkBackToStand(env, issueNo, reason) {
+  const site = String(env.WEEKLY_SITE_ORIGIN || env.APP_URL || WK_SITE_ORIGIN_DEFAULT).replace(/\/+$/, '');
+  const q = issueNo ? `?issue=${issueNo}&link=${reason}` : `?link=${reason}`;
+  return Response.redirect(`${site}/weekly/${q}#gate`, 302);
+}
+
+/* ---- helpers ---- */
+
+function wkStr(v) { return (typeof v === 'string' ? v : '').trim().slice(0, WK_MAX_FIELD); }
+
+function wkSigningKey(env) {
+  // A dedicated secret when set; otherwise the service key, which is already secret to this worker.
+  return env.WEEKLY_SIGNING_SECRET || env.SUPABASE_SERVICE_ROLE_KEY || 'unsurfaced-weekly-stand';
+}
+
+async function wkIpHashOf(request, env) {
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  return ip ? (await wkHmacHex(wkSigningKey(env), `ip:${ip}`)).slice(0, 32) : 'noip';
+}
+
+async function wkHmacHex(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function wkTimingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/* Throttle. KV when the worker has it (counts survive across isolates and colos, eventually
+ * consistent, which is fine for a rate limit); otherwise a per-isolate map. Returns true when
+ * this call is over the limit; the call itself is counted. */
+const WK_MEM_COUNTS = new Map();
+async function wkOverLimit(env, key, rule) {
+  const kv = env.RATE_LIMIT;
+  const k = `wk:rl:${key}`;
+  const now = Math.floor(Date.now() / 1000);
+  if (kv && typeof kv.get === 'function' && typeof kv.put === 'function') {
+    const raw = await kv.get(k);
+    const n = raw ? Number.parseInt(raw, 10) || 0 : 0;
+    if (n >= rule.limit) return true;
+    await kv.put(k, String(n + 1), { expirationTtl: Math.max(60, rule.ttl) });
+    return false;
+  }
+  const cur = WK_MEM_COUNTS.get(k);
+  if (cur && cur.until > now) {
+    if (cur.n >= rule.limit) return true;
+    cur.n += 1;
+    return false;
+  }
+  WK_MEM_COUNTS.set(k, { n: 1, until: now + rule.ttl });
+  if (WK_MEM_COUNTS.size > 5000) WK_MEM_COUNTS.clear();
+  return false;
+}
+
+async function wkVerifyTurnstile(secret, token, ip) {
+  if (!token) return false;
+  const form = new FormData();
+  form.set('secret', secret);
+  form.set('response', token);
+  if (ip) form.set('remoteip', ip);
+  const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form });
+  if (!r.ok) return false;
+  const out = await r.json();
+  return out && out.success === true;
+}
+
+/* Supabase Auth password grant, then logout of the session it opened.
+ * Returns { user } on success, null on a refused pair, 'busy' when Auth itself is unavailable or
+ * rate limiting (so the page can say so instead of blaming the password). */
+async function wkPasswordGrant(env, email, password) {
+  const base = String(env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const apikey = env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+  const headers = { apikey, Authorization: `Bearer ${apikey}`, 'Content-Type': 'application/json' };
+  const r = await fetch(`${base}/auth/v1/token?grant_type=password`, {
+    method: 'POST', headers, body: JSON.stringify({ email, password }),
+  });
+  if (r.status === 429 || r.status >= 500) { console.error('weekly: auth unavailable', r.status); return 'busy'; }
+  if (!r.ok) return null;
+  const out = await r.json();
+  if (!(out && out.user && out.user.id)) return null;
+  if (out.access_token) {
+    try {
+      await fetch(`${base}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey, Authorization: `Bearer ${out.access_token}` } });
+    } catch (err) { console.error('weekly: logout after grant', String(err && err.message || err)); }
+  }
+  return { user: out.user };
+}
+
+function wkSbHeaders(env, extra) {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  const h = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  return Object.assign(h, extra || {});
+}
+
+async function wkSbFetch(env, restPath, init) {
+  const base = String(env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const opts = Object.assign({}, init || {});
+  opts.headers = wkSbHeaders(env, opts.headers);
+  return fetch(`${base}/rest/v1/${restPath}`, opts);
+}
+
+async function wkSbGet(env, restPath) {
+  const r = await wkSbFetch(env, restPath, { method: 'GET' });
+  if (!r.ok) throw new Error(`supabase ${r.status} on ${restPath.split('?')[0]}`);
+  return r.json();
+}
+
+function wkPlainJson(origin) {
+  return (obj, status) => new Response(JSON.stringify(obj), {
+    status: status || 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    },
+  });
 }

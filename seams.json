@@ -23,7 +23,7 @@
   },
   "SEAM:ACTIVITY_LOG": {
    "file": "worker/src/index.js",
-   "purpose": "logEvent() \u2014 every endpoint records activity (0007)"
+   "purpose": "logEvent() — every endpoint records activity (0007)"
   },
   "SEAM:MODEL_POOL": {
    "file": "worker/src/index.js",
@@ -37,7 +37,7 @@
   "SEAM:LEADERBOARD@hub": {
    "file": "arcade/index.html",
    "tag": "SEAM:LEADERBOARD",
-   "purpose": "public tabbed board (RPS/CLAW/POP) \u2014 anonymous reads of the spine"
+   "purpose": "public tabbed board (RPS/CLAW/POP) — anonymous reads of the spine"
   },
   "SEAM:PREVIEW@worker": {
    "file": "worker/src/index.js",
@@ -161,7 +161,7 @@
   },
   "SEAM:EDITION_WATCHDOG": {
    "file": "worker/src/index.js",
-   "purpose": "the alarm that did not exist: 06:00 ground-truth check on the edition row, not on a return value; DARK when nothing reached status=published or a row stalled at building, LEGACY when no item carried a signal_id and the fallback carried the paper; mails over Resend to ALERT_EMAIL and speaks even when it cannot read the lake \u2014 health that only an admin JWT can see is how DAILY went dark for seven days"
+   "purpose": "the alarm that did not exist: 06:00 ground-truth check on the edition row, not on a return value; DARK when nothing reached status=published or a row stalled at building, LEGACY when no item carried a signal_id and the fallback carried the paper; mails over Resend to ALERT_EMAIL and speaks even when it cannot read the lake — health that only an admin JWT can see is how DAILY went dark for seven days"
   },
   "SEAM:PROMOTE": {
    "file": "worker/src/index.js",
@@ -170,15 +170,15 @@
   "SEAM:VOICE@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:VOICE",
-   "purpose": "the one measured thing on the search surface: a voice strip above the result cards leading with how much of a brand's name on social is actually the brand \u2014 kool-aid reads 97 mentions, ~12 about the beverage, 87% somebody else's idiom. Everything else on that page was position: confidence was the array index and the card bar was width 50+i*8, both now gone. Fails silent \u2014 no provider, no session, no posts and the strip does not draw"
+   "purpose": "the one measured thing on the search surface: a voice strip above the result cards leading with how much of a brand's name on social is actually the brand — kool-aid reads 97 mentions, ~12 about the beverage, 87% somebody else's idiom. Everything else on that page was position: confidence was the array index and the card bar was width 50+i*8, both now gone. Fails silent — no provider, no session, no posts and the strip does not draw"
   },
   "SEAM:VOICE": {
    "file": "worker/src/index.js",
-   "purpose": "the fourth rail \u2014 what people actually said. Consumer voice is AGGREGATE, not signal: one post is noise, a thousand is a measurement, so this never writes rows to the lake (FILTER does 12 a slice and hashInput cannot dedupe a repost) and returns ONE row per entity per window \u2014 mentions, authors, engagement, trend vs our own KV history, themes and sentiment from one batched t1 call on a sample. Bluesky because in 2026 no free door remains: Reddit's unauthenticated .json 403s since May 2026 and its commercial floor is $12k/year, X is $200/mo minimum, TikTok and Instagram have no honest door. searchPosts is not public despite the docs, so a session is required \u2014 free, KV-cached 90m. Counts are arithmetic; only the reading goes to a model"
+   "purpose": "the fourth rail — what people actually said. Consumer voice is AGGREGATE, not signal: one post is noise, a thousand is a measurement, so this never writes rows to the lake (FILTER does 12 a slice and hashInput cannot dedupe a repost) and returns ONE row per entity per window — mentions, authors, engagement, trend vs our own KV history, themes and sentiment from one batched t1 call on a sample. Bluesky because in 2026 no free door remains: Reddit's unauthenticated .json 403s since May 2026 and its commercial floor is $12k/year, X is $200/mo minimum, TikTok and Instagram have no honest door. searchPosts is not public despite the docs, so a session is required — free, KV-cached 90m. Counts are arithmetic; only the reading goes to a model"
   },
   "SEAM:PROPOSE": {
    "file": "worker/src/index.js",
-   "purpose": "the lake writes its own themes: recurring clusters (weeks touched, span, breadth, source count, paper provenance) go to t3 for a thesis in the DAILY voice \u2014 one batched call, KV-cached 24h; stat and bar are computed from recurrenceRollup and never written by the model, every card declares provenance:lake, and nothing publishes itself. SEAM:PROMOTE run the other direction: there a human hands the lake a signal, here the lake hands a human a theme"
+   "purpose": "the lake writes its own themes: recurring clusters (weeks touched, span, breadth, source count, paper provenance) go to t3 for a thesis in the DAILY voice — one batched call, KV-cached 24h; stat and bar are computed from recurrenceRollup and never written by the model, every card declares provenance:lake, and nothing publishes itself. SEAM:PROMOTE run the other direction: there a human hands the lake a signal, here the lake hands a human a theme"
   },
   "SEAM:RECURRENCE": {
    "file": "worker/src/index.js",
@@ -187,7 +187,7 @@
   "SEAM:TELEMETRY@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:TELEMETRY",
-   "purpose": "the featured surface drinks from its own lake: every curated card already carried the exact query it hands OpenAlex, so it hands the same string to /excavate/lake and gains a second evidence rail \u2014 public academic depth plus what Unsurfaced actually captured. The bar was `bar:84`, a literal the live path returned unchanged; it is now the mean momentum of the matching signals over the rubric's own published 0-30 ceiling, and no lake evidence draws no bar at all. Optional and silent: any failure leaves the public lenses untouched"
+   "purpose": "the featured surface drinks from its own lake: every curated card already carried the exact query it hands OpenAlex, so it hands the same string to /excavate/lake and gains a second evidence rail — public academic depth plus what Unsurfaced actually captured. The bar was `bar:84`, a literal the live path returned unchanged; it is now the mean momentum of the matching signals over the rubric's own published 0-30 ceiling, and no lake evidence draws no bar at all. Optional and silent: any failure leaves the public lenses untouched"
   },
   "SEAM:TELEMETRY": {
    "file": "daily/index.html",
@@ -200,65 +200,65 @@
   "SEAM:APPROVAL@worker": {
    "file": "worker/src/index.js",
    "tag": "SEAM:APPROVAL",
-   "purpose": "the /whoami door reports approval, not just role \u2014 one read of app_user returns role and status, approved = status approved or admin, so any consumer gates on the same DB truth is_approved() enforces in RLS"
+   "purpose": "the /whoami door reports approval, not just role — one read of app_user returns role and status, approved = status approved or admin, so any consumer gates on the same DB truth is_approved() enforces in RLS"
   },
   "SEAM:APPROVAL@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:APPROVAL",
-   "purpose": "the gate before the platform \u2014 _authShowApp() checks is_approved() (same RPC shape as is_admin) and routes an unapproved profile to the pending screen instead of the hub; session stays alive so approval needs no second sign-up, and an rpc error fails closed to pending"
+   "purpose": "the gate before the platform — _authShowApp() checks is_approved() (same RPC shape as is_admin) and routes an unapproved profile to the pending screen instead of the hub; session stays alive so approval needs no second sign-up, and an rpc error fails closed to pending"
   },
   "SEAM:STUDY_ADMIN": {
    "file": "intelligence/index.html",
-   "purpose": "admin edits any study: ownership never rewritten (row drops partner_id on edit), invites survive an editor that never hydrated them, reward locked once responses exist \u2014 the promise made to responders does not move"
+   "purpose": "admin edits any study: ownership never rewritten (row drops partner_id on edit), invites survive an editor that never hydrated them, reward locked once responses exist — the promise made to responders does not move"
   },
   "SEAM:STUDY_DELETE": {
    "file": "intelligence/index.html",
-   "purpose": "two-tier teardown behind a confirm gate: no responses = hard delete (children cascade), responses = archive \u2014 the rows are receipts and receipts survive; RLS doors opened in 0016"
+   "purpose": "two-tier teardown behind a confirm gate: no responses = hard delete (children cascade), responses = archive — the rows are receipts and receipts survive; RLS doors opened in 0016"
   },
   "SEAM:FREE_STUDY@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:FREE_STUDY",
-   "purpose": "$0 studies are first-class: the pay field round-trips zero (was silently rewritten to $10), fund block and pay buttons never draw, boards read FREE, done screen makes no promise \u2014 free means no payment object, not a $0 one"
+   "purpose": "$0 studies are first-class: the pay field round-trips zero (was silently rewritten to $10), fund block and pay buttons never draw, boards read FREE, done screen makes no promise — free means no payment object, not a $0 one"
   },
   "SEAM:FREE_STUDY": {
    "file": "worker/src/index.js",
-   "purpose": "the invite email tells the truth about zero: pay_cents rides the study read and a $0 study invites volunteers \u2014 subject and body drop the paid claim; pay/fund routes' amount<=0 rejections become backstops, not walls"
+   "purpose": "the invite email tells the truth about zero: pay_cents rides the study read and a $0 study invites volunteers — subject and body drop the paid claim; pay/fund routes' amount<=0 rejections become backstops, not walls"
   },
   "SEAM:INTRO@daily": {
    "file": "daily/index.html",
    "tag": "SEAM:INTRO",
-   "purpose": "the masthead reveal \u2014 type-motion only: Syne, the rule, the tag; no 3D, no video, the 5MB hand stays on the landing page where it earns its weight. Full sequence on the session's first open (sessionStorage), a short breathe after; reduced motion gets the lockup instantly"
+   "purpose": "the masthead reveal — type-motion only: Syne, the rule, the tag; no 3D, no video, the 5MB hand stays on the landing page where it earns its weight. Full sequence on the session's first open (sessionStorage), a short breathe after; reduced motion gets the lockup instantly"
   },
   "SEAM:GUEST_LINK": {
    "file": "worker/src/index.js",
-   "purpose": "the public response door: link possession is the credential (the invite emails' own law); /mine/study reads live studies safely, /mine/respond takes free-study answers with email + ZIP through service role \u2014 the response_bi trigger nulls responder_id and skips the profile block so GUEST-#### and the ZIP segment survive; paid studies hard-reject here, one response per email per study by index, per-IP rate door; guest email never leaves the row \u2014 mine_study_responses does not select it"
+   "purpose": "the public response door: link possession is the credential (the invite emails' own law); /mine/study reads live studies safely, /mine/respond takes free-study answers with email + ZIP through service role — the response_bi trigger nulls responder_id and skips the profile block so GUEST-#### and the ZIP segment survive; paid studies hard-reject here, one response per email per study by index, per-IP rate door; guest email never leaves the row — mine_study_responses does not select it"
   },
   "SEAM:GUEST_LINK@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:GUEST_LINK",
-   "purpose": "the link and the room: Copy link on every live study's detail (pay-aware caption), and a boot hook riding the existing ?study= consumer \u2014 signed-out + free opens the guest overlay (media on the /media/ rail, questions, email + ZIP + consent), signed-in or paid falls through to the pending-study flow and the Stripe rail untouched"
+   "purpose": "the link and the room: Copy link on every live study's detail (pay-aware caption), and a boot hook riding the existing ?study= consumer — signed-out + free opens the guest overlay (media on the /media/ rail, questions, email + ZIP + consent), signed-in or paid falls through to the pending-study flow and the Stripe rail untouched"
   },
   "SEAM:MINE_SCALE": {
    "file": "worker/src/index.js",
-   "purpose": "the competitive pass: screeners enforced where the pass keys live (guests never see them), milestone mail at 1/10/25/50 and at target via the auth admin door, target_n auto-close in one service-role place, and /s/:id \u2014 the share link unfurls as the study, not a homepage"
+   "purpose": "the competitive pass: screeners enforced where the pass keys live (guests never see them), milestone mail at 1/10/25/50 and at target via the auth admin door, target_n auto-close in one service-role place, and /s/:id — the share link unfurls as the study, not a homepage"
   },
   "SEAM:MINE_SCALE@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:MINE_SCALE",
-   "purpose": "builder grows screeners (qualifying answers) and a response target with live progress; a disqualifying answer is a polite exit, not a stored row; every finishing guest meets the panel loop \u2014 join with the email that already answered; The Read prints to a branded report a partner can forward"
+   "purpose": "builder grows screeners (qualifying answers) and a response target with live progress; a disqualifying answer is a polite exit, not a stored row; every finishing guest meets the panel loop — join with the email that already answered; The Read prints to a branded report a partner can forward"
   },
   "SEAM:MINE_LAKE": {
    "file": "worker/src/index.js",
-   "purpose": "primary research becomes signal: one digest row per study (VOICE law \u2014 aggregate, never per-post noise) enters through the PROMOTE machinery at raw, embedded on the next drain slice, tier 1 because nothing outranks what real people actually said; verbatims ride as anon labels only \u2014 no emails, ZIPs, or profile fields ever leave the response table"
+   "purpose": "primary research becomes signal: one digest row per study (VOICE law — aggregate, never per-post noise) enters through the PROMOTE machinery at raw, embedded on the next drain slice, tier 1 because nothing outranks what real people actually said; verbatims ride as anon labels only — no emails, ZIPs, or profile fields ever leave the response table"
   },
   "SEAM:MINE_LAKE@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:MINE_LAKE",
-   "purpose": "one click on the study detail sends the read and verbatims into the lake \u2014 after the next slice, EXCAVATE answers with what the culture is saying and what our own respondents told us in the same result set"
+   "purpose": "one click on the study detail sends the read and verbatims into the lake — after the next slice, EXCAVATE answers with what the culture is saying and what our own respondents told us in the same result set"
   },
   "SEAM:LIVE_EDIT": {
    "file": "intelligence/index.html",
-   "purpose": "clients optimize mid-flight: partners edit live studies \u2014 adds and wording apply to new responders while collected answers keep their receipts; question ids are stable (PATCH in place, never delete-all-reinsert, which minted new ids and orphaned every answer), types and removals lock once responses exist, and a zero-row PATCH surfaces instead of no-oping (RLS door: 0019)"
+   "purpose": "clients optimize mid-flight: partners edit live studies — adds and wording apply to new responders while collected answers keep their receipts; question ids are stable (PATCH in place, never delete-all-reinsert, which minted new ids and orphaned every answer), types and removals lock once responses exist, and a zero-row PATCH surfaces instead of no-oping (RLS door: 0019)"
   },
   "SEAM:FIELD_STATE": {
    "file": "worker/src/index.js",
@@ -278,7 +278,7 @@
   },
   "SEAM:FIELD_RAIL": {
    "file": "worker/src/index.js",
-   "purpose": "tokenized invites \u2014 the paid fielding rail; mint/list/revoke, token study door, token respond burns the token; panel of 3 made this the only way to field"
+   "purpose": "tokenized invites — the paid fielding rail; mint/list/revoke, token study door, token respond burns the token; panel of 3 made this the only way to field"
   },
   "SEAM:FIELD_RAIL@arrival": {
    "file": "intelligence/index.html",
@@ -287,7 +287,7 @@
   },
   "SEAM:RESPONSE_QUALITY": {
    "file": "worker/src/index.js",
-   "purpose": "pure qualityScan \u2014 speeder, straightline, thin_open, attention_fail, incomplete; flags prompt review, only admin 'rejected' leaves the read (0021)"
+   "purpose": "pure qualityScan — speeder, straightline, thin_open, attention_fail, incomplete; flags prompt review, only admin 'rejected' leaves the read (0021)"
   },
   "SEAM:CLIENT_LENS": {
    "file": "worker/src/index.js",
@@ -301,7 +301,7 @@
   "SEAM:RESPONSE_QUALITY@arrival": {
    "file": "intelligence/index.html",
    "tag": "SEAM:RESPONSE_QUALITY",
-   "purpose": "review lane on response cards \u2014 flags visible, admin clean/reject verdicts and the withdrawal delete, every write asserted by returned row count (RLS silent no-op law)"
+   "purpose": "review lane on response cards — flags visible, admin clean/reject verdicts and the withdrawal delete, every write asserted by returned row count (RLS silent no-op law)"
   },
   "SEAM:CAM_CORE": {
    "file": "arcade/rps/index.html",
@@ -310,7 +310,7 @@
   "SEAM:CAM_CORE@pop": {
    "file": "arcade/pop-a-shot/index.html",
    "tag": "SEAM:CAM_CORE",
-   "purpose": "same stack; shooting physics untouched \u2014 rvfc gate wraps the existing 30Hz throttle as fallback"
+   "purpose": "same stack; shooting physics untouched — rvfc gate wraps the existing 30Hz throttle as fallback"
   },
   "SEAM:CAM_CORE@thumb": {
    "file": "arcade/thumb/index.html",
@@ -319,7 +319,7 @@
   },
   "SEAM:STIMULUS": {
    "file": "intelligence/index.html",
-   "purpose": "assets become stimuli: universal renderer (_assetKind/_assetHtml) \u2014 image/video/audio/html by filename; HTML renders live + clickable in iframe sandbox=allow-scripts allow-forms allow-popups, never allow-same-origin; per-question attach in the builder, pointers survive save/persist/load (0022)"
+   "purpose": "assets become stimuli: universal renderer (_assetKind/_assetHtml) — image/video/audio/html by filename; HTML renders live + clickable in iframe sandbox=allow-scripts allow-forms allow-popups, never allow-same-origin; per-question attach in the builder, pointers survive save/persist/load (0022)"
   },
   "SEAM:STIMULUS@worker": {
    "file": "worker/src/index.js",
@@ -342,25 +342,25 @@
   "SEAM:EVOLUTION_1@worker": {
    "file": "worker/src/index.js",
    "tag": "SEAM:EVOLUTION_1",
-   "purpose": "consent version 2026-08-behavior (new words, new version); milestone mail reaches granted clients at exactly the floor crossing and the target \u2014 the two moments the results room is most worth opening"
+   "purpose": "consent version 2026-08-behavior (new words, new version); milestone mail reaches granted clients at exactly the floor crossing and the target — the two moments the results room is most worth opening"
   },
   "SEAM:INSIGHT_COMPILER": {
    "file": "worker/src/index.js",
-   "purpose": "synthesize report mode: THE READ two-liner (reframe then move), per-insight implication, anti-metadata law in the prompt (never restate counts as findings, name disagreements), EARNED confidence from evidence density per category (3+ High / 2 Medium / 1 Low) \u2014 never hardcoded, never the model's self-grade"
+   "purpose": "synthesize report mode: THE READ two-liner (reframe then move), per-insight implication, anti-metadata law in the prompt (never restate counts as findings, name disagreements), EARNED confidence from evidence density per category (3+ High / 2 Medium / 1 Low) — never hardcoded, never the model's self-grade"
   },
   "SEAM:INSIGHT_COMPILER@arrival": {
    "file": "intelligence/index.html",
    "tag": "SEAM:INSIGHT_COMPILER",
-   "purpose": "reports complete on DATA not animation (bar parks at 94 until corpus fetched AND compiled); corpus flows through /excavate/synthesize; honest fallback ships as RETRIEVAL SUMMARY with confidence demoted to Unverified; padding loop dead (empty lens says so once at Low); Signal-Signal doubling dead; truth chips \u2014 audience panel and brand trend lines say MODELED until EVO-3 computes them from the lake"
+   "purpose": "reports complete on DATA not animation (bar parks at 94 until corpus fetched AND compiled); corpus flows through /excavate/synthesize; honest fallback ships as RETRIEVAL SUMMARY with confidence demoted to Unverified; padding loop dead (empty lens says so once at Low); Signal-Signal doubling dead; truth chips — audience panel and brand trend lines say MODELED until EVO-3 computes them from the lake"
   },
   "SEAM:MOAT_1": {
    "file": "worker/src/index.js",
-   "purpose": "first computed brand number: /excavate/brand-signal \u2014 pure computeBrandSignal over lake matches (90d mentions, 30d-vs-prior momentum with zero-division sentinel, tier-1 share, leading signals); under 3 real matches (sim>=.3) returns thin:true \u2014 the moat fills honestly or not at all"
+   "purpose": "first computed brand number: /excavate/brand-signal — pure computeBrandSignal over lake matches (90d mentions, 30d-vs-prior momentum with zero-division sentinel, tier-1 share, leading signals); under 3 real matches (sim>=.3) returns thin:true — the moat fills honestly or not at all"
   },
   "SEAM:MOAT_1@arrival": {
    "file": "intelligence/index.html",
    "tag": "SEAM:MOAT_1",
-   "purpose": "LAKE SIGNAL block above the modeled chart on brand dashboards, badged COMPUTED \u2014 not modeled, with its timestamp; thin lake says 'not enough to measure yet'; failures render nothing; both excavateBrand branches fire the load"
+   "purpose": "LAKE SIGNAL block above the modeled chart on brand dashboards, badged COMPUTED — not modeled, with its timestamp; thin lake says 'not enough to measure yet'; failures render nothing; both excavateBrand branches fire the load"
   },
   "SEAM:DASH_READ": {
    "file": "intelligence/index.html",
@@ -368,7 +368,7 @@
   },
   "SEAM:FLIGHT_RECORDER": {
    "file": "intelligence/index.html",
-   "purpose": "the platform reports its own failures: crash bar paints any uncaught error/rejection with message+line, loading screen carries CANCEL (no scroll-locked dead ends), stage beacons + 25s watchdog name a stalled search, 3s SCRIPTS ARMED boot chip whose absence convicts a boot crash \u2014 born from a freeze that gave no testimony"
+   "purpose": "the platform reports its own failures: crash bar paints any uncaught error/rejection with message+line, loading screen carries CANCEL (no scroll-locked dead ends), stage beacons + 25s watchdog name a stalled search, 3s SCRIPTS ARMED boot chip whose absence convicts a boot crash — born from a freeze that gave no testimony"
   },
   "SEAM:LAKE_LOOP": {
    "file": "worker/src/index.js",
@@ -381,19 +381,19 @@
   },
   "SEAM:MOBILE_RAIL": {
    "file": "intelligence/index.html",
-   "purpose": "portrait first-class: the old 700px breakpoint deleted the nav (display:none, no replacement \u2014 the forced-rotate bug); replaced with snap-scroll nav rail, compact ticker, single-column grids (results/ideas/insights/audience/idb quads/sources/actions), breathing dashboard overlay, 40px tap targets, 16px inputs killing iOS zoom-on-focus"
+   "purpose": "portrait first-class: the old 700px breakpoint deleted the nav (display:none, no replacement — the forced-rotate bug); replaced with snap-scroll nav rail, compact ticker, single-column grids (results/ideas/insights/audience/idb quads/sources/actions), breathing dashboard overlay, 40px tap targets, 16px inputs killing iOS zoom-on-focus"
   },
   "SEAM:REAL_STATS": {
    "file": "intelligence/index.html",
-   "purpose": "founder law enforced: every data point is REAL \u2014 all ten invented quantities in the featured pool deleted (2.4x, 3x, 4x, 8.5x, 60%, 22%, 0.71, 12-of-14, 20-to-10, six-second), hooks rewritten as directional claims the compiler corroborates or contradicts with actual evidence; no number renders without lineage"
+   "purpose": "founder law enforced: every data point is REAL — all ten invented quantities in the featured pool deleted (2.4x, 3x, 4x, 8.5x, 60%, 22%, 0.71, 12-of-14, 20-to-10, six-second), hooks rewritten as directional claims the compiler corroborates or contradicts with actual evidence; no number renders without lineage"
   },
   "SEAM:DISSECTION": {
    "file": "intelligence/index.html",
-   "purpose": "Lens 2 dissection closed: staleness label honest (curated pool / enriched Nh ago / live on open), citation counts demoted from headline stat to provenance (evidence: N works / source), Citation Impact reframed as Research signal \u2014 metadata never again wears an insight costume"
+   "purpose": "Lens 2 dissection closed: staleness label honest (curated pool / enriched Nh ago / live on open), citation counts demoted from headline stat to provenance (evidence: N works / source), Citation Impact reframed as Research signal — metadata never again wears an insight costume"
   },
   "SEAM:APERTURE": {
    "file": "worker/src/index.js",
-   "purpose": "cut 1 of the aperture arc: cross-issue memory \u2014 trailing-7-day published stories dedup the compose pool via sameStory (vector or entity law); suppressed count logged, feeds the RECURRENCE strip next; fetch failure degrades to memoryless compose, never blocks an edition"
+   "purpose": "cut 1 of the aperture arc: cross-issue memory — trailing-7-day published stories dedup the compose pool via sameStory (vector or entity law); suppressed count logged, feeds the RECURRENCE strip next; fetch failure degrades to memoryless compose, never blocks an edition"
   },
   "SEAM:DOOR_GATE": {
    "file": "intelligence/index.html",
@@ -418,7 +418,7 @@
   },
   "SEAM:SHARE_SLUG": {
    "file": "worker/src/index.js",
-   "purpose": "branded study permalinks: /s/{key} resolves by UUID or slug (live-only gate unchanged), slugs mint lazily from the title (kebab, diacritic-folded, deduped, capped 60) and never change once set \u2014 permalink law; /mine/ensure-slug authed endpoint (partner-or-admin) mints on demand; lake share cards carry the branded URL (0024)"
+   "purpose": "branded study permalinks: /s/{key} resolves by UUID or slug (live-only gate unchanged), slugs mint lazily from the title (kebab, diacritic-folded, deduped, capped 60) and never change once set — permalink law; /mine/ensure-slug authed endpoint (partner-or-admin) mints on demand; lake share cards carry the branded URL (0024)"
   },
   "SEAM:SHARE_SLUG@arrival": {
    "file": "intelligence/index.html",
@@ -427,7 +427,7 @@
   },
   "SEAM:ANALYSIS_RAIL": {
    "file": "worker/src/index.js",
-   "purpose": "MINE phase 1 vs the industry bar: segment lens (census from the full set, aggregate on the filtered set, floor law applies to the filtered n), top-2-box computed for scales, THE MINE READ \u2014 the compiler judges primary research at last: house two-liner + themes with quotes VERIFIED VERBATIM against real responses (no counts: an estimated count violates the real-stats law; measured counts arrive with embedding clustering v2), KV-cached by n+segment so polling never re-burns AI, failure ships numbers without the read"
+   "purpose": "MINE phase 1 vs the industry bar: segment lens (census from the full set, aggregate on the filtered set, floor law applies to the filtered n), top-2-box computed for scales, THE MINE READ — the compiler judges primary research at last: house two-liner + themes with quotes VERIFIED VERBATIM against real responses (no counts: an estimated count violates the real-stats law; measured counts arrive with embedding clustering v2), KV-cached by n+segment so polling never re-burns AI, failure ships numbers without the read"
   },
   "SEAM:ANALYSIS_RAIL@arrival": {
    "file": "intelligence/index.html",
@@ -436,34 +436,34 @@
   },
   "SEAM:INSTRUMENT": {
    "file": "intelligence/index.html",
-   "purpose": "the question type vocabulary and the math each type earns: adds ab (forced choice), nps (0\u201310 with computed promoters\u2212detractors score), rank (tap-to-order, in-place DOM writes so stimulus iframes never reload mid-response), numeric (mean/median/range, non-numeric excluded from n); scale becomes configurable \u2014 points ride in options, anchor labels in pass_options, empty options renders the original 1\u20135 so every existing question is untouched; worker aggregateResponses branches per type and T2B now reads the scale\u2019s own top two points \u2014 the hardcoded 4+5 was silently wrong for every non-5-point scale, and a 2-point scale reports no top box rather than a half-truth; five touchpoints move together: label registry, builder toggle, both respondent renderers, aggregate, report render"
+   "purpose": "the question type vocabulary and the math each type earns: adds ab (forced choice), nps (0–10 with computed promoters−detractors score), rank (tap-to-order, in-place DOM writes so stimulus iframes never reload mid-response), numeric (mean/median/range, non-numeric excluded from n); scale becomes configurable — points ride in options, anchor labels in pass_options, empty options renders the original 1–5 so every existing question is untouched; worker aggregateResponses branches per type and T2B now reads the scale’s own top two points — the hardcoded 4+5 was silently wrong for every non-5-point scale, and a 2-point scale reports no top box rather than a half-truth; five touchpoints move together: label registry, builder toggle, both respondent renderers, aggregate, report render"
   },
   "SEAM:METHODOLOGY": {
    "file": "intelligence/index.html",
-   "purpose": "the template registry \u2014 fourteen instrument batteries (concept, message, package, ad pretest, landing page, name, tracker, NPS pulse, Van Westendorp, pricing ladder, feature prioritisation, U&A, territory, post-purchase CX) filterable by industry; mineMethodSeed returns fresh objects in the exact shape mineQSave writes so seeded questions are indistinguishable from hand-built and edits never bleed into the registry or a sibling; retires the survey/video/audio chips (vestigial since per-question stimulus) and makes the study-level stimulus slot unconditional for any asset type; every template\u2019s types must exist in SEAM:INSTRUMENT \u2014 proof_methodology.js fails the build otherwise"
+   "purpose": "the template registry — fourteen instrument batteries (concept, message, package, ad pretest, landing page, name, tracker, NPS pulse, Van Westendorp, pricing ladder, feature prioritisation, U&A, territory, post-purchase CX) filterable by industry; mineMethodSeed returns fresh objects in the exact shape mineQSave writes so seeded questions are indistinguishable from hand-built and edits never bleed into the registry or a sibling; retires the survey/video/audio chips (vestigial since per-question stimulus) and makes the study-level stimulus slot unconditional for any asset type; every template’s types must exist in SEAM:INSTRUMENT — proof_methodology.js fails the build otherwise"
   },
   "SEAM:BANNER": {
    "file": "worker/src/index.js",
-   "purpose": "cut any question by any other at READ time \u2014 crossTabBy derives groups from stored answers so it works retroactively on every fielded study with no migration and no write-path edit; twoProp is a two-proportion z-test of each group against its own complement (never the total, which contains the group and understates every difference), tested only when both cells clear the minimum \u2014 an unmarked number is genuinely unremarkable, not merely untested; groups below minimum are named and suppressed, never dropped silently; multi-select banners place a respondent in every group they picked; floor law rides along \u2014 below CLIENT_FLOOR the cut is not computed at all; client renders \u25b2\u25bc at p<.05 under each question with group n visible"
+   "purpose": "cut any question by any other at READ time — crossTabBy derives groups from stored answers so it works retroactively on every fielded study with no migration and no write-path edit; twoProp is a two-proportion z-test of each group against its own complement (never the total, which contains the group and understates every difference), tested only when both cells clear the minimum — an unmarked number is genuinely unremarkable, not merely untested; groups below minimum are named and suppressed, never dropped silently; multi-select banners place a respondent in every group they picked; floor law rides along — below CLIENT_FLOOR the cut is not computed at all; client renders ▲▼ at p<.05 under each question with group n visible"
   },
   "SEAM:INSTRUMENT@worker": {
    "file": "worker/src/index.js",
    "tag": "SEAM:INSTRUMENT",
-   "purpose": "the math half of the vocabulary: aggregateResponses branches per type \u2014 mean rank + first-choice share for rank, mean/median/range for numeric with non-numeric excluded from n, NPS computed from counts (promoters\u2212detractors, never modeled); scale points ride the aggregate entry so T2B reads the scale\u2019s own top two points \u2014 the hardcoded 4+5 is dead, and a 2-point scale reports no top box rather than a half-truth"
+   "purpose": "the math half of the vocabulary: aggregateResponses branches per type — mean rank + first-choice share for rank, mean/median/range for numeric with non-numeric excluded from n, NPS computed from counts (promoters−detractors, never modeled); scale points ride the aggregate entry so T2B reads the scale’s own top two points — the hardcoded 4+5 is dead, and a 2-point scale reports no top box rather than a half-truth"
   },
   "SEAM:BANNER@arrival": {
    "file": "intelligence/index.html",
    "tag": "SEAM:BANNER",
-   "purpose": "client room: Compare-by selector fed by worker banner_options, cut header names every group with its n and lists suppressed cells by name, \u25b2\u25bc at p<.05 render under each question\u2019s top answers with group n beside them \u2014 an unmarked number is genuinely unremarkable, not merely untested; switching the banner refetches so the floor law and the PII select law both stay server-side"
+   "purpose": "client room: Compare-by selector fed by worker banner_options, cut header names every group with its n and lists suppressed cells by name, ▲▼ at p<.05 render under each question’s top answers with group n beside them — an unmarked number is genuinely unremarkable, not merely untested; switching the banner refetches so the floor law and the PII select law both stay server-side"
   },
   "SEAM:PROFILE": {
    "file": "worker/src/index.js",
-   "purpose": "two-rail segments, zero migration \u2014 responder_profile carried age_range/location/interests since launch and this wires them: profileSegments is the one label law (client capture mirrors it exactly, proof_profile.js holds the parity), deriveRowSegments fills DERIVED segments where none were CAPTURED and strips responder_id from every row on every branch including failure; results path chunks profile lookups selecting only user_id,age_range,location,interests \u2014 never email or name \u2014 and segments_note provenance rides the payload; invited rail snapshots by invite email at write time, a failed lookup degrades to the empty array; PII law restated not weakened: responder_id enters the worker only to make the join and is deleted before any aggregation or payload"
+   "purpose": "two-rail segments, zero migration — responder_profile carried age_range/location/interests since launch and this wires them: profileSegments is the one label law (client capture mirrors it exactly, proof_profile.js holds the parity), deriveRowSegments fills DERIVED segments where none were CAPTURED and strips responder_id from every row on every branch including failure; results path chunks profile lookups selecting only user_id,age_range,location,interests — never email or name — and segments_note provenance rides the payload; invited rail snapshots by invite email at write time, a failed lookup degrades to the empty array; PII law restated not weakened: responder_id enters the worker only to make the join and is deleted before any aggregation or payload"
   },
   "SEAM:PROFILE@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:PROFILE",
-   "purpose": "the snapshot rail: _profileSegments(meResponder()) captured into segments at panel submission, with a lossless fallback that runs the exact pre-patch insert on any error \u2014 a response is never lost to this feature; the client report renders the provenance line only when something was reconstructed: N captured at response time, M reconstructed from current responder profiles \u2014 a reconstructed cut is never read as a captured one"
+   "purpose": "the snapshot rail: _profileSegments(meResponder()) captured into segments at panel submission, with a lossless fallback that runs the exact pre-patch insert on any error — a response is never lost to this feature; the client report renders the provenance line only when something was reconstructed: N captured at response time, M reconstructed from current responder profiles — a reconstructed cut is never read as a captured one"
   },
   "SEAM:PLAY_RENDER": {
    "file": "worker/src/index.js",
@@ -691,6 +691,15 @@
   "SEAM:READ_PROOF": {
    "file": "worker/src/index.js",
    "purpose": "the copy desk: every house read is proofread before it is ready (readAmerican, a deterministic American English spelling and punctuation pass; readProof, the copy editor on the live Claude tier, accepted only when shape, S-ids, numbers and length hold and the read laws pass again); meta.proof keeps the receipts; POST /reads/proof {id, apply} shows or applies the fixes on any written read so an issue already out can be recut; the Method's second law is American English only"
+  },
+  "SEAM:WEEKLY_STAND": {
+   "file": "worker/src/index.js",
+   "purpose": "the stand: dispatch line + inline module (shelf, intake, sign-in, signed PDF stream from R2)"
+  },
+  "SEAM:WEEKLY_STAND@page": {
+   "file": "weekly/index.html",
+   "purpose": "the stand page at /weekly: shelf, cover price, download",
+   "tag": "SEAM:WEEKLY_STAND"
   }
  },
  "planned": [

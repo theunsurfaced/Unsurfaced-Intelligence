@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Weekly Read | Unsurfaced Intelligence</title>
+<meta name="description" content="The week in culture, read through the Unsurfaced lens. Every issue of The Weekly Read, downloaded direct from the stand.">
+<meta name="theme-color" content="#0A0A0A">
+<!-- SEAM:WEEKLY_STAND  The stand at /weekly: the shelf, the cover price, the download. Every issue on the shelf comes from the API; nothing here is typed by hand. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:wght@400;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0A0A0A; --ink:#141414; --rule:#2A2A2A; --rule-lit:#3A3A3A;
+  --ivory:#FAF7F2; --paper:#D9D4CB; --stone:#BDB8AF; --ash:#A8A39A; --soil:#3A3632;
+  --signal:#C41230; --signal-lit:#E8475F; --signal-dark:#1F1A1B;
+  --display:'Syne',sans-serif; --mono:'Space Mono',monospace; --serif:'Newsreader',Georgia,serif;
+  --z-gate:9000; --z-overlay:9500; --z-toast:9600;
+  --gutter:clamp(20px,4.4vw,64px);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--void);color:var(--ivory);font-family:var(--serif);font-size:18px;line-height:1.45;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+h1,h2,h3{margin:0;font-family:var(--display);font-weight:800;letter-spacing:-0.02em}
+p{margin:0}
+button{font:inherit}
+.k{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+.k-sm{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.k-red{color:var(--signal-lit)}
+.k-ink{color:var(--signal)}
+.k-stone{color:var(--stone)}
+[hidden]{display:none !important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* top */
+.top{height:72px;padding:0 var(--gutter);display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--rule)}
+.mark{display:flex;align-items:baseline;gap:12px;text-decoration:none}
+.mark b{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.02em}
+.mark span{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--stone)}
+.nav{display:flex;gap:40px;font-family:var(--mono);font-size:12px;letter-spacing:.16em}
+.nav a{text-decoration:none;color:var(--stone);padding:4px 0}
+.nav a[aria-current]{color:var(--ivory);border-bottom:2px solid var(--signal)}
+.top .tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--stone)}
+@media (max-width:760px){.top{height:60px;gap:12px}.mark b{font-size:18px}.mark span,.top .tag{display:none}.nav{gap:16px;font-size:11px;letter-spacing:.12em;flex-shrink:0}}
+@media (max-width:560px){.top{height:auto;flex-wrap:wrap;padding:14px var(--gutter) 0;row-gap:12px}.nav{flex-basis:100%;justify-content:space-between;gap:8px;border-top:1px solid var(--rule);padding:12px 0}.nav a{min-height:44px;display:inline-flex;align-items:center}.nav a[aria-current]{border-bottom:2px solid var(--signal)}}
+
+/* hero */
+.hero{padding:72px var(--gutter) 56px;display:flex;flex-direction:column;gap:56px}
+.hero-row{display:flex;justify-content:space-between;align-items:flex-end;gap:64px}
+.hero h1{font-size:clamp(56px,8.9vw,128px);line-height:.9;margin-top:20px}
+.hero .dek{max-width:460px;font-size:22px;line-height:1.4;color:var(--paper)}
+@media (max-width:1000px){.hero{padding-top:40px;gap:40px}.hero-row{flex-direction:column;align-items:flex-start;gap:28px}.hero .dek{font-size:18px}}
+
+/* stand */
+.stand{padding:0 var(--gutter) 104px;display:grid;grid-template-columns:500px minmax(0,1fr);gap:48px;align-items:start}
+@media (max-width:1100px){.stand{grid-template-columns:minmax(0,1fr);gap:40px;padding-bottom:64px}}
+.cover-col{display:flex;flex-direction:column;gap:16px;max-width:500px}
+.cover{aspect-ratio:25/33;width:100%;background:var(--ivory);color:var(--void);padding:7.2%;display:flex;flex-direction:column;gap:4.8%;container-type:inline-size}
+.cover .row{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:clamp(9px,2.1cqi,10.5px);letter-spacing:.14em;text-transform:uppercase}
+.cover .bar{height:2cqi;min-height:6px;background:var(--signal)}
+.cover .mast{font-family:var(--display);font-weight:800;font-size:13.2cqi;line-height:.88;letter-spacing:-.02em}
+.cover .lead{font-size:6cqi;line-height:1.2;font-weight:500}
+.cover .grow{flex-grow:1}
+.cover .cfoot{border-top:1px solid var(--void);padding-top:2.8cqi;flex-direction:column;gap:1.2cqi;align-items:flex-start}
+.cover-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cover.skeleton .mast,.cover.skeleton .lead,.cover.skeleton .row{opacity:.35}
+
+.gate{position:relative;z-index:var(--z-gate);background:var(--ink);border:1px solid var(--rule);padding:44px;min-height:700px;display:flex;flex-direction:column;gap:28px}
+@media (max-width:760px){.gate{padding:28px 20px;min-height:0}}
+.gate h2{font-size:clamp(34px,3vw,44px);line-height:1}
+.gate .lede{color:var(--paper);line-height:1.45}
+.strip{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;border:1px solid var(--rule-lit);font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.strip a{color:var(--signal-lit);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.welcome{padding:16px 18px;background:var(--signal-dark);border-top:2px solid var(--signal);display:flex;flex-direction:column;gap:6px}
+.welcome span{font-size:16px;color:var(--paper)}
+
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
+@media (max-width:720px){form{grid-template-columns:minmax(0,1fr)}}
+.f{display:flex;flex-direction:column;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--stone);text-transform:uppercase}
+.wide{grid-column:1 / -1}
+.f input,.f select{height:50px;padding:0 14px;background:var(--ivory);color:var(--void);border:1px solid var(--ivory);font-family:var(--serif);font-size:17px;border-radius:0;width:100%}
+.f select{padding-right:36px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' fill='none' stroke='%230A0A0A' stroke-width='2'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
+.f input:focus,.f select:focus{outline:3px solid var(--signal-lit);outline-offset:2px}
+.f.bad input,.f.bad select{border-color:var(--signal-lit);box-shadow:inset 0 0 0 1px var(--signal-lit)}
+.check{grid-column:1 / -1;display:flex;align-items:center;gap:14px;min-height:44px;font-size:17px;color:var(--paper);cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--signal);margin:0;flex-shrink:0}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.btn{min-height:64px;display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 .4em;padding:12px 32px;line-height:1.4;text-align:center;background:var(--signal);color:#fff;border:0;font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;text-decoration:none;width:100%}
+.btn:hover{background:#A80E28}
+.btn:disabled{opacity:.6;cursor:progress}
+.btn.ghost{background:transparent;color:var(--ivory);border:1px solid var(--ivory);width:auto;min-height:60px;font-size:14px}
+.btn.ghost:hover{background:rgba(250,247,242,.08)}
+.btn.auto{width:auto;min-height:60px;font-size:14px}
+.fine{font-size:14px;line-height:1.5;color:var(--ash)}
+.err{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--signal-lit);min-height:1em}
+.tabs{display:flex;gap:32px;border-bottom:1px solid var(--rule-lit)}
+.tab{background:transparent;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:0 2px;min-height:48px;color:var(--stone);font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ivory);border-bottom-color:var(--signal)}
+.tab:hover{color:var(--ivory)}
+.tab:focus-visible{outline:3px solid var(--signal-lit);outline-offset:2px}
+.fine a{color:var(--ivory)}
+@media (max-width:760px){.tabs{gap:20px}.tab{font-size:11px;letter-spacing:.14em}}
+.done{display:flex;flex-direction:column;gap:28px;padding-top:24px}
+.done h2{font-size:clamp(44px,4.4vw,64px);line-height:.95}
+.done .lede{max-width:520px;font-size:20px}
+.done .actions{display:flex;gap:16px;flex-wrap:wrap}
+.hr{height:1px;background:var(--rule)}
+.eco{display:flex;flex-direction:column;gap:10px;max-width:540px}
+.eco p{color:var(--paper)}
+.closed{display:flex;flex-direction:column;gap:20px;padding-top:12px}
+.closed h2{font-size:clamp(34px,3vw,44px);line-height:1}
+
+/* shelf */
+.shelf{background:var(--ivory);color:var(--void);padding:104px var(--gutter);display:flex;flex-direction:column;gap:56px}
+@media (max-width:760px){.shelf{padding:56px var(--gutter);gap:32px}}
+.shelf-row{display:flex;justify-content:space-between;align-items:flex-end;gap:64px}
+.shelf h2{font-size:clamp(44px,5vw,72px);line-height:.95;margin-top:16px}
+.shelf .dek{max-width:420px;font-size:20px;color:var(--soil)}
+@media (max-width:1000px){.shelf-row{flex-direction:column;align-items:flex-start;gap:24px}.shelf .dek{font-size:17px}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:40px 32px}
+@media (max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px}}
+.issue{display:flex;flex-direction:column;gap:16px}
+.mini{aspect-ratio:25/33;background:var(--void);color:var(--ivory);padding:8%;display:flex;flex-direction:column;gap:5%;container-type:inline-size}
+.mini .row{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:clamp(8px,3.4cqi,10px);letter-spacing:.16em;text-transform:uppercase;color:var(--stone)}
+.mini .bar{height:2.2cqi;min-height:4px;background:var(--signal)}
+.mini .mast{font-family:var(--display);font-weight:800;font-size:12.8cqi;line-height:.9}
+.mini .lead{font-size:7.4cqi;line-height:1.25}
+.mini .grow{flex-grow:1}
+.issue .under{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.issue .under .k-sm{color:var(--void);white-space:nowrap}
+.get{min-height:44px;padding:0 18px;display:inline-flex;align-items:center;border:1px solid var(--void);color:var(--void);background:transparent;text-decoration:none;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer}
+.get{white-space:nowrap}
+.get:hover{background:var(--void);color:var(--ivory)}
+@media (max-width:760px){.get{padding:0 12px;font-size:11px;letter-spacing:.14em}.issue .under{gap:8px}}
+.issue .sel{color:var(--signal)}
+.issue.is-latest .mini{outline:3px solid var(--signal);outline-offset:-3px}
+.onpress{font-size:20px;color:var(--soil);max-width:560px}
+
+/* steps */
+.steps{padding:88px var(--gutter);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:48px;border-bottom:1px solid var(--rule)}
+@media (max-width:900px){.steps{grid-template-columns:minmax(0,1fr);gap:36px;padding:56px var(--gutter)}}
+.step{display:flex;flex-direction:column;gap:14px}
+.step .n{font-family:var(--display);font-weight:800;font-size:48px;color:var(--signal);line-height:1}
+.step .t{font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase}
+.step p{color:var(--paper)}
+
+/* foot */
+.foot{padding:40px var(--gutter);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone)}
+.foot nav{display:flex;gap:32px}
+.foot a{color:var(--stone);text-decoration:none}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:var(--z-toast);background:var(--ivory);color:var(--void);padding:14px 20px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;border-left:4px solid var(--signal);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="mark" href="/"><b>UNSURFACED</b><span>INTELLIGENCE</span></a>
+  <nav class="nav" aria-label="Sections">
+    <a href="/daily/">DAILY</a>
+    <a href="/excavate/">EXCAVATE</a>
+    <a href="/weekly/" aria-current="page">THE WEEKLY</a>
+  </nav>
+  <span class="tag">THE STAND</span>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-row">
+      <div>
+        <span class="k k-red">THE STAND &middot; FREE TO DOWNLOAD</span>
+        <h1>The Weekly<br>Read.</h1>
+      </div>
+      <p class="dek">The week in culture, read through the Unsurfaced lens. Every story DAILY published, cut to what it means for the culture, the category and the people it serves.</p>
+    </div>
+  </section>
+
+  <section class="stand" id="stand" aria-labelledby="gate-title">
+    <div class="cover-col">
+      <article class="cover skeleton" id="cover" aria-label="Selected issue">
+        <div class="row"><span>UNSURFACED INTELLIGENCE</span><span id="c-label">ISSUE</span></div>
+        <div class="bar"></div>
+        <div class="mast">THE<br>WEEKLY<br>READ</div>
+        <div class="lead" id="c-lead"></div>
+        <div class="grow"></div>
+        <div class="row cfoot"><span id="c-week"></span><span>THE ROUGH &middot; THE READ &middot; THE MOVE</span></div>
+      </article>
+      <div class="cover-meta">
+        <span class="k-sm k-stone" id="c-file"></span>
+        <span class="k-sm k-red" id="c-which"></span>
+      </div>
+    </div>
+
+    <div class="gate" id="gate" data-state="loading">
+
+      <div id="st-form">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span class="k k-red" id="gate-kicker">THE COVER PRICE</span>
+          <h2 id="gate-title">Tell us who is reading.</h2>
+          <p class="lede" id="gate-lede-form">One short form for every issue. Submit it and <span id="g-label">this issue</span> downloads straight from our site.</p>
+          <p class="lede" id="gate-lede-signin" hidden>Account holders skip the form. Sign in and <span class="s-label">this issue</span> downloads. You sign in for each download; this page keeps no session.</p>
+        </div>
+
+        <div class="strip" id="back-strip" hidden style="margin-top:28px">
+          <span>You are downloading <span id="b-label"></span></span>
+          <a href="#gate" id="to-latest">Switch to latest</a>
+        </div>
+
+        <div id="turnstile" hidden style="margin-top:28px"></div>
+
+        <div class="tabs" role="tablist" aria-label="How to download" style="margin-top:28px">
+          <button class="tab" type="button" role="tab" id="tab-form" aria-selected="true" aria-controls="pane-form">Pay the cover price</button>
+          <button class="tab" type="button" role="tab" id="tab-signin" aria-selected="false" aria-controls="pane-signin">Sign in</button>
+        </div>
+
+        <div id="pane-form" role="tabpanel" aria-labelledby="tab-form">
+        <div class="welcome" id="welcome" hidden style="margin-top:28px">
+          <span class="k-sm">WELCOME BACK</span>
+          <span>Your details from last time are filled in. Check them, submit, and this issue is yours.</span>
+        </div>
+
+        <form id="intake" novalidate style="margin-top:28px">
+          <label class="f" id="f-first">First name<input type="text" name="first_name" autocomplete="given-name" maxlength="120" required></label>
+          <label class="f" id="f-last">Last name<input type="text" name="last_name" autocomplete="family-name" maxlength="120" required></label>
+          <label class="f wide" id="f-email">Work email<input type="email" name="email" autocomplete="email" maxlength="120" required inputmode="email"></label>
+          <label class="f" id="f-company">Company<input type="text" name="company" autocomplete="organization" maxlength="120"></label>
+          <label class="f" id="f-role">Role
+            <select name="role">
+              <option value="">Choose one</option>
+              <option>Strategist</option>
+              <option>Marketer</option>
+              <option>Researcher</option>
+              <option>Creative</option>
+              <option>Founder or executive</option>
+              <option>Student</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label class="f wide" id="f-frame">What you track
+            <select name="frame_group">
+              <option value="">Choose the space closest to your work</option>
+              <option>Style</option>
+              <option>Sound and screen</option>
+              <option>Making</option>
+              <option>Systems</option>
+              <option>Living</option>
+              <option>People</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" name="opt_in">Send me each new issue when it lands.</label>
+          <label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+          <div class="wide" style="display:flex;flex-direction:column;gap:14px">
+            <p class="err" id="form-err" aria-live="polite"></p>
+            <button class="btn" type="submit" id="claim-btn"><span class="idle">Download <span id="btn-label">this issue</span></span><span class="busy" hidden>Opening the issue</span></button>
+            <p class="fine">Your details join the Unsurfaced reader list so we know who reads. We never sell them.</p>
+          </div>
+        </form>
+        </div>
+
+        <div id="pane-signin" role="tabpanel" aria-labelledby="tab-signin" hidden>
+        <form id="signin" novalidate style="margin-top:28px">
+          <label class="f wide" id="s-email">Email<input type="email" name="email" autocomplete="username" maxlength="120" required inputmode="email"></label>
+          <label class="f wide" id="s-pass">Password<input type="password" name="password" autocomplete="current-password" maxlength="256" required></label>
+          <label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+          <div class="wide" style="display:flex;flex-direction:column;gap:14px">
+            <p class="err" id="signin-err" aria-live="polite"></p>
+            <button class="btn" type="submit" id="signin-btn"><span class="idle">Sign in and download <span class="s-label">this issue</span></span><span class="busy" hidden>Checking</span></button>
+            <p class="fine">Every download still counts on the ledger, form or sign-in. <a id="signin-help" href="#" hidden>Trouble signing in?</a> <a href="#gate" id="to-form">Pay the cover price instead.</a></p>
+          </div>
+        </form>
+        </div>
+      </div>
+
+      <div id="st-done" class="done" hidden>
+        <span class="k k-red">DOWNLOAD STARTED</span>
+        <h2><span id="d-label"></span><br>is yours.</h2>
+        <p class="lede">The PDF is on its way to your downloads folder. If it did not start, use the button below. The link works for the next ten minutes.</p>
+        <div class="actions">
+          <a class="btn auto" id="again" href="#" download>Download again</a>
+          <a class="btn ghost" id="browse" href="#shelf">Browse the shelf</a>
+        </div>
+        <div class="hr"></div>
+        <div class="eco">
+          <span class="k-sm k-stone">THE REST OF THE ECOSYSTEM</span>
+          <p>The stand is open to every reader. EXCAVATE, MINE and the full intelligence platform open by invitation. You are on the list.</p>
+        </div>
+      </div>
+
+      <div id="st-closed" class="closed" hidden>
+        <span class="k k-red">ON PRESS</span>
+        <h2>The first issue is on press.</h2>
+        <p class="lede">The shelf fills from here. Come back Monday, or read today in <a href="/daily/">DAILY</a>.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="shelf" id="shelf" aria-labelledby="shelf-title">
+    <div class="shelf-row">
+      <div>
+        <span class="k k-ink">THE SHELF</span>
+        <h2 id="shelf-title">Every issue stays<br>on the stand.</h2>
+      </div>
+      <p class="dek">Back issues carry the same cover price as the latest one. Pick any week and the form above delivers it.</p>
+    </div>
+    <div class="grid" id="shelf-grid" aria-live="polite"></div>
+    <p class="onpress" id="shelf-empty" hidden>The first issue is on press. The shelf fills from here.</p>
+  </section>
+
+  <section class="steps" aria-label="How the stand works">
+    <div class="step"><span class="n">01</span><span class="t">Pick an issue</span><p>The latest sits at the front. Every earlier week waits on the shelf.</p></div>
+    <div class="step"><span class="n">02</span><span class="t">Pay the cover price</span><p>Six fields. Coming back? This browser fills them in for you.</p></div>
+    <div class="step"><span class="n">03</span><span class="t">Read it</span><p>The PDF downloads straight from unsurfaced-intelligence.com. Keep it, print it, pass it on.</p></div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Unsurfaced Intelligence &middot; The Stand</span>
+  <nav aria-label="Footer"><a href="/daily/">DAILY</a><a href="/excavate/">EXCAVATE</a></nav>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<template id="tpl-issue">
+  <article class="issue">
+    <div class="mini">
+      <div class="row"><span>UNSURFACED</span><span class="i-label"></span></div>
+      <div class="bar"></div>
+      <div class="mast">THE<br>WEEKLY<br>READ</div>
+      <div class="lead i-lead"></div>
+      <div class="grow"></div>
+      <span class="row i-week"></span>
+    </div>
+    <div class="under">
+      <span class="k-sm i-label2"></span>
+      <button class="get" type="button">Get it</button>
+    </div>
+    <span class="k-sm sel" hidden>Selected above</span>
+  </article>
+</template>
+
+<script>
+/* SEAM:WEEKLY_STAND */
+'use strict';
+var CONFIG = {
+  API_BASE: 'https://api.unsurfaced-intelligence.com',
+  TURNSTILE_SITE_KEY: '',
+  SIGNIN_HELP_URL: '/intelligence/'
+};
+var STORE_KEY = 'uw.reader';
+var MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+var state = { issues: [], selected: null, busy: false, lastUrl: '', expires: 0, mode: 'form' };
+var $ = function (id) { return document.getElementById(id); };
+
+function label(n) { return 'ISSUE ' + String(n).padStart(3, '0'); }
+function ymd(s) { var p = String(s || '').split('-').map(Number); return p.length === 3 ? new Date(p[0], p[1] - 1, p[2]) : null; }
+function weekLabel(a, b) {
+  var d1 = ymd(a), d2 = ymd(b);
+  if (!d1 || !d2) return '';
+  var s1 = MONTHS[d1.getMonth()] + ' ' + d1.getDate();
+  var s2 = MONTHS[d2.getMonth()] + ' ' + d2.getDate();
+  if (d1.getFullYear() !== d2.getFullYear()) s1 += ', ' + d1.getFullYear();
+  return 'WEEK OF ' + s1 + ' TO ' + s2 + ', ' + d2.getFullYear();
+}
+function sizeLabel(bytes) {
+  var b = Number(bytes);
+  if (!b || b < 1) return '';
+  if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+  return Math.round(b / 1024) + ' KB';
+}
+function fileLabel(issue) {
+  var parts = ['PDF'];
+  if (issue.page_count) parts.push(issue.page_count + ' PAGES');
+  var s = sizeLabel(issue.byte_size);
+  if (s) parts.push(s);
+  return parts.join(' · ');
+}
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast.h);
+  toast.h = setTimeout(function () { t.classList.remove('on'); }, 4200);
+}
+function setBusy(btn, on) {
+  state.busy = on;
+  btn.disabled = on;
+  btn.setAttribute('aria-busy', on ? 'true' : 'false');
+  btn.querySelector('.idle').hidden = on;
+  btn.querySelector('.busy').hidden = !on;
+}
+function resetTurnstile() { try { if (window.turnstile && CONFIG.TURNSTILE_SITE_KEY) window.turnstile.reset(); } catch (_) { /* widget not mounted */ } }
+function setGate(s) { $('gate').dataset.state = s; $('st-form').hidden = s !== 'form'; $('st-done').hidden = s !== 'done'; $('st-closed').hidden = s !== 'closed'; }
+
+function readStored() {
+  try { var raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
+}
+function store(reader) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(reader)); } catch (_) { /* private mode: the database still has the row */ }
+}
+
+function latest() { return state.issues.length ? state.issues[0] : null; }
+function isLatest(issue) { var l = latest(); return !!(l && issue && l.issue_no === issue.issue_no); }
+
+function renderCover() {
+  var issue = state.selected;
+  var c = $('cover');
+  if (!issue) { c.classList.add('skeleton'); return; }
+  c.classList.remove('skeleton');
+  $('c-label').textContent = label(issue.issue_no);
+  $('c-lead').textContent = issue.lead || '';
+  $('c-week').textContent = weekLabel(issue.week_start, issue.week_end);
+  $('c-file').textContent = fileLabel(issue);
+  $('c-which').textContent = isLatest(issue) ? 'LATEST ISSUE' : 'BACK ISSUE';
+  $('g-label').textContent = label(issue.issue_no);
+  $('btn-label').textContent = label(issue.issue_no);
+  $('b-label').textContent = label(issue.issue_no);
+  Array.prototype.forEach.call(document.querySelectorAll('.s-label'), function (el) { el.textContent = label(issue.issue_no); });
+  $('back-strip').hidden = isLatest(issue);
+  document.title = 'The Weekly Read ' + label(issue.issue_no).replace('ISSUE ', '#') + ' | Unsurfaced Intelligence';
+}
+
+function renderShelf() {
+  var grid = $('shelf-grid');
+  grid.textContent = '';
+  $('shelf-empty').hidden = state.issues.length > 0;
+  var tpl = $('tpl-issue');
+  state.issues.forEach(function (issue) {
+    var node = tpl.content.firstElementChild.cloneNode(true);
+    node.querySelector('.i-label').textContent = label(issue.issue_no);
+    node.querySelector('.i-label2').textContent = label(issue.issue_no);
+    node.querySelector('.i-lead').textContent = issue.lead || '';
+    node.querySelector('.i-week').textContent = weekLabel(issue.week_start, issue.week_end);
+    node.querySelector('.sel').hidden = !(state.selected && state.selected.issue_no === issue.issue_no);
+    if (isLatest(issue)) node.classList.add('is-latest');
+    var btn = node.querySelector('.get');
+    btn.setAttribute('aria-label', 'Get ' + label(issue.issue_no));
+    btn.addEventListener('click', function () { select(issue, true); });
+    grid.appendChild(node);
+  });
+}
+
+function select(issue, scroll) {
+  if (state.busy) return;
+  state.selected = issue;
+  setGate('form');
+  renderCover();
+  renderShelf();
+  try {
+    var u = new URL(location.href);
+    if (isLatest(issue)) u.searchParams.delete('issue'); else u.searchParams.set('issue', String(issue.issue_no));
+    history.replaceState(null, '', u.pathname + u.search + (scroll ? '#gate' : u.hash));
+  } catch (_) { /* url stays */ }
+  if (scroll) {
+    $('gate').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function () {
+      var f = state.mode === 'signin' ? document.querySelector('#signin input[name="email"]') : document.querySelector('#intake input[name="first_name"]');
+      if (f && !f.value) f.focus({ preventScroll: true });
+    }, 500);
+  }
+}
+
+function prefill() {
+  var r = readStored();
+  if (!r || !r.email) return;
+  var f = $('intake');
+  ['first_name', 'last_name', 'email', 'company', 'role', 'frame_group'].forEach(function (k) {
+    if (f.elements[k] && r[k]) f.elements[k].value = r[k];
+  });
+  if (f.elements.opt_in) f.elements.opt_in.checked = !!r.opt_in;
+  $('welcome').hidden = false;
+}
+
+function markBad(ids) {
+  ['f-first', 'f-last', 'f-email'].forEach(function (id) { $(id).classList.remove('bad'); });
+  ids.forEach(function (id) { $(id).classList.add('bad'); });
+}
+
+function payload() {
+  var f = $('intake');
+  var v = function (k) { return (f.elements[k] && f.elements[k].value || '').trim(); };
+  return {
+    first_name: v('first_name'),
+    last_name: v('last_name'),
+    email: v('email').toLowerCase(),
+    company: v('company'),
+    role: v('role'),
+    frame_group: v('frame_group'),
+    opt_in: !!(f.elements.opt_in && f.elements.opt_in.checked),
+    website: v('website'),
+    issue_no: state.selected ? state.selected.issue_no : null,
+    turnstile: (window.turnstile && CONFIG.TURNSTILE_SITE_KEY) ? (window.turnstile.getResponse() || '') : ''
+  };
+}
+
+function validate(p) {
+  var bad = [], msgs = [];
+  if (!p.first_name) { bad.push('f-first'); }
+  if (!p.last_name) { bad.push('f-last'); }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(p.email)) { bad.push('f-email'); }
+  if (bad.length) msgs.push(bad.length === 1 && bad[0] === 'f-email' ? 'Enter a working email address.' : 'Fill in the marked fields.');
+  markBad(bad);
+  return msgs.join(' ');
+}
+
+function startDownload(url, expires) {
+  var full = CONFIG.API_BASE + url;
+  state.lastUrl = full;
+  state.expires = Number(expires) || 0;
+  $('again').href = full;
+  var a = document.createElement('a');
+  a.href = full;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { a.remove(); }, 2000);
+}
+
+function submit(e) {
+  e.preventDefault();
+  if (state.busy || !state.selected) return;
+  var p = payload();
+  var err = validate(p);
+  $('form-err').textContent = err;
+  if (err) return;
+  var btn = $('claim-btn');
+  setBusy(btn, true);
+  fetch(CONFIG.API_BASE + '/api/weekly/claim', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(p)
+  }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+    .then(function (res) {
+      var j = res.body || {};
+      if (res.status === 200 && j.ok && j.url) {
+        store({ first_name: p.first_name, last_name: p.last_name, email: p.email, company: p.company, role: p.role, frame_group: p.frame_group, opt_in: p.opt_in });
+        $('d-label').textContent = label(j.issue_no || p.issue_no);
+        setGate('done');
+        startDownload(j.url, j.expires);
+        $('gate').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (res.status === 429) { toast('Too many attempts from this connection. Wait ten minutes and try again.'); return; }
+      if (res.status === 422 && j.fields) {
+        var map = { first_name: 'f-first', last_name: 'f-last', email: 'f-email' };
+        markBad(j.fields.map(function (k) { return map[k]; }).filter(Boolean));
+        $('form-err').textContent = 'Fill in the marked fields.';
+        return;
+      }
+      if (res.status === 404) { toast('This issue is not on the stand.'); return; }
+      if (res.status === 403) { toast('Verification did not pass. Try again.'); return; }
+      toast('The stand did not answer. Try again in a moment.');
+    })
+    .catch(function () { toast('The stand did not answer. Check your connection and try again.'); })
+    .then(function () { setBusy(btn, false); resetTurnstile(); });
+}
+
+function setMode(m, focus) {
+  state.mode = m === 'signin' ? 'signin' : 'form';
+  var signin = state.mode === 'signin';
+  $('pane-form').hidden = signin;
+  $('pane-signin').hidden = !signin;
+  $('tab-form').setAttribute('aria-selected', String(!signin));
+  $('tab-signin').setAttribute('aria-selected', String(signin));
+  $('gate-kicker').textContent = signin ? 'SIGN IN TO DOWNLOAD' : 'THE COVER PRICE';
+  $('gate-title').textContent = signin ? 'Welcome back.' : 'Tell us who is reading.';
+  $('gate-lede-form').hidden = signin;
+  $('gate-lede-signin').hidden = !signin;
+  if (signin) { var pw = document.querySelector('#signin input[name="password"]'); if (pw) pw.value = ''; }
+  if (focus) {
+    var f = signin ? document.querySelector('#signin input[name="email"]') : document.querySelector('#intake input[name="first_name"]');
+    if (f) f.focus({ preventScroll: true });
+  }
+}
+
+function markBadSignin(ids) {
+  ['s-email', 's-pass'].forEach(function (id) { $(id).classList.remove('bad'); });
+  ids.forEach(function (id) { $(id).classList.add('bad'); });
+}
+
+function signinSubmit(e) {
+  e.preventDefault();
+  if (state.busy || !state.selected) return;
+  var f = $('signin');
+  var email = (f.elements.email.value || '').trim().toLowerCase();
+  var password = f.elements.password.value || '';
+  var bad = [];
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) bad.push('s-email');
+  if (!password) bad.push('s-pass');
+  markBadSignin(bad);
+  $('signin-err').textContent = bad.length ? 'Enter your email and password.' : '';
+  if (bad.length) return;
+  var btn = $('signin-btn');
+  setBusy(btn, true);
+  var body = {
+    email: email,
+    password: password,
+    website: (f.elements.website.value || '').trim(),
+    issue_no: state.selected.issue_no,
+    turnstile: (window.turnstile && CONFIG.TURNSTILE_SITE_KEY) ? (window.turnstile.getResponse() || '') : ''
+  };
+  fetch(CONFIG.API_BASE + '/api/weekly/signin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+    .then(function (res) {
+      var j = res.body || {};
+      if (res.status === 200 && j.ok && j.url) {
+        $('d-label').textContent = label(j.issue_no || body.issue_no);
+        setGate('done');
+        startDownload(j.url, j.expires);
+        $('gate').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (res.status === 429) { $('signin-err').textContent = 'Too many attempts. Wait ten minutes and try again.'; return; }
+      if (res.status === 503) { $('signin-err').textContent = 'Sign-in is busy right now. Try again in a minute, or pay the cover price instead.'; return; }
+      if (res.status === 401) { markBadSignin(['s-email', 's-pass']); $('signin-err').textContent = 'Email or password did not match.'; return; }
+      if (res.status === 422 && j.fields) {
+        var map = { email: 's-email', password: 's-pass' };
+        markBadSignin(j.fields.map(function (k) { return map[k]; }).filter(Boolean));
+        $('signin-err').textContent = 'Enter your email and password.';
+        return;
+      }
+      if (res.status === 404) { toast('This issue is not on the stand.'); return; }
+      if (res.status === 403) { toast('Verification did not pass. Try again.'); return; }
+      toast('The stand did not answer. Try again in a moment.');
+    })
+    .catch(function () { toast('The stand did not answer. Check your connection and try again.'); })
+    .then(function () {
+      setBusy(btn, false);
+      resetTurnstile();
+      f.elements.password.value = '';
+    });
+}
+
+function mountTurnstile() {
+  if (!CONFIG.TURNSTILE_SITE_KEY) return;
+  $('turnstile').hidden = false;
+  var s = document.createElement('script');
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=uwTurnstileReady';
+  s.async = true;
+  window.uwTurnstileReady = function () { window.turnstile.render('#turnstile', { sitekey: CONFIG.TURNSTILE_SITE_KEY, theme: 'dark' }); };
+  document.head.appendChild(s);
+}
+
+var LINK_NOTICES = {
+  expired: 'That link expired. Claim the issue again and the download restarts.',
+  bad: 'That link did not check out. Claim the issue again.',
+  missing: 'That issue is not on the shelf yet. Pick another, or check back soon.'
+};
+function linkNotice() {
+  var reason = null;
+  try { reason = new URL(location.href).searchParams.get('link'); } catch (_) { reason = null; }
+  if (!reason || !LINK_NOTICES[reason]) return;
+  toast(LINK_NOTICES[reason]);
+  try { var u = new URL(location.href); u.searchParams.delete('link'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (_) { /* url stays */ }
+}
+
+function boot() {
+  $('intake').addEventListener('submit', submit);
+  $('signin').addEventListener('submit', signinSubmit);
+  $('tab-form').addEventListener('click', function () { setMode('form', true); });
+  $('tab-signin').addEventListener('click', function () { setMode('signin', true); });
+  $('to-form').addEventListener('click', function (e) { e.preventDefault(); setMode('form', true); });
+  if (CONFIG.SIGNIN_HELP_URL) { $('signin-help').href = CONFIG.SIGNIN_HELP_URL; $('signin-help').hidden = false; }
+  if (location.hash === '#signin') setMode('signin', false);
+  $('to-latest').addEventListener('click', function (e) { e.preventDefault(); if (latest()) select(latest(), false); });
+  $('browse').addEventListener('click', function (e) { e.preventDefault(); $('shelf').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('again').addEventListener('click', function (e) {
+    if (!state.lastUrl) { e.preventDefault(); return; }
+    if (state.expires && Math.floor(Date.now() / 1000) > state.expires) {
+      e.preventDefault();
+      toast('That link expired. Claim the issue again and the download restarts.');
+      setGate('form');
+    }
+  });
+  linkNotice();
+  prefill();
+  mountTurnstile();
+  fetch(CONFIG.API_BASE + '/api/weekly/issues', { headers: { Accept: 'application/json' } })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j || j.ok !== true) throw new Error('shelf not ok');
+      state.issues = Array.isArray(j.issues) ? j.issues : [];
+      if (!state.issues.length) { setGate('closed'); renderShelf(); return; }
+      var want = null;
+      try { want = Number(new URL(location.href).searchParams.get('issue')); } catch (_) { want = null; }
+      var pick = state.issues.filter(function (i) { return i.issue_no === want; })[0] || latest();
+      select(pick, false);
+    })
+    .catch(function () {
+      setGate('closed');
+      $('st-closed').querySelector('h2').textContent = 'The stand is reloading.';
+      $('st-closed').querySelector('.lede').textContent = 'The shelf did not answer. Refresh in a moment.';
+      renderShelf();
+    });
+}
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
