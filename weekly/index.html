@@ -32,17 +32,11 @@ button{font:inherit;cursor:pointer}
 .kicker{font-family:var(--sans);font-weight:700;letter-spacing:5px;font-size:12px;color:var(--red);text-transform:uppercase}
 
 /* masthead, DAILY's own */
-.masthead{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px var(--gutter) 14px;border-bottom:1px solid rgba(10,10,10,.25);flex-wrap:wrap}
-.mastleft{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.masthead .home{font-family:var(--sans);font-size:11px;letter-spacing:2px;color:var(--mute);text-decoration:none;white-space:nowrap}
+.masthead{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px var(--gutter) 14px;border-bottom:1px solid rgba(10,10,10,.25)}
+.masthead .home{font-family:var(--sans);font-size:11px;letter-spacing:2px;color:var(--mute);text-decoration:none;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
 .masthead .home:hover{color:var(--ink)}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--sans);font-weight:700;letter-spacing:3px;font-size:13px;color:var(--ink)}
-.msvg{width:118px;height:auto;color:var(--ink);display:inline-block;vertical-align:-2px}
-.mastnav{display:flex;align-items:center;gap:24px;font-family:var(--sans);font-size:11px;letter-spacing:2px}
-.mastnav a{color:var(--mute);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
-.mastnav a:hover{color:var(--ink)}
-.folio{color:var(--ink);border:1px solid var(--ink);padding:6px 10px;white-space:nowrap}
-@media (max-width:760px){.brand span{display:none}.msvg{width:96px}.mastnav{gap:16px;font-size:10px}}
+.folio{font-family:var(--sans);font-size:11px;letter-spacing:2px;color:var(--ink);border:1px solid var(--ink);padding:6px 10px;white-space:nowrap}
+@media (max-width:760px){.masthead .home,.folio{font-size:10px}}
 
 /* the plate */
 .plate{text-align:center;padding:30px var(--gutter) 28px;border-bottom:1px solid var(--ink);display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -156,8 +150,6 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
 
 /* foot */
 .foot{background:var(--ink);color:var(--mute);padding:34px var(--gutter);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
-.foot .fmark{width:96px;height:auto;color:var(--ivory)}
-.foot .left{display:flex;align-items:center;gap:14px}
 .foot nav{display:flex;gap:24px}
 .foot a{color:var(--mute);text-decoration:none;font-family:var(--sans);font-size:10px;letter-spacing:.2em;text-transform:uppercase}
 
@@ -171,15 +163,8 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
 <div id="grain"></div>
 
 <header class="masthead">
-  <span class="mastleft">
-    <a class="home" href="../">&#8592; UNSURFACED HOME</a>
-    <a class="brand" href="../daily/" style="text-decoration:none"><svg class="msvg" viewBox="0 0 445.04 42.80" aria-hidden="true"><use href="#umark"/></svg><span class="sr-only">Unsurfaced</span><span>CULTURAL INTELLIGENCE</span></a>
-  </span>
-  <nav class="mastnav" aria-label="Sections">
-    <a href="../daily/">DAILY</a>
-    <a href="../intelligence/">EXCAVATE</a>
-    <span class="folio">THE STAND</span>
-  </nav>
+  <a class="home" href="../">&#8592; UNSURFACED HOME</a>
+  <span class="folio">THE STAND</span>
 </header>
 
 <main>
@@ -347,8 +332,8 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
 </main>
 
 <footer class="foot">
-  <div class="left"><svg class="fmark" viewBox="0 0 445.04 42.80" aria-hidden="true"><use href="#umark"/></svg><span class="k" style="color:var(--mute)">Intelligence &middot; The stand</span></div>
-  <nav aria-label="Footer"><a href="../daily/">DAILY</a><a href="../intelligence/">EXCAVATE</a></nav>
+  <span class="k" style="color:var(--mute)">Unsurfaced&#8482; Intelligence &middot; The stand</span>
+  <nav aria-label="Footer"><a href="../">Unsurfaced home</a><a href="../daily/">DAILY</a></nav>
   <span class="k" style="color:var(--mute-warm);font-size:9px">Inspiration is everywhere. Intelligence is knowing what to do with it.</span>
 </footer>
 
