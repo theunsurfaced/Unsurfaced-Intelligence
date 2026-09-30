@@ -1247,6 +1247,7 @@ async function serveMedia(path, env, origin, request) {
   // seeking in every browser rides the same rail. R2 does the byte math.
   if (!env.MEDIA) return new Response('not found', { status: 404 });
   const key = decodeURIComponent(path.slice('/media/'.length));
+  if (/^weekly\/.*\.pdf$/i.test(key)) return json({ ok: false, error: 'not found' }, 404, origin, env); // SEAM:WEEKLY_STAND: the issues leave only through the signed link
   let range = null;
   const rh = request && request.headers.get('Range');
   if (rh) {
@@ -8030,7 +8031,7 @@ const WK_MAX_FIELD = 120;
 const WK_SITE_ORIGIN_DEFAULT = 'https://unsurfaced-intelligence.com';
 const WK_ROLES = ['Strategist', 'Marketer', 'Researcher', 'Creative', 'Founder or executive', 'Student', 'Other'];
 const WK_FRAME_GROUPS = ['Style', 'Sound and screen', 'Making', 'Systems', 'Living', 'People'];
-const WK_ISSUE_SELECT = 'issue_no,week_start,week_end,lead,page_count,byte_size,published_at';
+const WK_ISSUE_SELECT = 'issue_no,week_start,week_end,lead,standfirst,stories_read,editions,sources,threads,issue_range,cover_credit,cover_key,page_count,byte_size,published_at';
 const WK_LIMITS = {
   signin_ip: { limit: 10, ttl: 600 },   // password attempts per IP per 10 minutes
   signin_email: { limit: 6, ttl: 600 }, // password attempts per email per 10 minutes

@@ -4,342 +4,365 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Weekly Read | Unsurfaced Intelligence</title>
-<meta name="description" content="The week in culture, read through the Unsurfaced lens. Every issue of The Weekly Read, downloaded direct from the stand.">
-<meta name="theme-color" content="#0A0A0A">
-<!-- SEAM:WEEKLY_STAND  The stand at /weekly: the shelf, the cover price, the download. Every issue on the shelf comes from the API; nothing here is typed by hand. -->
+<meta name="description" content="The Weekly Read, brought to you by Unsurfaced Intelligence. A newsstand for culture: one issue a week, every issue kept, downloaded direct from the stand.">
+<meta name="theme-color" content="#FAF7F2">
+<!-- SEAM:WEEKLY_STAND  The stand at /weekly, the Ivory Edition. Every issue on the shelf, every word about it, and every cover come from the database and the issue itself; nothing here is typed by hand. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Mono:wght@400;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
 :root{
-  --void:#0A0A0A; --ink:#141414; --rule:#2A2A2A; --rule-lit:#3A3A3A;
-  --ivory:#FAF7F2; --paper:#D9D4CB; --stone:#BDB8AF; --ash:#A8A39A; --soil:#3A3632;
-  --signal:#C41230; --signal-lit:#E8475F; --signal-dark:#1F1A1B;
-  --display:'Syne',sans-serif; --mono:'Space Mono',monospace; --serif:'Newsreader',Georgia,serif;
+  --ink:#0A0A0A; --matte:#1A1A1A; --ivory:#FAF7F2; --cream:#F5F0E8; --paper:#EDE7DA;
+  --red:#C41230; --mute:#8A8A86; --mute-warm:#6B6455; --line:#2A2A2A;
+  --serif:'DM Serif Display',Georgia,'Times New Roman',serif; --sans:'Space Mono',monospace; --body:'Syne',system-ui,sans-serif;
   --z-gate:9000; --z-overlay:9500; --z-toast:9600;
-  --gutter:clamp(20px,4.4vw,64px);
+  --gutter:clamp(20px,6vw,86px);
 }
-*{box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--void);color:var(--ivory);font-family:var(--serif);font-size:18px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body{background:var(--ivory);color:var(--ink);font-family:var(--body);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit}
-h1,h2,h3{margin:0;font-family:var(--display);font-weight:800;letter-spacing:-0.02em}
-p{margin:0}
-button{font:inherit}
-.k{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase}
-.k-sm{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
-.k-red{color:var(--signal-lit)}
-.k-ink{color:var(--signal)}
-.k-stone{color:var(--stone)}
+button{font:inherit;cursor:pointer}
 [hidden]{display:none !important}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sr-only{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+#grain{position:fixed;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:soft-light;filter:invert(1);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}
+.k{font-family:var(--sans);font-size:10px;letter-spacing:.22em;text-transform:uppercase}
+.k-red{color:var(--red)}
+.k-warm{color:var(--mute-warm)}
+.kicker{font-family:var(--sans);font-weight:700;letter-spacing:5px;font-size:12px;color:var(--red);text-transform:uppercase}
 
-/* top */
-.top{height:72px;padding:0 var(--gutter);display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--rule)}
-.mark{display:flex;align-items:baseline;gap:12px;text-decoration:none}
-.mark b{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.02em}
-.mark span{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--stone)}
-.nav{display:flex;gap:40px;font-family:var(--mono);font-size:12px;letter-spacing:.16em}
-.nav a{text-decoration:none;color:var(--stone);padding:4px 0}
-.nav a[aria-current]{color:var(--ivory);border-bottom:2px solid var(--signal)}
-.top .tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--stone)}
-@media (max-width:760px){.top{height:60px;gap:12px}.mark b{font-size:18px}.mark span,.top .tag{display:none}.nav{gap:16px;font-size:11px;letter-spacing:.12em;flex-shrink:0}}
-@media (max-width:560px){.top{height:auto;flex-wrap:wrap;padding:14px var(--gutter) 0;row-gap:12px}.nav{flex-basis:100%;justify-content:space-between;gap:8px;border-top:1px solid var(--rule);padding:12px 0}.nav a{min-height:44px;display:inline-flex;align-items:center}.nav a[aria-current]{border-bottom:2px solid var(--signal)}}
+/* masthead, DAILY's own */
+.masthead{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px var(--gutter) 14px;border-bottom:1px solid rgba(10,10,10,.25);flex-wrap:wrap}
+.mastleft{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.masthead .home{font-family:var(--sans);font-size:11px;letter-spacing:2px;color:var(--mute);text-decoration:none;white-space:nowrap}
+.masthead .home:hover{color:var(--ink)}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--sans);font-weight:700;letter-spacing:3px;font-size:13px;color:var(--ink)}
+.msvg{width:118px;height:auto;color:var(--ink);display:inline-block;vertical-align:-2px}
+.mastnav{display:flex;align-items:center;gap:24px;font-family:var(--sans);font-size:11px;letter-spacing:2px}
+.mastnav a{color:var(--mute);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.mastnav a:hover{color:var(--ink)}
+.folio{color:var(--ink);border:1px solid var(--ink);padding:6px 10px;white-space:nowrap}
+@media (max-width:760px){.brand span{display:none}.msvg{width:96px}.mastnav{gap:16px;font-size:10px}}
 
-/* hero */
-.hero{padding:72px var(--gutter) 56px;display:flex;flex-direction:column;gap:56px}
-.hero-row{display:flex;justify-content:space-between;align-items:flex-end;gap:64px}
-.hero h1{font-size:clamp(56px,8.9vw,128px);line-height:.9;margin-top:20px}
-.hero .dek{max-width:460px;font-size:22px;line-height:1.4;color:var(--paper)}
-@media (max-width:1000px){.hero{padding-top:40px;gap:40px}.hero-row{flex-direction:column;align-items:flex-start;gap:28px}.hero .dek{font-size:18px}}
+/* the plate */
+.plate{text-align:center;padding:30px var(--gutter) 28px;border-bottom:1px solid var(--ink);display:flex;flex-direction:column;align-items:center;gap:12px}
+.plate-brand{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;column-gap:clamp(12px,2vw,22px);row-gap:10px}
+.plate-mark{width:min(400px,60vw);height:auto;color:var(--ink);display:block}
+.plate-name{font-family:var(--body);font-weight:800;color:var(--ink);white-space:nowrap;font-size:clamp(30px,3.8vw,54px);line-height:.9;transform:translateY(2%)}
+.lockrule{width:min(220px,38vw);height:3px;background:var(--red)}
+.plate-tag{font-family:var(--sans);font-size:10px;letter-spacing:.22em;color:var(--mute-warm);text-transform:uppercase;max-width:900px;line-height:1.8}
+@media (max-width:760px){.plate-tag{font-size:8px;letter-spacing:.18em}.plate-name{white-space:normal;font-size:clamp(22px,7vw,30px);line-height:.95;text-align:center;transform:none}.plate-brand{flex-direction:column;align-items:center}}
 
-/* stand */
-.stand{padding:0 var(--gutter) 104px;display:grid;grid-template-columns:500px minmax(0,1fr);gap:48px;align-items:start}
-@media (max-width:1100px){.stand{grid-template-columns:minmax(0,1fr);gap:40px;padding-bottom:64px}}
-.cover-col{display:flex;flex-direction:column;gap:16px;max-width:500px}
-.cover{aspect-ratio:25/33;width:100%;background:var(--ivory);color:var(--void);padding:7.2%;display:flex;flex-direction:column;gap:4.8%;container-type:inline-size}
-.cover .row{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:clamp(9px,2.1cqi,10.5px);letter-spacing:.14em;text-transform:uppercase}
-.cover .bar{height:2cqi;min-height:6px;background:var(--signal)}
-.cover .mast{font-family:var(--display);font-weight:800;font-size:13.2cqi;line-height:.88;letter-spacing:-.02em}
-.cover .lead{font-size:6cqi;line-height:1.2;font-weight:500}
-.cover .grow{flex-grow:1}
-.cover .cfoot{border-top:1px solid var(--void);padding-top:2.8cqi;flex-direction:column;gap:1.2cqi;align-items:flex-start}
-.cover-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.cover.skeleton .mast,.cover.skeleton .lead,.cover.skeleton .row{opacity:.35}
-
-.gate{position:relative;z-index:var(--z-gate);background:var(--ink);border:1px solid var(--rule);padding:44px;min-height:700px;display:flex;flex-direction:column;gap:28px}
-@media (max-width:760px){.gate{padding:28px 20px;min-height:0}}
-.gate h2{font-size:clamp(34px,3vw,44px);line-height:1}
-.gate .lede{color:var(--paper);line-height:1.45}
-.strip{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;border:1px solid var(--rule-lit);font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
-.strip a{color:var(--signal-lit);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
-.welcome{padding:16px 18px;background:var(--signal-dark);border-top:2px solid var(--signal);display:flex;flex-direction:column;gap:6px}
-.welcome span{font-size:16px;color:var(--paper)}
-
-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
-@media (max-width:720px){form{grid-template-columns:minmax(0,1fr)}}
-.f{display:flex;flex-direction:column;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--stone);text-transform:uppercase}
-.wide{grid-column:1 / -1}
-.f input,.f select{height:50px;padding:0 14px;background:var(--ivory);color:var(--void);border:1px solid var(--ivory);font-family:var(--serif);font-size:17px;border-radius:0;width:100%}
-.f select{padding-right:36px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' fill='none' stroke='%230A0A0A' stroke-width='2'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
-.f input:focus,.f select:focus{outline:3px solid var(--signal-lit);outline-offset:2px}
-.f.bad input,.f.bad select{border-color:var(--signal-lit);box-shadow:inset 0 0 0 1px var(--signal-lit)}
-.check{grid-column:1 / -1;display:flex;align-items:center;gap:14px;min-height:44px;font-size:17px;color:var(--paper);cursor:pointer}
-.check input{width:22px;height:22px;accent-color:var(--signal);margin:0;flex-shrink:0}
-.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.btn{min-height:64px;display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 .4em;padding:12px 32px;line-height:1.4;text-align:center;background:var(--signal);color:#fff;border:0;font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;text-decoration:none;width:100%}
+/* the rack */
+.rack{background:var(--ink);color:var(--ivory);padding:64px var(--gutter) 72px;display:grid;grid-template-columns:560px minmax(0,1fr);gap:72px;align-items:center}
+@media (max-width:1100px){.rack{grid-template-columns:minmax(0,1fr);gap:40px;padding:44px var(--gutter) 56px}}
+.shelf-scene{position:relative;width:100%;max-width:560px;aspect-ratio:560/700;margin:0 auto}
+.shelf-scene .behind{position:absolute;left:17%;top:5%;width:79%;aspect-ratio:612/792;object-fit:cover;opacity:.45;border:1px solid rgba(250,247,242,.18);transform:rotate(4deg)}
+.shelf-scene .front{position:absolute;left:0;top:0;width:89%;aspect-ratio:612/792;object-fit:cover;border:1px solid rgba(250,247,242,.25);box-shadow:0 40px 80px rgba(0,0,0,.6),0 2px 0 rgba(250,247,242,.2);transform:rotate(-2deg);background:var(--matte)}
+.shelf-scene .rail{position:absolute;left:0;right:0;bottom:0;height:8px;background:var(--matte);border-top:1px solid rgba(250,247,242,.2)}
+.typeset{position:absolute;left:0;top:0;width:89%;aspect-ratio:612/792;background:var(--matte);color:var(--ivory);padding:7%;display:flex;flex-direction:column;gap:5%;border:1px solid rgba(250,247,242,.25);transform:rotate(-2deg)}
+.typeset .bar{height:6px;background:var(--red)}
+.typeset .mast{font-family:var(--body);font-weight:800;font-size:clamp(28px,6.4vw,58px);line-height:.9}
+.typeset .lead{font-family:var(--serif);font-size:clamp(16px,2.4vw,24px);line-height:1.2}
+.rack-copy{display:flex;flex-direction:column;gap:22px;min-width:0}
+.meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tag{font-family:var(--sans);font-size:10px;letter-spacing:.18em;color:var(--red);border:1px solid var(--red);padding:3px 8px;text-transform:uppercase}
+.tag.back{color:var(--mute);border-color:var(--mute)}
+.chip{font-family:var(--sans);font-size:9px;letter-spacing:.16em;color:var(--ink);background:var(--ivory);padding:4px 7px;text-transform:uppercase}
+.rack h1{font-family:var(--serif);font-weight:400;font-size:clamp(34px,4.4vw,60px);line-height:1.05;color:var(--ivory)}
+.rack .syn{font-family:var(--serif);font-style:italic;font-size:clamp(17px,1.5vw,21px);line-height:1.5;color:var(--cream);max-width:640px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;padding:22px 0;border-top:1px solid rgba(250,247,242,.18);border-bottom:1px solid rgba(250,247,242,.18)}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{display:flex;flex-direction:column;gap:6px}
+.stat b{font-family:var(--body);font-weight:800;font-size:clamp(32px,3vw,44px);line-height:1;color:var(--ivory)}
+.stat span{font-family:var(--sans);font-size:9px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase}
+.actions{display:flex;flex-direction:column;gap:16px}
+.actions .row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.btn{min-height:60px;padding:14px 32px;display:inline-flex;align-items:center;justify-content:center;gap:0 .4em;flex-wrap:wrap;text-align:center;line-height:1.4;background:var(--red);color:#FFFFFF;border:0;text-decoration:none;font-family:var(--sans);font-weight:700;font-size:13px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
 .btn:hover{background:#A80E28}
 .btn:disabled{opacity:.6;cursor:progress}
-.btn.ghost{background:transparent;color:var(--ivory);border:1px solid var(--ivory);width:auto;min-height:60px;font-size:14px}
+.btn.ghost{background:transparent;color:var(--ivory);border:1px solid var(--ivory)}
 .btn.ghost:hover{background:rgba(250,247,242,.08)}
-.btn.auto{width:auto;min-height:60px;font-size:14px}
-.fine{font-size:14px;line-height:1.5;color:var(--ash)}
-.err{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--signal-lit);min-height:1em}
-.tabs{display:flex;gap:32px;border-bottom:1px solid var(--rule-lit)}
-.tab{background:transparent;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:0 2px;min-height:48px;color:var(--stone);font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer}
-.tab[aria-selected="true"]{color:var(--ivory);border-bottom-color:var(--signal)}
-.tab:hover{color:var(--ivory)}
-.tab:focus-visible{outline:3px solid var(--signal-lit);outline-offset:2px}
-.fine a{color:var(--ivory)}
-@media (max-width:760px){.tabs{gap:20px}.tab{font-size:11px;letter-spacing:.14em}}
-.done{display:flex;flex-direction:column;gap:28px;padding-top:24px}
-.done h2{font-size:clamp(44px,4.4vw,64px);line-height:.95}
-.done .lede{max-width:520px;font-size:20px}
-.done .actions{display:flex;gap:16px;flex-wrap:wrap}
-.hr{height:1px;background:var(--rule)}
-.eco{display:flex;flex-direction:column;gap:10px;max-width:540px}
-.eco p{color:var(--paper)}
-.closed{display:flex;flex-direction:column;gap:20px;padding-top:12px}
-.closed h2{font-size:clamp(34px,3vw,44px);line-height:1}
+.btn.ink{background:var(--ink);color:var(--ivory)}
+.btn.ink:hover{background:var(--matte)}
+.btn.outline{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+.btn.outline:hover{background:var(--ink);color:var(--ivory)}
+.file{font-family:var(--sans);font-size:9px;letter-spacing:.16em;color:var(--mute);text-transform:uppercase;line-height:1.9}
 
-/* shelf */
-.shelf{background:var(--ivory);color:var(--void);padding:104px var(--gutter);display:flex;flex-direction:column;gap:56px}
-@media (max-width:760px){.shelf{padding:56px var(--gutter);gap:32px}}
-.shelf-row{display:flex;justify-content:space-between;align-items:flex-end;gap:64px}
-.shelf h2{font-size:clamp(44px,5vw,72px);line-height:.95;margin-top:16px}
-.shelf .dek{max-width:420px;font-size:20px;color:var(--soil)}
-@media (max-width:1000px){.shelf-row{flex-direction:column;align-items:flex-start;gap:24px}.shelf .dek{font-size:17px}}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:40px 32px}
+/* the counter */
+.counter{padding:72px var(--gutter);background:var(--paper);display:grid;grid-template-columns:minmax(0,760px) minmax(0,1fr);gap:64px;align-items:start;border-bottom:1px solid rgba(10,10,10,.2)}
+@media (max-width:1100px){.counter{grid-template-columns:minmax(0,1fr);gap:40px;padding:48px var(--gutter)}}
+.card{position:relative;z-index:var(--z-gate);background:var(--cream);color:#141414;border:1px solid rgba(20,20,20,.25);box-shadow:0 30px 90px rgba(0,0,0,.18);padding:36px 44px 40px;display:flex;flex-direction:column;gap:24px}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--red)}
+@media (max-width:760px){.card{padding:28px 20px 30px}}
+.card h2{font-family:var(--serif);font-weight:400;font-size:clamp(30px,3vw,40px);line-height:1.05}
+.card .lede{font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.5;color:var(--mute-warm)}
+.strip{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;border:1px solid rgba(20,20,20,.25);font-family:var(--sans);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.strip a{color:var(--red);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.welcome{padding:14px 16px;background:rgba(196,18,48,.06);border-left:3px solid var(--red);display:flex;flex-direction:column;gap:6px}
+.welcome b{font-family:var(--sans);font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase}
+.welcome span{font-size:14px;color:var(--mute-warm)}
+.tabs{display:flex;border-bottom:1px solid rgba(20,20,20,.25)}
+.tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;min-height:48px;font-family:var(--sans);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute-warm)}
+.tab[aria-selected="true"]{color:#141414;border-bottom-color:var(--red)}
+.tab:hover{color:#141414}
+.tab:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
+@media (max-width:640px){form{grid-template-columns:minmax(0,1fr)}}
+.f{display:flex;flex-direction:column;gap:6px;font-family:var(--sans);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute-warm)}
+.wide{grid-column:1 / -1}
+.f input,.f select{height:46px;padding:0 14px;background:#FFFFFF;color:var(--ink);border:1px solid var(--ink);font-family:var(--body);font-size:15px;border-radius:0;width:100%}
+.f select{appearance:none;-webkit-appearance:none;padding-right:36px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'><path d='M1 1l6 6 6-6' fill='none' stroke='%230A0A0A' stroke-width='2'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
+.f input:focus,.f select:focus{outline:2px solid var(--red);outline-offset:2px}
+.f.bad input,.f.bad select{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+.check{grid-column:1 / -1;display:flex;align-items:center;gap:12px;min-height:44px;font-family:var(--sans);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute-warm);cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--red);margin:0;flex-shrink:0}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.err{font-family:var(--sans);font-size:10px;letter-spacing:.08em;color:var(--red);min-height:1em}
+.fine{font-size:12px;line-height:1.6;color:var(--mute-warm);text-align:center}
+.fine a{color:var(--ink)}
+.done{display:flex;flex-direction:column;gap:22px}
+.done h2{font-size:clamp(34px,3.6vw,48px)}
+.done .actions .row{gap:12px}
+.hr{height:1px;background:rgba(20,20,20,.2)}
+.aside{display:flex;flex-direction:column;gap:24px;padding-top:12px}
+.step{display:flex;gap:16px;align-items:baseline}
+.step b{font-family:var(--body);font-weight:800;font-size:28px;color:var(--red);flex-shrink:0}
+.step p{font-family:var(--serif);font-size:19px;line-height:1.35}
+.aside .note{font-size:14px;line-height:1.7;color:var(--mute-warm)}
+
+/* the back rack */
+.shelf{padding:72px var(--gutter) 88px;display:flex;flex-direction:column;gap:34px}
+@media (max-width:760px){.shelf{padding:48px var(--gutter) 64px;gap:24px}}
+.shelf-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.shelf h2{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(32px,3.6vw,44px);line-height:1.05;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:40px 32px}
 @media (max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px}}
-.issue{display:flex;flex-direction:column;gap:16px}
-.mini{aspect-ratio:25/33;background:var(--void);color:var(--ivory);padding:8%;display:flex;flex-direction:column;gap:5%;container-type:inline-size}
-.mini .row{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:clamp(8px,3.4cqi,10px);letter-spacing:.16em;text-transform:uppercase;color:var(--stone)}
-.mini .bar{height:2.2cqi;min-height:4px;background:var(--signal)}
-.mini .mast{font-family:var(--display);font-weight:800;font-size:12.8cqi;line-height:.9}
-.mini .lead{font-size:7.4cqi;line-height:1.25}
-.mini .grow{flex-grow:1}
-.issue .under{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.issue .under .k-sm{color:var(--void);white-space:nowrap}
-.get{min-height:44px;padding:0 18px;display:inline-flex;align-items:center;border:1px solid var(--void);color:var(--void);background:transparent;text-decoration:none;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer}
-.get{white-space:nowrap}
-.get:hover{background:var(--void);color:var(--ivory)}
-@media (max-width:760px){.get{padding:0 12px;font-size:11px;letter-spacing:.14em}.issue .under{gap:8px}}
-.issue .sel{color:var(--signal)}
-.issue.is-latest .mini{outline:3px solid var(--signal);outline-offset:-3px}
-.onpress{font-size:20px;color:var(--soil);max-width:560px}
-
-/* steps */
-.steps{padding:88px var(--gutter);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:48px;border-bottom:1px solid var(--rule)}
-@media (max-width:900px){.steps{grid-template-columns:minmax(0,1fr);gap:36px;padding:56px var(--gutter)}}
-.step{display:flex;flex-direction:column;gap:14px}
-.step .n{font-family:var(--display);font-weight:800;font-size:48px;color:var(--signal);line-height:1}
-.step .t{font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase}
-.step p{color:var(--paper)}
+.issue{display:flex;flex-direction:column;gap:14px}
+.issue .cover{width:100%;aspect-ratio:612/792;object-fit:cover;display:block;border:1px solid rgba(10,10,10,.22);box-shadow:0 18px 40px rgba(10,10,10,.22);background:var(--matte);transition:transform .18s ease}
+.issue:hover .cover{transform:translateY(-3px)}
+.issue.is-selected .cover{border:2px solid var(--red)}
+.issue .mini{aspect-ratio:612/792;background:var(--matte);color:var(--ivory);padding:8%;display:flex;flex-direction:column;gap:6%;border:1px solid rgba(10,10,10,.22)}
+.issue .mini .bar{height:5px;background:var(--red)}
+.issue .mini .mast{font-family:var(--body);font-weight:800;font-size:clamp(20px,2.6vw,34px);line-height:.9}
+.issue .mini .lead{font-family:var(--serif);font-size:clamp(14px,1.4vw,19px);line-height:1.2}
+.issue .metaline{font-family:var(--sans);font-size:9px;letter-spacing:.16em;color:var(--mute-warm);text-transform:uppercase}
+.issue h3{font-family:var(--serif);font-weight:400;font-size:24px;line-height:1.12;color:var(--ink)}
+.issue .syn{font-size:14px;line-height:1.65;color:var(--mute-warm);display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.issue .get{align-self:flex-start;min-height:44px;padding:0 18px;display:inline-flex;align-items:center;border:1px solid var(--ink);color:var(--ink);background:transparent;text-decoration:none;font-family:var(--sans);font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
+.issue .get:hover{background:var(--ink);color:var(--ivory)}
+@media (max-width:760px){.issue h3{font-size:18px}.issue .syn{-webkit-line-clamp:4;font-size:13px}.issue .get{padding:0 12px;font-size:10px}}
+.onpress{font-family:var(--serif);font-style:italic;font-size:20px;color:var(--mute-warm);max-width:560px}
 
 /* foot */
-.foot{padding:40px var(--gutter);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone)}
-.foot nav{display:flex;gap:32px}
-.foot a{color:var(--stone);text-decoration:none}
+.foot{background:var(--ink);color:var(--mute);padding:34px var(--gutter);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.foot .fmark{width:96px;height:auto;color:var(--ivory)}
+.foot .left{display:flex;align-items:center;gap:14px}
+.foot nav{display:flex;gap:24px}
+.foot a{color:var(--mute);text-decoration:none;font-family:var(--sans);font-size:10px;letter-spacing:.2em;text-transform:uppercase}
 
 /* toast */
-.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:var(--z-toast);background:var(--ivory);color:var(--void);padding:14px 20px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;border-left:4px solid var(--signal);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 32px)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:var(--z-toast);background:var(--ink);color:var(--ivory);padding:14px 20px;font-family:var(--sans);font-size:12px;letter-spacing:.08em;border-left:4px solid var(--red);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 32px)}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true"><symbol id="umark" viewBox="162.68 272.12 445.04 42.80"><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 177.9375 313.964844 C 173.789062 313.964844 170.40625 312.566406 167.789062 309.769531 C 165.171875 306.972656 163.863281 302.992188 163.863281 297.820312 L 163.863281 275.269531 L 172.976562 275.269531 L 172.707031 297.097656 C 172.765625 299.804688 173.457031 301.910156 174.78125 303.410156 C 176.101562 304.914062 178.117188 305.667969 180.824219 305.667969 C 183.828125 305.667969 186.191406 304.796875 187.90625 303.050781 C 189.617188 301.308594 190.535156 298.902344 190.65625 295.832031 L 190.476562 275.269531 L 199.585938 275.269531 L 199.585938 313.152344 L 190.382812 313.152344 L 190.746094 306.207031 C 189.484375 308.671875 187.753906 310.582031 185.558594 311.9375 C 183.363281 313.289062 180.824219 313.964844 177.9375 313.964844 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 221.246094 288.066406 L 212.5 288.066406 C 212.101562 288.066406 211.714844 288.042969 211.339844 288.007812 L 211.339844 313.152344 L 220.449219 313.152344 L 220.269531 292.585938 C 220.335938 290.882812 220.667969 289.378906 221.246094 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 237.726562 288.066406 C 238.027344 289.054688 238.226562 290.164062 238.308594 291.414062 L 238.128906 313.152344 L 247.238281 313.152344 L 247.238281 290.691406 C 247.238281 289.773438 247.183594 288.910156 247.097656 288.066406 Z M 237.726562 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 282.597656 293.757812 C 281.367188 292.855469 280.042969 292.167969 278.628906 291.683594 C 277.214844 291.203125 275.757812 290.78125 274.253906 290.421875 C 272.691406 290.0625 271.398438 289.699219 270.375 289.339844 C 269.351562 288.976562 268.539062 288.617188 267.941406 288.257812 C 267.839844 288.195312 267.75 288.128906 267.65625 288.066406 L 257.960938 288.066406 C 258.117188 288.914062 258.359375 289.6875 258.695312 290.378906 C 259.324219 291.671875 260.167969 292.765625 261.21875 293.667969 C 262.273438 294.570312 263.472656 295.308594 264.828125 295.878906 C 266.179688 296.453125 267.546875 296.917969 268.933594 297.277344 C 270.554688 297.578125 271.9375 297.894531 273.082031 298.222656 C 274.222656 298.554688 275.171875 298.933594 275.921875 299.351562 C 276.675781 299.773438 277.214844 300.222656 277.546875 300.707031 C 277.875 301.1875 278.042969 301.820312 278.042969 302.597656 C 278.042969 303.863281 277.515625 304.886719 276.464844 305.667969 C 275.410156 306.449219 273.742188 306.871094 271.457031 306.929688 C 269.292969 306.929688 267.355469 306.492188 265.640625 305.621094 C 263.925781 304.75 262.527344 303.410156 261.445312 301.605469 L 255.039062 306.117188 C 256.304688 308.164062 258.363281 309.980469 261.21875 311.574219 C 264.074219 313.167969 267.667969 313.964844 272 313.964844 C 274.707031 313.964844 276.992188 313.648438 278.855469 313.015625 C 280.71875 312.386719 282.238281 311.546875 283.410156 310.492188 C 284.582031 309.441406 285.425781 308.191406 285.9375 306.75 C 286.445312 305.304688 286.703125 303.773438 286.703125 302.148438 C 286.703125 300.164062 286.328125 298.496094 285.574219 297.140625 C 284.824219 295.789062 283.828125 294.660156 282.597656 293.757812 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 322.109375 288.066406 L 322.179688 295.832031 C 322.058594 298.902344 321.140625 301.308594 319.429688 303.050781 C 317.714844 304.796875 315.351562 305.667969 312.347656 305.667969 C 309.640625 305.667969 307.625 304.914062 306.304688 303.410156 C 304.980469 301.910156 304.289062 299.804688 304.230469 297.097656 L 304.339844 288.066406 L 295.390625 288.066406 L 295.390625 297.820312 C 295.390625 302.992188 296.695312 306.972656 299.3125 309.769531 C 301.929688 312.566406 305.3125 313.964844 309.460938 313.964844 C 312.347656 313.964844 314.886719 313.289062 317.082031 311.9375 C 319.277344 310.582031 321.007812 308.675781 322.269531 306.207031 L 321.910156 313.152344 L 331.109375 313.152344 L 331.109375 288.066406 Z M 322.109375 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 352.988281 288.066406 L 342.863281 288.066406 L 342.863281 313.152344 L 351.972656 313.152344 L 351.613281 294.75 C 351.769531 291.992188 352.230469 289.769531 352.988281 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 381.332031 288.066406 L 381.332031 313.152344 L 390.445312 313.152344 L 390.21875 288.066406 Z M 381.332031 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 431.222656 299.894531 C 431.222656 302 430.378906 303.652344 428.699219 304.855469 C 427.011719 306.058594 424.820312 306.660156 422.113281 306.660156 C 417.300781 306.660156 414.898438 305.003906 414.898438 301.699219 C 414.898438 300.015625 415.496094 298.796875 416.703125 298.042969 C 417.902344 297.292969 419.496094 296.917969 421.480469 296.917969 L 431.222656 296.917969 Z M 431 288.066406 C 431.144531 288.976562 431.222656 289.996094 431.222656 291.144531 L 420.851562 290.601562 C 418.6875 290.601562 416.703125 290.828125 414.898438 291.277344 C 413.09375 291.730469 411.527344 292.421875 410.207031 293.355469 C 408.882812 294.285156 407.84375 295.457031 407.09375 296.871094 C 406.339844 298.285156 405.964844 299.984375 405.964844 301.96875 C 405.964844 304.074219 406.328125 305.894531 407.046875 307.425781 C 407.769531 308.957031 408.746094 310.207031 409.980469 311.167969 C 411.210938 312.132812 412.65625 312.835938 414.3125 313.289062 C 415.964844 313.738281 417.722656 313.964844 419.585938 313.964844 C 422.414062 313.964844 424.757812 313.4375 426.625 312.386719 C 428.488281 311.335938 430.082031 309.785156 431.40625 307.742188 L 431.222656 313.152344 L 440.335938 313.152344 L 440.335938 290.78125 C 440.335938 289.832031 440.269531 288.9375 440.171875 288.066406 Z M 431 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 475.429688 304.71875 C 473.988281 305.53125 472.125 305.9375 469.839844 305.9375 C 466.410156 305.9375 463.75 304.839844 461.855469 302.644531 C 459.960938 300.449219 459.015625 297.636719 459.015625 294.210938 C 459.015625 291.875 459.464844 289.832031 460.347656 288.066406 L 450.546875 288.066406 C 449.941406 289.992188 449.632812 292.039062 449.632812 294.210938 C 449.632812 297.039062 450.144531 299.667969 451.167969 302.101562 C 452.191406 304.539062 453.601562 306.628906 455.40625 308.371094 C 457.210938 310.117188 459.34375 311.484375 461.8125 312.476562 C 464.277344 313.46875 466.953125 313.964844 469.839844 313.964844 C 473.507812 313.964844 476.542969 313.347656 478.949219 312.117188 C 481.355469 310.882812 483.492188 309.214844 485.355469 307.109375 L 479.128906 302.238281 C 478.109375 303.082031 476.875 303.90625 475.429688 304.71875 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 529.265625 288.066406 L 520.195312 288.066406 C 520.5625 288.964844 520.859375 289.917969 521.027344 290.964844 L 499.472656 291.144531 C 499.691406 290.015625 500.007812 288.992188 500.417969 288.066406 L 491.390625 288.066406 C 490.769531 289.992188 490.449219 292.035156 490.449219 294.210938 C 490.449219 297.039062 490.960938 299.667969 491.984375 302.105469 C 493.007812 304.539062 494.433594 306.628906 496.269531 308.371094 C 498.101562 310.117188 500.34375 311.484375 502.988281 312.476562 C 505.632812 313.46875 508.582031 313.964844 511.828125 313.964844 C 515.617188 313.964844 518.789062 313.378906 521.34375 312.207031 C 523.898438 311.03125 526.140625 309.574219 528.066406 307.832031 L 522.742188 302.238281 C 521.480469 303.261719 519.960938 304.195312 518.1875 305.035156 C 516.414062 305.878906 514.265625 306.296875 511.738281 306.296875 C 508.25 306.296875 505.515625 305.484375 503.527344 303.863281 C 501.546875 302.238281 500.222656 299.925781 499.558594 296.917969 L 530.230469 296.554688 C 530.410156 293.730469 530.09375 290.917969 529.28125 288.121094 C 529.277344 288.101562 529.269531 288.085938 529.265625 288.066406 "/><path fill-rule="nonzero" fill="currentColor" fill-opacity="1" d="M 567.59375 288.066406 C 568.5 289.792969 568.964844 291.804688 568.964844 294.121094 C 568.964844 297.730469 567.96875 300.601562 565.988281 302.734375 C 564 304.871094 561.324219 305.9375 557.957031 305.9375 C 554.652344 305.9375 552.035156 304.871094 550.109375 302.734375 C 548.183594 300.601562 547.164062 297.730469 547.042969 294.121094 C 547.125 291.804688 547.628906 289.792969 548.53125 288.066406 L 538.617188 288.066406 C 538.085938 289.949219 537.796875 291.96875 537.753906 294.121094 C 537.8125 297.007812 538.308594 299.652344 539.242188 302.058594 C 540.171875 304.464844 541.433594 306.554688 543.03125 308.328125 C 544.621094 310.101562 546.503906 311.484375 548.667969 312.476562 C 550.832031 313.46875 553.148438 313.964844 555.613281 313.964844 C 558.800781 313.964844 561.503906 313.257812 563.730469 311.847656 C 565.957031 310.433594 567.667969 308.582031 568.875 306.296875 L 568.601562 313.152344 L 577.710938 313.152344 L 577.710938 288.066406 Z M 567.59375 288.066406 "/><g fill="currentColor" fill-opacity="1"><path style="fill:currentColor;stroke:none" transform="translate(583.2915,291.6675)" d="M 0.453125 -18.4375 L 10.53125 -18.4375 L 10.53125 -16 L 6.9375 -16 L 6.9375 -8.1875 L 3.984375 -8.1875 L 3.984375 -16 L 0.453125 -16 Z M 11.703125 -18.4375 L 16.1875 -18.4375 L 17.609375 -12.84375 L 19.109375 -18.4375 L 23.46875 -18.4375 L 23.46875 -8.1875 L 20.6875 -8.1875 L 20.6875 -15.4375 L 18.765625 -8.1875 L 16.4375 -8.1875 L 14.53125 -15.4375 L 14.53125 -8.1875 L 11.703125 -8.1875 Z M 11.703125 -18.4375 "/></g></symbol></svg>
+<div id="grain"></div>
 
-<header class="top">
-  <a class="mark" href="/"><b>UNSURFACED</b><span>INTELLIGENCE</span></a>
-  <nav class="nav" aria-label="Sections">
-    <a href="/daily/">DAILY</a>
-    <a href="/excavate/">EXCAVATE</a>
-    <a href="/weekly/" aria-current="page">THE WEEKLY</a>
+<header class="masthead">
+  <span class="mastleft">
+    <a class="home" href="../">&#8592; UNSURFACED HOME</a>
+    <a class="brand" href="../daily/" style="text-decoration:none"><svg class="msvg" viewBox="0 0 445.04 42.80" aria-hidden="true"><use href="#umark"/></svg><span class="sr-only">Unsurfaced</span><span>CULTURAL INTELLIGENCE</span></a>
+  </span>
+  <nav class="mastnav" aria-label="Sections">
+    <a href="../daily/">DAILY</a>
+    <a href="../intelligence/">EXCAVATE</a>
+    <span class="folio">THE STAND</span>
   </nav>
-  <span class="tag">THE STAND</span>
 </header>
 
 <main>
-  <section class="hero">
-    <div class="hero-row">
-      <div>
-        <span class="k k-red">THE STAND &middot; FREE TO DOWNLOAD</span>
-        <h1>The Weekly<br>Read.</h1>
+  <section class="plate">
+    <h1 class="plate-brand"><span class="sr-only">Unsurfaced&#8482; The Weekly Read</span><svg class="plate-mark" viewBox="0 0 445.04 42.80" aria-hidden="true"><use href="#umark"/></svg><span class="plate-name" aria-hidden="true">THE WEEKLY READ</span></h1>
+    <div class="lockrule"></div>
+    <p class="plate-tag">Brought to you by Unsurfaced Intelligence &middot; A newsstand for culture &middot; One issue a week, every issue kept</p>
+  </section>
+
+  <section class="rack" id="rack" aria-labelledby="c-head">
+    <div class="shelf-scene">
+      <img class="behind" id="c-behind" alt="" hidden>
+      <img class="front" id="c-cover" alt="" hidden>
+      <div class="typeset" id="c-typeset" hidden>
+        <div class="bar"></div>
+        <div class="mast">THE<br>WEEKLY<br>READ</div>
+        <div class="lead" id="t-lead"></div>
       </div>
-      <p class="dek">The week in culture, read through the Unsurfaced lens. Every story DAILY published, cut to what it means for the culture, the category and the people it serves.</p>
+      <div class="rail"></div>
+    </div>
+    <div class="rack-copy">
+      <div class="meta">
+        <span class="tag" id="c-which">On the stand now</span>
+        <span class="chip" id="c-label">Issue</span>
+        <span class="k" id="c-week" style="color:var(--mute)"></span>
+      </div>
+      <h1 id="c-head">Surfacing the stand.</h1>
+      <p class="syn" id="c-syn"></p>
+      <div class="stats" id="c-stats" hidden>
+        <div class="stat"><b id="s-stories"></b><span>Stories read</span></div>
+        <div class="stat"><b id="s-editions"></b><span>Editions</span></div>
+        <div class="stat"><b id="s-sources"></b><span>Sources</span></div>
+        <div class="stat"><b id="s-threads"></b><span>Recurring threads</span></div>
+      </div>
+      <div class="actions">
+        <div class="row">
+          <a class="btn" href="#counter" id="to-counter">Pay the cover price</a>
+          <a class="btn ghost" href="#shelf">The back rack</a>
+        </div>
+        <span class="file" id="c-file"></span>
+      </div>
     </div>
   </section>
 
-  <section class="stand" id="stand" aria-labelledby="gate-title">
-    <div class="cover-col">
-      <article class="cover skeleton" id="cover" aria-label="Selected issue">
-        <div class="row"><span>UNSURFACED INTELLIGENCE</span><span id="c-label">ISSUE</span></div>
-        <div class="bar"></div>
-        <div class="mast">THE<br>WEEKLY<br>READ</div>
-        <div class="lead" id="c-lead"></div>
-        <div class="grow"></div>
-        <div class="row cfoot"><span id="c-week"></span><span>THE ROUGH &middot; THE READ &middot; THE MOVE</span></div>
-      </article>
-      <div class="cover-meta">
-        <span class="k-sm k-stone" id="c-file"></span>
-        <span class="k-sm k-red" id="c-which"></span>
-      </div>
-    </div>
+  <section class="counter" id="counter" aria-labelledby="gate-title">
+    <div class="card" id="gate" data-state="loading">
 
-    <div class="gate" id="gate" data-state="loading">
-
-      <div id="st-form">
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <span class="k k-red" id="gate-kicker">THE COVER PRICE</span>
+      <div id="st-form" style="display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span class="k k-red" id="gate-kicker">The counter &middot; The cover price</span>
           <h2 id="gate-title">Tell us who is reading.</h2>
-          <p class="lede" id="gate-lede-form">One short form for every issue. Submit it and <span id="g-label">this issue</span> downloads straight from our site.</p>
-          <p class="lede" id="gate-lede-signin" hidden>Account holders skip the form. Sign in and <span class="s-label">this issue</span> downloads. You sign in for each download; this page keeps no session.</p>
+          <p class="lede" id="gate-lede-form">One short form, and <span class="s-label">this issue</span> downloads straight from the stand. Account holders sign in instead.</p>
+          <p class="lede" id="gate-lede-signin" hidden>Sign in and <span class="s-label">this issue</span> downloads. You sign in for each download; the stand keeps no session.</p>
         </div>
 
-        <div class="strip" id="back-strip" hidden style="margin-top:28px">
-          <span>You are downloading <span id="b-label"></span></span>
-          <a href="#gate" id="to-latest">Switch to latest</a>
+        <div class="strip" id="back-strip" hidden>
+          <span>You are taking <span class="s-label"></span></span>
+          <a href="#counter" id="to-latest">Switch to the latest</a>
         </div>
 
-        <div id="turnstile" hidden style="margin-top:28px"></div>
+        <div id="turnstile" hidden></div>
 
-        <div class="tabs" role="tablist" aria-label="How to download" style="margin-top:28px">
+        <div class="tabs" role="tablist" aria-label="How to download">
           <button class="tab" type="button" role="tab" id="tab-form" aria-selected="true" aria-controls="pane-form">Pay the cover price</button>
           <button class="tab" type="button" role="tab" id="tab-signin" aria-selected="false" aria-controls="pane-signin">Sign in</button>
         </div>
 
-        <div id="pane-form" role="tabpanel" aria-labelledby="tab-form">
-        <div class="welcome" id="welcome" hidden style="margin-top:28px">
-          <span class="k-sm">WELCOME BACK</span>
-          <span>Your details from last time are filled in. Check them, submit, and this issue is yours.</span>
-        </div>
-
-        <form id="intake" novalidate style="margin-top:28px">
-          <label class="f" id="f-first">First name<input type="text" name="first_name" autocomplete="given-name" maxlength="120" required></label>
-          <label class="f" id="f-last">Last name<input type="text" name="last_name" autocomplete="family-name" maxlength="120" required></label>
-          <label class="f wide" id="f-email">Work email<input type="email" name="email" autocomplete="email" maxlength="120" required inputmode="email"></label>
-          <label class="f" id="f-company">Company<input type="text" name="company" autocomplete="organization" maxlength="120"></label>
-          <label class="f" id="f-role">Role
-            <select name="role">
-              <option value="">Choose one</option>
-              <option>Strategist</option>
-              <option>Marketer</option>
-              <option>Researcher</option>
-              <option>Creative</option>
-              <option>Founder or executive</option>
-              <option>Student</option>
-              <option>Other</option>
-            </select>
-          </label>
-          <label class="f wide" id="f-frame">What you track
-            <select name="frame_group">
-              <option value="">Choose the space closest to your work</option>
-              <option>Style</option>
-              <option>Sound and screen</option>
-              <option>Making</option>
-              <option>Systems</option>
-              <option>Living</option>
-              <option>People</option>
-            </select>
-          </label>
-          <label class="check"><input type="checkbox" name="opt_in">Send me each new issue when it lands.</label>
-          <label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
-          <div class="wide" style="display:flex;flex-direction:column;gap:14px">
-            <p class="err" id="form-err" aria-live="polite"></p>
-            <button class="btn" type="submit" id="claim-btn"><span class="idle">Download <span id="btn-label">this issue</span></span><span class="busy" hidden>Opening the issue</span></button>
-            <p class="fine">Your details join the Unsurfaced reader list so we know who reads. We never sell them.</p>
+        <div id="pane-form" role="tabpanel" aria-labelledby="tab-form" style="display:flex;flex-direction:column;gap:20px">
+          <div class="welcome" id="welcome" hidden>
+            <b>Welcome back</b>
+            <span>Your details from last time are filled in. Check them, submit, and this issue is yours.</span>
           </div>
-        </form>
+          <form id="intake" novalidate>
+            <label class="f" id="f-first">First name<input type="text" name="first_name" autocomplete="given-name" maxlength="120" required></label>
+            <label class="f" id="f-last">Last name<input type="text" name="last_name" autocomplete="family-name" maxlength="120" required></label>
+            <label class="f wide" id="f-email">Work email<input type="email" name="email" autocomplete="email" maxlength="120" required inputmode="email"></label>
+            <label class="f" id="f-company">Company<input type="text" name="company" autocomplete="organization" maxlength="120"></label>
+            <label class="f" id="f-role">Role
+              <select name="role">
+                <option value="">Choose one</option>
+                <option>Strategist</option>
+                <option>Marketer</option>
+                <option>Researcher</option>
+                <option>Creative</option>
+                <option>Founder or executive</option>
+                <option>Student</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label class="f wide" id="f-frame">What you track
+              <select name="frame_group">
+                <option value="">Choose the space closest to your work</option>
+                <option>Style</option>
+                <option>Sound and screen</option>
+                <option>Making</option>
+                <option>Systems</option>
+                <option>Living</option>
+                <option>People</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" name="opt_in">Send me each new issue when it lands</label>
+            <label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            <div class="wide" style="display:flex;flex-direction:column;gap:12px">
+              <p class="err" id="form-err" aria-live="polite"></p>
+              <button class="btn" type="submit" id="claim-btn" style="width:100%"><span class="idle">Download <span class="s-label">this issue</span> &#8594;</span><span class="busy" hidden>Opening the issue</span></button>
+              <p class="fine">Your details join the Unsurfaced reader list so we know who reads. We never sell them.</p>
+            </div>
+          </form>
         </div>
 
         <div id="pane-signin" role="tabpanel" aria-labelledby="tab-signin" hidden>
-        <form id="signin" novalidate style="margin-top:28px">
-          <label class="f wide" id="s-email">Email<input type="email" name="email" autocomplete="username" maxlength="120" required inputmode="email"></label>
-          <label class="f wide" id="s-pass">Password<input type="password" name="password" autocomplete="current-password" maxlength="256" required></label>
-          <label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
-          <div class="wide" style="display:flex;flex-direction:column;gap:14px">
-            <p class="err" id="signin-err" aria-live="polite"></p>
-            <button class="btn" type="submit" id="signin-btn"><span class="idle">Sign in and download <span class="s-label">this issue</span></span><span class="busy" hidden>Checking</span></button>
-            <p class="fine">Every download still counts on the ledger, form or sign-in. <a id="signin-help" href="#" hidden>Trouble signing in?</a> <a href="#gate" id="to-form">Pay the cover price instead.</a></p>
-          </div>
-        </form>
+          <form id="signin" novalidate>
+            <label class="f wide" id="s-email">Email<input type="email" name="email" autocomplete="username" maxlength="120" required inputmode="email"></label>
+            <label class="f wide" id="s-pass">Password<input type="password" name="password" autocomplete="current-password" maxlength="256" required></label>
+            <label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            <div class="wide" style="display:flex;flex-direction:column;gap:12px">
+              <p class="err" id="signin-err" aria-live="polite"></p>
+              <button class="btn" type="submit" id="signin-btn" style="width:100%"><span class="idle">Sign in and download <span class="s-label">this issue</span> &#8594;</span><span class="busy" hidden>Checking</span></button>
+              <p class="fine">Every download still counts on the ledger, form or sign-in. <a id="signin-help" href="#" hidden>Trouble signing in?</a> <a href="#counter" id="to-form">Pay the cover price instead.</a></p>
+            </div>
+          </form>
         </div>
       </div>
 
       <div id="st-done" class="done" hidden>
-        <span class="k k-red">DOWNLOAD STARTED</span>
-        <h2><span id="d-label"></span><br>is yours.</h2>
+        <span class="k k-red">Download started</span>
+        <h2><span id="d-label"></span> is yours.</h2>
         <p class="lede">The PDF is on its way to your downloads folder. If it did not start, use the button below. The link works for the next ten minutes.</p>
-        <div class="actions">
-          <a class="btn auto" id="again" href="#" download>Download again</a>
-          <a class="btn ghost" id="browse" href="#shelf">Browse the shelf</a>
-        </div>
+        <div class="actions"><div class="row">
+          <a class="btn ink" id="again" href="#" download>Download again</a>
+          <a class="btn outline" id="browse" href="#shelf">The back rack</a>
+        </div></div>
         <div class="hr"></div>
-        <div class="eco">
-          <span class="k-sm k-stone">THE REST OF THE ECOSYSTEM</span>
-          <p>The stand is open to every reader. EXCAVATE, MINE and the full intelligence platform open by invitation. You are on the list.</p>
-        </div>
+        <p class="fine" style="text-align:left">The stand is open to every reader. EXCAVATE, MINE and the full intelligence platform open by invitation. You are on the list.</p>
       </div>
 
-      <div id="st-closed" class="closed" hidden>
-        <span class="k k-red">ON PRESS</span>
+      <div id="st-closed" class="done" hidden>
+        <span class="k k-red">On press</span>
         <h2>The first issue is on press.</h2>
-        <p class="lede">The shelf fills from here. Come back Monday, or read today in <a href="/daily/">DAILY</a>.</p>
+        <p class="lede">The stand fills from here. Come back Monday, or read today in <a href="../daily/">DAILY</a>.</p>
       </div>
-
     </div>
+
+    <aside class="aside" aria-label="How the stand works">
+      <span class="kicker">How the stand works</span>
+      <div class="step"><b>01</b><p>Pick an issue. The latest sits at the front; every earlier week waits on the back rack.</p></div>
+      <div class="step"><b>02</b><p>Read the cover and the synopsis on the stand. The whole issue is yours at the counter.</p></div>
+      <div class="step"><b>03</b><p>Pay the cover price, six fields or a sign-in, and the PDF downloads from unsurfaced-intelligence.com.</p></div>
+      <div class="hr"></div>
+      <p class="note">The stand is open to every reader. EXCAVATE, MINE and the full intelligence platform open by invitation. Every download counts on the ledger, form or sign-in.</p>
+    </aside>
   </section>
 
   <section class="shelf" id="shelf" aria-labelledby="shelf-title">
-    <div class="shelf-row">
+    <div class="shelf-head">
       <div>
-        <span class="k k-ink">THE SHELF</span>
-        <h2 id="shelf-title">Every issue stays<br>on the stand.</h2>
+        <span class="kicker">The back rack</span>
+        <h2 id="shelf-title">Every issue stays on the stand.</h2>
       </div>
-      <p class="dek">Back issues carry the same cover price as the latest one. Pick any week and the form above delivers it.</p>
+      <span class="k k-warm" id="shelf-count"></span>
     </div>
     <div class="grid" id="shelf-grid" aria-live="polite"></div>
-    <p class="onpress" id="shelf-empty" hidden>The first issue is on press. The shelf fills from here.</p>
-  </section>
-
-  <section class="steps" aria-label="How the stand works">
-    <div class="step"><span class="n">01</span><span class="t">Pick an issue</span><p>The latest sits at the front. Every earlier week waits on the shelf.</p></div>
-    <div class="step"><span class="n">02</span><span class="t">Pay the cover price</span><p>Six fields. Coming back? This browser fills them in for you.</p></div>
-    <div class="step"><span class="n">03</span><span class="t">Read it</span><p>The PDF downloads straight from unsurfaced-intelligence.com. Keep it, print it, pass it on.</p></div>
+    <p class="onpress" id="shelf-empty" hidden>The first issue is on press. The rack fills from here.</p>
   </section>
 </main>
 
 <footer class="foot">
-  <span>Unsurfaced Intelligence &middot; The Stand</span>
-  <nav aria-label="Footer"><a href="/daily/">DAILY</a><a href="/excavate/">EXCAVATE</a></nav>
+  <div class="left"><svg class="fmark" viewBox="0 0 445.04 42.80" aria-hidden="true"><use href="#umark"/></svg><span class="k" style="color:var(--mute)">Intelligence &middot; The stand</span></div>
+  <nav aria-label="Footer"><a href="../daily/">DAILY</a><a href="../intelligence/">EXCAVATE</a></nav>
+  <span class="k" style="color:var(--mute-warm);font-size:9px">Inspiration is everywhere. Intelligence is knowing what to do with it.</span>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <template id="tpl-issue">
   <article class="issue">
-    <div class="mini">
-      <div class="row"><span>UNSURFACED</span><span class="i-label"></span></div>
-      <div class="bar"></div>
-      <div class="mast">THE<br>WEEKLY<br>READ</div>
-      <div class="lead i-lead"></div>
-      <div class="grow"></div>
-      <span class="row i-week"></span>
-    </div>
-    <div class="under">
-      <span class="k-sm i-label2"></span>
-      <button class="get" type="button">Get it</button>
-    </div>
-    <span class="k-sm sel" hidden>Selected above</span>
+    <img class="cover" alt="" hidden>
+    <div class="mini" hidden><div class="bar"></div><div class="mast">THE<br>WEEKLY<br>READ</div><div class="lead"></div></div>
+    <span class="tag i-tag"></span>
+    <span class="metaline i-meta"></span>
+    <h3 class="i-head"></h3>
+    <p class="syn i-syn"></p>
+    <button class="get" type="button">Get it</button>
   </article>
 </template>
 
@@ -349,7 +372,7 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
 var CONFIG = {
   API_BASE: 'https://api.unsurfaced-intelligence.com',
   TURNSTILE_SITE_KEY: '',
-  SIGNIN_HELP_URL: '/intelligence/'
+  SIGNIN_HELP_URL: '../intelligence/'
 };
 var STORE_KEY = 'uw.reader';
 var MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -378,7 +401,13 @@ function fileLabel(issue) {
   if (issue.page_count) parts.push(issue.page_count + ' PAGES');
   var s = sizeLabel(issue.byte_size);
   if (s) parts.push(s);
+  if (issue.issue_range) parts.push('ISSUES ' + String(issue.issue_range).toUpperCase());
+  if (issue.cover_credit) parts.push('COVER: ' + String(issue.cover_credit).toUpperCase());
   return parts.join(' · ');
+}
+function coverUrl(issue) { return issue && issue.cover_key ? CONFIG.API_BASE + '/media/' + issue.cover_key : ''; }
+function hasStats(issue) {
+  return ['stories_read', 'editions', 'sources', 'threads'].every(function (k) { return issue && typeof issue[k] === 'number' && issue[k] >= 0; });
 }
 function toast(msg) {
   var t = $('toast');
@@ -406,22 +435,35 @@ function store(reader) {
 
 function latest() { return state.issues.length ? state.issues[0] : null; }
 function isLatest(issue) { var l = latest(); return !!(l && issue && l.issue_no === issue.issue_no); }
+function setLabels(issue) {
+  Array.prototype.forEach.call(document.querySelectorAll('.s-label'), function (el) { el.textContent = label(issue.issue_no); });
+}
 
 function renderCover() {
   var issue = state.selected;
-  var c = $('cover');
-  if (!issue) { c.classList.add('skeleton'); return; }
-  c.classList.remove('skeleton');
+  if (!issue) return;
+  var url = coverUrl(issue);
+  var front = $('c-cover'), typeset = $('c-typeset');
+  if (url) { front.src = url; front.alt = 'Cover of ' + label(issue.issue_no) + ': ' + (issue.lead || ''); front.hidden = false; typeset.hidden = true; }
+  else { front.hidden = true; front.removeAttribute('src'); $('t-lead').textContent = issue.lead || ''; typeset.hidden = false; }
+  var other = state.issues.filter(function (i) { return i.issue_no !== issue.issue_no; })[0];
+  var behind = $('c-behind');
+  if (other && coverUrl(other)) { behind.src = coverUrl(other); behind.hidden = false; } else { behind.hidden = true; behind.removeAttribute('src'); }
+  $('c-which').textContent = isLatest(issue) ? 'On the stand now' : 'Back issue';
+  $('c-which').classList.toggle('back', !isLatest(issue));
   $('c-label').textContent = label(issue.issue_no);
-  $('c-lead').textContent = issue.lead || '';
   $('c-week').textContent = weekLabel(issue.week_start, issue.week_end);
+  $('c-head').textContent = issue.lead || '';
+  $('c-syn').textContent = issue.standfirst || '';
+  $('c-syn').hidden = !issue.standfirst;
+  if (hasStats(issue)) {
+    $('s-stories').textContent = issue.stories_read; $('s-editions').textContent = issue.editions;
+    $('s-sources').textContent = issue.sources; $('s-threads').textContent = issue.threads;
+    $('c-stats').hidden = false;
+  } else { $('c-stats').hidden = true; }
   $('c-file').textContent = fileLabel(issue);
-  $('c-which').textContent = isLatest(issue) ? 'LATEST ISSUE' : 'BACK ISSUE';
-  $('g-label').textContent = label(issue.issue_no);
-  $('btn-label').textContent = label(issue.issue_no);
-  $('b-label').textContent = label(issue.issue_no);
-  Array.prototype.forEach.call(document.querySelectorAll('.s-label'), function (el) { el.textContent = label(issue.issue_no); });
   $('back-strip').hidden = isLatest(issue);
+  setLabels(issue);
   document.title = 'The Weekly Read ' + label(issue.issue_no).replace('ISSUE ', '#') + ' | Unsurfaced Intelligence';
 }
 
@@ -429,16 +471,24 @@ function renderShelf() {
   var grid = $('shelf-grid');
   grid.textContent = '';
   $('shelf-empty').hidden = state.issues.length > 0;
+  $('shelf-count').textContent = state.issues.length ? (state.issues.length + (state.issues.length === 1 ? ' ISSUE' : ' ISSUES') + ' · SAME COVER PRICE') : '';
   var tpl = $('tpl-issue');
   state.issues.forEach(function (issue) {
     var node = tpl.content.firstElementChild.cloneNode(true);
-    node.querySelector('.i-label').textContent = label(issue.issue_no);
-    node.querySelector('.i-label2').textContent = label(issue.issue_no);
-    node.querySelector('.i-lead').textContent = issue.lead || '';
-    node.querySelector('.i-week').textContent = weekLabel(issue.week_start, issue.week_end);
-    node.querySelector('.sel').hidden = !(state.selected && state.selected.issue_no === issue.issue_no);
-    if (isLatest(issue)) node.classList.add('is-latest');
+    var url = coverUrl(issue);
+    var img = node.querySelector('.cover'), mini = node.querySelector('.mini');
+    if (url) { img.src = url; img.alt = 'Cover of ' + label(issue.issue_no); img.hidden = false; }
+    else { mini.querySelector('.lead').textContent = issue.lead || ''; mini.hidden = false; }
+    var sel = !!(state.selected && state.selected.issue_no === issue.issue_no);
+    node.querySelector('.i-tag').textContent = isLatest(issue) ? 'On the stand now' : 'Back issue';
+    node.querySelector('.i-tag').classList.toggle('back', !isLatest(issue));
+    node.querySelector('.i-meta').textContent = label(issue.issue_no) + ' · ' + weekLabel(issue.week_start, issue.week_end);
+    node.querySelector('.i-head').textContent = issue.lead || '';
+    node.querySelector('.i-syn').textContent = issue.standfirst || '';
+    node.querySelector('.i-syn').hidden = !issue.standfirst;
+    if (sel) node.classList.add('is-selected');
     var btn = node.querySelector('.get');
+    btn.textContent = sel ? 'At the counter' : 'Get it';
     btn.setAttribute('aria-label', 'Get ' + label(issue.issue_no));
     btn.addEventListener('click', function () { select(issue, true); });
     grid.appendChild(node);
@@ -454,10 +504,10 @@ function select(issue, scroll) {
   try {
     var u = new URL(location.href);
     if (isLatest(issue)) u.searchParams.delete('issue'); else u.searchParams.set('issue', String(issue.issue_no));
-    history.replaceState(null, '', u.pathname + u.search + (scroll ? '#gate' : u.hash));
+    history.replaceState(null, '', u.pathname + u.search + (scroll ? '#counter' : u.hash));
   } catch (_) { /* url stays */ }
   if (scroll) {
-    $('gate').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('counter').scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(function () {
       var f = state.mode === 'signin' ? document.querySelector('#signin input[name="email"]') : document.querySelector('#intake input[name="first_name"]');
       if (f && !f.value) f.focus({ preventScroll: true });
@@ -521,6 +571,13 @@ function startDownload(url, expires) {
   setTimeout(function () { a.remove(); }, 2000);
 }
 
+function finish(j, fallbackIssue) {
+  $('d-label').textContent = label(j.issue_no || fallbackIssue);
+  setGate('done');
+  startDownload(j.url, j.expires);
+  $('counter').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function submit(e) {
   e.preventDefault();
   if (state.busy || !state.selected) return;
@@ -539,10 +596,7 @@ function submit(e) {
       var j = res.body || {};
       if (res.status === 200 && j.ok && j.url) {
         store({ first_name: p.first_name, last_name: p.last_name, email: p.email, company: p.company, role: p.role, frame_group: p.frame_group, opt_in: p.opt_in });
-        $('d-label').textContent = label(j.issue_no || p.issue_no);
-        setGate('done');
-        startDownload(j.url, j.expires);
-        $('gate').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        finish(j, p.issue_no);
         return;
       }
       if (res.status === 429) { toast('Too many attempts from this connection. Wait ten minutes and try again.'); return; }
@@ -567,7 +621,7 @@ function setMode(m, focus) {
   $('pane-signin').hidden = !signin;
   $('tab-form').setAttribute('aria-selected', String(!signin));
   $('tab-signin').setAttribute('aria-selected', String(signin));
-  $('gate-kicker').textContent = signin ? 'SIGN IN TO DOWNLOAD' : 'THE COVER PRICE';
+  $('gate-kicker').textContent = signin ? 'The counter · Sign in to download' : 'The counter · The cover price';
   $('gate-title').textContent = signin ? 'Welcome back.' : 'Tell us who is reading.';
   $('gate-lede-form').hidden = signin;
   $('gate-lede-signin').hidden = !signin;
@@ -611,13 +665,7 @@ function signinSubmit(e) {
   }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
     .then(function (res) {
       var j = res.body || {};
-      if (res.status === 200 && j.ok && j.url) {
-        $('d-label').textContent = label(j.issue_no || body.issue_no);
-        setGate('done');
-        startDownload(j.url, j.expires);
-        $('gate').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
-      }
+      if (res.status === 200 && j.ok && j.url) { finish(j, body.issue_no); return; }
       if (res.status === 429) { $('signin-err').textContent = 'Too many attempts. Wait ten minutes and try again.'; return; }
       if (res.status === 503) { $('signin-err').textContent = 'Sign-in is busy right now. Try again in a minute, or pay the cover price instead.'; return; }
       if (res.status === 401) { markBadSignin(['s-email', 's-pass']); $('signin-err').textContent = 'Email or password did not match.'; return; }
@@ -645,7 +693,7 @@ function mountTurnstile() {
   var s = document.createElement('script');
   s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=uwTurnstileReady';
   s.async = true;
-  window.uwTurnstileReady = function () { window.turnstile.render('#turnstile', { sitekey: CONFIG.TURNSTILE_SITE_KEY, theme: 'dark' }); };
+  window.uwTurnstileReady = function () { window.turnstile.render('#turnstile', { sitekey: CONFIG.TURNSTILE_SITE_KEY, theme: 'light' }); };
   document.head.appendChild(s);
 }
 
@@ -688,7 +736,7 @@ function boot() {
     .then(function (j) {
       if (!j || j.ok !== true) throw new Error('shelf not ok');
       state.issues = Array.isArray(j.issues) ? j.issues : [];
-      if (!state.issues.length) { setGate('closed'); renderShelf(); return; }
+      if (!state.issues.length) { setGate('closed'); $('c-head').textContent = 'The first issue is on press.'; renderShelf(); return; }
       var want = null;
       try { want = Number(new URL(location.href).searchParams.get('issue')); } catch (_) { want = null; }
       var pick = state.issues.filter(function (i) { return i.issue_no === want; })[0] || latest();
@@ -698,6 +746,7 @@ function boot() {
       setGate('closed');
       $('st-closed').querySelector('h2').textContent = 'The stand is reloading.';
       $('st-closed').querySelector('.lede').textContent = 'The shelf did not answer. Refresh in a moment.';
+      $('c-head').textContent = 'The stand is reloading.';
       renderShelf();
     });
 }
