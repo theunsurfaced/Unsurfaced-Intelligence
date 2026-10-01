@@ -201,7 +201,7 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
       </div>
       <div class="actions">
         <div class="row">
-          <a class="btn" href="#counter" id="to-counter">Pay the cover price</a>
+          <a class="btn" href="#counter" id="to-counter">Download this issue, free</a>
           <a class="btn ghost" href="#shelf">The back rack</a>
         </div>
         <span class="file" id="c-file"></span>
@@ -214,9 +214,9 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
 
       <div id="st-form" style="display:flex;flex-direction:column;gap:24px">
         <div style="display:flex;flex-direction:column;gap:10px">
-          <span class="k k-red" id="gate-kicker">The counter &middot; The cover price</span>
+          <span class="k k-red" id="gate-kicker">The counter &middot; Free with your details</span>
           <h2 id="gate-title">Tell us who is reading.</h2>
-          <p class="lede" id="gate-lede-form">One short form, and <span class="s-label">this issue</span> downloads straight from the stand. Account holders sign in instead.</p>
+          <p class="lede" id="gate-lede-form">The issue is free. Leave six details and <span class="s-label">this issue</span> downloads straight from the stand. Account holders sign in instead.</p>
           <p class="lede" id="gate-lede-signin" hidden>Sign in and <span class="s-label">this issue</span> downloads. You sign in for each download; the stand keeps no session.</p>
         </div>
 
@@ -228,7 +228,7 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
         <div id="turnstile" hidden></div>
 
         <div class="tabs" role="tablist" aria-label="How to download">
-          <button class="tab" type="button" role="tab" id="tab-form" aria-selected="true" aria-controls="pane-form">Pay the cover price</button>
+          <button class="tab" type="button" role="tab" id="tab-form" aria-selected="true" aria-controls="pane-form">Leave your details</button>
           <button class="tab" type="button" role="tab" id="tab-signin" aria-selected="false" aria-controls="pane-signin">Sign in</button>
         </div>
 
@@ -283,7 +283,7 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
             <div class="wide" style="display:flex;flex-direction:column;gap:12px">
               <p class="err" id="signin-err" aria-live="polite"></p>
               <button class="btn" type="submit" id="signin-btn" style="width:100%"><span class="idle">Sign in and download <span class="s-label">this issue</span> &#8594;</span><span class="busy" hidden>Checking</span></button>
-              <p class="fine">Every download still counts on the ledger, form or sign-in. <a id="signin-help" href="#" hidden>Trouble signing in?</a> <a href="#counter" id="to-form">Pay the cover price instead.</a></p>
+              <p class="fine">Each download is recorded, by form or by sign-in. <a id="signin-help" href="#" hidden>Trouble signing in?</a> <a href="#counter" id="to-form">Leave your details instead.</a></p>
             </div>
           </form>
         </div>
@@ -311,10 +311,10 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
     <aside class="aside" aria-label="How the stand works">
       <span class="kicker">How the stand works</span>
       <div class="step"><b>01</b><p>Pick an issue. The latest sits at the front; every earlier week waits on the back rack.</p></div>
-      <div class="step"><b>02</b><p>Read the cover and the synopsis on the stand. The whole issue is yours at the counter.</p></div>
-      <div class="step"><b>03</b><p>Pay the cover price, six fields or a sign-in, and the PDF downloads from unsurfaced-intelligence.com.</p></div>
+      <div class="step"><b>02</b><p>Read the cover and the synopsis on the stand. The whole issue is free at the counter.</p></div>
+      <div class="step"><b>03</b><p>Leave your details, six fields or a sign-in, and the PDF downloads from unsurfaced-intelligence.com. No card, no charge.</p></div>
       <div class="hr"></div>
-      <p class="note">The stand is open to every reader. EXCAVATE, MINE and the full intelligence platform open by invitation. Every download counts on the ledger, form or sign-in.</p>
+      <p class="note">The stand is open to every reader. EXCAVATE, MINE and the full intelligence platform open by invitation. Each download is recorded, by form or by sign-in.</p>
     </aside>
   </section>
 
@@ -456,7 +456,7 @@ function renderShelf() {
   var grid = $('shelf-grid');
   grid.textContent = '';
   $('shelf-empty').hidden = state.issues.length > 0;
-  $('shelf-count').textContent = state.issues.length ? (state.issues.length + (state.issues.length === 1 ? ' ISSUE' : ' ISSUES') + ' · SAME COVER PRICE') : '';
+  $('shelf-count').textContent = state.issues.length ? (state.issues.length + (state.issues.length === 1 ? ' ISSUE' : ' ISSUES') + ' · EVERY ONE FREE') : '';
   var tpl = $('tpl-issue');
   state.issues.forEach(function (issue) {
     var node = tpl.content.firstElementChild.cloneNode(true);
@@ -606,7 +606,7 @@ function setMode(m, focus) {
   $('pane-signin').hidden = !signin;
   $('tab-form').setAttribute('aria-selected', String(!signin));
   $('tab-signin').setAttribute('aria-selected', String(signin));
-  $('gate-kicker').textContent = signin ? 'The counter · Sign in to download' : 'The counter · The cover price';
+  $('gate-kicker').textContent = signin ? 'The counter · Sign in to download' : 'The counter · Free with your details';
   $('gate-title').textContent = signin ? 'Welcome back.' : 'Tell us who is reading.';
   $('gate-lede-form').hidden = signin;
   $('gate-lede-signin').hidden = !signin;
@@ -652,7 +652,7 @@ function signinSubmit(e) {
       var j = res.body || {};
       if (res.status === 200 && j.ok && j.url) { finish(j, body.issue_no); return; }
       if (res.status === 429) { $('signin-err').textContent = 'Too many attempts. Wait ten minutes and try again.'; return; }
-      if (res.status === 503) { $('signin-err').textContent = 'Sign-in is busy right now. Try again in a minute, or pay the cover price instead.'; return; }
+      if (res.status === 503) { $('signin-err').textContent = 'Sign-in is busy right now. Try again in a minute, or leave your details instead.'; return; }
       if (res.status === 401) { markBadSignin(['s-email', 's-pass']); $('signin-err').textContent = 'Email or password did not match.'; return; }
       if (res.status === 422 && j.fields) {
         var map = { email: 's-email', password: 's-pass' };
