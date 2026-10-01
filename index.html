@@ -343,13 +343,14 @@ footer{border-top:1px solid var(--border); padding:60px 0 50px;}
 }
 
 /* ── WEEKLY PROMO (SEAM:WEEKLY_PROMO) ───────────────────────── */
-.wk-promo{position:fixed; right:24px; bottom:24px; z-index:var(--z-promo); width:min(440px,calc(100vw - 32px));
+.wk-promo{position:fixed; right:24px; bottom:24px; z-index:var(--z-promo); width:min(480px,calc(100vw - 32px));
   background:var(--surface); border:1px solid var(--border2); box-shadow:0 30px 80px rgba(0,0,0,0.55);
-  display:grid; grid-template-columns:128px minmax(0,1fr);
+  display:grid; grid-template-columns:168px minmax(0,1fr);
   opacity:0; transform:translateY(24px); pointer-events:none; transition:opacity .5s var(--ease), transform .6s var(--ease);}
 .wk-promo.open{opacity:1; transform:none; pointer-events:auto;}
 .wk-promo::before{content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--red);}
-.wk-promo-cover{display:block; width:100%; height:100%; object-fit:cover; object-position:top; border-right:1px solid var(--border); background:var(--surface2);}
+.wk-promo-plinth{display:flex; align-items:center; justify-content:center; min-width:0; background:var(--surface2); border-right:1px solid var(--border);}
+.wk-promo-cover{display:block; width:100%; height:auto; aspect-ratio:612/792; object-fit:cover;}
 .wk-promo-body{padding:22px 20px 18px; display:flex; flex-direction:column; gap:10px; min-width:0;}
 .wk-promo-eyebrow{font-family:'Space Mono',monospace; font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--red); padding-right:40px;}
 .wk-promo-title{font-family:'Syne',sans-serif; font-weight:800; font-size:19px; line-height:1.12; letter-spacing:-0.01em; color:var(--text);}
@@ -360,7 +361,7 @@ footer{border-top:1px solid var(--border); padding:60px 0 50px;}
 .wk-promo-dismiss:hover{color:var(--text);}
 .wk-promo-close{position:absolute; top:10px; right:10px; width:36px; height:36px; border:1px solid var(--border2); background:rgba(7,7,16,0.6); color:var(--text); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s var(--ease);}
 .wk-promo-close:hover{border-color:var(--red); background:var(--glow);}
-@media (max-width:560px){ .wk-promo{right:12px; left:12px; bottom:12px; width:auto; grid-template-columns:96px minmax(0,1fr);} .wk-promo-body{padding:18px 16px 14px;} .wk-promo-title{font-size:17px;} }
+@media (max-width:560px){ .wk-promo{right:12px; left:12px; bottom:12px; width:auto; grid-template-columns:128px minmax(0,1fr);} .wk-promo-body{padding:18px 16px 14px;} .wk-promo-dismiss{display:none;} .wk-promo-title{font-size:17px;} }
 
 /* ── CASE MODAL + CAROUSEL ──────────────────────────────────── */
 .case-modal{position:fixed; inset:0; z-index:300; display:none;}
@@ -1152,7 +1153,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 <!-- ══ WEEKLY PROMO (SEAM:WEEKLY_PROMO) ═══════════════════════ -->
 <aside class="wk-promo" id="weekly-promo" role="dialog" aria-label="The Weekly Read" aria-hidden="true">
-  <img class="wk-promo-cover" id="wk-promo-cover" alt="">
+  <div class="wk-promo-plinth"><img class="wk-promo-cover" id="wk-promo-cover" alt=""></div>
   <div class="wk-promo-body">
     <span class="wk-promo-eyebrow" id="wk-promo-eyebrow">The Weekly Read</span>
     <span class="wk-promo-title" id="wk-promo-title"></span>
