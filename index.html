@@ -35,6 +35,7 @@
   --ease:cubic-bezier(0.16,1,0.3,1);
   --ease-in:cubic-bezier(0.4,0,1,1);
   --nav-h:74px;
+  --z-promo:250; /* SEAM:WEEKLY_PROMO: under the case modal, over the nav */
 }
 
 /* ── RESET ──────────────────────────────────────────────────── */
@@ -340,6 +341,26 @@ footer{border-top:1px solid var(--border); padding:60px 0 50px;}
   *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
   html{scroll-behavior:auto;}
 }
+
+/* ── WEEKLY PROMO (SEAM:WEEKLY_PROMO) ───────────────────────── */
+.wk-promo{position:fixed; right:24px; bottom:24px; z-index:var(--z-promo); width:min(440px,calc(100vw - 32px));
+  background:var(--surface); border:1px solid var(--border2); box-shadow:0 30px 80px rgba(0,0,0,0.55);
+  display:grid; grid-template-columns:128px minmax(0,1fr);
+  opacity:0; transform:translateY(24px); pointer-events:none; transition:opacity .5s var(--ease), transform .6s var(--ease);}
+.wk-promo.open{opacity:1; transform:none; pointer-events:auto;}
+.wk-promo::before{content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--red);}
+.wk-promo-cover{display:block; width:100%; height:100%; object-fit:cover; object-position:top; border-right:1px solid var(--border); background:var(--surface2);}
+.wk-promo-body{padding:22px 20px 18px; display:flex; flex-direction:column; gap:10px; min-width:0;}
+.wk-promo-eyebrow{font-family:'Space Mono',monospace; font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--red); padding-right:40px;}
+.wk-promo-title{font-family:'Syne',sans-serif; font-weight:800; font-size:19px; line-height:1.12; letter-spacing:-0.01em; color:var(--text);}
+.wk-promo-note{font-family:'Space Mono',monospace; font-size:11px; letter-spacing:0.04em; line-height:1.6; color:var(--text2);}
+.wk-promo-row{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:4px; flex-wrap:wrap;}
+.wk-promo-row .launch-cta{min-height:44px;}
+.wk-promo-dismiss{background:none; border:0; cursor:pointer; font-family:'Space Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3); padding:8px 0; min-height:44px;}
+.wk-promo-dismiss:hover{color:var(--text);}
+.wk-promo-close{position:absolute; top:10px; right:10px; width:36px; height:36px; border:1px solid var(--border2); background:rgba(7,7,16,0.6); color:var(--text); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s var(--ease);}
+.wk-promo-close:hover{border-color:var(--red); background:var(--glow);}
+@media (max-width:560px){ .wk-promo{right:12px; left:12px; bottom:12px; width:auto; grid-template-columns:96px minmax(0,1fr);} .wk-promo-body{padding:18px 16px 14px;} .wk-promo-title{font-size:17px;} }
 
 /* ── CASE MODAL + CAROUSEL ──────────────────────────────────── */
 .case-modal{position:fixed; inset:0; z-index:300; display:none;}
@@ -1090,14 +1111,15 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
   <div class="wrap">
     <p class="eyebrow reveal">From the recon room</p>
     <h2 class="sec-title reveal">See what's coming. Move <em>first</em>.</h2>
-    <p class="launch-sub reveal">Cultural intelligence, published daily — and the proprietary engine behind it, opening to partners soon.</p>
+    <p class="launch-sub reveal">The week's cultural intelligence, free with your details, and the proprietary engine behind it, opening to partners soon.</p>
     <div class="launch-grid">
-      <article class="launch-tile live reveal">
-        <div class="launch-thead"><span class="launch-eyebrow">Publication</span><span class="launch-chip now">Now live</span></div>
-        <span class="launch-mark">Unsurfaced™ DAILY</span>
-        <p class="launch-body">Our daily read on the culture — cultural intelligence, industry signal, and dispatches from inside the work.</p>
+      <article class="launch-tile live reveal" id="weekly-tile"><!-- SEAM:WEEKLY_PROMO: the tile reads the stand's shelf -->
+        <div class="launch-thead"><span class="launch-eyebrow">Publication</span><span class="launch-chip now" id="weekly-chip">On the stand</span></div>
+        <span class="launch-mark">Unsurfaced™ WEEKLY</span>
+        <p class="launch-body">Our weekly read on the culture: the week's stories, the patterns underneath them, and one move per role. One issue a week, every issue kept, free with your details.</p>
         <div class="launch-foot">
-          <a class="launch-cta" href="./daily/">Read DAILY <span>→</span></a>
+          <a class="launch-cta" href="./weekly/">Download the latest issue <span>→</span></a>
+          <p class="launch-note" id="weekly-note" hidden></p>
         </div>
       </article>
       <article class="launch-tile soon reveal">
@@ -1128,6 +1150,65 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 })();
 </script>
 
+<!-- ══ WEEKLY PROMO (SEAM:WEEKLY_PROMO) ═══════════════════════ -->
+<aside class="wk-promo" id="weekly-promo" role="dialog" aria-label="The Weekly Read" aria-hidden="true">
+  <img class="wk-promo-cover" id="wk-promo-cover" alt="">
+  <div class="wk-promo-body">
+    <span class="wk-promo-eyebrow" id="wk-promo-eyebrow">The Weekly Read</span>
+    <span class="wk-promo-title" id="wk-promo-title"></span>
+    <span class="wk-promo-note">Free with your details. One issue a week, every issue kept.</span>
+    <div class="wk-promo-row">
+      <a class="launch-cta" id="wk-promo-cta" href="./weekly/">Download the issue <span>→</span></a>
+      <button type="button" class="wk-promo-dismiss" data-wk-close>Not now</button>
+    </div>
+  </div>
+  <button type="button" class="wk-promo-close" aria-label="Close" data-wk-close>✕</button>
+</aside>
+<script>
+(function(){
+  /* SEAM:WEEKLY_PROMO: the landing reads the stand's shelf. The tile's chip and note and the pop-up's
+     cover and headline come from /api/weekly/issues; nothing about an issue is typed here. The pop-up
+     shows after six seconds or the first scroll past the hero, once per seven days after a dismissal,
+     never to a visitor arriving from the stand, and never without the real cover. */
+  var API='https://api.unsurfaced-intelligence.com', KEY='uw:weekly-promo:until';
+  var promo=document.getElementById('weekly-promo'), chip=document.getElementById('weekly-chip'), note=document.getElementById('weekly-note');
+  function pad(n){ n=String(n); while(n.length<3) n='0'+n; return n; }
+  function until(){ try{ return Number(localStorage.getItem(KEY)||0); }catch(_){ return 0; } }
+  function hold(days){ try{ localStorage.setItem(KEY, String(Date.now()+days*864e5)); }catch(_){} }
+  function isOpen(){ return promo && promo.classList.contains('open'); }
+  function open(){ if(!promo||isOpen()) return; promo.classList.add('open'); promo.setAttribute('aria-hidden','false'); }
+  function close(){ if(!promo) return; promo.classList.remove('open'); promo.setAttribute('aria-hidden','true'); hold(7); }
+  function arm(){
+    var done=false, t=setTimeout(fire,6000);
+    function fire(){ if(done) return; done=true; clearTimeout(t); window.removeEventListener('scroll',onScroll); open(); }
+    function onScroll(){ if(window.scrollY>window.innerHeight*0.6) fire(); }
+    window.addEventListener('scroll',onScroll,{passive:true});
+  }
+  function latestOf(issues){ var best=null; issues.forEach(function(i){ if(!best||Number(i.issue_no)>Number(best.issue_no)) best=i; }); return best; }
+  if(promo){
+    promo.querySelectorAll('[data-wk-close]').forEach(function(b){ b.addEventListener('click',close); });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&isOpen()&&!document.querySelector('.case-modal.open')) close(); });
+    document.getElementById('wk-promo-cta').addEventListener('click',function(){ hold(30); });
+  }
+  if(!('fetch' in window)) return;
+  fetch(API+'/api/weekly/issues',{mode:'cors'}).then(function(r){ return r.json(); }).then(function(j){
+    if(!j||!j.ok||!j.issues||!j.issues.length) return;
+    var it=latestOf(j.issues); if(!it) return;
+    var label='Issue '+pad(it.issue_no);
+    if(chip) chip.textContent=label+' on the stand';
+    if(note&&it.lead){ note.textContent=label+': '+it.lead; note.hidden=false; }
+    if(!promo||!it.cover_key||!it.lead) return;
+    if(until()>Date.now()) return;
+    if(/\/weekly\//.test(document.referrer||'')) return;
+    var img=document.getElementById('wk-promo-cover');
+    document.getElementById('wk-promo-eyebrow').textContent='The Weekly Read \u00b7 '+label;
+    document.getElementById('wk-promo-title').textContent=it.lead;
+    img.onload=function(){ arm(); };
+    img.src=API+'/media/'+it.cover_key;
+  }).catch(function(){});
+})();
+</script>
+
 <!-- ══ FOOTER ═════════════════════════════════════════════════ -->
 <footer>
   <div class="wrap">
@@ -1140,6 +1221,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         <div class="foot-col">
           <h4>Spaces</h4>
           <a href="./daily/">Daily</a>
+          <a href="./weekly/">Weekly</a>
           <a href="./intelligence/">Intelligence</a>
           <a href="./arcade/">Arcade</a>
         </div>

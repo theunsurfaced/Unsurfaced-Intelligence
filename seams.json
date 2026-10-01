@@ -698,8 +698,12 @@
   },
   "SEAM:WEEKLY_STAND@page": {
    "file": "weekly/index.html",
-   "purpose": "the stand page at /weekly: shelf, cover price, download",
+   "purpose": "the stand page at /weekly: shelf, the counter (details or sign-in), download",
    "tag": "SEAM:WEEKLY_STAND"
+  },
+  "SEAM:WEEKLY_PROMO": {
+   "file": "index.html",
+   "purpose": "the landing promotes WEEKLY: the tile beside Intelligence, the pop-up card, the footer link; reads the stand shelf"
   }
  },
  "planned": [
