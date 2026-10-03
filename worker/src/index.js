@@ -572,14 +572,37 @@ async function synthesize(body, env, origin) {
     const usr = isReport ? excReportPrompt(query, evidence) : usrPlain;
 
     // SEAM:ONE_RAIL, now SEAM:EXC_INTEL: THE READ compiles on the live lane (Sonnet 5) and never fails: the reserve model stands behind it.
-    const compiled = await excCompile(env, { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW, prompt: usr,
-      max_tokens: isReport ? 3600 : 1600, kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1' });
-    const outText = compiled.text;
-    const parsed = extractJson(outText || '');
-    if (!parsed || !Array.isArray(parsed.insights)) {
-      // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read.
-      return json({ ok: false, error: 'synthesis_unparsable' }, 200, origin, env);
+    /* SEAM:EXC_PARSE: a read the model wrote is a read the client gets. The report used to have 3600 tokens of room
+     * and a full report (frame, read, 6 to 8 findings with three meanings, 3 to 5 moves with seven fields, brief)
+     * runs past it, so the reply was cut mid-object and thrown away as "unparsable" on every search. Now: room for
+     * the whole report; a cut reply keeps every finding it finished; one tighter second pass on the live lane;
+     * then the reserve model; and every miss is logged with its lane, stop reason and the tail of what came back. */
+    const tight = ' ROOM LAW: keep every sentence under 25 words and every string under 220 characters. ' +
+      'Close the JSON object completely. JSON only, no fences.';
+    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW, prompt: usr,
+      max_tokens: isReport ? EXC_ROOM.report : EXC_ROOM.plain, kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1' };
+    const passes = [];
+    const attempt = async (o, label) => {
+      const c = await excCompile(env, o);
+      const p = excReadOf(c.text);
+      passes.push({ pass: label, lane: c.lane, reason: c.reason || null, stop: c.stop_reason || null, truncated: !!c.truncated,
+        chars: String(c.text || '').length, parsed: p ? p.how : null });
+      if (!p) console.log('exc_parse_miss', JSON.stringify({ q: query.slice(0, 80), pass: label, lane: c.lane, reason: c.reason || null,
+        stop: c.stop_reason || null, chars: String(c.text || '').length, head: String(c.text || '').slice(0, 160), tail: String(c.text || '').slice(-160) }));
+      return { c, p };
+    };
+    let got = await attempt(base, 'first');
+    if (!got.p && got.c.lane === 'live')
+      got = await attempt(Object.assign({}, base, { prompt: usr + tight, max_tokens: Math.min(base.max_tokens * 2, EXC_ROOM.ceiling), kind: base.kind + '_retry' }), 'second');
+    if (!got.p)
+      got = await attempt(Object.assign({}, base, { prompt: usr + tight, reserveOnly: got.c.reason || 'parse_failed' }), 'reserve');
+    const compiled = got.c;
+    if (!got.p) {
+      // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read; the passes say why.
+      return json({ ok: false, error: 'synthesis_unparsable', passes }, 200, origin, env);
     }
+    const parsed = got.p.read;
+    if (got.p.how === 'salvaged') compiled.reason = (compiled.reason ? compiled.reason + '+' : '') + 'salvaged_cut';
     // SEAM:EXCAVATE_WIRE earned confidence: the number of DISTINCT sources the insight
     // itself cites. Never the size of its category, never the model's opinion of itself.
     // Source and link come from the cited evidence, not from the model's copy of it.
@@ -721,6 +744,44 @@ function extractJson(s) {
   return null;
 }
 
+/* SEAM:EXC_PARSE: the room a read gets, and the harvest of what came back. A reply cut at its token limit is
+ * not thrown away: every finding (and move) the model finished is kept, the open brackets are closed, and the
+ * read is used when it carries at least EXC_ROOM.MIN_SALVAGE findings. Only text that never parses is a miss. */
+const EXC_ROOM = { report: 8000, plain: 4000, ceiling: 12000, MIN_SALVAGE: 3 };
+function excSalvage(s) {
+  const t = String(s || '').replace(/```(?:json)?/gi, '');
+  const start = t.indexOf('{');
+  if (start < 0) return null;
+  const stack = [], cuts = [];
+  let inStr = false, esc = false;
+  for (let i = start; i < t.length; i++) {
+    const ch = t[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' || ch === ']') {
+      stack.pop();
+      if (!stack.length) break;
+      // Cut only where a whole top-level value or a whole element of a top-level array just closed,
+      // so a finding or move cut mid-object is dropped, never kept half-written.
+      if (stack.length <= 2) cuts.push({ at: i + 1, open: stack.slice() });
+    }
+  }
+  for (let k = cuts.length - 1, tries = 0; k >= 0 && tries < 60; k--, tries++) {
+    const cut = cuts[k];
+    const close = cut.open.slice().reverse().map(c => (c === '{' ? '}' : ']')).join('');
+    const out = tryParse(t.slice(start, cut.at) + close);
+    if (out && Array.isArray(out.insights) && out.insights.filter(x => x && x.title).length >= EXC_ROOM.MIN_SALVAGE) return out;
+  }
+  return null;
+}
+function excReadOf(text) {
+  const whole = extractJson(text || '');
+  if (whole && Array.isArray(whole.insights) && whole.insights.length) return { read: whole, how: 'whole' };
+  const part = excSalvage(text);
+  return part ? { read: part, how: 'salvaged' } : null;
+}
+
 // Server-side connectors — fetched by the Worker itself (keyless, and not subject
 // to browser CORS, so they enrich the corpus with sources the client can't reach).
 /* SEAM:EXC_INTEL: the compiler's lane. Every EXCAVATE read compiles on the
@@ -731,6 +792,7 @@ function extractJson(s) {
  * in the room always has the live lane. A read compiled on the live lane is
  * kept CACHE_TTL under its query, so a repeat costs nothing. */
 const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i1' };
+const EXC_RESERVE_MAX = 4000;   // SEAM:EXC_PARSE: the reserve model's output room
 function excCacheKey(h) { return 'excr:' + EXC_MODEL.REV + ':' + h; }
 async function excCompile(env, o) {
   o = o || {};
@@ -742,6 +804,7 @@ async function excCompile(env, o) {
       if (spent >= cap * EXC_MODEL.OVERNIGHT_SHARE) why = 'overnight_share';
     } catch (e) { why = 'ledger_unreadable'; }
   }
+  if (o.reserveOnly) why = String(o.reserveOnly);   // SEAM:EXC_PARSE: the live lane answered twice and neither reply could be read
   if (!why) {
     const req = { system: String(o.system || ''), cache: true, prompt: String(o.prompt || ''), max_tokens, kind: o.kind || 'excavate' };
     let r = await callClaude(env, EXC_MODEL.TIER, req);
@@ -749,12 +812,12 @@ async function excCompile(env, o) {
       await new Promise(res => setTimeout(res, EXC_MODEL.RETRY_MS));
       r = await callClaude(env, EXC_MODEL.TIER, req);
     }
-    if (r.ok) return { text: r.text || '', lane: 'live', model: CLAUDE.TIERS[EXC_MODEL.TIER].model, reason: null, cost_usd: r.cost_usd || 0, truncated: !!r.truncated };
+    if (r.ok) return { text: r.text || '', lane: 'live', model: CLAUDE.TIERS[EXC_MODEL.TIER].model, reason: null, cost_usd: r.cost_usd || 0, truncated: !!r.truncated, stop_reason: r.stop_reason || null };
     why = String(r.error || 'claude_failed');
   }
   const text = await callModel(env, o.reserve || 't3',
-    [{ role: 'system', content: String(o.system || '') }, { role: 'user', content: String(o.prompt || '') }], { max_tokens });
-  return { text: text || '', lane: 'reserve', model: CONFIG.TEXT_MODEL, reason: why, cost_usd: 0, truncated: false };
+    [{ role: 'system', content: String(o.system || '') }, { role: 'user', content: String(o.prompt || '') }], { max_tokens: Math.min(max_tokens, EXC_RESERVE_MAX) });
+  return { text: text || '', lane: 'reserve', model: CONFIG.TEXT_MODEL, reason: why, cost_usd: 0, truncated: false, stop_reason: null };
 }
 /* SEAM:EXCAVATE_MEANING: the report contract. A finding says what it means for
  * the culture, the category and the consumer; a move is a brief with its

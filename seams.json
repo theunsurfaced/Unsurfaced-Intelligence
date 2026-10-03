@@ -688,6 +688,10 @@
    "file": "worker/src/index.js",
    "purpose": "the intelligent lane and the dated evidence law: every EXCAVATE read and PROPOSE compile through excCompile on the live Claude tier (Sonnet 5, its own cap) with a retry and the reserve model behind it, a live read cached a day per query; evidence is dated (excWhen), banded NOW/RECENT/CURRENT/CONTEXT/ARCHIVE (excBand), weighted by recency decay and tier (excScore) inside excBudget with an ARCHIVE floor and a widening law; the TIME LAW rides the prompt; confidence is corroboration among dated lines; findings and moves carry dated, the read carries window and model; live searches place reference kinds as status reference and rails carry dates with free recent slices"
   },
+  "SEAM:EXC_PARSE": {
+   "file": "worker/src/index.js",
+   "purpose": "a read the model wrote is a read the client gets: EXC_ROOM gives a report 8000 tokens (plain 4000); excSalvage keeps every finding and move a cut reply finished and closes the brackets; one tighter second pass on the live lane at double the room; then the reserve model via excCompile reserveOnly; every miss logged as exc_parse_miss with lane, stop reason, head and tail; a final miss returns its passes"
+  },
   "SEAM:READ_PROOF": {
    "file": "worker/src/index.js",
    "purpose": "the copy desk: every house read is proofread before it is ready (readAmerican, a deterministic American English spelling and punctuation pass; readProof, the copy editor on the live Claude tier, accepted only when shape, S-ids, numbers and length hold and the read laws pass again); meta.proof keeps the receipts; POST /reads/proof {id, apply} shows or applies the fixes on any written read so an issue already out can be recut; the Method's second law is American English only"
