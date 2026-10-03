@@ -42,8 +42,8 @@ const out = JSON.stringify({ frame: { category: 'Hair care', audience: 'Gen Z' }
     meaning: { culture: 'Hair is identity.', category: 'Shelves sort by curl pattern.', consumer: 'They shop by texture.' } }],
   ideas: [weak[0], strong], brief: 'b' });
 const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
-  helpers + xj + synth + '; return synthesize;')(
-  (o) => o, async () => [], async () => [], async (e, o) => { call = { m: [{ content: o.system }, { content: o.prompt }], o: { max_tokens: o.max_tokens } }; return { text: out, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0 }; }, async () => 1, async () => 'h', async () => 0, () => [], {});
+  'excFrameFor', helpers + xj + synth + '; return synthesize;')(
+  (o) => o, async () => [], async () => [], async (e, o) => { call = { m: [{ content: o.system }, { content: o.prompt }], o: { max_tokens: o.max_tokens } }; return { text: out, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0 }; }, async () => 1, async () => 'h', async () => 0, () => [], {}, async () => null);
 const corpus = [1, 2, 3].map(i => ({ lens: 'consumer', title: 't' + i, url: 'https://e.example/' + i, source: 's' + i }));
 const r = (await S({ query: q, mode: 'report', corpus }, {}, '')).data;
 ok(/MOVE LAW/.test(call.m[0].content) && /TIME LAW/.test(call.m[0].content) && /"meaning":\{"culture"/.test(call.m[1].content) && /"frame":\{"category"/.test(call.m[1].content) && call.o.max_tokens === 8000,

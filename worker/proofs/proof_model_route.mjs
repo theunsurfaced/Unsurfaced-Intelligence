@@ -36,7 +36,8 @@ const xA0 = w.indexOf('/* SEAM:EXC_INTEL: the compiler\'s lane'), xB0 = xA0 > 0 
 const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '');
 ok(!/callClaude\(|claudeBatchSubmit\(/.test(outside.replace(/claudeRoute\(path[^\n]*/g, '')),
   'L2 only the lane, SEAM:READ_ENGINE and the EXCAVATE lane (SEAM:EXC_INTEL) call Claude (DAILY and STUDIO untouched)');
-ok(xA0 > 0 && /await callClaude\(env, EXC_MODEL\.TIER, req\)/.test(w.slice(xA0, xB0)) && /live:   \{ model: 'claude-sonnet-5'/.test(lane), 'L2b the EXCAVATE lane calls the gate with its own tier');
+ok(xA0 > 0 && /callClaude\(env, EXC_MODEL\.TIER, req\)/.test(w.slice(xA0, xB0)) && /callClaudeStream\(env, EXC_MODEL\.TIER, req, o\.onText\)/.test(w.slice(xA0, xB0)) && /live:   \{ model: 'claude-sonnet-5'/.test(lane), 'L2b the EXCAVATE lane calls the gate with its own tier, streamed or not (EX4)');
+ok(/callClaude\(env, 'frame', /.test(w.slice(xA0, xB0)) && /frame:  \{ model: 'claude-haiku-4-5-20251001'/.test(lane), 'L2c the query frame rides its own capped tier (Haiku) inside the lane block (EX4b)');
 ok(/case '\/claude\/ping':[\s\S]{0,200}return claudeRoute\(path, body, env, origin, user\);/.test(w), 'L3 admin doors routed');
 ok(/\.then\(\(\) => claudeBatchDrain\(env\)\)/.test(w.slice(w.indexOf('async scheduled('), w.indexOf('async fetch('))),
   'L4 drain rides the scheduled handler');

@@ -692,6 +692,60 @@
    "file": "worker/src/index.js",
    "purpose": "a read the model wrote is a read the client gets: EXC_ROOM gives a report 8000 tokens (plain 4000); excSalvage keeps every finding and move a cut reply finished and closes the brackets; one tighter second pass on the live lane at double the room; then the reserve model via excCompile reserveOnly; every miss logged as exc_parse_miss with lane, stop reason, head and tail; a final miss returns its passes"
   },
+  "SEAM:EXC_ACCURACY": {
+   "file": "worker/src/index.js",
+   "purpose": "the number law and weighed confidence: THE READ's two lines get a whole sentence (excClip, 420); every number a finding, move, read line or brief states must appear in the evidence it cites (excNumbers, excGround), an ungrounded figure is named in checks and drops the finding to Low; confidence is corroboration weighed by tier (excEarned, EXC_TIER_W: a T3 blog is never more than Low alone, three blogs are Medium); the NUMBER LAW asks for 'as reported by' on T3/T4 figures and names a foreign market"
+  },
+  "SEAM:EXC_FRAME": {
+   "file": "worker/src/index.js",
+   "purpose": "a query becomes a frame before a rail runs: Haiku on the capped frame tier (0032) names entity, category, audience, market, competitive set, the question, anchors, excludes and a query per rail kind (excFrameFor, cached a week in KV, never blocking: a miss returns null and the read runs on the raw query); rails ask in their own register (excRailQuery); the frame heads the prompt (excFrameBlock) and the read carries market and competitive set"
+  },
+  "SEAM:EXC_RELEVANCE": {
+   "file": "worker/src/index.js",
+   "purpose": "the gate between gathering and reading (excRelevance): an item naming an excluded neighbor is set aside; with a frame an item must carry an anchor, entities, attention series and lake items close in meaning pass; never starves a read (below EXC_GATE.MIN the strongest set-aside items return); the read reports kept, set_aside, restored and a sample"
+  },
+  "SEAM:EXC_SPEED": {
+   "file": "worker/src/index.js",
+   "purpose": "a read in the time it needs and no more: gatherOpenSignals runs every rail in a pool of GATHER.PAR with its own deadline (RAIL_MS) and answers by BUDGET_MS counting late rails; the frame and the entity lookup start together; Wikipedia summaries fetch in parallel; the lake write finishes after the response (waitUntil); synthesize skips GDELT/HN/Exa when the gather already ran them and otherwise runs the wire with a deadline; every read carries timing (frame, wire, model, total) and logs exc_read"
+  },
+  "SEAM:EXC_STREAM": {
+   "file": "worker/src/index.js",
+   "purpose": "POST /excavate/synthesize {stream:true} answers as server-sent events (synthesizeStream): stage while evidence is read, draft every STREAM_EVERY_MS with the finished parts of the half-written reply (excDraft), then final, the same payload as the plain door; callClaudeStream is the live call heard as it is written, same gate, ledger and row as callClaude; excCompile streams when the caller gives it an ear (onText)"
+  },
+  "SEAM:EXC_ACCURACY@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_ACCURACY",
+   "purpose": "the page shows the confidence the compiler earned (never the card's position), and names an unverified figure on the finding or move that states it (_checkChip) and on THE READ (read_checks)"
+  },
+  "SEAM:EXC_FRAME@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_FRAME",
+   "purpose": "the frame the gather used rides with the corpus to synthesize (no second Haiku call); _renderLive forwards window, model, frame, relevance, timing and checks to renderResults; the read block shows market, category, audience, competitive set and the question"
+  },
+  "SEAM:EXC_RELEVANCE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_RELEVANCE",
+   "purpose": "the read block says how many lines were read, how many were set aside as off-frame and how many came back to reach the floor"
+  },
+  "SEAM:EXC_SPEED@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_SPEED",
+   "purpose": "the browser lenses, the server gather and the lake start together in _excGather; the lake's answer is kept on window._lakePromise and read by _withLake instead of asked again; the read block states the time the read took and names late rails"
+  },
+  "SEAM:EXC_STREAM@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_STREAM",
+   "purpose": "_synthesizeStream asks the door with stream:true and reads server-sent events; _loaderStage and _loaderDraft show the evidence count, the two lines and each finding as it finishes under the loader; any failure falls back to the plain door"
+  },
+  "SEAM:EXC_DOOR": {
+   "file": "worker/src/index.js",
+   "purpose": "the door shows frames, not stories: excFrameTiles frames every arrival tile once (excFrameFor, cached a week per query; the set cached 6h per edition); a desk-fill tile's title becomes the frame (excFrameLabel), its query the frame's own (excFrameQuery), the story rides beneath as the exemplar; a tile that cannot be framed keeps its old shape"
+  },
+  "SEAM:EXC_DOOR@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_DOOR",
+   "purpose": "a tile opens THE READ on its frame through runSearch (_openFrameRead), with the worker's frame handed to the gather on window._tileFrame; the template dashboard behind the tiles is retired; a tile shows market, audience and competitive set"
+  },
   "SEAM:READ_PROOF": {
    "file": "worker/src/index.js",
    "purpose": "the copy desk: every house read is proofread before it is ready (readAmerican, a deterministic American English spelling and punctuation pass; readProof, the copy editor on the live Claude tier, accepted only when shape, S-ids, numbers and length hold and the read laws pass again); meta.proof keeps the receipts; POST /reads/proof {id, apply} shows or applies the fixes on any written read so an issue already out can be recut; the Method's second law is American English only"

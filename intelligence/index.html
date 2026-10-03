@@ -233,6 +233,24 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .lstep.active.deep-step{color:var(--deep2);}
 .lstep.done{color:#4ade80;}
 .lstep::before{content:'○';font-size:10px;}
+/* SEAM:EXC_DOOR: the frame on a tile */
+.fi-frame{display:flex;flex-wrap:wrap;gap:4px 10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin:-2px 0 8px}
+.fi-frame span+span::before{content:'·';margin-right:10px;color:var(--text3)}
+/* SEAM:EXC_FRAME: the frame the read answered */
+.read-frame{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin:14px 0 6px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em}
+.read-frame .rf-k{color:var(--text3)}.read-frame .rf-v{color:var(--text2);margin-right:6px}
+.read-frame .rf-q{flex-basis:100%;font-family:'DM Serif Display',serif;font-size:15px;letter-spacing:0;color:var(--text);margin-top:4px}
+.read-check{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--accent);border-left:2px solid var(--accent);padding-left:10px;margin:10px 0}
+.card-when.CHECK{color:var(--accent);border-color:var(--accent)}
+/* SEAM:EXC_STREAM: the read as it is written */
+.loader-draft{max-width:720px;margin:22px auto 0;text-align:left;border-top:1px solid var(--line);padding-top:18px;animation:fadeIn .4s ease both}
+.loader-draft .ld-line{font-family:'DM Serif Display',serif;font-size:21px;line-height:1.3;color:var(--text);margin:0 0 8px}
+.loader-draft .ld-line.two{font-size:16px;color:var(--text2)}
+.loader-draft .ld-list{margin-top:12px;display:grid;gap:6px}
+.loader-draft .ld-item{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);animation:fadeIn .3s ease both}
+.loader-draft .ld-item .card-cat{font-size:9px;padding:0;border:0;background:none}
+.loader-draft .ld-list.moves{border-top:1px dashed var(--line);padding-top:10px}
+.loader-draft .ld-type{color:var(--accent);font-size:9px;letter-spacing:.12em}
 .lstep.active::before{content:'◉';}
 .lstep.done::before{content:'●';}
 
@@ -1977,6 +1995,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   <div class="loader-label" id="loader-label">EXCAVATING OPEN DATA</div>
   <div class="loader-query" id="loader-query"></div>
   <div class="loader-steps" id="loader-steps"></div>
+  <div class="loader-draft" id="loader-draft" style="display:none"></div>
   <div class="fetch-progress">
     <div class="fetch-bar-track"><div class="fetch-bar-fill" id="fetch-bar"></div></div>
     <div class="fetch-label" id="fetch-label">Initializing…</div>
@@ -2334,14 +2353,15 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const API_BASE = 'https://api.unsurfaced-intelligence.com'; // <-- your Worker URL, e.g. https://unsurfaced-api.NAME.workers.dev
 
 // POST a JSON action to the proxy (used for /deep today; /synthesize later).
-async function api(action, payload) {
-  const _h = await _authHeader();
-  // SEAM feed: every synthesis drinks from the lake — Unsurfaced's own
-  // captured signal joins the public lenses. Optional by design: any
-  // failure is silent and the public corpus proceeds untouched.
-  if (action === 'excavate/synthesize' && payload && payload.query) {
+// SEAM feed: every synthesis drinks from the lake — Unsurfaced's own
+// captured signal joins the public lenses. Optional by design: any
+// failure is silent and the public corpus proceeds untouched.
+async function _withLake(payload, _h) {
+  if (payload && payload.query) {
     try {
-      const lr = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/lake', {
+      // SEAM:EXC_SPEED: the gather already asked the lake for this query; its answer is read, not requested again.
+      const lp = window._lakePromise && window._lakePromise._q === payload.query ? window._lakePromise : null;
+      const lr = lp ? await lp : await fetch(API_BASE.replace(/\/$/, '') + '/excavate/lake', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, _h),
         body: JSON.stringify({ q: String(payload.query).slice(0, 200), count: 16 })   // EXC_INTEL: sixteen candidates; the ranker keeps ten
@@ -2362,6 +2382,11 @@ async function api(action, payload) {
       }
     } catch (e) { /* the lake is a bonus lens, never a blocker */ }
   }
+  return payload;
+}
+async function api(action, payload) {
+  const _h = await _authHeader();
+  if (action === 'excavate/synthesize') payload = await _withLake(payload, _h);
   const r = await fetch(API_BASE.replace(/\/$/, '') + '/' + action, {
     method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, _h),
@@ -2369,6 +2394,66 @@ async function api(action, payload) {
   });
   if (!r.ok) throw new Error('Proxy ' + action + ' failed: ' + r.status);
   return r.json();
+}
+
+/* SEAM:EXC_STREAM: THE READ as it is written. The door answers as server-sent events (stage, draft, final); the page
+   shows the two lines and each finding as it finishes, then renders the final payload exactly as the plain door's.
+   Anything but a clean stream (an old worker, a proxy that buffers, a cut) falls back to the plain door. */
+async function _synthesizeStream(payload, onEvent, state) {
+  state = state || {};
+  const _h = await _authHeader();
+  payload = await _withLake(payload, _h);
+  let r = null;
+  try {
+    r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/synthesize', { method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'text/event-stream' }, _h), body: JSON.stringify(Object.assign({}, payload, { stream: true })) });
+  } catch (e) { r = null; }
+  if (!r || !r.ok) throw new Error('stream door ' + (r ? r.status : 'down'));
+  const ct = r.headers.get('content-type') || '';
+  if (!/event-stream/.test(ct)) return r.json();   // an older worker answered plainly
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let buf = '', fin = null;
+  for (;;) {
+    const step = await reader.read();
+    if (step.done) break;
+    buf += dec.decode(step.value, { stream: true });
+    let k;
+    while ((k = buf.indexOf('\n\n')) >= 0) {
+      const evt = buf.slice(0, k); buf = buf.slice(k + 2);
+      const m = evt.match(/^event: (\w+)\ndata: ([\s\S]*)$/);
+      if (!m) continue;
+      let d = null; try { d = JSON.parse(m[2]); } catch (e) { continue; }
+      if (m[1] === 'final') fin = d; else { state.heard = true; try { onEvent && onEvent(m[1], d); } catch (e) {} }
+    }
+  }
+  if (!fin) throw new Error('stream ended without a read');
+  return fin;
+}
+// A stream that was cut after it had started leaves a read still compiling on the worker. The page asks the door
+// cache_only every few seconds until that read lands (up to 90s), and compiles afresh only if it never does.
+async function _synthesizePlainAfterCut(payload, heard) {
+  if (heard) {
+    for (let waited = 0; waited < 90000; waited += 5000) {
+      await new Promise(r => setTimeout(r, 5000));
+      try { const c = await api('excavate/synthesize', Object.assign({}, payload, { cache_only: true })); if (c && c.ok && c.data) return c; } catch (e) {}
+    }
+  }
+  return api('excavate/synthesize', payload);
+}
+function _loaderStage(st) {
+  const lbl = document.getElementById('fetch-label'); if (!lbl) return;
+  if (st && st.stage === 'writing') { [0, 1, 2].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; });
+    const w = document.getElementById('ls3'); if (w) w.className = 'lstep active';
+    lbl.textContent = 'Reading ' + (st.evidence || 0) + ' lines of evidence' + (st.dropped ? ' (' + st.dropped + ' set aside as off-frame)' : '') + '. Writing.'; }
+}
+function _loaderDraft(d) {
+  const el = document.getElementById('loader-draft'); if (!el || !d) return;
+  const w = document.getElementById('ls3'), v = document.getElementById('ls4'); if (w) w.className = 'lstep done'; if (v) v.className = 'lstep active';
+  const lbl = document.getElementById('fetch-label'); if (lbl) lbl.textContent = 'Writing: ' + (d.insights || []).length + ' finding' + ((d.insights || []).length === 1 ? '' : 's') + (d.ideas && d.ideas.length ? ', ' + d.ideas.length + ' move' + (d.ideas.length === 1 ? '' : 's') : '') + ' so far';
+  el.style.display = 'block';
+  el.innerHTML = (d.read && d.read[0] ? '<p class="ld-line">' + safe(d.read[0]) + '</p>' : '') + (d.read && d.read[1] ? '<p class="ld-line two">' + safe(d.read[1]) + '</p>' : '')
+    + ((d.insights || []).length ? '<div class="ld-list">' + d.insights.map(x => '<div class="ld-item"><span class="card-cat ' + safeAttr(['consumer','market','culture','brand'].includes(x.category) ? x.category : 'consumer') + '">●</span> ' + safe(x.title) + '</div>').join('') + '</div>' : '')
+    + ((d.ideas || []).length ? '<div class="ld-list moves">' + d.ideas.map(x => '<div class="ld-item"><span class="ld-type">' + safe(x.type || 'MOVE') + '</span> ' + safe(x.headline) + '</div>').join('') + '</div>' : '');
 }
 
 // GET a source through the proxy when configured, else fetch directly.
@@ -2937,17 +3022,21 @@ function _renderLive(q, data){
   const syn=data&&data.synthesis;
   let insights, ideas, brief, synthd=false;
   if(syn && Array.isArray(syn.insights) && syn.insights.length){
+    // SEAM:EXC_ACCURACY: confidence is what the compiler earned (corroboration weighed by tier), never the card's position;
+    // date, band, meanings and the number checks ride with every finding and move.
     insights = syn.insights.slice(0,8).map((ins,i)=>({
       category: ['consumer','market','culture','brand'].includes(ins.category)?ins.category:'consumer',
       title: ins.title||'',
       excerpt: ins.excerpt||'',
       stat: '◆ Synthesized',
-      confidence: i<3?'High':'Medium',
+      confidence: ['High','Medium','Low'].includes(ins.confidence)?ins.confidence:'Low',
       source: ins.source||'Excavate analysis',
       sourceUrl: ins.sourceUrl||null,
+      dated: ins.dated||null, meaning: ins.meaning||null, implication: ins.implication||null, evidence: ins.evidence||[], checks: ins.checks||null
     }));
     ideas = (Array.isArray(syn.ideas)&&syn.ideas.length)
-      ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||'',from:Number.isInteger(d.from)?d.from:null}))   // SEAM:READ_QUALITY — a move keeps its finding
+      ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||'',from:Number.isInteger(d.from)?d.from:null,
+          for:d.for||null, because:d.because||'', proof:d.proof||'', measure:d.measure||'', risk:d.risk||'', evidence:d.evidence||[], dated:d.dated||null, checks:d.checks||null}))   // SEAM:READ_QUALITY — a move keeps its finding
       : [];   // SEAM:ONE_RAIL — no move is invented; the compiler earns it or the section says so
     brief = syn.brief || _liveBrief(q,items,data.connectors);
     synthd=true;
@@ -2957,7 +3046,10 @@ function _renderLive(q, data){
     brief=_liveBrief(q,items,data.connectors);
   }
   const sources=(data.sources&&data.sources.length)?data.sources:_liveSources(data.connectors,q);
-  renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic'},synthd?'live':'basic');   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
+  // SEAM:EXC_FRAME: the read's window, lane, frame, relevance and timing reach the page; they were compiled and then dropped here.
+  renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
+    window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
+    relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0},synthd?'live':'basic');   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -2974,6 +3066,16 @@ function _lensSignal(cat){ return cat==='consumer'?'social':cat==='market'?'web'
 
 async function _excGather(q){
   const cats=['consumer','market','culture','brand'];
+  const _tf=(window._tileFrame&&window._tileFrame._q===q)?window._tileFrame.frame:null;   // SEAM:EXC_DOOR: a tile's frame rides in
+  window._gatherMeta=null; window._gatherItems=[]; window._tileFrame=null;   // SEAM:EXC_FRAME: nothing from the last search leaks into this one
+  // SEAM:EXC_SPEED: the browser lenses, the server gather and the lake used to run one after another. They start together;
+  // the lake's answer is kept for synthesize (api() reads it instead of asking again).
+  const _hdr=await _authHeader();
+  const gatherP=fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},_hdr),body:JSON.stringify(_tf?{query:q,frame:_tf}:{query:q})})
+    .then(r=>r.ok?r.json():null).catch(()=>null);
+  window._lakePromise=fetch(API_BASE.replace(/\/$/,'')+'/excavate/lake',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},_hdr),body:JSON.stringify({q:String(q).slice(0,200),count:16})})
+    .then(r=>r.ok?r.json():null).catch(()=>null);
+  window._lakePromise._q=q;
   const settled=await Promise.allSettled(cats.map(c=>_runLensPipeline(q,c)));
   const lenses={};
   cats.forEach((c,i)=>{ lenses[c]= settled[i].status==='fulfilled' ? settled[i].value : {insights:[],ideas:[],sources:[],brief:''}; });
@@ -2992,10 +3094,9 @@ async function _excGather(q){
   });
   // SEAM:GATHER_SERVER — the worker's gather joins the corpus. One call, every rail the query class earns.
   try{
-    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},await _authHeader()),body:JSON.stringify({query:q})});   // EXCAVATE_WIRE: gather is signed-in now
-    const g=r.ok?await r.json():null;
+    const g=await gatherP;   // EXCAVATE_WIRE: gather is signed-in now; SEAM:EXC_SPEED: it ran alongside the lenses
     if(g&&g.ok&&Array.isArray(g.items)){
-      window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{}};
+      window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{},frame:(g.meta&&g.meta.frame)||null};   // SEAM:EXC_FRAME
       window._gatherItems=g.items;
       const seen=new Set(corpus.map(c=>c.url).filter(Boolean));
       g.items.forEach(it=>{
@@ -3033,7 +3134,11 @@ async function runLiveSearch(q){
     }
     let synthesis=null;
     try {
-      const d = await api('excavate/synthesize', { query:q, mode:'report', cls:(window._gatherMeta||{}).cls||null, corpus:g.corpus });   // SEAM:READ_QUALITY — THE READ compiles on every live search
+      const _gm=window._gatherMeta||{};
+      const _pl={ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped).map(r=>r.id), corpus:g.corpus };   // SEAM:EXC_FRAME: the frame the gather used rides with the corpus; SEAM:EXC_SPEED: the rails it ran, so the wire is not asked twice
+      let d=null; const _st={ heard:false };
+      try { d = await _synthesizeStream(_pl, (ev, data) => { if (ev === 'stage') _loaderStage(data); else if (ev === 'draft') _loaderDraft(data); }, _st); }   // SEAM:EXC_STREAM
+      catch (e) { d = await _synthesizePlainAfterCut(_pl, _st.heard); }   // SEAM:READ_QUALITY — THE READ compiles on every live search
       const dd = (d && d.ok && d.data) ? d.data : null;
       if(dd){
         if(Array.isArray(dd.signals) && dd.signals.length) g.items = g.items.concat(dd.signals);
@@ -3067,6 +3172,7 @@ function showLoader(q,mode,steps){
   qEl.className='loader-query basic';
   const stepsEl=document.getElementById('loader-steps');
   stepsEl.innerHTML=steps.map((s,i)=>`<div class="lstep" id="ls${i}">${s}</div>`).join('');
+  const dr=document.getElementById('loader-draft'); if(dr){ dr.style.display='none'; dr.innerHTML=''; }
   const bar=document.getElementById('fetch-bar');
   bar.className='fetch-bar-fill';
   bar.style.width='0%';
@@ -5070,9 +5176,12 @@ function _moveCard(m, all){
     <div class="move-head">${safe(m.headline||'')}</div><div class="move-body">${safe(m.body||'')}</div>
     ${rows.length?`<div class="move-rows">${rows.map(r=>`<div class="move-row"><span class="move-k">${r[0]}</span><span class="move-v">${safe(r[1])}</span></div>`).join('')}</div>`:''}
     ${m.dated&&m.dated.newest?`<div class="move-when ${safe(m.dated.band||'')}">EVIDENCE · ${safe(m.dated.band||'')} · NEWEST ${safe(m.dated.newest)}</div>`:''}
+    ${m.checks&&Array.isArray(m.checks.ungrounded)&&m.checks.ungrounded.length?`<div class="move-when" style="color:var(--accent)">UNVERIFIED FIGURE · ${m.checks.ungrounded.map(safe).join(', ')}</div>`:''}
     ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}</div>`;
 }
 // EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
+// SEAM:EXC_ACCURACY: a number the evidence does not carry is said out loud on the card that states it.
+function _checkChip(c){ return (c&&Array.isArray(c.ungrounded)&&c.ungrounded.length)?`<span class="card-when CHECK" title="This figure is not in the cited evidence as written">unverified: ${c.ungrounded.map(safe).join(', ')}</span>`:''; }
 function _whenChip(d){ if(!d) return ''; if(d.newest) return `<span class="card-when ${safe(d.band||'')}">${safe(d.band||'')} · ${safe(d.newest)}</span>`; return d.archive_only?`<span class="card-when ARCHIVE">ARCHIVE ONLY</span>`:''; }
 function _fillLensPanels(lenses, truth){
   const all=truth.allInsights||[];
@@ -5084,7 +5193,7 @@ function _fillLensPanels(lenses, truth){
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
         ${_meaningBlock(ins)}
-        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
+        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
       </div>`;
   };
   CATS.forEach(cat=>{
@@ -5159,7 +5268,13 @@ function _renderReadBlock(q, data, mode){
   if(att&&att.last_30d!=null) facts.push(`${att.last_30d.toLocaleString()} Wikipedia views in 30 days (${att.prev_30d.toLocaleString()} the 30 before)`);
   if(vol&&vol.points) facts.push(`GDELT coverage series, ${vol.points} points over 3 months`);
   if(meta.cls) facts.push(`read as ${meta.cls}`);
-  if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered`);
+  if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered${meta.rails.some(r=>r.skipped==='late')?' ('+meta.rails.filter(r=>r.skipped==='late').length+' late, not waited for)':''}`);
+  // SEAM:EXC_FRAME / SEAM:EXC_RELEVANCE / SEAM:EXC_SPEED: the frame the read answered, what was set aside, and the time it took.
+  const fr=data.frame||null, rel=data.relevance||null, tm=data.timing||null, rc=data.read_checks||null;
+  const _frHtml=fr?`<div class="read-frame">${fr.market?`<span class="rf-k">MARKET</span><span class="rf-v">${safe(fr.market)}</span>`:''}${fr.category?`<span class="rf-k">CATEGORY</span><span class="rf-v">${safe(fr.category)}</span>`:''}${fr.audience?`<span class="rf-k">AUDIENCE</span><span class="rf-v">${safe(fr.audience)}</span>`:''}${Array.isArray(fr.competitors)&&fr.competitors.length?`<span class="rf-k">AGAINST</span><span class="rf-v">${fr.competitors.map(safe).join(' · ')}</span>`:''}${fr.question?`<div class="rf-q">${safe(fr.question)}</div>`:''}</div>`:'';
+  if(rel&&rel.framed) facts.push(`${rel.kept} lines read${rel.set_aside?' · '+rel.set_aside+' set aside as off-frame':''}${rel.restored?' · '+rel.restored+' kept to reach the floor':''}`);
+  if(tm&&tm.total_ms) facts.push(`read in ${(tm.total_ms/1000).toFixed(0)}s (evidence ${((tm.frame_ms||0)+(tm.wire_ms||0))/1000|0}s, writing ${((tm.model_ms||0)/1000).toFixed(0)}s${tm.passes>1?', '+tm.passes+' passes':''})`);
+  const _rcHtml=(rc&&rc.ungrounded&&rc.ungrounded.length)?`<p class="read-check">A figure in this read is not in its evidence as written: ${rc.ungrounded.map(safe).join(', ')}. Read it as the model's arithmetic, not a source's number.</p>`:'';
   // EXC_INTEL: the evidence window (how many lines in each band, newest and oldest) and the lane the read compiled on.
   const win=data.window||null, mdl=data.model||null, _bands=['NOW','RECENT','CURRENT','CONTEXT','ARCHIVE'];
   const _winHtml=win?`<div class="read-window">${_bands.map(b=>`<span class="rw-band ${b}${(win[b]||0)?'':' zero'}"><b>${win[b]||0}</b>${b}</span>`).join('')}<span class="rw-note">${win.newest?'newest '+safe(win.newest):''}${win.oldest?' · oldest '+safe(win.oldest):''}${win.widened?' · window widened: dated evidence was thin':''}</span></div>`:'';
@@ -5168,6 +5283,8 @@ function _renderReadBlock(q, data, mode){
   el.innerHTML=`<div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
+    ${_rcHtml}
+    ${_frHtml}
     ${_winHtml}
     ${data.brief?`<p class="read-interp"><strong>The interpretation.</strong> ${safe(data.brief)}</p>`:''}
     ${facts.length?`<p class="read-interp" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3)">${facts.map(safe).join(' · ')}</p>`:''}
@@ -8795,34 +8912,25 @@ const _FEATURED_POOL = {
 };
 
 // ── Safe featured card opener — id lookup avoids all quote collisions ──
+/* SEAM:EXC_DOOR: a tile opens THE READ on its frame, the same read a typed query gets, with the frame the worker
+   already made handed along so nothing is framed twice. The template dashboard behind the tiles is retired. */
+function _openFrameRead(card) {
+  const q = String(card.query || card.title || '').trim();
+  if (!q) { showToast('Nothing to read on this tile yet'); return; }
+  window._tileFrame = card.frame ? { _q: q, frame: card.frame } : null;
+  const inp = document.getElementById('search-input'); if (inp) inp.value = q;
+  runSearch();
+}
 function openFeaturedCard(id) {
   // Lake cards first — when a live field read owns the grid, its ids win.
   if (_FI_LAKE && Array.isArray(_FI_LAKE.proposed)) {
     const lk = _FI_LAKE.proposed.find(c => c.id === id);
-    if (lk) {
-      openInsightDashboard({
-        title:    lk.subtitle || lk.title,
-        cat:      CATS.includes(lk.lens) ? lk.lens : 'culture',
-        query:    lk.query || lk.title,
-        deck:     lk.deck || '',
-        topicKey: lk.id,
-      });
-      return;
-    }
+    if (lk) { _openFrameRead(lk); return; }
   }
   // Find the card in the pool
   for (const cat of CATS) {
     const card = (_FEATURED_POOL[cat] || []).find(c => c.id === id);
-    if (card) {
-      openInsightDashboard({
-        title:    card.subtitle || card.title,
-        cat:      cat,
-        query:    card.query,
-        deck:     card.deck,
-        topicKey: card.id,
-      });
-      return;
-    }
+    if (card) { _openFrameRead(card); return; }
   }
   // Fallback: shouldn't happen but handle gracefully
   showToast('Loading intelligence…');
@@ -8947,7 +9055,7 @@ function _renderFeaturedCard(card, live, delay, showAsPending) {
       ${source ? `<div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.08em;margin-bottom:8px">SOURCE: ${source}</div>` : ''}
       <div class="card-meta">
         <span class="card-stat">${stat}</span>
-        <span style="color:var(--text3)">Click for full dashboard →</span>
+        <span style="color:var(--text3)">Open the read →</span>
       </div>
       ${bar != null ? `<div class="card-bar"><div class="card-bar-fill" style="width:${bar}%"></div></div>` : ''}
     </div>`;
@@ -9030,13 +9138,15 @@ function _renderLakeCard(card, i) {
       <span class="fi-state-tag ${meta.cls}">${meta.label}</span>
       <span class="card-cat ${lens}">● ${CAT_LABELS[lens]}</span>
       <h2 class="card-title">${safe(card.title)}</h2>
-      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">${card.subtitle || ''}</p>
+      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">${safe(card.subtitle || '')}</p>
+      ${card.frame?`<div class="fi-frame">${card.frame.market?`<span>${safe(card.frame.market)}</span>`:''}${card.frame.audience?`<span>${safe(card.frame.audience)}</span>`:''}${Array.isArray(card.frame.competitors)&&card.frame.competitors.length?`<span>vs ${card.frame.competitors.slice(0,3).map(safe).join(', ')}</span>`:''}</div>`:''}
+      ${card.story?`<p class="card-excerpt" style="color:var(--text3);font-size:12px">${safe(card.story)}</p>`:''}
       <p class="card-excerpt">${card.line ? safe(card.line) : (card.hook || card.deck || '')}</p>
       ${card.exemplar&&card.exemplar.url?`<p class="card-excerpt" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)">${safe(card.exemplar.source_name||'')}${card.exemplar.published_at||card.evidence&&card.evidence.last_seen?' · '+safe(String(card.evidence.last_seen||'').slice(0,10)):''} · <a class="proof-link" href="${safeUrl(card.exemplar.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a></p>`:''}
       <div class="fi-receipts">${bits.join(' · ')}</div>
       <div class="card-meta">
         <span class="card-stat">${card.stat || ''}</span>
-        <span style="color:var(--text3)">Click for full dashboard →</span>
+        <span style="color:var(--text3)">Open the read →</span>
       </div>
       ${'' /* SEAM:HUB_FEED — the recurrence bar was relative to the set, not a measurement; the receipts above carry the counts */}
     </div>`;

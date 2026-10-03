@@ -65,10 +65,10 @@ const origLog = console.log;
 const run = async replies => {
   const calls = [];
   const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
-    helpers + xj + synth + '; return synthesize;')(
+    'excFrameFor', helpers + xj + synth + '; return synthesize;')(
     (o, st) => ({ o, st }), async () => [], async () => [],
     async (env, o) => { calls.push(o); const x = replies.shift(); return Object.assign({ lane: o.reserveOnly ? 'reserve' : 'live', model: 'm', reason: o.reserveOnly || null, cost_usd: 0 }, x); },
-    async () => 1, async () => 'h', async () => 0, () => [], {});
+    async () => 1, async () => 'h', async () => 0, () => [], {}, async () => null);
   console.log = (...a) => logs.push(a.join(' '));
   try { return { res: await S({ query: 'gen z hair care', mode: 'report', corpus }, {}, ''), calls }; } finally { console.log = origLog; }
 };

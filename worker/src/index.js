@@ -103,7 +103,7 @@ export default {
         .catch(e => console.log('read_tick_error', String(e && e.message))));
     }
   },
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
     if (request.method === 'OPTIONS') return preflight(origin, env);
     const url = new URL(request.url);
@@ -133,7 +133,7 @@ export default {
       if (path === '/excavate/propose' && request.method === 'POST') return excavatePropose(request, env, origin);
       if (path === '/excavate/voice' && request.method === 'POST') return excavateVoice(request, env, origin);
       if (path === '/excavate/anchors' && request.method === 'POST') return excavateAnchors(request, env, origin);
-      if (path === '/excavate/gather' && request.method === 'POST') return excavateGather(request, env, origin);    // SEAM:GATHER_SERVER
+      if (path === '/excavate/gather' && request.method === 'POST') return excavateGather(request, env, origin, ctx);    // SEAM:GATHER_SERVER
       if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
@@ -174,7 +174,7 @@ export default {
         case '/play/render':         return playRender(body, env, origin, user);
         case '/play/assemble':       return playAssemble(body, env, origin, user);
         case '/play/upload-ref':     return playUploadRef(request, env, origin, user);
-        case '/excavate/synthesize': return synthesize(body, env, origin);
+        case '/excavate/synthesize': return body && body.stream ? synthesizeStream(body, env, origin, ctx) : synthesize(body, env, origin);   // SEAM:EXC_STREAM
         case '/mine/notify':        return mineNotify(body, env, origin, user);
         case '/mine/invites':       return mineInvites(body, env, origin, user);
         case '/mine/client-access': return mineClientAccess(body, env, origin, user);
@@ -511,7 +511,9 @@ async function playAssemble(body, env, origin, user) {
 //        → { ok, data:{ insights:[{category,title,excerpt,source,sourceUrl}], ideas:[{type,headline,body}], brief } }
 //  • { query, corpus:"<string>" }  → narrative text read (MINE partner preview)  → { ok, data:{ text } }
 //  • { prompt, sources:[...] }     → legacy analyst text                          → { ok, data:{ text } }
-async function synthesize(body, env, origin) {
+async function synthesize(body, env, origin, hooks) {
+  hooks = hooks || {};
+  const reply = hooks.reply || json;   // SEAM:EXC_STREAM: the stream takes the payload, the plain door takes a Response
   // ── Structured EXCAVATE mode: fuse the client-gathered open-data corpus ──
   if (Array.isArray(body.corpus)) {
     const query  = String(body.query || '').slice(0, 300);
@@ -520,16 +522,36 @@ async function synthesize(body, env, origin) {
     if (env.RATE_LIMIT) {
       try {
         const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
-        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights)) { j.model = Object.assign({}, j.model, { cached: true }); return json({ ok: true, data: j }, 200, origin, env); } }
+        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights)) { j.model = Object.assign({}, j.model, { cached: true }); return reply({ ok: true, data: j }, 200, origin, env); } }
       } catch (e) { console.log('exc_cache_read', String(e && e.message).slice(0, 80)); }
     }
+    // SEAM:EXC_STREAM: a caller whose stream was cut asks cache_only while the worker's own read lands; nothing is compiled twice.
+    if (body.cache_only) return reply({ ok: false, error: 'not_cached' }, 200, origin, env);
+    const T = { start: Date.now() };
+    const stage = st => { try { if (hooks.onStage) hooks.onStage(st); } catch (e) { excQuiet('stage')(e); } };
+    // SEAM:EXC_FRAME: the frame the gather used rides in with the corpus; without one, it is made here (cached a week).
+    const frame0 = excFrameWhole(body.frame) || excFrameClean(await excFrameFor(env, query));
+    T.frame_ms = Date.now() - T.start;
     // SEAM:EXCAVATE_WIRE: server connectors (GDELT, HN, paid Exa) join through the evidence
     // budget, never after a cut. English at the door. corpus and added below are what was READ.
-    const addedAll = (await gatherServerSignals(query)).concat(await gatherPaidSignals(query, env))
-      .filter(a => a && a.title && looksEnglish(a.title + ' ' + (a.snippet || '')));
-    const plan = excBudget(body.corpus, addedAll);
+    // SEAM:EXC_SPEED: when the gather already ran these rails (it calls GDELT, HN, Exa and more), they are not
+    // called a second time; otherwise the free wire and the paid rail run together, each with a deadline.
+    const ran = new Set(Array.isArray(body.rails) ? body.rails.map(x => String(x)) : []);
+    const gathered = body.corpus.some(c => c && c.rail === 'gather');
+    const within = (p, ms) => Promise.race([p.catch(excQuiet('wire', [])), new Promise(res => setTimeout(() => res([]), ms))]);
+    // The free wire runs unless the gather already asked GDELT and HN; the paid rail unless it already asked Exa.
+    const needWire = !(gathered && ran.has('gdelt') && ran.has('hn')), needPaid = !(gathered && ran.has('exa'));
+    const addedRaw = [].concat(...(await Promise.all([needWire ? within(gatherServerSignals(query), EXC_SPEED.WIRE_MS) : Promise.resolve([]),
+      needPaid ? within(gatherPaidSignals(query, env), EXC_SPEED.WIRE_MS) : Promise.resolve([])])));
+    T.wire_ms = Date.now() - T.start - T.frame_ms;
+    let addedAll = addedRaw.filter(a => a && a.title && looksEnglish(a.title + ' ' + (a.snippet || '')));
+    // SEAM:EXC_RELEVANCE: off-frame evidence is set aside before the budget, and counted.
+    let corpusIn = body.corpus;
+    const gate = excRelevance(corpusIn.concat(addedAll), frame0);
+    if (frame0) { const keep = new Set(gate.kept); corpusIn = corpusIn.filter(c => keep.has(c)); addedAll = addedAll.filter(a => keep.has(a)); }
+    const plan = excBudget(corpusIn, addedAll);
     const corpus = plan.open, added = plan.server, merged = plan.merged;
-    if (!merged.length) return json({ ok: false, error: 'no_corpus' }, 200, origin, env);
+    if (!merged.length) return reply({ ok: false, error: 'no_corpus' }, 200, origin, env);
 
     const now = Date.now();
     const evidence = merged.map((c, i) => excLine(c, i, now)).join('\n');   // SEAM:EXC_INTEL: date, band, age, tier on every line
@@ -569,7 +591,7 @@ async function synthesize(body, env, origin) {
       (isReport ? 'Never restate source counts or citation totals as findings: say what the evidence MEANS. ' +
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
-    const usr = isReport ? excReportPrompt(query, evidence) : usrPlain;
+    const usr = excFrameBlock(frame0) + (isReport ? excReportPrompt(query, evidence) : usrPlain);   // SEAM:EXC_FRAME
 
     // SEAM:ONE_RAIL, now SEAM:EXC_INTEL: THE READ compiles on the live lane (Sonnet 5) and never fails: the reserve model stands behind it.
     /* SEAM:EXC_PARSE: a read the model wrote is a read the client gets. The report used to have 3600 tokens of room
@@ -579,8 +601,9 @@ async function synthesize(body, env, origin) {
      * then the reserve model; and every miss is logged with its lane, stop reason and the tail of what came back. */
     const tight = ' ROOM LAW: keep every sentence under 25 words and every string under 220 characters. ' +
       'Close the JSON object completely. JSON only, no fences.';
-    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW, prompt: usr,
-      max_tokens: isReport ? EXC_ROOM.report : EXC_ROOM.plain, kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1' };
+    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW, prompt: usr,
+      max_tokens: isReport ? EXC_ROOM.report : EXC_ROOM.plain, kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
+      onText: hooks.onText || null };   // SEAM:EXC_STREAM: the live draft
     const passes = [];
     const attempt = async (o, label) => {
       const c = await excCompile(env, o);
@@ -591,6 +614,8 @@ async function synthesize(body, env, origin) {
         stop: c.stop_reason || null, chars: String(c.text || '').length, head: String(c.text || '').slice(0, 160), tail: String(c.text || '').slice(-160) }));
       return { c, p };
     };
+    stage({ stage: 'writing', evidence: merged.length, dropped: gate.dropped.length });
+    T.model_start = Date.now();
     let got = await attempt(base, 'first');
     if (!got.p && got.c.lane === 'live')
       got = await attempt(Object.assign({}, base, { prompt: usr + tight, max_tokens: Math.min(base.max_tokens * 2, EXC_ROOM.ceiling), kind: base.kind + '_retry' }), 'second');
@@ -599,7 +624,7 @@ async function synthesize(body, env, origin) {
     const compiled = got.c;
     if (!got.p) {
       // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read; the passes say why.
-      return json({ ok: false, error: 'synthesis_unparsable', passes }, 200, origin, env);
+      return reply({ ok: false, error: 'synthesis_unparsable', passes }, 200, origin, env);
     }
     const parsed = got.p.read;
     if (got.p.how === 'salvaged') compiled.reason = (compiled.reason ? compiled.reason + '+' : '') + 'salvaged_cut';
@@ -616,21 +641,24 @@ async function synthesize(body, env, origin) {
       return { newest: ds[0] ? ds[0].toISOString().slice(0, 10) : null, oldest: ds.length ? ds[ds.length - 1].toISOString().slice(0, 10) : null,
         band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE') };
     };
-    const earned = ns => {
-      const live = ns.filter(n => bandOf(n) !== 'ARCHIVE');
-      const k = new Set(live.map(n => String(merged[n - 1].source || merged[n - 1].url || n).toLowerCase())).size;
-      const fresh = live.some(n => bandOf(n) !== 'CONTEXT');
-      return k >= 3 && fresh ? 'High' : k >= 2 ? 'Medium' : 'Low';
-    };
+    // SEAM:EXC_ACCURACY: corroboration is weighed, not counted. Each distinct live outlet adds its tier's weight
+    // (T0/T1 1, T2 0.8, T3 0.5, T4 0.4). High needs three outlets, weight 2 and something fresher than CONTEXT;
+    // Medium needs two outlets and weight 1. Three blogs are Medium; one blog is never more than Low.
+    const earned = ns => excEarned(ns.filter(n => bandOf(n) !== 'ARCHIVE').map(n => merged[n - 1]),
+      ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'));
     const insights = parsed.insights.slice(0, 8).map(x => {
       const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null;
+      // SEAM:EXC_ACCURACY: a number the finding states must appear in the evidence it cites. One that does not
+      // is named in checks and the finding drops to Low, so a client never meets an unsourced figure dressed as High.
+      const ground = excGround([x.title, x.excerpt].join(' '), ns.map(n => merged[n - 1]));
       return {
+        checks: ground,
         category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer',
         title: String(x.title || '').slice(0, 120),
         excerpt: String(x.excerpt || '').slice(0, 400),
         implication: (String(x.implication || '').slice(0, 300) || (x.meaning && x.meaning.category ? String(x.meaning.category).slice(0, 300) : '')) || null,
         meaning: isReport ? excMeaning(x.meaning) : null,
-        confidence: earned(ns),
+        confidence: ground.ungrounded.length ? 'Low' : earned(ns),
         evidence: ns,
         dated: datedOf(ns),   // SEAM:EXC_INTEL
         source: String((first && first.source) || x.source || '').slice(0, 120),
@@ -638,22 +666,30 @@ async function synthesize(body, env, origin) {
           : (/^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null)
       };
     }).filter(x => x.title);
+    // SEAM:EXC_ACCURACY: room for a whole sentence; the 220 cut ended THE READ mid-clause.
     const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2)
-      .map(x => String(x || '').slice(0, 220)).filter(Boolean);
+      .map(x => excClip(x, 420)).filter(Boolean);
     const ideasAll = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 6).map(x => ({
       type: String(x.type || 'Strategy').slice(0, 40),
       headline: String(x.headline || '').slice(0, 120),
       body: String(x.body || '').slice(0, 400),
       from: Number.isInteger(x.from) && x.from >= 0 && x.from < 8 ? x.from : null,   // SEAM:EXCAVATE_WIRE: back where it belongs
       for: excShort(x.for), because: String(x.because || '').slice(0, 280), proof: String(x.proof || '').slice(0, 280),
-      measure: String(x.measure || '').slice(0, 240), risk: String(x.risk || '').slice(0, 240), evidence: cited(x), dated: datedOf(cited(x))
+      measure: String(x.measure || '').slice(0, 240), risk: String(x.risk || '').slice(0, 240), evidence: cited(x), dated: datedOf(cited(x)),
+      checks: excGround([x.headline, x.body, x.proof].join(' '), (cited(x).length ? cited(x) : merged.map((c, i) => i + 1)).map(n => merged[n - 1]))   // SEAM:EXC_ACCURACY
     })).filter(x => x.headline);
     // SEAM:EXCAVATE_MEANING: the move law, enforced. Weak moves are dropped and counted, never shown.
     const guard = isReport ? excMoveGuard(ideasAll, query) : { kept: ideasAll, dropped: 0 };
     const ideas = guard.kept, movesDropped = guard.dropped;
     const frameIn = (parsed.frame && typeof parsed.frame === 'object') ? parsed.frame : {};
-    const frame = isReport ? { category: excShort(frameIn.category), audience: excShort(frameIn.audience) } : null;
+    // SEAM:EXC_FRAME: the read names its market and competitive set; the model's own labels win where it gave them.
+    const frame = (isReport || frame0) ? Object.assign({}, frame0 || {}, { category: excShort(frameIn.category) || (frame0 && frame0.category) || null,
+      audience: excShort(frameIn.audience) || (frame0 && frame0.audience) || null }) : null;
+    if (frame) { delete frame.anchors; delete frame.exclude; delete frame.queries; }
+    T.model_ms = Date.now() - T.model_start;
     const brief = String(parsed.brief || '').slice(0, 1200);
+    // SEAM:EXC_ACCURACY: THE READ and the brief answer to the whole evidence set.
+    const readChecks = excGround(read.concat([brief]).join(' '), merged);
     // SEAM:READ_LEDGER — persist the read, then let its live signals enter the lake at raw.
     let readId = null;
     try {
@@ -666,15 +702,18 @@ async function synthesize(body, env, origin) {
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: excTier(c) || 3, kind: c.kind || c.lens || 'open', published_at: c.published_at || null, rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
     } catch (e) {}
-    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_id: readId, frame, moves_dropped: movesDropped,
+    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped,
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
+      relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
+      timing: { frame_ms: T.frame_ms, wire_ms: T.wire_ms, model_ms: T.model_ms, total_ms: Date.now() - T.start, passes: passes.length, wire_skipped: !needWire && !needPaid },   // SEAM:EXC_SPEED
       model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cached: false }, compiled_at: new Date().toISOString() };
+    console.log('exc_read', JSON.stringify({ q: query.slice(0, 60), ev: merged.length, aside: gate.dropped.length, lane: compiled.lane, passes: passes.length, ms: data.timing }));
     if (env.RATE_LIMIT && compiled.lane === 'live') {
       try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: EXC_MODEL.CACHE_TTL }); }
       catch (e) { console.log('exc_cache_write', String(e && e.message).slice(0, 80)); }
     }
-    return json({ ok: true, data }, 200, origin, env);
+    return reply({ ok: true, data }, 200, origin, env);
   }
 
   // ── Narrative text mode: brief + string corpus (MINE partner preview) ──
@@ -748,7 +787,11 @@ function extractJson(s) {
  * not thrown away: every finding (and move) the model finished is kept, the open brackets are closed, and the
  * read is used when it carries at least EXC_ROOM.MIN_SALVAGE findings. Only text that never parses is a miss. */
 const EXC_ROOM = { report: 8000, plain: 4000, ceiling: 12000, MIN_SALVAGE: 3 };
-function excSalvage(s) {
+const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4 };   // SEAM:EXC_SPEED
+// A quiet failure still leaves a line: what fell over, and where. Never an empty catch.
+const excQuiet = (where, v) => e => { console.log('exc_quiet', where, String(e && e.message || e).slice(0, 100)); return v; };
+function excSalvage(s, min, maxTries) {
+  const need = min == null ? EXC_ROOM.MIN_SALVAGE : min, cap = maxTries || 60;
   const t = String(s || '').replace(/```(?:json)?/gi, '');
   const start = t.indexOf('{');
   if (start < 0) return null;
@@ -767,13 +810,24 @@ function excSalvage(s) {
       if (stack.length <= 2) cuts.push({ at: i + 1, open: stack.slice() });
     }
   }
-  for (let k = cuts.length - 1, tries = 0; k >= 0 && tries < 60; k--, tries++) {
+  for (let k = cuts.length - 1, tries = 0; k >= 0 && tries < cap; k--, tries++) {
     const cut = cuts[k];
     const close = cut.open.slice().reverse().map(c => (c === '{' ? '}' : ']')).join('');
     const out = tryParse(t.slice(start, cut.at) + close);
-    if (out && Array.isArray(out.insights) && out.insights.filter(x => x && x.title).length >= EXC_ROOM.MIN_SALVAGE) return out;
+    if (out && (need === 0 ? typeof out === 'object' : (Array.isArray(out.insights) && out.insights.filter(x => x && x.title).length >= need))) return out;
   }
   return null;
+}
+// SEAM:EXC_STREAM: the live draft is what a half-written reply already says: the two-line read, the finished
+// findings and moves, by title. It is a preview; the read that lands is the one the laws have checked.
+function excDraft(text) {
+  const o = excSalvage(text, 0, EXC_SPEED.DRAFT_TRIES);
+  if (!o) return null;
+  const read = (Array.isArray(o.read) ? o.read : []).map(x => String(x || '').slice(0, 420)).filter(Boolean).slice(0, 2);
+  const insights = (Array.isArray(o.insights) ? o.insights : []).filter(x => x && x.title).slice(0, 8)
+    .map(x => ({ category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', title: String(x.title).slice(0, 120), excerpt: String(x.excerpt || '').slice(0, 300) }));
+  const ideas = (Array.isArray(o.ideas) ? o.ideas : []).filter(x => x && x.headline).slice(0, 6).map(x => ({ type: String(x.type || '').replace(/[^A-Za-z ]/g, '').slice(0, 20), headline: String(x.headline).slice(0, 120) }));
+  return (read.length || insights.length) ? { read, insights, ideas } : null;
 }
 function excReadOf(text) {
   const whole = extractJson(text || '');
@@ -791,7 +845,7 @@ function excReadOf(text) {
  * theme reads to come) may spend only OVERNIGHT_SHARE of the cap, so a client
  * in the room always has the live lane. A read compiled on the live lane is
  * kept CACHE_TTL under its query, so a repeat costs nothing. */
-const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i1' };
+const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i2' };   // i2: EX4 laws; reads cached under i1 are not served
 const EXC_RESERVE_MAX = 4000;   // SEAM:EXC_PARSE: the reserve model's output room
 function excCacheKey(h) { return 'excr:' + EXC_MODEL.REV + ':' + h; }
 async function excCompile(env, o) {
@@ -807,10 +861,12 @@ async function excCompile(env, o) {
   if (o.reserveOnly) why = String(o.reserveOnly);   // SEAM:EXC_PARSE: the live lane answered twice and neither reply could be read
   if (!why) {
     const req = { system: String(o.system || ''), cache: true, prompt: String(o.prompt || ''), max_tokens, kind: o.kind || 'excavate' };
-    let r = await callClaude(env, EXC_MODEL.TIER, req);
+    // SEAM:EXC_STREAM: a caller with an ear (onText) hears the read as it is written; the ledger is the same.
+    const ask = () => (o.onText ? callClaudeStream(env, EXC_MODEL.TIER, req, o.onText) : callClaude(env, EXC_MODEL.TIER, req));
+    let r = await ask();
     if (!r.ok && /^claude_(?:network|429|5\d\d)$/.test(String(r.error || ''))) {
       await new Promise(res => setTimeout(res, EXC_MODEL.RETRY_MS));
-      r = await callClaude(env, EXC_MODEL.TIER, req);
+      r = await ask();
     }
     if (r.ok) return { text: r.text || '', lane: 'live', model: CLAUDE.TIERS[EXC_MODEL.TIER].model, reason: null, cost_usd: r.cost_usd || 0, truncated: !!r.truncated, stop_reason: r.stop_reason || null };
     why = String(r.error || 'claude_failed');
@@ -818,6 +874,27 @@ async function excCompile(env, o) {
   const text = await callModel(env, o.reserve || 't3',
     [{ role: 'system', content: String(o.system || '') }, { role: 'user', content: String(o.prompt || '') }], { max_tokens: Math.min(max_tokens, EXC_RESERVE_MAX) });
   return { text: text || '', lane: 'reserve', model: CONFIG.TEXT_MODEL, reason: why, cost_usd: 0, truncated: false, stop_reason: null };
+}
+// SEAM:EXC_FRAME: the frame call lives in the lane block, beside the read's own Claude call.
+async function excFrameFor(env, query) {
+  try {
+    const qn = String(query || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!qn) return null;
+    const key = 'xfr:' + EXC_FRAME.REV + ':' + (await sha256hex(qn));
+    if (env.RATE_LIMIT) { const hit = await env.RATE_LIMIT.get(key); if (hit) { const j = JSON.parse(hit); return j && j._miss ? null : excFrameClean(j); } }
+    // A miss is remembered for an hour, so a capped tier or a query the model cannot frame is not asked again on every read.
+    // A query the model cannot frame, or a closed tier, is remembered an hour; a wobble (slow, network, overloaded) five minutes.
+    const miss = async why => { console.log('exc_frame_miss', why); const ttl = /unframeable|claude_cap|claude_off|claude_unconfigured/.test(why) ? EXC_FRAME.MISS_TTL : EXC_FRAME.WOBBLE_TTL;
+      if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify({ _miss: 1, why }), { expirationTtl: ttl }); } catch (e) { excQuiet('frame_miss_cache')(e); } } return null; };
+    const call = callClaude(env, 'frame', { system: EXC_FRAME_SYS, cache: true, prompt: 'Query: "' + qn + '"', max_tokens: EXC_FRAME.MAX_TOKENS,
+      temperature: 0, kind: 'excavate_frame', timeout_ms: EXC_FRAME.TIMEOUT_MS });
+    const r = await Promise.race([call, new Promise(res => setTimeout(() => res({ ok: false, error: 'frame_slow' }), EXC_FRAME.TIMEOUT_MS + 300))]);
+    if (!r || !r.ok) return miss(String((r && r.error) || 'none'));
+    const f = excFrameClean(extractJson(r.text || ''));
+    if (!f) return miss('unframeable');
+    if (env.RATE_LIMIT) await env.RATE_LIMIT.put(key, JSON.stringify(f), { expirationTtl: EXC_FRAME.TTL });
+    return f;
+  } catch (e) { console.log('exc_frame_error', String(e && e.message).slice(0, 120)); return null; }
 }
 /* SEAM:EXCAVATE_MEANING: the report contract. A finding says what it means for
  * the culture, the category and the consumer; a move is a brief with its
@@ -835,7 +912,7 @@ function excReportPrompt(query, evidence) {
   return 'Topic: "' + query + '"\n\nEVIDENCE:\n' + evidence + '\n\n' +
     'Return JSON exactly shaped as:\n' +
     '{"frame":{"category":"the category this topic sits in, 1 to 3 words","audience":"the people that category serves here, 1 to 3 words"},' +
-    '"read":["line 1: one sharp sentence reframing what the evidence actually shows","line 2: one sentence naming the move it implies"],' +
+    '"read":["line 1: one sharp sentence, at most 40 words, reframing what the evidence actually shows","line 2: one sentence, at most 30 words, naming the move it implies"],' +
     '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
     '"excerpt":"1-2 sentences: what happened, naming the concrete thing from the evidence",' +
     '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
@@ -886,6 +963,132 @@ function excAnchors(text, query) {
     }
   }
   return n;
+}
+/* SEAM:EXC_ACCURACY: the number law, asked of the model and then checked in code. */
+const EXC_NUMBER_LAW = 'NUMBER LAW: every number you write (a percent, a price, a count, a ranking) must appear in an evidence line you cite for it, ' +
+  'copied exactly. When a line from a T3 or T4 outlet reports a figure from a study or firm, write it as reported: ' +
+  '"84%, per Mintel as reported by Beauty Nexus". A figure carried only by T3 or T4 lines never leads THE READ; put it in a finding. ' +
+  'When evidence comes from another market than the topic, name the market ("in the UK").';
+const EXC_TIER_W = [1, 1, 0.8, 0.5, 0.4];
+function excClip(v, n) {
+  const t = String(v || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= n) return t;
+  const cut = t.slice(0, n), stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
+  return (stop > n * 0.6 ? cut.slice(0, stop + 1) : cut.replace(/\s+\S*$/, '') + '…');
+}
+// An outlet is one outlet however it arrived: the lake's copy ("Unsurfaced Lake · Guardian (T1)"), the wire's
+// ("The Guardian") and a URL on its domain share one key.
+function excOutletKey(c) {
+  let k = String((c && c.source) || '').toLowerCase().replace(/unsurfaced lake\s*[\u00b7·]\s*/g, '').replace(/\(t\d\)/g, '').replace(/\.(com|org|net|co|io|uk)\b.*$/, '').replace(/[^a-z0-9]+/g, '').replace(/^the(?=[a-z]{3,})/, '').trim();
+  if (!k && c && c.url) { const m = String(c.url).match(/^https?:\/\/(?:www\.)?([^/]+)/i); k = m ? m[1].toLowerCase().replace(/\.(com|org|net|co|io|uk)\b.*$/, '').replace(/[^a-z0-9]+/g, '').replace(/^the(?=[a-z]{3,})/, '') : ''; }
+  return k || String((c && c.title) || '').toLowerCase().slice(0, 40);
+}
+function excEarned(items, fresh) {
+  const w = new Map();
+  for (const c of items || []) {
+    if (!c) continue;
+    const k = excOutletKey(c);
+    w.set(k, Math.max(w.get(k) || 0, EXC_TIER_W[excTier(c)]));
+  }
+  const n = w.size, score = [...w.values()].reduce((a, b) => a + b, 0);
+  return n >= 3 && score >= 2 && fresh ? 'High' : n >= 2 && score >= 1 ? 'Medium' : 'Low';
+}
+// Numbers worth checking: percents, money, decimals and counts of two or more digits. Years, dates, quarters,
+// weeks and the evidence numbers themselves ("evidence 12", "[3]") are not claims.
+const EXC_MONTH = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
+const EXC_NOT_CLAIM = new RegExp('\\[\\d+\\]|\\bevidence\\s+(?:items?\\s+|lines?\\s+)?\\d+(?:\\s*(?:,|and|to|-)\\s*\\d+)*|\\b(?:19|20)\\d{2}-\\d{2}(?:-\\d{2})?\\b|' +
+  '\\b' + EXC_MONTH + '\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+(?:19|20)\\d{2})?\\b|\\b\\d{1,2}(?:st|nd|rd|th)?\\s+' + EXC_MONTH + '\\b|' +
+  '\\b[qh][1-4]\\b|\\bweek\\s+\\d{1,2}\\b|\\b(?:19|20)\\d{2}s?\\b|\\b\\d{2}s\\b|\\bfy\\s?\\d{2,4}\\b|\\b\\d{1,2}:\\d{2}\\b|' +
+  '\\b\\d{1,2}\\s?(?:-|to)\\s?\\d{1,2}[\\s-]+(?:year|yr)|[a-z]+-?\\d+[a-z]*\\b|\\b\\d+(?!(?:st|nd|rd|th)\\b)[a-z]{2,}\\b', 'gi');
+function excNumbers(text) {
+  const t = String(text || '').replace(EXC_NOT_CLAIM, ' ');
+  const out = [];
+  const re = /(\$|£|€)?\s?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(?:st|nd|rd|th)?\s?(%|percent\b|per\s?cent\b|[kKmMbB]\b|bn\b|million\b|billion\b)?/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const raw = m[2].replace(/,/g, ''), cur = m[1], unit = (m[3] || '').toLowerCase();
+    const v = parseFloat(raw);
+    if (!Number.isFinite(v)) continue;
+    const isYear = !cur && !unit && /^(19|20)\d{2}$/.test(raw);
+    if (isYear) continue;
+    if (!cur && !unit && raw.length < 2 && raw.indexOf('.') < 0) continue;   // a bare single digit is a count word, not a figure
+    out.push({ v, pct: unit === '%' || /^per\s?cent$/.test(unit), text: m[0].trim() });
+  }
+  return out;
+}
+function excGround(text, evidence) {
+  const claims = excNumbers(text).filter((c, i, a) => a.findIndex(o => o.v === c.v && o.pct === c.pct) === i);
+  if (!claims.length) return { numbers: 0, ungrounded: [] };
+  const pool = excNumbers((evidence || []).filter(Boolean).map(c => (c.title || '') + ' ' + (c.text || '') + ' ' + (c.snippet || '')).join(' · '));
+  const has = c => pool.some(p => Math.abs(p.v - c.v) < 1e-9 && p.pct === c.pct);
+  const ungrounded = [...new Set(claims.filter(c => !has(c)).map(c => c.text))].slice(0, 6);
+  return { numbers: claims.length, ungrounded };
+}
+/* SEAM:EXC_FRAME: a query is turned into a frame before a rail runs. Haiku names the category, audience,
+ * market, competitive set and the decision question, the anchor phrases an on-topic item must carry, the
+ * phrases that mark an off-topic one, and a query phrased for each kind of rail. Cached a week per query.
+ * A frame never blocks a read: no key, a cap, a slow answer or a bad reply all return null and the read
+ * runs on the raw query exactly as before. */
+const EXC_FRAME = { TIMEOUT_MS: 4500, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 300, REV: 'f1', MAX_TOKENS: 700, DOOR_SHARE: 0.5 };
+const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research engine. Output STRICT JSON only, no fences. ' +
+  'Shape: {"entity":"the named brand, person, product or place, or null","category":"1 to 3 words","audience":"1 to 3 words",' +
+  '"market":"the country or region the query is about; US when it names none","competitors":["up to 5 named players this entity or category competes with in that market"],' +
+  '"question":"the one decision question a brand team is asking, one sentence",' +
+  '"anchors":["8 to 16 lowercase words or short phrases; an on-topic item contains at least one. Use the entity, the category and its synonyms, product types, and specific behaviors. Never a single generic word that also names other categories"],' +
+  '"exclude":["0 to 8 lowercase phrases that mark an off-topic item: homonyms and neighboring categories"],' +
+  '"queries":{"news":"a news search for this frame","research":"an academic search phrasing","discourse":"how people say it on forums and video","web":"a web search for this frame"}} ' +
+  'Every query is under 8 words. Never use the em dash character.';
+function excFrameClean(f) {
+  if (!f || typeof f !== 'object') return null;
+  // Model text never carries markup into a label: angle brackets, quotes and backticks are dropped at the door.
+  const str = (v, n) => { const t = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim(); return t && t.toLowerCase() !== 'null' ? t.slice(0, n) : null; };
+  const place = v => { const t = str(v, 40); return t && /^\p{L}[\p{L}\p{N} .,'&()/-]{0,39}$/u.test(t) ? t : null; };
+  const list = (v, n, m) => (Array.isArray(v) ? v : []).map(x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim()).filter(x => x && x.length <= m).slice(0, n);
+  const q = (f.queries && typeof f.queries === 'object') ? f.queries : {};
+  const out = { entity: str(f.entity, 80), category: str(f.category, 40), audience: str(f.audience, 40), market: place(f.market) || 'US',
+    competitors: (Array.isArray(f.competitors) ? f.competitors : []).map(x => str(x, 40)).filter(Boolean).slice(0, 5),
+    question: str(f.question, 220), anchors: list(f.anchors, 16, 40), exclude: list(f.exclude, 8, 40),
+    queries: { news: str(q.news, 90), research: str(q.research, 90), discourse: str(q.discourse, 90), web: str(q.web, 90) } };
+  return out.category || out.entity ? out : null;
+}
+function excFrameWhole(f) { const c = excFrameClean(f); return c && Array.isArray(c.anchors) && c.anchors.length ? c : null; }
+// Each rail asks in its own register; entity, reference and attention rails keep the plain query.
+function excRailQuery(rail, query, frame) {
+  if (!frame || !frame.queries || !rail) return query;
+  const k = rail.kind, q = frame.queries;
+  const pick = k === 'research' ? q.research : k === 'news' ? q.news : k === 'discourse' ? q.discourse : k === 'web' ? q.web : null;
+  return pick || query;
+}
+/* SEAM:EXC_RELEVANCE: the gate between gathering and reading. An item that names an excluded neighbor is
+ * dropped; with a frame, an item must carry one anchor (lake items close in meaning pass on similarity).
+ * The gate never starves a read: below MIN kept, the strongest set-aside items return until MIN is met.
+ * Without a frame nothing is gated. What was set aside is counted and named. */
+const EXC_GATE = { MIN: 12, SIM: 0.6 };
+function excRelevance(items, frame) {
+  const list = (items || []).filter(Boolean);
+  if (!frame || !frame.anchors || !frame.anchors.length) return { kept: list, dropped: [], restored: 0 };
+  const norm = x => String(x || '').toLowerCase().replace(/['\u2019]/g, '').replace(/[^a-z0-9$%& ]+/g, ' ');
+  const hay = c => ' ' + norm([c.title, c.text, c.snippet].filter(Boolean).join(' ')) + ' ';
+  const has = (h, p) => { const t = norm(p).trim(); return t && (h.includes(' ' + t + ' ') || h.includes(' ' + t + 's ')); };
+  const anchors = frame.anchors.concat(frame.entity ? [frame.entity.toLowerCase()] : []);
+  const kept = [], dropped = [];
+  for (const c of list) {
+    const h = hay(c);
+    const ex = (frame.exclude || []).find(p => has(h, p));
+    if (ex) { dropped.push({ c, why: 'exclude:' + ex, hard: true }); continue; }
+    if (c.kind === 'entity' || c.kind === 'attention' || (Number.isFinite(c.similarity) && c.similarity >= EXC_GATE.SIM)) { kept.push(c); continue; }
+    if (anchors.some(p => has(h, p))) kept.push(c); else dropped.push({ c, why: 'no_anchor', hard: false });
+  }
+  let restored = 0;
+  for (const d of dropped) { if (kept.length >= EXC_GATE.MIN) break; if (!d.hard) { kept.push(d.c); d.restored = true; restored++; } }
+  return { kept, dropped: dropped.filter(d => !d.restored).map(d => ({ title: String(d.c.title || '').slice(0, 120), why: d.why })), restored };
+}
+function excFrameBlock(frame) {
+  if (!frame) return '';
+  return 'FRAME: category ' + (frame.category || 'n/a') + '; audience ' + (frame.audience || 'n/a') + '; market ' + (frame.market || 'US') +
+    (frame.entity ? '; entity ' + frame.entity : '') + (frame.competitors && frame.competitors.length ? '; competitive set ' + frame.competitors.join(', ') : '') +
+    (frame.question ? '. The question: ' + frame.question : '') + '\n' +
+    'Answer the question for this market. Where the evidence carries the competitive set, measure the topic against it; never invent a comparison the evidence does not carry.\n\n';
 }
 function excMoveGuard(moves, query) {
   const kept = [];
@@ -2744,6 +2947,39 @@ async function payFundStudy(body, env, origin, user) {
 function allowed(origin, env) {
   const list = String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
   return list.length === 0 || list.includes(origin);
+}
+/* SEAM:EXC_STREAM: POST /excavate/synthesize {stream:true} answers as server-sent events: `stage` while the
+ * evidence is read, `draft` while the read is written (the finished parts, every STREAM_EVERY_MS), then `final`,
+ * the same payload the plain door returns. A client that cannot read a stream asks without stream:true. */
+async function synthesizeStream(body, env, origin, wctx) {
+  const ts = new TransformStream(), w = ts.writable.getWriter(), enc = new TextEncoder();
+  const send = (event, data) => w.write(enc.encode('event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n')).catch(excQuiet('stream_send'));
+  let last = 0, lastSig = '';
+  const onText = t => {
+    const now = Date.now();
+    if (now - last < EXC_SPEED.STREAM_EVERY_MS) return;
+    last = now;
+    const d = excDraft(t);
+    if (!d) return;
+    const sig = d.read.length + ':' + d.insights.length + ':' + d.ideas.length;
+    if (sig === lastSig) return;
+    lastSig = sig; send('draft', d);
+  };
+  const job = (async () => {
+    try {
+      send('stage', { stage: 'reading' });
+      let out = await synthesize(body, env, origin, { onText, onStage: st => send('stage', st), reply: payload => payload });
+      if (out instanceof Response) out = await out.json().catch(() => ({ ok: false, error: 'stream_mode' }));
+      await send('final', out);
+    } catch (e) {
+      console.log('exc_stream_error', String(e && e.message).slice(0, 160));
+      await send('final', { ok: false, error: 'stream_failed' });
+    } finally { try { await w.close(); } catch (e) { excQuiet('stream_close')(e); } }
+  })();
+  if (wctx && wctx.waitUntil) wctx.waitUntil(job);
+  const h = corsHeaders(origin, env);
+  h.set('Content-Type', 'text/event-stream; charset=utf-8'); h.set('Cache-Control', 'no-cache, no-transform');
+  return new Response(ts.readable, { status: 200, headers: h });
 }
 function corsHeaders(origin, env) {
   const h = new Headers();
@@ -5805,7 +6041,8 @@ async function dailyHealth(env, nowMs) {
  * a read broken. Keyless rails identify the platform with one user-agent.
  * ═══════════════════════════════════════════════════════════════════════════ */
 const GATHER_UA = 'unsurfaced-excavate/1.0 (johnnie@unsurfacedside.com)';
-const GATHER = { TIMEOUT_MS: 6500, PAR: 6, MAX_ITEMS: 60, CAP_DEFAULT: 400, YT_SEARCH_CAP: 60 };
+const GATHER = { TIMEOUT_MS: 6500, PAR: 6, MAX_ITEMS: 60, CAP_DEFAULT: 400, YT_SEARCH_CAP: 60,
+  BUDGET_MS: 8000, RAIL_MS: 6000, KG_MS: 2500, FRAME_WAIT_MS: 3000 };   // SEAM:EXC_SPEED
 const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artificial-intelligence',
   'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
   'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'];
@@ -5859,13 +6096,11 @@ const RAIL_FNS = {
     const j = await railFetch('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=4&srsearch=' + encodeURIComponent(q));
     const hits = (j && j.query && j.query.search) || [];
     if (hits[0]) ctx.meta.wiki_title = hits[0].title;
-    const out = [];
-    for (const h of hits.slice(0, 3)) {
-      const s = await railFetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(h.title.replace(/ /g, '_')));
-      out.push(envelope(rail, { url: (s && s.content_urls && s.content_urls.desktop && s.content_urls.desktop.page) || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(h.title)),
-        title: h.title, text: (s && s.extract) || stripHtml(h.snippet), image: s && s.thumbnail && s.thumbnail.source, published_at: s && s.timestamp, license: 'CC BY-SA 4.0' }));
-    }
-    return out;
+    // SEAM:EXC_SPEED: the three summaries are fetched together, not one after another.
+    const sums = await Promise.all(hits.slice(0, 3).map(h => railFetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(h.title.replace(/ /g, '_')))));
+    return hits.slice(0, 3).map((h, i) => { const s = sums[i];
+      return envelope(rail, { url: (s && s.content_urls && s.content_urls.desktop && s.content_urls.desktop.page) || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(h.title)),
+        title: h.title, text: (s && s.extract) || stripHtml(h.snippet), image: s && s.thumbnail && s.thumbnail.source, published_at: s && s.timestamp, license: 'CC BY-SA 4.0' }); });
   },
   async wikidata(env, q, ctx, rail) {
     const j = await railFetch('https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&limit=4&search=' + encodeURIComponent(q));
@@ -6089,7 +6324,8 @@ async function bumpYield(env, day, stats) {
   if (!env.RATE_LIMIT) return;
   try {
     const k = 'yield:' + day; const cur = JSON.parse((await env.RATE_LIMIT.get(k)) || '{}');
-    for (const s of stats) { const y = cur[s.id] || { calls: 0, gathered: 0, ms: 0, errors: 0 }; y.calls++; y.gathered += s.n; y.ms += s.ms; if (!s.ok) y.errors++; cur[s.id] = y; }
+    // SEAM:EXC_SPEED: a rail cut by the budget is late, not broken; it is counted apart from errors.
+    for (const s of stats) { const y = cur[s.id] || { calls: 0, gathered: 0, ms: 0, errors: 0, late: 0 }; y.calls++; y.gathered += s.n; y.ms += s.ms; if (s.skipped === 'late') y.late = (y.late || 0) + 1; else if (!s.ok) y.errors++; cur[s.id] = y; }
     await env.RATE_LIMIT.put(k, JSON.stringify(cur), { expirationTtl: 8 * 86400 });
   } catch (e) {}
 }
@@ -6100,32 +6336,64 @@ async function gatherOpenSignals(env, q, opts) {
   if (!query) return { ok: false, error: 'empty_query' };
   const day = new Date().toISOString().slice(0, 10);
   const ctx = { meta: {} };
-  // Pass 1: entity resolution first, because the class depends on it.
+  const T0 = Date.now();
+  /* SEAM:EXC_SPEED: the gather used to run Knowledge Graph, then Wikipedia, then the rest in chunks of six that
+   * each waited for their slowest member, about ten seconds. Now the frame and the entity lookup start together,
+   * every rail runs in a pool of six with its own deadline, Pageviews alone waits for Wikipedia's title, and the
+   * whole gather answers by GATHER.BUDGET_MS with whatever has arrived; a rail still out is counted as late. */
+  // A frame handed in is used when it is whole (it carries its anchors); a bare hint is completed from the week's cache.
+  const framing = excFrameWhole(opts.frame) ? Promise.resolve(excFrameWhole(opts.frame)) : (opts.noFrame ? Promise.resolve(null) : excFrameFor(env, query));
   const kgRail = RAIL_BY_ID.kg; let kgItems = [];
-  if (await railAllowed(env, kgRail, day)) { try { kgItems = await RAIL_FNS.kg(env, query, ctx, kgRail); } catch (e) {} }
+  if (await railAllowed(env, kgRail, day)) {
+    try { kgItems = await Promise.race([RAIL_FNS.kg(env, query, ctx, kgRail), new Promise(res => setTimeout(() => res([]), GATHER.KG_MS))]) || []; } catch (e) { excQuiet('kg')(e); }
+  }
   const cls = opts.cls || classifyQuery(query, ctx.meta.kg);
   const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id]);
-  // Wikipedia before pageviews (title dependency); everything else parallel in chunks.
-  // SEAM:READ_QUALITY — Wikipedia runs alone first so Pageviews has a title to read; the rest fan out.
-  const wiki = chosen.find(r => r.id === 'wikipedia');
-  const ordered = chosen.filter(r => r.id !== 'wikipedia');
-  const stats = [{ id: 'kg', n: kgItems.length, ms: 0, ok: true }];
+  const stats = [{ id: 'kg', n: kgItems.length, ms: Date.now() - T0, ok: true }];
   let items = kgItems.slice();
-  if (wiki && await railAllowed(env, wiki, day)) {
-    const t0 = Date.now();
-    try { const got = await RAIL_FNS.wikipedia(env, query, ctx, wiki); stats.push({ id: 'wikipedia', n: got.length, ms: Date.now() - t0, ok: true }); items = items.concat(got); }
-    catch (e) { stats.push({ id: 'wikipedia', n: 0, ms: Date.now() - t0, ok: false }); }
-  }
-  for (let i = 0; i < ordered.length; i += GATHER.PAR) {
-    const chunk = ordered.slice(i, i + GATHER.PAR);
-    const settled = await Promise.allSettled(chunk.map(async r => {
-      const t0 = Date.now();
+  // A framed rail waits for the frame at most FRAME_WAIT_MS, then asks with the plain query.
+  const frameOrNull = Promise.race([framing, new Promise(res => setTimeout(() => res(null), GATHER.FRAME_WAIT_MS))]).catch(excQuiet('frame_wait', null));
+  const wikiDone = { p: null };
+  const results = new Map();
+  let stopped = false;
+  const runRail = async r => {
+    const t0 = Date.now(); let t1 = t0;
+    try {
       if (!(await railAllowed(env, r, day))) return { id: r.id, n: 0, ms: 0, ok: true, skipped: 'cap', items: [] };
-      try { const got = await RAIL_FNS[r.id](env, query, ctx, r); return { id: r.id, n: got.length, ms: Date.now() - t0, ok: true, items: got }; }
-      catch (e) { return { id: r.id, n: 0, ms: Date.now() - t0, ok: false, items: [] }; }
-    }));
-    for (const s of settled) { const v = s.status === 'fulfilled' ? s.value : { id: '?', n: 0, ms: 0, ok: false, items: [] }; stats.push({ id: v.id, n: v.n, ms: v.ms, ok: v.ok, skipped: v.skipped }); items = items.concat(v.items); }
+      if (r.id === 'wikimedia_pageviews' && wikiDone.p) await wikiDone.p.catch(excQuiet('wiki_wait', null));
+      const framed = ['research', 'news', 'discourse', 'web'].includes(r.kind) ? await frameOrNull : null;
+      const rq = excRailQuery(r, query, framed);
+      t1 = Date.now();
+      const got = await Promise.race([RAIL_FNS[r.id](env, rq, ctx, r), new Promise((_, rej) => setTimeout(() => rej(new Error('rail_late')), GATHER.RAIL_MS))]);
+      return { id: r.id, n: (got || []).length, ms: Date.now() - t1, ok: true, items: got || [], q: rq !== query ? rq : null };
+    } catch (e) { return { id: r.id, n: 0, ms: Date.now() - t1, ok: false, late: /rail_late/.test(String(e && e.message)), items: [] }; }
+  };
+  // Wikipedia first (Pageviews needs its title), then the paid rails (already paid for the moment they are asked,
+  // so never the ones cut), then Pageviews, then the rest in registry order.
+  const rank = r => r.id === 'wikipedia' ? 0 : (r.id === 'exa' || r.id === 'pplx') ? 1 : r.id === 'wikimedia_pageviews' ? 2 : 3;
+  const order = chosen.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r);
+  let next = 0;
+  const lane = async () => {
+    while (next < order.length && !stopped) {
+      const r = order[next++];
+      const p = runRail(r);
+      if (r.id === 'wikipedia') wikiDone.p = p;
+      results.set(r.id, await p);
+    }
+  };
+  const pool = Promise.all(Array.from({ length: Math.min(GATHER.PAR, order.length) }, lane));
+  const left = Math.max(1000, GATHER.BUDGET_MS - (Date.now() - T0));
+  await Promise.race([pool, new Promise(res => setTimeout(res, left))]);
+  stopped = true;   // a lane still running finishes its rail and dispatches no more
+  for (const r of order) {
+    const v = results.get(r.id);
+    if (!v) { stats.push({ id: r.id, n: 0, ms: Date.now() - T0, ok: false, skipped: 'late' }); continue; }
+    stats.push({ id: v.id, n: v.n, ms: v.ms, ok: v.ok, skipped: v.skipped || (v.late ? 'late' : undefined) });
+    items = items.concat(v.items);
   }
+  const frame = await Promise.race([framing, new Promise(res => setTimeout(() => res(null), 200))]).catch(excQuiet('frame_late', null));
+  if (frame) ctx.meta.frame = frame;
+  ctx.meta.gather_ms = Date.now() - T0;
   // Dedupe by url, keep the strongest tier, cap the envelope.
   const byUrl = new Map();
   for (const it of items) { if (!it.title) continue; const k = it.url || (it.rail + ':' + it.title); const prev = byUrl.get(k); if (!prev || it.source_tier < prev.source_tier) byUrl.set(k, it); }
@@ -6139,7 +6407,7 @@ async function gatherOpenSignals(env, q, opts) {
   return { ok: true, query, cls, items, rails, meta: ctx.meta };
 }
 
-async function excavateGather(request, env, origin) {
+async function excavateGather(request, env, origin, wctx) {
   // SEAM:EXCAVATE_WIRE: signed in and under the daily limit. Gather spends Exa, Perplexity,
   // YouTube and Knowledge Graph quota and writes the lake; it was open to anyone.
   const gate = await excavateAuth(request, env, origin);
@@ -6147,8 +6415,12 @@ async function excavateGather(request, env, origin) {
   let body = {}; try { body = await request.json(); } catch (e) {}
   const q = String(body.query || body.q || '').slice(0, 200).trim();
   if (!q) return json({ ok: false, error: 'missing_query' }, 200, origin, env);
-  const g = await gatherOpenSignals(env, q, { cls: body.cls });
-  if (g.ok && body.capture !== false) { try { await lakeCapture(env, g.items, { provenance: 'live_gather', query: q, cls: g.cls }); } catch (e) {} }
+  const g = await gatherOpenSignals(env, q, { cls: body.cls, frame: body.frame || null });
+  // SEAM:EXC_SPEED: the lake write no longer holds the answer; it finishes after the response is sent.
+  if (g.ok && body.capture !== false) {
+    const write = lakeCapture(env, g.items, { provenance: 'live_gather', query: q, cls: g.cls }).catch(e => console.log('gather_capture', String(e && e.message).slice(0, 80)));
+    if (wctx && wctx.waitUntil) wctx.waitUntil(write); else await write;
+  }
   return json(g, 200, origin, env);
 }
 
@@ -6395,6 +6667,47 @@ function arrivalTiles(proposed, deskItems) {
     });
   return tiles.concat(fill);
 }
+/* SEAM:EXC_DOOR: the door shows frames, not stories. Every arrival tile is framed once (Haiku, cached a week per
+ * query) and the set is kept for the edition it came from, so a visitor pays nothing. A desk-fill tile, which used
+ * to carry a headline as its query, now carries the frame: its title is the frame, its query is the frame's own,
+ * and the story it came from rides beneath as the exemplar. A tile that cannot be framed keeps its old shape. */
+const EXC_DOOR = { TTL: 6 * 3600, RETRY_TTL: 900, DEADLINE_MS: 4000, REV: 'd1' };
+function excFrameLabel(f) {
+  if (!f) return null;
+  const main = f.entity || f.category || null;
+  if (!main) return null;
+  return f.entity ? (f.category ? f.entity + ' in ' + f.category.toLowerCase() : f.entity) : (f.audience ? f.audience + ' ' + f.category.toLowerCase() : f.category);
+}
+function excFrameQuery(f) {
+  if (!f) return null;
+  const q = f.entity ? f.entity + (f.category ? ' ' + f.category : '') : [f.audience, f.category].filter(Boolean).join(' ');
+  return q ? q.slice(0, 160) : null;
+}
+async function excFrameTiles(env, tiles, edition, generated) {
+  if (!tiles || !tiles.length) return tiles || [];
+  const key = 'feed:tiles:' + EXC_DOOR.REV + ':' + String(edition).slice(0, 10) + ':' + String(generated).slice(0, 19) + ':' + tiles.map(t => t.id).join(',').slice(0, 300);
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(key) : null; if (hit) { const j = JSON.parse(hit); if (Array.isArray(j) && j.length === tiles.length) return j; } } catch (e) { excQuiet('door_cache')(e); }
+  // The door never spends past half the frame tier's cap: the other half stays with signed-in reads.
+  let open = true;
+  try { open = (await claudeSpent(env, 'frame')) < claudeCap(env, 'frame') * EXC_FRAME.DOOR_SHARE; } catch (e) { open = false; }
+  if (!open) return tiles;
+  const deadline = new Promise(res => setTimeout(() => res(null), EXC_DOOR.DEADLINE_MS));
+  const frames = await Promise.all(tiles.map(t => Promise.race([excFrameFor(env, t.query || t.title), deadline]).catch(excQuiet('door_frame', null))));
+  const out = tiles.map((t, i) => {
+    const f = frames[i];
+    if (!f) return t;
+    const label = excFrameLabel(f), fq = excFrameQuery(f);
+    const framed = Object.assign({}, t, { frame: f });   // whole, so a tile read carries its anchors and rail queries
+    if (t.provenance === 'desk' && label && fq) {
+      framed.story = t.title; framed.title = label.slice(0, 90); framed.query = fq;
+      framed.line = t.line || t.title; framed.subtitle = 'From the desk' + (f.market && f.market !== 'US' ? ' · ' + f.market : '') + (t.subtitle && /·/.test(t.subtitle) ? ' ·' + t.subtitle.split('·').slice(1).join('·') : '');
+    } else if (fq && !t.query) framed.query = fq;
+    return framed;
+  });
+  // A complete set is kept for the edition; an incomplete one briefly, so a visitor never triggers the same misses twice.
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify(out), { expirationTtl: frames.every(Boolean) ? EXC_DOOR.TTL : EXC_DOOR.RETRY_TTL }); } catch (e) { excQuiet('door_cache_write')(e); } }
+  return out;
+}
 async function excavateFeed(env, origin) {
   let out = null;
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(feedCacheKey()) : null; if (hit) out = JSON.parse(hit); } catch (e) {}
@@ -6409,7 +6722,8 @@ async function excavateFeed(env, origin) {
   const lineBy = new Map(((ed && ed.items) || []).map(i => [i.cluster_id, i]));
   // SEAM:EXCAVATE_ARRIVAL: a tile keeps its own lens unless the desk names one (it used to become null).
   const proposed = out.proposed.map(p => { const d = lineBy.get(p.cluster_id); return Object.assign({}, p, { line: d ? d.line : null, lens: (d && d.lens) || p.lens || null, image: (p.exemplar && p.exemplar.image) || null }); });
-  const tiles = arrivalTiles(proposed, (ed && ed.items) || []);
+  let tiles = arrivalTiles(proposed, (ed && ed.items) || []);
+  tiles = await excFrameTiles(env, tiles, (ed && ed.date) || '', out.generated_at || '');   // SEAM:EXC_DOOR
   const states = {};
   tiles.forEach(t => { const st = t.state || 'STEADY'; states[st] = (states[st] || 0) + 1; });
   const field = out.field ? Object.assign({}, out.field, { states }) : { read: '', states };
@@ -6632,11 +6946,13 @@ const CLAUDE = {
   TIERS: {
     doc:    { model: 'claude-fable-5-1', cap: 15, env: 'CLAUDE_DOC_MONTHLY' },
     ingest: { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_INGEST_MONTHLY' },
-    live:   { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' }   // SEAM:EXC_INTEL: EXCAVATE reads, PROPOSE, theme reads
+    live:   { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' },   // SEAM:EXC_INTEL: EXCAVATE reads, PROPOSE, theme reads
+    frame:  { model: 'claude-haiku-4-5-20251001', cap: 3, env: 'CLAUDE_FRAME_MONTHLY' }   // SEAM:EXC_FRAME: the query frame before the rails (0032)
   },
   PRICE: {
     'claude-fable-5-1': { in: 10, out: 50, cw: 12.5, cr: 0.25 },
-    'claude-sonnet-5':  { in: 2,  out: 10, cw: 2.5,  cr: 0.2 }
+    'claude-sonnet-5':  { in: 2,  out: 10, cw: 2.5,  cr: 0.2 },
+    'claude-haiku-4-5-20251001': { in: 1, out: 5, cw: 1.25, cr: 0.1 }
   },
   MAX_TOKENS: 32000,
   BATCH_MAX: 100,
@@ -6733,7 +7049,7 @@ async function callClaude(env, tier, req) {
   let r = null, j = null;
   try {
     r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env),
-      body: JSON.stringify(params), signal: AbortSignal.timeout(CLAUDE.LIVE_TIMEOUT_MS) });
+      body: JSON.stringify(params), signal: AbortSignal.timeout(Math.min(parseInt(req && req.timeout_ms, 10) || CLAUDE.LIVE_TIMEOUT_MS, CLAUDE.LIVE_TIMEOUT_MS)) });
     j = await r.json().catch(() => null);
   } catch (e) {
     return { ok: false, error: 'claude_network' };
@@ -6752,6 +7068,59 @@ async function callClaude(env, tier, req) {
     meta: { msg_id: j.id || null }, ended_at: new Date().toISOString() }]);
   return { ok: true, text, usage, cost_usd: cost, stop_reason: j.stop_reason || null,
     truncated: j.stop_reason === 'max_tokens', job_id: ids && ids[0] || null };
+}
+
+/* SEAM:EXC_STREAM: the live call, heard as it is written. Same gate, same ledger, same row as callClaude;
+ * onText receives the text so far after every delta. A stream cut after text arrived returns what came. */
+async function callClaudeStream(env, tier, req, onText) {
+  if (!CLAUDE.TIERS[tier]) return { ok: false, error: 'claude_bad_tier' };
+  const params = Object.assign(claudeParams(tier, req), { stream: true });
+  const est = claudeEstimate(params, false);
+  const gate = await claudeGate(env, tier, est);
+  if (!gate.ok) return gate;
+  const kind = String((req && req.kind) || 'live').slice(0, 40);
+  let r = null;
+  try {
+    r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env),
+      body: JSON.stringify(params), signal: AbortSignal.timeout(CLAUDE.LIVE_TIMEOUT_MS) });
+  } catch (e) { return { ok: false, error: 'claude_network' }; }
+  if (!r.ok || !r.body) {
+    const j = await r.json().catch(excQuiet('stream_err_body', null));
+    const detail = String((j && j.error && j.error.message) || '').slice(0, 300);
+    await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',
+      error: ('claude_' + r.status + ' ' + detail).slice(0, 300), est_usd: est, cost_usd: 0, ended_at: new Date().toISOString() }]);
+    return { ok: false, error: 'claude_' + r.status, detail };
+  }
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let buf = '', text = '', stop = null, msgId = null;
+  const usage = {};
+  try {
+    for (;;) {
+      const step = await reader.read();
+      if (step.done) break;
+      buf += dec.decode(step.value, { stream: true });
+      let k;
+      while ((k = buf.indexOf('\n\n')) >= 0) {
+        const evt = buf.slice(0, k); buf = buf.slice(k + 2);
+        const line = evt.split('\n').find(l => l.startsWith('data:'));
+        if (!line) continue;
+        let d = null; try { d = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
+        if (d.type === 'message_start' && d.message) { msgId = d.message.id || null; Object.assign(usage, d.message.usage || {}); }
+        else if (d.type === 'content_block_delta' && d.delta && d.delta.type === 'text_delta') { text += d.delta.text || ''; if (onText) { try { onText(text); } catch (e) { excQuiet('on_text')(e); } } }
+        else if (d.type === 'message_delta') { if (d.delta && d.delta.stop_reason) stop = d.delta.stop_reason; if (d.usage) Object.assign(usage, d.usage); }
+        else if (d.type === 'error') throw new Error('stream_error ' + String((d.error && d.error.type) || ''));
+      }
+    }
+  } catch (e) {
+    console.log('claude_stream_cut', String(e && e.message).slice(0, 120));
+    if (!text) return { ok: false, error: /overloaded/.test(String(e && e.message)) ? 'claude_529' : 'claude_network' };
+    stop = stop || 'stream_cut';
+  }
+  const cost = claudeCost(params.model, usage, false);
+  await claudeLedgerAdd(env, tier, cost);
+  const ids = await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'done',
+    result: text, usage, stop_reason: stop, est_usd: est, cost_usd: cost, meta: { msg_id: msgId, stream: true }, ended_at: new Date().toISOString() }]);
+  return { ok: true, text, usage, cost_usd: cost, stop_reason: stop, truncated: stop === 'max_tokens', job_id: ids && ids[0] || null };
 }
 
 /* Batch: half price, answered within the hour as a rule. items are

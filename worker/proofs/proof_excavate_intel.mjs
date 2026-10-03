@@ -73,7 +73,7 @@ ok(r.lane === 'reserve' && r.reason === 'overnight_share' && calls.length === 1 
 calls = []; L = mk([{ ok: true, text: 'LIVE' }], 5.9);
 r = await L.excCompile({}, { system: 'S', prompt: 'P', overnight: true });
 ok(r.lane === 'live' && calls.length === 1, 'L6 overnight work under the share rides the live lane');
-ok(L.excCacheKey('abc') === 'excr:i1:abc' && L.EXC_MODEL.CACHE_TTL === 86400, 'L7 a live read is kept a day under its query');
+ok(L.excCacheKey('abc') === 'excr:i2:abc' && L.EXC_MODEL.CACHE_TTL === 86400, 'L7 a live read is kept a day under its query');
 ok(/live:   \{ model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' \}/.test(w), 'L8 the live tier: Sonnet 5, $10 a month, CLAUDE_LIVE_MONTHLY to change');
 
 // ── synthesize: cache, lane, dated findings ───────────────────────────────
@@ -87,27 +87,27 @@ const modelOut = JSON.stringify({ frame: { category: 'Hair care', audience: 'Gen
              { category: 'culture', title: 'Context only', excerpt: 'x', evidence: [4, 5] }],
   ideas: [{ type: 'Campaign', headline: 'Gate the drop behind Ticketmaster stubs', body: 'At the 3 stadium dates.', proof: 'Billboard reported the sell-out.', evidence: [1], from: 0 }], brief: 'b' });
 const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG', 'excCacheKey', 'EXC_MODEL',
-  helpers + xj + synth + '; return synthesize;')(
+  'excFrameFor', helpers + xj + synth + '; return synthesize;')(
   (o) => o, async () => [], async () => [], async (e, o) => { compiled = o; return { text: modelOut, lane: o.prompt.includes('reserve-me') ? 'reserve' : 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.04 }; },
-  async (e, row) => { ledger = row; return 5; }, async (t) => 'h' + t.length, async () => 0, () => [], {}, L.excCacheKey, L.EXC_MODEL);
+  async (e, row) => { ledger = row; return 5; }, async (t) => 'h' + t.length, async () => 0, () => [], {}, L.excCacheKey, L.EXC_MODEL, async () => null);
 const agoR = d => new Date(Date.now() - d * day).toISOString();   // synthesize dates against the real clock
 const corpus = [
-  { lens: 'consumer', title: 'one', url: 'https://a.example/1', source: 'A', published_at: agoR(0.5) },
-  { lens: 'consumer', title: 'two', url: 'https://b.example/2', source: 'B', published_at: agoR(2) },
+  { lens: 'consumer', title: 'one', url: 'https://a.example/1', source: 'A', published_at: agoR(0.5), tier: 1 },
+  { lens: 'consumer', title: 'two', url: 'https://b.example/2', source: 'B', published_at: agoR(2), tier: 2 },
   { lens: 'consumer', title: 'three', url: 'https://c.example/3', source: 'C', published_at: agoR(3) },
   { lens: 'market', title: 'four', url: 'https://d.example/4', source: 'D', published_at: agoR(400) },
   { lens: 'market', title: 'five', url: 'https://e.example/5', source: 'E', published_at: agoR(500) },
   { lens: 'market', title: 'six', url: 'https://f.example/6', source: 'F', published_at: agoR(3000) }];
 const d = (await S({ query: 'Gen Z hair care', mode: 'report', corpus }, env, '')).data;
 ok(/TIME LAW/.test(compiled.system) && /MOVE LAW/.test(compiled.system) && compiled.kind === 'excavate_report' && compiled.reserve === 't3', 'S1 the report compiles under the move law and the time law on the lane');
-ok(/^\[1\] \d{4}-\d{2}-\d{2} · NOW · (?:today|1d) · T3 · \(consumer\) one/m.test(compiled.prompt) && /\[6\] \d{4}-\d{2}-\d{2} · ARCHIVE · 8\.2y/.test(compiled.prompt), 'S2 the model reads dated lines, freshest first, the archive last');
-ok(d.insights[0].confidence === 'High' && d.insights[0].dated.band === 'NOW' && d.insights[0].dated.dated === 3, 'S3 three dated outlets under 90 days earn High, and the finding says when it stands');
+ok(/^\[1\] \d{4}-\d{2}-\d{2} · NOW · (?:today|1d) · T1 · \(consumer\) one/m.test(compiled.prompt) && /\[6\] \d{4}-\d{2}-\d{2} · ARCHIVE · 8\.2y/.test(compiled.prompt), 'S2 the model reads dated lines, freshest first, the archive last');
+ok(d.insights[0].confidence === 'High' && d.insights[0].dated.band === 'NOW' && d.insights[0].dated.dated === 3, 'S3 three dated outlets under 90 days with tier weight 2 or more earn High (EX4a), and the finding says when it stands');
 ok(d.insights[1].confidence === 'Low' && d.insights[1].dated.archive_only === true, 'S4 an archive-only finding is Low and says so');
 ok(d.insights[2].confidence === 'Medium' && d.insights[2].dated.band === 'CONTEXT', 'S5 two outlets in CONTEXT earn Medium, never High');
 ok(d.ideas[0].dated && d.ideas[0].dated.band === 'NOW' && d.model.lane === 'live' && d.model.cached === false && d.window.NOW === 1 && d.window.ARCHIVE === 1 && d.window.widened === true && d.compiled_at, 'S6 a move knows the date of its proof; the read carries its window, its widening and its lane');
 ok(ledger.meta.window.NOW === 1 && ledger.meta.model.lane === 'live' && ledger.meta.widened === true, 'S7 the ledger keeps the window and the lane');
 const keys = Object.keys(kv);
-ok(keys.length === 1 && /^excr:i1:h/.test(keys[0]), 'S8 a live read is kept under its query');
+ok(keys.length === 1 && /^excr:i2:h/.test(keys[0]), 'S8 a live read is kept under its query');
 compiled = null;
 const again = (await S({ query: 'gen z hair care', mode: 'report', corpus: [] }, env, '')).data;
 ok(compiled === null && again.model.cached === true && again.insights[0].title === 'Fresh', 'S9 the same query the same day is served as it was: nothing gathered, nothing spent');

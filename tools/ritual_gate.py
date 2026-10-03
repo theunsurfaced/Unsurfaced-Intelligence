@@ -172,7 +172,7 @@ for f in worker_js:
 # An empty catch hides a failure. Some are deliberate (logging must never
 # break a request), so the count is not zero; it can only go down. Lower
 # SWALLOW_CEILING whenever a cut removes some.
-SWALLOW_CEILING = 127
+SWALLOW_CEILING = 125
 for f in worker_js:
     _s = load(f)
     _sw = len(re.findall(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}", _s)) + len(re.findall(r"\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\{\s*\}|null|undefined|\[\]|''|false)\s*\)", _s))
@@ -215,6 +215,8 @@ SPENDERS = {
     'studioMemeLines': 'cron-bounded manifest + admin cut-story',
     'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap); admin route or readTick only',
     'readProof': 'claudeGate on the live tier; called by readLand (the batch drain) and the admin /reads/proof door only',
+    'callClaudeStream': 'claudeGate: tier dollar cap + KV kill switch, the same row in claude_jobs; called by excCompile only',
+    'excFrameFor': 'claudeGate on the frame tier (Haiku, its own $3 cap) + a week of KV cache per query + a 4.5s deadline; callers: synthesize and gather (excavateAuth) and excFrameTiles (the public feed, at most one set of 12 per edition, cached 6h)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")
