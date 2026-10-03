@@ -33,9 +33,11 @@ ok(!/claude|anthropic/i.test(cm), 'L1 callModel carries no Claude path: t1/t2/t3
 const rA0 = w.indexOf('/* SEAM:READ_ENGINE'), rB0 = rA0 > 0 ? w.indexOf('/* SEAM:ARCHIVE', rA0) : -1;
 // v2 (EX3a): the EXCAVATE lane (excCompile, SEAM:EXC_INTEL) may call Claude too; it sits behind claudeGate like the rest.
 const xA0 = w.indexOf('/* SEAM:EXC_INTEL: the compiler\'s lane'), xB0 = xA0 > 0 ? w.indexOf('/* SEAM:EXCAVATE_MEANING: the report contract.', xA0) : -1;
-const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '');
+// v3 (EX5): the door (SEAM:EXC_DOOR v2) submits its overnight reads to the batch lane under the overnight share; it sits behind claudeGate like the rest.
+const dA0 = w.indexOf('const DOOR = { WANT: 12'), dB0 = dA0 > 0 ? w.indexOf('async function excavateFeed(env, origin) {', dA0) : -1;
+const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '').replace(dA0 > 0 ? w.slice(dA0, dB0) : '\u0000', '');
 ok(!/callClaude\(|claudeBatchSubmit\(/.test(outside.replace(/claudeRoute\(path[^\n]*/g, '')),
-  'L2 only the lane, SEAM:READ_ENGINE and the EXCAVATE lane (SEAM:EXC_INTEL) call Claude (DAILY and STUDIO untouched)');
+  'L2 only the lane, SEAM:READ_ENGINE, the EXCAVATE lane (SEAM:EXC_INTEL) and the door (SEAM:EXC_DOOR v2) call Claude (DAILY and STUDIO untouched)');
 ok(xA0 > 0 && /callClaude\(env, EXC_MODEL\.TIER, req\)/.test(w.slice(xA0, xB0)) && /callClaudeStream\(env, EXC_MODEL\.TIER, req, o\.onText\)/.test(w.slice(xA0, xB0)) && /live:   \{ model: 'claude-sonnet-5'/.test(lane), 'L2b the EXCAVATE lane calls the gate with its own tier, streamed or not (EX4)');
 ok(/callClaude\(env, 'frame', /.test(w.slice(xA0, xB0)) && /frame:  \{ model: 'claude-haiku-4-5-20251001'/.test(lane), 'L2c the query frame rides its own capped tier (Haiku) inside the lane block (EX4b)');
 ok(/case '\/claude\/ping':[\s\S]{0,200}return claudeRoute\(path, body, env, origin, user\);/.test(w), 'L3 admin doors routed');
@@ -66,9 +68,9 @@ const fetchStub = async (url, init) => { fx.push({ url, init }); return fetchImp
 const resp = (status, body, text) => ({ ok: status >= 200 && status < 300, status,
   json: async () => body, text: async () => text || JSON.stringify(body) });
 
-const mk = new Function('sbRest', 'logEvent', 'json', 'callerIsAdmin', 'fetch',
-  lane + '; return { CLAUDE, claudeCost, claudeParams, claudeEstimate, claudeHeaders, claudeGate, callClaude, claudeBatchSubmit, claudeBatchDrain, claudeLedger, claudeRoute, claudeMonth };');
-const L = mk(sbRest, logEvent, json, callerIsAdmin, fetchStub);
+const mk = new Function('sbRest', 'logEvent', 'json', 'callerIsAdmin', 'fetch', 'excQuiet',
+  lane + '; return { CLAUDE, claudeCost, claudeParams, claudeEstimate, claudeHeaders, claudeGate, callClaude, claudeBatchSubmit, claudeBatchDrain, claudeLedger, claudeRoute, claudeMonth, claudeLedgerAdd };');
+const L = mk(sbRest, logEvent, json, callerIsAdmin, fetchStub, () => () => null);
 const month = L.claudeMonth();
 const aiTrap = { run: async () => { throw new Error('WORKERS AI MUST NOT BE CALLED'); } };
 const envOf = (kv, extra) => Object.assign({ ANTHROPIC_KEY: 'sk-test', ANTHROPIC_WORKSPACE_ID: 'wrkspc_test',
@@ -211,5 +213,14 @@ ok(!(await R.renderBudget({ RATE_LIMIT: kv }, 'u1', 4)) && !kv.m.has('fal:all:' 
 ok(R.renderHouseCap({ RENDER_GLOBAL_SECONDS: '900' }) === 900 && R.renderHouseCap({}) === 480, 'R6 env overrides the house cap');
 const pb = await R.playBudget({ RATE_LIMIT: mkKV({ ['fal:u1:' + day]: '10', ['fal:all:' + day]: '40' }) }, '', { id: 'u1' });
 ok(pb.used === 10 && pb.cap === 120 && pb.house_used === 40 && pb.house_cap === 480, 'R7 /play/budget reports person and house');
+
+// ── H: HARVEST on the lane ─────────────────────────────────────────────
+ok(L.CLAUDE.TIERS.facts && L.CLAUDE.TIERS.facts.model === 'claude-haiku-4-5-20251001' && L.CLAUDE.TIERS.facts.env === 'CLAUDE_FACTS_MONTHLY' && L.CLAUDE.TIERS.facts.cap === 5 && L.CLAUDE.TIERS.frame.cap === 3,
+  'H1 the fact table has its own capped tier (Haiku, $5): a run of reads never closes the frame tier');
+ok(/callClaude\(env, 'facts', \{ system: EXC_FACTS_SYS/.test(w) && !/callClaude\(env, 'frame', \{ system: EXC_FACTS_SYS/.test(w), 'H2 excFacts spends the facts tier, not the frame tier');
+// Four adds at once, each reading the ledger before the others wrote: every one lands.
+const slowKv = { m: new Map(), get: async k => { await new Promise(r => setTimeout(r, 5)); return slowKv.m.get(k) || null; }, put: async (k, v) => { slowKv.m.set(k, v); } };
+await Promise.all([0.01, 0.02, 0.03, 0.04].map(x => L.claudeLedgerAdd({ RATE_LIMIT: slowKv }, 'facts', x, '2026-10')));
+ok(slowKv.m.get('cl$:facts:2026-10') === '0.1', 'H3 ledger adds made side by side are applied one after another: nothing is lost');
 
 console.log(`\nproof_model_route: ${pass} checks PASS`);

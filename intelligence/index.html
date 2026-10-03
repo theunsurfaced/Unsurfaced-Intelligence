@@ -233,6 +233,25 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .lstep.active.deep-step{color:var(--deep2);}
 .lstep.done{color:#4ade80;}
 .lstep::before{content:'○';font-size:10px;}
+/* SEAM:EXC_DOOR v2: the overnight tile */
+.fi-divider{grid-column:1/-1;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;color:var(--text3);padding:14px 0 2px;border-top:1px solid var(--border)}
+.fi-door .fi-kicker{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin:0 0 8px}
+.fi-door .fi-frame-name{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3);margin:-4px 0 10px}
+.fi-door .fi-spark-row{display:flex;align-items:flex-end;gap:12px;margin:6px 0 8px}
+.fi-door .fi-spark{flex:0 0 auto;max-width:100%}
+.fi-door .fi-spark-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.fi-door .fi-spark-area{fill:var(--accent);opacity:.08}
+.fi-door .fi-spark-dot{fill:var(--accent);stroke:var(--bg,#0b0b0d);stroke-width:2}
+.fi-door .fi-spark-cap{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.12em;color:var(--text3)}
+.fi-door .fi-measures{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--text2);margin-bottom:10px}
+.fi-door .fi-measures b{color:var(--text);font-weight:700}
+.fi-door .fi-share{display:inline-block;width:46px;height:4px;background:var(--line);vertical-align:middle;margin-left:6px;border-radius:2px;overflow:hidden}
+.fi-door .fi-share i{display:block;height:100%;background:var(--accent)}
+.fi-door .fi-since{color:var(--text3)}
+.fi-door .fi-move{font-size:13px;line-height:1.45;color:var(--text);margin:0 0 10px}
+.fi-door .fi-move-k{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;color:var(--accent);margin-right:8px}
+.read-deeper{display:inline-block;margin:12px 0 0;padding:10px 16px;border:1px solid var(--accent);color:var(--accent);background:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.read-deeper:hover{background:var(--accent);color:#fff}
 /* SEAM:EXC_DOOR: the frame on a tile */
 .fi-frame{display:flex;flex-wrap:wrap;gap:4px 10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin:-2px 0 8px}
 .fi-frame span+span::before{content:'·';margin-right:10px;color:var(--text3)}
@@ -240,6 +259,15 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .read-frame{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin:14px 0 6px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em}
 .read-frame .rf-k{color:var(--text3)}.read-frame .rf-v{color:var(--text2);margin-right:6px}
 .read-frame .rf-q{flex-basis:100%;font-family:'DM Serif Display',serif;font-size:15px;letter-spacing:0;color:var(--text);margin-top:4px}
+.read-measures{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px;margin:12px 0 4px}
+.read-measures .fi-spark-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.read-measures .fi-spark-area{fill:var(--accent);opacity:.08}
+.read-measures .fi-spark-dot{fill:var(--accent);stroke:var(--bg,#0b0b0d);stroke-width:2}
+.read-measures .fi-measures{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--text2);margin:0}
+.read-measures .fi-measures b{color:var(--text)}
+.read-measures .fi-share{display:inline-block;width:46px;height:4px;background:var(--line);vertical-align:middle;margin-left:6px;border-radius:2px;overflow:hidden}
+.read-measures .fi-share i{display:block;height:100%;background:var(--accent)}
+.read-measures .rm-cap{flex-basis:100%;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase}
 .read-check{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--accent);border-left:2px solid var(--accent);padding-left:10px;margin:10px 0}
 .card-when.CHECK{color:var(--accent);border-color:var(--accent)}
 /* SEAM:EXC_STREAM: the read as it is written */
@@ -2442,6 +2470,7 @@ async function _synthesizePlainAfterCut(payload, heard) {
 }
 function _loaderStage(st) {
   const lbl = document.getElementById('fetch-label'); if (!lbl) return;
+  if (st && (st.stage === 'reading' || st.stage === 'tabling') && st.note) { [0, 1].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; }); const c = document.getElementById('ls2'); if (c) c.className = 'lstep active'; lbl.textContent = st.note + '.'; return; }   // SEAM:EXC_HARVEST
   if (st && st.stage === 'writing') { [0, 1, 2].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; });
     const w = document.getElementById('ls3'); if (w) w.className = 'lstep active';
     lbl.textContent = 'Reading ' + (st.evidence || 0) + ' lines of evidence' + (st.dropped ? ' (' + st.dropped + ' set aside as off-frame)' : '') + '. Writing.'; }
@@ -3049,7 +3078,8 @@ function _renderLive(q, data){
   // SEAM:EXC_FRAME: the read's window, lane, frame, relevance and timing reach the page; they were compiled and then dropped here.
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
-    relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0},synthd?'live':'basic');   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
+    relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
+    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null},synthd?'live':'basic');   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -3104,7 +3134,7 @@ async function _excGather(q){
         if(it.url&&seen.has(it.url)) return; if(it.url) seen.add(it.url);
         const lens=it.kind==='truth'?'brand':(it.kind==='discourse'?'culture':(it.kind==='research'?'consumer':(it.kind==='filing'?'market':'market')));
         items.push({ signalType:it.kind==='news'?'news':(it.kind==='discourse'?'social':'web'), title:it.title, snippet:it.text||'', source:it.source_name||'', url:it.url||null, image:it.image||null, published_at:it.published_at||null });
-        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather', published_at:it.published_at||null, kind:it.kind||null, tier:it.source_tier||null });   // EXC_INTEL
+        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather', published_at:it.published_at||null, kind:it.kind||null, tier:it.source_tier||null, entity:it.entity||null, stance:it.stance||null });   // EXC_INTEL; SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: the tag rides to the read
         const key=(it.source_name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:it.source_name, display:it.source_name, desc:it.kind||'live', url:it.url||'' };
       });
       (g.rails||[]).forEach(rl=>{ if(rl.n>0){ const key=(rl.name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:rl.name, display:rl.name, desc:rl.n+' gathered', url:'' }; } });
@@ -3112,8 +3142,10 @@ async function _excGather(q){
   }catch(e){}
   const sources=Object.values(srcMap).slice(0,16).map((s,i)=>{ s.num=i+1; return s; });
   // EXCAVATE_WIRE: the server's ranked gather first, the browser's lens items after, then the cap.
-  const ordered=corpus.filter(c=>c.rail==='gather').concat(corpus.filter(c=>c.rail!=='gather'));
-  return { items, corpus:ordered.slice(0,40), sources };
+  // SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: a line asked for by name keeps a seat inside the cap.
+  const held=corpus.filter(c=>c.rail==='gather'&&(c.entity||c.stance)).slice(0,10);
+  const ordered=held.concat(corpus.filter(c=>c.rail==='gather'&&!held.includes(c)), corpus.filter(c=>c.rail!=='gather'));
+  return { items, corpus:ordered.slice(0,48), sources };
 }
 
 async function runLiveSearch(q){
@@ -3769,6 +3801,7 @@ const EXC_PANEL_QUERIES = ['gen z haircare', 'sneaker resale market', 'luxury fr
 function _epDownload(name, obj){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,1)],{type:'application/json'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800); }
 function _epHost(){ let h=document.getElementById('exc-panel'); if(!h){ h=document.createElement('div'); h.id='exc-panel'; h.className='exc-panel'; document.body.appendChild(h); } document.body.style.overflow='hidden'; return h; }
 function _epSlim(d){ if(!d) return null; return { read:d.read||null, brief:d.brief||'', frame:d.frame||null, evidence_n:d.evidence_n||0, moves_dropped:d.moves_dropped||0, window:d.window||null, model:d.model||null, compiled_at:d.compiled_at||null,
+  score:d.score||null, harvest:d.harvest||null, relevance:d.relevance?{ kept:d.relevance.kept, set_aside:d.relevance.set_aside, restored:d.relevance.restored }:null, timing:d.timing||null, measures:d.measures?{ recent_7d:d.measures.recent_7d, prior_7d:d.measures.prior_7d, outlets:d.measures.outlets, share_pct:d.measures.share_pct, state:d.measures.state }:null,   // SEAM:EXC_SCORE
   insights:(d.insights||[]).map(x=>({ title:x.title, excerpt:x.excerpt, category:x.category, confidence:x.confidence, source:x.source, dated:x.dated||null, meaning:x.meaning||null, implication:x.implication||null })),
   ideas:(d.ideas||[]).map(m=>({ type:m.type, for:m.for||null, headline:m.headline, body:m.body, because:m.because||'', proof:m.proof||'', measure:m.measure||'', risk:m.risk||'', dated:m.dated||null })) }; }
 async function excPanelRun(label){
@@ -3782,7 +3815,8 @@ async function excPanelRun(label){
     const t0=Date.now(); let rec={ q, ok:false, ms:0, error:null, data:null };
     try{
       const g=await _excGather(q);
-      const d=await api('excavate/synthesize',{ query:q, mode:'report', cls:(window._gatherMeta||{}).cls||null, corpus:g.corpus });
+      const _gm=window._gatherMeta||{};
+      const d=await api('excavate/synthesize',{ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped).map(r=>r.id), corpus:g.corpus });   // SEAM:EXC_SCORE: the panel runs the read exactly as a client does
       const dd=(d&&d.ok&&d.data)?d.data:null;
       if(dd){ rec.ok=true; rec.data=_epSlim(dd); } else { rec.error=(d&&d.error)||'no_data'; }
     }catch(e){ rec.error=String(e&&e.message||e).slice(0,160); }
@@ -3802,6 +3836,7 @@ function _epSide(rec){
   const chip=x=>x&&x.newest?`<small>${safe(x.band||'')} · ${safe(x.newest)}</small>`:(x&&x.archive_only?'<small>ARCHIVE ONLY</small>':'');
   return `${d.read&&d.read[0]?`<p class="ep-read">${safe(d.read[0])}</p>`:''}${d.read&&d.read[1]?`<p class="ep-line">${safe(d.read[1])}</p>`:''}
     ${d.brief?`<p class="ep-line">${safe(d.brief)}</p>`:''}
+    ${d.score?`<div class="ep-k" style="color:var(--text)">HARVEST ${safe(String(d.score.score))}/100 · ${safe(String(d.score.lines))} lines · ${safe(String(d.score.fresh_share))}% fresh · ${safe(String(d.score.outlets))} outlets · ${safe(String(d.score.medium_plus))}/${safe(String(d.score.findings))} at Medium+ · ${safe(String(d.score.unverified))} unverified · ${safe(String(d.score.competitors_evidenced))}/${safe(String(d.score.competitors))} competitors evidenced${d.score.seconds!=null?' · '+safe(String(d.score.seconds))+'s':''}</div>`:''}
     <div class="ep-k">${(d.insights||[]).length} findings${d.frame?' · '+safe(d.frame.category||'')+' / '+safe(d.frame.audience||''):''}</div>
     ${(d.insights||[]).map(x=>`<div class="ep-item"><b>${safe(x.title)}</b> <small>${safe(x.confidence||'')}</small> ${chip(x.dated)}<br>${safe(x.excerpt||'')}${x.meaning&&x.meaning.culture?`<br><small>CULTURE</small> ${safe(x.meaning.culture)}`:''}</div>`).join('')}
     <div class="ep-k">${(d.ideas||[]).length} moves${d.moves_dropped?' · '+d.moves_dropped+' dropped':''}</div>
@@ -3820,7 +3855,10 @@ function excPanelCompare(){
     document.getElementById('ep-body').innerHTML=qs.map((q,i)=>`<div class="ep-q"><div class="ep-k" style="font-size:12px;color:var(--text)">${i+1}. ${safe(q)}</div><div class="ep-cols"><div class="ep-col"><h3>Before · ${safe(String(A.at||'').slice(0,10))}</h3>${_epSide(find(A,q))}</div><div class="ep-col"><h3>After · ${safe(String(B.at||'').slice(0,10))}</h3>${_epSide(find(B,q))}</div></div>
       <div class="ep-verdict">VERDICT <label><input type="radio" name="v${i}" value="before"> before</label><label><input type="radio" name="v${i}" value="after"> after</label><label><input type="radio" name="v${i}" value="tie"> tie</label></div></div>`).join('')
       +`<div class="ep-bar"><button id="ep-save">SAVE VERDICTS</button></div>`;
-    const tally=()=>{ const v={before:0,after:0,tie:0}; qs.forEach((q,i)=>{ const c=document.querySelector(`input[name=v${i}]:checked`); if(c) v[c.value]++; }); document.getElementById('ep-tally').textContent=`after ${v.after} · before ${v.before} · tie ${v.tie} of ${qs.length}`; return v; };
+    const mean=S=>{ const xs=(S.queries||[]).map(x=>x.data&&x.data.score&&x.data.score.score).filter(Number.isFinite); return xs.length?Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };   // SEAM:EXC_SCORE
+    const mA=mean(A), mB=mean(B);
+    const tally=()=>{ const v={before:0,after:0,tie:0}; qs.forEach((q,i)=>{ const c=document.querySelector(`input[name=v${i}]:checked`); if(c) v[c.value]++; }); document.getElementById('ep-tally').textContent=`after ${v.after} · before ${v.before} · tie ${v.tie} of ${qs.length}`+(mA!=null||mB!=null?` · harvest ${mA==null?'n/a':mA} → ${mB==null?'n/a':mB}`:''); return v; };
+    tally();
     document.querySelectorAll('.ep-verdict input').forEach(el=>el.onchange=tally);
     document.getElementById('ep-save').onclick=()=>{ const v=tally(); _epDownload(`unsurfaced-panel-verdicts-${new Date().toISOString().slice(0,10)}.json`, { at:new Date().toISOString(), before:A.at, after:B.at, tally:v, verdicts:qs.map((q,i)=>{ const c=document.querySelector(`input[name=v${i}]:checked`); return { q, verdict:c?c.value:null }; }) }); };
   };
@@ -5252,10 +5290,13 @@ function _renderRailVoices(items){
   let host=document.getElementById('rail-voices');
   if(!host){ const v=document.getElementById('voice-strip'); if(!v) return; host=document.createElement('div'); host.id='rail-voices'; v.insertAdjacentElement('afterend',host); }
   const agg=(items||[]).filter(it=>it&&it.kind==='discourse'&&/^(YouTube comments|Mastodon)$/i.test(it.source_name||it.source||'')&&/sampled|posts in window/i.test(it.title||''));
-  host.innerHTML=agg.map(it=>{ const n=(String(it.title).match(/(\d+)\s+(sampled|posts)/)||[])[1]||'0'; const samples=String(it.text||'').replace(/^.*?Sample:\s*/,'').split(' | ').map(x=>x.trim()).filter(Boolean).slice(0,3);
+  // SEAM:EXC_RELEVANCE: the voice is read through the frame. A comment with none of the frame's anchors is set aside and counted.
+  const fr=(window._gatherMeta&&window._gatherMeta.frame)||null; const anchors=fr?[].concat(fr.anchors||[],fr.entity?[String(fr.entity).toLowerCase()]:[],(fr.competitors||[]).map(x=>String(x).toLowerCase())).filter(Boolean):[];
+  const onFrame=x=>{ if(!anchors.length) return true; const h=' '+String(x).toLowerCase().replace(/['\u2019]/g,'').replace(/[^a-z0-9$%& ]+/g,' ')+' '; return anchors.some(a=>{ const t=String(a).toLowerCase().replace(/['\u2019]/g,'').replace(/[^a-z0-9$%& ]+/g,' ').trim(); return t&&(h.includes(' '+t+' ')||h.includes(' '+t+'s ')); }); };
+  host.innerHTML=agg.map(it=>{ const n=(String(it.title).match(/(\d+)\s+(sampled|posts)/)||[])[1]||'0'; const all=String(it.text||'').replace(/^.*?Sample:\s*/,'').split(' | ').map(x=>x.trim()).filter(Boolean); const kept=all.filter(onFrame); const samples=(kept.length?kept:[]).slice(0,3); const aside=all.length-kept.length;
     const src=(it.source_name||it.source||'').toUpperCase(); const isYT=/YOUTUBE/.test(src);
     return `<div class="rail-voice"><div class="rail-voice-head">● CONSUMER VOICE · ${safe(src)} · ${isYT?'TOP 2 VIDEOS':'PUBLIC TAG TIMELINE'}</div>
-      <div class="rail-voice-cut">${safe(n)} ${isYT?'comments sampled':'public posts in the window'}. ${isYT?'Ranked by the platform for relevance, not filtered for on-topic yet; read them as raw voice.':'Tag match, not topic match; a tag can carry a coincidence.'}</div>
+      <div class="rail-voice-cut">${safe(n)} ${isYT?'comments sampled':'public posts in the window'}. ${anchors.length?(kept.length?kept.length+' on the frame'+(aside?', '+aside+' set aside as off-topic':'')+'.':'None of the sampled '+(isYT?'comments':'posts')+' names the frame; the conversation here is elsewhere, which is itself a finding.'):(isYT?'Ranked by the platform for relevance, not filtered for on-topic yet; read them as raw voice.':'Tag match, not topic match; a tag can carry a coincidence.')}</div>
       ${samples.map(x=>`<div class="rail-voice-sample">${safe(x)}</div>`).join('')}
       <div class="rail-voice-note">${it.url?`<a href="${safeUrl(it.url)}" target="_blank" rel="noopener">open the source ↗</a>`:''}${it.published_at?' · newest '+safe(String(it.published_at).slice(0,10)):''}</div></div>`; }).join('');
 }
@@ -5271,9 +5312,21 @@ function _renderReadBlock(q, data, mode){
   if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered${meta.rails.some(r=>r.skipped==='late')?' ('+meta.rails.filter(r=>r.skipped==='late').length+' late, not waited for)':''}`);
   // SEAM:EXC_FRAME / SEAM:EXC_RELEVANCE / SEAM:EXC_SPEED: the frame the read answered, what was set aside, and the time it took.
   const fr=data.frame||null, rel=data.relevance||null, tm=data.timing||null, rc=data.read_checks||null;
-  const _frHtml=fr?`<div class="read-frame">${fr.market?`<span class="rf-k">MARKET</span><span class="rf-v">${safe(fr.market)}</span>`:''}${fr.category?`<span class="rf-k">CATEGORY</span><span class="rf-v">${safe(fr.category)}</span>`:''}${fr.audience?`<span class="rf-k">AUDIENCE</span><span class="rf-v">${safe(fr.audience)}</span>`:''}${Array.isArray(fr.competitors)&&fr.competitors.length?`<span class="rf-k">AGAINST</span><span class="rf-v">${fr.competitors.map(safe).join(' · ')}</span>`:''}${fr.question?`<div class="rf-q">${safe(fr.question)}</div>`:''}</div>`:'';
+  const _frHtml=fr?`<div class="read-frame">${fr.market?`<span class="rf-k">MARKET</span><span class="rf-v">${safe(fr.market)}</span>`:''}${fr.category?`<span class="rf-k">CATEGORY</span><span class="rf-v">${safe(fr.category)}</span>`:''}${fr.audience?`<span class="rf-k">AUDIENCE</span><span class="rf-v">${safe(fr.audience)}</span>`:''}${Array.isArray(fr.competitors)&&fr.competitors.length?`<span class="rf-k">AGAINST</span><span class="rf-v">${fr.competitors.map(safe).join(' · ')}</span>`:''}${Array.isArray(fr.competitors_observed)&&fr.competitors_observed.length?`<span class="rf-k">SEEN BESIDE IT</span><span class="rf-v">${fr.competitors_observed.map(safe).join(' · ')}</span>`:''}${fr.question?`<div class="rf-q">${safe(fr.question)}</div>`:''}</div>`:'';
+  // SEAM:EXC_MEASURE: what the lake counts about this frame, with its own twelve weeks.
+  const ms=data.measures||null;
+  const _msHtml=(ms&&Array.isArray(ms.series)&&ms.series.length)?`<div class="read-measures">${_sparkline(ms.series,260,40)}${_doorMeasureRow(ms,null)}<span class="rm-cap">${safe(String(ms.weeks||12))} weeks of lake signals matching the frame · state ${safe(ms.state||'STEADY')}${ms.shape?' · '+safe(ms.shape):''}</span></div>`:'';
+  const ov=data.overnight||null;
+  const _ovHtml=ov?`<p class="read-foot" style="margin-top:6px">Overnight read for the night of ${safe(String(ov.night||''))}${ov.status==='reused'?' · evidence unchanged since the last read':''}${ov.prev_night?' · previous read '+safe(String(ov.prev_night)):''}. <button class="read-deeper" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
   if(rel&&rel.framed) facts.push(`${rel.kept} lines read${rel.set_aside?' · '+rel.set_aside+' set aside as off-frame':''}${rel.restored?' · '+rel.restored+' kept to reach the floor':''}`);
-  if(tm&&tm.total_ms) facts.push(`read in ${(tm.total_ms/1000).toFixed(0)}s (evidence ${((tm.frame_ms||0)+(tm.wire_ms||0))/1000|0}s, writing ${((tm.model_ms||0)/1000).toFixed(0)}s${tm.passes>1?', '+tm.passes+' passes':''})`);
+  // SEAM:EXC_HARVEST: the receipts. Pages read, the gap named and filled, the table written, the silent rails.
+  const hv=data.harvest||null;
+  if(hv&&hv.pages&&hv.pages.tried) facts.push(`${hv.pages.read} of ${hv.pages.tried} pages read${hv.pages.dated?' ('+hv.pages.dated+' dated by the page)':''}`);
+  if(hv&&hv.gap) facts.push(`gap check: ${hv.gap.missing&&hv.gap.missing.length?'lacked '+hv.gap.missing.slice(0,3).join(', '):'nothing named'}${hv.gap.added?' · +'+hv.gap.added+' lines found':''}`);
+  if(hv&&hv.facts&&hv.facts.tabled) facts.push(`${hv.facts.tabled} lines tabled as facts${hv.facts.failed?' ('+hv.facts.failed+' chunk'+(hv.facts.failed>1?'s':'')+' left raw)':''}`);
+  if(Array.isArray(meta.rails)&&meta.rails.length){ const silent=meta.rails.filter(r=>r&&!(r.n>0)&&r.id!=='kg').map(r=>(r.name||r.id)+(r.skipped==='late'?' (late)':r.skipped==='cap'?' (cap)':r.ok===false?' (error)':'')); if(silent.length) facts.push(`silent: ${silent.slice(0,8).join(', ')}${silent.length>8?' +'+(silent.length-8):''}`); }
+  if(tm&&tm.total_ms) facts.push(`read in ${(tm.total_ms/1000).toFixed(0)}s (evidence ${(((tm.frame_ms||0)+(tm.wire_ms||0)+(tm.pages_ms||0)+(tm.gap_ms||0)+(tm.facts_ms||0))/1000).toFixed(0)}s, writing ${((tm.model_ms||0)/1000).toFixed(0)}s${tm.passes>1?', '+tm.passes+' passes':''})`);
+  if(data.score&&Number.isFinite(data.score.score)) facts.push(`harvest ${data.score.score}/100`);
   const _rcHtml=(rc&&rc.ungrounded&&rc.ungrounded.length)?`<p class="read-check">A figure in this read is not in its evidence as written: ${rc.ungrounded.map(safe).join(', ')}. Read it as the model's arithmetic, not a source's number.</p>`:'';
   // EXC_INTEL: the evidence window (how many lines in each band, newest and oldest) and the lane the read compiled on.
   const win=data.window||null, mdl=data.model||null, _bands=['NOW','RECENT','CURRENT','CONTEXT','ARCHIVE'];
@@ -5285,11 +5338,13 @@ function _renderReadBlock(q, data, mode){
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${_rcHtml}
     ${_frHtml}
+    ${_msHtml}
     ${_winHtml}
     ${data.brief?`<p class="read-interp"><strong>The interpretation.</strong> ${safe(data.brief)}</p>`:''}
     ${facts.length?`<p class="read-interp" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3)">${facts.map(safe).join(' · ')}</p>`:''}
     ${_pxHtml}
     ${_mdlHtml}
+    ${_ovHtml}
     <div class="read-deeper">
       <button onclick="switchResultsLens('consumer');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CONSUMER</button>
       <button onclick="switchResultsLens('market');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · MARKET</button>
@@ -8922,6 +8977,11 @@ function _openFrameRead(card) {
   runSearch();
 }
 function openFeaturedCard(id) {
+  // SEAM:EXC_DOOR v2: an overnight tile opens its stored read.
+  if (_FI_LAKE && _FI_LAKE.door && Array.isArray(_FI_LAKE.door.tiles)) {
+    const dt = _FI_LAKE.door.tiles.find(t => t.id === id);
+    if (dt) { _openDoorRead(dt); return; }
+  }
   // Lake cards first — when a live field read owns the grid, its ids win.
   if (_FI_LAKE && Array.isArray(_FI_LAKE.proposed)) {
     const lk = _FI_LAKE.proposed.find(c => c.id === id);
@@ -8964,8 +9024,7 @@ function _renderFeaturedGrid(isLive) {
   try { _lakeC = JSON.parse(localStorage.getItem(_FI_CACHE_KEY) || 'null'); } catch(e) {}
   const _lakeFresh = _lakeC && _lakeC.lake
     && (Date.now() - (_lakeC.fetchedAt || 0)) < _FI_TTL_MS
-    && Array.isArray(_lakeC.lake.proposed)
-    && _lakeC.lake.proposed.length >= _FI_LAKE_MIN;
+    && ((Array.isArray(_lakeC.lake.proposed) && _lakeC.lake.proposed.length >= _FI_LAKE_MIN) || (_lakeC.lake.door && Array.isArray(_lakeC.lake.door.tiles) && _lakeC.lake.door.tiles.length >= 4));   // SEAM:EXC_DOOR v2
   if (_lakeFresh) { _FI_LAKE = _lakeC.lake; _renderLakeGrid(_FI_LAKE); return; }
   _hideFieldChrome();
   // SEAM:HUB_FEED — no pool paint. The grid is the lake's or it says so.
@@ -9071,7 +9130,7 @@ async function _fetchLakeField() {
   // SEAM:HUB_FEED — the public feed door first: same field, no session required.
   try {
     const r0 = await Promise.race([fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store' }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 9000))]);
-    if (r0 && r0.ok) { const j0 = await r0.json(); if (j0 && j0.ok && Array.isArray(j0.proposed) && j0.proposed.length >= _FI_LAKE_MIN) { window._hubFeed = j0; return j0; } if (j0 && Array.isArray(j0.trending)) window._hubFeed = j0; }
+    if (r0 && r0.ok) { const j0 = await r0.json(); if (j0 && j0.ok && ((Array.isArray(j0.proposed) && j0.proposed.length >= _FI_LAKE_MIN) || (j0.door && Array.isArray(j0.door.tiles) && j0.door.tiles.length >= 4))) { window._hubFeed = j0; return j0; } if (j0 && Array.isArray(j0.trending)) window._hubFeed = j0; }   // SEAM:EXC_DOOR v2
   } catch (e) {}
   try {
     const hh = await _authHeader();
@@ -9152,9 +9211,85 @@ function _renderLakeCard(card, i) {
     </div>`;
 }
 
+/* SEAM:EXC_DOOR v2: the overnight door. A tile is a frame, measured: the sparkline is twelve weeks of the lake's own
+   count for the frame, the row beside it is this week against last, outlets, weeks touched and share of territory; the
+   title is the claim the overnight read makes; the move rides beneath. No photo. A click opens the stored read. */
+function _sparkline(series, w, h) {
+  const v = (series || []).map(n => Number(n) || 0); if (v.length < 2) return '';
+  const max = Math.max(1, ...v), pad = 3, W = w || 220, H = h || 44;
+  const x = i => pad + (i / (v.length - 1)) * (W - pad * 2), y = n => H - pad - (n / max) * (H - pad * 2);
+  const pts = v.map((n, i) => x(i).toFixed(1) + ',' + y(n).toFixed(1)).join(' ');
+  const area = pad + ',' + (H - pad) + ' ' + pts + ' ' + (W - pad) + ',' + (H - pad);
+  return `<svg class="fi-spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false"><polygon points="${area}" class="fi-spark-area"/><polyline points="${pts}" class="fi-spark-line"/><circle cx="${x(v.length - 1).toFixed(1)}" cy="${y(v[v.length - 1]).toFixed(1)}" r="3" class="fi-spark-dot"/></svg>`;
+}
+function _doorMeasureRow(m, since) {
+  if (!m) return '';
+  const vel = m.velocity_pct == null ? '' : ' (' + (m.velocity_pct >= 0 ? '+' : '') + m.velocity_pct + '%)';
+  const bits = [`<span class="fi-m"><b>${safe(String(m.recent_7d))}</b> this wk${safe(vel)}</span>`, `<span class="fi-m"><b>${safe(String(m.outlets))}</b> outlets</span>`, `<span class="fi-m"><b>${safe(String(m.weeks_touched))}</b>/${safe(String(m.weeks || 12))} wks</span>`];
+  if (m.share_pct != null) bits.push(`<span class="fi-m"><b>${safe(String(m.share_pct))}%</b> of ${safe(String(m.territory || 'territory').replace(/-/g, ' '))}<span class="fi-share"><i style="width:${Math.max(2, Math.min(100, m.share_pct))}%"></i></span></span>`);
+  if (since && (since.recent_delta || since.outlets_delta)) bits.push(`<span class="fi-m fi-since">since last night ${since.recent_delta ? (since.recent_delta > 0 ? '+' : '') + since.recent_delta + ' signals' : ''}${since.recent_delta && since.outlets_delta ? ', ' : ''}${since.outlets_delta ? (since.outlets_delta > 0 ? '+' : '') + since.outlets_delta + ' outlets' : ''}</span>`);
+  return `<div class="fi-measures">${bits.join('')}</div>`;
+}
+function _renderDoorCard(t, i) {
+  const lens = CATS.includes(t.lens) ? t.lens : 'culture';
+  const m = t.measures || {}, meta = _FI_STATE_META[m.state] || _FI_STATE_META.STEADY, f = t.frame || {};
+  const kicker = [f.entity || f.category, f.audience, f.market && f.market !== 'US' ? f.market : null].filter(Boolean).map(safe).join(' · ') + (Array.isArray(f.competitors) && f.competitors.length ? ' · vs ' + f.competitors.slice(0, 3).map(safe).join(', ') : '');
+  return `
+    <div class="insight-card fi-card-enter fi-door" style="animation-delay:${i * 0.06}s;position:relative" onclick="openFeaturedCard('${safeAttr(t.id)}')">
+      <span class="fi-state-tag ${meta.cls}">${meta.label}</span>
+      <span class="card-cat ${lens}">● ${CAT_LABELS[lens]}</span>
+      ${kicker ? `<p class="fi-kicker">${kicker}</p>` : ''}
+      <h2 class="card-title">${safe(t.claim || t.title || '')}</h2>
+      ${t.claim && t.title && t.claim !== t.title ? `<p class="fi-frame-name">${safe(t.title)}</p>` : ''}
+      <div class="fi-spark-row">${_sparkline(m.series, 220, 44)}<span class="fi-spark-cap">${safe(String(m.weeks || 12))} WEEKS · LAKE SIGNALS${m.shape ? ' · ' + safe(String(m.shape).toUpperCase()) : ''}</span></div>
+      ${_doorMeasureRow(m, t.since)}
+      ${t.move ? `<p class="fi-move"><span class="fi-move-k">THE MOVE</span> ${safe(t.move)}</p>` : ''}
+      <div class="card-meta">
+        <span class="card-stat">${t.carried ? 'last night\'s read · tonight\'s compiling' : t.status === 'reused' ? 'unchanged since last read' : 'compiled overnight'} · ${safe(String(t.evidence_n || 0))} lines${m.newest ? ' · newest ' + safe(m.newest) : ''}</span>
+        <span style="color:var(--text3)">Open the read →</span>
+      </div>
+    </div>`;
+}
+function _renderDoorGrid(door, proposed) {
+  const grid = document.getElementById('featured-insights-grid'); if (!grid) return;
+  let tiles = (door.tiles || []).slice();
+  const states = {}; tiles.forEach(t => { const st = (t.measures && t.measures.state) || 'STEADY'; states[st] = (states[st] || 0) + 1; });
+  _renderStateStrip(states);
+  if (_fiStateFilter) { const hit = tiles.filter(t => t.measures && t.measures.state === _fiStateFilter); if (hit.length) tiles = hit; }
+  // The lake's other themes ride beneath the overnight frames; one already read overnight is not shown twice.
+  const read = new Set(tiles.map(t => t.key));
+  let rest = (proposed || []).filter(c => c && c.cluster_id && !read.has('theme:' + c.cluster_id));
+  if (_fiStateFilter) { const hit = rest.filter(c => c.state === _fiStateFilter); rest = hit.length ? hit : []; }
+  grid.innerHTML = tiles.map((t, i) => _renderDoorCard(t, i)).join('') +
+    (rest.length ? '<div class="fi-divider">FROM THE LAKE · NOT YET READ OVERNIGHT</div>' + rest.map((c, i) => _renderLakeCard(c, tiles.length + i)).join('') : '');
+  const badge = document.getElementById('fi-live-badge'); if (badge) badge.style.display = 'inline-flex';
+  const carried = tiles.filter(t => t.carried).length;
+  const label = document.getElementById('fi-refresh-label'); if (label) label.textContent = 'OVERNIGHT FRAMES · NIGHT OF ' + String(door.night || '').toUpperCase() + (door.pending ? ' · ' + door.pending + ' STILL COMPILING' : '') + (carried ? ' · ' + carried + ' FROM LAST NIGHT' : '');
+}
+async function _openDoorRead(t) {
+  const q = String((t.frame && t.frame.query) || t.title || '').trim();
+  closeInsightDashboard(); closePDFPreview();
+  showLoader(q || 'the frame', 'live', ['Opening the overnight read', 'Placing its evidence', 'Rendering']);
+  try {
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/door/read?id=' + encodeURIComponent(t.id), { headers: await _authHeader() });
+    const j = r.ok ? await r.json() : null;
+    hideLoader();
+    if (!j || !j.ok || !j.data) { showToast(j && j.error === 'auth_required' ? 'Sign in to open the read' : 'That read is still compiling'); return; }
+    window._gatherMeta = { cls: null, rails: [], meta: {}, frame: j.data.frame || null }; window._gatherItems = []; window._tileFrame = { _q: q, frame: j.data.frame || null };
+    window._doorOpen = { id: t.id, query: q, frame: j.data.frame || null };
+    document.getElementById('main-dashboard').style.display = 'none'; document.getElementById('error-banner').style.display = 'none';
+    _renderLive(q, { items: [], synthesis: j.data, sources: [] });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) { hideLoader(); showToast('Could not open that read'); }
+}
+function _goDeeperLive() {
+  const d = window._doorOpen; if (!d) return;
+  _openFrameRead({ query: d.query, title: d.query, frame: null });
+}
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');
   if (!grid) return;
+  if (data && data.door && Array.isArray(data.door.tiles) && data.door.tiles.length >= 4) { _renderDoorGrid(data.door, data.proposed || []); const rd = document.getElementById('fi-field-read'); if (rd && data.field && data.field.read) { rd.innerHTML = '<span class="fi-read-label">THE READ · FROM THE LAKE</span>' + String(data.field.read).replace(/</g, '&lt;'); rd.style.display = 'block'; } return; }   // SEAM:EXC_DOOR v2
   const read = data.field && data.field.read;
   const rd = document.getElementById('fi-field-read');
   if (rd) {

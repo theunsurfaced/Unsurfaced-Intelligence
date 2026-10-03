@@ -216,6 +216,9 @@ SPENDERS = {
     'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap); admin route or readTick only',
     'readProof': 'claudeGate on the live tier; called by readLand (the batch drain) and the admin /reads/proof door only',
     'callClaudeStream': 'claudeGate: tier dollar cap + KV kill switch, the same row in claude_jobs; called by excCompile only',
+    'doorPass': 'claudeBatchSubmit on the live tier under the overnight share (OVERNIGHT_SHARE of the live cap), cron-bounded (06:10 chain) or the admin /excavate/desk door; stamp reuse asks the model only about frames whose evidence moved',
+    'excFacts': 'claudeGate on the frame tier (Haiku, its own cap) + a 9s deadline per chunk; called by synthesize only (excavateAuth), at most 4 chunks of 11 lines per read',
+    'excGapCheck': 'claudeGate on the frame tier (Haiku, its own cap) + a 4.5s deadline; one call per read, called by synthesize only (excavateAuth)',
     'excFrameFor': 'claudeGate on the frame tier (Haiku, its own $3 cap) + a week of KV cache per query + a 4.5s deadline; callers: synthesize and gather (excavateAuth) and excFrameTiles (the public feed, at most one set of 12 per edition, cached 6h)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|CLAUDE\.API \+")

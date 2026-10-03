@@ -739,12 +739,63 @@
   },
   "SEAM:EXC_DOOR": {
    "file": "worker/src/index.js",
-   "purpose": "the door shows frames, not stories: excFrameTiles frames every arrival tile once (excFrameFor, cached a week per query; the set cached 6h per edition); a desk-fill tile's title becomes the frame (excFrameLabel), its query the frame's own (excFrameQuery), the story rides beneath as the exemplar; a tile that cannot be framed keeps its old shape"
+   "purpose": "the door shows frames, not stories. v1: excFrameTiles frames every arrival tile once (cached per edition). v2, overnight: doorPass (06:10 chain, after the feed and the tracks) turns the lake's moving themes and the tracked entities into up to 12 frames, measures each (excMeasures), reads its own lake evidence plus a free GDELT top-up and six pages, stamps the evidence (doorStamp) and reuses last night's read when nothing moved, else compiles a light read on the Batch API at half price under the overnight share (door_read jobs; doorLand on the drain; doorCompileRead applies the laws); door_reads keeps every night (migration 0033) so a tile says what changed since last night; doorPublish keeps the tile set in KV (door:v2) and the feed serves it; GET /excavate/door/read serves a stored read shaped like a live one, signed in; /excavate/desk {run:door|door_publish} runs it by hand"
   },
   "SEAM:EXC_DOOR@page": {
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_DOOR",
-   "purpose": "a tile opens THE READ on its frame through runSearch (_openFrameRead), with the worker's frame handed to the gather on window._tileFrame; the template dashboard behind the tiles is retired; a tile shows market, audience and competitive set"
+   "purpose": "v1: a tile opens THE READ on its frame through runSearch (_openFrameRead), with the worker's frame handed to the gather on window._tileFrame; the template dashboard behind the tiles is retired. v2: when the feed carries an overnight door set, _renderDoorGrid draws Sparkline+ tiles (_renderDoorCard: state, frame kicker, the claim, twelve weeks of lake signals, the measures row, the move, no photo); a click opens the stored read (_openDoorRead via GET /excavate/door/read, signed in) rendered like a live one with a Go deeper, live button (_goDeeperLive) that runs the full read on demand"
+  },
+  "SEAM:EXC_TIERS": {
+   "file": "worker/src/index.js",
+   "purpose": "the house's judgment of outlets by domain (source_tiers, migration 0033): excTiersLoad reads the registry once an hour into KV; excStampTiers overlays a registry tier on every item in the gather and the read before anything is weighed, so trade press is T2, newsrooms T1, primary records T0, blogs and platforms T3, aggregators T4"
+  },
+  "SEAM:EXC_PAGES": {
+   "file": "worker/src/index.js",
+   "purpose": "the model reads pages, not snippets: excReadPages fetches the strongest dated news and web items and the undated web items a page can date (up to 12, 4.5s each, 6.5s in all, edge-cached 6h), reads their paragraphs (pvExtract, 1400 chars) and publish date (excPageDate); the evidence line gives a page-read item 700 characters; fetched text is quoted material under the EVIDENCE LAW"
+  },
+  "SEAM:EXC_COMPETE": {
+   "file": "worker/src/index.js",
+   "purpose": "the competitive set stands on evidence: the competitors rail asks GDELT once for the frame's whole set (names joined by OR, up to 4), an article counts only when its title names a competitor and is filed under that name (three each), items carry the entity, the gate treats them as on-frame, the evidence line marks them (competitor: X), the rail rides right after the paid rails in the pool and holds a seat inside the gather cap and the page's corpus cap, and the system prompt says they measure the topic, never describe it"
+  },
+  "SEAM:EXC_COUNTER": {
+   "file": "worker/src/index.js",
+   "purpose": "one deliberate search for the other side: the counter rail asks GDELT for backlash, decline, criticism, controversy, lawsuit and overhyped against the frame's subject; items carry stance against, the line is marked (counter), the rail rides right after the paid rails in the pool and holds a seat inside the caps, and the system prompt asks one finding to name the disagreement when they conflict"
+  },
+  "SEAM:EXC_GAP": {
+   "file": "worker/src/index.js",
+   "purpose": "the second look: with the first evidence in hand, Haiku on the frame tier names what the question still lacks and writes up to three searches (excGapCheck, 4.5s); the free rails run them once inside a 5.5s round (excGapRound); new lines pass the gate, join the corpus and the budget is drawn again; the read carries gap.missing, gap.asked and gap.added; one round, never more"
+  },
+  "SEAM:EXC_FACTS": {
+   "file": "worker/src/index.js",
+   "purpose": "the fact table: Haiku on the frame tier codes every evidence item in chunks of 11 (excFacts, 4 chunks at a time, 9s each) into claims with their numbers copied exactly, named entities, the date spoken for and stance; a tabled line reads FACTS and NAMES instead of raw text; a failed chunk leaves its items raw; a cut array keeps every whole element (excSalvageArray); the number law checks against the table; competitors_observed are the entities the table counts beside the topic (excObserved)"
+  },
+  "SEAM:EXC_MEASURE": {
+   "file": "worker/src/index.js",
+   "purpose": "what the lake can count about a frame, computed, never modeled (excMeasures): twelve weeks of signal counts by title match on the frame's anchors, the last seven days against the seven before, distinct outlets, weeks touched, the frame's share of its territory this week, state by the field's own thresholds (clusterState) and shape (clusterShape); MEASURES head the prompt and count as grounded numbers; the read carries measures"
+  },
+  "SEAM:EXC_SCORE": {
+   "file": "worker/src/index.js",
+   "purpose": "the harvest as a number (excReadScore, 0 to 100): lines read, share in the fresh bands, distinct outlets, findings at Medium or above, unverified figures, the competitive set evidenced, time; computed from the read itself and carried on it, so every evolution is measured on the same panel"
+  },
+  "SEAM:EXC_HARVEST": {
+   "file": "worker/src/index.js",
+   "purpose": "the read carries its harvest receipts: pages tried/read/dated, the gap named/asked/added, the fact table tabled/chunks/failed, the observed competitors, whether the tier registry was loaded; stages reading, tabling, writing are announced to the stream"
+  },
+  "SEAM:EXC_MEASURE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_MEASURE",
+   "purpose": "the read block shows the frame's twelve weeks of lake signals as a sparkline with this week against last, outlets, weeks touched and share of territory; the same renderers draw the door tiles (_sparkline, _doorMeasureRow)"
+  },
+  "SEAM:EXC_HARVEST@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_HARVEST",
+   "purpose": "_renderLive forwards measures, harvest receipts, the score and the overnight stamp; the facts line names pages read, the gap named and filled, lines tabled, the silent rails and the harvest score; the loader narrates the reading and tabling stages"
+  },
+  "SEAM:EXC_SCORE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_SCORE",
+   "purpose": "the ten-query panel runs each read exactly as a client does (frame and rails handed along), keeps the score, the harvest receipts, the relevance counts and the timing on every record, shows the harvest line per side, and the tally carries the mean score before and after"
   },
   "SEAM:READ_PROOF": {
    "file": "worker/src/index.js",
@@ -762,6 +813,16 @@
   "SEAM:WEEKLY_PROMO": {
    "file": "index.html",
    "purpose": "the landing promotes WEEKLY: the tile beside Intelligence, the pop-up card, the footer link; reads the stand shelf"
+  },
+  "SEAM:EXC_COMPETE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_COMPETE",
+   "purpose": "the page forwards each gather line's entity to synthesize and holds up to ten competitor and counter lines at the head of the corpus before its cap"
+  },
+  "SEAM:EXC_COUNTER@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_COUNTER",
+   "purpose": "the page forwards each gather line's stance to synthesize so a counter line reaches the read marked (counter)"
   }
  },
  "planned": [

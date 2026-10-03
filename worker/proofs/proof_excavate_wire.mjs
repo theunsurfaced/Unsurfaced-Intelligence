@@ -53,12 +53,12 @@ const modelOut = JSON.stringify({ read: ['Access outsold the object.', 'Price th
           { type: 'Product', headline: 'Price the room at $40 for Live Nation buyers', body: 'A members table at each show.', evidence: [2], from: 42 }],
   brief: 'b' });
 const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
-  'excFrameFor', helpers + xj + synth + '; return synthesize;')(
+  'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', helpers + xj + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; return synthesize;')(
   (o, st) => ({ o, st }), async () => [{ signalType: 'news', source: 'news.example', title: 'Stadium tour adds dates', snippet: 'English news about fans and the tour', url: 'https://news.example/a', published_at: new Date(Date.now() - 864e5).toISOString() },
     { signalType: 'web', source: 'es.example', title: 'La gira de los artistas en la ciudad y el precio de las entradas', snippet: 'para los fans que están en la ciudad', url: 'https://es.example/x' }],
   async () => [{ signalType: 'web', source: 'exa.example', title: 'Paid find', snippet: 'paid', url: 'https://paid.example/0', published_at: new Date(Date.now() - 3 * 864e5).toISOString() }],
   async (env, o) => { modelCall = { o, msgs: [{ content: o.system }, { content: o.prompt }], opts: { max_tokens: o.max_tokens } }; return { text: modelOut, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.03 }; },
-  async (env, row) => { ledger = row; return 77; }, async () => 'h', async (env, items) => { captured = items; }, (a) => a.map(x => x.source), {}, async () => null);
+  async (env, row) => { ledger = row; return 77; }, async () => 'h', async (env, items) => { captured = items; }, (a) => a.map(x => x.source), {}, async () => null, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);
 const res = await S({ query: 'fan access', mode: 'report', corpus: lake10.slice(0, 10).concat(open40) }, {}, '');
 const d = res.o.data;
 ok(modelCall.opts.max_tokens === 8000 && modelCall.o.reserve === 't3' && modelCall.o.kind === 'excavate_report', 'W6 report mode has room for a whole report (8000, SEAM:EXC_PARSE) and rides the lane with t3 in reserve');
@@ -84,7 +84,7 @@ const gat = between('async function excavateGather(', '/* ═══ SEAM:READ_LE
 const G = new Function('excavateAuth', 'gatherOpenSignals', 'lakeCapture', 'json', gat + '; return excavateGather;')(
   async () => ({ err: 'AUTH_REQUIRED' }), async () => { throw new Error('must not gather'); }, async () => 0, (o) => o);
 ok(await G({ json: async () => ({ query: 'x' }) }, {}, '') === 'AUTH_REQUIRED', 'W19 gather refuses without a signed-in user, before spending anything');
-ok(/items = gatherOrder\(english\)\.slice\(0, GATHER\.MAX_ITEMS\)/.test(w) && /ctx\.meta\.non_english/.test(w), 'W20 the envelope is English-filtered and ordered before its cap');
+ok(/const ordered = gatherOrder\(english\);/.test(w) && /ordered\.filter\(it => held\.has\(it\)\)\.concat\(ordered\.filter\(it => !held\.has\(it\)\)\)\.slice\(0, GATHER\.MAX_ITEMS\)/.test(w) && /ctx\.meta\.non_english/.test(w), 'W20 the envelope is English-filtered and ordered before its cap; a line asked for by name keeps its seat');
 ok(/field: body\.field === true \? await fieldRail\(env, q\)/.test(w), 'W21 Tavily runs only on request');
 
 // ── T lake truth ──────────────────────────────────────────────────────────
@@ -123,5 +123,5 @@ ok(/Date\.parse\(lakeWhen\(r\)\) >= Date\.parse\(d7\)/.test(w) && /const rows = 
 
 // ── C the page ────────────────────────────────────────────────────────────
 ok(/'\/excavate\/gather',\{method:'POST',headers:Object\.assign\(\{'Content-Type':'application\/json'\},_hdr\)/.test(page) && /const _hdr=await _authHeader\(\);/.test(page), 'C1 the page signs its gather call (EX4: with the header it fetched once for gather and lake together)');
-ok(/const ordered=corpus\.filter\(c=>c\.rail==='gather'\)\.concat\(corpus\.filter\(c=>c\.rail!=='gather'\)\);/.test(page), 'C2 the server ranked gather leads the corpus');
+ok(/const held=corpus\.filter\(c=>c\.rail==='gather'&&\(c\.entity\|\|c\.stance\)\)\.slice\(0,10\);/.test(page) && /const ordered=held\.concat\(corpus\.filter\(c=>c\.rail==='gather'&&!held\.includes\(c\)\), corpus\.filter\(c=>c\.rail!=='gather'\)\);/.test(page) && /entity:it\.entity\|\|null, stance:it\.stance\|\|null/.test(page), 'C2 the server ranked gather leads the corpus, the competitor and counter lines at its head, each with its tag');
 console.log(`\nproof_excavate_wire: ${pass} checks PASS`);

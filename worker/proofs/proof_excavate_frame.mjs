@@ -74,10 +74,10 @@ const mkGather = (railMs, opts) => {
   const fn = id => async (env, q, ctx, rail) => { calls.push({ id, q, at: Date.now() }); if (id === 'wikipedia') ctx.meta.wiki_title = 'Hair care';
     await new Promise(res => setTimeout(res, railMs[id] || 10)); if (id === 'wikimedia_pageviews') calls.push({ id: 'pv_saw_title', q: ctx.meta.wiki_title }); return [{ title: id + ' item', url: 'https://' + id + '.example/1', rail: id, source_tier: 3, kind: rail.kind }]; };
   const RAIL_FNS = Object.fromEntries(RAILS.map(r => [r.id, fn(r.id)]));
-  const G = new Function('RAILS', 'RAIL_BY_ID', 'RAIL_FNS', 'railAllowed', 'classifyQuery', 'excFrameFor', 'excFrameClean', 'excFrameWhole', 'excRailQuery', 'GATHER', 'looksEnglish', 'gatherOrder', 'bumpYield', 'excQuiet',
+  const G = new Function('RAILS', 'RAIL_BY_ID', 'RAIL_FNS', 'railAllowed', 'classifyQuery', 'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', 'excFrameClean', 'excFrameWhole', 'excRailQuery', 'GATHER', 'looksEnglish', 'gatherOrder', 'bumpYield', 'excQuiet', 'excStampTiers',
     gatherSrc + '; return gatherOpenSignals;')(RAILS, Object.fromEntries(RAILS.map(r => [r.id, r])), RAIL_FNS, async () => true, () => 'behavior',
-    async () => { await new Promise(res => setTimeout(res, (opts && opts.frameMs) || 20)); return (opts && opts.frame) ? H.excFrameClean(opts.frame) : null; }, H.excFrameClean, H.excFrameWhole, H.excRailQuery,
-    { PAR: 3, MAX_ITEMS: 60, BUDGET_MS: (opts && opts.budget) || 800, RAIL_MS: (opts && opts.railMs) || 400, KG_MS: 100, FRAME_WAIT_MS: 150 }, () => true, x => x, async () => {}, () => () => null);
+    async () => { await new Promise(res => setTimeout(res, (opts && opts.frameMs) || 20)); return (opts && opts.frame) ? H.excFrameClean(opts.frame) : null; }, async () => null, async () => ({ tabled: 0 }), async () => null, async () => [], () => [], H.excFrameClean, H.excFrameWhole, H.excRailQuery,
+    { PAR: 3, MAX_ITEMS: 60, BUDGET_MS: (opts && opts.budget) || 800, RAIL_MS: (opts && opts.railMs) || 400, KG_MS: 100, FRAME_WAIT_MS: 150 }, () => true, x => x, async () => {}, () => () => null, () => null);
   return { G, calls };
 };
 let { G, calls } = mkGather({}, { frame: raw });
@@ -123,11 +123,11 @@ const modelOut = JSON.stringify({ frame: { category: 'Hair care', audience: 'Gen
              { category: 'brand', title: 'Made-up number', excerpt: 'Brand loyalty rose 37% this quarter.', evidence: [N.honey, N.guardian] }],
   ideas: [{ type: 'Product', headline: 'Cap the formula at 7 ingredients and print the INCI list', body: 'Reformulate the hero shampoo to 7 or fewer ingredients, the threshold 61% of Gen Z enforce.', proof: 'Beauty Nexus reports 61% reject over 7 ingredients.', evidence: [N.nexus], from: 0 }], brief: 'Where it is and what to do first.' });
 let wireCalls = 0, call = null, stages = [];
-const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG', 'excFrameFor',
-  xj + helpers + synth + '; return synthesize;')(
+const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG', 'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved',
+  xj + helpers + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; return synthesize;')(
   (o) => o, async () => { wireCalls++; return []; }, async () => { wireCalls++; return []; },
   async (e, o) => { call = o; if (o.onText) { o.onText(modelOut.slice(0, 400)); o.onText(modelOut); } return { text: modelOut, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.05, stop_reason: 'end_turn' }; },
-  async () => 1, async t => 'h' + t.length, async () => 0, () => [], {}, async () => raw);
+  async () => 1, async t => 'h' + t.length, async () => 0, () => [], {}, async () => raw, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);
 const q1 = quiet();
 let res = (await S({ query: 'gen z hair care', mode: 'report', rails: ['gdelt', 'hn', 'exa'], corpus }, {}, '', { onStage: st => stages.push(st) })).data;
 q1.done();
@@ -140,7 +140,7 @@ ok(res.read[0].length > 90 && /Beauty Nexus\.$/.test(res.read[0]) && res.read_ch
 ok(res.insights[0].confidence === 'Low' && res.insights[0].checks.ungrounded.length === 0, 'S6 a finding on one T3 blog is Low however fresh it is');
 ok(res.insights[1].confidence === 'Medium' && res.insights[2].confidence === 'Low' && res.insights[2].checks.ungrounded[0] === '37%', 'S7 a T1 + T3 pair is Medium; a finding stating a number its evidence does not carry is named and drops to Low');
 ok(res.ideas[0].checks.numbers === 1 && res.ideas[0].checks.ungrounded.length === 0, 'S8 a move\'s numbers are checked against its proof');
-ok(stages.length === 1 && stages[0].stage === 'writing' && stages[0].evidence === 15 && stages[0].dropped === 2, 'S9 the writing stage is announced with what the read stands on');
+ok(stages.map(s => s.stage).join() === 'reading,tabling,writing' && stages[2].evidence === 15 && stages[2].dropped === 2, 'S9 the stages are announced in order: reading pages, tabling facts, writing; the last says what the read stands on');
 const q2 = quiet(); wireCalls = 0;
 res = (await S({ query: 'gen z hair care', mode: 'report', corpus: corpus.map(c => Object.assign({}, c, { rail: null })) }, {}, '')).data;
 q2.done();
