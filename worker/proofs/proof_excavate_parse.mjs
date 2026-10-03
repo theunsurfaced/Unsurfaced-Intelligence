@@ -65,7 +65,7 @@ const origLog = console.log;
 const run = async replies => {
   const calls = [];
   const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG',
-    'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', helpers + xj + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; return synthesize;')(
+    'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', helpers + xj + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; excFramedRerun = async () => []; return synthesize;')(
     (o, st) => ({ o, st }), async () => [], async () => [],
     async (env, o) => { calls.push(o); const x = replies.shift(); return Object.assign({ lane: o.reserveOnly ? 'reserve' : 'live', model: 'm', reason: o.reserveOnly || null, cost_usd: 0 }, x); },
     async () => 1, async () => 'h', async () => 0, () => [], {}, async () => null, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);

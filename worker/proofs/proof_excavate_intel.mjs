@@ -37,8 +37,13 @@ const lake = Array.from({ length: 6 }, (_, i) => ({ lens: 'lake', title: 'lake '
 const lakeOld = Array.from({ length: 10 }, (_, i) => ({ lens: 'lake', title: 'lake old ' + i, url: 'https://lo.example/' + i, source: 'lo' + i, published_at: ago(900 + i), similarity: 0.7 }));
 const plan = H.excBudget(lakeOld.concat(dated(40)), [], now);
 const bands = plan.merged.map(c => H.excBand(H.excWhen(c), now));
-ok(plan.merged.length === 44 && bands.filter(b => b === 'ARCHIVE').length === 4 && plan.lake.length === 4 && plan.widened === false, 'B1 dated evidence waiting in one lane displaces archive lines in another, down to four kept for context');
-ok(bands.slice(0, 40).every(b => b !== 'ARCHIVE') && plan.merged[0].title === 'dated 0', 'B2 the evidence is ranked: freshest first, archive last');
+ok(plan.merged.length === 44 && bands.filter(b => b === 'ARCHIVE').length === 6 && plan.lake.length === 6 && plan.widened === false, 'B1 dated evidence waiting in one lane displaces archive lines in another, down to six kept for context');
+// SEAM:EXC_RECORD: strong older sources hold their seats; weaker archive lines are the ones displaced.
+const record = Array.from({ length: 3 }, (_, i) => ({ lens: 'market', title: 'study ' + i, url: 'https://r.example/' + i, source: 'mintel' + i, published_at: ago(800 + i), tier: 1, kind: 'research' }));
+const plan2 = H.excBudget(lakeOld.concat(record, dated(40)), [], now);
+ok(plan2.merged.filter(c => /^study/.test(c.title)).length === 3 && plan2.merged.filter(c => H.excBand(H.excWhen(c), now) === 'ARCHIVE').length === 6 && plan2.merged.filter(c => /^lake old/.test(c.title)).length === 3,
+  'B1b three T1 studies from the record keep their seats among the six archive lines; the old lake blogs are the ones displaced');
+ok(bands.slice(0, 38).every(b => b !== 'ARCHIVE') && bands.slice(38).every(b => b === 'ARCHIVE') && plan.merged[0].title === 'dated 0', 'B2 the evidence is ranked: freshest first, archive last');
 const thin = H.excBudget(arch(20).concat(dated(5)), [], now);
 ok(thin.merged.length === 25 && thin.widened === true && thin.dated === 5, 'B3 thin dated evidence widens the window instead of leaving the read short, and says so');
 const full = H.excBudget(lake.concat(arch(30), dated(30)), Array.from({ length: 12 }, (_, i) => ({ signalType: 'news', source: 'wire' + i, title: 'wire ' + i, snippet: 's', url: 'https://w.example/' + i, published_at: ago(i + 1) })), now);
@@ -87,7 +92,7 @@ const modelOut = JSON.stringify({ frame: { category: 'Hair care', audience: 'Gen
              { category: 'culture', title: 'Context only', excerpt: 'x', evidence: [4, 5] }],
   ideas: [{ type: 'Campaign', headline: 'Gate the drop behind Ticketmaster stubs', body: 'At the 3 stadium dates.', proof: 'Billboard reported the sell-out.', evidence: [1], from: 0 }], brief: 'b' });
 const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG', 'excCacheKey', 'EXC_MODEL',
-  'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', helpers + xj + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; return synthesize;')(
+  'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', helpers + xj + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; excFramedRerun = async () => []; return synthesize;')(
   (o) => o, async () => [], async () => [], async (e, o) => { compiled = o; return { text: modelOut, lane: o.prompt.includes('reserve-me') ? 'reserve' : 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.04 }; },
   async (e, row) => { ledger = row; return 5; }, async (t) => 'h' + t.length, async () => 0, () => [], {}, L.excCacheKey, L.EXC_MODEL, async () => null, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);
 const agoR = d => new Date(Date.now() - d * day).toISOString();   // synthesize dates against the real clock
@@ -123,10 +128,11 @@ ok(/status=in\.\(connected,published\)&cluster_id=not\.is\.null/.test(w) && /sta
 ok(/published_at: x\.publishedDate \|\| null/.test(w) && /published_at: h\.created_at \|\| null/.test(w) && /published_at: a\.seendate \? String\(a\.seendate\)\.replace/.test(w), 'P5 Exa, HN and GDELT carry their dates onto the wire');
 ok(/filter=from_publication_date:' \+ railSince\(730\)/.test(w) && /from-date=' \+ railSince\(730\)/.test(w) && /numericFilters=created_at_i>' \+ Math\.floor/.test(w) && /filter=from-pub-date:' \+ railSince\(730\)/.test(w), 'P6 OpenAlex, Guardian, HN and CrossRef gather a recent slice');
 const gss = between('async function gatherServerSignals(', 'function serverConnectors(');
-const GSS = new Function('fetch', gss + '; return gatherServerSignals;')(async (url) => {
+const _net = async (url) => {
   if (/gdeltproject/.test(url)) return new Response(JSON.stringify({ articles: [{ title: 'A', url: 'https://n.example/a', domain: 'n.example', seendate: '20260920T131500Z', language: 'English' }, { title: 'B', url: 'https://n.example/b', domain: 'n.example', seendate: '20260921', language: 'English' }] }), { status: 200 });
   return new Response('{}', { status: 404 });
-});
+};
+const GSS = new Function('fetch', 'railFetch', gss + '; return gatherServerSignals;')(_net, async u => { const r = await _net(u); return r.ok ? r.json() : null; });
 const wire = await GSS('x');
 ok(wire[0].published_at === '2026-09-20T13:15:00Z' && wire[1].published_at === '2026-09-21', 'P7 a GDELT seendate becomes a date the ranker can read');
 
@@ -141,7 +147,7 @@ ok(/published_at: s\.published_at \|\| null, kind: \(s\.momentum && s\.momentum\
 ok(/rail:'gather', published_at:it\.published_at\|\|null, kind:it\.kind\|\|null, tier:it\.source_tier\|\|null/.test(page), 'C2 gathered items carry their dates and kinds into the corpus');
 ok(/function _whenChip\(d\)/.test(page) && /\$\{_whenChip\(ins\.dated\)\}/.test(page) && /ARCHIVE ONLY/.test(page), 'C3 every finding shows the band and date it stands on; archive-only says so');
 ok(/class="move-when \$\{safe\(m\.dated\.band\|\|''\)\}">EVIDENCE/.test(page), 'C4 every move shows when its evidence stands');
-ok(/class="read-window"/.test(page) && /window widened: dated evidence was thin/.test(page) && /Compiled on \$\{safe\(mdl\.model\|\|''\)\}/.test(page) && /reserve model/.test(page), 'C5 the read shows its window and its model, and says when the window widened or the reserve compiled');
+ok(/rows\.push\(\['window'/.test(page) && /widened: dated evidence was thin/.test(page) && /rows\.push\(\['compiled',`\$\{n\(mdl\.model\|\|''\)\}/.test(page) && /reserve model/.test(page), 'C5 the read shows its window and its model in the receipts, and says when the window widened or the reserve compiled');
 ok(/const EXC_PANEL_QUERIES = \[/.test(page) && /async function excPanelRun\(label\)/.test(page) && /function excPanelCompare\(\)/.test(page) && /panel=\(before\|after\|compare\)/.test(page), 'C6 the panel: before, after, compare');
 ok(/\.exc-panel\{position:fixed;inset:0;z-index:var\(--z-board\)/.test(page), 'C7 the panel sits on a stacking token');
 ok(/function _epUnwrap\(j\)/.test(page) && /res\(_epUnwrap\(JSON\.parse\(r\.result\)\)\)/.test(page), 'C8 the compare page reads a panel file as the object itself or as the SQL editor exports it');

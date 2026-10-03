@@ -29,9 +29,13 @@ ok(H.excNumbers('COVID-19 era, B2B, FY25, 18-24 year olds, 90s nostalgia').lengt
   'A4b letters glued to digits, decades, fiscal years and age ranges are not claims; a ranking is; a percent is grounded only by a percent, however it is spelled');
 ok(H.excOutletKey({ source: 'Unsurfaced Lake · Guardian (T1)' }) === 'guardian' && H.excOutletKey({ source: 'The Guardian' }) === 'guardian' && H.excOutletKey({ url: 'https://www.theguardian.com/x' }) === 'guardian' && H.excOutletKey({ source: 'theguardian.com' }) === 'guardian' && H.excOutletKey({ source: 'beautynexuspro.com' }) === 'beautynexuspro',
   'A4c one outlet is one outlet however it arrived: lake copy, wire copy and URL share a key');
-ok(H.excEarned([{ source: 'blog', tier: 3 }], true) === 'Low' && H.excEarned([{ source: 'a', tier: 3 }, { source: 'b', tier: 3 }, { source: 'c', tier: 3 }], true) === 'Medium' &&
-   H.excEarned([{ source: 'a', tier: 1 }, { source: 'b', tier: 2 }, { source: 'c', tier: 3 }], true) === 'High' && H.excEarned([{ source: 'a', tier: 1 }, { source: 'b', tier: 1 }, { source: 'c', tier: 1 }], false) === 'Medium',
+const fr = (o) => Object.assign({ published_at: new Date(Date.now() - 3 * 864e5).toISOString() }, o), old = (o) => Object.assign({ published_at: '2024-03-01' }, o);
+ok(H.excEarned([fr({ source: 'blog', tier: 3 })], true) === 'Low' && H.excEarned([fr({ source: 'a', tier: 3 }), fr({ source: 'b', tier: 3 }), fr({ source: 'c', tier: 3 })], true) === 'Medium' &&
+   H.excEarned([fr({ source: 'a', tier: 1 }), fr({ source: 'b', tier: 2 }), fr({ source: 'c', tier: 3 })], true) === 'High' && H.excEarned([fr({ source: 'a', tier: 1 }), fr({ source: 'b', tier: 1 }), fr({ source: 'c', tier: 1 })], false) === 'Medium',
    'A5 confidence is weighed by tier: one blog is Low, three blogs are Medium, a T1 + T2 + T3 under 90 days is High, nothing stale is High');
+ok(H.excEarned([old({ source: 'mintel', tier: 1 }), old({ source: 'nielsen', tier: 1 })], false) === 'Medium' && H.excEarned([old({ source: 'a', tier: 3 }), old({ source: 'b', tier: 3 }), old({ source: 'c', tier: 3 })], false) === 'Low' &&
+   H.excEarned([old({ source: 'mintel', tier: 1 }), fr({ source: 'blog', tier: 3 })], true) === 'Medium' && H.excEarned([old({ source: 'mintel', tier: 1 }), old({ source: 'nielsen', tier: 1 }), old({ source: 'kantar', tier: 1 })], true) === 'Medium',
+   'A5b the record: two strong older studies make a Medium at half weight, three old blogs stay Low, and the record never makes a High on its own');
 ok(/as reported by/.test(H.EXC_NUMBER_LAW) && /never leads THE READ/.test(H.EXC_NUMBER_LAW) && /name the market/.test(H.EXC_NUMBER_LAW) && !/—/.test(H.EXC_NUMBER_LAW), 'A6 the number law asks for "as reported by", keeps T3 figures off the headline and names a foreign market');
 
 // ── F: the frame ──────────────────────────────────────────────────────────
@@ -124,7 +128,7 @@ const modelOut = JSON.stringify({ frame: { category: 'Hair care', audience: 'Gen
   ideas: [{ type: 'Product', headline: 'Cap the formula at 7 ingredients and print the INCI list', body: 'Reformulate the hero shampoo to 7 or fewer ingredients, the threshold 61% of Gen Z enforce.', proof: 'Beauty Nexus reports 61% reject over 7 ingredients.', evidence: [N.nexus], from: 0 }], brief: 'Where it is and what to do first.' });
 let wireCalls = 0, call = null, stages = [];
 const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG', 'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved',
-  xj + helpers + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; return synthesize;')(
+  xj + helpers + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; excFramedRerun = async () => []; return synthesize;')(
   (o) => o, async () => { wireCalls++; return []; }, async () => { wireCalls++; return []; },
   async (e, o) => { call = o; if (o.onText) { o.onText(modelOut.slice(0, 400)); o.onText(modelOut); } return { text: modelOut, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.05, stop_reason: 'end_turn' }; },
   async () => 1, async t => 'h' + t.length, async () => 0, () => [], {}, async () => raw, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);

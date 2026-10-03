@@ -250,8 +250,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .fi-door .fi-since{color:var(--text3)}
 .fi-door .fi-move{font-size:13px;line-height:1.45;color:var(--text);margin:0 0 10px}
 .fi-door .fi-move-k{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;color:var(--accent);margin-right:8px}
-.read-deeper{display:inline-block;margin:12px 0 0;padding:10px 16px;border:1px solid var(--accent);color:var(--accent);background:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
-.read-deeper:hover{background:var(--accent);color:#fff}
+.rb-go-live{display:inline-block;margin:12px 0 0;padding:10px 16px;border:1px solid var(--accent);color:var(--accent);background:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.rb-go-live:hover{background:var(--accent);color:#fff}
 /* SEAM:EXC_DOOR: the frame on a tile */
 .fi-frame{display:flex;flex-wrap:wrap;gap:4px 10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin:-2px 0 8px}
 .fi-frame span+span::before{content:'·';margin-right:10px;color:var(--text3)}
@@ -466,14 +466,10 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .results-lens-panel{display:none;padding:20px 0 0;}
 .results-lens-panel.active{display:block;}
 /* SEAM:READ_SURFACE — every lens visible on the first pass; tabs become filters */
-#live-results.show-all .results-lens-panel{display:block;padding:8px 0 28px;border-bottom:1px solid var(--border);}
-#live-results.show-all .results-lens-panel:last-of-type{border-bottom:none;}
-#live-results.show-all #results-grid-truth{display:none;}   /* the six cards already read above; truth carries claims and the moves */
-#live-results.show-all .results-lens-panel:not(#rlp-truth){display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:24px;align-items:start;}
-#live-results.show-all .results-lens-panel:not(#rlp-truth) .lens-panel-head{grid-column:1/-1;margin-bottom:0;}
-#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
-#live-results.show-all .results-lens-panel:not(#rlp-truth) .lens-ideas-strip{margin-top:0;}
-@media(max-width:1000px){#live-results.show-all .results-lens-panel:not(#rlp-truth){grid-template-columns:1fr;}}
+/* SEAM:READ_BRIEF: All Lenses is one continuous grid of findings, strongest first; each card carries its lens; the tabs filter. */
+#live-results.show-all .results-lens-panel{display:none;}
+#live-results.show-all #rlp-findings{display:block;padding:12px 0 20px;}
+.findings-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));}
 .truth-claim{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--surface);border:1px solid var(--border);margin-bottom:8px;}
 .truth-claim-rating{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--deep2);border:1px solid var(--deep2);padding:3px 7px;flex-shrink:0;}
 .truth-claim-text{font-size:13px;color:var(--text);line-height:1.5;}
@@ -500,6 +496,56 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .read-deeper{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}
 .read-deeper button{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:8px 12px;cursor:pointer;}
 .read-deeper button:hover{border-color:var(--accent);}
+/* SEAM:READ_BRIEF: THE READ as a brief. The claim is the one bold thing; the plate, the strip and the rail are structure, not decoration. */
+.rb-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.rb-top .read-kicker{margin-bottom:0}
+.rb-score{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)}
+.rb-score-bar{display:block;width:72px;height:4px;background:var(--border2);border-radius:2px;overflow:hidden}
+.rb-score-bar i{display:block;height:100%;background:var(--accent)}
+.rb-score-n{color:var(--text);font-size:13px;font-weight:700}
+.rb-check{font-size:12px;line-height:1.5;color:var(--text2);margin:2px 0 10px;padding-left:10px;border-left:2px solid var(--accent);max-width:70ch}
+.rb-plate{display:flex;flex-wrap:wrap;gap:1px;background:var(--border);border:1px solid var(--border);margin:18px 0 0}
+.rb-cell{flex:1 1 150px;background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.rb-k{font-size:10px;letter-spacing:.04em;color:var(--text3)}
+.rb-v{font-size:13px;color:var(--text);line-height:1.35;overflow-wrap:anywhere}
+.rb-q{flex-basis:100%;background:var(--surface);padding:12px 14px;font-family:'DM Serif Display',serif;font-size:17px;line-height:1.35;color:var(--text)}
+.rb-measures{display:grid;grid-template-columns:minmax(220px,340px) 1fr;gap:18px 28px;align-items:end;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--border)}
+.rb-spark{display:flex;flex-direction:column;gap:6px}
+.rb-spark .fi-spark{width:100%;height:auto;max-width:340px}
+.rb-spark .fi-spark-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.rb-spark .fi-spark-area{fill:var(--accent);opacity:.08}
+.rb-spark .fi-spark-dot{fill:var(--accent);stroke:var(--bg);stroke-width:2}
+.rb-spark-cap{font-size:10px;color:var(--text3)}
+.rb-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px 18px}
+.rb-tile{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rb-tile-n{font-family:'Space Mono',monospace;font-size:22px;line-height:1.1;color:var(--text)}
+.rb-tile-n small{font-size:12px;color:var(--text2)}
+.rb-tile-k{font-size:10px;line-height:1.3;color:var(--text3)}
+.rb-tile-k em{font-style:normal;color:var(--text2)}
+.rb-state{font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.rb-state.ACCELERATING,.rb-state.EMERGING{color:var(--accent)} .rb-state.STEADY{color:var(--text2)} .rb-state.COOLING,.rb-state.FADING,.rb-state.DORMANT{color:var(--text3)}
+.rb-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,300px);gap:24px 36px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.rb-interp-head{font-family:'DM Serif Display',serif;font-size:15px;color:var(--text);margin:0 0 6px}
+.rb-interp{font-size:15px;line-height:1.7;color:var(--text2);margin:0;max-width:70ch}
+.rb-wire{margin-top:18px;padding-top:12px;border-top:1px dashed var(--border2);max-width:70ch}
+.rb-wire-head{font-size:12px;color:var(--text);margin-bottom:8px}
+.rb-wire-head span{color:var(--text3);margin-left:6px;font-size:11px}
+.rb-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.rb-chip{font-size:11px;color:var(--text2);border:1px solid var(--border2);padding:3px 8px;border-radius:2px}
+.rb-wire p{font-size:12px;line-height:1.6;color:var(--text3);margin:0}
+.rb-receipts{border-left:1px solid var(--border);padding-left:20px;font-size:11px;line-height:1.5;color:var(--text2)}
+.rb-receipts-head{font-size:11px;color:var(--text3);margin-bottom:8px}
+.rb-receipts dl{margin:0}
+.rb-row{display:grid;grid-template-columns:72px 1fr;gap:10px;padding:5px 0;border-top:1px solid var(--border)}
+.rb-row dt{color:var(--text3)} .rb-row dd{margin:0;color:var(--text2);min-width:0;overflow-wrap:anywhere}
+.rb-row b{color:var(--text);font-weight:600} .rb-row em{font-style:normal;color:var(--text3)}
+.rb-more{margin-top:4px} .rb-more summary{cursor:pointer;color:var(--text3);font-size:10px} .rb-more summary:hover{color:var(--text2)}
+.rb-aside{display:flex;flex-direction:column;gap:1px;padding:4px 0;border-top:1px dotted var(--border)} .rb-aside span{color:var(--text2)} .rb-aside em{color:var(--text3);font-size:10px}
+.rb-silent{color:var(--text3);padding-top:4px}
+.rb-foot{font-size:11px;line-height:1.5;color:var(--text3);margin:14px 0 0;max-width:70ch}
+.rb-foot.rb-law{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);max-width:none}
+.card-when.RECORD{color:var(--accent4);border-color:rgba(245,165,90,.35)}
+@media(max-width:900px){.rb-measures{grid-template-columns:1fr}.rb-body{grid-template-columns:1fr}.rb-receipts{border-left:none;padding-left:0;border-top:1px solid var(--border);padding-top:12px}}
 .card-img{width:100%;height:150px;object-fit:cover;display:block;margin:-24px -24px 14px;width:calc(100% + 48px);border-bottom:1px solid var(--border);filter:saturate(.9);}
 .card-img-src{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.08em;color:var(--text3);margin:-8px 0 10px;}
 .lens-ideas-strip{border-top:1px solid var(--border);padding-top:20px;margin-top:8px;}
@@ -1216,11 +1262,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .move-row{display:grid;grid-template-columns:80px 1fr;gap:10px;padding:7px 0;border-bottom:1px dashed var(--border)}
 .move-k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding-top:2px}
 .move-v{font-size:12.5px;line-height:1.5;color:var(--text)}
-#live-results.show-all .results-lens-panel:not(#rlp-truth){display:block;grid-template-columns:none}
-#live-results.show-all .results-lens-panel:not(#rlp-truth) .lens-panel-head{margin-bottom:12px}
 #live-results.show-all #rlp-truth{padding-top:4px}
 #live-results.show-all #rlp-truth .truth-panel{display:none!important}
-#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#live-results.show-all #rlp-findings .results-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 #live-results.show-all .lens-ideas-strip{display:none}
 #live-results.show-all #results-grid-truth{display:none}
 #live-results.show-all .results-lens-panel.empty{display:none}
@@ -1258,8 +1302,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .exc-panel .ep-tally{font-family:'DM Serif Display',serif;font-size:20px;margin-left:auto}
 @media(max-width:860px){.exc-panel .ep-cols{grid-template-columns:1fr}}
 
-@media(max-width:1000px){.moves-grid{grid-template-columns:1fr}#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){#live-results.show-all .results-lens-panel:not(#rlp-truth) .results-grid{grid-template-columns:1fr}.mean-row,.move-row{grid-template-columns:1fr}}
+@media(max-width:1000px){.moves-grid{grid-template-columns:1fr}#live-results.show-all #rlp-findings .results-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){#live-results.show-all #rlp-findings .results-grid{grid-template-columns:1fr}.mean-row,.move-row{grid-template-columns:1fr}}
 
 /* EXCAVATE_ARRIVAL: the photo leads a tile; the tag rides on a dark plate, the corner ornament steps aside */
 .insight-card.has-img::after{display:none}
@@ -2123,6 +2167,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
     <button class="rlb cat-brand"           id="rlb-brand"    onclick="switchResultsLens('brand')">Brand Health <span class="rlb-count" id="rlb-count-brand">—</span></button>
     <button class="rlb cat-truth"           id="rlb-truth"    onclick="switchResultsLens('truth')">Signal Truth <span class="rlb-count" id="rlb-count-truth">—</span></button>
   </div>
+  <!-- SEAM:READ_BRIEF: the findings, one grid, strongest first -->
+  <div class="results-lens-panel" id="rlp-findings"><div class="results-grid findings-grid" id="results-grid-all"></div></div>
   <div class="results-lens-panel" id="rlp-consumer">
     <div class="lens-panel-head cat-consumer">Consumer Behavior</div>
     <div class="results-grid" id="results-grid-consumer"></div>
@@ -3167,7 +3213,7 @@ async function runLiveSearch(q){
     let synthesis=null;
     try {
       const _gm=window._gatherMeta||{};
-      const _pl={ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped).map(r=>r.id), corpus:g.corpus };   // SEAM:EXC_FRAME: the frame the gather used rides with the corpus; SEAM:EXC_SPEED: the rails it ran, so the wire is not asked twice
+      const _pl={ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped&&!((r.id==='competitors'||r.id==='counter')&&!(r.n>0))).map(r=>r.id), corpus:g.corpus };   // SEAM:EXC_FRAME: the frame the gather used rides with the corpus; SEAM:EXC_SPEED: the rails it ran, so the wire is not asked twice
       let d=null; const _st={ heard:false };
       try { d = await _synthesizeStream(_pl, (ev, data) => { if (ev === 'stage') _loaderStage(data); else if (ev === 'draft') _loaderDraft(data); }, _st); }   // SEAM:EXC_STREAM
       catch (e) { d = await _synthesizePlainAfterCut(_pl, _st.heard); }   // SEAM:READ_QUALITY — THE READ compiles on every live search
@@ -3816,7 +3862,7 @@ async function excPanelRun(label){
     try{
       const g=await _excGather(q);
       const _gm=window._gatherMeta||{};
-      const d=await api('excavate/synthesize',{ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped).map(r=>r.id), corpus:g.corpus });   // SEAM:EXC_SCORE: the panel runs the read exactly as a client does
+      const d=await api('excavate/synthesize',{ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped&&!((r.id==='competitors'||r.id==='counter')&&!(r.n>0))).map(r=>r.id), corpus:g.corpus });   // SEAM:EXC_SCORE: the panel runs the read exactly as a client does
       const dd=(d&&d.ok&&d.data)?d.data:null;
       if(dd){ rec.ok=true; rec.data=_epSlim(dd); } else { rec.error=(d&&d.error)||'no_data'; }
     }catch(e){ rec.error=String(e&&e.message||e).slice(0,160); }
@@ -4842,7 +4888,7 @@ async function _runLensPipeline(q, cat) {
       T(fetchCrossRef(lensQ)),
       T(fetchWorldBank(q)),
       T(fetchPatents(q)),
-      T(_fetchJSON(`https://api.gdeltproject.org/api/v2/doc/doc?query=${enc(lensQ)}&mode=artlist&maxrecords=10&format=json&timespan=3months`)),
+      Promise.resolve(null),   // GDELT is the worker's rail now (SEAM:GATHER_SERVER); asked from the browser it answered 429
       T(fetchArxiv(lensQ)),
     ]);
     return _synthesiseLens(q, cat, {wSum, wSrch, oa, cr, wb, patents, gdelt, ax});
@@ -4855,7 +4901,7 @@ async function _runLensPipeline(q, cat) {
       T(fetchReddit(q)),
       T(fetchOpenLibrary(lensQ)),
       T(_fetchJSON(`https://hn.algolia.com/api/v1/search?query=${enc(lensQ)}&tags=story&hitsPerPage=8&numericFilters=points>3`)),
-      T(_fetchJSON(`https://api.gdeltproject.org/api/v2/doc/doc?query=${enc(lensQ)}&mode=artlist&maxrecords=10&format=json&timespan=6months`)),
+      Promise.resolve(null),   // GDELT is the worker's rail now (SEAM:GATHER_SERVER)
       T(fetchOpenAlexConcepts(lensQ)),
       T(fetchWikidata(q)),
     ]);
@@ -5220,7 +5266,8 @@ function _moveCard(m, all){
 // EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
 // SEAM:EXC_ACCURACY: a number the evidence does not carry is said out loud on the card that states it.
 function _checkChip(c){ return (c&&Array.isArray(c.ungrounded)&&c.ungrounded.length)?`<span class="card-when CHECK" title="This figure is not in the cited evidence as written">unverified: ${c.ungrounded.map(safe).join(', ')}</span>`:''; }
-function _whenChip(d){ if(!d) return ''; if(d.newest) return `<span class="card-when ${safe(d.band||'')}">${safe(d.band||'')} · ${safe(d.newest)}</span>`; return d.archive_only?`<span class="card-when ARCHIVE">ARCHIVE ONLY</span>`:''; }
+function _whenChip(d){ if(!d) return ''; if(d.record) return `<span class="card-when RECORD" title="A strong older source: the baseline the fresh evidence moves against">FROM THE RECORD${d.newest?' · '+safe(String(d.newest).slice(0,4)):''}</span>`;   // SEAM:EXC_RECORD
+  if(d.newest) return `<span class="card-when ${safe(d.band||'')}">${safe(d.band||'')} · ${safe(d.newest)}</span>`; return d.archive_only?`<span class="card-when ARCHIVE">ARCHIVE ONLY</span>`:''; }
 function _fillLensPanels(lenses, truth){
   const all=truth.allInsights||[];
   const card=(ins,i,cat)=>{
@@ -5261,6 +5308,11 @@ function _fillLensPanels(lenses, truth){
   const badge=document.getElementById('rlb-count-truth');
   if(badge) badge.textContent=all.length||'—';
   const bAll=document.getElementById('rlb-count-all'); if(bAll) bAll.textContent=all.length||'—';
+  // SEAM:READ_BRIEF: one grid, strongest first (confidence, then the newest evidence), each card carrying its lens.
+  const allGrid=document.getElementById('results-grid-all');
+  if(allGrid){ const rankC={High:3,Medium:2,Low:1};
+    const ord=all.map((ins,i)=>({ins,i})).sort((a,b)=>((rankC[b.ins.confidence]||0)-(rankC[a.ins.confidence]||0))||String((b.ins.dated&&b.ins.dated.newest)||'').localeCompare(String((a.ins.dated&&a.ins.dated.newest)||''))||(a.i-b.i));
+    allGrid.innerHTML=ord.map((x,k)=>card(x.ins,k,x.ins.category||'consumer')).join('')||`<p style="color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:24px 0">No finding compiled for this query.</p>`; }
   switchResultsLens('all');
 }
 /* SEAM:READ_SURFACE — an image for a finding comes from the source that produced it: the gathered item with the
@@ -5304,47 +5356,67 @@ function _renderReadBlock(q, data, mode){
   const el=document.getElementById('read-block'); if(!el) return;
   const lines=Array.isArray(data.read)?data.read.filter(Boolean):[];
   if(mode!=='live'||(!lines.length&&!data.brief)){ el.style.display='none'; el.innerHTML=''; return; }
+  /* SEAM:READ_BRIEF: THE READ is a brief, not a post. The claim and the move lead; the frame is a plate; the measures are
+     a strip of tiles beside their sparkline; the interpretation reads beside a rail of receipts (what the read stood on,
+     what it set aside, what it cost in time); the wire is a quiet aside. One voice, one column of prose, no run-on meta. */
   const meta=window._gatherMeta||{}; const att=meta.meta&&meta.meta.attention; const vol=meta.meta&&meta.meta.volume;
-  const facts=[];
-  if(att&&att.last_30d!=null) facts.push(`${att.last_30d.toLocaleString()} Wikipedia views in 30 days (${att.prev_30d.toLocaleString()} the 30 before)`);
-  if(vol&&vol.points) facts.push(`GDELT coverage series, ${vol.points} points over 3 months`);
-  if(meta.cls) facts.push(`read as ${meta.cls}`);
-  if(Array.isArray(meta.rails)&&meta.rails.length) facts.push(`${meta.rails.filter(r=>r.n>0).length} of ${meta.rails.length} rails answered${meta.rails.some(r=>r.skipped==='late')?' ('+meta.rails.filter(r=>r.skipped==='late').length+' late, not waited for)':''}`);
-  // SEAM:EXC_FRAME / SEAM:EXC_RELEVANCE / SEAM:EXC_SPEED: the frame the read answered, what was set aside, and the time it took.
-  const fr=data.frame||null, rel=data.relevance||null, tm=data.timing||null, rc=data.read_checks||null;
-  const _frHtml=fr?`<div class="read-frame">${fr.market?`<span class="rf-k">MARKET</span><span class="rf-v">${safe(fr.market)}</span>`:''}${fr.category?`<span class="rf-k">CATEGORY</span><span class="rf-v">${safe(fr.category)}</span>`:''}${fr.audience?`<span class="rf-k">AUDIENCE</span><span class="rf-v">${safe(fr.audience)}</span>`:''}${Array.isArray(fr.competitors)&&fr.competitors.length?`<span class="rf-k">AGAINST</span><span class="rf-v">${fr.competitors.map(safe).join(' · ')}</span>`:''}${Array.isArray(fr.competitors_observed)&&fr.competitors_observed.length?`<span class="rf-k">SEEN BESIDE IT</span><span class="rf-v">${fr.competitors_observed.map(safe).join(' · ')}</span>`:''}${fr.question?`<div class="rf-q">${safe(fr.question)}</div>`:''}</div>`:'';
-  // SEAM:EXC_MEASURE: what the lake counts about this frame, with its own twelve weeks.
-  const ms=data.measures||null;
-  const _msHtml=(ms&&Array.isArray(ms.series)&&ms.series.length)?`<div class="read-measures">${_sparkline(ms.series,260,40)}${_doorMeasureRow(ms,null)}<span class="rm-cap">${safe(String(ms.weeks||12))} weeks of lake signals matching the frame · state ${safe(ms.state||'STEADY')}${ms.shape?' · '+safe(ms.shape):''}</span></div>`:'';
-  const ov=data.overnight||null;
-  const _ovHtml=ov?`<p class="read-foot" style="margin-top:6px">Overnight read for the night of ${safe(String(ov.night||''))}${ov.status==='reused'?' · evidence unchanged since the last read':''}${ov.prev_night?' · previous read '+safe(String(ov.prev_night)):''}. <button class="read-deeper" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
-  if(rel&&rel.framed) facts.push(`${rel.kept} lines read${rel.set_aside?' · '+rel.set_aside+' set aside as off-frame':''}${rel.restored?' · '+rel.restored+' kept to reach the floor':''}`);
-  // SEAM:EXC_HARVEST: the receipts. Pages read, the gap named and filled, the table written, the silent rails.
-  const hv=data.harvest||null;
-  if(hv&&hv.pages&&hv.pages.tried) facts.push(`${hv.pages.read} of ${hv.pages.tried} pages read${hv.pages.dated?' ('+hv.pages.dated+' dated by the page)':''}`);
-  if(hv&&hv.gap) facts.push(`gap check: ${hv.gap.missing&&hv.gap.missing.length?'lacked '+hv.gap.missing.slice(0,3).join(', '):'nothing named'}${hv.gap.added?' · +'+hv.gap.added+' lines found':''}`);
-  if(hv&&hv.facts&&hv.facts.tabled) facts.push(`${hv.facts.tabled} lines tabled as facts${hv.facts.failed?' ('+hv.facts.failed+' chunk'+(hv.facts.failed>1?'s':'')+' left raw)':''}`);
-  if(Array.isArray(meta.rails)&&meta.rails.length){ const silent=meta.rails.filter(r=>r&&!(r.n>0)&&r.id!=='kg').map(r=>(r.name||r.id)+(r.skipped==='late'?' (late)':r.skipped==='cap'?' (cap)':r.ok===false?' (error)':'')); if(silent.length) facts.push(`silent: ${silent.slice(0,8).join(', ')}${silent.length>8?' +'+(silent.length-8):''}`); }
-  if(tm&&tm.total_ms) facts.push(`read in ${(tm.total_ms/1000).toFixed(0)}s (evidence ${(((tm.frame_ms||0)+(tm.wire_ms||0)+(tm.pages_ms||0)+(tm.gap_ms||0)+(tm.facts_ms||0))/1000).toFixed(0)}s, writing ${((tm.model_ms||0)/1000).toFixed(0)}s${tm.passes>1?', '+tm.passes+' passes':''})`);
-  if(data.score&&Number.isFinite(data.score.score)) facts.push(`harvest ${data.score.score}/100`);
-  const _rcHtml=(rc&&rc.ungrounded&&rc.ungrounded.length)?`<p class="read-check">A figure in this read is not in its evidence as written: ${rc.ungrounded.map(safe).join(', ')}. Read it as the model's arithmetic, not a source's number.</p>`:'';
-  // EXC_INTEL: the evidence window (how many lines in each band, newest and oldest) and the lane the read compiled on.
-  const win=data.window||null, mdl=data.model||null, _bands=['NOW','RECENT','CURRENT','CONTEXT','ARCHIVE'];
-  const _winHtml=win?`<div class="read-window">${_bands.map(b=>`<span class="rw-band ${b}${(win[b]||0)?'':' zero'}"><b>${win[b]||0}</b>${b}</span>`).join('')}<span class="rw-note">${win.newest?'newest '+safe(win.newest):''}${win.oldest?' · oldest '+safe(win.oldest):''}${win.widened?' · window widened: dated evidence was thin':''}</span></div>`:'';
-  const _mdlHtml=mdl?`<p class="read-foot">Compiled on ${safe(mdl.model||'')}${mdl.lane==='reserve'?' (reserve model'+(mdl.reason?': '+safe(mdl.reason):'')+')':''}${mdl.cached?' · served from today\'s read':''}${data.compiled_at?' · '+safe(String(data.compiled_at).slice(0,16).replace('T',' '))+' UTC':''} · time is a weight: NOW 24h · RECENT 30d · CURRENT 90d · CONTEXT 2y · ARCHIVE older or undated</p>`:'';
-  const _px=meta.meta&&meta.meta.pplx; const _pxHtml=(_px&&_px.framing)?`<p class="read-interp" style="font-size:12px;color:var(--text3)"><strong style="color:var(--text2)">What the wire says right now</strong> (Perplexity Sonar, ${safe(String(_px.sources||0))} sources, framing not evidence). ${safe(_px.framing)}</p>`:'';   // SEAM:PPLX_RAIL
-  el.innerHTML=`<div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>
+  const fr=data.frame||null, rel=data.relevance||null, tm=data.timing||null, rc=data.read_checks||null, hv=data.harvest||null, ms=data.measures||null, win=data.window||null, mdl=data.model||null, ov=data.overnight||null, sc=data.score||null;
+  const n=x=>safe(String(x==null?'':x));
+  // The harvest meter: the read's own score, 0 to 100.
+  const _scoreHtml=(sc&&Number.isFinite(sc.score))?`<div class="rb-score" title="Harvest score: evidence volume and freshness, outlets, corroboration, grounding, the competitive set, and time"><span class="rb-score-bar"><i style="width:${Math.max(2,Math.min(100,sc.score))}%"></i></span><span class="rb-score-n">${n(sc.score)}</span><span class="rb-score-k">harvest</span></div>`:'';
+  // A figure the evidence does not carry is said once, quietly, under the claim.
+  const _rcHtml=(rc&&rc.ungrounded&&rc.ungrounded.length)?`<p class="rb-check">Not in the evidence as written: ${rc.ungrounded.map(safe).join(', ')}. Read it as the model's arithmetic, not a source's number.</p>`:'';
+  // The frame plate.
+  const cells=[];
+  if(fr){ if(fr.market) cells.push(['market',fr.market]); if(fr.category) cells.push(['category',fr.category]); if(fr.audience) cells.push(['audience',fr.audience]);
+    if(Array.isArray(fr.competitors)&&fr.competitors.length) cells.push(['against',fr.competitors.join(', ')]);
+    if(Array.isArray(fr.competitors_observed)&&fr.competitors_observed.length) cells.push(['seen beside it',fr.competitors_observed.join(', ')]); }
+  const _plateHtml=(cells.length||(fr&&fr.question))?`<div class="rb-plate">${cells.map(c=>`<div class="rb-cell"><span class="rb-k">${n(c[0])}</span><span class="rb-v">${n(c[1])}</span></div>`).join('')}${fr&&fr.question?`<div class="rb-q">${n(fr.question)}</div>`:''}</div>`:'';
+  // SEAM:EXC_MEASURE: the measures strip, the sparkline and its tiles. Numbers in text, the line in the accent.
+  let _msHtml='';
+  if(ms&&Array.isArray(ms.series)&&ms.series.length){
+    const vel=ms.velocity_pct==null?'':(ms.velocity_pct>=0?'+':'')+ms.velocity_pct+'%';
+    const tiles=[[n(ms.recent_7d),'this week'+(vel?' <em>'+n(vel)+'</em>':'')],[n(ms.prior_7d),'the week before'],[n(ms.outlets),ms.outlets===1?'outlet':'outlets'],[n(ms.weeks_touched)+'<small>/'+n(ms.weeks||12)+'</small>','weeks touched']];
+    if(ms.share_pct!=null) tiles.push([n(ms.share_pct)+'<small>%</small>','of '+n(String(ms.territory||'territory').replace(/-/g,' '))+' this week']);
+    tiles.push([`<span class="rb-state ${n(ms.state||'STEADY')}">${n(String(ms.state||'STEADY').toLowerCase())}</span>`,ms.shape?'state · '+n(String(ms.shape).toLowerCase()):'state']);
+    _msHtml=`<div class="rb-measures"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of lake signals on this frame</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div></div>`;
+  }
+  // SEAM:PPLX_RAIL: the wire, Perplexity's framing, named brands first, prose after. Framing, never evidence.
+  const _px=meta.meta&&meta.meta.pplx; let _pxHtml='';
+  if(_px&&_px.framing){ const names=[]; String(_px.framing).replace(/\*\*([^*]{2,60})\*\*/g,(m,x)=>{ const t=x.trim(); if(t&&!names.includes(t)&&names.length<8) names.push(t); return m; });
+    _pxHtml=`<div class="rb-wire"><div class="rb-wire-head">On the wire <span>Perplexity Sonar · ${n(_px.sources||0)} sources · framing, not evidence</span></div>${names.length?`<div class="rb-chips">${names.map(x=>`<span class="rb-chip">${safe(x)}</span>`).join('')}</div>`:''}<p>${safe(String(_px.framing).replace(/\*\*/g,'').replace(/\[\d+\]/g,''))}</p></div>`; }
+  // The receipts rail: what the read stood on, what it set aside, what it cost.
+  const rows=[];
+  if(rel&&rel.framed){ const sample=Array.isArray(rel.sample)?rel.sample.filter(s=>s&&s.title):[];
+    rows.push(['evidence',`<b>${n(rel.kept)}</b> lines read${rel.set_aside?`, <b>${n(rel.set_aside)}</b> set aside`:''}${rel.restored?`, ${n(rel.restored)} kept to reach the floor`:''}${sample.length?`<details class="rb-more"><summary>what was set aside</summary>${sample.map(s=>`<div class="rb-aside"><span>${safe(s.title)}</span><em>${n(String(s.why||'').replace(/^exclude:/,'names '))}</em></div>`).join('')}</details>`:''}`]); }
+  else if(rel) rows.push(['evidence',`<b>${n(rel.kept)}</b> lines read`]);
+  if(win){ const bands=['NOW','RECENT','CURRENT','CONTEXT','ARCHIVE'].filter(b=>win[b]).map(b=>`<b>${n(win[b])}</b> ${b.toLowerCase()}`); if(bands.length) rows.push(['window',bands.join(', ')+(win.newest?`<br>newest ${n(win.newest)}`:'')+(win.oldest?`, oldest ${n(win.oldest)}`:'')+(win.widened?'<br>widened: dated evidence was thin':'')]); }
+  if(hv&&hv.pages&&hv.pages.tried) rows.push(['pages',`<b>${n(hv.pages.read)}</b> of ${n(hv.pages.tried)} read${hv.pages.dated?`, ${n(hv.pages.dated)} dated by the page`:''}`]);
+  if(hv&&hv.facts&&hv.facts.chunks) rows.push(['fact table',`<b>${n(hv.facts.tabled)}</b> lines tabled${hv.facts.failed?`, ${n(hv.facts.failed)} chunk${hv.facts.failed>1?'s':''} left raw`:''}`]);
+  if(hv&&hv.gap) rows.push(['gap check',(hv.gap.missing&&hv.gap.missing.length?'lacked '+hv.gap.missing.slice(0,3).map(safe).join(', '):'nothing named')+(hv.gap.added?`<br><b>+${n(hv.gap.added)}</b> lines found`:'')]);
+  if(hv&&hv.framed&&hv.framed.asked&&hv.framed.asked.length) rows.push(['asked again',hv.framed.asked.map(x=>n(x==='competitors'?'competitive set':x==='counter'?'counter view':x)).join(', ')+(hv.framed.added?`, <b>+${n(hv.framed.added)}</b> lines`:', nothing new')]);
+  if(Array.isArray(meta.rails)&&meta.rails.length){ const late=meta.rails.filter(r=>r.skipped==='late').length; const silent=meta.rails.filter(r=>r&&!(r.n>0)&&r.id!=='kg').map(r=>(r.name||r.id)+(r.skipped==='late'?' (late)':r.skipped==='cap'?' (cap)':r.ok===false?' (error)':''));
+    rows.push(['rails',`<b>${n(meta.rails.filter(r=>r.n>0).length)}</b> of ${n(meta.rails.length)} answered${late?`, ${n(late)} late, not waited for`:''}${silent.length?`<details class="rb-more"><summary>${n(silent.length)} silent</summary><div class="rb-silent">${silent.map(safe).join(', ')}</div></details>`:''}`]); }
+  if(att&&att.last_30d!=null) rows.push(['attention',`<b>${n(att.last_30d.toLocaleString())}</b> Wikipedia views in 30 days, ${n(att.prev_30d.toLocaleString())} the 30 before`]);
+  if(vol&&vol.points) rows.push(['coverage',`GDELT series, ${n(vol.points)} points over 3 months`]);
+  if(tm&&tm.total_ms){ const ev=((tm.frame_ms||0)+(tm.wire_ms||0)+(tm.pages_ms||0)+(tm.gap_ms||0)+(tm.facts_ms||0))/1000; const det=Array.isArray(tm.detail)?tm.detail:[];
+    const why=det.length>1?det.slice(0,-1).map((p,i)=>`pass ${i+1} on ${n(p.lane||'live')}: ${p.stop==='max_tokens'?'cut at the token limit':p.reason?n(p.reason):'did not parse'}${p.chars?`, ${n(Number(p.chars).toLocaleString())} chars`:''}${p.parsed?', '+n(p.parsed):''}`).join('; '):'';
+    rows.push(['time',`<b>${n((tm.total_ms/1000).toFixed(0))} s</b>, evidence ${n(ev.toFixed(0))} s, writing ${n(((tm.model_ms||0)/1000).toFixed(0))} s${tm.passes>1?`, ${n(tm.passes)} passes`:''}${why?`<br><em>${why}</em>`:''}`]); }
+  if(mdl) rows.push(['compiled',`${n(mdl.model||'')}${mdl.lane==='reserve'?' (reserve model'+(mdl.reason?': '+n(mdl.reason):'')+')':''}${mdl.lane==='overnight'?' overnight':''}${mdl.cached?', served from today\'s read':''}${data.compiled_at?'<br>'+n(String(data.compiled_at).slice(0,16).replace('T',' '))+' UTC':''}`]);
+  if(meta.cls) rows.push(['read as',n(meta.cls)]);
+  const _rcptHtml=rows.length?`<aside class="rb-receipts"><div class="rb-receipts-head">What this read stood on</div><dl>${rows.map(r=>`<div class="rb-row"><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl></aside>`:'';
+  const _ovHtml=ov?`<p class="rb-foot">Overnight read for the night of ${n(ov.night)}${ov.status==='reused'?', evidence unchanged since the last read':''}${ov.prev_night?', previous read '+n(ov.prev_night):''}. <button class="rb-go-live" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
+  el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>${_scoreHtml}</div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${_rcHtml}
-    ${_frHtml}
+    ${_plateHtml}
     ${_msHtml}
-    ${_winHtml}
-    ${data.brief?`<p class="read-interp"><strong>The interpretation.</strong> ${safe(data.brief)}</p>`:''}
-    ${facts.length?`<p class="read-interp" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text3)">${facts.map(safe).join(' · ')}</p>`:''}
-    ${_pxHtml}
-    ${_mdlHtml}
-    ${_ovHtml}
+    <div class="rb-body">
+      <div class="rb-prose">${data.brief?`<div class="rb-interp-head">The interpretation</div><p class="rb-interp">${safe(data.brief)}</p>`:''}${_pxHtml}${_ovHtml}</div>
+      ${_rcptHtml}
+    </div>
+    <p class="rb-foot rb-law">Time is a weight: now 24h, recent 30d, current 90d, context 2y, archive older or undated. A strong older source is the record: cited with its year, never as news.</p>
     <div class="read-deeper">
       <button onclick="switchResultsLens('consumer');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CONSUMER</button>
       <button onclick="switchResultsLens('market');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · MARKET</button>
@@ -5353,11 +5425,10 @@ function _renderReadBlock(q, data, mode){
       <button onclick="openSourcesModal()">EVERY SOURCE</button>
       <button onclick="downloadReport()">DOWNLOAD THE READ</button>
       <button onclick="trackThis(document.getElementById('search-input').value)">TRACK THIS</button>
-      <button onclick="window.open('../play/?brief='+encodeURIComponent((document.getElementById('read-block').innerText||'').split('\n').filter(Boolean).slice(1,3).join(' ')),'_blank')">MAKE WITH PLAY</button>
+      <button onclick="window.open('../play/?brief='+encodeURIComponent([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' ')),'_blank')">MAKE WITH PLAY</button>
     </div>`;
   el.style.display='block';
 }
-
 function _renderResultsV2(q, lenses, truth, mode) {
   lastMode    = mode;
   lastSources = truth.allSources||[];
@@ -8742,7 +8813,7 @@ document.addEventListener('keydown', function(e) {
 //  • renderTrendingNow(): sidebar rotation from a 20-topic pool
 // ════════════════════════════════════════════════════════════════
 
-const _FI_CACHE_KEY  = 'unsurfaced_fi_v4'; // v4: EXCAVATE_ARRIVAL, 8 to 12 tiles, photo-led layout
+const _FI_CACHE_KEY  = 'unsurfaced_fi_v5'; // v5: the overnight door (SEAM:EXC_DOOR v2); v4 held yesterday's tiles for a day
 let   _FI_LAKE        = null;   // live PROPOSE payload when the lake owns the grid
 let   _fiStateFilter  = null;   // active state-strip filter, null = all
 const _FI_LAKE_MIN    = 2;      // SEAM:HUB_FEED — fewer honest cards beat a padded eight; below two, the grid says the lake is filling
@@ -9216,7 +9287,7 @@ function _renderLakeCard(card, i) {
    title is the claim the overnight read makes; the move rides beneath. No photo. A click opens the stored read. */
 function _sparkline(series, w, h) {
   const v = (series || []).map(n => Number(n) || 0); if (v.length < 2) return '';
-  const max = Math.max(1, ...v), pad = 3, W = w || 220, H = h || 44;
+  const max = Math.max(1, ...v), pad = 4, W = w || 220, H = h || 44;
   const x = i => pad + (i / (v.length - 1)) * (W - pad * 2), y = n => H - pad - (n / max) * (H - pad * 2);
   const pts = v.map((n, i) => x(i).toFixed(1) + ',' + y(n).toFixed(1)).join(' ');
   const area = pad + ',' + (H - pad) + ' ' + pts + ' ' + (W - pad) + ',' + (H - pad);

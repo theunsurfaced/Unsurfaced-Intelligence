@@ -566,14 +566,30 @@ async function synthesize(body, env, origin, hooks) {
     // The pages are read onto the items themselves (excBudget hands out copies), so the text and the date survive the second budget.
     const byKey = new Map(); for (const c of corpusIn.concat(addedAll)) { const k = excKey(c); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(c); }
     const originals = [].concat(...plan.merged.map(c => byKey.get(excKey(c)) || []));
+    // SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: a framed rail the gather did not deliver (late, throttled, or answered with nothing
+    // that reached the corpus) is asked again here, beside the gap round, with its own deadline.
+    const needFramed = frame0 && gathered && body.framed !== false
+      ? ['competitors', 'counter'].filter(id => (id !== 'competitors' || (frame0.competitors || []).length) && (!ran.has(id) || !body.corpus.some(c => c && (id === 'competitors' ? c.entity : c.stance)))) : [];
     const [pages, gap] = await Promise.all([
       body.pages === false ? Promise.resolve(null) : excReadPages(originals).catch(excQuiet('pages', null)),
       (frame0 && body.gap !== false) ? excGapCheck(env, frame0, plan.merged).catch(excQuiet('gap', null)) : Promise.resolve(null)]);
     T.pages_ms = Date.now() - T1;
+    const T2 = Date.now();
+    const [extraRaw, framedExtra] = await Promise.all([
+      (gap && gap.queries && gap.queries.length) ? excGapRound(env, gap, { meta: {}, frame: frame0 }).catch(excQuiet('gap_round', [])) : Promise.resolve([]),
+      needFramed.length ? excFramedRerun(env, frame0, query, needFramed).catch(excQuiet('framed_rerun', [])) : Promise.resolve([])]);
+    let framedAdded = 0;
+    if (framedExtra && framedExtra.length) {
+      excStampTiers(framedExtra, tiers);
+      const g3 = excRelevance(framedExtra.filter(c => c && c.title && looksEnglish(c.title + ' ' + (c.text || ''))), frame0, 0);   // the gate still reads them: an excluded neighbor stays out
+      const have = new Set(corpusIn.concat(addedAll).map(excKey));
+      const fresh = g3.kept.filter(c => !have.has(excKey(c)));
+      framedAdded = fresh.length;
+      if (fresh.length) { corpusIn = corpusIn.concat(fresh); gate.dropped.push(...g3.dropped); }
+    }
     let gapAdded = 0;
     if (gap && gap.queries && gap.queries.length) {
-      const T2 = Date.now();
-      const extra = (await excGapRound(env, gap, { meta: {}, frame: frame0 }).catch(excQuiet('gap_round', [])))
+      const extra = (extraRaw || [])
         .filter(it => it && it.title && looksEnglish(it.title + ' ' + (it.text || '')))
         .map(it => ({ lens: it.kind === 'research' ? 'consumer' : (it.kind === 'discourse' ? 'culture' : 'market'), source: it.source_name || 'gap', title: it.title, text: String(it.text || '').slice(0, 700), url: it.url || '',
           published_at: it.published_at || null, kind: it.kind || null, tier: it.source_tier || null, rail: 'gap', gap_q: it.gap_q || null }));
@@ -583,9 +599,10 @@ async function synthesize(body, env, origin, hooks) {
       const fresh = (frame0 ? g2.kept : extra).filter(c => !have.has(excKey(c)));
       gapAdded = fresh.length;
       if (fresh.length) { corpusIn = corpusIn.concat(fresh); gate.dropped.push(...g2.dropped); }
-      gap.added = gapAdded; gap.ms = Date.now() - T2;
+      gap.added = gapAdded;
     }
-    if ((pages && (pages.read || pages.dated)) || gapAdded) { unrank(corpusIn); unrank(addedAll); plan = excBudget(corpusIn, addedAll); }
+    T.gap_ms = Date.now() - T2;   // the round and the framed rerun, together
+    if ((pages && (pages.read || pages.dated)) || gapAdded || framedAdded) { unrank(corpusIn); unrank(addedAll); plan = excBudget(corpusIn, addedAll); }
     const corpus = plan.open, added = plan.server, merged = plan.merged;
     if (!merged.length) return reply({ ok: false, error: 'no_corpus' }, 200, origin, env);
     // SEAM:EXC_FACTS + SEAM:EXC_MEASURE: the table is written and the lake is counted at the same time.
@@ -675,14 +692,14 @@ async function synthesize(body, env, origin, hooks) {
     const bandOf = n => excBand(excWhen(merged[n - 1]), now);
     const datedOf = ns => {
       const ds = ns.map(n => excWhen(merged[n - 1])).filter(Boolean).sort((a, b) => b - a);
+      const archiveOnly = ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE');
       return { newest: ds[0] ? ds[0].toISOString().slice(0, 10) : null, oldest: ds.length ? ds[ds.length - 1].toISOString().slice(0, 10) : null,
-        band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE') };
+        band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: archiveOnly, record: archiveOnly && ns.some(n => excRecord(merged[n - 1], now)) };   // SEAM:EXC_RECORD
     };
     // SEAM:EXC_ACCURACY: corroboration is weighed, not counted. Each distinct live outlet adds its tier's weight
     // (T0/T1 1, T2 0.8, T3 0.5, T4 0.4). High needs three outlets, weight 2 and something fresher than CONTEXT;
     // Medium needs two outlets and weight 1. Three blogs are Medium; one blog is never more than Low.
-    const earned = ns => excEarned(ns.filter(n => bandOf(n) !== 'ARCHIVE').map(n => merged[n - 1]),
-      ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'));
+    const earned = ns => excEarned(ns.map(n => merged[n - 1]), ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'), now);   // SEAM:EXC_RECORD: archive lines weigh themselves
     const insights = parsed.insights.slice(0, 8).map(x => {
       const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null;
       // SEAM:EXC_ACCURACY: a number the finding states must appear in the evidence it cites. One that does not
@@ -743,10 +760,12 @@ async function synthesize(body, env, origin, hooks) {
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
       relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, hits: gate.hits || null, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
-      timing: { frame_ms: T.frame_ms, wire_ms: T.wire_ms, pages_ms: T.pages_ms || 0, gap_ms: (gap && gap.ms) || 0, facts_ms: T.facts_ms || 0, model_ms: T.model_ms, total_ms: Date.now() - T.start, passes: passes.length, wire_skipped: !needWire && !needPaid },   // SEAM:EXC_SPEED
+      timing: { frame_ms: T.frame_ms, wire_ms: T.wire_ms, pages_ms: T.pages_ms || 0, gap_ms: T.gap_ms || 0, facts_ms: T.facts_ms || 0, model_ms: T.model_ms, total_ms: Date.now() - T.start, passes: passes.length, wire_skipped: !needWire && !needPaid,
+        detail: passes.map(p => ({ pass: p.pass, lane: p.lane, reason: p.reason, stop: p.stop, chars: p.chars, parsed: p.parsed })) },   // SEAM:EXC_SPEED; SEAM:EXC_PARSE: why a read took two passes is on the read
       measures: measures || null,   // SEAM:EXC_MEASURE
       harvest: { pages: pages ? { tried: pages.tried, read: pages.read, dated: pages.dated } : null, gap: gap ? { missing: gap.missing, asked: gap.queries.map(q => q.q), added: gap.added || 0 } : null,
-        facts: facts ? { tabled: facts.tabled, chunks: facts.chunks, failed: facts.failed } : null, observed, tiers: !!tiers },   // SEAM:EXC_HARVEST
+        facts: facts ? { tabled: facts.tabled, chunks: facts.chunks, failed: facts.failed } : null, observed, tiers: !!tiers,
+        framed: needFramed.length ? { asked: needFramed, added: framedAdded } : null },   // SEAM:EXC_HARVEST; SEAM:EXC_COMPETE: the rails asked again here
       model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cached: false }, compiled_at: new Date().toISOString() };
     data.score = excReadScore(data, merged, frame0, data.timing);   // SEAM:EXC_SCORE
     console.log('exc_read', JSON.stringify({ q: query.slice(0, 60), ev: merged.length, aside: gate.dropped.length, lane: compiled.lane, passes: passes.length, score: data.score.score, ms: data.timing, harvest: data.harvest }));
@@ -968,7 +987,7 @@ async function excTiersLoad(env) {
 /* SEAM:EXC_FACTS: the fact table. Haiku reads every evidence item and writes down what it states: the claims
  * (each with its number, copied exactly), the named entities, the date it speaks for and its stance. Sonnet then
  * writes from the table. A chunk that fails leaves its items as raw text; nothing is lost, only not tabled. */
-const EXC_FACTS = { CHUNK: 11, PAR: 4, TIMEOUT_MS: 9000, MAX_TOKENS: 1800 };
+const EXC_FACTS = { CHUNK: 8, PAR: 6, TIMEOUT_MS: 12000, MAX_TOKENS: 1500 };   // Oct 3: a chunk of 11 timed out and took its lines' facts with it
 const EXC_FACTS_SYS = 'You are a research coder. For each numbered item, write down only what the item itself states. Output a STRICT JSON array, one object per item, in order, no fences: ' +
   '[{"n":<item number>,"claims":["up to 4 short factual claims; copy every number, price or percent exactly as the item writes it; no interpretation"],' +
   '"entities":["up to 5 brand, company, product or person names the item names, as written"],"date":"the date the item speaks for as YYYY-MM-DD, or null",' +
@@ -1013,7 +1032,7 @@ function excObserved(items, frame) {
 /* SEAM:EXC_GAP: the second look. With the evidence in hand, Haiku names what the question still lacks and
  * writes the two or three searches that would fill it; the free rails run them once, inside a short deadline.
  * One round, never more. A read is never held for it. */
-const EXC_GAP = { TIMEOUT_MS: 4500, ROUND_MS: 5500, MAX_TOKENS: 350 };
+const EXC_GAP = { TIMEOUT_MS: 4500, ROUND_MS: 8000, MAX_TOKENS: 350 };   // the round shares GDELT's slots with the framed rerun (SEAM:EXC_GDELT_SPACE)
 const EXC_GAP_SYS = 'You check research coverage. Given a FRAME, its QUESTION and the EVIDENCE gathered so far (titles with dates), name what the question still lacks and the searches that would fill it. ' +
   'Output STRICT JSON only, no fences: {"missing":["up to 4 short phrases naming gaps: an unnamed competitor, pricing, the newest week, a market, a counter view"],' +
   '"queries":[{"rail":"news|web|research","q":"a search under 8 words"}]} with at most 3 queries. Never use the em dash character.';
@@ -1041,6 +1060,22 @@ async function excGapRound(env, gap, ctx) {
   };
   const all = await Promise.race([Promise.all(gap.queries.map(q => one(q).catch(excQuiet('gap_q', [])))), new Promise(res => setTimeout(() => res([]), EXC_GAP.ROUND_MS))]);
   for (const list of all) if (Array.isArray(list)) out.push(...list);
+  return out.filter(it => it && it.title);
+}
+/* SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: the framed rails, asked again by synthesize when the gather reported them
+ * late. Each honors its daily cap and takes the GDELT slot like any other call; the whole rerun has one deadline. */
+const EXC_FRAMED = { TIMEOUT_MS: 10000 };
+async function excFramedRerun(env, frame, query, ids) {
+  const day = new Date().toISOString().slice(0, 10);
+  const ctx = { meta: {}, frame };
+  const one = async id => {
+    const r = RAIL_BY_ID[id]; if (!r || !RAIL_FNS[id] || !(await railAllowed(env, r, day))) return [];
+    const got = await RAIL_FNS[id](env, excRailQuery(r, query, frame), ctx, r).catch(excQuiet('framed_' + id, []));
+    return (got || []).map(it => ({ lens: 'market', source: it.source_name || r.name, title: it.title, text: String(it.text || '').slice(0, 700), url: it.url || '', published_at: it.published_at || null,
+      kind: it.kind || 'news', tier: it.source_tier || r.tier, rail: 'gather', entity: it.entity || null, stance: it.stance || null, rerun: true }));
+  };
+  const all = await Promise.race([Promise.all((ids || []).map(id => one(id).catch(excQuiet('framed_q', [])))), new Promise(res => setTimeout(() => res([]), EXC_FRAMED.TIMEOUT_MS))]);
+  const out = []; for (const list of all) if (Array.isArray(list)) out.push(...list);
   return out.filter(it => it && it.title);
 }
 /* SEAM:EXCAVATE_MEANING: the report contract. A finding says what it means for
@@ -1130,12 +1165,19 @@ function excOutletKey(c) {
   if (!k && c && c.url) { const m = String(c.url).match(/^https?:\/\/(?:www\.)?([^/]+)/i); k = m ? m[1].toLowerCase().replace(/\.(com|org|net|co|io|uk)\b.*$/, '').replace(/[^a-z0-9]+/g, '').replace(/^the(?=[a-z]{3,})/, '') : ''; }
   return k || String((c && c.title) || '').toLowerCase().slice(0, 40);
 }
-function excEarned(items, fresh) {
+// SEAM:EXC_RECORD: a strong older source (T0 or T1) is the record. It does not vanish from a finding's confidence
+// the way a dated blog does; it counts at half its tier's weight, so two 2024 studies make a Medium, never a High.
+function excRecord(c, now) { const d = excWhen(c); return !!c && !!d && excTier(c) <= 1 && excBand(d, now || Date.now()) === 'ARCHIVE'; }
+function excEarned(items, fresh, now) {
   const w = new Map();
+  const t = now || Date.now();
   for (const c of items || []) {
     if (!c) continue;
+    const arch = excBand(excWhen(c), t) === 'ARCHIVE';
+    const weight = arch ? (excRecord(c, t) ? EXC_TIER_W[excTier(c)] * 0.5 : 0) : EXC_TIER_W[excTier(c)];
+    if (!weight) continue;
     const k = excOutletKey(c);
-    w.set(k, Math.max(w.get(k) || 0, EXC_TIER_W[excTier(c)]));
+    w.set(k, Math.max(w.get(k) || 0, weight));
   }
   const n = w.size, score = [...w.values()].reduce((a, b) => a + b, 0);
   return n >= 3 && score >= 2 && fresh ? 'High' : n >= 2 && score >= 1 ? 'Medium' : 'Low';
@@ -1145,7 +1187,7 @@ function excEarned(items, fresh) {
 const EXC_MONTH = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
 const EXC_NOT_CLAIM = new RegExp('\\[\\d+\\]|\\bevidence\\s+(?:items?\\s+|lines?\\s+)?\\d+(?:\\s*(?:,|and|to|-)\\s*\\d+)*|\\b(?:19|20)\\d{2}-\\d{2}(?:-\\d{2})?\\b|' +
   '\\b' + EXC_MONTH + '\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+(?:19|20)\\d{2})?\\b|\\b\\d{1,2}(?:st|nd|rd|th)?\\s+' + EXC_MONTH + '\\b|' +
-  '\\b[qh][1-4]\\b|\\bweek\\s+\\d{1,2}\\b|\\b(?:19|20)\\d{2}s?\\b|\\b\\d{2}s\\b|\\bfy\\s?\\d{2,4}\\b|\\b\\d{1,2}:\\d{2}\\b|' +
+  '\\b[qh][1-4]\\b|\\bweek\\s+\\d{1,2}\\b(?!\\s?%)|\\b(?:19|20)\\d{2}s?\\b|\\b\\d{2}s\\b|\\bfy\\s?\\d{2,4}\\b|\\b\\d{1,2}:\\d{2}\\b|' +
   '\\b\\d{1,2}\\s?(?:-|to)\\s?\\d{1,2}[\\s-]+(?:year|yr)|[a-z]+-?\\d+[a-z]*\\b|\\b\\d+(?!(?:st|nd|rd|th)\\b)[a-z]{2,}\\b', 'gi');
 function excNumbers(text) {
   const t = String(text || '').replace(EXC_NOT_CLAIM, ' ');
@@ -1219,7 +1261,10 @@ function excRelevance(items, frame, min) {
   if (!frame || !frame.anchors || !frame.anchors.length) return { kept: list, dropped: [], restored: 0 };
   const norm = x => String(x || '').toLowerCase().replace(/['\u2019]/g, '').replace(/[^a-z0-9$%& ]+/g, ' ');
   const hay = c => ' ' + norm([c.title, c.text, c.snippet].filter(Boolean).join(' ')) + ' ';
-  const has = (h, p) => { const t = norm(p).trim(); return t && (h.includes(' ' + t + ' ') || h.includes(' ' + t + 's ')); };
+  const has = (h, p, loose) => { const t = norm(p).trim(); if (!t) return false; if (h.includes(' ' + t + ' ') || h.includes(' ' + t + 's ')) return true;
+    // A phrase anchor ("gen z hair care") also matches when every one of its words is present somewhere in the line; an exclude never does.
+    if (!loose) return false;
+    const ws = t.split(' ').filter(w => w.length >= 3 && !EXC_GATE.STOP.has(w)); return ws.length >= 2 && ws.every(w => h.includes(' ' + w + ' ') || h.includes(' ' + w + 's ')); };
   // SEAM:EXC_COMPETE: an item about a competitor is on-frame; the category's own nouns count as anchors too.
   const nouns = String((frame.category || '') + ' ' + (frame.entity || '')).toLowerCase().split(/[^a-z0-9&]+/).filter(w => w.length >= 4 && !EXC_GATE.STOP.has(w));
   const anchors = [...new Set(frame.anchors.concat(frame.entity ? [frame.entity.toLowerCase()] : [], (frame.competitors || []).map(x => String(x).toLowerCase()), nouns))];
@@ -1229,8 +1274,8 @@ function excRelevance(items, frame, min) {
     const h = hay(c);
     const ex = (frame.exclude || []).find(p => has(h, p));
     if (ex) { dropped.push({ c, why: 'exclude:' + ex, hard: true }); continue; }
-    if (c.kind === 'entity' || c.kind === 'attention' || c.entity || (Number.isFinite(c.similarity) && c.similarity >= EXC_GATE.SIM)) { kept.push(c); continue; }
-    const hit = anchors.find(p => has(h, p));
+    if (c.kind === 'entity' || c.kind === 'attention' || c.entity || c.stance || (Number.isFinite(c.similarity) && c.similarity >= EXC_GATE.SIM)) { kept.push(c); continue; }   // SEAM:EXC_COUNTER: a counter line was asked for by the frame
+    const hit = anchors.find(p => has(h, p, true));
     if (hit) { hits[hit] = (hits[hit] || 0) + 1; kept.push(c); } else dropped.push({ c, why: 'no_anchor', hard: false });
   }
   // Below the floor, the strongest set-aside lines come back first: fresh, high-tier, relevant.
@@ -1353,7 +1398,30 @@ function excMeasureAnchors(frame) {
   const a = ((frame && frame.anchors) || []).map(x => String(x || '').trim()).filter(x => x.length >= 5 || (x.length >= 3 && /\s/.test(x)));
   return [...new Set(ent.concat(a))].slice(0, 8);
 }
-function excMeasureFrom(rows, terrRows, nowMs) {
+// The territory a frame lives in, from its own words. The lake's row labels are a guess per article; the frame's
+// category is the better witness, and share is stated only when the two agree.
+const EXC_TERR_HINTS = [
+  ['fashion-beauty', /\b(beauty|hair|haircare|scalp|skin|skincare|cosmetics?|makeup|fragrance|fashion|apparel|luxury|denim|lipstick|nails?|grooming)\b/],
+  ['sneakers-streetwear', /\b(sneakers?|streetwear|footwear|kicks|jordans?|hoodies?|trainers)\b/],
+  ['food-hospitality', /\b(food|snacks?|beverages?|drinks?|restaurants?|coffee|hotels?|dining|grocery|seasonings?|spices?|menus?)\b/],
+  ['music', /\b(music|albums?|rap|hip.?hop|playlists?|songs?|festivals?|concerts?)\b/],
+  ['entertainment-gaming', /\b(games?|gaming|films?|movies?|anime|esports|streamers?|consoles?)\b/],
+  ['artificial-intelligence', /\b(ai|artificial intelligence|llms?|chatbots?|machine learning|generative)\b/],
+  ['technology-innovation', /\b(tech|technology|software|apps?|devices?|phones?|gadgets?|platforms?|startups?|hardware)\b/],
+  ['advertising-marketing', /\b(advertising|marketing|campaigns?|agency|agencies|media buying)\b/],
+  ['entrepreneurship-creator', /\b(creators?|influencers?|founders?|entrepreneurs?|side hustles?)\b/],
+  ['sustainability-impact', /\b(sustainability|sustainable|climate|recycling|carbon|refills?)\b/],
+  ['business-economics', /\b(economy|economics|retail|earnings|market share|inflation|pricing|spending)\b/],
+  ['art-design', /\b(art|design|galleries|gallery|illustration|typography)\b/],
+  ['architecture-cities', /\b(architecture|urban|housing|real estate|cities)\b/],
+  ['global-diaspora', /\b(diaspora|immigrants?|afro|latin|caribbean|african)\b/]];
+function excTerritoryOf(frame) {
+  if (!frame) return null;
+  const find = t => { const h = ' ' + String(t || '').toLowerCase() + ' '; const hit = EXC_TERR_HINTS.find(([, re]) => re.test(h)); return hit ? hit[0] : null; };
+  // The category alone speaks first; the audience, the entity and the anchors only when it names no territory.
+  return find(frame.category) || find([frame.audience, frame.entity].concat(frame.anchors || []).filter(Boolean).join(' '));
+}
+function excMeasureFrom(rows, terrRows, nowMs, hint) {
   const now = nowMs || Date.now(), day = 864e5, weeks = EXC_MEASURE.WEEKS;
   const when = r => lakeWhen(r);
   const series = Array.from({ length: weeks }, () => 0);
@@ -1370,14 +1438,17 @@ function excMeasureFrom(rows, terrRows, nowMs) {
     if (r.territory) terr[r.territory] = (terr[r.territory] || 0) + 1;
     if (!newest || w > newest) newest = w;
   }
-  const territory = Object.keys(terr).sort((a, b) => terr[b] - terr[a])[0] || null;
-  // Share is the frame's rows in its top territory this week over that territory's rows this week: one numerator, one denominator.
-  const recentTop = territory ? (recentTerr[territory] || 0) : 0;
+  const rowsTop = Object.keys(terr).sort((a, b) => terr[b] - terr[a])[0] || null;
+  // The frame's own territory wins; share is stated only when the lake's labels agree with it (an unlabeled lake is no witness).
+  const territory = hint || rowsTop;
+  const agree = rowsTop ? (!hint || hint === rowsTop) : !hint;
+  // Share is the frame's rows in its territory this week over that territory's rows this week: one numerator, one denominator.
+  const recentTop = territory && agree ? (recentTerr[territory] || 0) : 0;
   const terrWeek = (terrRows || []).filter(r => { const w = when(r); const t = w ? Date.parse(w) : NaN; return Number.isFinite(t) && (now - t) / day < 7; }).length;
   const velocity_pct = prior ? Math.round(((recent - prior) / prior) * 100) : (recent ? null : 0);
   const state = clusterState({ recent_7d: recent, prior_7d: prior, weeks_touched: weekSet.size, last_seen: newest, span_days: weekSet.size ? (Math.max(...weekSet) - Math.min(...weekSet) + 1) * 7 : 0, sources: outlets.size }, now);
   return { weeks, series, recent_7d: recent, prior_7d: prior, velocity_pct, outlets: outlets.size, weeks_touched: weekSet.size, territory,
-    share_pct: terrWeek ? Math.min(100, Math.round((recentTop / terrWeek) * 100)) : null, territory_week: terrWeek, newest: newest ? String(newest).slice(0, 10) : null, state, shape: clusterShape(series.slice(-8)), n: (rows || []).length };
+    share_pct: terrWeek && agree && (recentTop > 0 || recent === 0) ? Math.min(100, Math.round((recentTop / terrWeek) * 100)) : null, territory_week: terrWeek, territory_agree: agree, newest: newest ? String(newest).slice(0, 10) : null, state, shape: clusterShape(series.slice(-8)), n: (rows || []).length };
 }
 async function excMeasures(env, frame) {
   const anchors = excMeasureAnchors(frame);
@@ -1387,21 +1458,22 @@ async function excMeasures(env, frame) {
   let rows = [];
   try { rows = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(anchors) + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + EXC_MEASURE.ROWS + '&' + sel)) || []; }
   catch (e) { console.log('exc_measure_error', String(e && e.message).slice(0, 80)); return null; }
-  const m0 = excMeasureFrom(rows, [], Date.now());
+  const hint = excTerritoryOf(frame);
+  const m0 = excMeasureFrom(rows, [], Date.now(), hint);
   let terrRows = [];
-  if (m0.territory) {
+  if (m0.territory && m0.territory_agree) {
     const wk = new Date(Date.now() - 8 * 864e5).toISOString();
     try { terrRows = (await sbRest(env, 'signals?status=neq.rejected&territory=eq.' + encodeURIComponent(m0.territory) + '&captured_at=gte.' + wk + '&limit=' + EXC_MEASURE.TERR_ROWS + '&select=id,published_at,captured_at')) || []; } catch (e) { terrRows = []; }
   }
-  const m = excMeasureFrom(rows, terrRows, Date.now());
+  const m = excMeasureFrom(rows, terrRows, Date.now(), hint);
   m.anchors = anchors;
   return m;
 }
 function excMeasureLine(m) {
   if (!m || !Array.isArray(m.series) || m.recent_7d == null) return '';
-  return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake, exact): signals this week ' + m.recent_7d + ' vs ' + m.prior_7d + ' the week before' +
-    (m.velocity_pct != null ? ' (' + (m.velocity_pct >= 0 ? '+' : '') + m.velocity_pct + '%)' : '') + '; distinct outlets ' + m.outlets + '; weeks touched ' + m.weeks_touched + ' of ' + m.weeks +
-    (m.share_pct != null ? '; share of ' + String(m.territory || '').replace(/-/g, ' ') + ' signals this week ' + m.share_pct + '%' : '') + '; state ' + m.state + (m.shape ? ', shape ' + m.shape : '') + '. Numbers from MEASURES may be stated as measured.\n\n';
+  return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake, exact): signals: ' + m.recent_7d + ' this week, ' + m.prior_7d + ' the week before' +
+    (m.velocity_pct != null ? ' (' + (m.velocity_pct >= 0 ? '+' : '') + m.velocity_pct + '%)' : '') + '; distinct outlets: ' + m.outlets + '; weeks touched: ' + m.weeks_touched + ' of ' + m.weeks +
+    (m.share_pct != null ? '; share of ' + String(m.territory || '').replace(/-/g, ' ') + ' signals this week: ' + m.share_pct + '%' : '') + '; state ' + m.state + (m.shape ? ', shape ' + m.shape : '') + '. Numbers from MEASURES may be stated as measured.\n\n';
 }
 
 /* SEAM:EXC_SCORE: the harvest, as a number. Computed from the read itself so every evolution is measured against
@@ -1457,12 +1529,13 @@ function excMoveGuard(moves, query) {
  * discourse and every 365 days for academic work and filings; ARCHIVE sits at
  * a floor. Nothing is ruled out: the old sits lower on the totem pole. */
 const EXC_TIME = { BANDS: [['NOW', 1], ['RECENT', 30], ['CURRENT', 90], ['CONTEXT', 730]], HALF: { fast: 120, slow: 365 },
-  ARCHIVE_W: 0.05, ARCHIVE_MAX: 4, THIN: 12, TIER_W: [1, 1, 0.9, 0.8, 0.7],
+  ARCHIVE_W: 0.05, ARCHIVE_MAX: 6, RECORD_KEEP: 3, THIN: 12, TIER_W: [1, 1, 0.9, 0.8, 0.7],   // SEAM:EXC_RECORD: six archive seats, three of them held for the record
   SLOW: new Set(['academic', 'research', 'book', 'patent', 'filing', 'reference', 'paper']) };
 const EXC_TIME_LAW = 'TIME LAW: every evidence line opens with its date and band. NOW is under 24 hours old, RECENT under 30 days, ' +
   'CURRENT under 90 days, CONTEXT under 2 years, ARCHIVE older or undated. Lead the read with what changed in the freshest bands. ' +
   'A "because" names its date and cites a NOW or RECENT line, or a CURRENT line when nothing fresher exists. ' +
-  'ARCHIVE lines may anchor a definition or a meaning; they never support a claim about now, a trend or a move, and they are never presented as news.';
+  'ARCHIVE lines may anchor a definition or a meaning; they never support a claim about now, a trend or a move, and they are never presented as news. ' +
+  'THE RECORD: an ARCHIVE line marked (record) is a strong older source, a study, a report or a filing. Cite it with its year as the baseline the fresh lines move against ("in 2024 Mintel measured 61%"); never as the present.';
 function excWhen(c) {
   const p = c && c.published_at;
   let d = p ? new Date(/^\d{4}$/.test(String(p)) ? p + '-07-01' : p) : null;
@@ -1514,7 +1587,7 @@ function excWindow(items, now) {
 function excLine(c, i, now) {
   const d = excWhen(c);
   // SEAM:EXC_FACTS: a tabled item shows its claims and entities; a page-read item gets more room; the raw snippet otherwise.
-  const tag = (c.entity ? ' (competitor: ' + String(c.entity).slice(0, 40) + ')' : '') + (c.stance === 'against' ? ' (counter)' : '') + (c.rail === 'gap' ? ' (gap)' : '');
+  const tag = (c.entity ? ' (competitor: ' + String(c.entity).slice(0, 40) + ')' : '') + (c.stance === 'against' ? ' (counter)' : '') + (c.rail === 'gap' ? ' (gap)' : '') + (excRecord(c, now) ? ' (record)' : '');   // SEAM:EXC_RECORD
   const body = c.facts && c.facts.claims && c.facts.claims.length
     ? 'FACTS: ' + c.facts.claims.join('; ').slice(0, 700) + (c.facts.entities && c.facts.entities.length ? ' · NAMES: ' + c.facts.entities.join(', ').slice(0, 160) : '')
     : String(c.text || '').slice(0, c.read === 'page' ? 700 : 320);
@@ -1562,16 +1635,31 @@ function excBudget(corpusIn, addedIn, nowIn) {
   const O = take(rank(raw.filter(c => c && c.lens !== 'lake')), EXC_BUDGET.TOTAL - L.out.length - S.out.length);
   let lake = L.out, server = S.out, open = O.out;
   let merged = lake.concat(server, open);
+  const place = (drop, add) => {
+    lake = lake.filter(c => c !== drop); server = server.filter(c => c !== drop); open = open.filter(c => c !== drop);
+    seen.delete(excKey(drop)); seen.add(excKey(add)); if (add.lens === 'lake') lake.push(add); else if (add._a) server.push(add); else open.push(add);
+    merged = lake.concat(server, open);
+  };
+  // SEAM:EXC_RECORD: the strongest record lines (T0/T1 archive, up to RECORD_KEEP) waiting in any lane take the seats of
+  // weaker archive lines, never a dated one; once seated they are never the ones displaced.
+  const waitRec = rank(L.rest.concat(S.rest, O.rest).filter(c => excRecord(c, now) && !seen.has(excKey(c)))).slice(0, EXC_TIME.RECORD_KEEP);
+  for (const rec of waitRec) {
+    if (seen.has(excKey(rec))) continue;
+    const weak = rank(merged.filter(c => isArch(c) && !excRecord(c, now)));
+    const drop = weak[weak.length - 1]; if (!drop) break;
+    place(drop, rec);
+  }
   // Dated evidence waiting in any lane displaces archive lines, lowest first, down to ARCHIVE_MAX kept for context.
-  const wait = rank(L.rest.concat(S.rest, O.rest).filter(c => !isArch(c)));
+  const wait = rank(L.rest.concat(S.rest, O.rest).filter(c => !isArch(c) && !seen.has(excKey(c))));
+  const held = new Set(rank(merged.filter(c => excRecord(c, now))).slice(0, EXC_TIME.RECORD_KEEP));
   let archN = merged.filter(isArch).length;
   while (wait.length && archN > EXC_TIME.ARCHIVE_MAX) {
-    const order = rank(merged.filter(isArch));
+    const order = rank(merged.filter(c => isArch(c) && !held.has(c)));
+    if (!order.length) break;
     const drop = order[order.length - 1];
-    lake = lake.filter(c => c !== drop); server = server.filter(c => c !== drop); open = open.filter(c => c !== drop);
-    const add = wait.shift(); seen.add(excKey(add));
-    if (add.lens === 'lake') lake.push(add); else if (add._a) server.push(add); else open.push(add);
-    merged = lake.concat(server, open); archN--;
+    let add = wait.shift(); while (add && seen.has(excKey(add))) add = wait.shift();
+    if (!add) break;
+    place(drop, add); archN--;
   }
   const datedN = merged.length - archN;
   const widened = datedN < EXC_TIME.THIN;   // the read says so; nothing is dropped to say it
@@ -1638,9 +1726,9 @@ async function gatherServerSignals(q) {
   const enc = encodeURIComponent(term + ' sourcelang:english');
   // GDELT — global news across the last few months, keyless JSON.
   try {
-    const r = await fetch(`https://api.gdeltproject.org/api/v2/doc/doc?query=${enc}&mode=artlist&maxrecords=8&format=json&sort=hybridrel&timespan=3months`, { cf: { cacheTtl: 300 } });
-    if (r.ok) {
-      const j = await r.json().catch(() => null);
+    // SEAM:EXC_GDELT_SPACE: through railFetch, so the wire takes its GDELT turn like every rail.
+    const j = await railFetch(`https://api.gdeltproject.org/api/v2/doc/doc?query=${enc}&mode=artlist&maxrecords=8&format=json&sort=hybridrel&timespan=3months`, { cf: { cacheTtl: 300 } });
+    if (j) {
       ((j && j.articles) || []).slice(0, 6).forEach(a => out.push({
         signalType: 'news',
         source: a.domain || 'GDELT News',
@@ -6396,12 +6484,27 @@ async function dailyHealth(env, nowMs) {
  * ═══════════════════════════════════════════════════════════════════════════ */
 const GATHER_UA = 'unsurfaced-excavate/1.0 (johnnie@unsurfacedside.com)';
 const GATHER = { TIMEOUT_MS: 6500, PAR: 6, MAX_ITEMS: 60, HELD: 10, CAP_DEFAULT: 400, YT_SEARCH_CAP: 60,
-  BUDGET_MS: 8000, RAIL_MS: 6000, KG_MS: 2500, FRAME_WAIT_MS: 3000 };   // SEAM:EXC_SPEED
+  BUDGET_MS: 10000, RAIL_MS: 8000, KG_MS: 2500, FRAME_WAIT_MS: 3000 };   // SEAM:EXC_SPEED; +2 s for SEAM:EXC_GDELT_SPACE
 const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artificial-intelligence',
   'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
   'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'];
 
+/* SEAM:EXC_GDELT_SPACE: GDELT throttles an address that asks too often (the Oct 3 read lost the competitive set,
+ * the counter view and the news rail to it at once). Every GDELT call in this isolate takes its turn, GAP_MS apart,
+ * so four rails asking together arrive one at a time instead of all being refused. */
+const GDELT_SPACE = { GAP_MS: 1500, MAX_WAIT_MS: 5000, HOST: /^https:\/\/api\.gdeltproject\.org\// };
+let _gdeltNext = 0;
+// The slot is reserved synchronously (no promise shared across requests); a caller whose turn is further than MAX_WAIT_MS
+// away takes none and answers quietly, so a burst never wedges the isolate or makes a rail late by waiting.
+async function gdeltSlot(maxWaitMs) {
+  const now = Date.now(), at = Math.max(now, _gdeltNext);
+  if (at - now > (maxWaitMs == null ? GDELT_SPACE.MAX_WAIT_MS : maxWaitMs)) return false;
+  _gdeltNext = at + GDELT_SPACE.GAP_MS;
+  if (at > now) await new Promise(r => setTimeout(r, at - now));
+  return true;
+}
 async function railFetch(url, opts, ms) {
+  if (GDELT_SPACE.HOST.test(String(url)) && !(await gdeltSlot())) { console.log('gdelt_slot_skipped'); return null; }
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms || GATHER.TIMEOUT_MS);
   try {
@@ -6760,7 +6863,7 @@ async function gatherOpenSignals(env, q, opts) {
   // Wikipedia first (Pageviews needs its title), then the paid rails (already paid for the moment they are asked,
   // so never the ones cut), then Pageviews, then the rest in registry order.
   // SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: the competitive set and the counter view ride right after the paid rails, never at the end where the budget cuts.
-  const rank = r => r.id === 'wikipedia' ? 0 : (r.id === 'exa' || r.id === 'pplx') ? 1 : (r.id === 'competitors' || r.id === 'counter') ? 2 : r.id === 'wikimedia_pageviews' ? 3 : 4;
+  const rank = r => r.id === 'wikipedia' ? 0 : (r.id === 'exa' || r.id === 'pplx') ? 1 : (r.id === 'competitors' || r.id === 'counter') ? 2 : r.id === 'wikimedia_pageviews' ? 3 : r.id === 'gdelt_volume' ? 5 : 4;
   const order = chosen.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r);
   let next = 0;
   const lane = async () => {
@@ -7011,8 +7114,12 @@ async function excavatePulse(env, origin) {
   return json({ ok: true, edition: ed.date, assembled_at: ed.assembled_at, items }, 200, origin, env);
 }
 async function deskRunGuarded(request, env, origin) {
-  const key = request.headers.get('x-field-key') || '';
-  if (!env.FIELD_API_KEY || key !== env.FIELD_API_KEY) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  // SEAM:DESK_AUTH: a desk key of its own (DESK_API_KEY; the field key stands in until one is set), or a signed-in admin.
+  const key = request.headers.get('x-desk-key') || request.headers.get('x-field-key') || '';
+  const deskKey = env.DESK_API_KEY || env.FIELD_API_KEY || '';
+  let allowed = !!deskKey && key === deskKey;
+  if (!allowed) { const user = await authenticate(request, env).catch(excQuiet('desk_auth', null)); allowed = !!(user && await callerIsAdmin(env, user.id).catch(excQuiet('desk_admin', false))); }
+  if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
   const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env) : which === 'door_publish' ? await doorPublish(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
@@ -7177,13 +7284,13 @@ function doorCompileRead(parsed, merged, frame, measures) {
   const now = Date.now();
   const cited = x => (Array.isArray(x.evidence) ? x.evidence : []).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= merged.length).filter((n, i, a) => a.indexOf(n) === i).slice(0, 8);
   const bandOf = n => excBand(excWhen(merged[n - 1]), now);
-  const datedOf = ns => { const ds = ns.map(n => excWhen(merged[n - 1])).filter(Boolean).sort((a, b) => b - a); return { newest: ds[0] ? ds[0].toISOString().slice(0, 10) : null, oldest: ds.length ? ds[ds.length - 1].toISOString().slice(0, 10) : null, band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE') }; };
+  const datedOf = ns => { const ds = ns.map(n => excWhen(merged[n - 1])).filter(Boolean).sort((a, b) => b - a); const archiveOnly = ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE'); return { newest: ds[0] ? ds[0].toISOString().slice(0, 10) : null, oldest: ds.length ? ds[ds.length - 1].toISOString().slice(0, 10) : null, band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: archiveOnly, record: archiveOnly && ns.some(n => excRecord(merged[n - 1], now)) }; };
   const pool = measures ? [{ text: excMeasureLine(measures) }] : [];
   const insights = (Array.isArray(parsed.insights) ? parsed.insights : []).slice(0, 4).map(x => {
     const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null;
     const ground = excGround([x.title, x.excerpt].join(' '), ns.map(n => merged[n - 1]).concat(pool));
     return { checks: ground, category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', title: String(x.title || '').slice(0, 120), excerpt: String(x.excerpt || '').slice(0, 400),
-      confidence: ground.ungrounded.length ? 'Low' : excEarned(ns.filter(n => bandOf(n) !== 'ARCHIVE').map(n => merged[n - 1]), ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT')),
+      confidence: ground.ungrounded.length ? 'Low' : excEarned(ns.map(n => merged[n - 1]), ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'), now),
       evidence: ns, dated: datedOf(ns), source: String((first && first.source) || x.source || '').slice(0, 120), sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url : null, image: (first && first.image) || null };
   }).filter(x => x.title);
   const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2).map(x => excClip(x, 420)).filter(Boolean);

@@ -20,7 +20,7 @@ const lane = between(w, 'const EXC_MODEL = ', '/* SEAM:EXCAVATE_MEANING: the rep
 const pv = between(w, 'function pvBlockedHost(host) {', 'async function pvTranslateAllowed(');
 const states = between(w, 'function clusterState(t, nowMs) {', '// Bounded geometry pass');
 const H = new Function('clusterState', 'clusterShape', 'lakeWhen', 'sbRest', 'ilikeOr', 'caches', 'fetch',
-  pv + xj + helpers + '; return { excTierLookup, excStampTiers, excPageDate, excPagePick, excReadPages, excMeasureFrom, excMeasures, excMeasureLine, excReadScore, excRelevance, excFrameClean, excLine, excSalvageArray, EXC_PAGES, EXC_VOICE_SYS };')(
+  pv + xj + helpers + '; return { excTierLookup, excStampTiers, excPageDate, excPagePick, excReadPages, excMeasureFrom, excMeasures, excMeasureLine, excReadScore, excRelevance, excFrameClean, excLine, excSalvageArray, EXC_PAGES, EXC_VOICE_SYS, excTerritoryOf, excGround, EXC_TIME_LAW, excBudget };')(
   ...(() => { const fieldSrc = between(w, 'const FIELD = {', '};') + '};'; const S = new Function(fieldSrc + states + '; return [clusterState, clusterShape];')(); return S; })(),
   r => r && (r.published_at || r.captured_at) || null, async () => [], names => 'or=(' + names.map(n => 'title.ilike.*' + encodeURIComponent(n) + '*').join(',') + ')',
   { default: { match: async () => null, put: async () => {} } }, async () => { throw new Error('no network in the proof'); });
@@ -149,7 +149,7 @@ const terr = Array.from({ length: 24 }, (_, i) => ({ published_at: ago(i % 7 + 0
 const m = H.excMeasureFrom(rows.concat([{ published_at: ago(2), source_name: 'o0', territory: 'music' }, { published_at: 'not a date', source_name: 'bad', territory: 'music' }]), terr, Date.now());
 ok(m.recent_7d === 7 && m.prior_7d === 3 && m.velocity_pct === 133 && m.outlets === 5 && m.weeks_touched === 3 && m.territory === 'fashion-beauty' && m.share_pct === 25 && m.series.length === 12 && m.series[11] === 7 && m.state === 'ACCELERATING',
   'M1 twelve weeks are counted from the dates rows speak for: this week against last, outlets, weeks touched, share of the top territory (its own rows over its week; a row elsewhere this week is not in the numerator; an unreadable date is skipped), and the field\'s own state');
-ok(/signals this week 7 vs 3 the week before \(\+133%\); distinct outlets 5; weeks touched 3 of 12; share of fashion beauty signals this week 25%; state ACCELERATING/.test(H.excMeasureLine(m)) && /may be stated as measured/.test(H.excMeasureLine(m)), 'M2 the measures line is exact and tells the model its numbers count as grounded');
+ok(/signals: 7 this week, 3 the week before \(\+133%\); distinct outlets: 5; weeks touched: 3 of 12; share of fashion beauty signals this week: 25%; state ACCELERATING/.test(H.excMeasureLine(m)) && /may be stated as measured/.test(H.excMeasureLine(m)), 'M2 the measures line is exact and tells the model its numbers count as grounded');
 const merged = Array.from({ length: 30 }, (_, i) => ({ title: i < 3 ? '&honey item ' + i : 'item ' + i, text: 'x', source: 'src' + (i % 8), url: 'https://s' + (i % 8) + '.example/' + i, published_at: ago(i < 20 ? i + 1 : 400), read: i < 6 ? 'page' : undefined }));
 const sc = H.excReadScore({ insights: [{ confidence: 'High', checks: { ungrounded: [] } }, { confidence: 'Medium', checks: { ungrounded: [] } }, { confidence: 'Low', checks: { ungrounded: ['37%'] } }], read_checks: { ungrounded: [] } }, merged, frame, { total_ms: 60000 });
 ok(sc.lines === 30 && sc.fresh === 20 && sc.fresh_share === 67 && sc.outlets === 8 && sc.medium_plus === 2 && sc.unverified === 1 && sc.competitors === 3 && sc.competitors_evidenced === 1 && sc.pages === 6 && sc.seconds === 60 && sc.score > 40 && sc.score < 80,
@@ -242,12 +242,84 @@ ok(/"read":\["line 1: one sentence, at most 40 words/.test(D.excDoorPrompt(frame
 ok(/if \(path === '\/excavate\/door\/read' && request\.method === 'GET'\) return doorReadRoute\(request, env, origin\);/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /row\.kind === 'door_read' && row\.meta && row\.meta\.door_id/.test(w) && /which === 'door' \? await doorPass\(env\)/.test(w) && /door: door && door\.tiles && door\.tiles\.length \? door : null/.test(w),
   'D8 the read route, the cron chain, the batch drain, the admin door and the feed all know the door');
 
+// ── B: EX5b THE BRIEF, the engine ─────────────────────────────────────────
+// B1 GDELT calls take turns, GAP_MS apart; other hosts do not wait.
+const rfSrc = between(w, 'const GDELT_SPACE = ', 'function stripHtml(');
+const rfCalls = [];
+const RF = new Function('GATHER', 'GATHER_UA', 'excQuiet', 'fetch', rfSrc + '; return { railFetch, GDELT_SPACE };')(
+  { TIMEOUT_MS: 6500 }, 'ua', () => () => null, async u => { rfCalls.push({ u, t: Date.now() }); return { ok: true, headers: { get: () => 'application/json' }, json: async () => ({ u }) }; });
+RF.GDELT_SPACE.GAP_MS = 120;
+const tB = Date.now();
+await Promise.all([RF.railFetch('https://api.gdeltproject.org/api/v2/doc/doc?a'), RF.railFetch('https://api.gdeltproject.org/api/v2/doc/doc?b'), RF.railFetch('https://api.gdeltproject.org/api/v2/doc/doc?c'), RF.railFetch('https://hn.algolia.com/x')]);
+const gd = rfCalls.filter(c => /gdelt/.test(c.u)).map(c => c.t - tB).sort((a, b) => a - b), hnT = rfCalls.find(c => /algolia/.test(c.u)).t - tB;
+ok(gd.length === 3 && gd[1] - gd[0] >= 100 && gd[2] - gd[1] >= 100 && hnT < 60, 'B1 three GDELT calls asked at once go out one at a time, a gap apart; a call to another host does not wait');
+// B2 the framed rails run again from synthesize when the gather reported them late, with their tags, and reach the evidence.
+const S2 = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excCompile', 'ledgerWrite', 'sha256hex', 'lakeCapture', 'serverConnectors', 'CONFIG', 'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', 'excFramedRerun',
+  xj + helpers + synth + '; excReadPages = async () => ({ read: 0, dated: 0, tried: 0 }); excMeasures = async () => null; return synthesize;')(
+  (o) => o, async () => [], async () => [], async (e, o) => { sCall = o; return { text: JSON.stringify({ read: ['a', 'b'], insights: [{ category: 'market', title: 'T', excerpt: 'E', evidence: [1] }], ideas: [], brief: 'b' }), lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0.05, stop_reason: 'end_turn' }; },
+  async () => 1, async t => 'h' + t.length, async () => 0, () => [], {}, async () => rawFrame, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => [],
+  async (env, frame, query, ids) => { globalThis.framedAsked = ids; return [{ lens: 'market', source: 'n.example', title: '&honey opens at Ulta', text: '', url: 'https://n.example/c1', published_at: ago(2), kind: 'news', tier: 4, rail: 'gather', entity: '&honey', stance: null, rerun: true }, { lens: 'market', source: 'n.example', title: 'Shampoo backlash grows', text: '', url: 'https://n.example/k1', published_at: ago(3), kind: 'news', tier: 4, rail: 'gather', entity: null, stance: 'against', rerun: true }]; });
+const qB = quiet();
+const bRes = (await S2({ query: 'gen z hair care', mode: 'report', rails: ['gdelt', 'hn', 'exa'], corpus: sCorpus.map(c => Object.assign({}, c, { rail: 'gather' })) }, {}, '')).data;
+qB.done();
+const bLines = sCall.prompt.split('\n').filter(l => /^\[\d+\]/.test(l));
+ok(globalThis.framedAsked.join() === 'competitors,counter' && bLines.some(l => /\(competitor: &honey\)/.test(l)) && bLines.some(l => /\(counter\)/.test(l)) && bRes.harvest.framed.asked.length === 2 && bRes.harvest.framed.added === 2,
+  'B2 when the gather reported the competitive set and the counter view late, synthesize asks them again; their lines reach the evidence with their tags and the receipts say so');
+const qB2 = quiet(); globalThis.framedAsked = null;
+const tagged = [{ lens: 'market', title: 'Being opens at Target', text: 'x', url: 'https://t.example/1', source: 's', tier: 4, published_at: ago(1), kind: 'news', rail: 'gather', entity: 'Being' }, { lens: 'market', title: 'Shampoo backlash', text: 'x', url: 'https://t.example/2', source: 's', tier: 4, published_at: ago(1), kind: 'news', rail: 'gather', stance: 'against' }];
+await S2({ query: 'gen z hair care', mode: 'report', rails: ['gdelt', 'hn', 'exa', 'competitors', 'counter'], corpus: sCorpus.map(c => Object.assign({}, c, { rail: 'gather' })).concat(tagged) }, {}, '');
+qB2.done();
+ok(globalThis.framedAsked === null, 'B2b when the gather ran them and their lines reached the corpus, nothing is asked twice');
+const qB3 = quiet(); globalThis.framedAsked = null;
+await S2({ query: 'gen z hair care', mode: 'report', rails: ['gdelt', 'hn', 'exa', 'competitors', 'counter'], corpus: sCorpus.map(c => Object.assign({}, c, { rail: 'gather' })) }, {}, '');
+qB3.done();
+ok(globalThis.framedAsked && globalThis.framedAsked.join() === 'competitors,counter', 'B2c a rail that "ran" but delivered no tagged line (GDELT answered 429 as an empty list) is asked again all the same');
+// B1b a GDELT caller whose turn is too far away takes no slot and answers quietly.
+RF.GDELT_SPACE.GAP_MS = 400; RF.GDELT_SPACE.MAX_WAIT_MS = 500; rfCalls.length = 0; await new Promise(r => setTimeout(r, 450));   // B1's reservations expire
+const burst = await Promise.all(Array.from({ length: 5 }, (_, i) => RF.railFetch('https://api.gdeltproject.org/api/v2/doc/doc?burst' + i)));
+ok(burst.filter(Boolean).length === 2 && burst.filter(x => x === null).length === 3 && rfCalls.length === 2, 'B1b five GDELT calls at once with room for two: two go out in turn, three answer null at once instead of waiting past their deadline');
+ok(Array.isArray(bRes.timing.detail) && bRes.timing.detail[0].pass === 'first' && bRes.timing.detail[0].parsed === 'whole', 'B3 the read carries the detail of each pass: lane, stop reason, size, how it parsed');
+// B4 the frame names its territory; share is stated only when the lake agrees.
+ok(H.excTerritoryOf({ category: 'Hair care', audience: 'Gen Z' }) === 'fashion-beauty' && H.excTerritoryOf({ category: 'Athletic footwear', anchors: ['sneakers'] }) === 'sneakers-streetwear' && H.excTerritoryOf({ category: 'Quantum widgets' }) === null,
+  'B4 a frame names its territory from its own words');
+const mTech = H.excMeasureFrom(rows.map(r => Object.assign({}, r, { territory: 'technology-innovation' })), terr, Date.now(), 'fashion-beauty');
+ok(mTech.territory === 'fashion-beauty' && mTech.share_pct === null && mTech.territory_agree === false, 'B4b when the lake labels the frame\'s rows elsewhere, the frame\'s territory stands and no share is stated');
+const mNone = H.excMeasureFrom(rows.map(r => Object.assign({}, r, { territory: null })), terr, Date.now(), 'fashion-beauty');
+ok(mNone.territory === 'fashion-beauty' && mNone.share_pct === null && /weeks touched/.test(H.excMeasureLine(mNone)) && !/share of/.test(H.excMeasureLine(mNone)), 'B4c when the lake\'s rows carry no label at all, no share is stated (an unlabeled lake is no witness), and the line says the rest');
+ok(H.excTerritoryOf({ category: 'Private label snacks' }) === 'food-hospitality' && H.excTerritoryOf({ category: 'Streaming series', anchors: ['music'] }) === 'music', 'B4d hints are whole words; the category speaks before the anchors');
+// B5 "this week 1%" is a measure, not a week number; the measures line phrases its counts so the checker reads them.
+ok(H.excGround('The spike is 1% of the territory and 5 signals', [{ text: H.excMeasureLine(Object.assign({}, m, { share_pct: 1, recent_7d: 5 })) }]).ungrounded.length === 0, 'B5 a share from MEASURES grounds a percent in the read; a count after "this week" is not eaten as a week number');
+// B6 the record law on the line and in the law.
+ok(/\(record\)/.test(H.excLine({ title: 'Mintel 2024', text: 'x', tier: 1, published_at: '2024-03-01' }, 0, Date.now())) && !/\(record\)/.test(H.excLine({ title: 'old blog', text: 'x', tier: 3, published_at: '2024-03-01' }, 0, Date.now())) && !/\(record\)/.test(H.excLine({ title: 'undated T1', text: 'x', tier: 1 }, 0, Date.now())) && /THE RECORD: an ARCHIVE line marked \(record\)/.test(H.EXC_TIME_LAW),
+  'B6 a strong older line is marked (record), an undated one is not (the record has a year), and the time law says how to cite it');
+// B8 a record line sharing a seated line's URL takes no second seat; the seat it empties is freed.
+const seatedOpen = Array.from({ length: 12 }, (_, i) => ({ lens: 'market', title: 'fresh ' + i, url: 'https://f.example/' + i, source: 'f' + i, published_at: ago(i + 1), tier: 3 }));
+const oldLake = Array.from({ length: 10 }, (_, i) => ({ lens: 'lake', title: 'lake old ' + i, url: 'https://lo.example/' + i, source: 'lo' + i, published_at: ago(900 + i), similarity: 0.7 }));
+const dupRec = { lens: 'market', title: 'fresh 0 (study copy)', url: 'https://f.example/0', source: 'mintel', published_at: ago(800), tier: 1 };
+const seatPlan = H.excBudget(oldLake.concat(seatedOpen, [dupRec], Array.from({ length: 40 }, (_, i) => ({ lens: 'market', title: 'd ' + i, url: 'https://d.example/' + i, source: 'd' + i, published_at: ago(i + 2), tier: 3 }))), [], Date.now());
+const keys = seatPlan.merged.map(c => c.url);
+ok(new Set(keys).size === keys.length && seatPlan.merged.length === 44, 'B8 the budget never seats one URL twice, record or not');
+// B7 the desk takes a desk key, the field key as a fallback, or a signed-in admin.
+const deskSrc = between(w, 'async function deskRunGuarded(', '/* ═');
+const DK = new Function('json', 'authenticate', 'callerIsAdmin', 'themePass', 'doorPass', 'doorPublish', 'deskEdition', 'feedWarm', 'tracksRefresh', 'audiencesRefresh', 'backfillAttention', 'deskScore', 'THEME', 'excQuiet',
+  deskSrc + '; return deskRunGuarded;')((o, st) => Object.assign({ _st: st }, o), async r => { if (r.headers.get('Authorization') === 'Bearer boom') throw new Error('supabase down'); return r.headers.get('Authorization') === 'Bearer admin' ? { id: 'u1' } : null; }, async () => true, async () => 0, async () => ({ queued: 1 }), async () => 0, async () => 0, async () => 0, async () => 0, async () => 0, async () => 0, async () => 0, {}, () => () => null);
+const req = (h, body) => ({ headers: { get: k => h[k] || '' }, json: async () => body });
+ok((await DK(req({ 'x-field-key': 'tav' }, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === true && (await DK(req({ 'x-field-key': 'tav' }, { run: 'door' }), { FIELD_API_KEY: 'tav', DESK_API_KEY: 'desk' }, '')).ok === false && (await DK(req({ 'x-desk-key': 'desk' }, { run: 'door' }), { FIELD_API_KEY: 'tav', DESK_API_KEY: 'desk' }, '')).ok === true && (await DK(req({ 'Authorization': 'Bearer admin' }, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === true && (await DK(req({}, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === false && (await DK(req({ 'Authorization': 'Bearer boom' }, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === false,
+  'B7 the desk opens to its own key once set (the field key no longer), to the field key until then, and to a signed-in admin; never to no one, and a failed auth lookup is a 401, not a 500');
+
 // ── W: the page ───────────────────────────────────────────────────────────
+ok(/SEAM:READ_BRIEF/.test(page) && /class="rb-plate"/.test(page) && /class="rb-measures"/.test(page) && /class="rb-receipts"/.test(page) && /class="rb-wire"/.test(page) && /id="results-grid-all"/.test(page) && /FROM THE RECORD/.test(page),
+  'W0 THE READ renders as a brief (plate, measures strip, receipts rail, wire aside), the findings sit in one grid, and a record line says so on its card');
+ok(!/#live-results\.show-all \.results-lens-panel:not\(#rlp-truth\)\{display:block/.test(page) && /#live-results\.show-all \.results-lens-panel\{display:none;\}/.test(page) && /#live-results\.show-all #rlp-findings\{display:block/.test(page) && /querySelectorAll\('#read-block \.read-line'\)/.test(page) && /r\.id==='competitors'\|\|r\.id==='counter'\)&&!\(r\.n>0\)/.test(page),
+  'W0c under All Lenses the per-lens panels stay hidden (the older rule that re-showed them is gone), MAKE WITH PLAY takes the two read lines, and a framed rail counts as run only when it answered');
+ok(!/T\(_fetchJSON\(`https:\/\/api\.gdeltproject\.org/.test(page) && /unsurfaced_fi_v5/.test(page) && /class="rb-go-live"/.test(page) && !/<button class="read-deeper"/.test(page) && /pass \$\{i\+1\} on/.test(page),
+  'W0b the browser no longer asks GDELT in the live lenses, the door cache key moved on, the go-live button no longer wears the buttons strip\'s class, and the receipts say why a read took two passes');
 ok(/function _renderDoorCard\(t, i\)/.test(page) && /function _sparkline\(series, w, h\)/.test(page) && /function _openDoorRead\(t\)/.test(page) && /function _goDeeperLive\(\)/.test(page) && /_FI_LAKE\.door\.tiles\.find\(t => t\.id === id\)/.test(page),
   'W1 the page draws door tiles, opens a stored read, and offers the live read on demand');
 ok(!/<img class="card-img"[^\n]*fi-door/.test(page) && /class="fi-spark-line"/.test(page) && /fi-measures/.test(page) && /THE MOVE/.test(page), 'W2 a door tile has a sparkline, a measures row and the move, and no photo');
 ok(/\/excavate\/door\/read\?id=/.test(page) && /Sign in to open the read/.test(page) && /Go deeper, live/.test(page), 'W3 a stored read is fetched signed in, and the page says so when it is not');
-ok(/pages read/.test(page) && /gap check:/.test(page) && /lines tabled as facts/.test(page) && /silent: /.test(page) && /harvest \$\{data\.score\.score\}\/100/.test(page) && /SEEN BESIDE IT/.test(page), 'W4 the facts line carries the harvest receipts, the silent rails, the score, and the observed competitors');
+ok(/rows\.push\(\['pages'/.test(page) && /rows\.push\(\['gap check'/.test(page) && /rows\.push\(\['fact table'/.test(page) && /silent<\/summary>/.test(page) && /class="rb-score"/.test(page) && /'seen beside it'/.test(page) && /what was set aside<\/summary>/.test(page),
+  'W4 the receipts rail carries the harvest (pages, gap, fact table), the silent rails, the score, the observed competitors, and what was set aside');
 ok(/set aside as off-topic/.test(page) && /names the frame; the conversation here is elsewhere/.test(page), 'W5 Consumer Voice is read through the frame and says when nothing in it names the frame');
 ok(/score:d\.score\|\|null, harvest:d\.harvest\|\|null/.test(page) && /harvest \$\{mA==null\?'n\/a':mA\} → \$\{mB==null\?'n\/a':mB\}/.test(page), 'W6 the panel keeps the score and the tally shows the mean before and after');
 ok(!/—/.test(doorSrc) && !/—/.test(between(w, 'const EXC_TIERS = ', 'function excMoveGuard(')) && !/—/.test(between(w, '/* SEAM:EXC_TIERS: the registry, loaded once an hour.', '/* SEAM:EXCAVATE_MEANING: the report contract.')), 'W7 no em dash in the new code');

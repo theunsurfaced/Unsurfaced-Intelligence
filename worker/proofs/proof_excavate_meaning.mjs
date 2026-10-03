@@ -64,7 +64,7 @@ ok(/function _moveCard\(m, all\)/.test(page) && /\['Why now',m\.because\],\['Pro
 ok(/did not meet the bar/.test(page), 'P5 the page says how many moves did not meet the bar');
 const iMoves = page.indexOf('id="moves-section"'), iVoice = page.indexOf('<div id="voice-strip"></div>'), iTruth = page.indexOf('id="rlp-truth"');
 ok(iMoves > iTruth && iVoice > iMoves, 'P6 THE MOVES closes the read; raw voice sits after it');
-ok(/#live-results\.show-all \.results-lens-panel:not\(#rlp-truth\)\{display:block;grid-template-columns:none\}/.test(page) && /#live-results\.show-all #results-grid-truth\{display:none\}/.test(page) &&
-   /#live-results\.show-all \.results-lens-panel\.empty\{display:none\}/.test(page), 'P7 All Lenses is full width, hides empty lenses, and shows each finding once');
+ok(/#live-results\.show-all \.results-lens-panel\{display:none;\}/.test(page) && /#live-results\.show-all #rlp-findings\{display:block/.test(page) && /#live-results\.show-all #results-grid-truth\{display:none\}/.test(page) &&
+   /id="results-grid-all"/.test(page), 'P7 All Lenses is one full-width grid of findings (SEAM:READ_BRIEF); the per-lens panels stay behind their tabs, so each finding shows once');
 ok((page.match(/el\.innerHTML = '';   \/\/ EXCAVATE_MEANING/g) || []).length === 2, 'P8 an empty or unavailable voice panel no longer shows');
 console.log(`\nproof_excavate_meaning: ${pass} checks PASS`);

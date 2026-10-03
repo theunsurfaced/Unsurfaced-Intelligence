@@ -823,6 +823,27 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_COUNTER",
    "purpose": "the page forwards each gather line's stance to synthesize so a counter line reaches the read marked (counter)"
+  },
+  "SEAM:READ_BRIEF": {
+   "file": "intelligence/index.html",
+   "purpose": "THE READ renders as a brief, not a post: the claim and the move lead; the frame is a plate of labeled cells with the question beneath; the measures are a sparkline beside stat tiles (this week, the week before, outlets, weeks touched, share, state); the interpretation reads beside a receipts rail (evidence kept and set aside with the sample, window, pages, fact table, gap check, rails asked again, rails and the silent ones, attention, time with why a read took two passes, compiled); the wire is a quiet aside with the named brands as chips; All Lenses is one continuous grid of findings, strongest first, each card carrying its lens, the tabs filtering"
+  },
+  "SEAM:EXC_RECORD": {
+   "file": "worker/src/index.js",
+   "purpose": "the record: a strong older source (T0 or T1 in the ARCHIVE band) is never zero. It counts toward a finding's confidence at half its tier's weight (two 2024 studies make a Medium, never a High); the budget keeps six archive seats and the three strongest record lines take the seats of weaker archive lines and are never the ones displaced; the evidence line is marked (record); the time law says to cite it with its year as the baseline the fresh lines move against, never as news; a finding standing only on the record says dated.record"
+  },
+  "SEAM:EXC_RECORD@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_RECORD",
+   "purpose": "a finding standing on the record wears FROM THE RECORD with its year instead of a band chip"
+  },
+  "SEAM:EXC_GDELT_SPACE": {
+   "file": "worker/src/index.js",
+   "purpose": "GDELT throttles an address that asks too often (Oct 3: the competitive set, the counter view and the news rail all late at once). Every GDELT call in the isolate takes its turn through gdeltSlot, GAP_MS (1.5 s) apart; the pool asks the framed GDELT rails first and the volume series last; the gather budget and the per-rail deadline widen two seconds for it; synthesize asks the framed rails again (excFramedRerun, 10 s) when the gather reported them late, and the receipts say so"
+  },
+  "SEAM:DESK_AUTH": {
+   "file": "worker/src/index.js",
+   "purpose": "the desk routes (POST /excavate/desk) open to a desk key of their own (DESK_API_KEY, header x-desk-key or x-field-key), to the field key only until a desk key is set, or to a signed-in admin (app_user.role = admin); never to no one. The field key is the Tavily key and should stop doubling as the admin key"
   }
  },
  "planned": [

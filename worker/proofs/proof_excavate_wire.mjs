@@ -23,7 +23,7 @@ const fakeNet = async (url) => {
   if (/algolia/.test(url)) return new Response(JSON.stringify({ hits: [{ title: 'HN thread on fandom', objectID: '1', points: 40, num_comments: 9, url: 'https://hn.example/1' }] }), { status: 200 });
   return new Response('{}', { status: 404 });
 };
-const gatherServerSignals = new Function('fetch', gss + '; return gatherServerSignals;')(fakeNet);
+const gatherServerSignals = new Function('fetch', 'railFetch', gss + '; return gatherServerSignals;')(fakeNet, async u => { const r = await fakeNet(u); return r.ok ? r.json() : null; });
 const wire = await gatherServerSignals('fan access');
 ok(wire.filter(x => x.signalType === 'news').length === 2 && wire.some(x => x.source === 'Hacker News'), 'W1 GDELT news reaches the wire again (and HN still does)');
 ok(!/from: Number\.isInteger\(x\.from\)[^\n]*\}\)\);\s*$/m.test(gss), 'W1b the stray `from:` line is gone from the GDELT push');
