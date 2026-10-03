@@ -844,6 +844,24 @@
   "SEAM:DESK_AUTH": {
    "file": "worker/src/index.js",
    "purpose": "the desk routes (POST /excavate/desk) open to a desk key of their own (DESK_API_KEY, header x-desk-key or x-field-key), to the field key only until a desk key is set, or to a signed-in admin (app_user.role = admin); never to no one. The field key is the Tavily key and should stop doubling as the admin key"
+  },
+  "SEAM:EXC_VOICES": {
+   "file": "worker/src/index.js",
+   "purpose": "consumer reality, verbatim: the discourse rails (YouTube comments on the top three videos, a hundred each; Mastodon posts on the tag, forty) hand the page every quote they fetched in the speaker's own words, ranked by likes, marked on or off the frame. A quote carries only what its speaker said about themselves (generation, gender, role, a trait, a country or state), found by plain patterns in the words and never inferred from a name, an avatar or a style; never a name, a handle, a channel or a link to the individual comment, only to the video or the tag; a stated age under 18 folds into its generation and the number is never kept; a quote with an email or a phone number is dropped whole. Nothing here is evidence for a claim"
+  },
+  "SEAM:EXC_VOICES@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_VOICES",
+   "purpose": "three on-frame voices beside the measures as pull-quotes; the Consumer voice panel with every quote, filterable by what people said about themselves (on the frame by default), ranked by likes, with the sources beneath; the aggregate lines remain for an older gather"
+  },
+  "SEAM:EXC_TIMELINE": {
+   "file": "worker/src/index.js",
+   "purpose": "every read carries its lines, small (number, title, date, band, tier, lens, source, url, an https image, and the marks: competitor, counter, record, gap, page, facts), so the page can draw what the read knew and when, and show the images the evidence itself carried"
+  },
+  "SEAM:EXC_TIMELINE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_TIMELINE",
+   "purpose": "the evidence timeline: each line a dot on twelve weeks, the row its lens, the size its source tier, a diamond for a competitor line, a square for a counter line, a ring for the record, older and undated lines in the gutter; a hover names the line and a click opens it; beneath it the sources' own images with their source and date; beside the measures the competitive set as sparklines on one scale, the frame in the accent and the competitors quiet; a move offers to be pictured in PLAY (imagined, never evidence)"
   }
  },
  "planned": [

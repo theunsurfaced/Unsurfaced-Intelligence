@@ -763,6 +763,10 @@ async function synthesize(body, env, origin, hooks) {
       timing: { frame_ms: T.frame_ms, wire_ms: T.wire_ms, pages_ms: T.pages_ms || 0, gap_ms: T.gap_ms || 0, facts_ms: T.facts_ms || 0, model_ms: T.model_ms, total_ms: Date.now() - T.start, passes: passes.length, wire_skipped: !needWire && !needPaid,
         detail: passes.map(p => ({ pass: p.pass, lane: p.lane, reason: p.reason, stop: p.stop, chars: p.chars, parsed: p.parsed })) },   // SEAM:EXC_SPEED; SEAM:EXC_PARSE: why a read took two passes is on the read
       measures: measures || null,   // SEAM:EXC_MEASURE
+      // SEAM:EXC_TIMELINE: every line the read stood on, small, so the page can draw what the read knew and when.
+      lines: merged.map((c, i) => { const d = excWhen(c); return { n: i + 1, title: String(c.title || '').slice(0, 100), date: d ? d.toISOString().slice(0, 10) : null, band: excBand(d, now), tier: excTier(c), lens: c.lens || null, kind: c.kind || null,
+        source: String(c.source || '').slice(0, 60), url: /^https?:\/\//.test(String(c.url || '')) ? String(c.url).slice(0, 300) : null, image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 400) : null,
+        competitor: c.entity ? String(c.entity).slice(0, 40) : null, counter: c.stance === 'against', record: excRecord(c, now), gap: c.rail === 'gap', page: c.read === 'page', facts: !!(c.facts && c.facts.claims && c.facts.claims.length) }; }),
       harvest: { pages: pages ? { tried: pages.tried, read: pages.read, dated: pages.dated } : null, gap: gap ? { missing: gap.missing, asked: gap.queries.map(q => q.q), added: gap.added || 0 } : null,
         facts: facts ? { tabled: facts.tabled, chunks: facts.chunks, failed: facts.failed } : null, observed, tiers: !!tiers,
         framed: needFramed.length ? { asked: needFramed, added: framedAdded } : null },   // SEAM:EXC_HARVEST; SEAM:EXC_COMPETE: the rails asked again here
@@ -922,7 +926,7 @@ function excReadOf(text) {
  * theme reads to come) may spend only OVERNIGHT_SHARE of the cap, so a client
  * in the room always has the live lane. A read compiled on the live lane is
  * kept CACHE_TTL under its query, so a repeat costs nothing. */
-const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i3' };   // i3: HARVEST (pages, facts, measures); reads cached under i2 are not served
+const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i4' };   // i4: the lines and the competitive set ride the read (EX5c); reads cached under i3 are not served
 const EXC_RESERVE_MAX = 4000;   // SEAM:EXC_PARSE: the reserve model's output room
 function excCacheKey(h) { return 'excr:' + EXC_MODEL.REV + ':' + h; }
 async function excCompile(env, o) {
@@ -1467,6 +1471,14 @@ async function excMeasures(env, frame) {
   }
   const m = excMeasureFrom(rows, terrRows, Date.now(), hint);
   m.anchors = anchors;
+  // SEAM:EXC_COMPETE: the competitive set, counted the same way over the same twelve weeks, so the page can draw them on one scale.
+  const names = ((frame && frame.competitors) || []).map(x => String(x || '').trim()).filter(x => x.length >= 3).slice(0, 5);
+  if (names.length) {
+    // One query for the whole set, bucketed here by the name each title carries; a title naming two of them counts for both.
+    // Newest first across the set, so a loud name can crowd a quiet one's older weeks; 600 rows a name leaves room.
+    const rows2 = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(names) + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + (600 * names.length) + '&select=id,title,url,source_name,territory,published_at,captured_at').catch(excQuiet('measure_competitor', []))) || [];
+    m.competitors = names.map(nm => { const k = nm.toLowerCase(); const mm = excMeasureFrom(rows2.filter(r => String(r.title || '').toLowerCase().includes(k)), [], Date.now()); return { name: nm, series: mm.series, recent_7d: mm.recent_7d, prior_7d: mm.prior_7d, outlets: mm.outlets, weeks_touched: mm.weeks_touched, n: mm.n }; });
+  }
   return m;
 }
 function excMeasureLine(m) {
@@ -6489,6 +6501,63 @@ const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artifi
   'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
   'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'];
 
+/* SEAM:EXC_VOICES: consumer reality, verbatim. The discourse rails (YouTube comments, Mastodon posts) hand the
+ * page every on-frame quote they fetched, in the speaker's own words, ranked by what other people made of it
+ * (likes, favourites). A quote carries only what its speaker said about themselves (generation, gender, role,
+ * a trait, a country), found by plain patterns in the text itself and never inferred from a name, an avatar or
+ * a style; it never carries a name, a handle, a channel or a link to the individual comment, only to the video or
+ * the tag. A stated age under 18 is folded into its generation and never shown as a number. A quote with an
+ * email or a phone number in it is dropped. Nothing here is evidence for a claim; it is the voice beside the read. */
+const VOICES = { PER_VIDEO: 100, VIDEOS: 3, MAX: 150, TEXT: 420, MIN: 14, POSTS: 40 };
+const VOICE_RE = {
+  age: /\b(?:i(?:'| a)?m|i am|as an?|being an?)\s+(?:a\s+|an\s+)?(\d{2})(?:\s*|-)(?:yo\b|y\/o\b|(?:yrs?|years?)[- ]old\b)/i,
+  bareAge: /\bi(?:'| a)?m\s+(\d{2})\b(?!\s*(?:%|k\b|st\b|nd\b|rd\b|th\b|\d{2}\b|out\b|of\b|and counting|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|times|percent|bucks|dollars|lbs|pounds|inches|cm|kg|miles|yrs?\b|years?\b))/i,
+  gen: /\b(?:i(?:'| a)?m|i am|as an?|us|we|fellow|being an?)\s+(?:a\s+|an\s+)?(gen ?z|zoomer|millennial|gen ?x|boomer|gen ?alpha)s?\b/i,
+  gender: /\b(?:i(?:'| a)?m|i am|as an?|being an?|speaking as an?)\s+(?:a\s+|an\s+)?(?:\d{2}[- ]?(?:yo|year|yr)[- ]?old\s+)?(?:(?:black|white|asian|latina|latino|brown|young|older|single|married|busy|new|working)\s+)?(woman|girl|female|lady|man|guy|male|dude|mom|mum|mother|dad|father|husband|wife|boyfriend|girlfriend|grandma|grandmother|grandpa|grandfather)\b(?!\s+(?:dad|mom|mum|father|mother))(?!'s)/i,
+  role: /\b(?:i(?:'| a)?m|i am|as an?|being an?|i work as an?)\s+(?:a\s+|an\s+)?(?:licensed\s+|professional\s+|former\s+|retired\s+)?(hairstylist|hair stylist|stylist|hairdresser|barber|dermatologist|derm|trichologist|esthetician|cosmetologist|salon owner|nurse|doctor|teacher|college student|student|nursing student|chemist|formulator|pharmacist|retail worker|parent|mom|dad|mother|father)\b(?!'s)(?!\s+(?:dad|mom|mum|'s))/i,
+  trait: /\b(?:my|i have|i've got|i got|with my|for my)\s+(?:super\s+|very\s+|really\s+)?(4[abc]|3[abc]|2[abc]|type [234]|low porosity|high porosity|curly|coily|kinky|wavy|straight|fine|thick|thin|thinning|oily|dry|damaged|bleached|color[- ]?treated|colored|natural|relaxed|textured|frizzy|gray|grey|dandruff[- ]?prone|sensitive)\s+(?:hair|scalp|skin|curls|strands)\b/i,
+  traitWith: /\b(?:i(?:'| a)?m|i am|as an?)\s+(?:a\s+|an\s+)?(?:\d{2}[- ]?(?:yo|year|yr)[- ]?old)?\s*(?:woman|girl|man|guy|mom|dad|teen|teenager|student|stylist|person|someone)?\s*with\s+(?:super\s+|very\s+|really\s+)?(4[abc]|3[abc]|2[abc]|type [234]|low porosity|high porosity|curly|coily|kinky|wavy|straight|fine|thick|thin|thinning|oily|dry|damaged|bleached|color[- ]?treated|colored|natural|relaxed|textured|frizzy|gray|grey|dandruff[- ]?prone|sensitive)\s+(hair|scalp|skin|curls|strands)\b/i,
+  place: /\b(?:here in|i live in|i(?:'| a)?m from|i am from|i(?:'| a)?m in|living in|over here in|i live here in)\s+(the uk|uk|britain|england|scotland|ireland|canada|australia|new zealand|india|nigeria|ghana|kenya|south africa|germany|france|spain|italy|the netherlands|brazil|mexico|the philippines|japan|korea|the us|the usa|the states|america|texas|california|new york|florida|georgia|illinois|ohio|london|toronto|lagos|sydney)\b/i,
+  // "as a hairstylist in Texas": a place said of oneself, through a stated role, age or gender
+  placeSelf: /\b(?:as an?|i(?:'| a)?m an?|i am an?)\s+(?:(?:licensed|professional|former|retired|new|single|busy|working|young|older|black|white|asian|latina|latino|brown|\d{2}[- ]?(?:yo|year|yr)[- ]?old)\s+)?(?:hairstylist|hair stylist|stylist|hairdresser|barber|dermatologist|derm|trichologist|esthetician|cosmetologist|salon owner|nurse|doctor|teacher|college student|student|nursing student|chemist|formulator|pharmacist|retail worker|parent|mom|mum|dad|mother|father|woman|girl|female|lady|man|guy|male|dude|husband|wife|grandma|grandpa|customer|consumer|shopper|user|teen|teenager|person)\s+(?:living|working|based)?\s*in\s+(the uk|uk|britain|england|scotland|ireland|canada|australia|new zealand|india|nigeria|ghana|kenya|south africa|germany|france|spain|italy|the netherlands|brazil|mexico|the philippines|japan|korea|the us|the usa|the states|america|texas|california|new york|florida|georgia|illinois|ohio|london|toronto|lagos|sydney)\b/i };
+const VOICE_PLACE = { london: 'UK', 'the uk': 'UK', uk: 'UK', britain: 'UK', england: 'UK', scotland: 'UK', toronto: 'Canada', lagos: 'Nigeria', sydney: 'Australia', 'the us': 'US', 'the usa': 'US', 'the states': 'US', america: 'US', texas: 'US (Texas)', california: 'US (California)', 'new york': 'US (New York)', florida: 'US (Florida)', georgia: 'US (Georgia)', illinois: 'US (Illinois)', ohio: 'US (Ohio)', korea: 'South Korea' };
+function voiceGeneration(age) { if (!Number.isFinite(age) || age < 10 || age > 95) return null; const born = new Date().getFullYear() - age; return born >= 2013 ? 'Gen Alpha' : born >= 1997 ? 'Gen Z' : born >= 1981 ? 'Millennial' : born >= 1965 ? 'Gen X' : 'Boomer'; }
+function voiceSelf(text) {
+  const t = ' ' + String(text || '') + ' ';
+  const self = {};
+  const g = t.match(VOICE_RE.gen); if (g) { const k = g[1].toLowerCase().replace(/\s+/g, ''); self.generation = k === 'zoomer' ? 'Gen Z' : k === 'genz' ? 'Gen Z' : k === 'genx' ? 'Gen X' : k === 'genalpha' ? 'Gen Alpha' : k === 'boomer' ? 'Boomer' : 'Millennial'; }
+  const a = t.match(VOICE_RE.age) || t.match(VOICE_RE.bareAge); if (a && !self.generation) { const gen = voiceGeneration(parseInt(a[1], 10)); if (gen) self.generation = gen; }   // the age itself is never kept
+  const s = t.match(VOICE_RE.gender); if (s) { const k = s[1].toLowerCase(); self.gender = /^(woman|girl|female|lady|mom|mum|mother|wife|girlfriend|grandma|grandmother)$/.test(k) ? 'woman' : 'man'; if (/^(mom|mum|mother|dad|father|grandma|grandmother|grandpa|grandfather)$/.test(k)) self.role = 'parent'; }
+  const r = t.match(VOICE_RE.role); if (r) { const k = r[1].toLowerCase(); self.role = /^(mom|dad|mother|father|parent)$/.test(k) ? 'parent' : /^(hairstylist|hair stylist|stylist|hairdresser|barber|cosmetologist|salon owner)$/.test(k) ? 'stylist' : /^(dermatologist|derm|trichologist|esthetician|chemist|formulator|pharmacist|doctor|nurse)$/.test(k) ? 'practitioner' : /student$/.test(k) ? 'student' : k; }
+  const tr = t.match(VOICE_RE.trait); if (tr) self.trait = tr[0].replace(/^\s*(?:my|i have|i've got|i got|with my|for my)\s+/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  else { const tw = t.match(VOICE_RE.traitWith); if (tw) self.trait = (tw[1] + ' ' + tw[2]).toLowerCase(); }   // "as a 19 year old with 4c hair": the speaker's own
+  const pl = t.match(VOICE_RE.place) || t.match(VOICE_RE.placeSelf); if (pl) { const k = pl[1].toLowerCase(); self.place = VOICE_PLACE[k] || k.replace(/^the /, '').replace(/\b\w/g, c => c.toUpperCase()); }
+  return Object.keys(self).length ? self : null;
+}
+function voiceClean(text) {
+  // A Mastodon mention is markup around a handle; it goes before the markup is flattened, so no handle survives as words.
+  const raw = env1(stripHtml(String(text || '').replace(/<a[^>]*class="[^"]*\bu-url\b[^"]*"[^>]*>[\s\S]*?<\/a>/gi, ' ').replace(/([#@])<span[^>]*>/gi, '$1').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))).replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"');
+  // A phone number: seven or more digits in one run with at least one group of three; an ISO date or a row of reps ("10 20 30") is not one.
+  const digitsOnly = String(raw).replace(/\d{4}-\d{2}-\d{2}/g, ' ');
+  const phone = (digitsOnly.match(/\+?\d[\d\s().-]{6,}\d/g) || []).some(run => run.replace(/\D/g, '').length >= 7 && /\d{3}/.test(run));
+  if (/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(raw) || phone) return null;   // an email or a phone number: dropped whole, before anything is stripped
+  let t = raw.replace(/https?:\/\/\S+/gi, '').replace(/@\s*[\w.-]{2,}/g, '').replace(/\s+/g, ' ').trim();
+  if (t.length < VOICES.MIN) return null;
+  return t.length > VOICES.TEXT ? t.slice(0, VOICES.TEXT).replace(/\s+\S*$/, '') + ' …' : t;
+}
+function voiceOnFrame(text, frame) {
+  if (!frame || !Array.isArray(frame.anchors) || !frame.anchors.length) return null;   // not read through a frame: the page says so
+  const norm = x => String(x || '').toLowerCase().replace(/['\u2019]/g, '').replace(/[^a-z0-9$%& ]+/g, ' ');
+  const h = ' ' + norm(text) + ' ';
+  const terms = [].concat(frame.anchors, frame.entity ? [frame.entity] : [], frame.competitors || []).map(a => norm(a).trim()).filter(Boolean);
+  const nouns = String((frame.category || '')).toLowerCase().split(/[^a-z0-9&]+/).filter(w => w.length >= 4 && !EXC_GATE.STOP.has(w));
+  return terms.concat(nouns).some(t => h.includes(' ' + t + ' ') || h.includes(' ' + t + 's ') || (t.includes(' ') && t.split(' ').filter(w => w.length >= 3 && !EXC_GATE.STOP.has(w)).every(w => h.includes(' ' + w + ' ') || h.includes(' ' + w + 's '))));
+}
+function voiceAdd(ctx, source, entry) {
+  if (!ctx || !ctx.meta) return;
+  const v = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] });
+  if (!v.sources.some(s => s.id === entry.id)) v.sources.push(entry);
+}
 /* SEAM:EXC_GDELT_SPACE: GDELT throttles an address that asks too often (the Oct 3 read lost the competitive set,
  * the counter view and the news rail to it at once). Every GDELT call in this isolate takes its turn, GAP_MS apart,
  * so four rails asking together arrive one at a time instead of all being refused. */
@@ -6631,9 +6700,13 @@ const RAIL_FNS = {
   async mastodon(env, q, ctx, rail) {
     // VOICE aggregate law: one row per tag per window, never per-post noise.
     const tag = String(q).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40); if (!tag) return [];
-    const posts = await railFetch('https://mastodon.social/api/v1/timelines/tag/' + tag + '?limit=20&local=false');
+    const posts = await railFetch('https://mastodon.social/api/v1/timelines/tag/' + tag + '?limit=' + VOICES.POSTS + '&local=false');
     if (!Array.isArray(posts) || !posts.length) return [];
     const ex = posts.slice(0, 3).map(p => stripHtml(p.content).slice(0, 140));
+    // SEAM:EXC_VOICES: each public post, verbatim, without its account.
+    if (ctx && ctx.meta) { const frame = ctx.frame; const src = { id: 'mast:' + tag, source: 'Mastodon', title: '#' + tag, url: 'https://mastodon.social/tags/' + tag, published_at: posts[0].created_at || null, n: posts.length };
+      const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); voiceAdd(ctx, 'Mastodon', src);
+      for (const p of posts) { if (p.sensitive || p.spoiler_text) continue; const text = voiceClean(p.content); if (!text || !looksEnglish(text) || vv.quotes.length >= VOICES.MAX) continue; vv.quotes.push({ src: src.id, text, likes: parseInt(p.favourites_count, 10) || 0, when: p.created_at ? String(p.created_at).slice(0, 10) : null, self: voiceSelf(text), on_frame: voiceOnFrame(text, frame) }); } }
     const newest = posts[0].created_at, oldest = posts[posts.length - 1].created_at;
     return [envelope(rail, { url: 'https://mastodon.social/tags/' + tag, title: '#' + tag + ' on Mastodon: ' + posts.length + ' posts in window', kind: 'discourse',
       text: 'Aggregate of ' + posts.length + ' public posts between ' + String(oldest).slice(0, 10) + ' and ' + String(newest).slice(0, 10) + '. Sample: ' + ex.join(' | '), published_at: newest })];
@@ -6672,12 +6745,22 @@ const RAIL_FNS = {
     if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, String(used + 1), { expirationTtl: 90000 }).catch(() => {});
     const vids = ((s && s.items) || []).filter(v => v.id && v.id.videoId);
     const out = vids.map(v => envelope(rail, { url: 'https://www.youtube.com/watch?v=' + v.id.videoId, title: v.snippet.title, text: stripHtml(v.snippet.description).slice(0, 300) + ' · ' + (v.snippet.channelTitle || ''), image: v.snippet.thumbnails && (v.snippet.thumbnails.high || v.snippet.thumbnails.medium || {}).url, published_at: v.snippet.publishedAt, source_name: 'YouTube' }));
-    // Discourse aggregate: comments on the top two videos, counted, three excerpts.
+    // Discourse aggregate: comments on the top videos, counted, three excerpts on the line; every quote into the voices (SEAM:EXC_VOICES).
     let n = 0, ex = [];
-    for (const v of vids.slice(0, 2)) {
-      const c = await railFetch('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&maxResults=20&order=relevance&textFormat=plainText&videoId=' + v.id.videoId + '&key=' + key);
-      for (const t of ((c && c.items) || [])) { n++; if (ex.length < 3) ex.push(env1(t.snippet.topLevelComment.snippet.textDisplay).slice(0, 120)); }
-    }
+    const frame = ctx && ctx.frame;
+    const pages = await Promise.all(vids.slice(0, VOICES.VIDEOS).map(v => railFetch('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&maxResults=' + VOICES.PER_VIDEO + '&order=relevance&textFormat=plainText&videoId=' + v.id.videoId + '&key=' + key).catch(() => null)));
+    vids.slice(0, VOICES.VIDEOS).forEach((v, i) => {
+      const c = pages[i]; if (!c || !Array.isArray(c.items)) return;
+      const vid = { id: 'yt:' + v.id.videoId, source: 'YouTube', title: env1(v.snippet.title).slice(0, 140), url: 'https://www.youtube.com/watch?v=' + v.id.videoId, published_at: v.snippet.publishedAt || null, n: 0 };
+      for (const t of c.items) {
+        const sn = t && t.snippet && t.snippet.topLevelComment && t.snippet.topLevelComment.snippet; if (!sn) continue;
+        n++; vid.n++;
+        const text = voiceClean(sn.textDisplay || sn.textOriginal); if (!text || !looksEnglish(text)) continue;
+        if (ex.length < 3) ex.push(text.slice(0, 120));
+        if (ctx && ctx.meta) { const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); if (vv.quotes.length < VOICES.MAX) vv.quotes.push({ src: vid.id, text, likes: parseInt(sn.likeCount, 10) || 0, when: sn.publishedAt ? String(sn.publishedAt).slice(0, 10) : null, self: voiceSelf(text), on_frame: voiceOnFrame(text, frame) }); }
+      }
+      voiceAdd(ctx, 'YouTube', vid);
+    });
     if (n) out.push(envelope(rail, { url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q), title: 'YouTube comments on "' + q + '": ' + n + ' sampled', kind: 'discourse', text: 'Sample: ' + ex.join(' | '), source_name: 'YouTube comments' }));
     return out;
   },

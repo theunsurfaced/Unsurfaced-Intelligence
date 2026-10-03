@@ -307,7 +307,53 @@ const req = (h, body) => ({ headers: { get: k => h[k] || '' }, json: async () =>
 ok((await DK(req({ 'x-field-key': 'tav' }, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === true && (await DK(req({ 'x-field-key': 'tav' }, { run: 'door' }), { FIELD_API_KEY: 'tav', DESK_API_KEY: 'desk' }, '')).ok === false && (await DK(req({ 'x-desk-key': 'desk' }, { run: 'door' }), { FIELD_API_KEY: 'tav', DESK_API_KEY: 'desk' }, '')).ok === true && (await DK(req({ 'Authorization': 'Bearer admin' }, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === true && (await DK(req({}, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === false && (await DK(req({ 'Authorization': 'Bearer boom' }, { run: 'door' }), { FIELD_API_KEY: 'tav' }, '')).ok === false,
   'B7 the desk opens to its own key once set (the field key no longer), to the field key until then, and to a signed-in admin; never to no one, and a failed auth lookup is a 401, not a 500');
 
+// ── V: EX5c, the voices and the visuals ───────────────────────────────────
+const voiceSrc = between(w, 'const VOICES = {', '/* SEAM:EXC_GDELT_SPACE');
+const VO = new Function('env1', 'stripHtml', 'EXC_GATE', voiceSrc + '; return { voiceSelf, voiceClean, voiceOnFrame, voiceAdd, VOICES };')(
+  x => String(x == null ? '' : x).replace(/\s+/g, ' ').trim(), x => String(x || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ').replace(/\s+/g, ' ').trim(), { STOP: new Set(['care', 'brand']) });
+const vf = { anchors: ['hair care', 'scalp', 'curls', 'gloss'], category: 'Hair care', competitors: ['&honey', 'Kristin Ess'] };
+const say = t => { const c = VO.voiceClean(t); return { c, self: c ? VO.voiceSelf(c) : null, on: c ? VO.voiceOnFrame(c, vf) : null }; };
+let v = say('As a 19 year old with 4c hair I finally found a routine that works, rosemary oil every night');
+ok(v.self && v.self.generation === 'Gen Z' && v.self.trait === '4c hair' && !('age' in v.self) && v.on === true, 'V1 a stated age becomes a generation (the number itself is never kept); a stated hair type is a trait; the frame is named');
+v = say("I'm 16 and my scalp is so dry, is this safe for teens??");
+ok(v.self && v.self.generation === 'Gen Z' && JSON.stringify(v.self).indexOf('16') < 0, 'V1b a stated age under 18 folds into its generation and the number is never kept');
+v = say('im a mom of two girls and we switched to &honey after the ulta trip, their curls love it');
+ok(v.self && v.self.gender === 'woman' && v.self.role === 'parent' && v.on === true, 'V2 "mom" is a woman and a parent, by her own word');
+v = say('Speaking as a hairstylist in Texas, the single dose scalp shots are a gimmick');
+ok(v.self && v.self.role === 'stylist' && v.self.place === 'US (Texas)', 'V3 a stated trade and a stated place, no finer than a state');
+v = say('us millennials did this in 2012 lol, nothing new');
+ok(v.self && v.self.generation === 'Millennial' && v.on === false, 'V4 a stated generation; a quote that never names the frame is marked off it, not dropped');
+ok(VO.voiceClean('email me at test@example.com for the code') === null && VO.voiceClean('call me 312-555-0199 for details') === null && VO.voiceClean('ok') === null, 'V5 a quote carrying an email or a phone number is dropped whole; so is a quote too short to mean anything');
+ok(VO.voiceClean('@beautyguru99 you are right, the gloss is viral https://youtu.be/x') === 'you are right, the gloss is viral' && VO.voiceClean('<b>Love</b> this &amp; the price') === 'Love this & the price', 'V6 handles and links are stripped, markup is removed, an ampersand survives');
+ok(VO.voiceSelf('this product is for women with curly hair') === null && VO.voiceSelf('my daughter is 14 and loves it') === null, 'V7 a word about someone else, or about the product, is not a self-description');
+ok(VO.voiceSelf("I'm 20 minutes into this video and already sold") === null && VO.voiceSelf("I'm 95 percent sure this is a dupe") === null && VO.voiceSelf("I'm 20 years into this industry") === null && VO.voiceSelf('retire at 65 years old') === null && VO.voiceSelf("I'm 50 50 on this") === null && VO.voiceSelf("I'm 10 out of 10 recommending") === null,
+  'V7b a number that is not an age is not an age');
+ok(VO.voiceSelf("I'm a millennial and this is my routine").generation === 'Millennial' && VO.voiceSelf('I got this from a boomer') === null && VO.voiceSelf('they sell this in canada') === null && VO.voiceSelf('popular in japan') === null && VO.voiceSelf("I'm in Canada and we get it at Shoppers").place === 'Canada',
+  'V7c the common phrasings count ("I\'m a millennial"), hearsay and geography about the product do not');
+ok(VO.voiceSelf("I'm obsessed with curly hair content") === null && VO.voiceSelf("I'm done with dry skin products") === null && VO.voiceSelf("I'm a girl dad and this helped") === null && VO.voiceSelf("I'm a doctor's daughter") === null && VO.voiceSelf("as a 24 year old guy with thinning hair this helped").trait === 'thinning hair',
+  'V7d a verb phrase with "with" is not a trait; "girl dad" is not a woman; "doctor\'s daughter" is not a practitioner; a 24 year old guy with thinning hair is');
+ok(VO.voiceClean("I\u2019m 25 and this is my routine") === "I'm 25 and this is my routine" && VO.voiceSelf(VO.voiceClean("I\u2019m 25 and this is my routine")).generation === 'Gen Z' && VO.voiceClean('the study ran 2024-10-03 to 2025-01-01 and found it works') !== null && VO.voiceClean('10 20 30 40 50 reps on the scalp massager') !== null,
+  'V7e a curly apostrophe is an apostrophe; a date or a run of reps is not a phone number');
+ok(VO.voiceClean('<p><span class="h-card"><a href="https://m.example/@alice" class="u-url mention">@<span>alice</span></a></span> thanks for sharing the routine</p>') === 'thanks for sharing the routine' && VO.voiceClean('@john-doe_99 said the same thing about the gloss') === 'said the same thing about the gloss',
+  'V7f a Mastodon mention and a hyphenated handle leave no trace');
+ok(VO.voiceOnFrame('anything', null) === null && VO.voiceOnFrame('anything', { anchors: [] }) === null, 'V7g without a frame a quote is neither on nor off it');
+ok(VO.voiceClean('new routine for <a href="https://m.example/tags/curlyhair" class="mention hashtag" rel="tag">#<span>curlyhair</span></a> with the gloss') === 'new routine for #curlyhair with the gloss' && VO.voiceSelf("I'm 10 years older than my sister") === null && VO.voiceSelf("I'm 25 years sober") === null && VO.voiceSelf('as a brand in canada we see it') === null && VO.voiceSelf("I'm a sucker for anything in japan") === null && VO.voiceSelf('as a licensed stylist based in canada').place === 'Canada',
+  'V7h a hashtag survives the mention stripper; a span of years is not an age; a place reaches the speaker only through a stated role or gender');
+ok(!/snippet\.authorDisplayName|authorChannelId|authorProfileImageUrl|\.account\.(?:username|acct|display_name)/.test(between(w, '  async mastodon(env, q, ctx, rail) {', '  async kg(env, q, ctx, rail) {')), 'V8 the rails never read a commenter\'s name, channel or avatar');
+ok(/if \(p\.sensitive \|\| p\.spoiler_text\) continue;/.test(w) && /if \(!text \|\| !looksEnglish\(text\)\) continue;/.test(w) && !/channel: env1\(v\.snippet\.channelTitle/.test(w), 'V8b a sensitive or spoilered post stays out, so does another language; the video source carries no channel');
+ok(/maxResults=' \+ VOICES\.PER_VIDEO/.test(w) && /vids\.slice\(0, VOICES\.VIDEOS\)/.test(w) && VO.VOICES.PER_VIDEO === 100 && VO.VOICES.VIDEOS === 3 && /\?limit=' \+ VOICES\.POSTS/.test(w) && /voices \|\| \(ctx\.meta\.voices = \{ sources: \[\], quotes: \[\] \}\)/.test(w),
+  'V9 YouTube asks for a hundred comments on each of the top three videos and Mastodon for forty posts; every quote rides the gather meta as a voice');
+// the lines and the competitors
+ok(/lines: merged\.map\(\(c, i\) => \{ const d = excWhen\(c\); return \{ n: i \+ 1, title/.test(w) && /competitor: c\.entity \? String\(c\.entity\)\.slice\(0, 40\) : null, counter: c\.stance === 'against', record: excRecord\(c, now\)/.test(w) && /image: \/\^https:\\\/\\\/\/\.test\(String\(c\.image \|\| ''\)\)/.test(w),
+  'V10 every read carries its lines, small: number, title, date, band, tier, lens, source, url, an https image, and the marks (competitor, counter, record, gap, page, facts)');
+ok(/const rows2 = \(await sbRest\(env, 'signals\?status=neq\.rejected&' \+ ilikeOr\(names\)/.test(w) && /m\.competitors = names\.map\(nm => \{ const k = nm\.toLowerCase\(\); const mm = excMeasureFrom\(rows2\.filter\(r => String\(r\.title \|\| ''\)\.toLowerCase\(\)\.includes\(k\)\)/.test(w),
+  'V11 the measures count up to five competitors the same way, in one query bucketed by name, on the same twelve weeks');
+
 // ── W: the page ───────────────────────────────────────────────────────────
+ok(/function _timeline\(lines, W\)/.test(page) && /function _competitorRow\(ms\)/.test(page) && /function _voicesPull\(voices, k\)/.test(page) && /function _renderVoices\(meta\)/.test(page) && /class="rb-pics"/.test(page) && /class="move-play"/.test(page) && /lines:syn&&syn\.lines\|\|null/.test(page) && /image:it\.image\|\|null \}\);/.test(page),
+  'W-1 the page draws the timeline, the competitive set, the pull-quotes and the voices panel, shows the sources\' images, offers to picture a move in PLAY, and forwards lines and images');
+ok(/self-described: /.test(page) && /never a name/.test(page) && !/authorDisplayName/.test(page) && /data-key="\$\{safeAttr\(c\.key\)\}"/.test(page) && !/onclick="_voiceFilterSet\('\$\{/.test(page) && /not read through a frame/.test(page) && /data-url="\$\{safeUrl\(l\.url\)\}"/.test(page) && /window\._voiceView=\{ filter:'frame', shown:12 \};\n/.test(page),
+  'W-2 the voices panel labels self-descriptions as the speaker\'s own, filters through data attributes (never a label inside a handler), says when no frame read the quotes, opens only a checked url, and starts clean on each search');
 ok(/SEAM:READ_BRIEF/.test(page) && /class="rb-plate"/.test(page) && /class="rb-measures"/.test(page) && /class="rb-receipts"/.test(page) && /class="rb-wire"/.test(page) && /id="results-grid-all"/.test(page) && /FROM THE RECORD/.test(page),
   'W0 THE READ renders as a brief (plate, measures strip, receipts rail, wire aside), the findings sit in one grid, and a record line says so on its card');
 ok(!/#live-results\.show-all \.results-lens-panel:not\(#rlp-truth\)\{display:block/.test(page) && /#live-results\.show-all \.results-lens-panel\{display:none;\}/.test(page) && /#live-results\.show-all #rlp-findings\{display:block/.test(page) && /querySelectorAll\('#read-block \.read-line'\)/.test(page) && /r\.id==='competitors'\|\|r\.id==='counter'\)&&!\(r\.n>0\)/.test(page),

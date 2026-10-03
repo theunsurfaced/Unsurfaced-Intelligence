@@ -78,7 +78,7 @@ ok(r.lane === 'reserve' && r.reason === 'overnight_share' && calls.length === 1 
 calls = []; L = mk([{ ok: true, text: 'LIVE' }], 5.9);
 r = await L.excCompile({}, { system: 'S', prompt: 'P', overnight: true });
 ok(r.lane === 'live' && calls.length === 1, 'L6 overnight work under the share rides the live lane');
-ok(L.excCacheKey('abc') === 'excr:i3:abc' && L.EXC_MODEL.CACHE_TTL === 86400, 'L7 a live read is kept a day under its query');
+ok(L.excCacheKey('abc') === 'excr:i4:abc' && L.EXC_MODEL.CACHE_TTL === 86400, 'L7 a live read is kept a day under its query');
 ok(/live:   \{ model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' \}/.test(w), 'L8 the live tier: Sonnet 5, $10 a month, CLAUDE_LIVE_MONTHLY to change');
 
 // ── synthesize: cache, lane, dated findings ───────────────────────────────
@@ -112,7 +112,7 @@ ok(d.insights[2].confidence === 'Medium' && d.insights[2].dated.band === 'CONTEX
 ok(d.ideas[0].dated && d.ideas[0].dated.band === 'NOW' && d.model.lane === 'live' && d.model.cached === false && d.window.NOW === 1 && d.window.ARCHIVE === 1 && d.window.widened === true && d.compiled_at, 'S6 a move knows the date of its proof; the read carries its window, its widening and its lane');
 ok(ledger.meta.window.NOW === 1 && ledger.meta.model.lane === 'live' && ledger.meta.widened === true, 'S7 the ledger keeps the window and the lane');
 const keys = Object.keys(kv);
-ok(keys.length === 1 && /^excr:i3:h/.test(keys[0]), 'S8 a live read is kept under its query');
+ok(keys.length === 1 && /^excr:i4:h/.test(keys[0]), 'S8 a live read is kept under its query');
 compiled = null;
 const again = (await S({ query: 'gen z hair care', mode: 'report', corpus: [] }, env, '')).data;
 ok(compiled === null && again.model.cached === true && again.insights[0].title === 'Fresh', 'S9 the same query the same day is served as it was: nothing gathered, nothing spent');

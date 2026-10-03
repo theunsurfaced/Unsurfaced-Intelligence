@@ -545,6 +545,48 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rb-foot{font-size:11px;line-height:1.5;color:var(--text3);margin:14px 0 0;max-width:70ch}
 .rb-foot.rb-law{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);max-width:none}
 .card-when.RECORD{color:var(--accent4);border-color:rgba(245,165,90,.35)}
+/* SEAM:EXC_TIMELINE */
+.rb-timeline{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--border)}
+.rb-tl-head{font-size:12px;color:var(--text);margin-bottom:6px}.rb-tl-head span{color:var(--text3);font-size:10px;margin-left:8px}
+.tl{display:block;max-width:100%;height:auto}
+.tl-grid{stroke:var(--border2);stroke-width:1;stroke-dasharray:2 3}.tl-gutter{stroke:var(--border2);stroke-width:1}
+.tl-tick,.tl-row{font-family:'Syne',sans-serif;font-size:9px;fill:var(--text3)}
+.tl-dot{opacity:.9}.tl-dot.consumer{fill:var(--accent)}.tl-dot.market{fill:var(--accent3)}.tl-dot.culture{fill:var(--accent4)}.tl-dot.brand{fill:var(--accent2)}
+.tl-dot.old{opacity:.45}.tl-dot.record{fill:none;stroke:var(--accent4);stroke-width:1.6;opacity:1}
+.tl-g:hover .tl-dot{opacity:1;stroke:var(--text);stroke-width:1}
+.rb-pics{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;align-items:flex-start}
+.rb-pic{display:flex;flex-direction:column;gap:3px;width:132px;text-decoration:none}
+.rb-pic img{width:132px;height:76px;object-fit:cover;border:1px solid var(--border);background:var(--surface);display:block}
+.rb-pic span{font-size:9px;color:var(--text3);line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rb-pics-cap{flex-basis:100%;font-size:10px;color:var(--text3)}
+.rb-comps{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 22px;align-items:flex-end;margin-top:4px;padding-top:10px;border-top:1px dashed var(--border2)}
+.rb-comp{display:flex;flex-direction:column;gap:2px}
+.rb-comp-k{font-size:10px;color:var(--text3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:120px}.rb-comp.frame .rb-comp-k{color:var(--text)}
+.rb-comp .fi-spark-line{fill:none;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}.rb-comp .fi-spark.accent .fi-spark-line{stroke:var(--accent);stroke-width:2}.rb-comp .fi-spark.quiet .fi-spark-line{stroke:var(--text3)}
+.rb-comp .fi-spark.accent .fi-spark-dot{fill:var(--accent)}.rb-comp .fi-spark.quiet .fi-spark-dot{fill:var(--text3)}
+.rb-comp-n{font-family:'Space Mono',monospace;font-size:12px;color:var(--text)}.rb-comp-n small{font-size:9px;color:var(--text3);font-family:'Syne',sans-serif}
+.rb-comp-cap{flex-basis:100%;font-size:10px;color:var(--text3)}
+/* SEAM:EXC_VOICES */
+.rb-voices{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 22px;margin:16px 0 0;padding:14px 0 0;border-top:1px solid var(--border)}
+.rb-voice{margin:0;padding:0 0 0 12px;border-left:2px solid var(--border2)}
+.rb-voice p{font-family:'DM Serif Display',serif;font-style:italic;font-size:15px;line-height:1.45;color:var(--text);margin:0 0 6px}
+.rb-voice footer{display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--text3)}
+.vq-self{color:var(--text2)}.vq-meta a{color:var(--text3);text-decoration:underline dotted}
+.rb-voices-cap{grid-column:1/-1;font-size:10px;color:var(--text3)}.rb-voices-cap a{color:var(--text2)}
+.voices{margin:28px 0 8px;padding:22px 26px;background:var(--surface);border:1px solid var(--border)}
+.voices-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:12px}
+.voices-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text)}.voices-sub{font-size:11px;color:var(--text3);max-width:70ch}
+.voices-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.voices-chip{background:none;border:1px solid var(--border2);color:var(--text2);font-family:'Syne',sans-serif;font-size:11px;padding:4px 9px;border-radius:2px;cursor:pointer}
+.voices-chip b{color:var(--text3);font-weight:500;margin-left:3px}.voices-chip.on{border-color:var(--accent);color:var(--text)}.voices-chip:hover{border-color:var(--text3)}
+.voices-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px 22px}
+.vq{padding:10px 0;border-top:1px solid var(--border)}
+.vq-text{font-size:14px;line-height:1.55;color:var(--text);margin:0 0 5px}
+.vq-foot{display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--text3)}
+.voices-more{margin-top:14px;background:none;border:1px solid var(--border2);color:var(--text2);font-family:'Syne',sans-serif;font-size:11px;padding:7px 12px;cursor:pointer}.voices-more:hover{border-color:var(--accent)}
+.voices-src{margin-top:12px;font-size:10px;color:var(--text3)}.voices-src a{color:var(--text3)}
+.voices-empty{font-size:12px;color:var(--text3)}
+.move-play{display:inline-block;margin-top:10px;font-size:11px;color:var(--text3);text-decoration:none;border-bottom:1px dotted var(--border2)}.move-play:hover{color:var(--text)}
 @media(max-width:900px){.rb-measures{grid-template-columns:1fr}.rb-body{grid-template-columns:1fr}.rb-receipts{border-left:none;padding-left:0;border-top:1px solid var(--border);padding-top:12px}}
 .card-img{width:100%;height:150px;object-fit:cover;display:block;margin:-24px -24px 14px;width:calc(100% + 48px);border-bottom:1px solid var(--border);filter:saturate(.9);}
 .card-img-src{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.08em;color:var(--text3);margin:-8px 0 10px;}
@@ -3125,7 +3167,7 @@ function _renderLive(q, data){
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
-    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null},synthd?'live':'basic');   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
+    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null},synthd?'live':'basic');   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -3143,7 +3185,7 @@ function _lensSignal(cat){ return cat==='consumer'?'social':cat==='market'?'web'
 async function _excGather(q){
   const cats=['consumer','market','culture','brand'];
   const _tf=(window._tileFrame&&window._tileFrame._q===q)?window._tileFrame.frame:null;   // SEAM:EXC_DOOR: a tile's frame rides in
-  window._gatherMeta=null; window._gatherItems=[]; window._tileFrame=null;   // SEAM:EXC_FRAME: nothing from the last search leaks into this one
+  window._gatherMeta=null; window._gatherItems=[]; window._tileFrame=null; window._voiceView={ filter:'frame', shown:12 };   // SEAM:EXC_FRAME: nothing from the last search leaks into this one
   // SEAM:EXC_SPEED: the browser lenses, the server gather and the lake used to run one after another. They start together;
   // the lake's answer is kept for synthesize (api() reads it instead of asking again).
   const _hdr=await _authHeader();
@@ -3180,7 +3222,7 @@ async function _excGather(q){
         if(it.url&&seen.has(it.url)) return; if(it.url) seen.add(it.url);
         const lens=it.kind==='truth'?'brand':(it.kind==='discourse'?'culture':(it.kind==='research'?'consumer':(it.kind==='filing'?'market':'market')));
         items.push({ signalType:it.kind==='news'?'news':(it.kind==='discourse'?'social':'web'), title:it.title, snippet:it.text||'', source:it.source_name||'', url:it.url||null, image:it.image||null, published_at:it.published_at||null });
-        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather', published_at:it.published_at||null, kind:it.kind||null, tier:it.source_tier||null, entity:it.entity||null, stance:it.stance||null });   // EXC_INTEL; SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: the tag rides to the read
+        corpus.push({ lens, source:it.source_name||'', title:it.title, text:(it.text||'').slice(0,360), url:it.url||'', rail:'gather', published_at:it.published_at||null, kind:it.kind||null, tier:it.source_tier||null, entity:it.entity||null, stance:it.stance||null, image:it.image||null });   // EXC_INTEL; SEAM:EXC_COMPETE / SEAM:EXC_COUNTER: the tag rides to the read; SEAM:EXC_TIMELINE: the image too
         const key=(it.source_name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:it.source_name, display:it.source_name, desc:it.kind||'live', url:it.url||'' };
       });
       (g.rails||[]).forEach(rl=>{ if(rl.n>0){ const key=(rl.name||'').toLowerCase(); if(key&&!srcMap[key]) srcMap[key]={ num:0, label:rl.name, display:rl.name, desc:rl.n+' gathered', url:'' }; } });
@@ -3711,7 +3753,7 @@ function renderResults(q, data, mode){
   const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources, dropped:data.moves_dropped||0 };
   _fillLensPanels(lenses, truth);
   _renderTruthClaims(window._gatherItems||[]);
-  _renderRailVoices(window._gatherItems||[]);
+  _renderVoices(window._gatherMeta&&window._gatherMeta.meta);   // SEAM:EXC_VOICES: the aggregate lines when the gather is older
 
   if(data.brief){
     document.getElementById('builder-result').innerHTML=`<strong>THE READ — ${safe(q)}:</strong> ${safe(data.brief)}`;
@@ -5261,7 +5303,8 @@ function _moveCard(m, all){
     ${rows.length?`<div class="move-rows">${rows.map(r=>`<div class="move-row"><span class="move-k">${r[0]}</span><span class="move-v">${safe(r[1])}</span></div>`).join('')}</div>`:''}
     ${m.dated&&m.dated.newest?`<div class="move-when ${safe(m.dated.band||'')}">EVIDENCE · ${safe(m.dated.band||'')} · NEWEST ${safe(m.dated.newest)}</div>`:''}
     ${m.checks&&Array.isArray(m.checks.ungrounded)&&m.checks.ungrounded.length?`<div class="move-when" style="color:var(--accent)">UNVERIFIED FIGURE · ${m.checks.ungrounded.map(safe).join(', ')}</div>`:''}
-    ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}</div>`;
+    ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}
+    <a class="move-play" href="../play/?brief=${encodeURIComponent(String(m.headline||'')+'. '+String(m.body||''))}&from=excavate" target="_blank" rel="noopener" title="PLAY makes an imagined visual of this move. Imagined, never evidence.">Picture this move in PLAY →</a></div>`;
 }
 // EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
 // SEAM:EXC_ACCURACY: a number the evidence does not carry is said out loud on the card that states it.
@@ -5347,10 +5390,95 @@ function _renderRailVoices(items){
   const onFrame=x=>{ if(!anchors.length) return true; const h=' '+String(x).toLowerCase().replace(/['\u2019]/g,'').replace(/[^a-z0-9$%& ]+/g,' ')+' '; return anchors.some(a=>{ const t=String(a).toLowerCase().replace(/['\u2019]/g,'').replace(/[^a-z0-9$%& ]+/g,' ').trim(); return t&&(h.includes(' '+t+' ')||h.includes(' '+t+'s ')); }); };
   host.innerHTML=agg.map(it=>{ const n=(String(it.title).match(/(\d+)\s+(sampled|posts)/)||[])[1]||'0'; const all=String(it.text||'').replace(/^.*?Sample:\s*/,'').split(' | ').map(x=>x.trim()).filter(Boolean); const kept=all.filter(onFrame); const samples=(kept.length?kept:[]).slice(0,3); const aside=all.length-kept.length;
     const src=(it.source_name||it.source||'').toUpperCase(); const isYT=/YOUTUBE/.test(src);
-    return `<div class="rail-voice"><div class="rail-voice-head">● CONSUMER VOICE · ${safe(src)} · ${isYT?'TOP 2 VIDEOS':'PUBLIC TAG TIMELINE'}</div>
+    return `<div class="rail-voice"><div class="rail-voice-head">● CONSUMER VOICE · ${safe(src)} · ${isYT?'TOP VIDEOS':'PUBLIC TAG TIMELINE'}</div>
       <div class="rail-voice-cut">${safe(n)} ${isYT?'comments sampled':'public posts in the window'}. ${anchors.length?(kept.length?kept.length+' on the frame'+(aside?', '+aside+' set aside as off-topic':'')+'.':'None of the sampled '+(isYT?'comments':'posts')+' names the frame; the conversation here is elsewhere, which is itself a finding.'):(isYT?'Ranked by the platform for relevance, not filtered for on-topic yet; read them as raw voice.':'Tag match, not topic match; a tag can carry a coincidence.')}</div>
       ${samples.map(x=>`<div class="rail-voice-sample">${safe(x)}</div>`).join('')}
       <div class="rail-voice-note">${it.url?`<a href="${safeUrl(it.url)}" target="_blank" rel="noopener">open the source ↗</a>`:''}${it.published_at?' · newest '+safe(String(it.published_at).slice(0,10)):''}</div></div>`; }).join('');
+}
+/* SEAM:EXC_TIMELINE: what the read knew, and when. Every evidence line is a dot on twelve weeks: the row is its lens,
+   the size its source tier, the shape what it is (a competitor line, a counter line, the record). Lines older than
+   the window, and the record, sit in the gutter at the left with their year. Nothing here is drawn from anything
+   but the lines themselves. */
+function _timeline(lines, W){
+  const L=(lines||[]).filter(l=>l&&l.title); if(L.length<2) return '';
+  const rows=['consumer','market','culture','brand'], names={consumer:'consumer',market:'market',culture:'culture',brand:'brand'};
+  const padL=78, padR=18, gutter=74, top=12, rowH=22, H=top+rows.length*rowH+28, now=Date.now(), day=864e5, span=84;
+  const x0=padL+gutter, x1=W-padR;
+  const x=d=>{ const age=(now-Date.parse(d))/day; return x0+((span-Math.max(0,Math.min(span,age)))/span)*(x1-x0); };
+  const r=t=>t<=1?5:t===2?4.2:t===3?3.4:2.8;
+  const perRow={};
+  const dots=L.map((l,i)=>{
+    const lens=rows.includes(l.lens)?l.lens:(l.kind==='discourse'?'culture':l.kind==='research'?'consumer':l.kind==='truth'||l.kind==='entity'?'brand':'market');
+    const row=rows.indexOf(lens); const k=row; perRow[k]=(perRow[k]||0)+1;
+    const jitter=((perRow[k]%3)-1)*5;
+    const t=l.date?Date.parse(l.date):NaN; const old=!Number.isFinite(t)||((now-t)/day>span);
+    const cx=old?(padL+8+((perRow[k]%4)*9)):x(l.date);   // x() reads only a date that parsed
+    const cy=top+row*rowH+rowH/2+jitter;
+    const cls='tl-dot '+lens+(l.record?' record':'')+(l.counter?' counter':'')+(l.competitor?' competitor':'')+(old&&!l.record?' old':'');
+    const title=`[${l.n}] ${l.title}${l.date?' · '+l.date:' · undated'} · T${l.tier}${l.competitor?' · competitor: '+l.competitor:''}${l.counter?' · counter view':''}${l.record?' · the record':''}${l.page?' · page read':''}`;
+    const rr=r(l.tier);
+    const shape=l.competitor?`<polygon points="${cx},${cy-rr-1} ${cx+rr+1},${cy} ${cx},${cy+rr+1} ${cx-rr-1},${cy}" class="${cls}"/>`:l.counter?`<rect x="${cx-rr}" y="${cy-rr}" width="${rr*2}" height="${rr*2}" class="${cls}"/>`:`<circle cx="${cx}" cy="${cy}" r="${rr}" class="${cls}"/>`;
+    return `<g class="tl-g"${l.url?` data-url="${safeUrl(l.url)}"`:''}><title>${safe(title)}</title>${shape}</g>`;
+  });
+  const ticks=[[84,'12 wk ago'],[56,'8'],[28,'4'],[0,'now']].map(t=>{ const tx=x0+((span-t[0])/span)*(x1-x0); return `<line x1="${tx}" y1="${top-4}" x2="${tx}" y2="${top+rows.length*rowH}" class="tl-grid"/><text x="${t[0]===84?tx+6:tx}" y="${H-8}" class="tl-tick" text-anchor="${t[0]===0?'end':t[0]===84?'start':'middle'}">${t[1]}</text>`; }).join('');
+  const rowLabels=rows.map((rw,i)=>`<text x="${padL-8}" y="${top+i*rowH+rowH/2+3}" class="tl-row" text-anchor="end">${names[rw]}</text>`).join('');
+  const oldN=L.filter(l=>{ const t=l.date?Date.parse(l.date):NaN; return !Number.isFinite(t)||((now-t)/day>span); }).length, recN=L.filter(l=>l.record).length;
+  const gutterLabel=oldN?`<text x="${x0-12}" y="${H-8}" class="tl-tick" text-anchor="end">${recN?'the record · ':''}older</text>`:'';
+  return `<svg class="tl" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Evidence timeline">${ticks}<line x1="${x0-6}" y1="${top-4}" x2="${x0-6}" y2="${top+rows.length*rowH}" class="tl-gutter"/>${rowLabels}${gutterLabel}${dots.join('')}</svg>`;
+}
+function _sparklineMax(series, w, h, max, cls){
+  const v=(series||[]).map(n=>Number(n)||0); if(v.length<2) return '';
+  const M=Math.max(1,max||0,...v), pad=4, W=w||120, H=h||32;
+  const x=i=>pad+(i/(v.length-1))*(W-pad*2), y=n=>H-pad-(n/M)*(H-pad*2);
+  const pts=v.map((n,i)=>x(i).toFixed(1)+','+y(n).toFixed(1)).join(' ');
+  return `<svg class="fi-spark ${cls||''}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false"><polyline points="${pts}" class="fi-spark-line"/><circle cx="${x(v.length-1).toFixed(1)}" cy="${y(v[v.length-1]).toFixed(1)}" r="2.5" class="fi-spark-dot"/></svg>`;
+}
+/* SEAM:EXC_COMPETE: the competitive set on the same scale as the frame. The frame's line is the accent; a competitor's
+   line is quiet and carries its name, so identity rides the label, never a second color. */
+function _competitorRow(ms){
+  const comps=(ms&&Array.isArray(ms.competitors)?ms.competitors:[]).filter(c=>c&&Array.isArray(c.series)); if(!comps.length) return '';
+  const max=Math.max(1,...(ms.series||[]),...comps.flatMap(c=>c.series));
+  const n=x=>safe(String(x==null?'':x));
+  return `<div class="rb-comps"><div class="rb-comp frame"><span class="rb-comp-k">this frame</span>${_sparklineMax(ms.series,120,30,max,'accent')}<span class="rb-comp-n">${n(ms.recent_7d)}<small> this wk</small></span></div>${comps.map(c=>`<div class="rb-comp"><span class="rb-comp-k">${n(c.name)}</span>${_sparklineMax(c.series,120,30,max,'quiet')}<span class="rb-comp-n">${n(c.recent_7d)}<small> this wk</small></span></div>`).join('')}<span class="rb-comp-cap">lake signals naming each, 12 weeks, one scale</span></div>`;
+}
+/* SEAM:EXC_VOICES: consumer reality, verbatim. The speaker's own words; beside them only what the speaker said about
+   themselves. No names, no handles, no link to the person, only to the video or the tag. */
+function _voiceSelfLine(q){ const s=q&&q.self; if(!s) return ''; const bits=[s.generation,s.gender,s.role,s.trait,s.place].filter(Boolean); return bits.length?`<span class="vq-self">self-described: ${bits.map(safe).join(' · ')}</span>`:''; }
+function _voiceSort(a,b){ return (b.likes||0)-(a.likes||0)||String(b.when||'').localeCompare(String(a.when||'')); }
+function _voicesPull(voices, k){
+  if(!voices||!Array.isArray(voices.quotes)) return '';
+  const srcBy=new Map((voices.sources||[]).map(s=>[s.id,s]));
+  const seen=new Set();
+  const picks=voices.quotes.filter(q=>q&&q.on_frame!==false&&q.text&&q.text.length>=40).sort(_voiceSort).filter(q=>{ const key=q.text.toLowerCase().slice(0,60); if(seen.has(key)) return false; seen.add(key); return true; }).slice(0,k||3);
+  if(!picks.length) return '';
+  return `<div class="rb-voices">${picks.map(q=>{ const s=srcBy.get(q.src)||{}; return `<blockquote class="rb-voice"><p>${safe(q.text)}</p><footer>${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+'</a>':''}</span></footer></blockquote>`; }).join('')}<div class="rb-voices-cap">What people say, in their words. Self-descriptions are theirs; nothing is inferred. <a href="#rail-voices">All voices ↓</a></div></div>`;
+}
+window._voiceView={ filter:'frame', shown:12 };
+function _voiceFilterSet(f){ window._voiceView.filter=f; window._voiceView.shown=12; _renderVoices(window._gatherMeta&&window._gatherMeta.meta); }
+function _voiceMore(){ window._voiceView.shown+=24; _renderVoices(window._gatherMeta&&window._gatherMeta.meta); }
+function _renderVoices(meta){
+  const v=meta&&meta.voices; const items=window._gatherItems||[];
+  let host=document.getElementById('rail-voices');
+  if(!host){ const vs=document.getElementById('voice-strip'); if(!vs) return; host=document.createElement('div'); host.id='rail-voices'; vs.insertAdjacentElement('afterend',host); }
+  if(!v||!Array.isArray(v.quotes)||!v.quotes.length){ _renderRailVoices(items); return; }   // an older gather: the aggregate lines
+  const srcBy=new Map((v.sources||[]).map(s=>[s.id,s]));
+  const all=v.quotes.filter(q=>q&&q.text), framed=all.some(q=>q.on_frame!==null&&q.on_frame!==undefined), on=framed?all.filter(q=>q.on_frame!==false):all, unread=framed?all.filter(q=>q.on_frame==null).length:0;
+  const count=(pred)=>on.filter(pred).length;
+  const markers=[['Gen Alpha',q=>q.self&&q.self.generation==='Gen Alpha'],['Gen Z',q=>q.self&&q.self.generation==='Gen Z'],['Millennial',q=>q.self&&q.self.generation==='Millennial'],['Gen X',q=>q.self&&q.self.generation==='Gen X'],['Boomer',q=>q.self&&q.self.generation==='Boomer'],['women',q=>q.self&&q.self.gender==='woman'],['men',q=>q.self&&q.self.gender==='man'],['parents',q=>q.self&&q.self.role==='parent'],['stylists',q=>q.self&&q.self.role==='stylist'],['practitioners',q=>q.self&&q.self.role==='practitioner'],['students',q=>q.self&&q.self.role==='student']].map(m=>({label:m[0],pred:m[1],n:count(m[1])})).filter(m=>m.n);
+  const traits=[...new Set(on.map(q=>q.self&&q.self.trait).filter(Boolean))].slice(0,6).map(t=>({label:t,pred:q=>q.self&&q.self.trait===t,n:count(q=>q.self&&q.self.trait===t)}));
+  const places=[...new Set(on.map(q=>q.self&&q.self.place).filter(Boolean))].slice(0,6).map(t=>({label:t,pred:q=>q.self&&q.self.place===t,n:count(q=>q.self&&q.self.place===t)}));
+  const chips=(framed?[{label:'on the frame',key:'frame',n:on.length},{label:'everything sampled',key:'all',n:all.length}]:[{label:'everything sampled',key:'all',n:all.length}]).concat(markers.concat(traits,places).map(m=>Object.assign({key:'m:'+m.label},m)));
+  const f=window._voiceView.filter; const chip=chips.find(c=>c.key===f)||chips[0];
+  const pool=(f==='all'?all:on).filter(q=>chip.pred?chip.pred(q):true).sort(_voiceSort);
+  const shown=pool.slice(0,window._voiceView.shown);
+  const srcLine=(v.sources||[]).map(s=>`<a href="${safeUrl(s.url||'#')}" target="_blank" rel="noopener">${safe(s.source||'')}: ${safe(String(s.title||'').slice(0,50))}</a>${s.n?' ('+safe(String(s.n))+')':''}`).join(' · ');
+  host.innerHTML=`<section class="voices" aria-label="Consumer voice">
+    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comments and posts on ${safe(String((v.sources||[]).length))} sources${framed?', '+safe(String(on.length-unread))+' naming the frame'+(unread?' ('+safe(String(unread))+' not read through it; the frame arrived late)':''):', not read through a frame (it arrived late)'}. Verbatim; a speaker's own description beside the words; never a name.</span></div>
+    <div class="voices-chips" onclick="var b=event.target.closest('.voices-chip');if(b)_voiceFilterSet(b.getAttribute('data-key'))">${chips.map(c=>`<button class="voices-chip${c.key===chip.key?' on':''}" data-key="${safeAttr(c.key)}">${safe(c.label)} <b>${safe(String(c.n))}</b></button>`).join('')}</div>
+    <div class="voices-list">${shown.map(q=>{ const s=srcBy.get(q.src)||{}; return `<div class="vq"><p class="vq-text">${safe(q.text)}</p><div class="vq-foot">${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${q.when?safe(q.when)+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+' ↗</a>':''}${q.on_frame===false?' · off the frame':''}</span></div></div>`; }).join('')||'<p class="voices-empty">None of the sampled voices names the frame. The conversation here is elsewhere, which is itself a finding.</p>'}</div>
+    ${pool.length>shown.length?`<button class="voices-more" onclick="_voiceMore()">Show ${safe(String(Math.min(24,pool.length-shown.length)))} more of ${safe(String(pool.length))}</button>`:''}
+    <div class="voices-src">${srcLine}</div>
+  </section>`;
 }
 function _renderReadBlock(q, data, mode){
   const el=document.getElementById('read-block'); if(!el) return;
@@ -5379,8 +5507,15 @@ function _renderReadBlock(q, data, mode){
     const tiles=[[n(ms.recent_7d),'this week'+(vel?' <em>'+n(vel)+'</em>':'')],[n(ms.prior_7d),'the week before'],[n(ms.outlets),ms.outlets===1?'outlet':'outlets'],[n(ms.weeks_touched)+'<small>/'+n(ms.weeks||12)+'</small>','weeks touched']];
     if(ms.share_pct!=null) tiles.push([n(ms.share_pct)+'<small>%</small>','of '+n(String(ms.territory||'territory').replace(/-/g,' '))+' this week']);
     tiles.push([`<span class="rb-state ${n(ms.state||'STEADY')}">${n(String(ms.state||'STEADY').toLowerCase())}</span>`,ms.shape?'state · '+n(String(ms.shape).toLowerCase()):'state']);
-    _msHtml=`<div class="rb-measures"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of lake signals on this frame</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div></div>`;
+    _msHtml=`<div class="rb-measures"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of lake signals on this frame</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div>${_competitorRow(ms)}</div>`;
   }
+  // SEAM:EXC_TIMELINE: the evidence drawn, and the images the evidence itself carried.
+  const evLines=Array.isArray(data.lines)?data.lines:[];
+  const _tlHtml=evLines.length>=2?`<div class="rb-timeline"><div class="rb-tl-head">What the read knew, and when <span>${n(evLines.length)} lines · row is the lens, size is the source tier · ◆ competitor · ■ counter view · ○ the record</span></div>${_timeline(evLines,1100)}</div>`:'';
+  const pics=evLines.filter(l=>l&&l.image&&l.url).slice(0,6);
+  const _picHtml=pics.length?`<div class="rb-pics">${pics.map(l=>`<a class="rb-pic" href="${safeUrl(l.url)}" target="_blank" rel="noopener" title="${safeAttr(l.title)}"><img src="${safeUrl(l.image)}" alt="" loading="lazy" onerror="var s=this.closest('.rb-pics');this.parentNode.remove();if(s&&!s.querySelector('img'))s.remove()"><span>${safe(String(l.source||'').replace(/^Unsurfaced Lake · /,'').replace(/ \(T\d\)$/,''))}${l.date?' · '+safe(l.date):''}</span></a>`).join('')}<span class="rb-pics-cap">seen in the evidence, from the sources themselves</span></div>`:'';
+  // SEAM:EXC_VOICES: three voices beside the measures.
+  const _vqHtml=_voicesPull(meta.meta&&meta.meta.voices,3);
   // SEAM:PPLX_RAIL: the wire, Perplexity's framing, named brands first, prose after. Framing, never evidence.
   const _px=meta.meta&&meta.meta.pplx; let _pxHtml='';
   if(_px&&_px.framing){ const names=[]; String(_px.framing).replace(/\*\*([^*]{2,60})\*\*/g,(m,x)=>{ const t=x.trim(); if(t&&!names.includes(t)&&names.length<8) names.push(t); return m; });
@@ -5411,7 +5546,10 @@ function _renderReadBlock(q, data, mode){
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${_rcHtml}
     ${_plateHtml}
+    ${_tlHtml}
+    ${_picHtml}
     ${_msHtml}
+    ${_vqHtml}
     <div class="rb-body">
       <div class="rb-prose">${data.brief?`<div class="rb-interp-head">The interpretation</div><p class="rb-interp">${safe(data.brief)}</p>`:''}${_pxHtml}${_ovHtml}</div>
       ${_rcptHtml}
@@ -5427,6 +5565,7 @@ function _renderReadBlock(q, data, mode){
       <button onclick="trackThis(document.getElementById('search-input').value)">TRACK THIS</button>
       <button onclick="window.open('../play/?brief='+encodeURIComponent([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' ')),'_blank')">MAKE WITH PLAY</button>
     </div>`;
+  el.querySelectorAll('.tl-g[data-url]').forEach(g=>{ g.style.cursor='pointer'; g.addEventListener('click',()=>window.open(g.getAttribute('data-url'),'_blank','noopener')); });
   el.style.display='block';
 }
 function _renderResultsV2(q, lenses, truth, mode) {
