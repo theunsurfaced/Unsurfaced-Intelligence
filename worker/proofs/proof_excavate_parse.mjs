@@ -42,7 +42,7 @@ ok(X.excReadOf('Here is the read:\n```json\n' + full + '\n```').how === 'whole' 
   'P5 fenced or prose-wrapped replies parse whole; cut ones are salvaged; prose alone is a miss');
 ok(X.excSalvage('{"insights":[{"title":"a \\"quoted\\" } brace","excerpt":"x"},{"title":"b"},{"title":"c"},{"title":"d","excerpt":"cut her').insights.map(x => x.title).join('|') === 'a "quoted" } brace|b|c',
   'P6 braces and escaped quotes inside strings never fool the bracket count');
-ok(X.EXC_ROOM.report === 8000 && X.EXC_ROOM.plain === 4000 && X.EXC_ROOM.ceiling === 12000, 'P7 a report has 8000 tokens of room, a plain read 4000, a second pass at most 12000');
+ok(X.EXC_ROOM.report === 16000 && X.EXC_ROOM.plain === 8000 && X.EXC_ROOM.ceiling === 32000, 'P7 a report has 16000 tokens of room (Sonnet 5 thinks inside it), a plain read 8000, a second pass at most 32000');
 
 // ── the lane ──────────────────────────────────────────────────────────────
 let lcalls = [];
@@ -74,14 +74,14 @@ const run = async replies => {
 };
 
 let t = await run([{ text: full }]);
-ok(t.res.o.ok === true && t.calls.length === 1 && t.calls[0].max_tokens === 8000 && t.res.o.data.insights.length === 7 && t.res.o.data.model.reason === null,
-  'S1 a whole reply is one call at 8000 tokens of room and a full read');
+ok(t.res.o.ok === true && t.calls.length === 1 && t.calls[0].max_tokens === 16000 && t.res.o.data.insights.length === 7 && t.res.o.data.model.reason === null,
+  'S1 a whole reply is one call at 16000 tokens of room and a full read');
 t = await run([{ text: cutInMoves, stop_reason: 'max_tokens', truncated: true }]);
 ok(t.res.o.ok === true && t.calls.length === 1 && t.res.o.data.insights.length === 7 && /salvaged_cut/.test(t.res.o.data.model.reason),
   'S2 the Oct 2 failure now returns the seven finished findings on the first call, labeled salvaged, with nothing spent twice');
 logs.length = 0;
 t = await run([{ text: 'I cannot comply with JSON today.' }, { text: '```json\n' + full + '\n```' }]);
-ok(t.res.o.ok === true && t.calls.length === 2 && t.calls[1].max_tokens === 12000 && /ROOM LAW/.test(t.calls[1].prompt) && t.calls[1].kind === 'excavate_report_retry' && !t.calls[1].reserveOnly,
+ok(t.res.o.ok === true && t.calls.length === 2 && t.calls[1].max_tokens === 32000 && /ROOM LAW/.test(t.calls[1].prompt) && t.calls[1].kind === 'excavate_report_retry' && !t.calls[1].reserveOnly,
   'S3 an unreadable reply earns one tighter second pass on the live lane with double the room');
 ok(logs.some(l => /^exc_parse_miss /.test(l) && /"pass":"first"/.test(l) && /"tail":/.test(l)), 'S4 the miss is logged with its pass, lane, stop reason and the tail of what came back');
 t = await run([{ text: 'nope' }, { text: 'still nope' }, { text: full }]);

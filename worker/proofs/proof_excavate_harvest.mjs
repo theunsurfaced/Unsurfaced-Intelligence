@@ -161,7 +161,7 @@ const doorSrc = between(w, 'const DOOR = { WANT: 12', 'async function excavateFe
 const kv = {}, table = [], patches = [], batch = [], upserts = [];
 let nextId = 1;
 const D = new Function('feedCacheKey', 'feedWarm', 'loadTracks', 'FEED', 'sbRest', 'ilikeOr', 'excStampTiers', 'excRelevance', 'excReadPages', 'excBudget', 'excKey', 'excWhen', 'excLine', 'excFrameBlock', 'excMeasureLine', 'excFrameClean', 'excFrameFor', 'excMeasures', 'excTiersLoad', 'excTier', 'excBand', 'excGround', 'excEarned', 'excClip', 'excShort', 'excWindow', 'excReadOf', 'excFrameLabel', 'claudeBatchSubmit', 'claudeSpent', 'claudeCap', 'EXC_MODEL', 'EXC_VOICE_SYS', 'EXC_MOVE_LAW', 'EXC_TIME_LAW', 'EXC_NUMBER_LAW', 'RAIL_FNS', 'RAIL_BY_ID', 'excRailQuery', 'excQuiet', 'logEvent', 'excavateAuth', 'json', 'CLAUDE',
-  doorSrc + '; return { doorCandidates, doorEvidence, doorStamp, doorPass, doorLand, doorPublish, doorTile, doorCompileRead, excDoorPrompt, DOOR };')(
+  doorSrc + '; return { doorCandidates, doorEvidence, doorStamp, doorPass, doorLand, doorPublish, doorTile, doorCompileRead, excDoorPrompt, DOOR, doorEvery };')(
   () => 'prop', async () => ({ proposed: [{ cluster_id: 'th1', title: 'Texture-first shelves', subtitle: 'Who wins the curl aisle?', query: 'curl hair care shelf', lens: 'market', evidence: { recent_7d: 9, territories: ['fashion-beauty'] } }, { cluster_id: 'th2', title: 'Quiet theme', subtitle: '', lens: 'culture', evidence: { recent_7d: 1 } }] }),
   async () => [{ id: 'tr1', name: 'Nike', aliases: ['NKE'], sector: 'Athletic footwear' }], { TRACKS_KEY: 'tracks:stats' },
   async (env, path, opts) => {
@@ -239,8 +239,34 @@ const nk = pub.tiles.find(t => t.key === 'track:tr1');
 ok(pub.tiles.length === 2 && pub.pending === 1 && pub.night !== '2000-01-01' && nk && nk.carried === true && nk.night === '2000-01-01' && nk.claim === 'Nike held the shelf.' && pub.tiles.find(t => t.key === 'theme:th1').status === 'reused',
   'D6c a frame whose read is still being written keeps last night\'s tile on the door, marked carried, beside tonight\'s; the set is dated tonight');
 ok(/"read":\["line 1: one sentence, at most 40 words/.test(D.excDoorPrompt(frame, 'E', m)) && /3 to 4 of \{"category"/.test(D.excDoorPrompt(frame, 'E', m)) && /Lead with what changed/.test(D.excDoorPrompt(frame, 'E', m)), 'D7 the door asks for the light shape: two lines, three or four findings, one or two moves, a brief');
-ok(/if \(path === '\/excavate\/door\/read' && request\.method === 'GET'\) return doorReadRoute\(request, env, origin\);/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /row\.kind === 'door_read' && row\.meta && row\.meta\.door_id/.test(w) && /which === 'door' \? await doorPass\(env\)/.test(w) && /door: door && door\.tiles && door\.tiles\.length \? door : null/.test(w),
+ok(/if \(path === '\/excavate\/door\/read' && request\.method === 'GET'\) return doorReadRoute\(request, env, origin\);/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /row\.kind === 'door_read' && row\.meta && row\.meta\.door_id/.test(w) && /which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /door: door && door\.tiles && door\.tiles\.length \? door : null/.test(w),
   'D8 the read route, the cron chain, the batch drain, the admin door and the feed all know the door');
+// D9: the cadence. The door compiles a new batch every EVERY_D nights; inside the gap it republishes the standing set and spends nothing.
+const yday = new Date(Date.now() - day).toISOString().slice(0, 10);
+table.forEach(r => { r.night = yday; if (r.status === 'compiling' || r.status === 'queued') r.status = 'ready'; });
+const batchBefore = batch.length, upBefore = upserts.length, builtBefore = JSON.parse(kv['door:v2']).built_at;
+await new Promise(r => setTimeout(r, 5));
+const q9 = quiet();
+const skip = await D.doorPass(env);
+q9.done();
+ok(D.DOOR.EVERY_D === 2 && skip.skipped === 'cadence' && skip.every === 2 && skip.last_night === yday && skip.next_night === new Date(Date.parse(yday) + 2 * day).toISOString().slice(0, 10) && skip.candidates === 0 && batch.length === batchBefore && upserts.length === upBefore && JSON.parse(kv['door:v2']).built_at !== builtBefore && JSON.parse(kv['door:v2']).tiles.length === table.filter(r => r.status === 'ready' || r.status === 'reused').length,
+  'D9 one night after a door night, the pass skips on cadence: no candidates, no rows, no batch, the next night named, and the standing set republished so its KV copy stays fresh');
+const q9b = quiet();
+const forced = await D.doorPass(env, { force: true });
+q9b.done();
+ok(!forced.skipped && forced.candidates === 3 && upserts.length === upBefore + 1, 'D9b a desk run passes force and compiles inside the gap');
+table.forEach(r => { r.night = yday; });
+const q9c = quiet();
+const nightly = await D.doorPass({ RATE_LIMIT: env.RATE_LIMIT, DOOR_EVERY_D: '1' });
+q9c.done();
+ok(!nightly.skipped && nightly.candidates === 3 && D.doorEvery({ DOOR_EVERY_D: '3' }) === 3 && D.doorEvery({ DOOR_EVERY_D: 'x' }) === 2 && D.doorEvery({}) === 2, 'D9c DOOR_EVERY_D 1 runs nightly without a deploy; an unreadable value falls back to the house setting');
+table.forEach(r => { r.night = new Date(Date.now() - 2 * day).toISOString().slice(0, 10); });
+const q9d = quiet();
+const due = await D.doorPass(env);
+q9d.done();
+ok(!due.skipped && due.candidates === 3, 'D9d two nights after a door night the batch is due and compiles');
+ok(/which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /since last read \$\{since\.recent_delta/.test(page) && !/since last night/.test(page) && /earlier read · a new one compiling/.test(page) && D.DOOR.TTL === 72 * 3600,
+  'D9e the desk forces, the cron does not; the page says since last read, never since last night; the KV set outlives a two-night gap');
 
 // ── B: EX5b THE BRIEF, the engine ─────────────────────────────────────────
 // B1 GDELT calls take turns, GAP_MS apart; other hosts do not wait.

@@ -46,7 +46,7 @@ const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excC
   (o) => o, async () => [], async () => [], async (e, o) => { call = { m: [{ content: o.system }, { content: o.prompt }], o: { max_tokens: o.max_tokens } }; return { text: out, lane: 'live', model: 'claude-sonnet-5', reason: null, cost_usd: 0 }; }, async () => 1, async () => 'h', async () => 0, () => [], {}, async () => null, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);
 const corpus = [1, 2, 3].map(i => ({ lens: 'consumer', title: 't' + i, url: 'https://e.example/' + i, source: 's' + i }));
 const r = (await S({ query: q, mode: 'report', corpus }, {}, '')).data;
-ok(/MOVE LAW/.test(call.m[0].content) && /TIME LAW/.test(call.m[0].content) && /"meaning":\{"culture"/.test(call.m[1].content) && /"frame":\{"category"/.test(call.m[1].content) && call.o.max_tokens === 8000,
+ok(/MOVE LAW/.test(call.m[0].content) && /TIME LAW/.test(call.m[0].content) && /"meaning":\{"culture"/.test(call.m[1].content) && /"frame":\{"category"/.test(call.m[1].content) && call.o.max_tokens === 16000,
   'R1 report mode asks for the frame, the three meanings and the move brief under the move law and the time law, with room to write them');
 ok(r.frame.category === 'Hair care' && r.frame.audience === 'Gen Z', 'R2 the frame comes back with the read');
 ok(r.insights[0].meaning.category === 'Shelves sort by curl pattern.' && r.insights[0].implication === 'Shelves sort by curl pattern.', 'R3 each finding carries its meanings; the old implication line stays filled for downloads');

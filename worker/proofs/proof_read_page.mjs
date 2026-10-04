@@ -18,7 +18,7 @@ const rc = await readReceipts({}, { patterns: [{ evidence: ['S11', 'S12', 'junk'
   social: { frames: [{ evidence: ['S12'] }] }, cross_currents: [{ evidence: ['S11'] }] });
 ok(calls.length === 1 && /id=in\.\(11,12\)/.test(calls[0]), 'P1 only evidence arrays are cited, deduped, one query');
 ok(rc.S11.headline === 'Tour sells out' && rc.S11.issue_no === 70 && rc.S12.date === '2026-09-15', 'P2 receipts carry headline, source, date, issue');
-ok(/receipts: await readReceipts\(env, row\.read\)/.test(w), 'P3 /reads/get returns receipts');
+ok(/receipts: await readReceipts\(env, row\.read, row\)/.test(w), 'P3 /reads/get returns receipts (with the row, so a report resolves its lake ids)');
 
 ok(/SEAM:READ_PAGE/.test(page), 'G1 page carries its seam');
 ok(!/service_role/.test(page), 'G2 no service key on the page');

@@ -61,7 +61,7 @@ const S = new Function('json', 'gatherServerSignals', 'gatherPaidSignals', 'excC
   async (env, row) => { ledger = row; return 77; }, async () => 'h', async (env, items) => { captured = items; }, (a) => a.map(x => x.source), {}, async () => null, async () => null, async () => ({ tabled: 0, chunks: 0, failed: 0 }), async () => null, async () => [], () => []);
 const res = await S({ query: 'fan access', mode: 'report', corpus: lake10.slice(0, 10).concat(open40) }, {}, '');
 const d = res.o.data;
-ok(modelCall.opts.max_tokens === 8000 && modelCall.o.reserve === 't3' && modelCall.o.kind === 'excavate_report', 'W6 report mode has room for a whole report (8000, SEAM:EXC_PARSE) and rides the lane with t3 in reserve');
+ok(modelCall.opts.max_tokens === 16000 && modelCall.o.reserve === 't3' && modelCall.o.kind === 'excavate_report', 'W6 report mode has room for a whole report and the thinking before it (16000, SEAM:EXC_PARSE) and rides the lane with t3 in reserve');
 ok(/"evidence":\[the 1-based numbers/.test(modelCall.msgs[1].content), 'W7 the model is asked which evidence each insight stands on');
 ok(d.evidence_n === 44 && /\[1\] \d{4}-\d{2}-\d{2} \u00B7 (?:NOW|RECENT) \u00B7 1d \u00B7 T2 \u00B7 \(lake\)/.test(modelCall.msgs[1].content), 'W8 the model reads 44 items, the freshest dated lake line first, with its date, band, age and tier');
 ok(d.signals.length === 2 && !d.signals.some(s => /es\.example/.test(s.url)), 'W9 the server wire is read, and a Spanish item is stopped at the door');

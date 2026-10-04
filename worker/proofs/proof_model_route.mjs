@@ -223,4 +223,12 @@ const slowKv = { m: new Map(), get: async k => { await new Promise(r => setTimeo
 await Promise.all([0.01, 0.02, 0.03, 0.04].map(x => L.claudeLedgerAdd({ RATE_LIMIT: slowKv }, 'facts', x, '2026-10')));
 ok(slowKv.m.get('cl$:facts:2026-10') === '0.1', 'H3 ledger adds made side by side are applied one after another: nothing is lost');
 
+// ── E: evolution mode ──────────────────────────────────────────────────
+const CapSrc = w.slice(w.indexOf('function evolutionMode(env)'), w.indexOf('function claudeRound('));
+const CAPS = new Function('CLAUDE', CapSrc + '; return { claudeCap, evolutionMode };')(L.CLAUDE);
+ok(CAPS.claudeCap({}, 'live') === 10 && CAPS.claudeCap({ EVOLUTION_MODE: '1' }, 'live') === 100 && CAPS.claudeCap({ EVOLUTION_MODE: '1', CLAUDE_LIVE_MONTHLY: '25' }, 'live') === 25 && CAPS.claudeCap({ EVOLUTION_MODE: '0' }, 'frame') === 3,
+  'E1 evolution mode runs every cap at ten times its written value; a cap set by its own secret is exactly what it says; off means the written value');
+ok(/const EXC_ROOM = \{ report: 16000, plain: 8000, ceiling: 32000/.test(w) && /MAX_TOKENS: 9000, TTL: 72 \* 3600, SINCE_D: 60, EVERY_D: 2/.test(w) && /reserve: 't3', max_tokens: 8000 \}\);/.test(w), 'E2 the structured calls have room for the thinking Sonnet 5 does before it writes: the report 16000, the door 9000, the field 8000');
+ok(/blocks: \(j\.content \|\| \[\]\)\.map\(b => b && b\.type\)/.test(w) && /blocks: p\.blocks, out_tokens: p\.out_tokens/.test(w), 'E3 a live call reports its content blocks and output tokens, and the read\'s pass detail carries them');
+
 console.log(`\nproof_model_route: ${pass} checks PASS`);

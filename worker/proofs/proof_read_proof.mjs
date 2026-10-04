@@ -75,7 +75,7 @@ sb = [];
 const L = await R.readLand({}, 9, JSON.stringify({ title: 'Proximity is the product', thesis: 'Fans payed for proximity.', patterns: [{ name: 'n', evidence: ['S1'] }] }), 0.21);
 const patch = sb.find(x => x.opts && x.opts.method === 'PATCH').opts.body;
 ok(L.status === 'ready' && patch.read.thesis === 'Fans paid for proximity.' && patch.meta.proof.changes === 1 && patch.meta.batch_id === 'b' && patch.violations.includes('proofread:1') && patch.cost_usd === 0.21, 'L1 a landing read is proofread before it is ready; the receipt rides meta.proof beside what was there');
-ok(/const pr = v\.read \? await readProofRun\(env, row\.kind, v\.read, ground, row\.pack_ids \|\| \[\]\)/.test(block), 'L2 readLand runs the desk on every written read');
+ok(/const pr = v\.read \? await readProofRun\(env, row\.kind, v\.read, ground, row\.pack_ids \|\| \[\], extra\)/.test(block), 'L2 readLand runs the desk on every written read');
 
 // ── the door ──────────────────────────────────────────────────────────────
 ok(/case '\/reads\/proof':         \/\/ SEAM:READ_PROOF recut\n        case '\/reads\/pdf':/.test(w), 'D1 /reads/proof is routed as an admin door');

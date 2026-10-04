@@ -9437,7 +9437,8 @@ function _doorMeasureRow(m, since) {
   const vel = m.velocity_pct == null ? '' : ' (' + (m.velocity_pct >= 0 ? '+' : '') + m.velocity_pct + '%)';
   const bits = [`<span class="fi-m"><b>${safe(String(m.recent_7d))}</b> this wk${safe(vel)}</span>`, `<span class="fi-m"><b>${safe(String(m.outlets))}</b> outlets</span>`, `<span class="fi-m"><b>${safe(String(m.weeks_touched))}</b>/${safe(String(m.weeks || 12))} wks</span>`];
   if (m.share_pct != null) bits.push(`<span class="fi-m"><b>${safe(String(m.share_pct))}%</b> of ${safe(String(m.territory || 'territory').replace(/-/g, ' '))}<span class="fi-share"><i style="width:${Math.max(2, Math.min(100, m.share_pct))}%"></i></span></span>`);
-  if (since && (since.recent_delta || since.outlets_delta)) bits.push(`<span class="fi-m fi-since">since last night ${since.recent_delta ? (since.recent_delta > 0 ? '+' : '') + since.recent_delta + ' signals' : ''}${since.recent_delta && since.outlets_delta ? ', ' : ''}${since.outlets_delta ? (since.outlets_delta > 0 ? '+' : '') + since.outlets_delta + ' outlets' : ''}</span>`);
+  // SEAM:DOOR_CADENCE: the door compiles a new batch every other night while the platform evolves, so the delta is since the last read, not last night
+  if (since && (since.recent_delta || since.outlets_delta)) bits.push(`<span class="fi-m fi-since">since last read ${since.recent_delta ? (since.recent_delta > 0 ? '+' : '') + since.recent_delta + ' signals' : ''}${since.recent_delta && since.outlets_delta ? ', ' : ''}${since.outlets_delta ? (since.outlets_delta > 0 ? '+' : '') + since.outlets_delta + ' outlets' : ''}</span>`);
   return `<div class="fi-measures">${bits.join('')}</div>`;
 }
 function _renderDoorCard(t, i) {
@@ -9455,7 +9456,7 @@ function _renderDoorCard(t, i) {
       ${_doorMeasureRow(m, t.since)}
       ${t.move ? `<p class="fi-move"><span class="fi-move-k">THE MOVE</span> ${safe(t.move)}</p>` : ''}
       <div class="card-meta">
-        <span class="card-stat">${t.carried ? 'last night\'s read · tonight\'s compiling' : t.status === 'reused' ? 'unchanged since last read' : 'compiled overnight'} · ${safe(String(t.evidence_n || 0))} lines${m.newest ? ' · newest ' + safe(m.newest) : ''}</span>
+        <span class="card-stat">${t.carried ? 'earlier read · a new one compiling' : t.status === 'reused' ? 'unchanged since last read' : 'compiled overnight'} · ${safe(String(t.evidence_n || 0))} lines${m.newest ? ' · newest ' + safe(m.newest) : ''}</span>
         <span style="color:var(--text3)">Open the read →</span>
       </div>
     </div>`;

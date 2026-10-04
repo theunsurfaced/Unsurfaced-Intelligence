@@ -175,6 +175,61 @@
   .frames figcaption { display: flex; justify-content: space-between; align-items: center; padding: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; }
   .cap { font-family: var(--mono); font-size: 12px; line-height: 1.7; color: var(--cream); border: 1px solid #2A2A2A; padding: 14px; white-space: pre-wrap; margin-top: 10px; }
 
+  /* SEAM:READ_REPORT: the research layout. Data cards, chips, sparklines, supports, voices. Same paper, same type. */
+  .rp-issue { font-family: var(--mono); font-size: 12px; letter-spacing: 6px; text-transform: uppercase; color: var(--ivory); margin-bottom: 8px; }
+  .rp-sub { font-family: var(--mono); font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: #B8B2A6; margin-top: 14px; line-height: 1.6; }
+  .rp-exec { list-style: none; counter-reset: ex; }
+  .rp-exec li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.5; font-weight: 700; }
+  .rp-exec li span { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--red); padding-top: 4px; }
+  .rp-exec .ev { font-weight: 400; margin-top: 4px; }
+  .rp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; margin: 0 0 22px; }
+  .rp-card { border-top: 3px solid var(--ink); padding-top: 8px; break-inside: avoid; }
+  .rp-card b { display: block; font-weight: 800; font-size: 30px; line-height: 1; }
+  .rp-card span { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); margin-top: 4px; }
+  .rp-card small { display: block; font-family: var(--mono); font-size: 9.5px; color: var(--ink); margin-top: 3px; }
+  .rp-chip { display: inline-block; font-family: var(--mono); font-size: 8.5px; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--ink); padding: 2px 7px; vertical-align: middle; }
+  .rp-chip.rising, .rp-chip.new { background: var(--red); color: var(--ivory); border-color: var(--red); }
+  .rp-chip.cooling { color: var(--mute); border-color: var(--line); }
+  .rp-chip.high { background: var(--ink); color: var(--ivory); }
+  .rp-chip.low { color: var(--mute); border-color: var(--line); }
+  .rp-data { background: var(--cream); border-left: 4px solid var(--red); padding: 14px 16px; margin: 0 0 18px; font-size: 13.5px; line-height: 1.62; break-inside: avoid; }
+  .rp-data .lbl { margin-bottom: 4px; }
+  .rp-means { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 6px 0 16px; }
+  .rp-means div { border-top: 1px solid var(--ink); padding-top: 6px; font-size: 12.5px; line-height: 1.5; }
+  .rp-means b { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin-bottom: 3px; }
+  .rp-sup { list-style: none; margin-top: 10px; }
+  .rp-sup li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.4; }
+  .rp-sup li span { font-family: var(--mono); color: var(--red); font-size: 10px; padding-top: 2px; }
+  .rp-sup li i { display: block; font-style: normal; font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
+  .rp-trig { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; line-height: 1.6; color: var(--mute); margin-top: 10px; }
+  .rp-trig b { color: var(--red); letter-spacing: 3px; }
+  .rp-terr { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+  .rp-terr > div { border-top: 2px solid var(--ink); padding-top: 8px; break-inside: avoid; }
+  .rp-terr .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); }
+  .rp-terr h3 { font-weight: 800; font-size: 17px; line-height: 1.15; margin: 6px 0 4px; }
+  .rp-terr p { font-size: 12.5px; line-height: 1.55; margin-bottom: 6px; }
+  .rp-spark { display: block; width: 100%; height: 36px; margin: 4px 0 6px; }
+  .rp-chart { margin: 8px 0 20px; break-inside: avoid; }
+  .rp-chart svg { width: 100%; height: 170px; display: block; }
+  .rp-chart .cap { border: 0; padding: 6px 0 0; margin: 0; color: var(--mute); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; white-space: normal; }
+  .rp-quotes { column-count: 2; column-gap: 0.3in; }
+  .rp-q { break-inside: avoid; border-top: 1px solid var(--line); padding: 10px 0 12px; font-size: 12.5px; line-height: 1.55; }
+  .rp-q .who { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--red); margin-top: 6px; }
+  .rp-q .who i { font-style: normal; color: var(--mute); }
+  .rp-set { display: grid; grid-template-columns: 1.6in 1fr; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); break-inside: avoid; }
+  .rp-set .names { font-weight: 800; font-size: 15px; line-height: 1.3; }
+  .rp-set .cat { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--red); }
+  .rp-set p { font-size: 12.5px; line-height: 1.55; }
+  .rp-gloss { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px; }
+  .rp-gloss div { border-top: 1px solid var(--line); padding: 8px 0; break-inside: avoid; }
+  .rp-gloss b { display: block; font-weight: 800; font-size: 14px; margin-bottom: 3px; }
+  .rp-gloss p { font-size: 12px; line-height: 1.5; }
+  .rp-rec .noimg { font-family: var(--display); font-weight: 800; font-size: 16px; letter-spacing: 0; }
+  .rp-refs sup { font-family: var(--mono); font-size: 8.5px; color: var(--red); margin-left: 2px; }
+  sup { font-family: var(--mono); font-size: 8.5px; color: var(--red); line-height: 0; }
+  .rp-dek { font-weight: 700; font-size: 20px; line-height: 1.35; color: var(--ivory); margin: 0 0 14px; max-width: 6.2in; }
+  .rp-ref { font-family: var(--mono); font-size: 8px; color: var(--line); margin-left: 8px; }
+  @media (max-width: 700px) { .rp-cards, .rp-means, .rp-terr, .rp-gloss { grid-template-columns: 1fr; } .rp-quotes { column-count: 1; } .rp-set { grid-template-columns: 1fr; } }
   @page { size: letter; margin: 0; }
   @media print {
     body { background: var(--ivory); }
@@ -231,7 +286,7 @@
     return fetch(API + path, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify(body || {}) }).then(function (r) { return r.json(); });
   }
-  var KIND = { weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record" };
+  var KIND = { weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record", report: "Cultural Intelligence Report" };   // SEAM:READ_REPORT
   var ROLES = ["creative", "marketer", "founder", "exec", "talent"];
   /* The photo quality law. Every slot has a minimum source width. A photograph
    * smaller than its slot is never stretched to fill it: the slot tries its next
@@ -306,15 +361,286 @@
     receipts: "Every story this read stands on, with its source, date and issue."
   };
 
+  /* SEAM:READ_REPORT: the research layout. Pure: strings in, strings out; every number is a STATS value or a
+     database count carried on the read; every chart is drawn from STATS alone. */
+  function rpNum(n) { return typeof n === "number" ? n.toLocaleString("en-US") : "0"; }
+  function rpDelta(n, p) {
+    if (typeof n !== "number" || typeof p !== "number") return "";
+    if (!p) return n ? "new this window" : "none either window";
+    var d = Math.round((n - p) / p * 100); return (d >= 0 ? "+" : "") + d + "% vs prior " + rpNum(p);
+  }
+  function rpSpark(arr, red) {
+    arr = (arr || []).map(function (v) { return typeof v === "number" ? v : 0; });
+    if (arr.length < 2) return "";
+    var W = 200, H = 36, mx = Math.max.apply(null, arr.concat([1]));
+    var pts = arr.map(function (v, i) { return [Math.round(i / (arr.length - 1) * (W - 4) + 2), Math.round(H - 3 - v / mx * (H - 8))]; });
+    return '<svg class="rp-spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" vector-effect="non-scaling-stroke" stroke="' + (red ? "#C41230" : "#141414") + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' +
+      pts.map(function (p) { return p.join(","); }).join(" ") + '"/></svg>';
+  }
+  function rpLine(byWeek, priorAvg, esc) {
+    var rows = (byWeek || []).filter(function (w) { return w && typeof w.n === "number"; });
+    if (rows.length < 2) return "";
+    var W = 680, H = 170, L = 34, R = 10, T = 14, B = 30, mx = Math.max.apply(null, rows.map(function (w) { return w.n; }).concat([priorAvg || 0, 1]));
+    var x = function (i) { return L + i / (rows.length - 1) * (W - L - R); }, y = function (v) { return T + (H - T - B) - v / mx * (H - T - B); };
+    var pts = rows.map(function (w, i) { return [x(i), y(w.n)]; });
+    var lab = function (d) { var t = new Date(String(d) + "T00:00:00Z"); return isNaN(t) ? String(d) : (t.getUTCMonth() + 1) + "/" + t.getUTCDate(); };
+    var step = Math.max(1, Math.ceil(rows.length / 10));
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+      '<line x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '" stroke="#D9D1C1"/>' +
+      '<text x="' + (L - 6) + '" y="' + (y(mx) + 4) + '" text-anchor="end" font-family="Space Mono,monospace" font-size="9" fill="#6B6455">' + mx + '</text>' +
+      '<text x="' + (L - 6) + '" y="' + (y(0) + 3) + '" text-anchor="end" font-family="Space Mono,monospace" font-size="9" fill="#6B6455">0</text>' +
+      (priorAvg ? '<line x1="' + L + '" y1="' + y(priorAvg) + '" x2="' + (W - R) + '" y2="' + y(priorAvg) + '" stroke="#6B6455" stroke-dasharray="4 4"/>' +
+        '<text x="' + (W - R) + '" y="' + (y(priorAvg) - 4) + '" text-anchor="end" font-family="Space Mono,monospace" font-size="8.5" fill="#6B6455">PRIOR WINDOW, WEEKLY AVERAGE ' + Math.round(priorAvg) + '</text>' : "") +
+      '<polyline fill="none" stroke="#C41230" stroke-width="2" stroke-linejoin="round" points="' + pts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ") + '"/>' +
+      pts.map(function (p, i) { return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="#C41230"/>' + (i % step === 0 || i === rows.length - 1 ? '<text x="' + p[0].toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-family="Space Mono,monospace" font-size="8.5" fill="#6B6455">' + esc(lab(rows[i].week)) + '</text>' : ""); }).join("") +
+      "</svg>";
+  }
+  function rpWho(self) {
+    if (!self) return "";
+    var bits = ["generation", "gender", "role", "trait", "place"].map(function (k) { return self[k]; }).filter(Boolean);
+    return bits.join(" · ");
+  }
+  function rpStatLabel(path) {
+    var p = String(path || "");
+    if (p === "lake.signals") return "signals tracked"; if (p === "lake.signals_prior") return "signals tracked, previous period";
+    if (p === "lake.outlets") return "sources"; if (p === "lake.record") return "older reports consulted"; if (p === "lake.published_to_daily") return "signals published as stories";
+    if (p === "daily.stories") return "stories published"; if (p === "daily.editions") return "editions published"; if (p === "daily.sources_distinct") return "publishing sources";
+    if (p === "frames.door_reads" || p === "frames.excavate_reads") return "topics analyzed"; if (p === "window.days") return "days in the period";
+    var m = p.match(/^lake\.by_territory\.(.+)$/); if (m) return "signals in " + m[1].replace(/-/g, " ");
+    m = p.match(/^lake\.by_territory_prior\.(.+)$/); if (m) return "signals in " + m[1].replace(/-/g, " ") + ", previous period";
+    m = p.match(/^daily\.by_territory\.(.+)$/); if (m) return "stories in " + m[1].replace(/-/g, " ");
+    m = p.match(/^lake\.by_tier\.tier_(\d)$/); if (m) return "signals from " + ({ 0: "primary records", 1: "newsrooms and research", 2: "trade press and reference", 3: "platforms and blogs", 4: "aggregators" }[m[1]] || "sources");
+    return p.replace(/^(lake|daily|frames|window)\./, "").replace(/[._]/g, " ");
+  }
+  function rpKind(r) {
+    if (!r) return "";
+    if (r.kind === "lake") return "source"; if (r.kind === "record") return "older report"; if (r.kind === "theme") return "theme tracked by Unsurfaced";
+    if (r.kind === "frame" || r.kind === "read") return "Unsurfaced analysis"; if (r.kind === "voice") return "consumer comment";
+    return "story";
+  }
+  function reportDoc(x, st, rc, row, H) {
+    var esc = H.esc, inner = H.inner, band = H.band, photo = H.photo, pickImage = H.pickImage, img = H.img, real = H.real, uniq = H.uniq, stat = H.stat, fmtDate = H.fmtDate, pad = H.pad, cited = H.cited, used = H.used;
+    var lake = st.lake || {}, daily = st.daily || {}, frames = st.frames || {}, win = st.window || {};
+    var findings = (x.findings || []).filter(function (f) { return f && f.name; });
+    var issue = row.meta && row.meta.issue_no ? "Issue " + String(row.meta.issue_no).padStart(3, "0") : "";
+    var sec = 0, h = "", contents = [];
+    /* Sources are numbered in order of first mention; the house ids never reach the reader. */
+    var foot = {}, footN = 0, order = [];
+    function num(id) { if (!rc[id]) return 0; if (!foot[id]) { foot[id] = ++footN; order.push(id); cited[id] = 1; } return foot[id]; }
+    function refs(list) { var ns = (list || []).filter(real).map(num).filter(Boolean); return ns.length ? '<span class="rp-refs">' + ns.map(function (n) { return "<sup>" + n + "</sup>"; }).join("") + "</span>" : ""; }
+    function prose(t) { return esc(t).replace(/\s*\(((?:[SLRTDXV]\d+)(?:,\s*[SLRTDXV]\d+)*)\)/g, function (m, g) { return refs(g.split(/,\s*/)); }).replace(/\b([SLRTDXV]\d+)\b/g, function (m, id) { var n = num(id); return n ? "<sup>" + n + "</sup>" : m; }); }
+    var exec = (x.executive_summary || []).filter(function (e) { return e && e.line; });
+    var terr = (x.territories || []).filter(function (t) { return t && t.territory; });
+    var sets = (x.competitive_sets || []).filter(function (c) { return c && c.names && c.names.length; });
+    var voice = x.consumer_voice && x.consumer_voice.quotes && x.consumer_voice.quotes.length ? x.consumer_voice : null;
+    var record = x.the_record && x.the_record.line ? x.the_record : null;
+    var outlook = x.outlook || {};
+    var next30 = (outlook.next_30 || []).filter(function (o) { return o && o.line; });
+    var gloss = (x.glossary || []).filter(function (g) { return g && g.term; });
+    var m = x.method || {};
+    if (exec.length) contents.push(["What this means for you", exec.length + " things to act on"]);
+    contents.push(["The period in numbers", "What moved, measured"]);
+    if (findings.length) contents.push(["The findings", findings.length + " patterns in what people did"]);
+    if (terr.length) contents.push(["The territories", terr.length + " territories, measured"]);
+    if (sets.length) contents.push(["The competitive sets", "Who plays where"]);
+    if (voice) contents.push(["In their own words", "What consumers said"]);
+    if (record) contents.push(["What the older reports say", "What still holds"]);
+    if (x.cross_currents && x.cross_currents.length) contents.push(["Cross-currents", "Threads across territories"]);
+    if (x.contradiction || x.whitespace) contents.push(["The counter-signal and the whitespace", "What pushes back, what is unclaimed"]);
+    if (x.advertising_read) contents.push(["The advertising read", "Creative, media, brand"]);
+    if (next30.length || outlook.next_90) contents.push(["The outlook", "The next 30 and 90 days, with what to watch"]);
+    if (gloss.length) contents.push(["Glossary", "The terms, defined"]);
+    contents.push(["About this report", "What was read, and its limits"]);
+    contents.push(["Sources", "Every source, numbered"]);
+
+    /* Cover */
+    var coverPool = uniq([x.cover_image].concat.apply([x.cover_image], findings.map(function (f) { return [f.lead_image].concat(f.evidence || []); }))).filter(function (a) { return img(a); });
+    var coverS = coverPool[0] || null; if (coverS) used[coverS] = 1;
+    var bigs = [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days"]]
+      .filter(function (n) { return typeof n[0] === "number"; }).map(function (n) { return "<div><b>" + rpNum(n[0]) + "</b><span>" + n[1] + "</span></div>"; }).join("");
+    h += '<section class="page cover">' + (coverS ? '<div class="photo">' + photo(coverS, "cover", coverPool.slice(1)) + '</div><div class="shade"></div>' : "") +
+      '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + esc(KIND.report) + (issue ? " · " + esc(issue) : "") + "</div>" +
+      "<h1>" + esc(x.title) + "</h1>" + (x.subtitle ? '<p class="rp-dek">' + esc(x.subtitle) + "</p>" : "") + '<p class="thesis">' + esc(x.thesis) + "</p>" +
+      (x.ground_line ? '<div class="rp-sub">' + esc(x.ground_line) + "</div>" : "") + (bigs ? '<div class="nums">' + bigs + "</div>" : "") +
+      '<div class="foot"><span>' + esc(issue || "Unsurfaced Intelligence") + "</span><span>" + fmtDate(row.window_start) + " · " + fmtDate(row.window_end) + "</span>" +
+      (coverS ? '<span class="cvcredit">Cover: ' + esc(rc[coverS].source_name || "") + "</span>" : "") + "</div></div></section>";
+
+    /* How to read + contents */
+    h += inner('<div class="how"><div><div class="kicker">How to read this report</div><div class="loop">' +
+      "<div><b>THE FINDINGS</b><p>What people did this period, why, and what it means for your category and your customer. Each one is a pattern across several sources, never one story retold.</p></div>" +
+      "<div><b>THE SOURCES</b><p>Small numbers in the text point to the sources at the back: the publication, the date, and what kind of source it is. Consumer comments are quoted word for word.</p></div>" +
+      "<div><b>CONFIDENCE</b><p>A pattern has at least two independent sources agreeing on dated events inside the period. An early signal has fewer. High, medium or low says how far we would lean on it.</p></div>" +
+      "<div><b>THE MOVE</b><p>One action per role you could start this month, and the sign that would prove the finding right or wrong.</p></div>" +
+      '</div><p class="intro">Every number in this report was counted by the database from the sources it read. None was written by hand.</p></div>' +
+      '<div><div class="kicker">In this report</div><div class="toc">' + contents.map(function (c, i) {
+        return '<div><span class="n">' + pad(i + 1) + '</span><span class="t">' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></div>"; }).join("") + "</div></div></div>");
+
+    /* What this means for you */
+    if (exec.length) {
+      sec++;
+      h += inner(band(pad(sec), "What this means for you", "The lines to act on. Each one says what happened and what it means, with its sources.") +
+        '<ol class="rp-exec">' + exec.map(function (e, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(e.line) + refs(e.evidence) + "</div></li>"; }).join("") + "</ol>");
+    }
+
+    /* The period in numbers */
+    sec++;
+    var bn = (x.by_the_numbers || []).filter(function (b) { return b && stat(st, b.stat) !== null; });
+    var priorAvg = typeof lake.signals_prior === "number" && win.days ? lake.signals_prior / (win.days / 7) : 0;
+    var src = {}; (lake.top_outlets || []).forEach(function (s) { src[s.source] = s.n; });
+    var cards = [[lake.signals, "Signals tracked", rpDelta(lake.signals, lake.signals_prior)], [lake.outlets, "Sources", rpDelta(lake.outlets, lake.outlets_prior)], [daily.stories, "Stories published", daily.editions ? "across " + rpNum(daily.editions) + " editions" : ""]]
+      .filter(function (c) { return typeof c[0] === "number"; });
+    h += inner(band(pad(sec), "The period in numbers", "What moved, counted across every source read: this period against the same number of days before it.") +
+      (cards.length ? '<div class="rp-cards">' + cards.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span>" + (c[2] ? "<small>" + esc(c[2]) + "</small>" : "") + "</div>"; }).join("") + "</div>" : "") +
+      (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, priorAvg, esc) + '<div class="cap">How much the culture surfaced each week, Monday to Sunday. The dashed line is the weekly average of the previous period.</div></div>' : "") +
+      (bn.length ? '<div class="two" style="margin-bottom:22px">' + bn.slice(0, 10).map(function (b) { return '<div><div class="lbl">' + rpNum(stat(st, b.stat)) + " · " + esc(rpStatLabel(b.stat)) + '</div><p class="body">' + prose(b.line) + "</p></div>"; }).join("") + "</div>" : "") +
+      '<div class="two"><div><div class="kicker">Signals by territory</div>' + rpBars(lake.by_territory, 14, function (k) { return k.replace(/-/g, " "); }, esc, lake.by_territory_prior) +
+      '</div><div><div class="kicker">Most-cited sources</div>' + rpBars(src, 12, null, esc) + "</div></div>");
+
+    /* The findings */
+    if (findings.length) {
+      sec++;
+      h += '<section class="page opener"><div class="no">' + pad(sec) + ' · The findings</div><h2>The findings.</h2><p>What people did this period, measured and sourced, each ending in a move and the sign that would prove it.</p><ol>' +
+        findings.map(function (f, i) { return "<li><span>" + pad(i + 1) + "</span>" + esc(f.name) + (f.strength === "signal" ? ' <span class="signal" style="border-color:#555;color:#CFC8BA">Early signal</span>' : "") + "</li>"; }).join("") + "</ol></section>";
+      findings.forEach(function (f, i) {
+        var ev = (f.evidence || []).filter(real);
+        var lead = (f.lead_image && real(f.lead_image) && img(f.lead_image)) ? f.lead_image : pickImage(ev, used);
+        if (lead) used[lead] = 1;
+        var rest = ev.filter(function (s) { return s !== lead && img(s); }).slice(0, 4);
+        var sup = f.supports || {};
+        var agree = typeof sup.outlets === "number" ? (sup.outlets === 1 ? "1 source" : sup.outlets + " sources agree") : "";
+        h += inner((lead ? '<div class="hero">' + photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) + '<span class="tag">Finding ' + (i + 1) + " of " + findings.length + '</span><div class="credit">' + H.credit(lead) + "</div></div>" : '<div class="hero none"></div>') +
+          '<div class="pname">' + esc(f.name) + "</div>" +
+          '<div style="margin:0 0 14px">' + (f.strength === "signal" ? '<span class="rp-chip">Early signal</span> ' : '<span class="rp-chip">Pattern</span> ') +
+            (f.confidence ? '<span class="rp-chip ' + esc(f.confidence) + '">' + esc(f.confidence) + " confidence</span> " : "") +
+            (agree ? '<span class="rp-chip">' + esc(agree) + "</span>" : "") + "</div>" +
+          (f.dek ? '<p class="dek">' + esc(f.dek) + "</p>" : "") +
+          (f.what_the_data_shows ? '<div class="rp-data"><div class="lbl">What the data shows</div>' + prose(f.what_the_data_shows) + "</div>" : "") +
+          '<div class="cols">' + (f.what_happened ? '<div class="lbl">What happened</div><p class="body">' + prose(f.what_happened) + "</p>" : "") +
+            (f.why_it_matters ? '<div class="lbl">Why it matters</div><p class="body">' + prose(f.why_it_matters) + "</p>" : "") + "</div>" +
+          (f.means ? '<div class="rp-means">' + ["culture", "category", "consumer"].filter(function (k) { return f.means[k]; }).map(function (k) { return "<div><b>For the " + k + "</b>" + prose(f.means[k]) + "</div>"; }).join("") + "</div>" : "") +
+          (f.moves ? '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="s">One action per role that a team could start this month.</div><div class="grid">' +
+            H.ROLES.filter(function (r) { return f.moves[r]; }).map(function (r) { return "<div><b>" + r + "</b>" + esc(f.moves[r]) + "</div>"; }).join("") + "</div></div>" : "") +
+          (f.trigger ? '<div class="rp-trig"><b>WHAT WOULD PROVE IT</b> · ' + esc(f.trigger) + "</div>" : "") +
+          (rest.length ? '<div class="strip" style="margin-top:14px">' + rest.map(function (s) { return "<figure>" + photo(s, "strip", ev.filter(function (a) { return a !== lead && rest.indexOf(a) < 0; }), "strip") + "<figcaption>" + H.capHtml(s, "strip") + "</figcaption></figure>"; }).join("") + "</div>" : "") +
+          (ev.length ? '<ul class="rp-sup">' + ev.map(function (s) { var r = rc[s] || {}; return "<li><span>" + num(s) + "</span><div>" + esc(r.headline || "") + "<i>" + esc(r.source_name || "") + (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + "</i></div></li>"; }).join("") + "</ul>" : ""));
+      });
+    }
+
+    /* The territories */
+    if (terr.length) {
+      sec++;
+      var btw = lake.by_territory_week || {};
+      h += inner(band(pad(sec), "The territories", "Every territory with activity this period: how much surfaced against the period before, week by week, and which way it is moving.") +
+        '<div class="rp-terr">' + terr.map(function (t) {
+          var mo = t.momentum || "holding";
+          return '<div><div class="t"><span>' + esc(String(t.territory).replace(/-/g, " ")) + '</span><span class="rp-chip ' + esc(mo) + '">' + esc(mo) + "</span></div>" +
+            rpSpark(btw[t.territory], mo === "rising" || mo === "new") +
+            '<div class="t"><span>' + rpNum(t.n) + " signals</span><span>" + esc(rpDelta(t.n, t.n_prior)) + "</span></div>" +
+            "<h3>" + esc(t.headline || "") + "</h3><p>" + prose(t.line || "") + refs(t.evidence) + "</p></div>";
+        }).join("") + "</div>");
+    }
+
+    /* Competitive sets */
+    if (sets.length) {
+      sec++;
+      h += inner(band(pad(sec), "The competitive sets", "Who plays in the spaces the findings name.") +
+        sets.map(function (c) { return '<div class="rp-set"><div><div class="cat">' + esc(c.category || "") + '</div><div class="names">' + c.names.map(esc).join("<br>") + "</div></div><div><p>" + prose(c.line || "") + refs(c.evidence) + "</p></div></div>"; }).join(""));
+    }
+
+    /* In their own words */
+    if (voice) {
+      sec++;
+      var vids = (voice.quotes || []).filter(real);
+      h += inner(band(pad(sec), "In their own words", "What consumers said, quoted word for word from public comments and posts on the period's biggest themes. A speaker is described only by what they said about themselves.") +
+        (voice.line ? '<p class="body lead">' + prose(voice.line) + "</p>" : "") +
+        '<div class="rp-quotes">' + vids.map(function (s) { var q = rc[s]; return '<div class="rp-q">' + esc(q.headline) + '<div class="who"><sup>' + num(s) + "</sup> " + esc(q.source_name || "") + " comment" + (q.likes ? " · " + rpNum(q.likes) + " likes" : "") + (rpWho(q.self) ? " · <i>" + esc(rpWho(q.self)) + "</i>" : "") + "</div></div>"; }).join("") + "</div>" +
+        ((voice.by_generation || []).filter(function (g) { return g && g.generation; }).length ? '<div class="two" style="margin-top:22px">' + voice.by_generation.filter(function (g) { return g && g.generation; }).map(function (g) {
+          return '<div><div class="kicker">' + esc(g.generation) + '</div><p class="body">' + prose(g.line || "") + refs(g.quotes) + "</p></div>"; }).join("") + "</div>" : ""));
+    }
+
+    /* What the older reports say */
+    if (record) {
+      sec++;
+      var rids = (record.evidence || []).filter(real);
+      h += inner(band(pad(sec), "What the older reports say", "Research and primary records from before this period, from sources that count. Named for what still holds and what this period overturned.") +
+        '<p class="body lead">' + prose(record.line) + "</p>" +
+        (rids.length ? '<ul class="rp-sup">' + rids.map(function (s) { var r = rc[s]; return "<li><span>" + num(s) + "</span><div>" + esc(r.headline || "") + "<i>" + esc(r.source_name || "") + (r.date ? " · " + fmtDate(r.date) : "") + "</i></div></li>"; }).join("") + "</ul>" : ""));
+    }
+
+    /* Cross-currents, the tension, the advertising read */
+    if (x.cross_currents && x.cross_currents.length) {
+      sec++;
+      h += inner(band(pad(sec), "Cross-currents", "Threads that ran across territories. Smaller than a finding, too consistent to ignore.") + x.cross_currents.map(function (c) {
+        var s = pickImage(c.evidence, used);
+        return '<div class="thread"><div>' + (s ? photo(s, "wide", c.evidence) : '<div class="ph blank" style="height:1.3in"></div>') + "</div><div><p>" + prose(c.thread) + refs(c.evidence) + "</p></div></div>"; }).join(""));
+    }
+    if (x.contradiction || x.whitespace) {
+      sec++;
+      h += inner(band(pad(sec), "The counter-signal and the whitespace", "The evidence that pushes the other way, and the space nobody in the evidence claimed.") + '<div class="two">' +
+        (x.contradiction ? '<div><div class="kicker">The counter-signal</div><p class="pull">' + prose(H.firstSentence(x.contradiction)) + '</p><p class="body">' + prose(String(x.contradiction).slice(H.firstSentence(x.contradiction).length).trim()) + "</p></div>" : "") +
+        (x.whitespace ? '<div><div class="kicker">The whitespace</div><p class="pull">' + prose(H.firstSentence(x.whitespace)) + '</p><p class="body">' + prose(String(x.whitespace).slice(H.firstSentence(x.whitespace).length).trim()) + "</p></div>" : "") + "</div>");
+    }
+    if (x.advertising_read) {
+      sec++;
+      h += inner(band(pad(sec), "The advertising read", "What the period means for the work: creative, media and brand.") + '<p class="pull" style="font-size:30px">' + prose(H.firstSentence(x.advertising_read)) + "</p>" +
+        '<div class="cols"><p class="body lead">' + prose(String(x.advertising_read).slice(H.firstSentence(x.advertising_read).length).trim()) + "</p></div>");
+    }
+
+    /* The outlook */
+    if (next30.length || outlook.next_90) {
+      sec++;
+      h += inner(band(pad(sec), "The outlook", "The next 30 days as a watch-list, each with the sign that would confirm it, then the next 90.") +
+        (next30.length ? '<ul class="watch">' + next30.map(function (o, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(o.line) + refs(o.evidence) + (o.trigger ? '<div class="rp-trig"><b>WATCH FOR</b> · ' + esc(o.trigger) + "</div>" : "") + "</div></li>"; }).join("") + "</ul>" : "") +
+        (outlook.next_90 ? '<div class="kicker" style="margin-top:26px">The next 90 days</div><div class="cols"><p class="body lead">' + prose(outlook.next_90) + "</p></div>" : ""));
+    }
+
+    /* Glossary */
+    if (gloss.length) {
+      sec++;
+      h += inner(band(pad(sec), "Glossary", "The terms this report uses, defined once.") + '<div class="rp-gloss">' + gloss.map(function (g) { return "<div><b>" + esc(g.term) + "</b><p>" + esc(g.definition || "") + "</p></div>"; }).join("") + "</div>");
+    }
+
+    /* About this report: the method, at the back, in reader words */
+    sec++;
+    var tiers = lake.by_tier || {};
+    var about = [[lake.signals, "Signals read", rpDelta(lake.signals, lake.signals_prior)], [lake.outlets, "Sources", rpDelta(lake.outlets, lake.outlets_prior)], [daily.stories, "Stories published", daily.editions ? "across " + rpNum(daily.editions) + " editions" : ""],
+      [row.meta && row.meta.pack && row.meta.pack.counts ? row.meta.pack.counts.voices : null, "Consumer comments read", "quoted word for word"], [lake.record, "Older reports consulted", "from before the period"], [win.days, "Days in the period", win.prior_start ? "compared with " + fmtDate(win.prior_start) + " to " + fmtDate(win.prior_end) : ""]]
+      .filter(function (c) { return typeof c[0] === "number"; });
+    h += inner(band(pad(sec), "About this report", "What was read to write it, how to read it, and what it cannot tell you.") +
+      '<div class="rp-cards">' + about.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span>" + (c[2] ? "<small>" + esc(c[2]) + "</small>" : "") + "</div>"; }).join("") + "</div>" +
+      '<div class="cols">' + (m.what_was_read ? '<div class="lbl">What was read</div><p class="body">' + prose(m.what_was_read) + "</p>" : "") +
+      (m.how_to_read ? '<div class="lbl">How to read it</div><p class="body">' + prose(m.how_to_read) + "</p>" : "") +
+      (m.limits ? '<div class="lbl">What it cannot tell you</div><p class="body">' + prose(m.limits) + "</p>" : "") + "</div>" +
+      (Object.keys(tiers).length ? '<div class="kicker" style="margin-top:18px">Where the signals came from</div>' + rpBars(tiers, 5, function (k) { return { tier_0: "Primary records", tier_1: "Newsrooms and research", tier_2: "Trade press and reference", tier_3: "Platforms and blogs", tier_4: "Aggregators" }[k] || k; }, esc) : ""));
+
+    /* Sources: in order of first mention */
+    sec++;
+    if (order.length) h += inner(band(pad(sec), "Sources", "Every source this report stands on, in the order it was first cited: the headline or the words, the publication, the date, and what kind of source it is.") + '<div class="rp-rec">' + order.map(function (s) {
+      var r = rc[s]; if (!r) return "";
+      return '<div class="rc">' + (img(s) ? photo(s, "thumb") : '<div class="noimg">' + foot[s] + "</div>") + '<div><div class="hl">' + (img(s) ? "<b>" + foot[s] + "</b> · " : "") + esc(r.headline || "") + '</div><div class="src">' + esc(r.source_name || "") +
+        (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + (r.issue_no ? " · Unsurfaced DAILY issue " + String(r.issue_no).padStart(3, "0") : "") + (r.title && r.kind === "voice" ? " · on " + esc(r.title) : "") + '<span class="rp-ref">' + esc(s) + "</span></div></div></div>"; }).join("") + "</div>");
+    h += '<section class="page closer">' + H.mark("rp-mark") + '<div class="big">Culture, measured.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/read' + (issue ? " · " + esc(issue) : "") + "</div></section>";
+    return { html: h, coverPool: coverPool };
+  }
+  function rpBars(obj, top, fmt, esc, prior) {
+    var rows = Object.keys(obj || {}).map(function (k) { return [k, obj[k]]; }).filter(function (r) { return typeof r[1] === "number"; })
+      .sort(function (a, b) { return b[1] - a[1]; }).slice(0, top);
+    if (!rows.length) return "";
+    var mx = rows[0][1] || 1;
+    return '<div class="bars">' + rows.map(function (r, i) {
+      var p = prior && typeof prior[r[0]] === "number" ? prior[r[0]] : null;
+      return "<div><span>" + esc(fmt ? fmt(r[0]) : r[0]) + '</span><i class="' + (i === 0 ? "r" : "") + '" style="width:' + Math.max(3, Math.round(r[1] / mx * 100)) + '%"></i><b>' + r[1] + (p != null ? '<small style="display:block;color:#6B6455;font-size:8.5px">prior ' + p + "</small>" : "") + "</b></div>"; }).join("") + "</div>";
+  }
+
   /* ── Library ─────────────────────────────────────────────────────────── */
   function library() {
     actions.innerHTML = "";
     call("/reads/list", {}).then(function (d) {
       if (!d || !d.ok) return say("The library could not load: " + ((d && d.error) || "no answer") + ".");
-      var groups = { weekly: [], monthly: [], record: [] };
+      var groups = { report: [], weekly: [], monthly: [], record: [] };
       (d.reads || []).forEach(function (r) { if (groups[r.kind]) groups[r.kind].push(r); });
       var html = '<section class="lib"><h1>The Read</h1><div class="sub">Every read the house has compiled, newest first</div>';
-      ["record", "monthly", "weekly"].forEach(function (k) {
+      ["report", "record", "monthly", "weekly"].forEach(function (k) {
         if (!groups[k].length) return;
         html += "<h2>" + KIND[k] + "</h2><div class=\"cards\">" + groups[k].map(function (r) {
           return '<a class="card" href="?id=' + r.id + '"><div class="lab">' + esc(r.label) + " · v" + r.version + '</div>' +
@@ -371,6 +697,17 @@
       function inner(html) { return '<section class="page inner"><table class="flow"><thead><tr><td class="sp"></td></tr></thead><tbody><tr><td>' +
         html + '</td></tr></tbody><tfoot><tr><td class="sp"></td></tr></tfoot></table></section>'; }
       function band(no, name, text) { return '<div class="band"><div class="no">' + no + '</div><h2>' + esc(name) + "</h2><p>" + esc(text) + "</p></div>"; }
+
+      if (row.kind === "report") {   // SEAM:READ_REPORT: the research layout has its own builder, same helpers, same paper
+        document.title = "Unsurfaced Intelligence · " + row.label;
+        var rp = reportDoc(x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq,
+          stat: stat, fmtDate: fmtDate, pad: pad, firstSentence: firstSentence, mark: mark, capHtml: capHtml, ROLES: ROLES, cited: cited, used: used });
+        app.innerHTML = '<div class="doc">' + (row.status === "held" ? '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>" : "") + rp.html + "</div>";
+        if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
+        if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, rp.coverPool);
+        bind(row);
+        return;
+      }
 
       var main = x.patterns || x.features || x.held || [];
       var sec = 0, contents = [];

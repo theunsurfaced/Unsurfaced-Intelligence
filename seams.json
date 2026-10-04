@@ -801,6 +801,15 @@
    "file": "worker/src/index.js",
    "purpose": "the copy desk: every house read is proofread before it is ready (readAmerican, a deterministic American English spelling and punctuation pass; readProof, the copy editor on the live Claude tier, accepted only when shape, S-ids, numbers and length hold and the read laws pass again); meta.proof keeps the receipts; POST /reads/proof {id, apply} shows or applies the fixes on any written read so an issue already out can be recut; the Method's second law is American English only"
   },
+  "SEAM:READ_REPORT": {
+   "file": "worker/src/index.js",
+   "purpose": "the Cultural Intelligence Report: kind report in HOUSE_READ (48000 room, high effort, builds on every monthly and weekly inside its window), compiled over an explicit window (readReportWindow; /reads/compile {kind:report,start,end}, issues numbered by distinct window) on the whole lake, not only published DAILY. STATS from house_report_stats (migration 0034: the window against the same days before, by territory, week, tier, outlet, the themes with weekly series, the tracks, the frames and reads, momentum per territory decided by the count). The pack beyond the S-ids (readReportPack): L lake lines spread across territories (readReportSpread), R record lines (older prominent sources, tier 0 and 1), T themes, D overnight frames, X EXCAVATE reads, V consumer voices gathered through the live YouTube and Mastodon rails (readReportVoices, SEAM:EXC_VOICES laws); the row keeps the ids, the lines, the voices and the pack text (meta.pack) so landing and receipts never gather again. Landing: readValidate takes the extra ids (evidence and quotes arrays), the pack text is ground for the number law (readGroundOf), triggers and the glossary are exempt; readReportLaws applies readSupports (a finding needs SUPPORTS_MIN dated lines from OUTLETS_MIN outlets inside the window or lands as a signal, high confidence steps to medium; the record never supports) and readMomentum (momentum and counts per territory copied from STATS, unknown territories dropped). readReceipts resolves every id kind from the row's pack; the copy desk's room scales with the read"
+  },
+  "SEAM:READ_REPORT@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_REPORT",
+   "purpose": "the research layout (reportDoc, pure): cover with the issue number and the database counts, how to read this report (findings, supports, confidence, the move), contents, executive summary with receipts, method and data cards against the prior window with tiers, by the numbers with the lake-by-week line (rpLine, the prior window's weekly average dashed) and bars with priors (rpBars), one spread per finding (pattern or signal chip, confidence chip, dated lines and outlets, the data card, what it means for culture, category and consumer, the move by role, the trigger, supports with tier and date), the territories with momentum chips and weekly sparklines (rpSpark), the competitive sets, the consumer voice verbatim with only self-stated markers (rpWho), the record, cross-currents, the tension, the advertising read, the outlook with triggers, the glossary, and receipts for every id kind. The library shelves reports first; KIND.report"
+  },
   "SEAM:WEEKLY_STAND": {
    "file": "worker/src/index.js",
    "purpose": "the stand: dispatch line + inline module (shelf, intake, sign-in, signed PDF stream from R2)"
@@ -862,6 +871,19 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_TIMELINE",
    "purpose": "the evidence timeline: each line a dot on twelve weeks, the row its lens, the size its source tier, a diamond for a competitor line, a square for a counter line, a ring for the record, older and undated lines in the gutter; a hover names the line and a click opens it; beneath it the sources' own images with their source and date; beside the measures the competitive set as sparklines on one scale, the frame in the accent and the competitors quiet; a move offers to be pictured in PLAY (imagined, never evidence)"
+  },
+  "SEAM:EVOLUTION": {
+   "file": "worker/src/index.js",
+   "purpose": "while the platform evolves, every monthly Claude cap runs at ten times its written value and the Perplexity day at five times, so a limit never decides what a test shows. The switch is the EVOLUTION_MODE secret (value 1); the first paying client is the day it comes out (delete the secret, deploy). A cap set by its own secret (CLAUDE_LIVE_MONTHLY and the rest) is always exactly what it says. Costs before the first client are only what the evolution spends"
+  },
+  "SEAM:DOOR_CADENCE": {
+   "file": "worker/src/index.js",
+   "purpose": "how many nights apart the door compiles a new batch: DOOR.EVERY_D (2 while the platform evolves, 1 nightly), overridden without a deploy by the DOOR_EVERY_D secret (doorEvery). doorPass counts the nights since the last door night that produced a ready or reused read; inside the gap it republishes the standing set (doorPublish, so the KV copy never lapses; DOOR.TTL 72h) and spends nothing, reporting skipped: cadence with the next night. A desk run ({run:door}) passes force and always compiles; a night whose batch failed outright is not a door night, so the next night tries again"
+  },
+  "SEAM:DOOR_CADENCE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:DOOR_CADENCE",
+   "purpose": "a tile's delta reads 'since last read' rather than 'since last night', and a carried tile says 'earlier read · a new one compiling', because the door's last batch may be two nights old"
   }
  },
  "planned": [

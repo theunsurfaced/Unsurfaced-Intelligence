@@ -24,7 +24,7 @@ ok(t.slice(6).every(x => ['consumer', 'market', 'culture', 'brand'].includes(x.l
 ok(A(Array.from({ length: 14 }, (_, i) => ({ cluster_id: 'p' + i })), desk).length === 12, 'A6 never more than 12');
 ok(A([], []).length === 0 && A(six.slice(0, 3), []).length === 3, 'A7 a thin lake shows fewer tiles, never invented ones');
 ok(/lens: \(d && d\.lens\) \|\| p\.lens \|\| null/.test(w), 'A8 a tile keeps its own lens unless the desk names one');
-ok(/const want = Math\.min\(12,/.test(w) && /WANT: 12,/.test(w) && /max_tokens: 2400 \}\);   \/\/ room for 12/.test(w), 'A9 PROPOSE may name 12 patterns, with room to write them');
+ok(/const want = Math\.min\(12,/.test(w) && /WANT: 12,/.test(w) && /max_tokens: 8000 \}\);   \/\/ room for 12/.test(w), 'A9 PROPOSE may name 12 patterns, with room to write them (and to think first)');
 ok(/states\[st\] = \(states\[st\] \|\| 0\) \+ 1/.test(between('async function excavateFeed(', 'function ilikeOr(')), 'A10 the state chips count every tile shown');
 
 const card = page.slice(page.indexOf('function _renderLakeCard('), page.indexOf('function _renderLakeGrid('));
