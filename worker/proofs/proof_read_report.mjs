@@ -44,8 +44,8 @@ const RAIL_FNS = {
 const E = new Function('sbRest', 'RAILS', 'RAIL_FNS', 'excFrameLabel', 'claudeBatchSubmit', 'logEvent',
   'const READ_METHOD = "METHOD";' + trim + helpers + engine + '; return { HOUSE_READ, READ_REPORT, READ_CONTRACT, readReportWindow, readWindow, readReportLakeLine, readReportRecordLine, readReportThemeLine, readReportFrameLine, readReportReadLine, readReportVoiceLine, readReportSpread, readReportVoices, readReportPack, readReportExtraIds, readSupports, readMomentum, readValidate, readSubmit };')(
   sbRest, RAILS, RAIL_FNS, f => f.entity ? f.entity + ' in ' + String(f.category || '').toLowerCase() : (f.title || ''), async () => ({ ok: true, batch_id: 'b9', est_usd: 1.2 }), () => {});
-ok(E.HOUSE_READ.KINDS.report && E.HOUSE_READ.KINDS.report.max_tokens === 120000 && E.HOUSE_READ.KINDS.report.effort === 'high' && E.HOUSE_READ.KINDS.report.child === 'monthly',
-  'K1 the report kind has room for a long write with its thinking (120000 under Fable\'s 128000 ceiling) at high effort and builds on the monthlies');
+ok(/MAX_TOKENS: 128000,/.test(w) && E.HOUSE_READ.KINDS.report && E.HOUSE_READ.KINDS.report.max_tokens === 120000 && E.HOUSE_READ.KINDS.report.effort === 'high' && E.HOUSE_READ.KINDS.report.child === 'monthly',
+  'K1 the report kind has room for a long write with its thinking (120000, and the lane ceiling is 128000 so nothing clamps it) at high effort and builds on the monthlies');
 const C = E.READ_CONTRACT.report;
 ok(['"title"', '"subtitle"', '"thesis"', '"executive_summary"', '"method"', '"by_the_numbers"', '"cover_image"', '"findings"', '"what_the_data_shows"', '"means"', '"confidence"', '"strength"', '"trigger"', '"territories"', '"competitive_sets"', '"consumer_voice"', '"the_record"', '"cross_currents"', '"contradiction"', '"whitespace"', '"advertising_read"', '"outlook"', '"next_30"', '"next_90"', '"glossary"', '"social"', '"ground_line"'].every(k => C.includes(k)),
   'K2 the contract asks for every section of a research report');

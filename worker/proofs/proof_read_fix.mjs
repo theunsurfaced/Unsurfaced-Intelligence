@@ -20,7 +20,7 @@ const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'calle
 const K = R.HOUSE_READ.KINDS;
 ok(K.weekly.max_tokens === 20000 && K.monthly.max_tokens === 28000 && K.record.max_tokens === 32000, 'F1 room: 20k weekly, 28k monthly, 32k record');
 ok(K.weekly.effort === 'medium' && K.monthly.effort === 'medium' && K.record.effort === 'high', 'F1b effort: medium weekly and monthly, high record');
-ok(/MAX_TOKENS: 32000,/.test(w), 'F2 lane ceiling admits the record');
+ok(/MAX_TOKENS: 128000,/.test(w), 'F2 lane ceiling admits the record and the report (Fable writes up to 128000)');
 
 const row = (status) => [{ id: 1, kind: 'weekly', status, window_start: '2026-09-14', window_end: '2026-09-20', stats: { stories: 2 }, pack_ids: [11], label: 'Week' }];
 function fx(status) { fixtures = { 'house_reads?id=eq.': () => row(status), 'editions?': () => [], 'edition_items?': () => [] }; }

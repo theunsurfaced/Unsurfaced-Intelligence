@@ -84,7 +84,7 @@ ok(near(L.claudeCost('claude-fable-5-1', { cache_read_input_tokens: 1e6, cache_c
 ok(near(L.claudeCost('claude-sonnet-5', { input_tokens: 1e6, output_tokens: 1e6 }, true), 6), 'M4 batch halves every line (Sonnet 12 -> 6)');
 ok(L.claudeCost('unknown-model', { input_tokens: 5 }, false) === 0, 'M5 unknown model prices at 0, never NaN');
 const p1 = L.claudeParams('doc', { system: 'METHOD', cache: true, prompt: 'hi', max_tokens: 999999 });
-ok(p1.model === 'claude-fable-5-1' && p1.max_tokens === 32000, 'M6 doc tier is Fable, max_tokens clamped');
+ok(p1.model === 'claude-fable-5-1' && p1.max_tokens === 128000, 'M6 doc tier is Fable, max_tokens clamped at the model ceiling (128000), never below what a report asks');
 ok(Array.isArray(p1.system) && p1.system[0].cache_control.type === 'ephemeral', 'M7 cache:true marks the Method as the cached prefix');
 ok(L.claudeParams('ingest', {}).model === 'claude-sonnet-5', 'M8 ingest tier is Sonnet 5');
 const est = L.claudeEstimate(L.claudeParams('doc', { prompt: 'x'.repeat(350), max_tokens: 100 }), false);
