@@ -229,6 +229,8 @@
   sup { font-family: var(--mono); font-size: 8.5px; color: var(--red); line-height: 0; }
   .rp-dek { font-weight: 700; font-size: 20px; line-height: 1.35; color: var(--ivory); margin: 0 0 14px; max-width: 6.2in; }
   .rp-ref { font-family: var(--mono); font-size: 8px; color: var(--line); margin-left: 8px; }
+  .edge { font-weight: 700; font-size: 17px; line-height: 1.4; border-top: 2px solid var(--red); border-bottom: 1px solid var(--line); padding: 12px 0; margin: 6px 0 18px; break-inside: avoid; }
+  .edge b { display: block; font-family: var(--mono); font-weight: 400; font-size: 9.5px; letter-spacing: 4px; color: var(--red); margin-bottom: 4px; }
   @media (max-width: 700px) { .rp-cards, .rp-means, .rp-terr, .rp-gloss { grid-template-columns: 1fr; } .rp-quotes { column-count: 1; } .rp-set { grid-template-columns: 1fr; } }
   @page { size: letter; margin: 0; }
   @media print {
@@ -273,6 +275,62 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function say(t) { app.innerHTML = '<div class="msg">' + esc(t) + "</div>"; }
   /* READ_PROOF: the fixes panel sits between the bar and the read. */
+  /* SEAM:REPORT_STAND: the stand switch on the house side. A report is staged on the stand as a draft (the PDF kept, the
+     shelf row built, nothing public), sent live at its price when the house says so, and taken off the same way. */
+  function standPanel(html) {
+    var el = document.getElementById("stand-panel");
+    if (!el) { el = document.createElement("div"); el.id = "stand-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
+    el.innerHTML = html ? '<div style="border:1px solid #3A3A3A;background:#141414;color:#FAF7F2;padding:14px 20px;margin:12px 0 18px;font-size:13px;line-height:1.6;display:flex;gap:14px;align-items:center;flex-wrap:wrap">' + html + "</div>" : "";
+  }
+  function standShow(row, issue, note) {
+    var st = issue ? issue.status : "none";
+    var price = issue && issue.price_cents ? "$" + (issue.price_cents / 100).toFixed(issue.price_cents % 100 ? 2 : 0) : "$20";
+    var chip = '<span class="status s-' + (st === "published" ? "published" : st === "draft" ? "queued" : st === "withdrawn" ? "held" : "failed") + '">' + esc(st === "none" ? "not on the stand" : st === "published" ? "live on the stand" : st === "draft" ? "staged, not public" : "taken off") + "</span>";
+    var btns = "";
+    if (st === "none") btns = '<button class="btn" id="stand-stage">Stage on the stand</button>';
+    if (st === "draft" || st === "withdrawn") btns = '<button class="btn red" id="stand-live">Send live at ' + esc(price) + '</button> <button class="btn" id="stand-stage">Re-stage (fresh PDF)</button>';
+    if (st === "published") btns = '<button class="btn" id="stand-off">Take it off the stand</button>';
+    var meta = issue ? ' <span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;opacity:.7">issue ' + String(issue.issue_no).padStart(3, "0") + (issue.page_count ? " · " + issue.page_count + " pages" : "") + (issue.byte_size ? " · " + (issue.byte_size / 1048576).toFixed(1) + " MB" : "") + (issue.published_at ? " · live since " + esc(String(issue.published_at).slice(0, 10)) : "") + "</span>" : "";
+    standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btns + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : ""));
+    var issueNo = issue ? issue.issue_no : (row.meta && row.meta.issue_no) || null;
+    var go = function (btn, path, body, busy) {
+      btn.disabled = true; btn.textContent = busy;
+      call(path, body).then(function (d) {
+        if (!d || !d.ok) { standShow(row, issue, "The stand said: " + ((d && d.error) || "no answer") + "."); return; }
+        standLoad(row, path === "/reads/stand" ? "Staged: the PDF is kept and the shelf row is built. Nothing is public until you send it live." : body.status === "published" ? "Live. The shelf shows it and the counter takes payment." : "Off the stand. Buyers who already paid keep their downloads.");
+      }).catch(function () { standShow(row, issue, "The stand did not answer."); });
+    };
+    var sb = document.getElementById("stand-stage"); if (sb) sb.onclick = function () { go(sb, "/reads/stand", { id: row.id }, "Staging, about 30 seconds if the PDF renders"); };
+    var lb = document.getElementById("stand-live"); if (lb) lb.onclick = function () { if (!confirm("Send issue " + String(issueNo).padStart(3, "0") + " live on the stand at " + price + "? Buyers can check out the moment you confirm.")) return; go(lb, "/reads/shelf", { issue_no: issueNo, status: "published" }, "Sending live"); };
+    var ob = document.getElementById("stand-off"); if (ob) ob.onclick = function () { if (!confirm("Take issue " + String(issueNo).padStart(3, "0") + " off the stand? The shelf hides it and checkout closes; paid buyers keep their links.")) return; go(ob, "/reads/shelf", { issue_no: issueNo, status: "withdrawn" }, "Taking it off"); };
+  }
+  function standLoad(row, note) {
+    if (row.kind === "weekly") { standWeekly(row, note); return; }   // SEAM:READ_SWEEP
+    var issueNo = (row.meta && row.meta.issue_no) || null;
+    if (!issueNo) { standShow(row, null, note); return; }
+    call("/reads/shelf", { issue_no: issueNo }).then(function (d) { standShow(row, d && d.ok ? d.issue : null, note); }).catch(function () { standShow(row, null, note); });
+  }
+  /* SEAM:READ_SWEEP: a weekly's place on the stand. The week has an issue on the stand or it does not; a ready weekly
+     can replace that issue's PDF (the cover stays), which is how a recut reaches readers. */
+  function standWeekly(row, note) {
+    call("/reads/shelf", { weekly_start: row.window_start }).then(function (d) {
+      var wk = d && d.ok ? d.weekly : null;
+      var mine = !!(row.meta && row.meta.weekly_issue);
+      var chip = '<span class="status s-' + (wk ? (mine ? "published" : "queued") : "failed") + '">' + esc(wk ? (mine ? "on the stand as issue " + String(wk.issue_no).padStart(3, "0") : "issue " + String(wk.issue_no).padStart(3, "0") + " on the stand is an earlier cut") : "this week is not on the stand") + "</span>";
+      var btn = wk && !mine ? '<button class="btn red" id="stand-weekly">Replace issue ' + String(wk.issue_no).padStart(3, "0") + " on the stand with this cut</button>" : "";
+      var meta = wk ? ' <span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;opacity:.7">' + esc(wk.lead || "") + (wk.page_count ? " · " + wk.page_count + " pages" : "") + "</span>" : "";
+      standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btn + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : ""));
+      var b = document.getElementById("stand-weekly"); if (b) b.onclick = function () {
+        if (!confirm("Replace issue " + String(wk.issue_no).padStart(3, "0") + " on the stand with this cut? Readers download the new PDF from now on; the cover stays.")) return;
+        b.disabled = true; b.textContent = "Rendering and replacing, about 30 seconds";
+        call("/reads/weekly-stand", { id: row.id, issue_no: wk.issue_no }).then(function (r) {
+          if (!r || !r.ok) { standWeekly(row, "The stand said: " + ((r && r.error) || "no answer") + "."); return; }
+          row.meta = Object.assign({}, row.meta || {}, { weekly_issue: wk.issue_no });
+          standWeekly(row, "Replaced: " + (r.pages ? r.pages + " pages, " : "") + (r.bytes / 1048576).toFixed(1) + " MB on the stand.");
+        }).catch(function () { standWeekly(row, "The stand did not answer."); });
+      };
+    }).catch(function () { standPanel(""); });
+  }
   function proofPanel(html) {
     var el = document.getElementById("proof-panel");
     if (!el) { el = document.createElement("div"); el.id = "proof-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
@@ -351,14 +409,14 @@
   /* The house explainers: what each part of a read is. Fixed copy, every issue. */
   var EXPLAIN = {
     rough: "What surfaced. The stories as DAILY reported them this week, before anyone connected them.",
-    read: "What it means. Each pattern is a claim about people, proved by the stories that carry it. S-numbers point to the receipts at the back.",
+    read: "What it means. Each pattern is a claim about people, proved by the sources that carry it, and ended with the edge it puts on the table. Small numbers in the text point to the sources at the back.",
     move: "One action per role that a team could start this week.",
     cross: "Threads that ran across territories. Smaller than a pattern, too consistent to ignore.",
     tension: "The evidence that pushes the other way, and the space nobody in the evidence claimed. A read is only as strong as the contradiction it can name.",
     ad: "What the week means for the work: creative, media and brand.",
     ret: "What we watch. The signals that will prove this read right or wrong, so the next read can keep score.",
     nums: "Counted by the database from every published DAILY story in the window. No number on this page was written by a model.",
-    receipts: "Every story this read stands on, with its source, date and issue."
+    receipts: "Every source this read stands on, in the order it was first cited: the headline, the publication, the date and the issue."
   };
 
   /* SEAM:READ_REPORT: the research layout. Pure: strings in, strings out; every number is a STATS value or a
@@ -518,6 +576,7 @@
           '<div class="cols">' + (f.what_happened ? '<div class="lbl">What happened</div><p class="body">' + prose(f.what_happened) + "</p>" : "") +
             (f.why_it_matters ? '<div class="lbl">Why it matters</div><p class="body">' + prose(f.why_it_matters) + "</p>" : "") + "</div>" +
           (f.means ? '<div class="rp-means">' + ["culture", "category", "consumer"].filter(function (k) { return f.means[k]; }).map(function (k) { return "<div><b>For the " + k + "</b>" + prose(f.means[k]) + "</div>"; }).join("") + "</div>" : "") +
+          (f.advantage ? '<p class="edge"><b>THE EDGE</b>' + prose(f.advantage) + "</p>" : "") +
           (f.moves ? '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="s">One action per role that a team could start this month.</div><div class="grid">' +
             H.ROLES.filter(function (r) { return f.moves[r]; }).map(function (r) { return "<div><b>" + r + "</b>" + esc(f.moves[r]) + "</div>"; }).join("") + "</div></div>" : "") +
           (f.trigger ? '<div class="rp-trig"><b>WHAT WOULD PROVE IT</b> · ' + esc(f.trigger) + "</div>" : "") +
@@ -697,6 +756,13 @@
       function inner(html) { return '<section class="page inner"><table class="flow"><thead><tr><td class="sp"></td></tr></thead><tbody><tr><td>' +
         html + '</td></tr></tbody><tfoot><tr><td class="sp"></td></tr></tfoot></table></section>'; }
       function band(no, name, text) { return '<div class="band"><div class="no">' + no + '</div><h2>' + esc(name) + "</h2><p>" + esc(text) + "</p></div>"; }
+      /* SEAM:READ_SWEEP: sources never interrupt the thought. Every cited id becomes a small number in order of first
+         mention; the Sources page at the back resolves them in that order. An id the writer left in prose is numbered too. */
+      var foot = {}, footN = 0, order = [];
+      function num(s) { if (!rc[s]) return 0; if (!foot[s]) { foot[s] = ++footN; order.push(s); cited[s] = 1; } return foot[s]; }
+      function refs(list) { var ns = (list || []).filter(real).map(num).filter(Boolean); return ns.length ? '<span class="rp-refs">' + ns.map(function (n) { return "<sup>" + n + "</sup>"; }).join("") + "</span>" : ""; }
+      function prose(t) { return esc(t).replace(/\s*\(((?:S\d+)(?:,\s*S\d+)*)\)/g, function (m, g) { return refs(g.split(/,\s*/)); }).replace(/\bS(\d+)\b/g, function (m, d) { var n = num("S" + d); return n ? "<sup>" + n + "</sup>" : m; }); }
+      function srcline(list) { var ns = (list || []).filter(real).map(num).filter(Boolean); return ns.length ? '<div class="ev">SOURCES · ' + ns.join(" · ") + "</div>" : ""; }
 
       if (row.kind === "report") {   // SEAM:READ_REPORT: the research layout has its own builder, same helpers, same paper
         document.title = "Unsurfaced Intelligence · " + row.label;
@@ -720,7 +786,7 @@
       if (x.advertising_read) contents.push(["The advertising read", "Creative, media, brand"]);
       if (watch.length) contents.push(["The Return", "What we watch"]);
       contents.push(["By the numbers", "Counted by the database"]);
-      contents.push(["Receipts", "Every story cited"]);
+      contents.push(["Sources", "Every source cited, numbered"]);
 
       var h = "";
       if (row.status === "held") h += '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>";
@@ -745,7 +811,7 @@
         "<div><b>THE READ</b><p>What it means: the patterns underneath, each proved by its stories.</p></div>" +
         "<div><b>THE MOVE</b><p>What to do: one action per role, startable this week.</p></div>" +
         "<div><b>THE RETURN</b><p>What we watch: the signals that will prove the read right or wrong.</p></div>" +
-        '</div><p class="intro">Numbers come from the database, never from the writer. S-numbers such as S739 point to the receipts at the back: the headline, source, date and DAILY issue each claim stands on.</p></div>' +
+        '</div><p class="intro">Numbers come from the database, never from the writer. The small numbers in the text point to the sources at the back: the headline, the publication, the date and the DAILY issue each claim stands on.</p></div>' +
         '<div><div class="kicker">In this issue</div><div class="toc">' + contents.map(function (c, i) {
           return '<div><span class="n">' + pad(i + 1) + '</span><span class="t">' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></div>"; }).join("") +
         "</div></div></div>");
@@ -758,7 +824,7 @@
         rs.forEach(function (s) { cited[s] = 1; });
         h += inner(band(pad(sec), "The Rough", EXPLAIN.rough) +
           (mos.length ? '<div class="mosaic">' + mos.map(function (s) { return "<figure>" + photo(s, "wide", rs.filter(function (a) { return mos.indexOf(a) < 0; }), "wide") + "<figcaption>" + capHtml(s, "wide") + "</figcaption></figure>"; }).join("") + "</div>" : "") +
-          '<div class="cols" style="margin-top:22px">' + String(rough).split(/\n\n+/).map(function (p) { return '<p class="body lead">' + esc(p) + "</p>"; }).join("") + "</div>");
+          '<div class="cols" style="margin-top:22px">' + String(rough).split(/\n\n+/).map(function (p) { return '<p class="body lead">' + prose(p) + "</p>"; }).join("") + "</div>");
       }
 
       /* The Read: opener, then one spread per pattern */
@@ -776,49 +842,50 @@
           h += inner((lead ? '<div class="hero">' + photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) + '<span class="tag">' + (x.held ? "What held" : "The Read") + " · " + (i + 1) + " of " + main.length + '</span><div class="credit">' + credit(lead) + "</div></div>"
                            : '<div class="hero none"></div>') +
             '<div class="pname">' + esc(p.name) + (p.strength === "signal" ? '<span class="signal">Signal</span>' : "") + "</div>" +
-            (dek ? '<p class="dek">' + esc(dek) + "</p>" : "") +
+            (dek ? '<p class="dek">' + prose(dek) + "</p>" : "") +
             '<div class="cols">' +
-              (p.what_happened ? '<div class="lbl">What happened</div><p class="body">' + esc(p.what_happened) + "</p>" : "") +
-              (why ? '<div class="lbl">Why it matters</div><p class="body">' + esc(why) + "</p>" : "") +
-              (p.line ? '<p class="body">' + esc(p.line) + "</p>" : "") +
+              (p.what_happened ? '<div class="lbl">What happened</div><p class="body">' + prose(p.what_happened) + "</p>" : "") +
+              (why ? '<div class="lbl">What it means</div><p class="body">' + prose(why) + "</p>" : "") +
+              (p.line ? '<p class="body">' + prose(p.line) + "</p>" : "") +
             "</div>" +
+            (p.advantage ? '<p class="edge"><b>THE EDGE</b>' + prose(p.advantage) + "</p>" : "") +
             (p.moves ? '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="s">' + esc(EXPLAIN.move) + '</div><div class="grid">' +
               ROLES.filter(function (r) { return p.moves[r]; }).map(function (r) { return "<div><b>" + r + "</b>" + esc(p.moves[r]) + "</div>"; }).join("") + "</div></div>" : "") +
             (rest.length ? '<div class="strip">' + rest.map(function (s) { return "<figure>" + photo(s, "strip", ev.filter(function (a) { return a !== lead && rest.indexOf(a) < 0; }), "strip") + "<figcaption>" + capHtml(s, "strip") + "</figcaption></figure>"; }).join("") + "</div>" : "") +
-            evline(p.evidence));
+            srcline(p.evidence));
         });
       }
       var extra = "";
-      if (x.faded && x.faded.length) extra += '<div class="kicker">What faded</div>' + x.faded.map(function (f) { return '<p class="pull">' + esc(f.name) + '</p><p class="body">' + esc(f.line) + "</p>" + evline(f.evidence); }).join("");
-      if (x.emerged && x.emerged.length) extra += '<div class="kicker">What emerged</div>' + x.emerged.map(function (f) { return '<p class="pull">' + esc(f.name) + '</p><p class="body">' + esc(f.line) + "</p>" + evline(f.evidence); }).join("");
+      if (x.faded && x.faded.length) extra += '<div class="kicker">What faded</div>' + x.faded.map(function (f) { return '<p class="pull">' + esc(f.name) + '</p><p class="body">' + prose(f.line) + refs(f.evidence) + "</p>"; }).join("");
+      if (x.emerged && x.emerged.length) extra += '<div class="kicker">What emerged</div>' + x.emerged.map(function (f) { return '<p class="pull">' + esc(f.name) + '</p><p class="body">' + prose(f.line) + refs(f.evidence) + "</p>"; }).join("");
       if (x.territory_briefs && x.territory_briefs.length) extra += '<div class="kicker">Territory briefs</div>' + x.territory_briefs.map(function (t) {
-        return '<div class="thread"><div>' + (pickImage(t.evidence) ? photo(pickImage(t.evidence), "wide", t.evidence) : "") + '</div><div><div class="lbl">' + esc(String(t.territory).replace(/-/g, " ")) + '</div><p class="body">' + esc(t.line) + "</p>" + evline(t.evidence) + "</div></div>"; }).join("");
+        return '<div class="thread"><div>' + (pickImage(t.evidence) ? photo(pickImage(t.evidence), "wide", t.evidence) : "") + '</div><div><div class="lbl">' + esc(String(t.territory).replace(/-/g, " ")) + '</div><p class="body">' + prose(t.line) + refs(t.evidence) + "</p></div></div>"; }).join("");
       if (extra) h += inner(extra);
 
       if (x.cross_currents && x.cross_currents.length) {
         sec++;
         h += inner(band(pad(sec), "Cross-currents", EXPLAIN.cross) + x.cross_currents.map(function (c) {
           var s = pickImage(c.evidence, used);
-          return '<div class="thread"><div>' + (s ? photo(s, "wide", c.evidence) : '<div class="ph blank" style="height:1.3in"></div>') + "</div><div><p>" + esc(c.thread) + "</p>" + evline(c.evidence) + "</div></div>";
+          return '<div class="thread"><div>' + (s ? photo(s, "wide", c.evidence) : '<div class="ph blank" style="height:1.3in"></div>') + "</div><div><p>" + prose(c.thread) + refs(c.evidence) + "</p></div></div>";
         }).join(""));
       }
       if (x.contradiction || x.whitespace) {
         sec++;
         h += inner(band(pad(sec), "The counter-signal and the whitespace", EXPLAIN.tension) + '<div class="two">' +
-          (x.contradiction ? '<div><div class="kicker">The counter-signal</div><p class="pull">' + esc(firstSentence(x.contradiction)) + '</p><p class="body">' + esc(String(x.contradiction).slice(firstSentence(x.contradiction).length).trim()) + "</p>" + evline(sids(x.contradiction)) + "</div>" : "") +
-          (x.whitespace ? '<div><div class="kicker">The whitespace</div><p class="pull">' + esc(firstSentence(x.whitespace)) + '</p><p class="body">' + esc(String(x.whitespace).slice(firstSentence(x.whitespace).length).trim()) + "</p>" + evline(sids(x.whitespace)) + "</div>" : "") +
+          (x.contradiction ? '<div><div class="kicker">The counter-signal</div><p class="pull">' + prose(firstSentence(x.contradiction)) + '</p><p class="body">' + prose(String(x.contradiction).slice(firstSentence(x.contradiction).length).trim()) + "</p></div>" : "") +
+          (x.whitespace ? '<div><div class="kicker">The whitespace</div><p class="pull">' + prose(firstSentence(x.whitespace)) + '</p><p class="body">' + prose(String(x.whitespace).slice(firstSentence(x.whitespace).length).trim()) + "</p></div>" : "") +
           "</div>");
       }
       if (x.advertising_read) {
         sec++;
-        h += inner(band(pad(sec), "The advertising read", EXPLAIN.ad) + '<p class="pull" style="font-size:30px">' + esc(firstSentence(x.advertising_read)) + "</p>" +
-          '<div class="cols"><p class="body lead">' + esc(String(x.advertising_read).slice(firstSentence(x.advertising_read).length).trim()) + "</p></div>" + evline(sids(x.advertising_read)));
+        h += inner(band(pad(sec), "The advertising read", EXPLAIN.ad) + '<p class="pull" style="font-size:30px">' + prose(firstSentence(x.advertising_read)) + "</p>" +
+          '<div class="cols"><p class="body lead">' + prose(String(x.advertising_read).slice(firstSentence(x.advertising_read).length).trim()) + "</p></div>");
       }
       if (watch.length || x.scoreboard) {
         sec++;
         h += inner(band(pad(sec), "The Return", EXPLAIN.ret) +
-          (watch.length ? '<ul class="watch">' + watch.map(function (w, i) { return "<li><span>" + pad(i + 1) + "</span>" + esc(String(w).trim()) + "</li>"; }).join("") + "</ul>" : "") +
-          (x.scoreboard ? '<div class="kicker" style="margin-top:26px">The scoreboard</div><p class="body">' + esc(x.scoreboard) + "</p>" : ""));
+          (watch.length ? '<ul class="watch">' + watch.map(function (w, i) { return "<li><span>" + pad(i + 1) + "</span>" + prose(String(w).trim()) + "</li>"; }).join("") + "</ul>" : "") +
+          (x.scoreboard ? '<div class="kicker" style="margin-top:26px">The scoreboard</div><p class="body">' + prose(x.scoreboard) + "</p>" : ""));
       }
 
       /* By the numbers: every bar a database count */
@@ -835,18 +902,18 @@
       h += inner(band(pad(sec), "By the numbers", EXPLAIN.nums) +
         '<div class="bigs">' + [["stories", "Stories"], ["editions", "Editions"], ["sources_distinct", "Sources"], ["lake_captured", "Signals captured"]]
           .filter(function (n) { return stat(st, n[0]) !== null; }).map(function (n) { return "<div><b>" + stat(st, n[0]).toLocaleString("en-US") + "</b><span>" + n[1] + "</span></div>"; }).join("") + "</div>" +
-        (bn.length ? '<div class="two" style="margin-bottom:22px">' + bn.slice(0, 6).map(function (b) { return '<div><div class="lbl">' + stat(st, b.stat).toLocaleString("en-US") + '</div><p class="body">' + esc(b.line) + "</p></div>"; }).join("") + "</div>" : "") +
+        (bn.length ? '<div class="two" style="margin-bottom:22px">' + bn.slice(0, 6).map(function (b) { return '<div><div class="lbl">' + stat(st, b.stat).toLocaleString("en-US") + '</div><p class="body">' + prose(b.line) + "</p></div>"; }).join("") + "</div>" : "") +
         '<div class="two"><div><div class="kicker">Stories by territory</div>' + bars(st.by_territory, 10, function (k) { return k.replace(/-/g, " "); }) +
         '</div><div><div class="kicker">Top sources</div>' + bars(src, 8) + "</div></div>" +
         '<div style="margin-top:22px"><div class="kicker">Stories by format</div>' + bars(st.by_format, 6) + "</div>");
 
-      /* Receipts */
-      var ids = Object.keys(cited).sort(function (a, b) { return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10); });
+      /* Sources, in order of first mention; anything cited only in an evidence array joins at the end */
+      Object.keys(cited).sort(function (a, b) { return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10); }).forEach(function (s) { num(s); });
       sec++;
-      if (ids.length) h += inner(band(pad(sec), "Receipts", EXPLAIN.receipts) + ids.map(function (s) {
+      if (order.length) h += inner(band(pad(sec), "Sources", EXPLAIN.receipts) + '<div class="rp-rec">' + order.map(function (s) {
         var r = rc[s];
-        return '<div class="rc">' + (img(s) ? photo(s, "thumb") : '<div class="ph blank"></div>') + '<div><div class="hl">' + esc(r.headline) + '</div><div class="src">' + esc(s) + " · " + esc(r.source_name || "") +
-          (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + "</div></div></div>"; }).join(""));
+        return '<div class="rc">' + (img(s) ? photo(s, "thumb") : '<div class="noimg">' + foot[s] + "</div>") + '<div><div class="hl">' + (img(s) ? "<b>" + foot[s] + "</b> · " : "") + esc(r.headline) + '</div><div class="src">' + esc(r.source_name || "") +
+          (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + '<span class="rp-ref">' + esc(s) + "</span></div></div></div>"; }).join("") + "</div>");
       h += '<section class="page closer">' + mark("rp-mark") + '<div class="big">The read is free.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/daily</div></section>';
       app.innerHTML = '<div class="doc">' + h + "</div>";
       if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
@@ -888,6 +955,7 @@
     });
   }
   function bind(row) {
+    if ((row.kind === "report" || row.kind === "weekly") && (row.status === "ready" || row.status === "published")) standLoad(row); else standPanel("");   // SEAM:REPORT_STAND, SEAM:READ_SWEEP
     /* Download PDF: the platform renders the file once in Chromium and keeps it.
      * Nothing depends on this browser's print dialog. */
     var p = document.getElementById("pdf"); if (p) p.onclick = function () {

@@ -38,6 +38,35 @@ button{font:inherit;cursor:pointer}
 .folio{font-family:var(--sans);font-size:11px;letter-spacing:2px;color:var(--ink);border:1px solid var(--ink);padding:6px 10px;white-space:nowrap}
 @media (max-width:760px){.masthead .home,.folio{font-size:10px}}
 
+/* SEAM:REPORT_STAND: the report shelf. The paid product beside the free issue: its own dark plate, a photographic
+   cover through the public story relay, the claim, what it means, the ground line, pages and the price, the counter. */
+.report{background:var(--matte);color:var(--ivory);padding:56px var(--gutter) 64px;display:grid;grid-template-columns:420px minmax(0,1fr);gap:64px;align-items:center;border-top:3px solid var(--red)}
+@media (max-width:1100px){.report{grid-template-columns:minmax(0,1fr);gap:36px;padding:40px var(--gutter) 52px}}
+.report-cover{position:relative;width:100%;max-width:420px;aspect-ratio:612/792;margin:0 auto;background:var(--ink);border:1px solid rgba(250,247,242,.22);box-shadow:0 30px 60px rgba(0,0,0,.55);overflow:hidden}
+.report-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(.25) contrast(1.05)}
+.report-cover .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,10,.45) 0%,rgba(10,10,10,.1) 35%,rgba(10,10,10,.85) 70%,rgba(10,10,10,.98) 100%)}
+.report-cover .in{position:absolute;inset:0;padding:7%;display:flex;flex-direction:column;justify-content:flex-end;gap:4%}
+.report-cover .kind{font-family:var(--sans);font-size:9px;letter-spacing:.3em;color:var(--red);text-transform:uppercase}
+.report-cover .ttl{font-family:var(--body);font-weight:800;font-size:clamp(20px,3vw,30px);line-height:.95;letter-spacing:-.5px}
+.report-cover .bar{height:3px;background:var(--red);width:40%}
+.report-cover .cv-foot{font-family:var(--sans);font-size:8px;letter-spacing:.2em;color:#B8B2A6;text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.report-copy{display:flex;flex-direction:column;gap:22px;min-width:0}
+.report-copy h2{font-family:var(--body);font-weight:800;font-size:clamp(30px,3.6vw,52px);line-height:.98;letter-spacing:-.8px}
+.report-copy .sub{font-family:var(--serif);font-size:clamp(18px,1.8vw,24px);line-height:1.3;color:var(--cream)}
+.report-copy .ground{font-family:var(--sans);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);line-height:1.9}
+.report-copy .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.report-copy .stat b{font-size:clamp(26px,3vw,44px);white-space:nowrap}
+.report-copy .price b{color:var(--red)}
+.r-door{display:flex;flex-direction:column;gap:12px;padding:18px;border:1px solid rgba(250,247,242,.2)}
+.r-door label{font-family:var(--sans);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.r-door .line{display:flex;gap:10px;flex-wrap:wrap}
+.r-door input{flex:1 1 240px;min-height:48px;padding:10px 14px;background:var(--ink);color:var(--ivory);border:1px solid rgba(250,247,242,.3);font-family:var(--sans);font-size:13px}
+.r-door input.bad{border-color:var(--red)}
+.r-paid{display:flex;flex-direction:column;gap:12px;padding:22px;background:var(--ink);border-left:4px solid var(--red)}
+.r-paid h3{font-family:var(--body);font-weight:800;font-size:26px;line-height:1}
+.r-paid p{font-size:14px;line-height:1.6;color:var(--cream)}
+.r-paid .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+
 /* the plate */
 .plate{text-align:center;padding:30px var(--gutter) 28px;border-bottom:1px solid var(--ink);display:flex;flex-direction:column;align-items:center;gap:12px}
 .plate-brand{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;column-gap:clamp(12px,2vw,22px);row-gap:10px}
@@ -205,6 +234,54 @@ form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px}
           <a class="btn ghost" href="#shelf">The back rack</a>
         </div>
         <span class="file" id="c-file"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="report" id="report" aria-labelledby="r-head" hidden>
+    <div class="report-cover" id="r-cover-box">
+      <img id="r-cover" alt="" hidden>
+      <div class="shade"></div>
+      <div class="in">
+        <span class="kind">Cultural Intelligence Report &middot; <span id="r-cover-issue">Issue</span></span>
+        <div class="ttl" id="r-cover-title"></div>
+        <div class="bar"></div>
+        <div class="cv-foot"><span id="r-cover-window"></span><span id="r-cover-credit"></span></div>
+      </div>
+    </div>
+    <div class="report-copy">
+      <div class="meta">
+        <span class="tag">The report</span>
+        <span class="chip" id="r-label">Issue</span>
+        <span class="k" id="r-window" style="color:var(--mute)"></span>
+      </div>
+      <h2 id="r-head"></h2>
+      <p class="sub" id="r-sub"></p>
+      <p class="ground" id="r-ground"></p>
+      <div class="stats">
+        <div class="stat"><b id="r-pages">&middot;</b><span>Pages</span></div>
+        <div class="stat"><b id="r-size">&middot;</b><span>PDF</span></div>
+        <div class="stat price"><b id="r-price">$20</b><span>Per issue, yours to keep</span></div>
+      </div>
+      <div class="actions">
+        <div class="row">
+          <button class="btn" id="r-buy" type="button">Buy this report &middot; $20</button>
+          <button class="btn ghost" id="r-again" type="button">Bought it? Get it again</button>
+        </div>
+        <span class="file">Paid through Stripe. The download starts on your return; the link lasts ten minutes and a fresh one is always one email away.</span>
+      </div>
+      <form class="r-door" id="r-relink" hidden novalidate>
+        <label for="r-email">The email you paid with</label>
+        <div class="line">
+          <input id="r-email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required>
+          <input name="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+          <button class="btn ghost" id="r-relink-go" type="submit">Get my download</button>
+        </div>
+      </form>
+      <div class="r-paid" id="r-paid" hidden>
+        <h3 id="r-paid-head">This issue is yours.</h3>
+        <p>Your download has started. The link lasts ten minutes; come back any time and get it again with the email you paid with.</p>
+        <div class="row"><a class="btn" id="r-download" href="#" rel="noopener">Download the report</a><span class="file" id="r-paid-file"></span></div>
       </div>
     </div>
   </section>
@@ -682,6 +759,94 @@ function mountTurnstile() {
   document.head.appendChild(s);
 }
 
+/* SEAM:REPORT_STAND: the report shelf and its counter. */
+var REPORT_NOTICES = {
+  cancel: 'No charge. The report is still on the stand.',
+  expired: 'That download link expired. Get a fresh one with the email you paid with.',
+  bad: 'That link did not check out. Get a fresh one with the email you paid with.',
+  missing: 'That report is not on the shelf right now. Check back soon.'
+};
+var report = { issues: [], issue: null };
+function rLabel(n) { return 'Issue ' + String(n).padStart(3, '0'); }
+function rPrice(cents) { var d = (Number(cents) || 0) / 100; return '$' + (d % 1 ? d.toFixed(2) : d.toFixed(0)); }
+function rWindow(a, b) {
+  var x = ymd(a), y = ymd(b); if (!x || !y) return '';
+  return MONTHS[x.getMonth()] + ' ' + x.getDate() + ' to ' + MONTHS[y.getMonth()] + ' ' + y.getDate() + ', ' + y.getFullYear();
+}
+function renderReport() {
+  var r = report.issue; if (!r) { $('report').hidden = true; return; }
+  $('report').hidden = false;
+  $('r-label').textContent = rLabel(r.issue_no); $('r-cover-issue').textContent = rLabel(r.issue_no);
+  $('r-window').textContent = rWindow(r.window_start, r.window_end); $('r-cover-window').textContent = rWindow(r.window_start, r.window_end);
+  $('r-head').textContent = r.title || ''; $('r-cover-title').textContent = r.title || '';
+  $('r-sub').textContent = r.subtitle || r.thesis || ''; $('r-sub').hidden = !(r.subtitle || r.thesis);
+  $('r-ground').textContent = r.ground_line || ''; $('r-ground').hidden = !r.ground_line;
+  $('r-pages').textContent = r.page_count ? String(r.page_count) : '·';
+  $('r-size').textContent = r.byte_size ? sizeLabel(r.byte_size) : '·';
+  $('r-price').textContent = rPrice(r.price_cents); $('r-buy').textContent = 'Buy this report · ' + rPrice(r.price_cents);
+  $('r-cover-credit').textContent = r.cover_credit ? 'Cover: ' + r.cover_credit : '';
+  var img = $('r-cover');
+  if (r.cover_url) { img.hidden = false; img.src = CONFIG.API_BASE + r.cover_url; img.onerror = function () { img.hidden = true; }; } else img.hidden = true;
+}
+function reportBuy() {
+  var r = report.issue, btn = $('r-buy'); if (!r) return;
+  setBusy(btn, true);
+  fetch(CONFIG.API_BASE + '/api/report/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ issue_no: r.issue_no }) })
+    .then(function (x) { return x.json(); })
+    .then(function (j) { if (j && j.ok && j.url) { location.href = j.url; return; } toast((j && j.error) ? 'The counter said: ' + j.error + '.' : 'The counter did not answer. Try again in a moment.'); setBusy(btn, false); })
+    .catch(function () { toast('The counter did not answer. Check your connection and try again.'); setBusy(btn, false); });
+}
+function reportPaidShow(j) {
+  var full = CONFIG.API_BASE + j.url;
+  $('r-paid-head').textContent = rLabel(j.issue_no) + ' is yours.';
+  $('r-download').href = full;
+  $('r-paid-file').textContent = j.email ? 'Receipt and link under ' + j.email : '';
+  $('r-paid').hidden = false; $('r-relink').hidden = true;
+  startDownload(j.url, j.expires);
+  $('report').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function reportReturn() {
+  var paid = null;
+  try { paid = new URL(location.href).searchParams.get('paid'); } catch (_) { paid = null; }
+  if (!paid) return;
+  try { var u = new URL(location.href); u.searchParams.delete('paid'); history.replaceState(null, '', u.pathname + u.search + '#report'); } catch (_) { /* url stays */ }
+  if (paid === 'cancel') { toast(REPORT_NOTICES.cancel); return; }
+  if (!/^cs_[A-Za-z0-9_]+$/.test(paid)) return;
+  fetch(CONFIG.API_BASE + '/api/report/paid', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ session: paid }) })
+    .then(function (x) { return x.json(); })
+    .then(function (j) { if (j && j.ok && j.url) reportPaidShow(j); else toast('Stripe has your payment but the stand could not confirm it yet. Use "Bought it? Get it again" in a minute, with the email you paid with.'); })
+    .catch(function () { toast('The counter did not answer. Use "Bought it? Get it again" in a minute.'); });
+}
+function reportRelink(e) {
+  e.preventDefault();
+  var r = report.issue, f = $('r-relink'), btn = $('r-relink-go'); if (!r) return;
+  var email = (f.elements.email.value || '').trim(); $('r-email').classList.remove('bad');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $('r-email').classList.add('bad'); toast('Enter the email you paid with.'); return; }
+  setBusy(btn, true);
+  fetch(CONFIG.API_BASE + '/api/report/relink', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ issue_no: r.issue_no, email: email, hp: f.elements.hp.value || '' }) })
+    .then(function (x) { return x.json(); })
+    .then(function (j) { if (j && j.ok && j.url) reportPaidShow(Object.assign({ email: email }, j)); else toast((j && j.error) ? 'The counter said: ' + j.error + '.' : 'The counter did not answer.'); })
+    .catch(function () { toast('The counter did not answer. Check your connection and try again.'); })
+    .then(function () { setBusy(btn, false); });
+}
+function reportNotice() {
+  var reason = null;
+  try { reason = new URL(location.href).searchParams.get('report'); } catch (_) { reason = null; }
+  if (!reason || !REPORT_NOTICES[reason]) return;
+  toast(REPORT_NOTICES[reason]);
+  if (reason !== 'missing') $('r-relink').hidden = false;
+  try { var u = new URL(location.href); u.searchParams.delete('report'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (_) { /* url stays */ }
+}
+function loadReports() {
+  $('r-buy').addEventListener('click', reportBuy);
+  $('r-again').addEventListener('click', function () { $('r-relink').hidden = !$('r-relink').hidden; if (!$('r-relink').hidden) $('r-email').focus(); });
+  $('r-relink').addEventListener('submit', reportRelink);
+  fetch(CONFIG.API_BASE + '/api/report/issues', { headers: { Accept: 'application/json' } })
+    .then(function (x) { return x.json(); })
+    .then(function (j) { report.issues = (j && j.ok && Array.isArray(j.issues)) ? j.issues : []; report.issue = report.issues[0] || null; renderReport(); reportNotice(); reportReturn(); })
+    .catch(function () { report.issues = []; report.issue = null; renderReport(); });
+}
+
 var LINK_NOTICES = {
   expired: 'That link expired. Claim the issue again and the download restarts.',
   bad: 'That link did not check out. Claim the issue again.',
@@ -716,6 +881,7 @@ function boot() {
   linkNotice();
   prefill();
   mountTurnstile();
+  loadReports();   // SEAM:REPORT_STAND
   fetch(CONFIG.API_BASE + '/api/weekly/issues', { headers: { Accept: 'application/json' } })
     .then(function (r) { return r.json(); })
     .then(function (j) {

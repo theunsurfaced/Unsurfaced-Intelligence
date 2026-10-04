@@ -819,6 +819,29 @@
    "purpose": "the stand page at /weekly: shelf, the counter (details or sign-in), download",
    "tag": "SEAM:WEEKLY_STAND"
   },
+  "SEAM:REPORT_STAND": {
+   "file": "worker/src/index.js",
+   "purpose": "the report shelf on the stand and the counter behind it (Stripe Checkout, migration 0035). GET /api/report/issues (published, the cover through the public story relay); POST /api/report/checkout creates a Checkout session for the issue at its price with the issue in the metadata and the buyer sent back to /weekly/?paid={CHECKOUT_SESSION_ID} (rsSessionParams, pure; honeypot, per-IP throttle, published issues only); POST /api/report/paid verifies the session with Stripe (paid, kind report), records the order once (rsRecordOrder, unique session id, the email normalized) and issues a signed ten-minute link (rsLinkFor: report.issue.expiry.order); POST /api/report/relink gives a buyer a fresh link by the email they paid with (per-IP and per-email throttles); GET /api/report/file checks the signature and the clock, six downloads a link, streams the PDF from R2 under its own name; a report PDF never leaves through /media/. The Stripe webhook's checkout.session.completed with metadata.kind report records the order too. Admin POST /reads/stand {id, price_cents?, live?} renders or keeps the PDF (readPdf), counts its pages (rsPdfPages), builds the shelf row from the read (rsIssueFromRead) and stages it as a draft (live:true publishes at once); the read is marked published. POST /reads/shelf {issue_no} reads the shelf row, {issue_no, status: published|draft|withdrawn, price_cents?} is the switch; the public shelf and the counter see published only"
+  },
+  "SEAM:REPORT_STAND@page": {
+   "file": "weekly/index.html",
+   "tag": "SEAM:REPORT_STAND",
+   "purpose": "the report shelf between the rack and the counter: the cover through the relay with the claim typeset over it, the claim, what it means, the ground line, pages, size and the price, BUY THIS REPORT at the price, Bought it? Get it again (the relink door), the paid state. The page loads /api/report/issues, sends the buyer to Checkout, confirms the return (?paid=) and starts the download, relinks by email, and voices a cancelled checkout or a spent link. The section says plainly that it is paid"
+  },
+  "SEAM:REPORT_STAND@house": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:REPORT_STAND",
+   "purpose": "the switch, on the house side: a ready report carries a stand panel (standLoad reads /reads/shelf; standShow draws the state and the buttons): Stage on the stand (POST /reads/stand, the PDF kept, the row a draft, nothing public), Send live at the price (confirmed; POST /reads/shelf status published), Take it off (withdrawn; paid buyers keep their links), Re-stage for a fresh PDF"
+  },
+  "SEAM:READ_SWEEP": {
+   "file": "worker/src/index.js",
+   "purpose": "the writing sweep (Method 2.0): sources never interrupt the thought (ids only in evidence arrays; the page numbers them), the advantage law (every pattern names the edge, who it favors, what it costs to ignore), the reader law for every kind, the expert's voice (position, mechanism, moves briefed like a practitioner). The weekly, monthly, record and report contracts ask for advantage, short what-happened without ids, meaning with the mechanism. On landing every kind is checked for the reader law (readReaderVoice notes, never a hold). The first of the month queues the Cultural Intelligence Report for the month that closed (readReportIssue numbers it; readCadence); the record builds on reports and monthlies. POST /reads/weekly-stand {id, issue_no} (admin) replaces a recut weekly's PDF on the stand (weekly/issue-NNN.pdf) and updates the shelf row's lead, standfirst, pages and size; the cover stays. POST /reads/sweep (admin): {run:plan} lists every weekly window with a read and the stand issue it is, and every monthly window (readSweepPlan, pure); {run:queue} recuts each as a new version under the Method (the monthly as a Cultural Intelligence Report), meta.plan sweep with the stand issue remembered; {run:land} applies every ready sweep row once: the weekly's PDF written over its stand issue and the shelf row updated, the report staged as a draft on the shelf (meta.swept_at). /reads/shelf {weekly_start} says which stand issue a weekly window is"
+  },
+  "SEAM:READ_SWEEP@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_SWEEP",
+   "purpose": "on the editorial read (weekly, monthly, record): every cited id becomes a small number in order of first mention (num, refs, prose, srcline), the RECEIPTS lines become SOURCES · 1 · 2, Why it matters reads What it means, THE EDGE is printed on every pattern that has one (and on the report's findings), and the back page is Sources, resolved in the same order with the house id only as a tiny reference. A ready weekly's stand bar (standWeekly) says whether its week is on the stand and can replace that issue's PDF with the cut on screen (the cover stays)"
+  },
   "SEAM:WEEKLY_PROMO": {
    "file": "index.html",
    "purpose": "the landing promotes WEEKLY: the tile beside Intelligence, the pop-up card, the footer link; reads the stand shelf"

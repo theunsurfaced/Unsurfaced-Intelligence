@@ -27,10 +27,10 @@ ok(mon.tick && typeof mon.tick.queued === 'number', 'C2 the cadence ticks the qu
 sb = [];
 await R.readCadence({}, new Date('2026-10-01T06:10:00Z'));
 const q2 = inserts();
-ok(q2.length === 1 && q2[0].kind === 'monthly' && q2[0].window_start === '2026-09-01' && q2[0].window_end === '2026-09-30', 'C3 Oct 1 queues September, the full month');
+ok(q2.length === 1 && q2[0].kind === 'report' && q2[0].window_start === '2026-09-01' && q2[0].window_end === '2026-09-30' && /^Cultural Intelligence Report, Issue \d{3} \(Sep 1 to Sep 30, 2026\)$/.test(q2[0].label) && q2[0].meta.issue_no >= 1 && q2[0].meta.month === 'September 2026', 'C3 Oct 1 queues September, the full month, as the Cultural Intelligence Report with its issue number (SEAM:READ_SWEEP: the monthly is the report)');
 sb = [];
 const tue = await R.readCadence({}, new Date('2026-09-29T06:10:00Z'));
-ok(inserts().length === 0 && !tue.weekly && !tue.monthly, 'C4 any other day queues nothing');
+ok(inserts().length === 0 && !tue.weekly && !tue.report, 'C4 any other day queues nothing');
 
 sb = []; fixtures = { 'house_reads?kind=eq.weekly&window_start=eq.2026-09-21': () => [{ id: 5, status: 'ready' }] };
 const again = await R.readCadence({}, new Date('2026-09-28T06:10:00Z'));
