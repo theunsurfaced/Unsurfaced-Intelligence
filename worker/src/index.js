@@ -8180,7 +8180,8 @@ const HOUSE_READ = {
     monthly: { max_tokens: 28000, effort: 'medium', child: 'weekly',  take: 240 },
     record:  { max_tokens: 32000, effort: 'high',   child: 'monthly', take: 160 },
     // SEAM:READ_REPORT: the Cultural Intelligence Report, research grade, over an explicit window on the whole lake.
-    report:  { max_tokens: 48000, effort: 'high',   child: 'monthly', take: 220 }
+    // 2026-10-03: issue 001's first compile was cut at 48000 (thinking rides inside max_tokens; Fable's ceiling is 128000).
+    report:  { max_tokens: 120000, effort: 'high',  child: 'monthly', take: 220 }
   },
   STORY_CAP: 1100,
   TICK_MAX: 6
