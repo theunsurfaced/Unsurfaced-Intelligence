@@ -204,13 +204,13 @@
   .rp-trig { font-size: 13px; line-height: 1.55; margin-top: 12px; padding: 10px 0; border-top: 1px solid var(--line); break-inside: avoid; }
   .rp-trig b { display: block; font-family: var(--mono); font-weight: 400; font-size: 9px; letter-spacing: 3px; color: var(--red); margin-bottom: 3px; }
   /* SEAM:REPORT_BRIEF: the report on one page, the recurrence line, what cuts against, the pull quotes, the dot strip */
-  .rp-brief .thesis { font-weight: 700; font-size: 17.5px; line-height: 1.38; margin: 0 0 14px; max-width: 6.4in; }
-  .rp-brief .row { display: grid; grid-template-columns: 2.5in 1fr; gap: 0 22px; align-items: start; margin: 0 0 12px; break-inside: avoid; }
+  .rp-brief .thesis { font-weight: 700; font-size: 14px; line-height: 1.38; margin: 0 0 10px; column-count: 2; column-gap: 0.3in; }
+  .rp-brief .row { display: grid; grid-template-columns: 2.5in 1fr; gap: 0 22px; align-items: start; margin: 0 0 8px; break-inside: avoid; }
   .rp-brief .rp-cards { grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 0; }
-  .rp-brief .rp-card b { font-size: 22px; }
-  .rp-brief .rp-chart { margin: 0; } .rp-brief .rp-chart svg { height: 104px; }
+  .rp-brief .rp-card b { font-size: 20px; }
+  .rp-brief .rp-chart { margin: 0; } .rp-brief .rp-chart svg { height: 84px; }
   .rp-brief .rp-exec { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; column-gap: 0.3in; }
-  .rp-brief .rp-exec li { font-size: 10.5px; line-height: 1.45; padding: 6px 0; grid-template-columns: 22px 1fr; break-inside: avoid; }
+  .rp-brief .rp-exec li { font-size: 10px; line-height: 1.42; padding: 5px 0; grid-template-columns: 22px 1fr; break-inside: avoid; }
   .rp-brief .rp-exec li span { font-size: 9.5px; padding-top: 3px; }
   .rp-rec2 { column-count: 3; column-gap: 0.22in; }
   .rp-rec2 .rc { break-inside: avoid; display: grid; grid-template-columns: 26px 1fr; gap: 5px; padding: 4px 0; border-top: 1px solid var(--line); font-size: 9.5px; line-height: 1.3; }
@@ -864,8 +864,10 @@
       actions.innerHTML = btns.join(" ");
       if (row.meta && row.meta.proof && row.meta.proof.applied_at) actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">proofread ' + esc(String(row.meta.proof.applied_at).slice(0, 10)) + ' · ' + esc(String(row.meta.proof.changes || 0)) + ' fixes</span>');   // READ_PROOF receipt
       if (!x.title) {
-        return say(KIND[row.kind] + ", " + row.label + ": " + row.status.toUpperCase() +
+        say(KIND[row.kind] + ", " + row.label + ": " + row.status.toUpperCase() +
           (row.error ? ". " + row.error : "") + ". The read is not written yet; this page fills in when it lands.");
+        bind(row);   /* SEAM:READ_PRUNE: a cut that was never written can still be re-landed or deleted */
+        return;
       }
       var cited = {}, used = {}; RC = rc; TAKEN = {};
       function real(s) { return rc[s] ? s : null; }
