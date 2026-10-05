@@ -237,7 +237,7 @@ ok(/class="kind">Cultural Intelligence Report · Issue 001</.test(html) && /<h1>
   'G2 the cover speaks to the reader: the claim, what it means, the thesis, one ground line, and four counts a reader understands');
 ok(/In this report/.test(html) && /What this means for you<small>1 things to act on/.test(html) && /The period in numbers/.test(html) && /The findings<small>2 patterns in what people did/.test(html) && /In their own words/.test(html) && /What the older reports say/.test(html) && /About this report/.test(html) && /Sources<small>Every source, numbered/.test(html) && html.indexOf('About this report<small>') > html.indexOf('Glossary<small>'),
   'G3 the contents lead with what it means and end with the method and the sources; no machinery up front');
-ok(/<ol class="rp-exec"><li><span>01<\/span><div>Put the curl line on the endcap\.<span class="rp-refs"><sup>1<\/sup><sup>2<\/sup><\/span><\/div>/.test(html) && !/RECEIPTS · S11/.test(html),
+ok(/<ol class="rp-exec" style="grid-template-rows:repeat\(\d+,auto\)"><li><span>01<\/span><div>Put the curl line on the endcap\.<span class="rp-refs"><sup>1<\/sup><sup>2<\/sup><\/span><\/div>/.test(html) && !/RECEIPTS · S11/.test(html),
   'G4 the executive lines carry numbered sources, never house ids');
 ok(/<b>812<\/b><span>Signals tracked<\/span><small>\+35% vs prior 600<\/small>/.test(html) && /Signals tracked, by week/.test(html) && /PRIOR WINDOW, WEEKLY AVERAGE 48</.test(html) && /812 · signals tracked<\/div><p class="body">Up on the prior window\./.test(html) && !/lake\.nope/.test(html) && /Most-cited sources/.test(html),
   'G5 the period in numbers reads in plain words: signals tracked, sources, the weekly line; a stat path is labeled, never printed raw');

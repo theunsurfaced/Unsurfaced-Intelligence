@@ -204,15 +204,18 @@
   .rp-trig { font-size: 13px; line-height: 1.55; margin-top: 12px; padding: 10px 0; border-top: 1px solid var(--line); break-inside: avoid; }
   .rp-trig b { display: block; font-family: var(--mono); font-weight: 400; font-size: 9px; letter-spacing: 3px; color: var(--red); margin-bottom: 3px; }
   /* SEAM:REPORT_BRIEF: the report on one page, the recurrence line, what cuts against, the pull quotes, the dot strip */
-  .rp-brief { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0 28px; }
-  .rp-brief .thesis { font-weight: 700; font-size: 19px; line-height: 1.38; margin: 0 0 16px; }
-  .rp-brief .rp-cards { grid-template-columns: 1fr 1fr; margin: 0 0 12px; }
-  .rp-brief .rp-exec li { font-size: 12.5px; padding: 8px 0; grid-template-columns: 26px 1fr; }
-  .rp-brief .rp-chart { margin: 0; } .rp-brief .rp-chart svg { height: 110px; }
-  .rp-rec2 { column-count: 2; column-gap: 0.3in; }
-  .rp-rec2 .rc { break-inside: avoid; display: grid; grid-template-columns: 30px 1fr; gap: 6px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.35; }
+  .rp-brief .thesis { font-weight: 700; font-size: 17.5px; line-height: 1.38; margin: 0 0 14px; max-width: 6.4in; }
+  .rp-brief .row { display: grid; grid-template-columns: 2.5in 1fr; gap: 0 22px; align-items: start; margin: 0 0 12px; break-inside: avoid; }
+  .rp-brief .rp-cards { grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 0; }
+  .rp-brief .rp-card b { font-size: 22px; }
+  .rp-brief .rp-chart { margin: 0; } .rp-brief .rp-chart svg { height: 104px; }
+  .rp-brief .rp-exec { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; column-gap: 0.3in; }
+  .rp-brief .rp-exec li { font-size: 10.5px; line-height: 1.45; padding: 6px 0; grid-template-columns: 22px 1fr; break-inside: avoid; }
+  .rp-brief .rp-exec li span { font-size: 9.5px; padding-top: 3px; }
+  .rp-rec2 { column-count: 3; column-gap: 0.22in; }
+  .rp-rec2 .rc { break-inside: avoid; display: grid; grid-template-columns: 26px 1fr; gap: 5px; padding: 4px 0; border-top: 1px solid var(--line); font-size: 9.5px; line-height: 1.3; }
   .rp-rec2 .rc b { font-family: var(--mono); font-weight: 400; color: var(--red); font-size: 10px; }
-  .rp-rec2 .src { font-family: var(--mono); font-size: 8.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
+  .rp-rec2 .src { font-family: var(--mono); font-size: 7.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
   .rp-rec2 .rp-ref { font-family: var(--mono); font-size: 7.5px; color: var(--line); margin-left: 6px; text-transform: none; }
   .rp-recur { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); margin: -8px 0 14px; }
   .rp-recur b { color: var(--ink); font-weight: 400; }
@@ -325,7 +328,7 @@
   function coverPickHtml(row) {
     var x = row.read || {}; var ids = Object.keys(RC_ALL).filter(function (s) { return /^S\d+$/.test(s) && RC_ALL[s] && RC_ALL[s].has_image; }).slice(0, 24);
     if (!ids.length) return "";
-    return '<div style="width:100%"><span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">CHOOSE THE COVER</span><div class="cover-pick">' + ids.map(function (s) { return '<img src="/img/s/' + s.slice(1) + '" data-sid="' + s + '" class="' + (x.cover_image === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div></div>";
+    return '<div style="width:100%"><span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">CHOOSE THE COVER</span><div class="cover-pick">' + ids.map(function (s) { return '<img src="' + API + "/img/s/" + s.slice(1) + '" data-sid="' + s + '" class="' + (x.cover_image === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div></div>";
   }
   function coverPickBind(row) {
     Array.prototype.forEach.call(document.querySelectorAll(".cover-pick img"), function (im) { im.onclick = function () {
@@ -624,11 +627,10 @@
       var cmp0 = rpComparable(lake);
       var tiles = [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days in the period"]].filter(function (c) { return typeof c[0] === "number"; });
       h += inner(band(pad(sec), "The brief", "The report on one page: what the period shows, the numbers behind it, and the lines to act on, each with its sources.") +
-        '<div class="rp-brief"><div>' + (x.thesis ? '<p class="thesis">' + prose(x.thesis) + "</p>" : "") +
-          '<ol class="rp-exec">' + exec.map(function (e, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(e.line) + refs(e.evidence) + "</div></li>"; }).join("") + "</ol></div>" +
-          "<div>" + (tiles.length ? '<div class="rp-cards">' + tiles.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span></div>"; }).join("") + "</div>" : "") +
-          (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, 0, esc) + '<div class="cap">' + (cmp0 ? "How much the culture surfaced each week." : "The first period on record. The first and last weeks are partial.") + "</div></div>" : "") +
-          "</div></div>");
+        '<div class="rp-brief">' + (x.thesis ? '<p class="thesis">' + prose(x.thesis) + "</p>" : "") +
+          '<div class="row">' + (tiles.length ? '<div class="rp-cards">' + tiles.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span></div>"; }).join("") + "</div>" : "<div></div>") +
+          (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, 0, esc) + '<div class="cap">' + (cmp0 ? "How much the culture surfaced each week." : "The first period on record. The first and last weeks are partial.") + "</div></div>" : "<div></div>") + "</div>" +
+          '<ol class="rp-exec" style="grid-template-rows:repeat(' + Math.ceil(exec.length / 2) + ',auto)">' + exec.map(function (e, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(e.line) + refs(e.evidence) + "</div></li>"; }).join("") + "</ol></div>");
     }
 
     /* The period in numbers */
@@ -720,7 +722,7 @@
         (voice.line ? '<p class="body lead">' + prose(voice.line) + "</p>" : "") +
         '<div class="rp-quotes">' + vids.map(function (s) { var q = rc[s]; return '<div class="rp-q">' + esc(q.headline) + '<div class="who"><sup>' + num(s) + "</sup> " + esc(q.source_name || "") + " comment" + (q.likes ? " · " + rpNum(q.likes) + " likes" : "") + (rpWho(q.self) ? " · <i>" + esc(rpWho(q.self)) + "</i>" : "") + "</div></div>"; }).join("") + "</div>" +
         (function () { var gs = (voice.groups || voice.by_generation || []).map(function (g) { return g && (g.label || g.generation) && g.line ? { label: g.label || g.generation, line: g.line, quotes: g.quotes } : null; }).filter(Boolean)
-          .filter(function (g) { return !/^not stated$/i.test(String(g.label).trim()); });
+          .map(function (g) { var m = /^not stated\s*\((.+)\)\s*$/i.exec(String(g.label).trim()); if (m) g.label = m[1]; return g; }).filter(function (g) { return !/^not stated$/i.test(String(g.label).trim()); });
           return gs.length ? '<div class="two" style="margin-top:22px">' + gs.map(function (g) { return '<div><div class="kicker">' + esc(g.label) + '</div><p class="body">' + prose(g.line) + refs(g.quotes) + "</p></div>"; }).join("") + "</div>" : ""; })());
     }
 
