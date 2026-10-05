@@ -15,7 +15,7 @@ const ej = w.slice(w.indexOf('function jsonRepair('), w.indexOf('\n// Server-sid
 let sb = [], fixtures = {};
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'callerIsAdmin', 'json', 'logEvent',
-  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal, readSellable, SELL_LAW };')(
+  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal, readSellable, SELL_LAW, wkIssueFromRead, wkCoverStory, readStatsCounts, readStatsWithCounts, readGroundOf };')(
   sbRest, async () => ({ ok: true }), async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve());
 
 const K = R.HOUSE_READ.KINDS;
@@ -104,6 +104,31 @@ const cvPatch = sb.filter(x => x.opts && x.opts.method === 'PATCH').pop();
 ok(cv.ok && cv.cover_image === 'S12' && cvPatch && cvPatch.opts.body.read.cover_image === 'S12' && cvPatch.opts.body.read.title === 't', 'S10 the cover pick sets the cover story on the read; the rest of the read is untouched');
 ok((await R.readRoute('/reads/cover', { id: 9, sid: 'S13' }, {}, '', { id: 'admin' })).error === 'not_in_the_read' && (await R.readRoute('/reads/cover', { id: 9, sid: 'L1' }, {}, '', { id: 'admin' })).error === 'not_in_the_read',
   'S11 only a story the read cites can be the cover');
+
+// ── SEAM:WEEKLY_SHELF: a ready weekly becomes the next issue on the stand ──
+const wkRow = { id: 15, kind: 'weekly', version: 1, status: 'ready', window_start: '2026-09-28', window_end: '2026-10-04', label: 'Week of Sep 28, 2026',
+  stats: { stories: 84, editions: 7, sources_distinct: 16, issues: { first: 76, last: 82 }, threads: [{ t: 1 }, { t: 2 }, { t: 3 }], by_territory: { music: 20, tech: 30, food: 0 }, by_format: { dispatch: 50, provocation: 4 } },
+  read: { title: 'Permission became the product', thesis: 'Three sentences.', patterns: [{ name: 'p', lead_image: 'S900', evidence: ['S901'] }] } };
+const wi = R.wkIssueFromRead(wkRow, 3, { pages: 14, bytes: 2500000 }, 'weekly/cover-003.jpg', 'Billboard');
+ok(wi.issue_no === 3 && wi.week_start === '2026-09-28' && wi.lead === 'Permission became the product' && wi.stories_read === 84 && wi.editions === 7 && wi.sources === 16 && wi.threads === 3 && wi.issue_range === 'Issues 076 to 082'
+  && wi.r2_key === 'weekly/issue-003.pdf' && wi.cover_key === 'weekly/cover-003.jpg' && wi.cover_credit === 'Billboard' && wi.page_count === 14 && wi.byte_size === 2500000 && wi.status === 'published' && wi.published_at,
+  'W1 the shelf row is built from the read: the week, the lead and standfirst, the database counts, the issue range, the cover, the PDF');
+ok(R.wkCoverStory(wkRow.read) === 'S900' && R.wkCoverStory({ cover_image: 'S7', patterns: [{ lead_image: 'S900' }] }) === 'S7' && R.wkCoverStory({ patterns: [{ evidence: ['L1', 'S44'] }] }) === 'S44' && R.wkCoverStory({}) === null,
+  'W2 the cover is the house pick, else the first pattern\'s lead image, else the first cited story');
+fixtures = { 'house_reads?id=eq.': () => [wkRow], 'weekly_issues?week_start=eq.2026-09-28': () => [{ issue_no: 2 }], 'editions?': () => [], 'edition_items?': () => [] };
+const wOn = await R.readRoute('/reads/weekly-stand', { id: 15 }, {}, '', { id: 'admin' });
+ok(!wOn.ok && wOn.error === 'week_on_stand' && wOn.issue_no === 2, 'W3 a week already on the stand is a replace, never a second issue');
+ok((await R.readRoute('/reads/weekly-stand', { id: 15 }, {}, '', { id: 'x' }))._status === 403 && /return wkStandNew\(env, row, origin, user\)/.test(w) && /id="stand-weekly-new">Put this week on the stand as the next issue/.test(page),
+  'W4 admin only; a weekly with no issue on the stand offers to become the next one on its read page');
+
+// ── SEAM:READ_COUNTS: the counts a writer reaches for are figures ──
+const cnt = R.readStatsCounts(wkRow.stats);
+ok(cnt.territory === 2 && cnt.format === 2 && cnt.threads === 3 && R.readStatsWithCounts(wkRow.stats).counts.territory === 2 && R.readStatsWithCounts({ counts: { x: 1 } }).counts.x === 1,
+  'C1 counts: territories and formats with stories (zero does not count), threads; a block that has counts keeps them');
+ok(/"counts":\{"territory":2,"format":2,"threads":3\}/.test(R.readGroundOf(wkRow, [])) && !/"counts"/.test(R.readGroundOf({ kind: 'report', stats: { lake: {} } }, [])),
+  'C2 the ground of a weekly carries the counts even when the row was submitted before they existed; the report\'s ground is its own');
+ok(/else stats = readStatsWithCounts\(stats\);/.test(w) && /never add counts together/.test(w) && /The block's `counts` says how many territories/.test(w),
+  'C3 the counts are written into STATS at submit; the Method forbids sums and sends the writer to counts');
 
 // estimate: cached prefix priced at the cache-write rate
 const lane = w.slice(w.indexOf('/* SEAM:CLAUDE_ROUTE: the paid lane'), w.indexOf('/* A COMPLETE SENTENCE UNDER EVERY HEADLINE'));

@@ -955,6 +955,19 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:REPORT_BRIEF",
    "purpose": "the brief (the report on one page: thesis, four numbers, the week line, the lines to act on), the recurrence line and reach and horizon chips on every finding, the dot strip of when the dated sources landed (rpDots), WHAT CUTS AGAINST IT under the data card (and on every editorial pattern), consumer voices as pull quotes beside the finding, ten sources under a finding then the rest numbered at the back, distinct images in the strip with captions by source number (CAP_NUM), 'under 1%' on a tiny territory, the trigger in body type, voice groups by label, the sources page in two compact columns without thumbnails, the running-footer room in @page, and the cover pick on the stand bar"
+  },
+  "SEAM:WEEKLY_SHELF": {
+   "file": "worker/src/index.js",
+   "purpose": "a ready weekly becomes the next issue on the stand. POST /reads/weekly-stand {id} with no issue_no (admin): the week may not already be on the stand (that is a replace); the next issue number counts up from the newest; the PDF is rendered or kept and written as weekly/issue-NNN.pdf; the cover is the lead story's photograph through the relay (wkCoverStory: the house pick, else the first pattern's lead image, else the first cited story), kept in R2 as weekly/cover-NNN with the outlet as credit; the shelf row (wkIssueFromRead, pure) carries the read's counts (stories, editions, sources, threads, the issue range), the lead and standfirst, pages and size, published at once; the read is marked published with its issue number. The Monday cadence makes the weekly; this door puts it on the shelf"
+  },
+  "SEAM:WEEKLY_SHELF@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:WEEKLY_SHELF",
+   "purpose": "a ready weekly whose week is not on the stand offers Put this week on the stand as the next issue, with a confirm that says it goes public at once, free with details; the bar then names the issue, pages, size and whether a cover was kept"
+  },
+  "SEAM:READ_COUNTS": {
+   "file": "worker/src/index.js",
+   "purpose": "the counts a writer reaches for, as figures: readStatsCounts (pure) counts the keys of every by_* map with a count above zero (territories, formats, sources) and the recurring threads; readStatsWithCounts writes them into STATS.counts at submit for every kind but the report, and readGroundOf derives them again on the ground so a read landed before they existed is judged with them. The Method forbids sums of counts and sends the writer to counts"
   }
  },
  "planned": [

@@ -377,7 +377,8 @@
       var wk = d && d.ok ? d.weekly : null;
       var mine = !!(row.meta && row.meta.weekly_issue);
       var chip = '<span class="status s-' + (wk ? (mine ? "published" : "queued") : "failed") + '">' + esc(wk ? (mine ? "on the stand as issue " + String(wk.issue_no).padStart(3, "0") : "issue " + String(wk.issue_no).padStart(3, "0") + " on the stand is an earlier cut") : "this week is not on the stand") + "</span>";
-      var btn = wk && !mine ? '<button class="btn red" id="stand-weekly">Replace issue ' + String(wk.issue_no).padStart(3, "0") + " on the stand with this cut</button>" : "";
+      var btn = wk && !mine ? '<button class="btn red" id="stand-weekly">Replace issue ' + String(wk.issue_no).padStart(3, "0") + " on the stand with this cut</button>"
+        : !wk ? '<button class="btn red" id="stand-weekly-new">Put this week on the stand as the next issue</button>' : "";   /* SEAM:WEEKLY_SHELF */
       var meta = wk ? ' <span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;opacity:.7">' + esc(wk.lead || "") + (wk.page_count ? " · " + wk.page_count + " pages" : "") + "</span>" : "";
       standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btn + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : ""));
       var b = document.getElementById("stand-weekly"); if (b) b.onclick = function () {
@@ -387,6 +388,15 @@
           if (!r || !r.ok) { standWeekly(row, "The stand said: " + ((r && r.error) || "no answer") + "."); return; }
           row.meta = Object.assign({}, row.meta || {}, { weekly_issue: wk.issue_no });
           standWeekly(row, "Replaced: " + (r.pages ? r.pages + " pages, " : "") + (r.bytes / 1048576).toFixed(1) + " MB on the stand.");
+        }).catch(function () { standWeekly(row, "The stand did not answer."); });
+      };
+      var nb = document.getElementById("stand-weekly-new"); if (nb) nb.onclick = function () {
+        if (!confirm("Put the week of " + fmtDate(row.window_start) + " on the stand as the next issue? It goes public on /weekly the moment it is written, free with details, like every issue.")) return;
+        nb.disabled = true; nb.textContent = "Rendering, about 30 seconds";
+        call("/reads/weekly-stand", { id: row.id }).then(function (r) {
+          if (!r || !r.ok) { standWeekly(row, "The stand said: " + ((r && r.error) || "no answer") + (r && r.issue_no ? " (issue " + String(r.issue_no).padStart(3, "0") + ")" : "") + "."); return; }
+          row.meta = Object.assign({}, row.meta || {}, { weekly_issue: r.issue_no });
+          standWeekly(row, "On the stand as issue " + String(r.issue_no).padStart(3, "0") + ": " + (r.pages ? r.pages + " pages, " : "") + (r.bytes / 1048576).toFixed(1) + " MB" + (r.cover ? ", cover from the lead story." : ", no cover photograph could be kept."));
         }).catch(function () { standWeekly(row, "The stand did not answer."); });
       };
     }).catch(function () { standPanel(""); });
