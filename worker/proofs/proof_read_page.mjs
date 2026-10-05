@@ -33,6 +33,6 @@ ok(mk && pm && JSON.parse(pm[1].replace(/<\\\//g, '</')) === mk, 'G5 the DAILY m
 ok(/table class="flow"><thead>/.test(page), 'G10 interior pages repeat their print margins');
 ok(!/—/.test(page.replace(/<style>[\s\S]*?<\/style>/, '')), 'G6 no em dash in the page copy');
 ok(/The read is free\.<br>The moves are yours\./.test(page), 'G7 the house closer');
-ok(/@page \{ size: letter; margin: 0; \}/.test(page) && /print-color-adjust: exact/.test(page), 'G8 letter pages, backgrounds kept in the PDF');
+ok(/@page \{ size: letter; margin: 0 0 0\.42in 0; \}/.test(page) && /@page :first \{ margin: 0; \}/.test(page) && /print-color-adjust: exact/.test(page), 'G8 letter pages with room for the running footer (none on the cover), backgrounds kept in the PDF');
 ok(/\/reads\/publish/.test(page) && /\/reads\/reland/.test(page), 'G9 publish and re-land wired');
 console.log(`\nproof_read_page: ${pass} checks PASS`);

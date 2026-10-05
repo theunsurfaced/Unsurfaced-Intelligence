@@ -16,7 +16,7 @@ const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } p
 const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return src.slice(i, j); };
 
 // ── M ─────────────────────────────────────────────────────────────────
-ok(/^Version 2\.0\./m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 2.0 and takes the ids out of the prose');
+ok(/^Version 3\.0\./m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.0 and takes the ids out of the prose');
 ok(/\*\*The advantage law\.\*\*/.test(method) && /\*\*The reader law\.\*\*/.test(method) && /## The expert's voice/.test(method) && /Take a position\./.test(method) && /Name the mechanism\./.test(method) && /would a strategist pay for this sentence\?/.test(method),
   'M2 the advantage law, the reader law and the expert\'s voice are in the Method');
 ok(/## The nine questions/.test(method) && /\*\*Why does it work\?\*\*/.test(method) && /\*\*What is the edge\?\*\*/.test(method), 'M3 the nine questions ask why it works and what the edge is');

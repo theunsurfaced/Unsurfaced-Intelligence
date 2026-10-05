@@ -856,10 +856,6 @@
    "tag": "SEAM:EXC_COUNTER",
    "purpose": "the page forwards each gather line's stance to synthesize so a counter line reaches the read marked (counter)"
   },
-  "SEAM:READ_BRIEF": {
-   "file": "intelligence/index.html",
-   "purpose": "THE READ renders as a brief, not a post: the claim and the move lead; the frame is a plate of labeled cells with the question beneath; the measures are a sparkline beside stat tiles (this week, the week before, outlets, weeks touched, share, state); the interpretation reads beside a receipts rail (evidence kept and set aside with the sample, window, pages, fact table, gap check, rails asked again, rails and the silent ones, attention, time with why a read took two passes, compiled); the wire is a quiet aside with the named brands as chips; All Lenses is one continuous grid of findings, strongest first, each card carrying its lens, the tabs filtering"
-  },
   "SEAM:EXC_RECORD": {
    "file": "worker/src/index.js",
    "purpose": "the record: a strong older source (T0 or T1 in the ARCHIVE band) is never zero. It counts toward a finding's confidence at half its tier's weight (two 2024 studies make a Medium, never a High); the budget keeps six archive seats and the three strongest record lines take the seats of weaker archive lines and are never the ones displaced; the evidence line is marked (record); the time law says to cite it with its year as the baseline the fresh lines move against, never as news; a finding standing only on the record says dated.record"
@@ -929,6 +925,36 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_PRUNE",
    "purpose": "Delete this version on a cut that is not on the stand or compiling: a confirm names the cut and that the newer one stays, the house's refusal is explained in reader words (PRUNE_WHY), and a deleted cut returns to the library"
+  },
+  "SEAM:READ_RECURRENCE": {
+   "file": "worker/src/index.js",
+   "purpose": "the house's measure of a pattern's strength, computed from the evidence a finding cites and printed on the finding: distinct outlets, distinct weeks spanned (Monday weeks), distinct territories spanned, and the dated sources (readSupports with whereOf from readReportLaws). Every figure is real; nothing the writer says changes it"
+  },
+  "SEAM:READ_VOICES": {
+   "file": "worker/src/index.js",
+   "purpose": "the consumer voice gathered on purpose: readReportVoiceQueries (pure) asks the biggest theme in each of the largest territories first, then the biggest themes, without repeats (VOICE_QUERIES 10); readReportVoiceKeep (pure) drops a dated voice older than VOICE_DAYS before the window ends and keeps at most VOICE_PER_SOURCE per thread; the pack keeps VOICE_KEEP. The contract puts up to two voices on each finding (a voices array admits V ids only) and groups the chapter by generation when stated, otherwise by subject, never 'not stated'"
+  },
+  "SEAM:SELL_LAW": {
+   "file": "worker/src/index.js",
+   "purpose": "may this read carry a price? readSellable (pure) reads the row's receipts: written, ready or published, no holds left, the copy desk ran with no reason, no house words or ids in the prose, the shape and the baseline verdict present, consumer voices on at least SELL_LAW.VOICED_FINDINGS findings, every finding with its edge, trigger, counter-reading, reach and horizon, a move for every role and a second outlet, an issue number and a period. /reads/shelf {status: published} and /reads/stand {live: true} refuse with the list (not_sellable); /reads/get carries the verdict"
+  },
+  "SEAM:SELL_LAW@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:SELL_LAW",
+   "purpose": "the stand bar prints SELLABLE or NOT SELLABLE with every reason in reader words (sellHtml); Send live is disabled until the law is met"
+  },
+  "SEAM:READ_BRIEF": {
+   "file": "intelligence/index.html",
+   "purpose": "THE READ renders as a brief, not a post: the claim and the move lead; the frame is a plate of labeled cells with the question beneath; the measures are a sparkline beside stat tiles (this week, the week before, outlets, weeks touched, share, state); the interpretation reads beside a receipts rail (evidence kept and set aside with the sample, window, pages, fact table, gap check, rails asked again, rails and the silent ones, attention, time with why a read took two passes, compiled); the wire is a quiet aside with the named brands as chips; All Lenses is one continuous grid of findings, strongest first, each card carrying its lens, the tabs filtering"
+  },
+  "SEAM:REPORT_BRIEF": {
+   "file": "worker/src/index.js",
+   "purpose": "the report as a paid document: the contract asks for figures-only data, the counter-reading (against: line and evidence) on every finding and every weekly or monthly pattern, reach and horizon, and voices on the finding; POST /reads/cover {id, sid} (admin) sets the cover story on the read (a story the read cites, with a photograph; the stamp changes so the next PDF carries it); the PDF renderer prints a running footer (readPdfFooter: the house, the kind, the issue and period, the version, page n of N) on every page but the cover, with READ_PRINT.REV p3 so kept PDFs render again"
+  },
+  "SEAM:REPORT_BRIEF@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:REPORT_BRIEF",
+   "purpose": "the brief (the report on one page: thesis, four numbers, the week line, the lines to act on), the recurrence line and reach and horizon chips on every finding, the dot strip of when the dated sources landed (rpDots), WHAT CUTS AGAINST IT under the data card (and on every editorial pattern), consumer voices as pull quotes beside the finding, ten sources under a finding then the rest numbered at the back, distinct images in the strip with captions by source number (CAP_NUM), 'under 1%' on a tiny territory, the trigger in body type, voice groups by label, the sources page in two compact columns without thumbnails, the running-footer room in @page, and the cover pick on the stand bar"
   }
  },
  "planned": [

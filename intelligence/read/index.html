@@ -201,8 +201,31 @@
   .rp-sup li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.4; }
   .rp-sup li span { font-family: var(--mono); color: var(--red); font-size: 10px; padding-top: 2px; }
   .rp-sup li i { display: block; font-style: normal; font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
-  .rp-trig { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; line-height: 1.6; color: var(--mute); margin-top: 10px; }
-  .rp-trig b { color: var(--red); letter-spacing: 3px; }
+  .rp-trig { font-size: 13px; line-height: 1.55; margin-top: 12px; padding: 10px 0; border-top: 1px solid var(--line); break-inside: avoid; }
+  .rp-trig b { display: block; font-family: var(--mono); font-weight: 400; font-size: 9px; letter-spacing: 3px; color: var(--red); margin-bottom: 3px; }
+  /* SEAM:REPORT_BRIEF: the report on one page, the recurrence line, what cuts against, the pull quotes, the dot strip */
+  .rp-brief { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0 28px; }
+  .rp-brief .thesis { font-weight: 700; font-size: 19px; line-height: 1.38; margin: 0 0 16px; }
+  .rp-brief .rp-cards { grid-template-columns: 1fr 1fr; margin: 0 0 12px; }
+  .rp-brief .rp-exec li { font-size: 12.5px; padding: 8px 0; grid-template-columns: 26px 1fr; }
+  .rp-brief .rp-chart { margin: 0; } .rp-brief .rp-chart svg { height: 110px; }
+  .rp-rec2 { column-count: 2; column-gap: 0.3in; }
+  .rp-rec2 .rc { break-inside: avoid; display: grid; grid-template-columns: 30px 1fr; gap: 6px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 10.5px; line-height: 1.35; }
+  .rp-rec2 .rc b { font-family: var(--mono); font-weight: 400; color: var(--red); font-size: 10px; }
+  .rp-rec2 .src { font-family: var(--mono); font-size: 8.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
+  .rp-rec2 .rp-ref { font-family: var(--mono); font-size: 7.5px; color: var(--line); margin-left: 6px; text-transform: none; }
+  .rp-recur { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); margin: -8px 0 14px; }
+  .rp-recur b { color: var(--ink); font-weight: 400; }
+  .rp-dots { margin: 0 0 16px; } .rp-dots svg { width: 100%; height: 26px; display: block; } .rp-dots .when { font-family: var(--mono); font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); margin-top: 3px; }
+  .rp-against { font-size: 13px; line-height: 1.55; padding: 10px 14px; border-left: 3px solid var(--line); margin: 0 0 18px; break-inside: avoid; }
+  .rp-against b { display: block; font-family: var(--mono); font-weight: 400; font-size: 9px; letter-spacing: 3px; color: var(--mute); margin-bottom: 3px; }
+  .rp-pull { margin: 0 0 18px; padding: 14px 18px; background: var(--cream); break-inside: avoid; }
+  .rp-pull p { font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1.35; margin: 0 0 6px; }
+  .rp-pull cite { font-family: var(--mono); font-style: normal; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); }
+  .rp-more { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--mute); padding: 8px 0 0; }
+  .sell { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; line-height: 1.7; color: #CFC8BA; margin-top: 8px; }
+  .sell b { color: #F2994A; font-weight: 400; } .sell .ok { color: #6FCF97; }
+  .cover-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .cover-pick img { width: 72px; height: 48px; object-fit: cover; cursor: pointer; border: 2px solid transparent; opacity: .85; } .cover-pick img:hover, .cover-pick img.on { border-color: #C41230; opacity: 1; }
   .rp-terr { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
   .rp-terr > div { border-top: 2px solid var(--ink); padding-top: 8px; break-inside: avoid; }
   .rp-terr .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); }
@@ -233,12 +256,14 @@
   .edge { font-weight: 700; font-size: 17px; line-height: 1.4; border-top: 2px solid var(--red); border-bottom: 1px solid var(--line); padding: 12px 0; margin: 6px 0 18px; break-inside: avoid; }
   .edge b { display: block; font-family: var(--mono); font-weight: 400; font-size: 9.5px; letter-spacing: 4px; color: var(--red); margin-bottom: 4px; }
   @media (max-width: 700px) { .rp-cards, .rp-means, .rp-terr, .rp-gloss { grid-template-columns: 1fr; } .rp-quotes { column-count: 1; } .rp-set { grid-template-columns: 1fr; } }
-  @page { size: letter; margin: 0; }
+  @page { size: letter; margin: 0 0 0.42in 0; }   /* REPORT_BRIEF: room for the running footer (issue, period, page) the renderer prints */
+  @page :first { margin: 0; }   /* the cover carries no footer */
   @media print {
     body { background: var(--ivory); }
     .bar, .social, .noprint { display: none !important; }
     .doc { max-width: none; margin: 0; }
-    .page { margin: 0; min-height: 11in; break-after: page; }
+    .page { margin: 0; min-height: 10.58in; break-after: page; }
+    .page.cover { min-height: 11in; }
     .page:last-child { break-after: auto; }
     .page.inner { padding-top: 0; padding-bottom: 0; }
     table.flow td.sp { height: 0.6in; }
@@ -278,6 +303,36 @@
   /* READ_PROOF: the fixes panel sits between the bar and the read. */
   /* SEAM:REPORT_STAND: the stand switch on the house side. A report is staged on the stand as a draft (the PDF kept, the
      shelf row built, nothing public), sent live at its price when the house says so, and taken off the same way. */
+  var SELL = null, RC_ALL = {};
+  /* SEAM:SELL_LAW: what the receipts say about carrying a price, in reader words. */
+  var SELL_WHY = { not_written: "not written", holds_remain: "a number is still held", no_shape: "the period's shape is missing", no_findings: "no findings", no_issue_no: "no issue number", no_period: "no period or version" };
+  function sellHtml() {
+    if (!SELL) return "";
+    if (SELL.ok) return '<div class="sell"><span class="ok">SELLABLE</span> · every receipt says this read may carry a price.</div>';
+    var lines = (SELL.fails || []).map(function (f) {
+      var m;
+      if (SELL_WHY[f]) return SELL_WHY[f];
+      if ((m = /^not_ready:(.+)$/.exec(f))) return "the read is " + m[1];
+      if ((m = /^desk_did_not_run(?::(.+))?$/.exec(f))) return "the copy desk did not run" + (m[1] ? " (" + m[1] + ")" : "");
+      if ((m = /^reader_law:(\d+)$/.exec(f))) return m[1] + " house word" + (m[1] === "1" ? "" : "s") + " or id" + (m[1] === "1" ? "" : "s") + " in the prose";
+      if ((m = /^voices:(\d+)_of_(\d+)$/.exec(f))) return "consumer voices on " + m[1] + " finding" + (m[1] === "1" ? "" : "s") + ", " + m[2] + " needed";
+      if ((m = /^finding_(\d+):(.+)$/.exec(f))) return "finding " + m[1] + " is missing " + m[2].split("+").map(function (k) { return ({ edge: "its edge", trigger: "its trigger", against: "what cuts against it", reach_horizon: "reach or horizon", moves: "a move for every role", outlets: "a second outlet" })[k] || k; }).join(", ");
+      return f;
+    });
+    return '<div class="sell"><b>NOT SELLABLE</b> · ' + lines.map(esc).join(" · ") + "</div>";
+  }
+  /* REPORT_BRIEF: the cover is yours. Every photograph the read cites, as a strip; a click sets it and the next PDF carries it. */
+  function coverPickHtml(row) {
+    var x = row.read || {}; var ids = Object.keys(RC_ALL).filter(function (s) { return /^S\d+$/.test(s) && RC_ALL[s] && RC_ALL[s].has_image; }).slice(0, 24);
+    if (!ids.length) return "";
+    return '<div style="width:100%"><span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">CHOOSE THE COVER</span><div class="cover-pick">' + ids.map(function (s) { return '<img src="/img/s/' + s.slice(1) + '" data-sid="' + s + '" class="' + (x.cover_image === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div></div>";
+  }
+  function coverPickBind(row) {
+    Array.prototype.forEach.call(document.querySelectorAll(".cover-pick img"), function (im) { im.onclick = function () {
+      if (im.classList.contains("on")) return;
+      call("/reads/cover", { id: row.id, sid: im.getAttribute("data-sid") }).then(function (d) { if (d && d.ok) openRead(row.id); else alert("The house refused: " + ((d && d.error) || "no answer") + "."); });
+    }; });
+  }
   function standPanel(html) {
     var el = document.getElementById("stand-panel");
     if (!el) { el = document.createElement("div"); el.id = "stand-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
@@ -289,10 +344,11 @@
     var chip = '<span class="status s-' + (st === "published" ? "published" : st === "draft" ? "queued" : st === "withdrawn" ? "held" : "failed") + '">' + esc(st === "none" ? "not on the stand" : st === "published" ? "live on the stand" : st === "draft" ? "staged, not public" : "taken off") + "</span>";
     var btns = "";
     if (st === "none") btns = '<button class="btn" id="stand-stage">Stage on the stand</button>';
-    if (st === "draft" || st === "withdrawn") btns = '<button class="btn red" id="stand-live">Send live at ' + esc(price) + '</button> <button class="btn" id="stand-stage">Re-stage (fresh PDF)</button>';
+    if (st === "draft" || st === "withdrawn") btns = (SELL && SELL.ok ? '<button class="btn red" id="stand-live">Send live at ' + esc(price) + '</button> ' : '<button class="btn" disabled title="The sell law is not met; see below">Send live at ' + esc(price) + '</button> ') + '<button class="btn" id="stand-stage">Re-stage (fresh PDF)</button>';
     if (st === "published") btns = '<button class="btn" id="stand-off">Take it off the stand</button>';
     var meta = issue ? ' <span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;opacity:.7">issue ' + String(issue.issue_no).padStart(3, "0") + (issue.page_count ? " · " + issue.page_count + " pages" : "") + (issue.byte_size ? " · " + (issue.byte_size / 1048576).toFixed(1) + " MB" : "") + (issue.published_at ? " · live since " + esc(String(issue.published_at).slice(0, 10)) : "") + "</span>" : "";
-    standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btns + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : ""));
+    standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btns + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : "") + sellHtml() + coverPickHtml(row));
+    coverPickBind(row);
     var issueNo = issue ? issue.issue_no : (row.meta && row.meta.issue_no) || null;
     var go = function (btn, path, body, busy) {
       btn.disabled = true; btn.textContent = busy;
@@ -355,9 +411,11 @@
   var MIN = { cover: 1200, hero: 1000, wide: 520, strip: 420, thumb: 160, frame: 800 };
   var IMGV = "?v=2";
   var RC = {}, TAKEN = {};
+  var CAP_NUM = null;   /* REPORT_BRIEF: the report sets this to its source numbering, so a caption carries "12", never "S106" */
   function capHtml(s, mode) {
     var r = RC[s] || {};
-    return mode === "strip" ? esc(r.headline) + " <span>" + esc(s) + "</span>"
+    var tag = CAP_NUM ? (CAP_NUM(s) ? String(CAP_NUM(s)) : "") : esc(s);
+    return mode === "strip" ? esc(r.headline) + (tag ? " <span>" + tag + "</span>" : "")
                             : esc(r.headline) + '<div class="credit">Photo: ' + esc(r.source_name || "") + "</div>";
   }
   window.phGone = function (el) {
@@ -433,12 +491,22 @@
   }
   function rpShape(t) {
     if (!t || typeof t.share_pct !== "number") return "";
-    return t.share_pct + "% of signals" + (typeof t.week_high === "number" && t.week_high ? " · " + rpNum(t.week_low) + "-" + rpNum(t.week_high) + " a week" : "");
+    return (t.share_pct ? t.share_pct + "%" : "under 1%") + " of signals" + (typeof t.week_high === "number" && t.week_high ? " · " + rpNum(t.week_low) + "-" + rpNum(t.week_high) + " a week" : "");
   }
   function rpDelta(n, p) {
     if (typeof n !== "number" || typeof p !== "number") return "";
     if (!p) return n ? "new this window" : "none either window";
     var d = Math.round((n - p) / p * 100); return (d >= 0 ? "+" : "") + d + "% vs prior " + rpNum(p);
+  }
+  /* REPORT_BRIEF: when the evidence landed. One dot per dated source across the period; a pattern that built, spiked or faded shows at a glance. */
+  function rpDots(dates, win) {
+    var a = win && win.start ? new Date(win.start + "T00:00:00Z").getTime() : NaN, b = win && win.end ? new Date(win.end + "T00:00:00Z").getTime() : NaN;
+    var ds = (dates || []).map(function (d) { return new Date(String(d).slice(0, 10) + "T00:00:00Z").getTime(); }).filter(function (t) { return !isNaN(t) && t >= a && t <= b; });
+    if (isNaN(a) || isNaN(b) || b <= a || !ds.length) return "";
+    var W = 600, H = 26, cnt = {}; ds.forEach(function (t) { var x = Math.round((t - a) / (b - a) * (W - 12)) + 6; cnt[x] = (cnt[x] || 0) + 1; });
+    return '<div class="rp-dots"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><line x1="6" y1="18" x2="' + (W - 6) + '" y2="18" stroke="#D9D1C1" vector-effect="non-scaling-stroke"/>' +
+      Object.keys(cnt).map(function (x) { var r = Math.min(7, 3 + cnt[x]); return '<circle cx="' + x + '" cy="18" r="' + r + '" fill="#C41230" opacity=".85"/>'; }).join("") + "</svg>" +
+      '<div class="when">When the ' + ds.length + ' dated source' + (ds.length === 1 ? "" : "s") + " landed, " + fmtDate(win.start) + " to " + fmtDate(win.end) + "</div></div>";
   }
   function rpSpark(arr, red) {
     arr = (arr || []).map(function (v) { return typeof v === "number" ? v : 0; });
@@ -500,6 +568,10 @@
     function num(id) { if (!rc[id]) return 0; if (!foot[id]) { foot[id] = ++footN; order.push(id); cited[id] = 1; } return foot[id]; }
     function refs(list) { var ns = (list || []).filter(real).map(num).filter(Boolean); return ns.length ? '<span class="rp-refs">' + ns.map(function (n) { return "<sup>" + n + "</sup>"; }).join("") + "</span>" : ""; }
     function prose(t) { return esc(t).replace(/\s*\(((?:[SLRTDXV]\d+)(?:,\s*[SLRTDXV]\d+)*)\)/g, function (m, g) { return refs(g.split(/,\s*/)); }).replace(/\b([SLRTDXV]\d+)\b/g, function (m, id) { var n = num(id); return n ? "<sup>" + n + "</sup>" : m; }); }
+    CAP_NUM = function (id) { return foot[id] || 0; };   /* a caption prints the number the source already has; an unnumbered one prints none */
+    /* REPORT_BRIEF: a consumer voice as a pull quote beside the finding it proves */
+    function pull(ids) { return (ids || []).filter(function (v) { return real(v) && rc[v] && rc[v].kind === "voice"; }).slice(0, 2).map(function (v) { var q = rc[v];
+      return '<blockquote class="rp-pull"><p>\u201C' + esc(q.headline) + '\u201D</p><cite><sup>' + num(v) + "</sup> " + esc(q.source_name || "") + " comment" + (rpWho(q.self) ? " · " + esc(rpWho(q.self)) : "") + (q.likes ? " · " + rpNum(q.likes) + " likes" : "") + "</cite></blockquote>"; }).join(""); }
     var exec = (x.executive_summary || []).filter(function (e) { return e && e.line; });
     var terr = (x.territories || []).filter(function (t) { return t && t.territory; });
     var sets = (x.competitive_sets || []).filter(function (c) { return c && c.names && c.names.length; });
@@ -546,11 +618,17 @@
       '<div><div class="kicker">In this report</div><div class="toc">' + contents.map(function (c, i) {
         return '<div><span class="n">' + pad(i + 1) + '</span><span class="t">' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></div>"; }).join("") + "</div></div></div>");
 
-    /* What this means for you */
-    if (exec.length) {
+    /* The brief: the report on one page. READ_BRIEF */
+    if (exec.length || x.thesis) {
       sec++;
-      h += inner(band(pad(sec), "What this means for you", "The lines to act on. Each one says what happened and what it means, with its sources.") +
-        '<ol class="rp-exec">' + exec.map(function (e, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(e.line) + refs(e.evidence) + "</div></li>"; }).join("") + "</ol>");
+      var cmp0 = rpComparable(lake);
+      var tiles = [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days in the period"]].filter(function (c) { return typeof c[0] === "number"; });
+      h += inner(band(pad(sec), "The brief", "The report on one page: what the period shows, the numbers behind it, and the lines to act on, each with its sources.") +
+        '<div class="rp-brief"><div>' + (x.thesis ? '<p class="thesis">' + prose(x.thesis) + "</p>" : "") +
+          '<ol class="rp-exec">' + exec.map(function (e, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(e.line) + refs(e.evidence) + "</div></li>"; }).join("") + "</ol></div>" +
+          "<div>" + (tiles.length ? '<div class="rp-cards">' + tiles.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span></div>"; }).join("") + "</div>" : "") +
+          (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, 0, esc) + '<div class="cap">' + (cmp0 ? "How much the culture surfaced each week." : "The first period on record. The first and last weeks are partial.") + "</div></div>" : "") +
+          "</div></div>");
     }
 
     /* The period in numbers */
@@ -577,25 +655,39 @@
         var ev = (f.evidence || []).filter(real);
         var lead = (f.lead_image && real(f.lead_image) && img(f.lead_image)) ? f.lead_image : pickImage(ev, used);
         if (lead) used[lead] = 1;
-        var rest = ev.filter(function (s) { return s !== lead && img(s); }).slice(0, 4);
+        var seenImg = {}; if (lead && img(lead)) seenImg[img(lead)] = 1;
+        var rest = ev.filter(function (s) { var u = s !== lead && img(s); if (!u || seenImg[u]) return false; seenImg[u] = 1; return true; }).slice(0, 4);   /* distinct images only */
         var sup = f.supports || {};
         var agree = typeof sup.outlets === "number" ? (sup.outlets === 1 ? "1 source" : sup.outlets + " sources agree") : "";
+        var REACH = { category: "One category", several: "Several categories", culture: "The whole culture" }, HORIZON = { now: "Now", quarter: "This quarter", year: "This year" };
+        var recur = [];
+        if (typeof sup.outlets === "number") recur.push("<b>" + sup.outlets + "</b> source" + (sup.outlets === 1 ? "" : "s"));
+        if (sup.weeks) recur.push("<b>" + sup.weeks + "</b> week" + (sup.weeks === 1 ? "" : "s"));
+        if (sup.territories && sup.territories.length) recur.push("<b>" + sup.territories.length + "</b> territor" + (sup.territories.length === 1 ? "y" : "ies") + " · " + esc(sup.territories.map(function (t) { return String(t).replace(/-/g, " "); }).join(", ")));
+        var shown = ev.slice(0, 10), hidden = ev.length - shown.length;
         h += inner((lead ? '<div class="hero">' + photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) + '<span class="tag">Finding ' + (i + 1) + " of " + findings.length + '</span><div class="credit">' + H.credit(lead) + "</div></div>" : '<div class="hero none"></div>') +
           '<div class="pname">' + esc(f.name) + "</div>" +
           '<div style="margin:0 0 14px">' + (f.strength === "signal" ? '<span class="rp-chip">Early signal</span> ' : '<span class="rp-chip">Pattern</span> ') +
             (f.confidence ? '<span class="rp-chip ' + esc(f.confidence) + '">' + esc(f.confidence) + " confidence</span> " : "") +
-            (agree ? '<span class="rp-chip">' + esc(agree) + "</span>" : "") + "</div>" +
+            (agree ? '<span class="rp-chip">' + esc(agree) + "</span> " : "") +
+            (f.reach && REACH[f.reach] ? '<span class="rp-chip">' + REACH[f.reach] + "</span> " : "") +
+            (f.horizon && HORIZON[f.horizon] ? '<span class="rp-chip">' + HORIZON[f.horizon] + "</span>" : "") + "</div>" +
           (f.dek ? '<p class="dek">' + esc(f.dek) + "</p>" : "") +
+          (recur.length ? '<div class="rp-recur">Recurrence · ' + recur.join(" · ") + "</div>" : "") +
           (f.what_the_data_shows ? '<div class="rp-data"><div class="lbl">What the data shows</div>' + prose(f.what_the_data_shows) + "</div>" : "") +
+          rpDots(sup.dates, win) +
+          (f.against && f.against.line ? '<div class="rp-against"><b>WHAT CUTS AGAINST IT</b>' + prose(f.against.line) + refs(f.against.evidence) + "</div>" : "") +
+          pull(f.voices) +
           '<div class="cols">' + (f.what_happened ? '<div class="lbl">What happened</div><p class="body">' + prose(f.what_happened) + "</p>" : "") +
             (f.why_it_matters ? '<div class="lbl">Why it matters</div><p class="body">' + prose(f.why_it_matters) + "</p>" : "") + "</div>" +
           (f.means ? '<div class="rp-means">' + ["culture", "category", "consumer"].filter(function (k) { return f.means[k]; }).map(function (k) { return "<div><b>For the " + k + "</b>" + prose(f.means[k]) + "</div>"; }).join("") + "</div>" : "") +
           (f.advantage ? '<p class="edge"><b>THE EDGE</b>' + prose(f.advantage) + "</p>" : "") +
           (f.moves ? '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="s">One action per role that a team could start this month.</div><div class="grid">' +
             H.ROLES.filter(function (r) { return f.moves[r]; }).map(function (r) { return "<div><b>" + r + "</b>" + esc(f.moves[r]) + "</div>"; }).join("") + "</div></div>" : "") +
-          (f.trigger ? '<div class="rp-trig"><b>WHAT WOULD PROVE IT</b> · ' + esc(f.trigger) + "</div>" : "") +
+          (f.trigger ? '<div class="rp-trig"><b>WHAT WOULD PROVE IT</b>' + esc(f.trigger) + "</div>" : "") +
           (rest.length ? '<div class="strip" style="margin-top:14px">' + rest.map(function (s) { return "<figure>" + photo(s, "strip", ev.filter(function (a) { return a !== lead && rest.indexOf(a) < 0; }), "strip") + "<figcaption>" + H.capHtml(s, "strip") + "</figcaption></figure>"; }).join("") + "</div>" : "") +
-          (ev.length ? '<ul class="rp-sup">' + ev.map(function (s) { var r = rc[s] || {}; return "<li><span>" + num(s) + "</span><div>" + esc(r.headline || "") + "<i>" + esc(r.source_name || "") + (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + "</i></div></li>"; }).join("") + "</ul>" : ""));
+          (ev.length ? '<ul class="rp-sup">' + shown.map(function (s) { var r = rc[s] || {}; return "<li><span>" + num(s) + "</span><div>" + esc(r.headline || "") + "<i>" + esc(r.source_name || "") + (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + "</i></div></li>"; }).join("") + "</ul>" : "") +
+          (hidden > 0 ? (function () { var ns = ev.slice(10).map(num).filter(Boolean); return '<div class="rp-more">And ' + hidden + " more source" + (hidden === 1 ? "" : "s") + (ns.length ? ", numbered " + Math.min.apply(null, ns) + " to " + Math.max.apply(null, ns) + " at the back" : "") + "</div>"; })() : ""));
       });
     }
 
@@ -627,8 +719,9 @@
       h += inner(band(pad(sec), "In their own words", "What consumers said, quoted word for word from public comments and posts on the period's biggest themes. A speaker is described only by what they said about themselves.") +
         (voice.line ? '<p class="body lead">' + prose(voice.line) + "</p>" : "") +
         '<div class="rp-quotes">' + vids.map(function (s) { var q = rc[s]; return '<div class="rp-q">' + esc(q.headline) + '<div class="who"><sup>' + num(s) + "</sup> " + esc(q.source_name || "") + " comment" + (q.likes ? " · " + rpNum(q.likes) + " likes" : "") + (rpWho(q.self) ? " · <i>" + esc(rpWho(q.self)) + "</i>" : "") + "</div></div>"; }).join("") + "</div>" +
-        ((voice.by_generation || []).filter(function (g) { return g && g.generation; }).length ? '<div class="two" style="margin-top:22px">' + voice.by_generation.filter(function (g) { return g && g.generation; }).map(function (g) {
-          return '<div><div class="kicker">' + esc(g.generation) + '</div><p class="body">' + prose(g.line || "") + refs(g.quotes) + "</p></div>"; }).join("") + "</div>" : ""));
+        (function () { var gs = (voice.groups || voice.by_generation || []).map(function (g) { return g && (g.label || g.generation) && g.line ? { label: g.label || g.generation, line: g.line, quotes: g.quotes } : null; }).filter(Boolean)
+          .filter(function (g) { return !/^not stated$/i.test(String(g.label).trim()); });
+          return gs.length ? '<div class="two" style="margin-top:22px">' + gs.map(function (g) { return '<div><div class="kicker">' + esc(g.label) + '</div><p class="body">' + prose(g.line) + refs(g.quotes) + "</p></div>"; }).join("") + "</div>" : ""; })());
     }
 
     /* What the older reports say */
@@ -689,10 +782,10 @@
 
     /* Sources: in order of first mention */
     sec++;
-    if (order.length) h += inner(band(pad(sec), "Sources", "Every source this report stands on, in the order it was first cited: the headline or the words, the publication, the date, and what kind of source it is.") + '<div class="rp-rec">' + order.map(function (s) {
+    if (order.length) h += inner(band(pad(sec), "Sources", "Every source this report stands on, in the order it was first cited: the headline or the words, the publication, the date, and what kind of source it is.") + '<div class="rp-rec2">' + order.map(function (s) {
       var r = rc[s]; if (!r) return "";
-      return '<div class="rc">' + (img(s) ? photo(s, "thumb") : '<div class="noimg">' + foot[s] + "</div>") + '<div><div class="hl">' + (img(s) ? "<b>" + foot[s] + "</b> · " : "") + esc(r.headline || "") + '</div><div class="src">' + esc(r.source_name || "") +
-        (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + (r.issue_no ? " · Unsurfaced DAILY issue " + String(r.issue_no).padStart(3, "0") : "") + (r.title && r.kind === "voice" ? " · on " + esc(r.title) : "") + '<span class="rp-ref">' + esc(s) + "</span></div></div></div>"; }).join("") + "</div>");
+      return '<div class="rc"><b>' + foot[s] + '</b><div><div class="hl">' + esc(r.headline || "") + '</div><div class="src">' + esc(r.source_name || "") +
+        (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + (r.issue_no ? " · issue " + String(r.issue_no).padStart(3, "0") : "") + (r.title && r.kind === "voice" ? " · on " + esc(r.title) : "") + '<span class="rp-ref">' + esc(s) + "</span></div></div></div>"; }).join("") + "</div>");
     h += '<section class="page closer">' + H.mark("rp-mark") + '<div class="big">Culture, measured.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/read' + (issue ? " · " + esc(issue) : "") + "</div></section>";
     return { html: h, coverPool: coverPool };
   }
@@ -733,6 +826,7 @@
         : call("/reads/get", { id: id })).then(function (d) {
       if (!d || !d.ok) return say("This read could not load: " + ((d && d.error) || "no answer") + ".");
       var row = d.read, x = row.read || {}, st = row.stats || {}, rc = d.receipts || {};
+      SELL = d.sell || null; RC_ALL = rc;   /* SEAM:SELL_LAW, the stand bar prints the verdict; the cover pick lists the photographs */
       document.title = "Unsurfaced DAILY · " + row.label;
       var btns = [];
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF</button>');
@@ -865,6 +959,7 @@
               (p.line ? '<p class="body">' + prose(p.line) + "</p>" : "") +
             "</div>" +
             (p.advantage ? '<p class="edge"><b>THE EDGE</b>' + prose(p.advantage) + "</p>" : "") +
+            (p.against ? '<div class="rp-against"><b>WHAT CUTS AGAINST IT</b>' + prose(p.against) + "</div>" : "") +   /* REPORT_BRIEF: the counter-reading on every pattern */
             (p.moves ? '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="s">' + esc(EXPLAIN.move) + '</div><div class="grid">' +
               ROLES.filter(function (r) { return p.moves[r]; }).map(function (r) { return "<div><b>" + r + "</b>" + esc(p.moves[r]) + "</div>"; }).join("") + "</div></div>" : "") +
             (rest.length ? '<div class="strip">' + rest.map(function (s) { return "<figure>" + photo(s, "strip", ev.filter(function (a) { return a !== lead && rest.indexOf(a) < 0; }), "strip") + "<figcaption>" + capHtml(s, "strip") + "</figcaption></figure>"; }).join("") + "</div>" : "") +

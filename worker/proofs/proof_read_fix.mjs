@@ -15,7 +15,7 @@ const ej = w.slice(w.indexOf('function jsonRepair('), w.indexOf('\n// Server-sid
 let sb = [], fixtures = {};
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'callerIsAdmin', 'json', 'logEvent',
-  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal };')(
+  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal, readSellable, SELL_LAW };')(
   sbRest, async () => ({ ok: true }), async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve());
 
 const K = R.HOUSE_READ.KINDS;
@@ -67,6 +67,43 @@ const p2 = await R.readRoute('/reads/delete', { id: 2 }, envM, '', { id: 'admin'
 ok(!p2.ok && p2.error === 'newest_version' && !deleted.length && (await R.readRoute('/reads/delete', { id: 2 }, envM, '', { id: 'x' }))._status === 403, 'P3 the newest cut is refused before anything is touched; admin only');
 ok(/case '\/reads\/delete':/.test(w) && /id="prune">Delete this version/.test(page) && /PRUNE_WHY/.test(page) && /window\.confirm\("Delete "/.test(page) && /SEAM:READ_PRUNE/.test(page),
   'P4 the door is routed; the page offers Delete this version on a cut that is not on the stand or compiling, confirms first, and explains a refusal');
+
+// ── SEAM:SELL_LAW: may this read carry a price? ──
+const good = () => ({ id: 9, kind: 'report', status: 'ready', version: 5, window_start: '2026-07-08', window_end: '2026-10-03', violations: ['proofread:12'], meta: { issue_no: 1, proof: { lane: 'live', reason: null, changes: 12 } },
+  stats: { lake: { shape: { music: {} }, prior_comparable: false } },
+  read: { title: 't', thesis: 't', findings: [1, 2].map(i => ({ name: 'f' + i, advantage: 'e', trigger: 't', against: { line: 'a', evidence: [] }, reach: 'category', horizon: 'now', voices: ['V1'], supports: { outlets: 3 },
+    moves: { creative: 'c', marketer: 'm', founder: 'f', exec: 'e', talent: 't' } })) } });
+ok(R.readSellable(good()).ok === true && R.readSellable(good()).fails.length === 0, 'S1 a read whose receipts say everything may carry a price');
+let g = good(); g.status = 'held'; g.violations = ['number_not_in_evidence:x:570', 'proofread:0']; g.meta.proof = { lane: null, reason: 'claude_network' };
+let sf = R.readSellable(g).fails;
+ok(sf.includes('not_ready:held') && sf.includes('holds_remain') && sf.includes('desk_did_not_run:claude_network'), 'S2 a held read with a number hold and no desk pass fails on all three, named');
+g = good(); g.violations = ['house_word:findings[5].what_the_data_shows:the Lake', 'id_in_prose:findings[4].x:V1', 'proofread:3']; g.stats = { lake: {} }; g.read.findings[0].voices = []; g.read.findings[1].voices = [];
+sf = R.readSellable(g).fails;
+ok(sf.includes('reader_law:2') && sf.includes('no_shape') && sf.includes('voices:0_of_2'), 'S3 house words in the prose, a missing shape and no consumer voices on the findings each keep a price off it');
+g = good(); delete g.read.findings[1].against; g.read.findings[1].reach = null; g.read.findings[1].moves.talent = ''; g.read.findings[1].supports.outlets = 1; delete g.meta.issue_no;
+sf = R.readSellable(g).fails;
+ok(sf.includes('finding_2:against+reach_horizon+moves+outlets') && sf.includes('no_issue_no') && !sf.some(f => /^finding_1/.test(f)), 'S4 a finding missing its counter-reading, reach, a move or a second outlet is named by number; an unnumbered issue cannot be sold');
+ok(R.readSellable(null).fails.includes('not_written') && R.SELL_LAW.VOICED_FINDINGS === 2, 'S5 nothing written, nothing sold');
+fixtures = { 'house_reads?id=eq.': () => [good()], 'report_issues?issue_no=eq.1&select=house_read_id': () => [{ house_read_id: 9 }], 'report_issues?issue_no=eq.1': () => [{ issue_no: 1, status: 'draft' }], 'editions?': () => [], 'edition_items?': () => [] };
+sb = [];
+const live = await R.readRoute('/reads/shelf', { issue_no: 1, status: 'published' }, {}, '', { id: 'admin' });
+ok(live.ok && sb.some(x => x.opts && x.opts.method === 'PATCH' && x.opts.body && x.opts.body.status === 'published'), 'S6 the switch sends a sellable issue live');
+const bad = good(); bad.read.findings[0].voices = []; bad.read.findings[1].voices = [];
+fixtures['house_reads?id=eq.'] = () => [bad]; sb = [];
+const refused = await R.readRoute('/reads/shelf', { issue_no: 1, status: 'published' }, {}, '', { id: 'admin' });
+ok(!refused.ok && refused.error === 'not_sellable' && refused.fails.includes('voices:0_of_2') && !sb.some(x => x.opts && x.opts.method === 'PATCH'), 'S7 the switch refuses to send live what the sell law refuses, with the reasons, and changes nothing');
+const standRefused = await R.readRoute('/reads/stand', { id: 9, live: true }, {}, '', { id: 'admin' });
+ok(!standRefused.ok && standRefused.error === 'not_sellable', 'S8 staging straight to live is refused the same way');
+ok(/sell: readSellable\(row\)/.test(w) && /case '\/reads\/cover':/.test(w), 'S9 /reads/get carries the verdict for the page; the cover door is routed');
+// the cover door
+fixtures['house_reads?id=eq.'] = () => [Object.assign(good(), { pack_ids: [11, 12], read: { title: 't', thesis: 't', cover_image: 'S11' } })];
+fixtures = Object.assign({ 'edition_items?id=eq.12': () => [{ id: 12, image_url: 'https://x/y.jpg' }], 'edition_items?id=eq.13': () => [] }, fixtures);   // the specific keys first; the fake matches by prefix
+sb = [];
+const cv = await R.readRoute('/reads/cover', { id: 9, sid: 'S12' }, {}, '', { id: 'admin' });
+const cvPatch = sb.filter(x => x.opts && x.opts.method === 'PATCH').pop();
+ok(cv.ok && cv.cover_image === 'S12' && cvPatch && cvPatch.opts.body.read.cover_image === 'S12' && cvPatch.opts.body.read.title === 't', 'S10 the cover pick sets the cover story on the read; the rest of the read is untouched');
+ok((await R.readRoute('/reads/cover', { id: 9, sid: 'S13' }, {}, '', { id: 'admin' })).error === 'not_in_the_read' && (await R.readRoute('/reads/cover', { id: 9, sid: 'L1' }, {}, '', { id: 'admin' })).error === 'not_in_the_read',
+  'S11 only a story the read cites can be the cover');
 
 // estimate: cached prefix priced at the cache-write rate
 const lane = w.slice(w.indexOf('/* SEAM:CLAUDE_ROUTE: the paid lane'), w.indexOf('/* A COMPLETE SENTENCE UNDER EVERY HEADLINE'));

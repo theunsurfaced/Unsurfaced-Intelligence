@@ -28,8 +28,9 @@ const row = { id: 3, read: { title: 'Neutrality' }, status: 'published', meta: {
 let out = await P.readPdf(env, row);
 const c = calls[0];
 ok(c.url === 'https://api.cloudflare.com/client/v4/accounts/acct/browser-rendering/pdf', 'R1 renders through the Browser Rendering REST API');
-ok(c.body.pdfOptions.format === 'letter' && c.body.pdfOptions.printBackground === true && c.body.pdfOptions.displayHeaderFooter === false &&
-   c.body.pdfOptions.margin.top === '0', 'R2 letter pages, backgrounds on, no headers or footers, no margins');
+ok(c.body.pdfOptions.format === 'letter' && c.body.pdfOptions.printBackground === true && c.body.pdfOptions.displayHeaderFooter === true && c.body.pdfOptions.headerTemplate === '<span></span>' &&
+   /UNSURFACED\u2122 /.test(c.body.pdfOptions.footerTemplate) && /class="pageNumber"/.test(c.body.pdfOptions.footerTemplate) && c.body.pdfOptions.margin.top === '0' && c.body.pdfOptions.margin.bottom === '0.42in',
+   'R2 letter pages, backgrounds on, a running footer with the house and the page number and room for it at the foot, no other margins');
 ok(c.body.waitForSelector.selector === 'html[data-print-ready="1"]', 'R3 waits for the page to say every photo has settled');
 ok(c.body.gotoOptions.timeout <= 60000 && c.body.waitForSelector.timeout <= 60000 && c.body.gotoOptions.waitUntil === 'domcontentloaded' &&
    c.body.pdfOptions.timeout <= 300000, 'R3b every wait sits inside Cloudflare limits (60 s load and selector, 5 min PDF)');
