@@ -907,6 +907,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:DOOR_CADENCE",
    "purpose": "a tile's delta reads 'since last read' rather than 'since last night', and a carried tile says 'earlier read · a new one compiling', because the door's last batch may be two nights old"
+  },
+  "SEAM:READ_BASELINE": {
+   "file": "worker/src/index.js",
+   "purpose": "the baseline law and the shape of the period. readReportShape (pure) writes STATS.lake.prior_comparable (the period before is a baseline only when it holds at least a fifth of this period's signals and READ_BASELINE.MIN) and STATS.lake.shape per territory (n, share_pct, weeks, week_high, week_low over interior weeks, direction rising/holding/cooling from the two halves), at submit for a report and again at landing when a stored read lacks it. The report contract reads every count on its own shape when the prior is not comparable (never compares, never quotes the prior, never calls a territory new) and takes weekly figures from STATS, never from arithmetic. readMomentum: with no baseline the direction is the momentum, n_prior is withheld, share and high/low week ride on each territory. The number law admits every member of a serialized series ([273,336] counts 273 and 336). claudeParams sends temperature only to models below 5 (Sonnet 5 and Fable refuse it with a 400; the copy desk was skipped on every report until Oct 4); readProof sends none"
+  },
+  "SEAM:READ_BASELINE@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_BASELINE",
+   "purpose": "rpComparable judges the baseline by the worker's flag or the same rule; without one the numbers band, the cards, the territories band and each territory's line read the share and the high and low week (rpShape) instead of a delta, the dashed prior average and the prior bars are withheld, the about cards say the record begins with this period"
   }
  },
  "planned": [

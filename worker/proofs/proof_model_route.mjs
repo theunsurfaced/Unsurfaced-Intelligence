@@ -69,7 +69,7 @@ const resp = (status, body, text) => ({ ok: status >= 200 && status < 300, statu
   json: async () => body, text: async () => text || JSON.stringify(body) });
 
 const mk = new Function('sbRest', 'logEvent', 'json', 'callerIsAdmin', 'fetch', 'excQuiet',
-  lane + '; return { CLAUDE, claudeCost, claudeParams, claudeEstimate, claudeHeaders, claudeGate, callClaude, claudeBatchSubmit, claudeBatchDrain, claudeLedger, claudeRoute, claudeMonth, claudeLedgerAdd };');
+  lane + '; return { CLAUDE, claudeCost, claudeParams, claudeEstimate, claudeHeaders, claudeGate, callClaude, claudeBatchSubmit, claudeBatchDrain, claudeLedger, claudeRoute, claudeMonth, claudeLedgerAdd, claudeModelMajor };');
 const L = mk(sbRest, logEvent, json, callerIsAdmin, fetchStub, () => () => null);
 const month = L.claudeMonth();
 const aiTrap = { run: async () => { throw new Error('WORKERS AI MUST NOT BE CALLED'); } };
@@ -87,6 +87,9 @@ const p1 = L.claudeParams('doc', { system: 'METHOD', cache: true, prompt: 'hi', 
 ok(p1.model === 'claude-fable-5-1' && p1.max_tokens === 128000, 'M6 doc tier is Fable, max_tokens clamped at the model ceiling (128000), never below what a report asks');
 ok(Array.isArray(p1.system) && p1.system[0].cache_control.type === 'ephemeral', 'M7 cache:true marks the Method as the cached prefix');
 ok(L.claudeParams('ingest', {}).model === 'claude-sonnet-5', 'M8 ingest tier is Sonnet 5');
+ok(L.claudeParams('live', { prompt: 'x', temperature: 0 }).temperature === undefined && L.claudeParams('doc', { prompt: 'x', temperature: 0 }).temperature === undefined
+  && L.claudeParams('frame', { prompt: 'x', temperature: 0 }).temperature === 0 && L.claudeModelMajor('claude-haiku-4-5-20251001') === 4 && L.claudeModelMajor('claude-fable-5-1') === 5 && L.claudeModelMajor('claude-sonnet-5') === 5,
+  'M8b temperature rides only on models below 5 (Sonnet 5 and Fable refuse it with a 400); the frame tier keeps its cold decode');
 const est = L.claudeEstimate(L.claudeParams('doc', { prompt: 'x'.repeat(350), max_tokens: 100 }), false);
 ok(est >= L.claudeCost('claude-fable-5-1', { input_tokens: 100, output_tokens: 100 }, false), 'M9 estimate is a ceiling on real cost');
 

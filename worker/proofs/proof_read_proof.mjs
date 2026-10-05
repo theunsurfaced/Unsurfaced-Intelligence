@@ -53,7 +53,7 @@ const ground = 'stats\nstory one 3 shows';
 claude = (req) => ({ ok: true, text: JSON.stringify({ read: fix, changes: [] }), cost_usd: 0.09, truncated: false });
 let run = await R.readProofRun({}, 'weekly', base, ground, [1, 2]);
 ok(run.read.patterns[0].what_happened === 'Fans paid for 3 shows (S1, S2).' && run.receipt.lane === 'live' && run.receipt.model === 'claude-sonnet-5' && run.receipt.editor === 1 && run.receipt.cost_usd === 0.09 && run.notes.includes('proofread:1'), 'C1 the editor fixes a typo on the live tier and the receipt says so');
-ok(claudeCalls[0].tier === 'live' && claudeCalls[0].req.kind === 'read_proof' && claudeCalls[0].req.temperature === 0 && claudeCalls[0].req.cache === true && /American English/.test(claudeCalls[0].req.system), 'C2 the editor is asked for American English on the live tier, at temperature zero');
+ok(claudeCalls[0].tier === 'live' && claudeCalls[0].req.kind === 'read_proof' && claudeCalls[0].req.temperature === undefined && claudeCalls[0].req.cache === true && /American English/.test(claudeCalls[0].req.system), 'C2 the editor is asked for American English on the live tier, at temperature zero');
 claude = () => ({ ok: true, text: JSON.stringify({ read: badId }), truncated: false });
 run = await R.readProofRun({}, 'weekly', base, ground, [1, 2]);
 ok(run.read.patterns[0].what_happened === base.patterns[0].what_happened && /^proof_editor_skipped:editor_rejected:sids/.test(run.notes[0]) && run.receipt.lane === null, 'C3 an editor that changed an S-id is refused; the read stands');

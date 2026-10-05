@@ -206,6 +206,7 @@
   .rp-terr { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
   .rp-terr > div { border-top: 2px solid var(--ink); padding-top: 8px; break-inside: avoid; }
   .rp-terr .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--mute); }
+  .rp-terr .t .shape { letter-spacing: 1px; text-align: right; }
   .rp-terr h3 { font-weight: 800; font-size: 17px; line-height: 1.15; margin: 6px 0 4px; }
   .rp-terr p { font-size: 12.5px; line-height: 1.55; margin-bottom: 6px; }
   .rp-spark { display: block; width: 100%; height: 36px; margin: 4px 0 6px; }
@@ -422,6 +423,18 @@
   /* SEAM:READ_REPORT: the research layout. Pure: strings in, strings out; every number is a STATS value or a
      database count carried on the read; every chart is drawn from STATS alone. */
   function rpNum(n) { return typeof n === "number" ? n.toLocaleString("en-US") : "0"; }
+  /* SEAM:READ_BASELINE: the period before is a baseline only when it is at least a fifth of this one and fifty signals; the
+     worker writes lake.prior_comparable at submit, and an older read is judged by the same rule here. */
+  function rpComparable(lake) {
+    if (!lake) return true;
+    if (typeof lake.prior_comparable === "boolean") return lake.prior_comparable;
+    var n = typeof lake.signals === "number" ? lake.signals : 0, p = typeof lake.signals_prior === "number" ? lake.signals_prior : 0;
+    return p >= Math.max(50, n * 0.2);
+  }
+  function rpShape(t) {
+    if (!t || typeof t.share_pct !== "number") return "";
+    return t.share_pct + "% of signals" + (typeof t.week_high === "number" && t.week_high ? " · " + rpNum(t.week_low) + "-" + rpNum(t.week_high) + " a week" : "");
+  }
   function rpDelta(n, p) {
     if (typeof n !== "number" || typeof p !== "number") return "";
     if (!p) return n ? "new this window" : "none either window";
@@ -543,15 +556,16 @@
     /* The period in numbers */
     sec++;
     var bn = (x.by_the_numbers || []).filter(function (b) { return b && stat(st, b.stat) !== null; });
-    var priorAvg = typeof lake.signals_prior === "number" && win.days ? lake.signals_prior / (win.days / 7) : 0;
+    var cmp = rpComparable(lake);
+    var priorAvg = cmp && typeof lake.signals_prior === "number" && win.days ? lake.signals_prior / (win.days / 7) : 0;
     var src = {}; (lake.top_outlets || []).forEach(function (s) { src[s.source] = s.n; });
-    var cards = [[lake.signals, "Signals tracked", rpDelta(lake.signals, lake.signals_prior)], [lake.outlets, "Sources", rpDelta(lake.outlets, lake.outlets_prior)], [daily.stories, "Stories published", daily.editions ? "across " + rpNum(daily.editions) + " editions" : ""]]
+    var cards = [[lake.signals, "Signals tracked", cmp ? rpDelta(lake.signals, lake.signals_prior) : "the record begins with this period"], [lake.outlets, "Sources", cmp ? rpDelta(lake.outlets, lake.outlets_prior) : "read across the period"], [daily.stories, "Stories published", daily.editions ? "across " + rpNum(daily.editions) + " editions" : ""]]
       .filter(function (c) { return typeof c[0] === "number"; });
-    h += inner(band(pad(sec), "The period in numbers", "What moved, counted across every source read: this period against the same number of days before it.") +
+    h += inner(band(pad(sec), "The period in numbers", cmp ? "What moved, counted across every source read: this period against the same number of days before it." : "What moved, counted across every source read. This is the first period on record, so each count is read on its own shape: its share, its high and low week, and which way it moved.") +
       (cards.length ? '<div class="rp-cards">' + cards.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span>" + (c[2] ? "<small>" + esc(c[2]) + "</small>" : "") + "</div>"; }).join("") + "</div>" : "") +
-      (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, priorAvg, esc) + '<div class="cap">How much the culture surfaced each week, Monday to Sunday. The dashed line is the weekly average of the previous period.</div></div>' : "") +
+      (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, priorAvg, esc) + '<div class="cap">How much the culture surfaced each week, Monday to Sunday.' + (priorAvg ? " The dashed line is the weekly average of the previous period." : " The first and last weeks are partial.") + '</div></div>' : "") +
       (bn.length ? '<div class="two" style="margin-bottom:22px">' + bn.slice(0, 10).map(function (b) { return '<div><div class="lbl">' + rpNum(stat(st, b.stat)) + " · " + esc(rpStatLabel(b.stat)) + '</div><p class="body">' + prose(b.line) + "</p></div>"; }).join("") + "</div>" : "") +
-      '<div class="two"><div><div class="kicker">Signals by territory</div>' + rpBars(lake.by_territory, 14, function (k) { return k.replace(/-/g, " "); }, esc, lake.by_territory_prior) +
+      '<div class="two"><div><div class="kicker">Signals by territory</div>' + rpBars(lake.by_territory, 14, function (k) { return k.replace(/-/g, " "); }, esc, cmp ? lake.by_territory_prior : null) +
       '</div><div><div class="kicker">Most-cited sources</div>' + rpBars(src, 12, null, esc) + "</div></div>");
 
     /* The findings */
@@ -589,12 +603,12 @@
     if (terr.length) {
       sec++;
       var btw = lake.by_territory_week || {};
-      h += inner(band(pad(sec), "The territories", "Every territory with activity this period: how much surfaced against the period before, week by week, and which way it is moving.") +
+      h += inner(band(pad(sec), "The territories", rpComparable(lake) ? "Every territory with activity this period: how much surfaced against the period before, week by week, and which way it is moving." : "Every territory with activity this period: its share of what surfaced, week by week, and which way it moved across the period.") +
         '<div class="rp-terr">' + terr.map(function (t) {
           var mo = t.momentum || "holding";
           return '<div><div class="t"><span>' + esc(String(t.territory).replace(/-/g, " ")) + '</span><span class="rp-chip ' + esc(mo) + '">' + esc(mo) + "</span></div>" +
             rpSpark(btw[t.territory], mo === "rising" || mo === "new") +
-            '<div class="t"><span>' + rpNum(t.n) + " signals</span><span>" + esc(rpDelta(t.n, t.n_prior)) + "</span></div>" +
+            '<div class="t"><span>' + rpNum(t.n) + " signals</span>" + (typeof t.n_prior === "number" && rpComparable(lake) ? "<span>" + esc(rpDelta(t.n, t.n_prior)) + "</span>" : '<span class="shape">' + esc(rpShape(t)) + "</span>") + "</div>" +
             "<h3>" + esc(t.headline || "") + "</h3><p>" + prose(t.line || "") + refs(t.evidence) + "</p></div>";
         }).join("") + "</div>");
     }
@@ -662,8 +676,9 @@
     /* About this report: the method, at the back, in reader words */
     sec++;
     var tiers = lake.by_tier || {};
-    var about = [[lake.signals, "Signals read", rpDelta(lake.signals, lake.signals_prior)], [lake.outlets, "Sources", rpDelta(lake.outlets, lake.outlets_prior)], [daily.stories, "Stories published", daily.editions ? "across " + rpNum(daily.editions) + " editions" : ""],
-      [row.meta && row.meta.pack && row.meta.pack.counts ? row.meta.pack.counts.voices : null, "Consumer comments read", "quoted word for word"], [lake.record, "Older reports consulted", "from before the period"], [win.days, "Days in the period", win.prior_start ? "compared with " + fmtDate(win.prior_start) + " to " + fmtDate(win.prior_end) : ""]]
+    var cmpA = rpComparable(lake);
+    var about = [[lake.signals, "Signals read", cmpA ? rpDelta(lake.signals, lake.signals_prior) : "the record begins with this period"], [lake.outlets, "Sources", cmpA ? rpDelta(lake.outlets, lake.outlets_prior) : "read across the period"], [daily.stories, "Stories published", daily.editions ? "across " + rpNum(daily.editions) + " editions" : ""],
+      [row.meta && row.meta.pack && row.meta.pack.counts ? row.meta.pack.counts.voices : null, "Consumer comments read", "quoted word for word"], [lake.record, "Older reports consulted", "from before the period"], [win.days, "Days in the period", cmpA && win.prior_start ? "compared with " + fmtDate(win.prior_start) + " to " + fmtDate(win.prior_end) : ""]]
       .filter(function (c) { return typeof c[0] === "number"; });
     h += inner(band(pad(sec), "About this report", "What was read to write it, how to read it, and what it cannot tell you.") +
       '<div class="rp-cards">' + about.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span>" + (c[2] ? "<small>" + esc(c[2]) + "</small>" : "") + "</div>"; }).join("") + "</div>" +

@@ -42,7 +42,7 @@ const RAIL_FNS = {
     v.quotes.push({ src: 'mast:' + q, text: 'Posted about ' + q + ' from Texas as a dad', likes: 3, when: '2026-09-13', self: { role: 'parent', place: 'Texas' }, on_frame: null }); return []; }
 };
 const E = new Function('sbRest', 'RAILS', 'RAIL_FNS', 'excFrameLabel', 'claudeBatchSubmit', 'logEvent',
-  'const READ_METHOD = "METHOD";' + trim + helpers + engine + '; return { HOUSE_READ, READ_REPORT, READ_CONTRACT, readReportWindow, readWindow, readReportLakeLine, readReportRecordLine, readReportThemeLine, readReportFrameLine, readReportReadLine, readReportVoiceLine, readReportSpread, readReportVoices, readReportPack, readReportExtraIds, readSupports, readMomentum, readValidate, readSubmit };')(
+  'const READ_METHOD = "METHOD";' + trim + helpers + engine + '; return { HOUSE_READ, READ_REPORT, READ_CONTRACT, readReportWindow, readWindow, readReportLakeLine, readReportRecordLine, readReportThemeLine, readReportFrameLine, readReportReadLine, readReportVoiceLine, readReportSpread, readReportVoices, readReportPack, readReportExtraIds, readSupports, readMomentum, readValidate, readSubmit, readReportShape, READ_BASELINE };')(
   sbRest, RAILS, RAIL_FNS, f => f.entity ? f.entity + ' in ' + String(f.category || '').toLowerCase() : (f.title || ''), async () => ({ ok: true, batch_id: 'b9', est_usd: 1.2 }), () => {});
 ok(/MAX_TOKENS: 128000,/.test(w) && E.HOUSE_READ.KINDS.report && E.HOUSE_READ.KINDS.report.max_tokens === 120000 && E.HOUSE_READ.KINDS.report.effort === 'high' && E.HOUSE_READ.KINDS.report.child === 'monthly',
   'K1 the report kind has room for a long write with its thinking (120000, and the lane ceiling is 128000 so nothing clamps it) at high effort and builds on the monthlies');
@@ -99,6 +99,26 @@ ok(v.read.findings[2].strength === 'signal' && v.read.findings[2].supports.lines
 const mo = E.readMomentum(v.read, { momentum: { music: 'rising' }, lake: { by_territory: { music: 140 }, by_territory_prior: { music: 90 } } });
 ok(v.read.territories.length === 1 && v.read.territories[0].momentum === 'rising' && v.read.territories[0].n === 140 && v.read.territories[0].n_prior === 90 && mo.notes.includes('territory_unknown:nowhere'),
   'V6 momentum is the database\'s word, never the writer\'s; a territory the stats do not know is dropped and noted');
+// ── B: the baseline law and the shape of the period ───────────────────
+const serial = '{"lake":{"signals":20729,"signals_prior":89,"by_territory":{"music":3632},"by_territory_week":{"music":[120,273,336,301,290,310,60]}}}';
+ok(!E.readValidate('report', { title: 't', thesis: 't', findings: [{ name: 'x', what_the_data_shows: 'Music held between 273 and 336 a week, 20,729 in all.' }] }, serial, [], []).fatal.length
+  && E.readValidate('report', { title: 't', thesis: 't', findings: [{ name: 'x', what_the_data_shows: 'Music held at 999 a week.' }] }, serial, [], []).fatal[0] === 'number_not_in_evidence:findings[0].what_the_data_shows:999'
+  && E.readValidate('report', { title: 't', thesis: 't', findings: [{ name: 'x', what_the_data_shows: 'Music held at 729 a week.' }] }, 'Signals: 20,729 in all. [120,273]', [], []).fatal[0] === 'number_not_in_evidence:findings[0].what_the_data_shows:729',
+  'B1 every member of a serialized series is a real number ([273,336] admits 273 and 336); an invented figure is still held; a figure in prose never admits its own tail (20,729 is not 729)');
+const sh = E.readReportShape(JSON.parse(serial));
+ok(sh.lake.prior_comparable === false && sh.lake.shape.music.n === 3632 && sh.lake.shape.music.share_pct === 18 && sh.lake.shape.music.weeks === 5 && sh.lake.shape.music.week_high === 336 && sh.lake.shape.music.week_low === 273 && sh.lake.shape.music.direction === 'holding',
+  'B2 a period before thinner than a fifth is no baseline; the shape reads the interior weeks: share, high, low, direction');
+const sh2 = E.readReportShape({ lake: { signals: 20729, signals_prior: 6000, by_territory: { music: 3632, unassigned: 5 }, by_territory_week: { music: [100, 200, 300] } } });
+ok(sh2.lake.prior_comparable === true && !sh2.lake.shape.unassigned && sh2.lake.shape.music.weeks === 3 && sh2.lake.shape.music.direction === 'rising' && E.readReportShape({ lake: { by_territory: {} } }).lake.prior_comparable === undefined && E.readReportShape(null) && E.READ_BASELINE.MIN === 50,
+  'B3 a real prior is a baseline; three weeks read whole; rising when the second half beats the first by a seventh; no count, no verdict; unassigned is no territory');
+const mt = E.readMomentum({ territories: [{ territory: 'music', line: 'x' }] }, { momentum: { music: 'new' }, lake: { signals: 20729, signals_prior: 89, by_territory: { music: 3632 }, by_territory_prior: { music: 1 }, by_territory_week: { music: [120, 273, 336, 301, 290, 310, 60] } } });
+ok(mt.read.territories[0].momentum === 'holding' && mt.read.territories[0].n === 3632 && mt.read.territories[0].n_prior === null && mt.read.territories[0].share_pct === 18 && mt.read.territories[0].week_high === 336 && mt.read.territories[0].week_low === 273,
+  'B4 without a baseline the direction is the momentum (never new), the prior is withheld, share and the high and low week ride on the territory');
+ok(/The baseline law: when STATS\.lake\.prior_comparable is false, the period before is not a baseline/.test(E.READ_CONTRACT.report) && /never from your own arithmetic/.test(E.READ_CONTRACT.report) && /STATS\.lake\.shape/.test(E.READ_CONTRACT.report),
+  'B5 the report contract carries the baseline law and sends the writer to the shape for every weekly figure');
+ok(/if \(report\) stats = readReportShape\(stats\);/.test(w) && /function rpComparable\(lake\)/.test(page) && /function rpShape\(t\)/.test(page) && /the record begins with this period/.test(page) && /SEAM:READ_BASELINE/.test(page) && /SEAM:READ_BASELINE/.test(w),
+  'B6 the shape is written at submit; the page judges the baseline and prints the shape instead of a delta; the seam is tagged on both');
+
 const lawsSrc = between(w, 'function readGroundOf(', 'async function readTick(');
 const LAWS = new Function('readSupports', 'readMomentum', lawsSrc + '; return { readReportLaws, readReaderVoice };')(E.readSupports, E.readMomentum);
 const rv = LAWS.readReaderVoice({ title: 'The lake moved', findings: [{ name: 'n', what_the_data_shows: 'The overnight frame measured it (D1).', evidence: ['D1'], moves: { exec: 'x' } }], by_the_numbers: [{ stat: 'lake.signals', line: 'ok' }], cover_image: 'S11' });

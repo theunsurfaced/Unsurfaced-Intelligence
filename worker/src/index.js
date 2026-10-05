@@ -7808,6 +7808,11 @@ function claudeCost(model, usage, batch) {
 function claudeText(msg) {
   return ((msg && msg.content) || []).filter(b => b && b.type === 'text').map(b => b.text).join('');
 }
+/* PURE: the model's major version from its id (claude-haiku-4-5-20251001 is 4, claude-sonnet-5 and claude-fable-5-1 are 5). */
+function claudeModelMajor(model) {
+  const m = String(model || '').match(/^claude-[a-z]+-(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
 function claudeParams(tier, req) {
   const r = req || {};
   const p = {
@@ -7819,7 +7824,9 @@ function claudeParams(tier, req) {
   if (r.system) p.system = r.cache
     ? [{ type: 'text', text: String(r.system), cache_control: { type: 'ephemeral' } }]
     : String(r.system);
-  if (Number.isFinite(r.temperature)) p.temperature = r.temperature;
+  // Oct 4: the 5.x models (Fable, Sonnet 5) refuse `temperature` with a 400 ("deprecated for this model"), which silently
+  // skipped the copy desk on every report. Temperature rides only on models below 5 (Haiku 4.5, the frame and facts tiers).
+  if (Number.isFinite(r.temperature) && claudeModelMajor(p.model) < 5) p.temperature = r.temperature;
   if (r.thinking) p.thinking = r.thinking;          // Fable: { type: 'adaptive' } only
   if (r.output_config) p.output_config = r.output_config;   // Fable: { effort } sets how hard it thinks
   return p;
@@ -8245,8 +8252,8 @@ const READ_CONTRACT = {
     '"ground_line": one sentence for the cover in reader words naming what was read, with the signal count, the source count and the dates from STATS; ' +
     '"thesis": 3 sentences on what the whole period shows, written for the reader; ' +
     '"executive_summary": 6 to 8 objects {"line": one sentence that states what happened and what it means for the reader, "evidence": [ids]}; ' +
-    '"method": {"what_was_read": one paragraph in reader words naming the sources, the counts and the period against the one before it, "how_to_read": one paragraph on findings, sources, confidence and the moves, "limits": one paragraph on what this evidence cannot show}; ' +
-    '"by_the_numbers": 6 to 10 objects {"stat": a key path that exists in STATS such as "lake.signals", "lake.by_territory.music" or "daily.stories", "line": one sentence that reads the number for its meaning against the period before}; ' +
+    '"method": {"what_was_read": one paragraph in reader words naming the sources, the counts and the period; against the one before it only when STATS.lake.prior_comparable is true, otherwise saying once that the record begins with this period, "how_to_read": one paragraph on findings, sources, confidence and the moves, "limits": one paragraph on what this evidence cannot show}; ' +
+    '"by_the_numbers": 6 to 10 objects {"stat": a key path that exists in STATS such as "lake.signals", "lake.by_territory.music" or "daily.stories", "line": one sentence that reads the number for its meaning: against the period before when STATS.lake.prior_comparable is true, on its own shape (STATS.lake.shape: share, high and low week, direction) when it is false}; ' +
     '"cover_image": the one "S<id>" whose photograph should open the report; ' +
     '"findings": 6 to 10 objects {"name": 4 to 9 words, stated as a claim about people, "dek": one sentence on what it means for the reader\'s business, "lead_image": the one "S<id>" in its evidence whose photograph leads it, ' +
     '"what_the_data_shows": one paragraph a reader could repeat in a meeting: the pattern in numbers, share and change, with dates, no ids, "what_happened": paragraph, "why_it_matters": paragraph, ' +
@@ -8254,7 +8261,7 @@ const READ_CONTRACT = {
     '"advantage": one sentence naming the edge a reader could take from this finding, who it favors, and what it costs to ignore, ' +
     '"evidence": [ids: at least 2 lines from 2 different outlets dated inside the window, or the finding is a signal], ' +
     '"confidence": "high", "medium" or "low", "strength": "pattern" or "signal", "moves": {"creative", "marketer", "founder", "exec", "talent"}, "trigger": one measurable sign that would prove or break the finding}; ' +
-    '"territories": one object per key in STATS.lake.by_territory with real activity {"territory": the key, "headline": 4 to 8 words, "line": 2 to 3 sentences reading the count against its prior, "evidence": [ids]} (momentum is set by the database, do not write it); ' +
+    '"territories": one object per key in STATS.lake.by_territory with real activity {"territory": the key, "headline": 4 to 8 words, "line": 2 to 3 sentences reading the count on its own shape from STATS.lake.shape (its share of the period, its high and low week, which way it moved) and, only when STATS.lake.prior_comparable is true, against its prior, "evidence": [ids]} (momentum is set by the database, do not write it); ' +
     '"competitive_sets": 0 to 6 objects {"category", "names": [entity names], "line": 2 sentences, "evidence": [ids]} from the tracked entities and the frames; ' +
     '"consumer_voice": {"line": one paragraph on what people said in their own words, "quotes": ["V<id>", ...] 8 to 16 of them, "by_generation": 2 to 4 objects {"generation", "line", "quotes": ["V<id>", ...]}} or null when no V lines were given; ' +
     '"the_record": {"line": one paragraph on what the older reports and primary records say that still holds or was overturned, "evidence": ["R<id>", ...]} or null when no R lines were given; ' +
@@ -8262,7 +8269,8 @@ const READ_CONTRACT = {
     '"outlook": {"next_30": 4 to 6 objects {"line", "trigger": a measurable sign, "evidence": [ids]}, "next_90": one paragraph}; ' +
     '"glossary": 4 to 8 objects {"term", "definition": one sentence}; ' +
     '"social": {"cover_line": at most 8 words, "frames": 5 to 7 objects {"kicker": at most 3 words, "headline": at most 12 words, "line": at most 25 words, "evidence": [ids]}, "caption": at most 600 characters, no hashtags}. ' +
-    'Ids (for the arrays only): S<id> a published story, L<id> a source signal, R<id> a record (older, prominent), T<id> a theme, D<id> a house analysis, X<id> a house analysis, V<id> a consumer voice. Cite only ids given to you. Every number comes from STATS or from a cited line. No em dashes.',
+    'Ids (for the arrays only): S<id> a published story, L<id> a source signal, R<id> a record (older, prominent), T<id> a theme, D<id> a house analysis, X<id> a house analysis, V<id> a consumer voice. Cite only ids given to you. Every number comes from STATS or from a cited line; a weekly figure comes from STATS.lake.shape or STATS.lake.by_territory_week, never from your own arithmetic. ' +
+    'The baseline law: when STATS.lake.prior_comparable is false, the period before is not a baseline. Never compare against it, never quote its counts, never call a territory new; the record begins with this period and every count is read on its own shape. No em dashes.',
   record: 'CONTRACT (record). Return one JSON object with exactly these keys: ' +
     '"title": 4 to 8 words; "thesis": 2 sentences on what the whole archive shows; ' +
     '"the_arc": three paragraphs, the long view from the first issue to the last; ' +
@@ -8304,6 +8312,34 @@ function readWindow(kind, start, now) {
     return { start: readIso(d), end: readIso(e), label: readMonthName(d) };
   }
   return null;
+}
+/* SEAM:READ_BASELINE PURE: the shape of the period, computed from the stats block, so the figures a writer reaches for
+ * (share, high week, low week, direction) exist in STATS instead of being arithmetic the model does on its own.
+ * A period before that is thinner than a fifth of this one (or fewer than MIN signals) is not a baseline: the lake began
+ * inside this period, and "3,632 against 1 before" is not a reading. prior_comparable says so; the contract and the page
+ * follow it. Interior weeks only (the first and last week of a window are usually partial) when there are four or more. */
+const READ_BASELINE = { MIN: 50, RATIO: 0.2, RISE: 1.15, COOL: 0.85 };
+function readReportShape(stats) {
+  const st = stats && typeof stats === 'object' ? stats : {};
+  const lake = st.lake && typeof st.lake === 'object' ? st.lake : null;
+  if (!lake) return st;
+  const total = Number(lake.signals) || 0, prior = Number(lake.signals_prior) || 0;
+  if (typeof lake.signals === 'number') lake.prior_comparable = prior >= Math.max(READ_BASELINE.MIN, total * READ_BASELINE.RATIO);
+  const shape = {};
+  const by = lake.by_territory || {}, btw = lake.by_territory_week || {};
+  for (const t of Object.keys(by)) {
+    if (t === 'unassigned' || typeof by[t] !== 'number') continue;
+    const w = Array.isArray(btw[t]) ? btw[t].map(n => Number(n) || 0) : [];
+    const inner = w.length >= 4 ? w.slice(1, -1) : w;
+    const half = Math.floor(inner.length / 2);
+    const first = inner.slice(0, half).reduce((a, b) => a + b, 0), second = inner.slice(inner.length - half).reduce((a, b) => a + b, 0);
+    const direction = half < 1 ? 'holding' : first === 0 ? (second > 0 ? 'rising' : 'holding')
+      : second >= first * READ_BASELINE.RISE ? 'rising' : second <= first * READ_BASELINE.COOL ? 'cooling' : 'holding';
+    shape[t] = { n: by[t], share_pct: total ? Math.round(by[t] / total * 100) : 0, weeks: inner.length,
+      week_high: inner.length ? Math.max.apply(null, inner) : 0, week_low: inner.length ? Math.min.apply(null, inner) : 0, direction };
+  }
+  lake.shape = shape;
+  return st;
 }
 /* SEAM:READ_REPORT PURE: the report's window is whatever the house asks for, start to end, both inclusive. */
 function readReportWindow(start, end) {
@@ -8477,10 +8513,19 @@ function readSupports(read, outletOf, datedIn, min) {
 function readMomentum(read, stats) {
   const notes = [];
   if (!read || !Array.isArray(read.territories)) return { read, notes };
-  const mo = (stats && stats.momentum) || {}, by = (stats && stats.lake && stats.lake.by_territory) || {}, prior = (stats && stats.lake && stats.lake.by_territory_prior) || {};
+  // SEAM:READ_BASELINE: a read landed before the shape existed gets it here (pure, from the same stats), so a re-land carries it.
+  const st = stats && stats.lake && !stats.lake.shape ? readReportShape(JSON.parse(JSON.stringify(stats))) : stats;
+  const lake = (st && st.lake) || {}, comparable = lake.prior_comparable !== false, shape = lake.shape || {};
+  const mo = (st && st.momentum) || {}, by = lake.by_territory || {}, prior = lake.by_territory_prior || {};
   read.territories = read.territories.filter(t => {
     if (!t || !t.territory || by[t.territory] == null) { notes.push('territory_unknown:' + (t && t.territory)); return false; }
-    t.momentum = mo[t.territory] || 'holding'; t.n = by[t.territory]; t.n_prior = prior[t.territory] || 0; return true;
+    const sh = shape[t.territory] || {};
+    // Against a real baseline the database's momentum stands (new, rising, cooling, holding). Without one, "new" would be
+    // true of every territory, so the direction across the period's own weeks is the momentum and the prior is withheld.
+    t.momentum = comparable ? (mo[t.territory] || 'holding') : (sh.direction || 'holding');
+    t.n = by[t.territory]; t.n_prior = comparable ? (prior[t.territory] || 0) : null;
+    t.share_pct = sh.share_pct; t.week_high = sh.week_high; t.week_low = sh.week_low; t.weeks = sh.weeks;
+    return true;
   });
   return { read, notes };
 }
@@ -8492,7 +8537,13 @@ function readValidate(kind, read, ground, packIds, extraIds) {
   if (!read.title || !read.thesis) fatal.push('missing_title_or_thesis');
   const ids = new Set((packIds || []).map(n => 'S' + n).concat(extraIds || []));   // SEAM:READ_REPORT: L, R, T, D, X, V ids ride beside the S-ids
   const nums = new Set();
-  String(ground || '').replace(/\d[\d,]*(?:\.\d+)?/g, m => { nums.add(m.replace(/,/g, '').replace(/^0+(?=\d)/, '')); return m; });
+  // A figure in the ground counts with its thousands separators removed ("20,729" is 20729). A series in the stats block
+  // is serialized without spaces ("[273,336,301]"), which the scanner would read as one figure; the commas inside a
+  // bracketed run of numbers become spaces first, so each member counts on its own and "273 a week" stands when the
+  // database wrote it (Oct 4: nine such holds on Issue 001). A figure in prose keeps its separators, so "20,729" never
+  // admits 729 by itself.
+  String(ground || '').replace(/\[[\d,.\s-]*\]/g, m => m.replace(/,/g, ' '))
+    .replace(/\d[\d,]*(?:\.\d+)?/g, m => { nums.add(m.replace(/,/g, '').replace(/^0+(?=\d)/, '')); return m; });
   let dashes = 0, dropped = 0;
   const walk = (v, path) => {
     if (Array.isArray(v)) {
@@ -8564,8 +8615,9 @@ async function readSubmit(env, row) {
   const K = HOUSE_READ.KINDS[row.kind];
   const report = row.kind === 'report';   // SEAM:READ_REPORT
   const t0 = Date.now(), stage = (name, extra) => console.log('read_submit_stage', JSON.stringify(Object.assign({ id: row.id, kind: row.kind, stage: name, ms: Date.now() - t0 }, extra || {})));
-  const stats = await sbRest(env, 'rpc/' + (report ? 'house_report_stats' : 'house_read_stats'), { method: 'POST',
+  let stats = await sbRest(env, 'rpc/' + (report ? 'house_report_stats' : 'house_read_stats'), { method: 'POST',
     body: { p_start: row.window_start, p_end: row.window_end } }) || {};
+  if (report) stats = readReportShape(stats);   // SEAM:READ_BASELINE: share, high and low week, direction, and whether the period before is a baseline
   stage('stats');
   const items = await readWindowItems(env, row.window_start, row.window_end);
   stage('stories', { n: items.length });
@@ -8774,7 +8826,7 @@ async function readProof(env, read) {
   try {
     const body = JSON.stringify(read);
     r = await callClaude(env, 'live', { system: READ_PROOF_SYS, cache: true, prompt: body,
-      max_tokens: Math.max(READ_PROOF.MAX_TOKENS, Math.min(40000, Math.ceil(body.length / 2.5) + 4000)), kind: 'read_proof', temperature: 0 });   // room scales with the read (a report is three weeklies long)
+      max_tokens: Math.max(READ_PROOF.MAX_TOKENS, Math.min(40000, Math.ceil(body.length / 2.5) + 4000)), kind: 'read_proof' });   // room scales with the read (a report is three weeklies long); no temperature: Sonnet 5 refuses it
   } catch (e) { return { ok: false, error: 'proof_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
   if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'proof_failed' };
   if (r.truncated) return { ok: false, error: 'proof_truncated' };
