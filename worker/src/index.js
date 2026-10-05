@@ -9636,6 +9636,12 @@ async function readRoute(path, body, env, origin, user) {
       return json({ ok: true, shelf: all }, 200, origin, env);
     }
     const want = String(body.status || '');
+    if (!want && body.price_cents != null) {   // SEAM:REPORT_PRICE: set the price alone; live or not, the next checkout carries it
+      const price = rsPriceLaw(body.price_cents, null);
+      if (!price) return json({ ok: false, error: 'bad_price', min_cents: RS_PRICE.MIN, max_cents: RS_PRICE.MAX }, 200, origin, env);
+      await sbRest(env, 'report_issues?issue_no=eq.' + n, { method: 'PATCH', body: { price_cents: price, updated_at: new Date().toISOString() } });
+      logEvent(env, 'intelligence', 'reads', 'shelf_price', null, { issue_no: n, price_cents: price, by: user.id });
+    }
     if (want) {
       if (!['published', 'draft', 'withdrawn'].includes(want)) return json({ ok: false, error: 'bad_status' }, 200, origin, env);
       if (want === 'published') {   // SEAM:SELL_LAW: the stand refuses a read whose receipts do not say it may carry a price
@@ -9646,7 +9652,7 @@ async function readRoute(path, body, env, origin, user) {
       }
       const patch = { status: want, updated_at: new Date().toISOString() };
       if (want === 'published') patch.published_at = new Date().toISOString();
-      if (Number.isInteger(Number.parseInt(body.price_cents, 10)) && Number.parseInt(body.price_cents, 10) >= 100) patch.price_cents = Number.parseInt(body.price_cents, 10);
+      if (body.price_cents != null) { const price = rsPriceLaw(body.price_cents, null); if (!price) return json({ ok: false, error: 'bad_price', min_cents: RS_PRICE.MIN, max_cents: RS_PRICE.MAX }, 200, origin, env); patch.price_cents = price; }
       await sbRest(env, 'report_issues?issue_no=eq.' + n, { method: 'PATCH', body: patch });
       logEvent(env, 'intelligence', 'reads', 'shelf_' + want, null, { issue_no: n, by: user.id });
     }
@@ -10557,6 +10563,15 @@ async function rsFile(request, url, env, json) {
 function rsBackToStand(env, reason) { return Response.redirect(`${rsSiteOrigin(env)}/weekly/?report=${reason}#report`, 302); }
 
 /* PURE: the shelf row a report read becomes. */
+/* SEAM:REPORT_PRICE PURE: the price law. A report's price is whole cents between $1 and $10,000; the house default is
+ * REPORT_PRICE_CENTS (a variable, no deploy) or $20. A re-stage keeps the price the issue already has unless one is given. */
+const RS_PRICE = { MIN: 100, MAX: 1000000, DEFAULT: 2000 };
+function rsPriceLaw(cents, fallback) {
+  const n = Number.parseInt(cents, 10);
+  if (Number.isInteger(n) && n >= RS_PRICE.MIN && n <= RS_PRICE.MAX) return n;
+  return Number.isInteger(fallback) && fallback >= RS_PRICE.MIN && fallback <= RS_PRICE.MAX ? fallback : null;
+}
+function rsHousePrice(env) { return rsPriceLaw(env && env.REPORT_PRICE_CENTS, RS_PRICE.DEFAULT); }
 function rsIssueFromRead(row, pdf, pageCount, coverCredit, priceCents, status) {
   const x = row.read || {};
   const cover = /^S(\d+)$/.exec(String(x.cover_image || ''));
@@ -10565,7 +10580,7 @@ function rsIssueFromRead(row, pdf, pageCount, coverCredit, priceCents, status) {
     thesis: x.thesis ? String(x.thesis).slice(0, 1200) : null, window_start: row.window_start, window_end: row.window_end,
     cover_story_id: cover ? parseInt(cover[1], 10) : null, cover_credit: coverCredit || null,
     r2_key: pdf ? pdf.key : null, page_count: pageCount || null, byte_size: pdf ? pdf.bytes : null,
-    price_cents: Number.isInteger(priceCents) && priceCents >= 100 ? priceCents : 2000, currency: 'usd',
+    price_cents: rsPriceLaw(priceCents, RS_PRICE.DEFAULT), currency: 'usd',
     status: status === 'published' ? 'published' : 'draft', published_at: status === 'published' ? new Date().toISOString() : null, updated_at: new Date().toISOString() };
 }
 /* PURE: pages in a PDF, counted from its bytes (the page objects, not the page tree). */
@@ -10585,7 +10600,11 @@ async function rsPublishFromRead(env, row, body) {
   const cover = /^S(\d+)$/.exec(String(x.cover_image || ''));
   let credit = null;
   if (cover) { const it = await sbRest(env, 'edition_items?id=eq.' + cover[1] + '&select=source_name').catch(rsSwallow('cover_credit')); credit = it && it[0] ? it[0].source_name : null; }
-  const issue = rsIssueFromRead(fresh, pdf, pages, credit, body && Number.parseInt(body.price_cents, 10), body && body.status);
+  const issueNo = fresh.meta && fresh.meta.issue_no ? fresh.meta.issue_no : 1;
+  const had = await sbRest(env, 'report_issues?issue_no=eq.' + issueNo + '&select=price_cents&limit=1').catch(rsSwallow('price_had'));
+  const keep = had && had[0] ? had[0].price_cents : null;   // SEAM:REPORT_PRICE: a re-stage never resets a price the house set
+  const price = rsPriceLaw(body && body.price_cents, rsPriceLaw(keep, rsHousePrice(env)));
+  const issue = rsIssueFromRead(fresh, pdf, pages, credit, price, body && body.status);
   const res = await wkSbFetch(env, 'report_issues?on_conflict=issue_no', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(issue) });
   if (!res.ok) throw new Error('shelf_write_' + res.status + ': ' + (await res.text()).slice(0, 120));
   const back = await res.json().catch(rsSwallow('shelf_json'));

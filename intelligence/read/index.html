@@ -226,6 +226,8 @@
   .rp-pull p { font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1.35; margin: 0 0 6px; }
   .rp-pull cite { font-family: var(--mono); font-style: normal; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); }
   .rp-more { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--mute); padding: 8px 0 0; }
+  .pricectl { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; }
+  .pricectl input { width: 72px; background: #0C0C0C; color: #FAF7F2; border: 1px solid #3A3A3A; padding: 6px 8px; font-family: var(--mono); font-size: 12px; }
   .sell { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; line-height: 1.7; color: #CFC8BA; margin-top: 8px; }
   .sell b { color: #F2994A; font-weight: 400; } .sell .ok { color: #6FCF97; }
   .cover-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .cover-pick img { width: 72px; height: 48px; object-fit: cover; cursor: pointer; border: 2px solid transparent; opacity: .85; } .cover-pick img:hover, .cover-pick img.on { border-color: #C41230; opacity: 1; }
@@ -350,9 +352,22 @@
     if (st === "draft" || st === "withdrawn") btns = (SELL && SELL.ok ? '<button class="btn red" id="stand-live">Send live at ' + esc(price) + '</button> ' : '<button class="btn" disabled title="The sell law is not met; see below">Send live at ' + esc(price) + '</button> ') + '<button class="btn" id="stand-stage">Re-stage (fresh PDF)</button>';
     if (st === "published") btns = '<button class="btn" id="stand-off">Take it off the stand</button>';
     var meta = issue ? ' <span style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.1em;opacity:.7">issue ' + String(issue.issue_no).padStart(3, "0") + (issue.page_count ? " · " + issue.page_count + " pages" : "") + (issue.byte_size ? " · " + (issue.byte_size / 1048576).toFixed(1) + " MB" : "") + (issue.published_at ? " · live since " + esc(String(issue.published_at).slice(0, 10)) : "") + "</span>" : "";
-    standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btns + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : "") + sellHtml() + coverPickHtml(row));
+    /* SEAM:REPORT_PRICE: the price is the house's to set, live or not; the next checkout carries it */
+    var priceCtl = issue ? ' <span class="pricectl"><label>Price $<input id="stand-price" type="number" min="1" max="10000" step="1" value="' + (issue.price_cents ? (issue.price_cents / 100) : 20) + '"></label><button class="btn" id="stand-price-set">Set price</button></span>' : "";
+    standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> ' + chip + meta + " " + btns + priceCtl + (note ? ' <span style="opacity:.8">' + esc(note) + "</span>" : "") + sellHtml() + coverPickHtml(row));
     coverPickBind(row);
     var issueNo = issue ? issue.issue_no : (row.meta && row.meta.issue_no) || null;
+    var ps = document.getElementById("stand-price-set"); if (ps) ps.onclick = function () {
+      var dollars = parseFloat(document.getElementById("stand-price").value);
+      if (!(dollars >= 1 && dollars <= 10000)) { standShow(row, issue, "A price is between $1 and $10,000."); return; }
+      var cents = Math.round(dollars * 100);
+      if (!confirm("Set issue " + String(issueNo).padStart(3, "0") + " to $" + (cents / 100).toFixed(cents % 100 ? 2 : 0) + "? " + (issue.status === "published" ? "It is live: the next checkout pays this price." : "It applies when you send it live."))) return;
+      ps.disabled = true; ps.textContent = "Setting";
+      call("/reads/shelf", { issue_no: issueNo, price_cents: cents }).then(function (d) {
+        if (!d || !d.ok) { standShow(row, issue, "The stand said: " + ((d && d.error) || "no answer") + "."); return; }
+        standLoad(row, "Price set: $" + (d.issue.price_cents / 100).toFixed(d.issue.price_cents % 100 ? 2 : 0) + ".");
+      }).catch(function () { standShow(row, issue, "The stand did not answer."); });
+    };
     var go = function (btn, path, body, busy) {
       btn.disabled = true; btn.textContent = busy;
       call(path, body).then(function (d) {

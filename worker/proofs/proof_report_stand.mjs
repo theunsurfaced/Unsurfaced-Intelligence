@@ -40,7 +40,7 @@ let stripeCalls = [], stripeFake = null, sbGets = [], sbFetches = [], gets = {},
 const env = { STRIPE_SECRET_KEY: 'sk_test', SUPABASE_SERVICE_ROLE_KEY: 'svc', RATE_LIMIT: { get: async k => kv[k] || null, put: async (k, v) => { kv[k] = v; } },
   MEDIA: { get: async key => key === 'reads/pdf/7/abc.pdf' ? { body: 'PDFBODY', size: 1234, httpEtag: '"e"' } : null } };
 const S = new Function('wkPlainJson', 'wkSbGet', 'wkSbFetch', 'stripeApi', 'sbRest', 'readPdf', 'readRow', 'WK_MAX_FIELD', 'WK_SITE_ORIGIN_DEFAULT',
-  helpers + form + mod + '; return { handleReportStand, rsSessionParams, rsIssues, rsCheckout, rsPaid, rsRelink, rsFile, rsRecordOrder, rsIssueFromRead, rsPdfPages, rsPublishFromRead, RS_LIMITS, encodeForm };')(
+  helpers + form + mod + '; return { handleReportStand, rsSessionParams, rsIssues, rsCheckout, rsPaid, rsRelink, rsFile, rsRecordOrder, rsIssueFromRead, rsPdfPages, rsPublishFromRead, RS_LIMITS, encodeForm, rsPriceLaw, rsHousePrice, RS_PRICE };')(
   () => (o, st) => ({ _json: o, _status: st || 200 }),
   async (env, path) => { sbGets.push(path); for (const k of Object.keys(gets)) if (path.startsWith(k)) return gets[k](path); return []; },
   async (env, path, init) => { sbFetches.push({ path, init }); for (const k of Object.keys(fetches)) if (path.startsWith(k)) return fetches[k](path, init); return { ok: true, json: async () => [], text: async () => '' }; },
@@ -153,5 +153,17 @@ ok(/SEAM:REPORT_STAND/.test(page) && /SEAM:REPORT_STAND/.test(w), 'G5 the seam i
 const rpage = fs.readFileSync('intelligence/read/index.html', 'utf-8');
 ok(/function standShow\(row, issue, note\)/.test(rpage) && /id="stand-stage">Stage on the stand</.test(rpage) && /id="stand-live">Send live at /.test(rpage) && /id="stand-off">Take it off the stand</.test(rpage) && /if \(!confirm\("Send issue "/.test(rpage) && /go\(lb, "\/reads\/shelf", \{ issue_no: issueNo, status: "published" \}/.test(rpage) && /if \(\(row\.kind === "report" \|\| row\.kind === "weekly"\) && \(row\.status === "ready" \|\| row\.status === "published"\)\) standLoad\(row\)/.test(rpage),
   'G6 the house side carries the switch on a ready report: stage, send live (confirmed), take off; the stand page itself has no such door');
+
+// ── SEAM:REPORT_PRICE: the price law ──
+ok(S.rsPriceLaw(2500, null) === 2500 && S.rsPriceLaw('1999', null) === 1999 && S.rsPriceLaw(99, null) === null && S.rsPriceLaw(1000001, null) === null && S.rsPriceLaw('x', 2000) === 2000 && S.rsPriceLaw(NaN, 50) === null && S.rsPriceLaw(12.5, 2000) === 2000,
+  'Q1 a price is whole cents between $1 and $10,000; otherwise the fallback, and a bad fallback is nothing');
+ok(S.rsHousePrice({}) === 2000 && S.rsHousePrice({ REPORT_PRICE_CENTS: '3500' }) === 3500 && S.rsHousePrice({ REPORT_PRICE_CENTS: '5' }) === 2000 && S.RS_PRICE.DEFAULT === 2000,
+  'Q2 the house price is REPORT_PRICE_CENTS when it obeys the law, else $20');
+ok(S.rsIssueFromRead(row, null, null, null, 4500).price_cents === 4500 && S.rsIssueFromRead(row, null, null, null, 10).price_cents === 2000, 'Q3 the shelf row takes a lawful price and falls back to $20');
+ok(/const keep = had && had\[0\] \? had\[0\]\.price_cents : null;/.test(w) && /rsPriceLaw\(body && body\.price_cents, rsPriceLaw\(keep, rsHousePrice\(env\)\)\)/.test(w),
+  'Q4 a re-stage keeps the price the issue has; a given price wins; a new issue takes the house price');
+ok(/if \(!want && body\.price_cents != null\)/.test(w) && /error: 'bad_price', min_cents: RS_PRICE\.MIN/.test(w) && /'shelf_price'/.test(w), 'Q5 /reads/shelf sets a price on its own, live or not, and refuses an unlawful one with the bounds');
+const readPage = fs.readFileSync('intelligence/read/index.html', 'utf-8');
+ok(/id="stand-price"/.test(readPage) && /id="stand-price-set">Set price/.test(readPage) && /the next checkout pays this price/.test(readPage), 'Q6 the stand bar carries the price field and says what a change means when the issue is live');
 
 console.log('proof_report_stand: ' + pass + ' checks PASS');
