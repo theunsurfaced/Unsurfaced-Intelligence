@@ -3,6 +3,7 @@
  */
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
+const page = fs.readFileSync('intelligence/read/index.html', 'utf-8');
 let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
 
@@ -14,7 +15,7 @@ const ej = w.slice(w.indexOf('function jsonRepair('), w.indexOf('\n// Server-sid
 let sb = [], fixtures = {};
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'callerIsAdmin', 'json', 'logEvent',
-  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute };')(
+  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal };')(
   sbRest, async () => ({ ok: true }), async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve());
 
 const K = R.HOUSE_READ.KINDS;
@@ -47,6 +48,25 @@ ok((await R.readRoute('/reads/reland', { id: 1 }, {}, '', { id: 'admin' })).erro
 ok((await R.readRoute('/reads/reland', { id: 1 }, {}, '', { id: 'x' }))._status === 403, 'F9 admin only');
 ok(/readLand\(env, row\.meta\.house_read_id, patch\.result, patch\.cost_usd, patch\.stop_reason\)/.test(w), 'F10 the drain passes stop_reason');
 ok(/case '\/reads\/reland':/.test(w), 'F11 reland routed');
+
+// ── SEAM:READ_PRUNE: an old version goes; the newest, the stand's and a compiling one stay ──
+const vs = [{ id: 1, version: 1, status: 'held' }, { id: 2, version: 2, status: 'ready' }, { id: 3, version: 3, status: 'failed' }];
+ok(R.readPruneRefusal({ id: 1, version: 1, status: 'held' }, vs) === null && R.readPruneRefusal({ id: 2, version: 2, status: 'ready' }, vs).error === 'newest_version'
+  && R.readPruneRefusal({ id: 2, version: 2, status: 'published' }, vs).error === 'on_the_stand' && R.readPruneRefusal({ id: 1, version: 1, status: 'compiling' }, vs).error === 'still_compiling'
+  && R.readPruneRefusal({ id: 1, version: 1, status: 'held' }, [{ id: 1, version: 1, status: 'held' }]).error === 'newest_version',
+  'P1 an older cut may go; the newest cut of its window stays (a failed newer cut does not count), the stand\'s stays, a compiling one stays');
+let deleted = [], media = [];
+fixtures = { 'house_reads?id=eq.': (path, opts) => { if (opts && opts.method === 'DELETE') { deleted.push(path); return [{ id: 1 }]; } return [{ id: 1, kind: 'weekly', version: 1, status: 'held', window_start: '2026-09-14', window_end: '2026-09-20', label: 'Week', meta: { pdf: { key: 'reads/pdf/1/abc.pdf' } } }]; },
+  'house_reads?kind=eq.weekly&window_start=eq.2026-09-14': () => vs, 'editions?': () => [], 'edition_items?': () => [] };
+const envM = { MEDIA: { delete: async k => { media.push(k); } } };
+const p1 = await R.readRoute('/reads/delete', { id: 1 }, envM, '', { id: 'admin' });
+ok(p1.ok && p1.id === 1 && p1.pdf === true && deleted.length === 1 && /house_reads\?id=eq\.1$/.test(deleted[0]) && media[0] === 'reads/pdf/1/abc.pdf', 'P2 /reads/delete removes the row and its rendered PDF, admin only');
+fixtures['house_reads?id=eq.'] = () => [{ id: 2, kind: 'weekly', version: 2, status: 'ready', window_start: '2026-09-14', window_end: '2026-09-20', label: 'Week', meta: {} }];
+deleted = [];
+const p2 = await R.readRoute('/reads/delete', { id: 2 }, envM, '', { id: 'admin' });
+ok(!p2.ok && p2.error === 'newest_version' && !deleted.length && (await R.readRoute('/reads/delete', { id: 2 }, envM, '', { id: 'x' }))._status === 403, 'P3 the newest cut is refused before anything is touched; admin only');
+ok(/case '\/reads\/delete':/.test(w) && /id="prune">Delete this version/.test(page) && /PRUNE_WHY/.test(page) && /window\.confirm\("Delete "/.test(page) && /SEAM:READ_PRUNE/.test(page),
+  'P4 the door is routed; the page offers Delete this version on a cut that is not on the stand or compiling, confirms first, and explains a refusal');
 
 // estimate: cached prefix priced at the cache-write rate
 const lane = w.slice(w.indexOf('/* SEAM:CLAUDE_ROUTE: the paid lane'), w.indexOf('/* A COMPLETE SENTENCE UNDER EVERY HEADLINE'));

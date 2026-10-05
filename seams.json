@@ -916,6 +916,19 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_BASELINE",
    "purpose": "rpComparable judges the baseline by the worker's flag or the same rule; without one the numbers band, the cards, the territories band and each territory's line read the share and the high and low week (rpShape) instead of a delta, the dashed prior average and the prior bars are withheld, the about cards say the record begins with this period"
+  },
+  "SEAM:READ_DESK": {
+   "file": "worker/src/index.js",
+   "purpose": "the copy desk in parts. The desk writes the whole read back as JSON, and at the live tier's pace a report takes six to eight minutes in one call, past the two-minute clock (Oct 4: claude_network on Issue 001; no read longer than a weekly was ever proofread). readProofParts (pure) splits a read longer than READ_PROOF.PART_CHARS by whole fields: a top-level array of objects longer than a part gives one part per element (the findings, the executive summary), every other key is grouped in order until a part fills; a read that fits is one call as before. readProofPool runs READ_PROOF.PARALLEL parts at once; readProofAssemble puts the edited parts back (a key the desk dropped keeps the original; the accept law judges the whole). One failed part skips the desk with the part named (part_k_of_n:reason) and the read stands; the receipt carries parts and what was spent even then"
+  },
+  "SEAM:READ_PRUNE": {
+   "file": "worker/src/index.js",
+   "purpose": "delete an old version of a read. POST /reads/delete {id} (admin): readPruneRefusal (pure) keeps three things, a cut that is on the stand or was (published), a cut whose batch is still out (compiling), and the newest cut of its window (a failed newer cut does not count), so a report window keeps its issue number, a weekly keeps the cut its stand issue was built from, and a child read a report built on stays readable; the row goes with the PDF rendered for it (meta.pdf.key in R2); the jobs ledger keeps its rows; read_pruned is logged"
+  },
+  "SEAM:READ_PRUNE@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_PRUNE",
+   "purpose": "Delete this version on a cut that is not on the stand or compiling: a confirm names the cut and that the newer one stays, the house's refusal is explained in reader words (PRUNE_WHY), and a deleted cut returns to the library"
   }
  },
  "planned": [

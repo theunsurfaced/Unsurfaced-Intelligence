@@ -18,7 +18,7 @@ const pmj = helper('parseModelJson', '\n}\n') + '\n}\n';
 let sb = [], fixtures = {}, claude = null, claudeCalls = [];
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'callerIsAdmin', 'json', 'logEvent', 'callClaude', 'extractJson', 'sha256hex', 'CLAUDE',
-  pmj + block + '; return { readAmerican, readProofAccept, readProofDiff, readProof, readProofRun, readLand, readRoute, readValidate, READ_PROOF, READ_PROOF_SYS, READ_METHOD };')(
+  pmj + block + '; return { readAmerican, readProofAccept, readProofDiff, readProof, readProofRun, readProofParts, readProofAssemble, readLand, readRoute, readValidate, READ_PROOF, READ_PROOF_SYS, READ_METHOD };')(
   sbRest, async () => ({ ok: true }), async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve(),
   async (env, tier, req) => { claudeCalls.push({ tier, req }); return typeof claude === 'function' ? claude(req) : claude; },
   (t) => { try { return JSON.parse(t); } catch (e) { return null; } }, async (t) => 'h' + t.length, { TIERS: { live: { model: 'claude-sonnet-5' } } });
@@ -68,6 +68,32 @@ claude = (req) => ({ ok: true, text: JSON.stringify({ read: Object.assign({}, fi
 run = await R.readProofRun({}, 'weekly', base, ground, [1, 2]);
 ok(/editor_rejected:numbers:title/.test(run.notes[0]), 'C6 a number the editor invented is refused before the laws even run');
 
+// ── the desk in parts (SEAM:READ_DESK) ────────────────────────────────────
+const para = n => ('Fans paid for closeness before quality, and the presale cleared on four of five tours. ').repeat(n);
+const long = { title: 'Proximity is the product', thesis: para(3), executive_summary: [{ line: para(2), evidence: ['S1'] }, { line: para(2), evidence: ['S2'] }],
+  findings: Array.from({ length: 6 }, (_, i) => ({ name: 'Finding ' + (i + 1), what_happened: para(20), why_it_matters: para(20), evidence: ['S1', 'S2'], moves: { creative: 'Brief a cut.' } })),
+  territories: [{ territory: 'music', line: para(2), evidence: ['S1'] }], glossary: [{ term: 'Proximity', definition: 'Closeness.' }], social: { cover_line: 'x', frames: [] } };
+ok(R.readProofParts(base).length === 1 && R.readProofParts(base)[0].at === null, 'D1 a read that fits in one part is one call, as before');
+const parts = R.readProofParts(long);
+const seen = {}; parts.forEach(p => { if (p.at.keys) p.at.keys.forEach(k => { seen[k] = (seen[k] || 0) + 1; }); else seen[p.at.key + '[' + p.at.index + ']'] = (seen[p.at.key + '[' + p.at.index + ']'] || 0) + 1; });
+ok(parts.length === 8 && parts.filter(p => p.at.key === 'findings').length === 6 && Object.keys(long).every(k => k === 'findings' ? !seen[k] : seen[k] === 1) && Object.values(seen).every(n => n === 1)
+  && parts.every(p => JSON.stringify(p.value).length <= R.READ_PROOF.PART_CHARS + 2000),
+  'D2 a long read splits by whole fields: each finding its own part, the other keys grouped in order, every key exactly once');
+const edited = parts.map(p => { const v = JSON.parse(JSON.stringify(p.value)); if (p.at.key === 'findings') v.name = v.name + '.'; else if (p.at.keys.includes('title')) delete v.title; return v; });
+const back = R.readProofAssemble(long, parts, edited);
+ok(back.findings.every((f, i) => f.name === 'Finding ' + (i + 1) + '.') && back.title === long.title && JSON.stringify(Object.keys(back)) === JSON.stringify(Object.keys(long)) && back.thesis === long.thesis,
+  'D3 the edited parts go back where they came from; a key the desk dropped keeps the original; key order holds');
+claudeCalls = []; claude = (req) => { const v = JSON.parse(req.prompt); if (v.name) v.what_happened = v.what_happened.replace('cleared', 'cleared '); return { ok: true, text: JSON.stringify({ read: v }), cost_usd: 0.02, truncated: false }; };
+run = await R.readProofRun({}, 'report', long, 'ground 1 2 4 5', [1, 2]);
+ok(claudeCalls.length === 8 && run.receipt.parts === 8 && run.receipt.lane === 'live' && Math.abs(run.receipt.cost_usd - 0.16) < 1e-9 && run.read.findings.length === 6 && run.receipt.editor === 6 && run.notes.includes('proofread:6')
+  && run.read.findings[2].what_happened.indexOf('cleared  on') > 0 && run.read.title === long.title
+  && claudeCalls.every(c => c.req.kind === 'read_proof' && c.req.temperature === undefined && c.req.max_tokens >= 14000),
+  'D4 a report is proofread in eight parallel parts; the spend adds up; each part\'s fix comes back with a receipt; every part is a read_proof call without temperature');
+let n = 0; claudeCalls = []; claude = (req) => { n++; return n === 4 ? { ok: false, error: 'claude_network' } : { ok: true, text: JSON.stringify({ read: JSON.parse(req.prompt) }), cost_usd: 0.02, truncated: false }; };
+run = await R.readProofRun({}, 'report', long, 'ground 1 2 4 5', [1, 2]);
+ok(/^proof_editor_skipped:part_4_of_8:claude_network$/.test(run.notes[0]) && run.read.findings.length === 6 && run.receipt.lane === null && run.receipt.cost_usd > 0,
+  'D5 one part failing skips the desk with the part named; the read stands; what was spent is on the receipt');
+
 // ── landing ───────────────────────────────────────────────────────────────
 fixtures = { 'house_reads?id=eq.9': () => [{ id: 9, kind: 'weekly', status: 'compiling', window_start: '2026-09-14', window_end: '2026-09-20', stats: {}, pack_ids: [1, 2], meta: { batch_id: 'b' } }] };
 claude = () => ({ ok: true, text: JSON.stringify({ read: { title: 'Proximity is the product', thesis: 'Fans paid for proximity.', patterns: [{ name: 'n', evidence: ['S1'] }] } }), cost_usd: 0.05, truncated: false });
@@ -97,7 +123,7 @@ ok(/2\. \*\*American English only\.\*\* Every word of the read is English, spell
 ok(/id="proof">Proofread<\/button>/.test(page) && /call\("\/reads\/proof", \{ id: row\.id, apply: false \}\)/.test(page) && /call\("\/reads\/proof", \{ id: row\.id, apply: true \}\)/.test(page), 'P1 the page has a Proofread button: a dry run first, then Apply');
 ok(/function proofPanel\(html\)/.test(page) && /fix' \+ \(r\.changes === 1 \? '' : 'es'\) \+ ' proposed/.test(page) && /editor skipped/.test(page), 'P2 the fixes panel shows every fix, and says when the editor was skipped');
 ok(/READ_PROOF receipt/.test(page) && /row\.meta\.proof\.applied_at/.test(page), 'P3 a proofread read carries its receipt in the bar');
-ok(/'readProof': 'claudeGate on the live tier/.test(gate), 'G1 readProof is a registered spender');
+ok(/'readProofPart': 'claudeGate on the live tier per part/.test(gate) && !/'readProof':/.test(gate), 'G1 the desk\'s spender is the part call (readProofPart); readProof itself no longer calls the model');
 ok(JSON.parse(fs.readFileSync('seams.json', 'utf-8')).registry['SEAM:READ_PROOF'].file === 'worker/src/index.js', 'G2 SEAM:READ_PROOF is registered');
 ok(!/—/.test(R.READ_PROOF_SYS), 'G3 the desk carries no em dash');
 console.log(`\nproof_read_proof: ${pass} checks PASS`);

@@ -738,6 +738,7 @@
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF</button>');
       if (row.status === "ready") btns.push('<button class="btn" id="pub">Publish</button>');
       if (row.status === "held") btns.push('<button class="btn" id="reland">Re-land</button>');
+      if (row.status !== "published" && row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and anything on the stand
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       actions.innerHTML = btns.join(" ");
       if (row.meta && row.meta.proof && row.meta.proof.applied_at) actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">proofread ' + esc(String(row.meta.proof.applied_at).slice(0, 10)) + ' · ' + esc(String(row.meta.proof.changes || 0)) + ' fixes</span>');   // READ_PROOF receipt
@@ -994,6 +995,19 @@
       pub.disabled = true; call("/reads/publish", { id: row.id }).then(function (d) { pub.textContent = d && d.ok ? "Published" : "Publish failed"; }); };
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
       rl.disabled = true; call("/reads/reland", { id: row.id }).then(function () { openRead(row.id); }); };
+    /* SEAM:READ_PRUNE: an old version goes, after a confirm; the newest cut of a window and anything on the stand stay. */
+    var PRUNE_WHY = { newest_version: "This is the newest cut of its window. It stays; delete an older version instead.", on_the_stand: "This cut is on the stand, or was. Take it off the stand first.",
+      still_compiling: "This cut's batch is still out. Wait for it to land.", not_found: "This read is already gone." };
+    var pr = document.getElementById("prune"); if (pr) pr.onclick = function () {
+      if (pr.disabled) return;
+      if (!window.confirm("Delete " + row.label + " v" + row.version + "? The newer cut stays. This cannot be undone.")) return;
+      pr.disabled = true; pr.textContent = "Deleting";
+      call("/reads/delete", { id: row.id }).then(function (d) {
+        if (d && d.ok) { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]id=\d+/, "").replace(/^&/, "?")); return library(); }
+        pr.disabled = false; pr.textContent = "Delete this version";
+        window.alert(PRUNE_WHY[d && d.error] || ("The house refused: " + ((d && d.error) || "no answer") + "."));
+      });
+    };
     /* READ_PROOF: the copy desk. A dry run lists every fix (spelling pass and editor); Apply writes them and
        the next Download PDF renders the corrected long form. */
     var pf = document.getElementById("proof"); if (pf) pf.onclick = function () {

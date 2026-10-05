@@ -216,6 +216,7 @@ export default {
         case '/reads/collect':
         case '/reads/publish':
         case '/reads/reland':
+        case '/reads/delete':        // SEAM:READ_PRUNE: an old version goes; the newest cut of a window, and anything on the stand, stays
         case '/reads/record':
         case '/reads/stand':         // SEAM:REPORT_STAND: stage a report on the stand
         case '/reads/shelf':         // SEAM:REPORT_STAND: the shelf's state; send live, take off
@@ -8704,7 +8705,7 @@ async function readFail(env, id, error) {
  * and the numbers of every field are unchanged and no field moved more than a
  * fifth in length, then the read laws run on it again. Each change is kept in
  * meta.proof as a receipt. A failed call never blocks a read. */
-const READ_PROOF = { MAX_TOKENS: 14000, RATIO: 0.2, SLACK: 8, MAX_CHANGES: 400, STASH_TTL: 1800 };
+const READ_PROOF = { MAX_TOKENS: 14000, RATIO: 0.2, SLACK: 8, MAX_CHANGES: 400, STASH_TTL: 1800, PART_CHARS: 7000, PARALLEL: 6 };
 const READ_PROOF_SYS = 'You are the copy desk at Unsurfaced Intelligence. You proofread a finished read, given as JSON, for American English. ' +
   'Fix only: misspellings and typos; doubled or missing words; doubled or missing spaces; wrong or missing punctuation; ' +
   'subject-verb and pronoun agreement; wrong homophones (their, there, they\'re; its, it\'s); British spellings and usage to American ' +
@@ -8821,25 +8822,75 @@ function readProofDiff(a, b) {
   look(a, b, '');
   return out;
 }
-async function readProof(env, read) {
+/* SEAM:READ_DESK PURE: a long read is proofread in parts. The desk writes the whole object back, and at the live tier's
+ * pace a report (120,000 characters) takes six to eight minutes in one call, far past the two-minute clock, so no read
+ * longer than a weekly was ever proofread (Oct 4: claude_network on Issue 001). Parts are whole fields: a top-level array
+ * of objects longer than PART_CHARS (the findings, the executive summary) gives one part per element; everything else is
+ * grouped in key order until a part reaches PART_CHARS. A read that fits in one part is one call, as before. */
+function readProofParts(read) {
+  if (JSON.stringify(read).length <= READ_PROOF.PART_CHARS) return [{ at: null, value: read }];
+  const parts = []; let group = {}, size = 2;
+  const flush = () => { const keys = Object.keys(group); if (keys.length) parts.push({ at: { keys }, value: group }); group = {}; size = 2; };
+  for (const k of Object.keys(read)) {
+    const v = read[k], len = JSON.stringify(v === undefined ? null : v).length + k.length + 4;
+    if (Array.isArray(v) && len > READ_PROOF.PART_CHARS && v.length && v.every(x => x && typeof x === 'object' && !Array.isArray(x))) {
+      flush();
+      v.forEach((x, i) => parts.push({ at: { key: k, index: i }, value: x }));
+      continue;
+    }
+    if (size + len > READ_PROOF.PART_CHARS) flush();
+    group[k] = v; size += len;
+  }
+  flush();
+  return parts;
+}
+/* PURE: the edited parts put back where they came from; keys the desk dropped keep the original (the accept law judges that). */
+function readProofAssemble(read, parts, edited) {
+  if (parts.length === 1 && !parts[0].at) return edited[0];
+  const out = JSON.parse(JSON.stringify(read));
+  parts.forEach((p, i) => {
+    const e = edited[i];
+    if (!e || typeof e !== 'object') return;
+    if (p.at.keys) { for (const k of p.at.keys) if (k in e) out[k] = e[k]; return; }
+    if (Array.isArray(out[p.at.key])) out[p.at.key][p.at.index] = e;
+  });
+  return out;
+}
+async function readProofPool(items, width, fn) {
+  const out = new Array(items.length); let next = 0;
+  const lane = async () => { while (next < items.length) { const i = next++; out[i] = await fn(items[i], i); } };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(width, items.length)) }, lane));
+  return out;
+}
+async function readProofPart(env, value) {
   let r;
   try {
-    const body = JSON.stringify(read);
+    const body = JSON.stringify(value);
     r = await callClaude(env, 'live', { system: READ_PROOF_SYS, cache: true, prompt: body,
-      max_tokens: Math.max(READ_PROOF.MAX_TOKENS, Math.min(40000, Math.ceil(body.length / 2.5) + 4000)), kind: 'read_proof' });   // room scales with the read (a report is three weeklies long); no temperature: Sonnet 5 refuses it
+      max_tokens: Math.max(READ_PROOF.MAX_TOKENS, Math.min(40000, Math.ceil(body.length / 2.5) + 4000)), kind: 'read_proof' });   // no temperature: Sonnet 5 refuses it
   } catch (e) { return { ok: false, error: 'proof_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
   if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'proof_failed' };
   if (r.truncated) return { ok: false, error: 'proof_truncated' };
   const j = parseModelJson(r.text) || extractJson(r.text);
   if (!j || !j.read || typeof j.read !== 'object') return { ok: false, error: 'proof_unparsable' };
-  return { ok: true, read: j.read, model: CLAUDE.TIERS.live.model, cost_usd: r.cost_usd || 0 };
+  return { ok: true, read: j.read, cost_usd: r.cost_usd || 0 };
+}
+async function readProof(env, read) {
+  const parts = readProofParts(read);
+  const results = await readProofPool(parts, READ_PROOF.PARALLEL, p => readProofPart(env, p.value));
+  const bad = results.find(r => !r || !r.ok);
+  const cost = Math.round(results.reduce((a, r) => a + ((r && r.cost_usd) || 0), 0) * 1e6) / 1e6;
+  if (bad) return { ok: false, error: (parts.length > 1 ? 'part_' + (results.indexOf(bad) + 1) + '_of_' + parts.length + ':' : '') + bad.error, cost_usd: cost };
+  return { ok: true, read: readProofAssemble(read, parts, results.map(r => r.read)), model: CLAUDE.TIERS.live.model, cost_usd: cost, parts: parts.length };
 }
 async function readProofRun(env, kind, read, ground, packIds, extraIds) {
   const notes = [], receipts = [];
   const a = readAmerican(read);
   for (const c of a.changes) receipts.push(c);
-  let cur = a.read, lane = null, model = null, reason = null, cost = 0;
+  let cur = a.read, lane = null, model = null, reason = null, cost = 0, parts = null;
   const ed = await readProof(env, cur);
+  if (ed.parts) parts = ed.parts;
+  cost = ed.cost_usd || 0;   // what the desk spent, even when a part failed and the read stands
   if (ed.ok) {
     const acc = readProofAccept(cur, ed.read);
     if (acc.ok) {
@@ -8852,7 +8903,7 @@ async function readProofRun(env, kind, read, ground, packIds, extraIds) {
   } else reason = ed.error;
   if (reason) notes.push('proof_editor_skipped:' + reason);
   notes.push('proofread:' + receipts.length);
-  return { read: cur, notes, receipt: { at: new Date().toISOString(), model, lane, reason, cost_usd: cost, changes: receipts.length,
+  return { read: cur, notes, receipt: { at: new Date().toISOString(), model, lane, reason, cost_usd: cost, parts, changes: receipts.length,
     spelling: receipts.filter(c => c.pass === 'spelling').length, editor: receipts.filter(c => c.pass === 'editor').length,
     receipts: receipts.slice(0, READ_PROOF.MAX_CHANGES) } };
 }
@@ -8920,6 +8971,14 @@ async function readQueueOnce(env, kind, win, meta) {
   if (live[0]) return { skipped: live[0].status, id: live[0].id };
   const q = await readQueue(env, kind, win, meta);
   return { queued: q.row ? q.row.id : null };
+}
+/* SEAM:READ_PRUNE PURE: may this version go? Given the row and every version of its window (any order). */
+function readPruneRefusal(row, versions) {
+  if (row.status === 'published') return { error: 'on_the_stand' };
+  if (row.status === 'compiling') return { error: 'still_compiling' };
+  const newer = (versions || []).filter(v => v && v.id !== row.id && v.version > row.version && v.status !== 'failed').sort((a, b) => b.version - a.version);
+  if (!newer.length) return { error: 'newest_version' };
+  return null;
 }
 /* SEAM:READ_REPORT: the issue number of a report window. Distinct windows count up; the same window keeps its number. */
 async function readReportIssue(env, win) {
@@ -9198,6 +9257,23 @@ async function readRoute(path, body, env, origin, user) {
     const row = await readRow(env, body.id);
     if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
     return json({ ok: true, read: row, receipts: await readReceipts(env, row.read, row) }, 200, origin, env);
+  }
+  if (path === '/reads/delete') {
+    // SEAM:READ_PRUNE: delete an old version. Three things never go: a cut that is on the stand or was (published), a cut
+    // whose batch is still out (compiling), and the newest cut of its window, so a report window keeps its issue number,
+    // a weekly keeps the cut its stand issue was built from, and a child read a report built on is still there to read.
+    // The PDF rendered for the row goes with it. The jobs ledger keeps its rows: what was spent was spent.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    const why = readPruneRefusal(row, await sbRest(env, 'house_reads?kind=eq.' + row.kind + '&window_start=eq.' + row.window_start +
+      '&window_end=eq.' + row.window_end + '&select=id,version,status&order=version.desc') || []);
+    if (why) return json({ ok: false, error: why.error, newest: why.newest || null }, 200, origin, env);
+    const key = row.meta && row.meta.pdf && row.meta.pdf.key;
+    if (key && env.MEDIA) { try { await env.MEDIA.delete(key); } catch (e) { console.log('read_prune_pdf', String(e && e.message).slice(0, 80)); } }
+    const gone = await sbRest(env, 'house_reads?id=eq.' + row.id, { method: 'DELETE', headers: { Prefer: 'return=representation' } }) || [];
+    if (!gone.length) return json({ ok: false, error: 'delete_failed' }, 200, origin, env);
+    logEvent(env, 'intelligence', 'reads', 'read_pruned', null, { id: row.id, kind: row.kind, version: row.version, by: user.id, pdf: !!key });
+    return json({ ok: true, id: row.id, version: row.version, pdf: !!key }, 200, origin, env);
   }
   if (path === '/reads/reland') {
     // Re-land a held read from the text already stored in claude_jobs. No new spend.
