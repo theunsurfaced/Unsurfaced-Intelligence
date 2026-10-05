@@ -919,12 +919,12 @@
   },
   "SEAM:READ_PRUNE": {
    "file": "worker/src/index.js",
-   "purpose": "delete an old version of a read. POST /reads/delete {id} (admin): readPruneRefusal (pure) keeps three things, a cut that is on the stand or was (published), a cut whose batch is still out (compiling), and the newest cut of its window (a failed newer cut does not count), so a report window keeps its issue number, a weekly keeps the cut its stand issue was built from, and a child read a report built on stays readable; the row goes with the PDF rendered for it (meta.pdf.key in R2); the jobs ledger keeps its rows; read_pruned is logged"
+   "purpose": "delete an old version of a read. POST /reads/delete {id} (admin): readPruneRefusal (pure) keeps three things, the cut the stand carries for its window (readPruneStandId, pure: the report shelf's house_read_id, or the newest published version of a weekly, monthly or record window; a published cut a newer cut has replaced may go), a cut whose batch is still out (compiling), and the newest cut of its window (a failed newer cut does not count), so a report window keeps its issue number, a weekly keeps the cut its stand issue was built from, and a child read a report built on stays readable; the row goes with the PDF rendered for it (meta.pdf.key in R2); the jobs ledger keeps its rows; read_pruned is logged"
   },
   "SEAM:READ_PRUNE@page": {
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_PRUNE",
-   "purpose": "Delete this version on a cut that is not on the stand or compiling: a confirm names the cut and that the newer one stays, the house's refusal is explained in reader words (PRUNE_WHY), and a deleted cut returns to the library"
+   "purpose": "Delete this version on any cut that is not compiling: a confirm names the cut and that the newer one stays, the house's refusal is explained in reader words (PRUNE_WHY), and a deleted cut returns to the library"
   },
   "SEAM:READ_RECURRENCE": {
    "file": "worker/src/index.js",
@@ -967,7 +967,7 @@
   },
   "SEAM:READ_COUNTS": {
    "file": "worker/src/index.js",
-   "purpose": "the counts a writer reaches for, as figures: readStatsCounts (pure) counts the keys of every by_* map with a count above zero (territories, formats, sources) and the recurring threads; readStatsWithCounts writes them into STATS.counts at submit for every kind but the report, and readGroundOf derives them again on the ground so a read landed before they existed is judged with them. The Method forbids sums of counts and sends the writer to counts"
+   "purpose": "the counts a writer reaches for, as figures: readStatsCounts (pure) counts the keys of every by_* map with a count above zero (territories, formats, sources) and the recurring threads; readStatsWithCounts writes them into STATS.counts at submit for every kind but the report, and readGroundOf derives them again on the ground so a read landed before they existed is judged with them. The Method forbids sums of counts and sends the writer to counts; the ground is the stats block, then every story's headline, take, apply, date and issue number, then the pack text (proof C4)"
   },
   "SEAM:REPORT_PRICE": {
    "file": "worker/src/index.js",

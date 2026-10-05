@@ -8965,8 +8965,10 @@ async function readProofRun(env, kind, read, ground, packIds, extraIds) {
     receipts: receipts.slice(0, READ_PROOF.MAX_CHANGES) } };
 }
 function readGroundOf(row, items) {
-  return JSON.stringify(row.kind === 'report' ? (row.stats || {}) : readStatsWithCounts(row.stats || {})) + '\n' +   // SEAM:READ_COUNTS: a read landed before the counts existed gets them on the ground (items || []).map(it => [it.headline, it.take, it.apply, it.date, it.issue_no].join(' ')).join('\n') +
-    (row.meta && row.meta.pack && row.meta.pack.text ? '\n' + row.meta.pack.text : '');   // SEAM:READ_REPORT: the lake lines are ground too
+  // SEAM:READ_COUNTS: a read landed before the counts existed gets them on the ground. The stories' lines are ground; so are the lake lines (SEAM:READ_REPORT).
+  return JSON.stringify(row.kind === 'report' ? (row.stats || {}) : readStatsWithCounts(row.stats || {})) + '\n' +
+    (items || []).map(it => [it.headline, it.take, it.apply, it.date, it.issue_no].join(' ')).join('\n') +
+    (row.meta && row.meta.pack && row.meta.pack.text ? '\n' + row.meta.pack.text : '');
 }
 /* SEAM:READ_REPORT: the report's own laws on a landed read: supports and momentum. Pure given the row and the stories. */
 function readReportLaws(read, row, items) {
@@ -9135,13 +9137,23 @@ async function wkStandNew(env, row, origin, user) {
   logEvent(env, 'intelligence', 'reads', 'weekly_stand_new', null, { id: row.id, issue_no: n, cover: !!coverKey, by: user.id });
   return json({ ok: true, id: row.id, issue_no: n, pages: issue.page_count, bytes: issue.byte_size, cover: !!coverKey }, 200, origin, env);
 }
-/* SEAM:READ_PRUNE PURE: may this version go? Given the row and every version of its window (any order). */
-function readPruneRefusal(row, versions) {
-  if (row.status === 'published') return { error: 'on_the_stand' };
+/* SEAM:READ_PRUNE PURE: may this version go? Given the row, every version of its window (any order) and the id of the cut
+ * the stand carries for that window (readPruneStandId). A published cut that a newer cut has replaced on the stand is an old
+ * version like any other: it may go. The cut the stand carries never goes. */
+function readPruneRefusal(row, versions, standId) {
+  if (row.status === 'published' && (standId == null || standId === row.id)) return { error: 'on_the_stand' };
   if (row.status === 'compiling') return { error: 'still_compiling' };
   const newer = (versions || []).filter(v => v && v.id !== row.id && v.version > row.version && v.status !== 'failed').sort((a, b) => b.version - a.version);
   if (!newer.length) return { error: 'newest_version' };
   return null;
+}
+/* SEAM:READ_PRUNE PURE: which cut of a window the stand carries. A report window: the read its report_issues row names (shelf
+ * rows, any status). A weekly, monthly or record window: the newest published version, since Replace issue marks the new cut
+ * published and leaves the old one as it was. null when nothing of the window is on a stand. */
+function readPruneStandId(row, versions, shelf) {
+  if (row.kind === 'report') { const hit = (shelf || []).find(s => s && s.house_read_id); return hit ? hit.house_read_id : null; }
+  const pub = (versions || []).filter(v => v && v.status === 'published').sort((a, b) => b.version - a.version);
+  return pub.length ? pub[0].id : null;
 }
 /* SEAM:READ_REPORT: the issue number of a report window. Distinct windows count up; the same window keeps its number. */
 async function readReportIssue(env, win) {
@@ -9449,14 +9461,16 @@ async function readRoute(path, body, env, origin, user) {
     return json({ ok: true, id: row.id, cover_image: 'S' + m[1] }, 200, origin, env);
   }
   if (path === '/reads/delete') {
-    // SEAM:READ_PRUNE: delete an old version. Three things never go: a cut that is on the stand or was (published), a cut
-    // whose batch is still out (compiling), and the newest cut of its window, so a report window keeps its issue number,
-    // a weekly keeps the cut its stand issue was built from, and a child read a report built on is still there to read.
-    // The PDF rendered for the row goes with it. The jobs ledger keeps its rows: what was spent was spent.
+    // SEAM:READ_PRUNE: delete an old version. Three things never go: the cut the stand carries for its window (a published
+    // cut a newer cut has replaced may go), a cut whose batch is still out (compiling), and the newest cut of its window, so
+    // a report window keeps its issue number, a weekly keeps the cut its stand issue was built from, and a child read a report
+    // built on is still there to read. The PDF rendered for the row goes with it. The jobs ledger keeps its rows: what was spent was spent.
     const row = await readRow(env, body.id);
     if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
-    const why = readPruneRefusal(row, await sbRest(env, 'house_reads?kind=eq.' + row.kind + '&window_start=eq.' + row.window_start +
-      '&window_end=eq.' + row.window_end + '&select=id,version,status&order=version.desc') || []);
+    const versions = await sbRest(env, 'house_reads?kind=eq.' + row.kind + '&window_start=eq.' + row.window_start +
+      '&window_end=eq.' + row.window_end + '&select=id,version,status&order=version.desc') || [];
+    const shelf = row.kind === 'report' && row.meta && row.meta.issue_no ? (await sbRest(env, 'report_issues?issue_no=eq.' + row.meta.issue_no + '&select=house_read_id&limit=1') || []) : [];
+    const why = readPruneRefusal(row, versions, readPruneStandId(row, versions, shelf));
     if (why) return json({ ok: false, error: why.error, newest: why.newest || null }, 200, origin, env);
     const key = row.meta && row.meta.pdf && row.meta.pdf.key;
     if (key && env.MEDIA) { try { await env.MEDIA.delete(key); } catch (e) { console.log('read_prune_pdf', String(e && e.message).slice(0, 80)); } }

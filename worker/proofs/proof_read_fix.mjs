@@ -15,7 +15,7 @@ const ej = w.slice(w.indexOf('function jsonRepair('), w.indexOf('\n// Server-sid
 let sb = [], fixtures = {};
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'callerIsAdmin', 'json', 'logEvent',
-  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal, readSellable, SELL_LAW, wkIssueFromRead, wkCoverStory, readStatsCounts, readStatsWithCounts, readGroundOf };')(
+  trim + pmj + ej + block + '; return { HOUSE_READ, readLand, readRoute, readPruneRefusal, readPruneStandId, readSellable, SELL_LAW, wkIssueFromRead, wkCoverStory, readStatsCounts, readStatsWithCounts, readGroundOf };')(
   sbRest, async () => ({ ok: true }), async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve());
 
 const K = R.HOUSE_READ.KINDS;
@@ -52,9 +52,16 @@ ok(/case '\/reads\/reland':/.test(w), 'F11 reland routed');
 // ── SEAM:READ_PRUNE: an old version goes; the newest, the stand's and a compiling one stay ──
 const vs = [{ id: 1, version: 1, status: 'held' }, { id: 2, version: 2, status: 'ready' }, { id: 3, version: 3, status: 'failed' }];
 ok(R.readPruneRefusal({ id: 1, version: 1, status: 'held' }, vs) === null && R.readPruneRefusal({ id: 2, version: 2, status: 'ready' }, vs).error === 'newest_version'
-  && R.readPruneRefusal({ id: 2, version: 2, status: 'published' }, vs).error === 'on_the_stand' && R.readPruneRefusal({ id: 1, version: 1, status: 'compiling' }, vs).error === 'still_compiling'
+  && R.readPruneRefusal({ id: 2, version: 2, status: 'published' }, vs, 2).error === 'on_the_stand' && R.readPruneRefusal({ id: 2, version: 2, status: 'published' }, vs, null).error === 'on_the_stand'
+  && R.readPruneRefusal({ id: 1, version: 1, status: 'compiling' }, vs).error === 'still_compiling'
   && R.readPruneRefusal({ id: 1, version: 1, status: 'held' }, [{ id: 1, version: 1, status: 'held' }]).error === 'newest_version',
-  'P1 an older cut may go; the newest cut of its window stays (a failed newer cut does not count), the stand\'s stays, a compiling one stays');
+  'P1 an older cut may go; the newest cut of its window stays (a failed newer cut does not count), the stand\'s stays (and a published cut stays when the stand is unknown), a compiling one stays');
+// P5 guards the v5 incident: issue 001 was re-staged on v6 and v5, still published, could not be deleted.
+const vp = [{ id: 10, version: 5, status: 'published' }, { id: 14, version: 6, status: 'published' }, { id: 15, version: 7, status: 'held' }];
+ok(R.readPruneStandId({ kind: 'report' }, vp, [{ house_read_id: 14 }]) === 14 && R.readPruneStandId({ kind: 'report' }, vp, []) === null
+  && R.readPruneStandId({ kind: 'weekly' }, vp, []) === 14 && R.readPruneStandId({ kind: 'weekly' }, [{ id: 1, version: 1, status: 'held' }], []) === null
+  && R.readPruneRefusal({ id: 10, version: 5, status: 'published' }, vp, 14) === null && R.readPruneRefusal({ id: 14, version: 6, status: 'published' }, vp, 14).error === 'on_the_stand',
+  'P5 the stand carries one cut per window (the report shelf\'s read; the newest published weekly); a published cut it has replaced may go, the cut it carries never does');
 let deleted = [], media = [];
 fixtures = { 'house_reads?id=eq.': (path, opts) => { if (opts && opts.method === 'DELETE') { deleted.push(path); return [{ id: 1 }]; } return [{ id: 1, kind: 'weekly', version: 1, status: 'held', window_start: '2026-09-14', window_end: '2026-09-20', label: 'Week', meta: { pdf: { key: 'reads/pdf/1/abc.pdf' } } }]; },
   'house_reads?kind=eq.weekly&window_start=eq.2026-09-14': () => vs, 'editions?': () => [], 'edition_items?': () => [] };
@@ -66,7 +73,7 @@ deleted = [];
 const p2 = await R.readRoute('/reads/delete', { id: 2 }, envM, '', { id: 'admin' });
 ok(!p2.ok && p2.error === 'newest_version' && !deleted.length && (await R.readRoute('/reads/delete', { id: 2 }, envM, '', { id: 'x' }))._status === 403, 'P3 the newest cut is refused before anything is touched; admin only');
 ok(/case '\/reads\/delete':/.test(w) && /id="prune">Delete this version/.test(page) && /PRUNE_WHY/.test(page) && /window\.confirm\("Delete "/.test(page) && /SEAM:READ_PRUNE/.test(page),
-  'P4 the door is routed; the page offers Delete this version on a cut that is not on the stand or compiling, confirms first, and explains a refusal');
+  'P4 the door is routed; the page offers Delete this version on any cut that is not compiling, confirms first, and explains a refusal');
 
 // ── SEAM:SELL_LAW: may this read carry a price? ──
 const good = () => ({ id: 9, kind: 'report', status: 'ready', version: 5, window_start: '2026-07-08', window_end: '2026-10-03', violations: ['proofread:12'], meta: { issue_no: 1, proof: { lane: 'live', reason: null, changes: 12 } },
@@ -129,6 +136,11 @@ ok(/"counts":\{"territory":2,"format":2,"threads":3\}/.test(R.readGroundOf(wkRow
   'C2 the ground of a weekly carries the counts even when the row was submitted before they existed; the report\'s ground is its own');
 ok(/else stats = readStatsWithCounts\(stats\);/.test(w) && /never add counts together/.test(w) && /The block's `counts` says how many territories/.test(w),
   'C3 the counts are written into STATS at submit; the Method forbids sums and sends the writer to counts');
+// C4 guards the Sep 21 incident: a comment swallowed the story lines and every story figure was held.
+const gStory = R.readGroundOf(wkRow, [{ headline: 'Meta sells 462 pairs by 2030', take: 'The take says 3.8 billion.', apply: 'Apply 95 percent.', date: '2026-09-23', issue_no: 111 }]);
+const gLake = R.readGroundOf({ kind: 'report', stats: { lake: {} }, meta: { pack: { text: 'L1 lake line 777' } } }, [{ headline: 'S line 888', take: '', apply: '', date: '2026-09-23', issue_no: 1 }]);
+ok(/462 pairs by 2030/.test(gStory) && /3\.8 billion/.test(gStory) && /95 percent/.test(gStory) && /2026-09-23 111/.test(gStory) && /S line 888[\s\S]*lake line 777/.test(gLake),
+  'C4 the ground carries every story\'s headline, take, apply, date and issue number, and the pack text after them; a figure a story states is never held');
 
 // estimate: cached prefix priced at the cache-write rate
 const lane = w.slice(w.indexOf('/* SEAM:CLAUDE_ROUTE: the paid lane'), w.indexOf('/* A COMPLETE SENTENCE UNDER EVERY HEADLINE'));

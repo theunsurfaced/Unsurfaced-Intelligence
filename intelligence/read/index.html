@@ -859,7 +859,7 @@
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF</button>');
       if (row.status === "ready") btns.push('<button class="btn" id="pub">Publish</button>');
       if (row.status === "held") btns.push('<button class="btn" id="reland">Re-land</button>');
-      if (row.status !== "published" && row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and anything on the stand
+      if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       actions.innerHTML = btns.join(" ");
       if (row.meta && row.meta.proof && row.meta.proof.applied_at) actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">proofread ' + esc(String(row.meta.proof.applied_at).slice(0, 10)) + ' · ' + esc(String(row.meta.proof.changes || 0)) + ' fixes</span>');   // READ_PROOF receipt
@@ -1120,7 +1120,7 @@
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
       rl.disabled = true; call("/reads/reland", { id: row.id }).then(function () { openRead(row.id); }); };
     /* SEAM:READ_PRUNE: an old version goes, after a confirm; the newest cut of a window and anything on the stand stay. */
-    var PRUNE_WHY = { newest_version: "This is the newest cut of its window. It stays; delete an older version instead.", on_the_stand: "This cut is on the stand, or was. Take it off the stand first.",
+    var PRUNE_WHY = { newest_version: "This is the newest cut of its window. It stays; delete an older version instead.", on_the_stand: "The stand carries this cut. Put a newer cut on the stand first; then this one may go.",
       still_compiling: "This cut's batch is still out. Wait for it to land.", not_found: "This read is already gone." };
     var pr = document.getElementById("prune"); if (pr) pr.onclick = function () {
       if (pr.disabled) return;
