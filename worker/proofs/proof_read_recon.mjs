@@ -144,7 +144,7 @@ ok(/recon: "RECON" \}/.test(page) && /var groups = \{ recon: \[\], report: \[\],
   'P1 the page renders a RECON in the report layout: the brief on the cover and the one-page section, the slice\'s numbers, the answer in place of the thesis, For the brief after the findings, no stand bar');
 
 // ── G ─────────────────────────────────────────────────────────────────
-ok(/^Version 3\.1\./m.test(method) && /- \*\*The RECON\*\*: one brief, to depth\./.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)) && !/—/.test(method),
-  'G1 Method 3.1 names the RECON and the worker carries the exact text');
+ok(/^Version 3\.[1-9]\./m.test(method) && /- \*\*The RECON\*\*: one brief, to depth\./.test(method) && /12\. \*\*The question law\.\*\*/.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)) && !/—/.test(method),
+  'G1 the Method names the RECON and the question law, and the worker carries the exact text');
 
 console.log('\nproof_read_recon: ' + pass + ' checks PASS');

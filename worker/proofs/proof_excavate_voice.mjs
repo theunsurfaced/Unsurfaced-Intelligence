@@ -1,0 +1,88 @@
+/**
+ * proof_excavate_voice.mjs  --  EX15 THE DOOR: EXCAVATE's arrival as the room, in the house's voice.
+ * Run from the repo root: node worker/proofs/proof_excavate_voice.mjs
+ *   L the laws in the prompts   T the tile: question and photograph   X the feed's voices and record   P the page   M the Method
+ */
+import fs from 'fs';
+const w = fs.readFileSync('worker/src/index.js', 'utf-8');
+const page = fs.readFileSync('intelligence/index.html', 'utf-8');
+const method = fs.readFileSync('templates/CULTURAL_READ_METHOD.md', 'utf-8');
+let pass = 0;
+const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
+const helper = (name, next) => w.slice(w.indexOf('function ' + name + '('), w.indexOf(next, w.indexOf('function ' + name + '(')));
+const phelper = (name, next) => page.slice(page.indexOf('function ' + name + '('), page.indexOf(next, page.indexOf('function ' + name + '(')));
+
+// ── L ─────────────────────────────────────────────────────────────────
+const doorPrompt = helper('excDoorPrompt', '// The compiled text becomes a read');
+ok(/one plain sentence, at most 30 words, stating what people are doing/.test(doorPrompt) && /never a count of coverage as the finding/.test(doorPrompt) && /no slogan, no X-not-Y/.test(doorPrompt) && /"question":"the question this read answers for the professional it serves/.test(doorPrompt),
+  'L1 the door prompt writes line 1 under the headline law and returns the question the reading answers');
+ok(/this week\\'s read: exactly 2 sentences, under 44 words total\. The first is a plain statement about people/.test(w) && /never a count of coverage; /.test(w) && /no slogan, no X-not-Y, no colon openers, no em dashes/.test(w),
+  'L2 the week\'s read is written under the same law');
+ok(/question: parsed && typeof parsed\.question === 'string' \? parsed\.question/.test(w), 'L3 the question rides on the stored door read');
+
+// ── T ─────────────────────────────────────────────────────────────────
+const photoSrc = helper('doorPhoto', '/* SEAM:EXC_DOOR_VOICE: what the door says');
+const doorPhoto = new Function(photoSrc + '; return doorPhoto;')();
+ok(doorPhoto({ insights: [{ image: 'http://x/a.jpg', source: 'A' }, { image: 'https://x/b.jpg', source: 'Hypebeast' }] }, []).src === 'https://x/b.jpg' && doorPhoto({ insights: [] }, [{ image: 'https://y/c.jpg', source_name: 'Vogue' }]).credit === 'Vogue' && doorPhoto({ insights: [{ image: 'data:image/png;base64,xx' }] }, []) === null && doorPhoto(null, null) === null,
+  'T1 the tile\'s photograph is the first https image a cited insight or an evidence line carries, credited to its outlet; http, data and nothing else');
+ok(/question: \(rd && rd\.question\) \|\| f\.question \|\| null,/.test(w) && /photo: doorPhoto\(rd, r\.evidence\),/.test(w), 'T2 the tile carries the question (the read\'s, else the frame\'s) and the photograph');
+
+// ── X ─────────────────────────────────────────────────────────────────
+const extrasSrc = w.slice(w.indexOf('const DOOR_EXTRAS = {'), w.indexOf('async function doorPublish('));
+let calls = [];
+const sbRest = async (env, path) => { calls.push(path);
+  if (path.startsWith('house_reads?kind=in.(report,recon)')) return [{ id: 14, kind: 'report', label: 'Issue 001', meta: { pack: { voices: { quotes: [{ text: 'quiet one', source: 'youtube', likes: 3 }, { text: 'loud one', source: 'mastodon', likes: 90, when: '2026-09-30T10:00:00Z', self: { generation: 'Gen Z' } }, { text: 'loud one', source: 'youtube', likes: 5 }] } } } }];
+  if (path.startsWith('cluster_calls?')) return [{ cluster_id: 'c1', state: 'EMERGING', called_at: '2026-09-14T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'converted' }, { cluster_id: 'c2', state: 'EMERGING', called_at: '2026-09-07T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'faded' }, { cluster_id: 'c3', state: 'ACCELERATING', called_at: '2026-09-28T00:00:00Z', resolved_at: null, outcome: null }, { cluster_id: 'c9', state: 'EMERGING', called_at: '2026-09-20T00:00:00Z', resolved_at: null, outcome: null }];
+  return []; };
+let kv = {}; const env = { RATE_LIMIT: { get: async k => kv[k] || null, put: async (k, v) => { kv[k] = v; } } };
+const X = new Function('sbRest', extrasSrc + '; return { doorExtras, DOOR_EXTRAS };')(sbRest);
+const ex = await X.doorExtras(env, [{ cluster_id: 'c1', title: 'Presales clear first' }, { cluster_id: 'c2', title: 'Ad fatigue cancels' }, { cluster_id: 'c3', title: 'Proximity pricing spreads' }]);
+ok(ex.voices.length === 2 && ex.voices[0].text === 'loud one' && ex.voices[0].likes === 90 && ex.voices[0].self.generation === 'Gen Z' && ex.voices[0].when === '2026-09-30' && !ex.voices.some(v => v.name || v.handle || v.url),
+  'X1 voices: the latest report\'s quotes, most liked first, deduplicated by text, carrying only likes, date, source and what the speaker said about themselves');
+ok(ex.record.counts.confirmed === 1 && ex.record.counts.missed === 1 && ex.record.counts.open === 2 && ex.record.confirmed[0].title === 'Presales clear first' && ex.record.missed[0].called === '2026-09-07' && ex.record.open.length === 1,
+  'X2 record: calls over 90 days as confirmed, missed and open, named by the feed\'s theme titles; an unnamed call is counted, not shown');
+calls = []; const again = await X.doorExtras(env, []);
+ok(calls.length === 0 && again.voices.length === 2 && X.DOOR_EXTRAS.TTL === 3600, 'X3 the extras are cached an hour in KV: the second call reads nothing from the database');
+ok(/const extras = await doorExtras\(env, out\.proposed\);/.test(w) && /voices: extras\.voices, record: extras\.record \}/.test(w), 'X4 the public feed carries voices and record');
+
+// ── P ─────────────────────────────────────────────────────────────────
+const arrival = page.slice(page.indexOf('<section class="hero">'), page.indexOf('<!-- RESULTS PANEL -->'));
+ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is the cultural intelligence engine behind Unsurfaced\./.test(arrival) && /placeholder="Search a brand, a category, a behavior"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
+  'P1 the arrival opens with the headline, the plain sub and the search under it');
+ok(/setSearch\('smart glasses, who buys and who refuses'\)/.test(arrival) && /setSearch\('luxury in Lagos'\)/.test(arrival) && !/Gen Z purchase behavior trends/.test(arrival), 'P2 the examples are questions a person would type');
+ok(/id="week-block"/.test(arrival) && /id="week-movers"/.test(arrival) && /id="board-block"/.test(arrival) && /id="voices-block"/.test(arrival) && /id="record-block"/.test(arrival) && /<section class="partners">/.test(arrival) && /id="featured-insights-grid"/.test(arrival) && /id="fi-state-strip"/.test(arrival),
+  'P3 the five movements mount in order and the engine\'s mount points keep their ids');
+const visible = arrival.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');
+ok(!/\b(signal|signals|lake|overnight|frame|frames)\b/i.test(visible) && !/Featured Insights|Trending Now|THE READ · FROM THE LAKE/.test(arrival), 'P4 no machinery word in the arrival\'s visible copy; the old headers are gone');
+ok(/function _renderWeek\(data\)/.test(page) && /function _renderVoices\(voices\)/.test(page) && /function _renderRecord\(record\)/.test(page) && /function _pulse\(series\)/.test(page) && /function _drawPulses\(\)/.test(page) && /function _countUp\(el, from, to, ms\)/.test(page) && /_renderWeek\(data\); _renderVoices\(data\.voices\); _renderRecord\(data\.record\);/.test(page),
+  'P5 the week, the voices and the record render on every feed; the pulses draw once and the movers count');
+// the hybrid board: the movers lead as cards, the rest follow as rows; the first screen carries the invitation and the week's read
+const orderSrc = page.slice(page.indexOf('const DOOR_LEADS = 2;'), page.indexOf('function _renderDoorRow(t)'));
+const O = new Function(orderSrc + '; return _doorOrder;')();
+const tl = (id, v, cov, photo) => ({ id, photo: photo ? { src: 'https://x/' + id } : null, measures: { velocity_pct: v, recent_7d: cov } });
+const ord = O([tl('a', 51, 68, true), tl('b', 163, 50, true), tl('c', -17, 45, false), tl('d', -51, 33, true), tl('e', -6, 31, false)]);
+ok(ord.leads.map(t => t.id).join(',') === 'b,a' && ord.rest.map(t => t.id).join(',') === 'c,d,e', 'P11 the two subjects that moved most lead (the most covered breaks a tie), photographs preferred; the rest keep the board\'s order as rows');
+const ord2 = O([tl('a', 5, 10, false), tl('b', 50, 20, false)]);
+ok(ord2.leads.length === 2 && ord2.leads[0].id === 'b', 'P11b with no photographs the movers still lead');
+ok(/function _renderDoorRow\(t\)/.test(page) && /<figure class="photo empty" aria-hidden="true"><\/figure>/.test(page) && /id="board-list"/.test(page) && /list\.innerHTML = order\.rest\.map\(t => _renderDoorRow\(t\)\)/.test(page) && /\.pos \.figures,\.row \.figures\{[^}]*grid-template-columns:1fr 1fr/.test(page),
+  'P12 the rows carry a square thumbnail or an honest empty square; the figures sit in a two-by-two grid on cards and rows');
+ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && /<section class="week nophoto" id="week-block"[^]*?<\/section>\s*<\/section>/.test(page) && /#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr/.test(page) && /@media \(max-width:1000px\)\{#sec-explore \.hero\{grid-template-columns:1fr/.test(page) && /function _dashShow\(on\)/.test(page) && (page.match(/_dashShow\(/g) || []).length >= 6,
+  'P13 the first screen carries the invitation and the week\'s read side by side, stacking under 1000px; the week leaves and returns with the board');
+ok(/filter:saturate\(\.78\) sepia\(\.08\) contrast\(1\.02\)/.test(page) && /#main-dashboard \.builder-panel\{display:none\}/.test(page) && /--room-fg3:#8A8478/.test(page) && /-webkit-line-clamp:1/.test(page),
+  'P14 photographs share one grade and come to full color under the hand; the builder is off the arrival; the quiet gray is a step lighter; the question is one line on the board');
+const card = phelper('_renderDoorCard', 'function _renderDoorGrid(');
+ok(/class="pos\$\{photo \? '' : ' nophoto'\}"/.test(card) && /<figure class="photo"><img src="\$\{safeAttr\(t\.photo\.src\)\}"/.test(card) && /Answers<\/i>\$\{safe\(t\.question\)\}/.test(card) && /Recommended move<\/i>/.test(card) && /Open the reading/.test(card) && !/card-cat|fi-state-tag|LAKE SIGNALS|compiled overnight/.test(card),
+  'P6 a position carries the photograph, the claim, what it answers, the pulse, the figures, the move; no lens badge, no machinery');
+const row = phelper('_doorMeasureRow', 'function _pulse(');
+ok(/stories this week/.test(row) && /on last week/.test(row) && /of \$\{safe\(String\(m\.weeks \|\| 12\)\)\} weeks/.test(row) && /stories since the last reading/.test(row) && !/this wk|wks|signals/.test(row), 'P7 the figures say their unit in words');
+const strip = phelper('_renderStateStrip', 'function _renderLakeCard(');
+ok(/if \(!n\) continue;/.test(strip) && /k\.charAt\(0\) \+ k\.slice\(1\)\.toLowerCase\(\)/.test(strip) && />All<span class="fi-chip-n">/.test(strip), 'P8 a filter with nothing in it is not shown; words in sentence case');
+ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test(page) && /#sec-explore h1\.hero-title\{font-family:'Syne'/.test(page) && /nav \.nav-links \.nlb\{font-family:'Space Mono'/.test(page) && /@media \(prefers-reduced-motion:reduce\)\{\.voices \.track\{animation:none\}/.test(page),
+  'P9 the room\'s styles: Syne for words, the grid paper gone, the nav in the house\'s type, reduced motion honored');
+ok(!/style="color:var\(--deep2\)">◆ Spaces/.test(page) && /#nav-spaces::first-letter\{color:var\(--room-red\)\}/.test(page), 'P10 the nav\'s diamond is the house red, not purple');
+
+// ── M ─────────────────────────────────────────────────────────────────
+ok(/^Version 3\.2\./m.test(method) && /12\. \*\*The question law\.\*\* Every read is the answer to a question a professional brought to culture, for the people they serve\./.test(method) && /the house does not sell reference\./.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)),
+  'M1 Method 3.2 carries the question law and the worker carries the exact text');
+
+console.log('\nproof_excavate_voice: ' + pass + ' checks PASS');

@@ -238,7 +238,7 @@ q8c.done();
 const nk = pub.tiles.find(t => t.key === 'track:tr1');
 ok(pub.tiles.length === 2 && pub.pending === 1 && pub.night !== '2000-01-01' && nk && nk.carried === true && nk.night === '2000-01-01' && nk.claim === 'Nike held the shelf.' && pub.tiles.find(t => t.key === 'theme:th1').status === 'reused',
   'D6c a frame whose read is still being written keeps last night\'s tile on the door, marked carried, beside tonight\'s; the set is dated tonight');
-ok(/"read":\["line 1: one sentence, at most 40 words/.test(D.excDoorPrompt(frame, 'E', m)) && /3 to 4 of \{"category"/.test(D.excDoorPrompt(frame, 'E', m)) && /Lead with what changed/.test(D.excDoorPrompt(frame, 'E', m)), 'D7 the door asks for the light shape: two lines, three or four findings, one or two moves, a brief');
+ok(/"read":\["line 1: one plain sentence, at most 30 words, stating what people are doing/.test(D.excDoorPrompt(frame, 'E', m)) && /"question":"the question this read answers/.test(D.excDoorPrompt(frame, 'E', m)) && /3 to 4 of \{"category"/.test(D.excDoorPrompt(frame, 'E', m)) && /Lead with what changed/.test(D.excDoorPrompt(frame, 'E', m)), 'D7 the door asks for the light shape under the headline and question laws: a plain line about people and the question, three or four findings, one or two moves, a brief');
 ok(/if \(path === '\/excavate\/door\/read' && request\.method === 'GET'\) return doorReadRoute\(request, env, origin\);/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /row\.kind === 'door_read' && row\.meta && row\.meta\.door_id/.test(w) && /which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /door: door && door\.tiles && door\.tiles\.length \? door : null/.test(w),
   'D8 the read route, the cron chain, the batch drain, the admin door and the feed all know the door');
 // D9: the cadence. The door compiles a new batch every EVERY_D nights; inside the gap it republishes the standing set and spends nothing.
@@ -265,8 +265,8 @@ const q9d = quiet();
 const due = await D.doorPass(env);
 q9d.done();
 ok(!due.skipped && due.candidates === 3, 'D9d two nights after a door night the batch is due and compiles');
-ok(/which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /since last read \$\{since\.recent_delta/.test(page) && !/since last night/.test(page) && /earlier read · a new one compiling/.test(page) && D.DOOR.TTL === 72 * 3600,
-  'D9e the desk forces, the cron does not; the page says since last read, never since last night; the KV set outlives a two-night gap');
+ok(/which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /stories since the last reading<\/span>/.test(page) && !/since last night/.test(page) && /a new reading is compiling/.test(page) && D.DOOR.TTL === 72 * 3600,
+  'D9e the desk forces, the cron does not; the page says since the last reading, never since last night; the KV set outlives a two-night gap');
 
 // ── B: EX5b THE BRIEF, the engine ─────────────────────────────────────────
 // B1 GDELT calls take turns, GAP_MS apart; other hosts do not wait.

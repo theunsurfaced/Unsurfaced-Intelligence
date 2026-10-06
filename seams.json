@@ -902,7 +902,7 @@
   "SEAM:DOOR_CADENCE@page": {
    "file": "intelligence/index.html",
    "tag": "SEAM:DOOR_CADENCE",
-   "purpose": "a tile's delta reads 'since last read' rather than 'since last night', and a carried tile says 'earlier read · a new one compiling', because the door's last batch may be two nights old"
+   "purpose": "a tile's delta reads 'since the last reading' rather than 'since last night', and a carried tile says 'a new reading is compiling', because the door's last batch may be a week old"
   },
   "SEAM:READ_BASELINE": {
    "file": "worker/src/index.js",
@@ -991,6 +991,15 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_DESK",
    "purpose": "The desk button on any written read opens the desk panel: the open notes (scope, text, who, when, Drop), Add a note (scope optional), Revise this read (confirm, then the new version compiles and lands in the library), the standing inputs for this kind and for every read with Save; a revision's bar says what it was revised from, on how many notes, by whom"
+  },
+  "SEAM:EXC_DOOR_VOICE": {
+   "file": "worker/src/index.js",
+   "purpose": "the door speaks in the house's voice. The door prompt writes line 1 under the headline law (a plain statement about people, what they are doing and how much, with the measured number; never a count of coverage as the finding, no slogan, no X-not-Y) and returns the question the reading answers (the question law, Method 3.2 law 12), carried on the stored read and the tile (doorTile.question, falling back to the frame's); the tile carries the sources' own photograph, credited (doorPhoto: the first cited insight's https image, else the first evidence line's; never stock); the week's read (PROPOSE field read) is written under the same law; the feed carries voices (the latest report's or RECON's verbatim quotes, most liked first) and record (cluster_calls over 90 days as confirmed, missed, open, named by the feed's own theme titles), cached an hour in KV (doorExtras, DOOR_EXTRAS); the feed stays public"
+  },
+  "SEAM:EXC_DOOR_VOICE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_DOOR_VOICE",
+   "purpose": "EXCAVATE's arrival as the room: headline Ask culture a question with the search under it and four example questions; this week's read with its photograph and the three movers (most covered, fastest rise, sharpest fall: chosen, never summed; figures count from last week to this); the board (every subject: the sources' photograph, who it is about, the claim, what this answers, the twelve-week pulse that draws in once, the figures in words with the unit, the recommended move; filters only for states with something in them; a subject joins the board under the gate); what people are saying (verbatim, described only by what the speaker said about themselves); the track record (confirmed, missed, open); the client partner line; the original nav in the house's type. No signal, lake, frame or overnight in anything a reader sees; the grid paper is gone; Syne for words, Space Mono for figures, the house red"
   }
  },
  "planned": [
