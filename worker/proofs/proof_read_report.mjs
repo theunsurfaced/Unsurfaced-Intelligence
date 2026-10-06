@@ -193,7 +193,7 @@ ok(rc.S11.headline === 'Sabrina sells out' && rc.L1.kind === 'lake' && rc.L1.hea
 // ── R: route, tick, ground, desk ──────────────────────────────────────
 ok(/body\.kind === 'report' \? 'report'/.test(w) && /readReportWindow\(body\.start, body\.end\)/.test(w) && /issue_no: issue/.test(w) && /'Cultural Intelligence Report, Issue ' \+ String\(issue\)\.padStart\(3, '0'\)/.test(w),
   'R1 /reads/compile takes kind report with an explicit window and numbers the issue by distinct windows');
-ok(/const order = \{ weekly: 0, monthly: 1, record: 2, report: 3 \};/.test(w) && /for \(const ck of \(report \? \['monthly', 'weekly'\]/.test(w), 'R2 the tick runs the report last; it builds on every monthly and weekly inside it');
+ok(/const order = \{ weekly: 0, monthly: 1, record: 2, report: 3, recon: 4 \};/.test(w) && /for \(const ck of \(row\.kind === 'report' \? \['monthly', 'weekly'\]/.test(w), 'R2 the tick runs the report after the monthlies and the RECON last; the report builds on every monthly and weekly inside it');
 ok(/const laws = readReportLaws\(v\.read, row, items\);/.test(w) && /row\.meta && row\.meta\.pack && row\.meta\.pack\.text \? '\\n' \+ row\.meta\.pack\.text : ''/.test(w) && /readProofRun\(env, row\.kind, row\.read, readGroundOf\(row, items\), row\.pack_ids \|\| \[\], readReportExtraIds\(row\.meta && row\.meta\.pack\)\)/.test(w),
   'R3 landing applies the report laws; the pack lines are ground for the number law; the copy desk knows the extra ids on a recut');
 ok(/Math\.max\(READ_PROOF\.MAX_TOKENS, Math\.min\(40000, Math\.ceil\(body\.length \/ 2\.5\) \+ 4000\)\)/.test(w), 'R4 the copy desk\'s room scales with the read, so a report is not cut');
@@ -205,7 +205,7 @@ ok(out.read.findings[0].strength === 'pattern' && out.read.findings[1].strength 
   'R5 on the row, a lake line dated before the window is not a support; momentum lands from the stats');
 
 // ── G: the page ───────────────────────────────────────────────────────
-ok(/report: "Cultural Intelligence Report"/.test(page) && /\["report", "record", "monthly", "weekly"\]\.forEach/.test(page) && /if \(row\.kind === "report"\) \{   \/\/ SEAM:READ_REPORT/.test(page), 'G1 the library shelves reports first; a report row takes the research layout');
+ok(/report: "Cultural Intelligence Report"/.test(page) && /\["recon", "report", "record", "monthly", "weekly"\]\.forEach/.test(page) && /if \(row\.kind === "report" \|\| row\.kind === "recon"\) \{   \/\/ SEAM:READ_REPORT/.test(page), 'G1 the library shelves commissioned work, then reports; a report or RECON row takes the research layout');
 const pageSrc = between(page, 'function rpNum(', '/* ── Library');
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rcP = { S11: { headline: 'Sabrina sells out', source_name: 'Billboard', has_image: true, date: '2026-09-14', issue_no: 70 }, L1: { kind: 'lake', headline: 'Tour grosses 48 million', source_name: 'Reuters', tier: 1, date: '2026-09-12', has_image: false },

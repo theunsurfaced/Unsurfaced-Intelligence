@@ -104,7 +104,7 @@ ok(L.status === 'ready' && patch.read.thesis === 'Fans paid for proximity.' && p
 ok(/const pr = v\.read \? await readProofRun\(env, row\.kind, v\.read, ground, row\.pack_ids \|\| \[\], extra\)/.test(block), 'L2 readLand runs the desk on every written read');
 
 // ── the door ──────────────────────────────────────────────────────────────
-ok(/case '\/reads\/proof':         \/\/ SEAM:READ_PROOF recut\n        case '\/reads\/pdf':/.test(w), 'D1 /reads/proof is routed as an admin door');
+ok(/case '\/reads\/proof':         \/\/ SEAM:READ_PROOF recut\n(?:        case '\/reads\/[a-z-]+':[^\n]*\n)*        case '\/reads\/pdf':/.test(w), 'D1 /reads/proof is routed as an admin door');
 let stash = {};
 const env = { RATE_LIMIT: { get: async k => stash[k] || null, put: async (k, v) => { stash[k] = v; }, delete: async k => { delete stash[k]; } } };
 fixtures = { 'house_reads?id=eq.7': () => [{ id: 7, kind: 'weekly', status: 'published', window_start: '2026-09-14', window_end: '2026-09-20', stats: {}, pack_ids: [1, 2], violations: [], meta: { pdf: { key: 'k', stamp: 'old' } },

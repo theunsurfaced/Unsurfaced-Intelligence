@@ -213,6 +213,7 @@
   .rp-brief .rp-exec li { font-size: 10px; line-height: 1.42; padding: 5px 0; grid-template-columns: 22px 1fr; break-inside: avoid; }
   .rp-brief .rp-exec li span { font-size: 9.5px; padding-top: 3px; }
   .rp-rec2 { column-count: 3; column-gap: 0.22in; }
+  .rp-rec2 > div { break-inside: avoid; }
   .rp-rec2 .rc { break-inside: avoid; display: grid; grid-template-columns: 26px 1fr; gap: 5px; padding: 4px 0; border-top: 1px solid var(--line); font-size: 9.5px; line-height: 1.3; }
   .rp-rec2 .rc b { font-family: var(--mono); font-weight: 400; color: var(--red); font-size: 10px; }
   .rp-rec2 .src { font-family: var(--mono); font-size: 7.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
@@ -416,6 +417,14 @@
       };
     }).catch(function () { standPanel(""); });
   }
+  function deskPanel(html) {   /* SEAM:READ_DESK */
+    var el = document.getElementById("desk-panel");
+    if (!el) { el = document.createElement("div"); el.id = "desk-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
+    el.innerHTML = html ? '<div style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.55">' + html + "</div>" : "";
+    var rows = el.querySelectorAll(".pf-row"); for (var i = 0; i < rows.length; i++) rows[i].style.cssText = "padding:6px 0;border-top:1px solid rgba(20,20,20,.12)";
+    var paths = el.querySelectorAll(".pf-path"); for (var j = 0; j < paths.length; j++) paths[j].style.cssText += ";color:#C41230;margin-right:8px";
+    var bars = el.querySelectorAll(".pf-bar"); for (var k = 0; k < bars.length; k++) bars[k].style.cssText = "margin-top:14px;padding-top:10px;border-top:1px solid rgba(20,20,20,.18)";
+  }
   function proofPanel(html) {
     var el = document.getElementById("proof-panel");
     if (!el) { el = document.createElement("div"); el.id = "proof-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
@@ -429,7 +438,7 @@
     return fetch(API + path, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify(body || {}) }).then(function (r) { return r.json(); });
   }
-  var KIND = { weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record", report: "Cultural Intelligence Report" };   // SEAM:READ_REPORT
+  var KIND = { weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record", report: "Cultural Intelligence Report", recon: "RECON" };   // SEAM:READ_REPORT, SEAM:READ_RECON
   var ROLES = ["creative", "marketer", "founder", "exec", "talent"];
   /* The photo quality law. Every slot has a minimum source width. A photograph
    * smaller than its slot is never stretched to fill it: the slot tries its next
@@ -589,7 +598,11 @@
     var esc = H.esc, inner = H.inner, band = H.band, photo = H.photo, pickImage = H.pickImage, img = H.img, real = H.real, uniq = H.uniq, stat = H.stat, fmtDate = H.fmtDate, pad = H.pad, cited = H.cited, used = H.used;
     var lake = st.lake || {}, daily = st.daily || {}, frames = st.frames || {}, win = st.window || {};
     var findings = (x.findings || []).filter(function (f) { return f && f.name; });
-    var issue = row.meta && row.meta.issue_no ? "Issue " + String(row.meta.issue_no).padStart(3, "0") : "";
+    /* SEAM:READ_RECON: a RECON is the report's layout on one brief: the brief opens it, the answer closes the brief page, and
+       "For the brief" (who is in, who is absent, where to enter) follows the findings. Its numbers are the slice's. */
+    var recon = row.kind === "recon" ? (row.meta && row.meta.brief) || {} : null, cs = st.recon || {};
+    var fb = recon && x.for_the_brief && (x.for_the_brief.who_is_in || x.for_the_brief.where_to_enter) ? x.for_the_brief : null;
+    var issue = recon ? (row.meta && row.meta.recon_no ? "RECON " + String(row.meta.recon_no).padStart(3, "0") : "RECON") : (row.meta && row.meta.issue_no ? "Issue " + String(row.meta.issue_no).padStart(3, "0") : "");
     var sec = 0, h = "", contents = [];
     /* Sources are numbered in order of first mention; the house ids never reach the reader. */
     var foot = {}, footN = 0, order = [];
@@ -612,6 +625,7 @@
     if (exec.length) contents.push(["What this means for you", exec.length + " things to act on"]);
     contents.push(["The period in numbers", "What moved, measured"]);
     if (findings.length) contents.push(["The findings", findings.length + " patterns in what people did"]);
+    if (fb) contents.push(["For the brief", "Who is in, who is absent, where to enter"]);
     if (terr.length) contents.push(["The territories", terr.length + " territories, measured"]);
     if (sets.length) contents.push(["The competitive sets", "Who plays where"]);
     if (voice) contents.push(["In their own words", "What consumers said"]);
@@ -627,10 +641,11 @@
     /* Cover */
     var coverPool = uniq([x.cover_image].concat.apply([x.cover_image], findings.map(function (f) { return [f.lead_image].concat(f.evidence || []); }))).filter(function (a) { return img(a); });
     var coverS = coverPool[0] || null; if (coverS) used[coverS] = 1;
-    var bigs = [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days"]]
+    var bigs = (recon ? [[cs.signals, "Signals on the brief"], [cs.outlets, "Sources"], [cs.stories, "Stories on the brief"], [win.days, "Days"]] : [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days"]])
       .filter(function (n) { return typeof n[0] === "number"; }).map(function (n) { return "<div><b>" + rpNum(n[0]) + "</b><span>" + n[1] + "</span></div>"; }).join("");
     h += '<section class="page cover">' + (coverS ? '<div class="photo">' + photo(coverS, "cover", coverPool.slice(1)) + '</div><div class="shade"></div>' : "") +
-      '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + esc(KIND.report) + (issue ? " · " + esc(issue) : "") + "</div>" +
+      '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + esc(recon ? "Unsurfaced RECON" : KIND.report) + (issue ? " · " + esc(issue) : "") + "</div>" +
+      (recon && recon.text ? '<div class="rp-sub" style="margin-bottom:10px">The brief: ' + esc(recon.text) + "</div>" : "") +
       "<h1>" + esc(x.title) + "</h1>" + (x.subtitle ? '<p class="rp-dek">' + esc(x.subtitle) + "</p>" : "") + '<p class="thesis">' + esc(x.thesis) + "</p>" +
       (x.ground_line ? '<div class="rp-sub">' + esc(x.ground_line) + "</div>" : "") + (bigs ? '<div class="nums">' + bigs + "</div>" : "") +
       '<div class="foot"><span>' + esc(issue || "Unsurfaced Intelligence") + "</span><span>" + fmtDate(row.window_start) + " · " + fmtDate(row.window_end) + "</span>" +
@@ -650,9 +665,10 @@
     if (exec.length || x.thesis) {
       sec++;
       var cmp0 = rpComparable(lake);
-      var tiles = [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days in the period"]].filter(function (c) { return typeof c[0] === "number"; });
-      h += inner(band(pad(sec), "The brief", "The report on one page: what the period shows, the numbers behind it, and the lines to act on, each with its sources.") +
-        '<div class="rp-brief">' + (x.thesis ? '<p class="thesis">' + prose(x.thesis) + "</p>" : "") +
+      var tiles = (recon ? [[cs.signals, "Signals on the brief"], [cs.outlets, "Sources"], [cs.stories, "Stories on the brief"], [win.days, "Days in the period"]] : [[lake.signals, "Signals read"], [lake.outlets, "Sources"], [daily.stories, "Stories published"], [win.days, "Days in the period"]]).filter(function (c) { return typeof c[0] === "number"; });
+      h += inner(band(pad(sec), recon ? "The answer" : "The brief", recon ? "The RECON on one page: the brief, the house's answer, the numbers behind it, and the lines to act on, each with its sources." : "The report on one page: what the period shows, the numbers behind it, and the lines to act on, each with its sources.") +
+        '<div class="rp-brief">' + (recon && recon.text ? '<div class="kicker">The brief</div><p class="body lead">' + esc(recon.text) + "</p>" : "") +
+          (recon && x.brief_answer ? '<div class="kicker" style="margin-top:14px">The answer</div>' : "") + (x.thesis ? '<p class="thesis">' + prose(recon && x.brief_answer ? x.brief_answer : x.thesis) + "</p>" : "") +
           '<div class="row">' + (tiles.length ? '<div class="rp-cards">' + tiles.map(function (c) { return '<div class="rp-card"><b>' + rpNum(c[0]) + "</b><span>" + esc(c[1]) + "</span></div>"; }).join("") + "</div>" : "<div></div>") +
           (lake.by_week && lake.by_week.length > 1 ? '<div class="rp-chart"><div class="kicker">Signals tracked, by week</div>' + rpLine(lake.by_week, 0, esc) + '<div class="cap">' + (cmp0 ? "How much the culture surfaced each week." : "The first period on record. The first and last weeks are partial.") + "</div></div>" : "<div></div>") + "</div>" +
           '<ol class="rp-exec" style="grid-template-rows:repeat(' + Math.ceil(exec.length / 2) + ',auto)">' + exec.map(function (e, i) { return "<li><span>" + pad(i + 1) + "</span><div>" + prose(e.line) + refs(e.evidence) + "</div></li>"; }).join("") + "</ol></div>");
@@ -716,6 +732,17 @@
           (ev.length ? '<ul class="rp-sup">' + shown.map(function (s) { var r = rc[s] || {}; return "<li><span>" + num(s) + "</span><div>" + esc(r.headline || "") + "<i>" + esc(r.source_name || "") + (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + "</i></div></li>"; }).join("") + "</ul>" : "") +
           (hidden > 0 ? (function () { var ns = ev.slice(10).map(num).filter(Boolean); return '<div class="rp-more">And ' + hidden + " more source" + (hidden === 1 ? "" : "s") + (ns.length ? ", numbered " + Math.min.apply(null, ns) + " to " + Math.max.apply(null, ns) + " at the back" : "") + "</div>"; })() : ""));
       });
+    }
+
+    /* For the brief (SEAM:READ_RECON): who is in, who is absent, where to enter */
+    if (fb) {
+      sec++;
+      h += inner(band(pad(sec), "For the brief", "What the evidence says to the brief itself: who is acting on the question, who is silent, and where a brand with this brief enters.") +
+        '<div class="rp-rec2">' +
+          (fb.who_is_in ? '<div><div class="kicker">Who is in</div><p class="body">' + prose(fb.who_is_in) + "</p></div>" : "") +
+          (fb.who_is_absent ? '<div><div class="kicker">Who is absent</div><p class="body">' + prose(fb.who_is_absent) + "</p></div>" : "") +
+          (fb.where_to_enter ? '<div><div class="kicker">Where to enter</div><p class="body">' + prose(fb.where_to_enter) + "</p></div>" : "") +
+        "</div>" + (fb.evidence && fb.evidence.length ? '<div class="rp-more">Sources' + refs(fb.evidence) + "</div>" : ""));
     }
 
     /* The territories */
@@ -834,7 +861,7 @@
       var groups = { report: [], weekly: [], monthly: [], record: [] };
       (d.reads || []).forEach(function (r) { if (groups[r.kind]) groups[r.kind].push(r); });
       var html = '<section class="lib"><h1>The Read</h1><div class="sub">Every read the house has compiled, newest first</div>';
-      ["report", "record", "monthly", "weekly"].forEach(function (k) {
+      ["recon", "report", "record", "monthly", "weekly"].forEach(function (k) {   /* SEAM:READ_RECON: commissioned work shelves first */
         if (!groups[k].length) return;
         html += "<h2>" + KIND[k] + "</h2><div class=\"cards\">" + groups[k].map(function (r) {
           return '<a class="card" href="?id=' + r.id + '"><div class="lab">' + esc(r.label) + " · v" + r.version + '</div>' +
@@ -861,7 +888,9 @@
       if (row.status === "held") btns.push('<button class="btn" id="reland">Re-land</button>');
       if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
+      if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="desk">The desk</button>');   // SEAM:READ_DESK: notes, revise, standing inputs
       actions.innerHTML = btns.join(" ");
+      if (row.meta && row.meta.plan === "revise") actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">Revised from v' + esc(String(row.meta.revised_from_version || "?")) + (row.meta.revised_from ? " (#" + esc(String(row.meta.revised_from)) + ")" : "") + " on " + ((row.meta.notes || []).length) + " note" + ((row.meta.notes || []).length === 1 ? "" : "s") + (row.meta.revised_by ? " by " + esc(row.meta.revised_by) : "") + "</span>");
       if (row.meta && row.meta.proof && row.meta.proof.applied_at) actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">proofread ' + esc(String(row.meta.proof.applied_at).slice(0, 10)) + ' · ' + esc(String(row.meta.proof.changes || 0)) + ' fixes</span>');   // READ_PROOF receipt
       if (!x.title) {
         say(KIND[row.kind] + ", " + row.label + ": " + row.status.toUpperCase() +
@@ -903,7 +932,7 @@
       function prose(t) { return esc(t).replace(/\s*\(((?:S\d+)(?:,\s*S\d+)*)\)/g, function (m, g) { return refs(g.split(/,\s*/)); }).replace(/\bS(\d+)\b/g, function (m, d) { var n = num("S" + d); return n ? "<sup>" + n + "</sup>" : m; }); }
       function srcline(list) { var ns = (list || []).filter(real).map(num).filter(Boolean); return ns.length ? '<div class="ev">SOURCES · ' + ns.join(" · ") + "</div>" : ""; }
 
-      if (row.kind === "report") {   // SEAM:READ_REPORT: the research layout has its own builder, same helpers, same paper
+      if (row.kind === "report" || row.kind === "recon") {   // SEAM:READ_REPORT: the research layout has its own builder, same helpers, same paper (SEAM:READ_RECON rides it)
         document.title = "Unsurfaced Intelligence · " + row.label;
         var rp = reportDoc(x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq,
           stat: stat, fmtDate: fmtDate, pad: pad, firstSentence: firstSentence, mark: mark, capHtml: capHtml, ROLES: ROLES, cited: cited, used: used });
@@ -1095,7 +1124,7 @@
     });
   }
   function bind(row) {
-    if ((row.kind === "report" || row.kind === "weekly") && (row.status === "ready" || row.status === "published")) standLoad(row); else standPanel("");   // SEAM:REPORT_STAND, SEAM:READ_SWEEP
+    if ((row.kind === "report" || row.kind === "weekly") && (row.status === "ready" || row.status === "published")) standLoad(row);   /* a RECON is delivered, never staged: no stand bar */ else standPanel("");   // SEAM:REPORT_STAND, SEAM:READ_SWEEP
     /* Download PDF: the platform renders the file once in Chromium and keeps it.
      * Nothing depends on this browser's print dialog. */
     var p = document.getElementById("pdf"); if (p) p.onclick = function () {
@@ -1132,6 +1161,56 @@
         window.alert(PRUNE_WHY[d && d.error] || ("The house refused: " + ((d && d.error) || "no answer") + "."));
       });
     };
+    /* SEAM:READ_DESK: the editors' desk. Notes pinned to the read (or to one path in it), Revise under the open notes
+       (a new version from the same pack, at any state), and the standing inputs for this kind and for every kind. */
+    var dk = document.getElementById("desk"); if (dk) dk.onclick = function () {
+      var el = document.getElementById("desk-panel"); if (el && el.innerHTML) { deskPanel(""); return; }
+      deskPanel('<div class="pf-head">Opening the desk</div>');
+      call("/reads/desk", { kind: row.kind }).then(function (d) { deskShow(row, (d && d.rows) || []); });
+    };
+    function deskShow(row, deskRows) {
+      var mono = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase";
+      var notes = (row.meta && row.meta.notes) || [], open = notes.filter(function (n) { return n.status !== "applied"; }), done = notes.length - open.length;
+      var mine = deskRows.filter(function (r) { return r.kind === row.kind; })[0] || { inputs: "" }, all = deskRows.filter(function (r) { return r.kind === "all"; })[0] || { inputs: "" };
+      var html = '<div class="pf-head" style="' + mono + '">The desk · ' + open.length + " open note" + (open.length === 1 ? "" : "s") + (done ? " · " + done + " applied" : "") + "</div>";
+      html += open.map(function (n) { return '<div class="pf-row"><span class="pf-path" style="' + mono + '">' + esc(n.scope || "whole read") + "</span> " + esc(n.text) +
+        ' <small style="opacity:.6">' + esc(n.by || "") + " · " + esc(String(n.at || "").slice(0, 16).replace("T", " ")) + '</small> <button class="btn" data-drop="' + n.n + '" style="padding:2px 8px;font-size:9px;color:#141414;border-color:rgba(20,20,20,.45)">Drop</button></div>'; }).join("");
+      html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">Add a note</div>' +
+        '<input id="desk-scope" placeholder="scope, optional: findings[2] or patterns[0].why_it_matters" style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:12px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414;margin-bottom:6px">' +
+        '<textarea id="desk-text" rows="3" placeholder="The implication, the thought-starter, the correction. Written to the writer." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414"></textarea>' +
+        '<div style="margin-top:8px"><button class="btn" id="desk-add" style="color:#141414;border-color:rgba(20,20,20,.45)">Add note</button> ' +
+        '<button class="btn red" id="desk-revise">Revise this read' + (open.length ? " with " + open.length + " note" + (open.length === 1 ? "" : "s") : "") + '</button> <span id="desk-say" style="font-size:12px;opacity:.75"></span></div></div>';
+      html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">Standing inputs · ' + esc(KIND[row.kind] || row.kind) + (mine.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(mine.updated_by) + "</small>" : "") + "</div>" +
+        '<textarea id="desk-kind" rows="3" placeholder="Applied to every ' + esc(KIND[row.kind] || row.kind) + '." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414">' + esc(mine.inputs || "") + "</textarea>" +
+        '<div style="' + mono + ';margin:10px 0 6px">Standing inputs · every read' + (all.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(all.updated_by) + "</small>" : "") + "</div>" +
+        '<textarea id="desk-all" rows="3" placeholder="Applied to every read the house compiles." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414">' + esc(all.inputs || "") + "</textarea>" +
+        '<div style="margin-top:8px"><button class="btn" id="desk-save" style="color:#141414;border-color:rgba(20,20,20,.45)">Save standing inputs</button> <button class="btn" id="desk-close" style="color:#141414;border-color:rgba(20,20,20,.45)">Close</button></div></div>';
+      deskPanel(html);
+      var say2 = function (t) { var e = document.getElementById("desk-say"); if (e) e.textContent = t; };
+      var drops = document.querySelectorAll("[data-drop]"); for (var i = 0; i < drops.length; i++) drops[i].onclick = function () { var n = this.getAttribute("data-drop"); call("/reads/note-drop", { id: row.id, n: n }).then(function () { openRead(row.id); }); };
+      var add = document.getElementById("desk-add"); if (add) add.onclick = function () {
+        var t = document.getElementById("desk-text").value.trim(), sc = document.getElementById("desk-scope").value.trim();
+        if (t.length < 3) return say2("Write the note first.");
+        add.disabled = true; call("/reads/note", { id: row.id, text: t, scope: sc }).then(function (d) {
+          if (!d || !d.ok) { add.disabled = false; return say2("The house refused: " + ((d && d.error) || "no answer")); }
+          return call("/reads/get", { id: row.id }).then(function (g) { if (g && g.ok) { row.meta = g.read.meta; deskShow(row, deskRows); } });
+        });
+      };
+      var rv = document.getElementById("desk-revise"); if (rv) rv.onclick = function () {
+        if (!window.confirm("Revise " + row.label + " v" + row.version + " from the same sources under " + open.length + " note" + (open.length === 1 ? "" : "s") + " and the standing inputs? A new version compiles (about the cost of the original); the stand does not change until you stage it.")) return;
+        rv.disabled = true; rv.textContent = "Queuing the revision";
+        call("/reads/revise", { id: row.id }).then(function (d) {
+          if (d && d.ok) { say2("Version " + d.version + " is compiling as #" + d.id + ". It lands in the library like any read."); rv.textContent = "Revision queued"; }
+          else { rv.disabled = false; rv.textContent = "Revise this read"; say2("The house refused: " + ((d && d.error) || "no answer")); }
+        });
+      };
+      var sv = document.getElementById("desk-save"); if (sv) sv.onclick = function () {
+        sv.disabled = true; sv.textContent = "Saving";
+        call("/reads/desk", { kind: row.kind, inputs: document.getElementById("desk-kind").value }).then(function () { return call("/reads/desk", { kind: "all", inputs: document.getElementById("desk-all").value }); })
+          .then(function () { sv.disabled = false; sv.textContent = "Saved"; setTimeout(function () { sv.textContent = "Save standing inputs"; }, 1500); });
+      };
+      var cl = document.getElementById("desk-close"); if (cl) cl.onclick = function () { deskPanel(""); };
+    }
     /* READ_PROOF: the copy desk. A dry run lists every fix (spelling pass and editor); Apply writes them and
        the next Download PDF renders the corrected long form. */
     var pf = document.getElementById("proof"); if (pf) pf.onclick = function () {

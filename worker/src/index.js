@@ -224,6 +224,11 @@ export default {
         case '/reads/weekly-stand':  // SEAM:READ_SWEEP: a recut weekly replaces its issue on the stand
         case '/reads/sweep':         // SEAM:READ_SWEEP: recut every existing weekly and monthly under the Method, then apply
         case '/reads/proof':         // SEAM:READ_PROOF recut
+        case '/reads/commission':    // SEAM:READ_RECON: commission a RECON from a brief
+        case '/reads/note':          // SEAM:READ_DESK: the editors' notes, revisions and standing inputs
+        case '/reads/note-drop':
+        case '/reads/revise':
+        case '/reads/desk':
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
@@ -1330,7 +1335,7 @@ function excStampTiers(items, tiers) {
 }
 
 /* SEAM:EXC_PAGES: the model reads pages, not snippets. The strongest dated news and web items, and the undated
- * web items that a page can date, are fetched and their readable core (pvExtract) and publish date are read in.
+ * web items that a page can date, are fetched and their READABLE-RECON-KEEP and publish date are read in.
  * Fetched text is quoted material: the system prompt says so, and nothing in it is an instruction. */
 const EXC_PAGES = { MAX: 12, EACH_MS: 4500, BUDGET_MS: 6500, TEXT: 1400, BYTES: 400000,
   // Matched against the host alone, anchored: netflix.com is not x.com.
@@ -4357,7 +4362,7 @@ async function kbDelete(body, env, origin, user) {
 
 /* ═══════════════════════════════════════════════════════════════════
  * SEAM:PREVIEW — in-house source reader. Fetches an article server-side,
- * extracts the readable core (title, key visual, paragraphs), and — the
+ * extracts the readable recon (title, key visual, paragraphs), and — the
  * house being English-first — translates non-English text on request.
  * Translation rides Workers AI m2m100 first, MODEL_POOL t1 as fallback;
  * public news only, so free tiers are fair game. Edge-cached.
@@ -8193,7 +8198,7 @@ async function editionToday(env, origin) {
  * Children first: a monthly waits until no weekly inside it is queued or
  * compiling; the record waits on its monthlies. readTick walks the queue on
  * the 30-minute cron and on POST /reads/collect. */
-const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 3.0. This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), and the Record. It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: sources, signals, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, ground, edition, house read, or DAILY inside prose. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on the finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the signal that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
+const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 3.1. This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), the Record, and the RECON (a commissioned report on one brief). It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: sources, signals, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, ground, edition, house read, or DAILY inside prose. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on the finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the signal that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n- **The RECON**: one brief, to depth. A client, or the house, asks one question about one entity, category or topic, and the evidence is the slice of the period that bears on it: the sources, stories, record, themes, analyses and voices that name the brief's subject, its competitors or its anchors, with the brief's own counts in the stats block (`recon`). The thesis answers the brief's question and the house takes a position in the answer. Who is acting on the question, who is absent, and where a brand with this brief enters are written out for the brief itself. The whole period's counts are context only; the slice is the ground. A RECON is written for the one reader who asked, and it is sold under the same law as the report.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
 const HOUSE_READ = {
   KINDS: {
     // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
@@ -8203,7 +8208,9 @@ const HOUSE_READ = {
     record:  { max_tokens: 32000, effort: 'high',   child: 'monthly', take: 160 },
     // SEAM:READ_REPORT: the Cultural Intelligence Report, research grade, over an explicit window on the whole lake.
     // 2026-10-03: issue 001's first compile was cut at 48000 (thinking rides inside max_tokens; Fable's ceiling is 128000).
-    report:  { max_tokens: 120000, effort: 'high',  child: 'monthly', take: 220 }
+    report:  { max_tokens: 120000, effort: 'high',  child: 'monthly', take: 220 },
+    // SEAM:READ_RECON: the commissioned report. One brief, the lake sliced to it, the same Method, laws and desk.
+    recon:    { max_tokens: 120000, effort: 'high',  child: null,      take: 220 }
   },
   STORY_CAP: 1100,
   TICK_MAX: 6
@@ -8217,6 +8224,40 @@ const HOUSE_READ = {
  * lands as a signal. Momentum per territory is the database's word (STATS.momentum), never the writer's. */
 const READ_REPORT = { LAKE: 220, LAKE_SCAN: 900, RECORD: 40, FRAMES: 24, READS: 12, VOICE_QUERIES: 10, VOICE_KEEP: 80, VOICE_PER_QUERY: 12,
   VOICE_DAYS: 180, VOICE_PER_SOURCE: 4, VOICE_TERRITORIES: 8, SUMMARY: 220, PACK_CHARS: 280000, SUPPORTS_MIN: 2, OUTLETS_MIN: 2 };
+/* SEAM:READ_RECON: a RECON is a report that starts from a brief instead of a calendar. The brief is framed by the same Haiku
+ * framer EXCAVATE uses (entity, category, audience, market, competitors, question, anchors, exclude, rail queries); the
+ * engine gathers on the brief before it compiles (readReconGather, provenance recon_gather), slices the lake, the stories,
+ * the record, the themes, the frames and the reads to the brief (readReconMatch), asks the voice rails the brief's own
+ * questions (readReconVoiceQueries), and computes a STATS.recon block from the slice so every figure has ground. The report
+ * kind's laws, desk, PDF and sell law run unchanged; readIsReport names both kinds. RECON 00N counts briefs, not windows. */
+const READ_RECON = { DAYS: 90, GATHERS: 6, LAKE_SCAN: 2500, RECORD_SCAN: 300, STORY_MIN: 0, MIN_SLICE: 12 };
+function readIsReport(kind) { return kind === 'report' || kind === 'recon'; }
+/* SEAM:READ_DESK: the editors sit above the engine. Two instruments. Notes: any admin pins a note to a read (the whole
+ * read or one path such as findings[2]); notes live on the row (meta.notes) with who and when. Revise: a new version of
+ * the read compiled from the same pack (same stories, lines, voices, stats: the ground does not move), carrying the
+ * prior read, the open notes and the revision law; the laws, the desk and the sell law run as on any landing; the
+ * stand changes only when the revision is staged or replaces its issue. Standing inputs: house_desk holds the editors'
+ * standing instructions per kind ('all' for every kind), read into every compile and every revision. */
+const READ_DESK = { NOTE_MAX: 1200, NOTES_MAX: 40, INPUTS_MAX: 4000, SCOPE_RX: /^[a-z_]+(?:\[\d+\])?(?:\.[a-z_]+(?:\[\d+\])?)*$/ };
+const READ_REVISION_LAW = 'REVISION LAW. You are revising the PRIOR READ below under the DESK NOTES. Keep every section no note touches exactly as it is, word for word. ' +
+  'Apply every note. A note pinned to a path changes that part and nothing else; a note on the whole read is applied wherever it bears. Where an editor offers an implication or a thought-starter, ' +
+  'write it as the house\'s position, as interpretation, in the Method\'s voice, and cite the evidence ids from the pack that carry it; never present it as a finding the sources made. ' +
+  'The laws hold: every number from STATS or a cited line, ids only in the arrays, no em dash, the reader law. Return the complete object under the same contract, every key present.';
+/* PURE: the open notes of a row, and how they read in the pack. */
+function readNotesOpen(row) { return ((row && row.meta && row.meta.notes) || []).filter(n => n && n.text && n.status !== 'applied'); }
+function readNotesText(notes) {
+  return (notes || []).map((n, i) => (i + 1) + '. ' + (n.scope ? '[' + n.scope + '] ' : '[whole read] ') + String(n.text).replace(/\s+/g, ' ').trim() + ' (' + (n.by || 'editor') + ')').join('\n');
+}
+/* PURE: the standing inputs that apply to a kind: the kind's own row, then 'all'. */
+function readDeskText(rows, kind) {
+  const by = {}; for (const r of (rows || [])) if (r && r.kind) by[r.kind] = String(r.inputs || '').trim();
+  const parts = []; if (by[kind]) parts.push(by[kind]); if (by.all) parts.push(by.all);
+  return parts.join('\n').slice(0, READ_DESK.INPUTS_MAX * 2);
+}
+async function readDeskInputs(env, kind) {
+  const rows = await sbRest(env, 'house_desk?kind=in.(' + kind + ',all)&select=kind,inputs,updated_by,updated_at') || [];
+  return readDeskText(rows, kind);
+}
 const READ_CONTRACT = {
   weekly: 'CONTRACT (weekly). Return one JSON object with exactly these keys: ' +
     '"title": the read in 4 to 8 words, stated as a claim; ' +
@@ -8288,6 +8329,16 @@ const READ_CONTRACT = {
     '"scoreboard": one paragraph from STATS calls only, or an empty string; ' +
     '"advertising_read": one paragraph; "watch": 3 to 5 sentences.'
 };
+// SEAM:READ_RECON: the RECON contract is the report's, answering one brief.
+READ_CONTRACT.recon = READ_CONTRACT.report
+  .replace('CONTRACT (report). This is a research report for a paying reader:', 'CONTRACT (recon). This is a commissioned research report, a RECON, that answers one brief for a paying reader:')
+  .replace('"title": 5 to 10 words, stated as a claim about culture;', '"title": 5 to 10 words, stated as a claim about the people the brief asks about;')
+  .replace('"thesis": 3 sentences on what the whole period shows, written for the reader;', '"thesis": 3 sentences that answer the brief\'s question from the evidence, written for the reader;')
+  .replace('"competitive_sets": 0 to 6 objects', '"competitive_sets": 1 to 6 objects, the brief\'s competitors first,') +
+  ' THE BRIEF LAW: the brief is given at the top of the pack. Every section serves its question; the evidence is the slice of sources that bear on it, and STATS.recon counts that slice (STATS.lake is the whole period for context only; by_the_numbers reads STATS.recon first). ' +
+  'Two more keys, so the object has exactly the report\'s keys plus these: ' +
+  '"brief_answer": 2 to 3 sentences that answer the brief\'s question directly, the position the house takes, no ids; ' +
+  '"for_the_brief": {"who_is_in": one paragraph naming who in the evidence is acting on the brief\'s question and how, "who_is_absent": one paragraph naming who is conspicuously absent or silent and what that leaves open, "where_to_enter": one paragraph on where a brand with this brief enters, the format, the audience, the timing, "evidence": [ids]}.';
 
 function readIso(d) { return d.toISOString().slice(0, 10); }
 function readDay(s) { const d = new Date(String(s).slice(0, 10) + 'T00:00:00Z'); return isNaN(d) ? null : d; }
@@ -8308,7 +8359,7 @@ function readWindow(kind, start, now) {
     d = readAddDays(d, -((d.getUTCDay() + 6) % 7));
     return { start: readIso(d), end: readIso(readAddDays(d, 6)), label: 'Week of ' + readShort(d) };
   }
-  if (kind === 'report') return null;   // SEAM:READ_REPORT: the report's window is explicit (readReportWindow)
+  if (readIsReport(kind)) return null;   // SEAM:READ_REPORT: the report's window is explicit (readReportWindow); so is a RECON's (SEAM:READ_RECON)
   if (kind === 'monthly') {
     let d = start ? readDay(String(start).length === 7 ? start + '-01' : start)
                   : new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
@@ -8484,8 +8535,8 @@ function readReportVoiceKeep(quotes, winEnd) {
   }
   return out;
 }
-async function readReportVoices(env, stats, win) {
-  const queries = readReportVoiceQueries(stats);
+async function readReportVoices(env, stats, win, queriesGiven) {
+  const queries = Array.isArray(queriesGiven) && queriesGiven.length ? queriesGiven.slice(0, READ_REPORT.VOICE_QUERIES) : readReportVoiceQueries(stats);   // SEAM:READ_RECON: a RECON asks the brief's questions
   const sources = [], quotes = [], seen = new Set();
   const yt = RAILS.find(r => r.id === 'youtube'), ma = RAILS.find(r => r.id === 'mastodon');
   for (const q of queries) {
@@ -8501,24 +8552,29 @@ async function readReportVoices(env, stats, win) {
   const kept = readReportVoiceKeep(quotes, win && win.end);
   return { sources, quotes: kept.slice(0, READ_REPORT.VOICE_KEEP), queries, dropped: quotes.length - kept.length };
 }
-async function readReportPack(env, row, stats) {
+async function readReportPack(env, row, stats, recon) {   // SEAM:READ_RECON: with a recon, every section is the brief's slice
   const win = { start: row.window_start, end: row.window_end };
   const t0 = Date.now(), stage = (name, n) => console.log('read_pack_stage', JSON.stringify({ id: row.id, stage: name, n, ms: Date.now() - t0 }));
+  const on = (r, text) => !recon || recon.match(text);
   const lakeRows = await sbRest(env, 'signals?status=neq.rejected&edition_item_id=is.null&source_tier=lte.3&published_at=gte.' + win.start + '&published_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) +
-    '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=source_tier.asc,published_at.desc&limit=' + READ_REPORT.LAKE_SCAN) || [];
-  const lake = readReportSpread(lakeRows.filter(r => r && r.title), READ_REPORT.LAKE);
+    '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=source_tier.asc,published_at.desc&limit=' + (recon ? READ_RECON.LAKE_SCAN : READ_REPORT.LAKE_SCAN)) || [];
+  const lakeOn = lakeRows.filter(r => r && r.title && on(r, r.title + ' ' + (r.summary || '')));
+  const lake = recon ? lakeOn.slice(0, READ_REPORT.LAKE) : readReportSpread(lakeOn, READ_REPORT.LAKE);   // a RECON keeps its slice whole, best tier then newest; the house report spreads across territories
   stage('lake', lake.length);
   const record = (await sbRest(env, 'signals?status=neq.rejected&source_tier=lte.1&published_at=gte.2001-01-01&published_at=lt.' + win.start +
-    '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=source_tier.asc,published_at.desc&limit=' + READ_REPORT.RECORD) || []).filter(r => r && r.title);
+    '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=source_tier.asc,published_at.desc&limit=' + (recon ? READ_RECON.RECORD_SCAN : READ_REPORT.RECORD)) || [])
+    .filter(r => r && r.title && on(r, r.title + ' ' + (r.summary || ''))).slice(0, READ_REPORT.RECORD);
   stage('record', record.length);
-  const themes = ((stats && stats.themes) || []).filter(t => t && t.id);
-  const frames = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=gte.' + win.start + '&night=lte.' + win.end + '&select=id,frame_key,night,frame,measures,read&order=night.desc&limit=' + READ_REPORT.FRAMES) || []).filter(d => d && d.read);
-  const reads = (await sbRest(env, 'reads?created_at=gte.' + win.start + '&created_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) + '&select=id,query,read,insights,created_at&order=created_at.desc&limit=' + READ_REPORT.READS) || []).filter(r => r && r.query);
+  const themes = ((stats && stats.themes) || []).filter(t => t && t.id && on(t, t.title || ''));
+  const frames = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=gte.' + win.start + '&night=lte.' + win.end + '&select=id,frame_key,night,frame,measures,read&order=night.desc&limit=' + (recon ? READ_REPORT.FRAMES * 4 : READ_REPORT.FRAMES)) || [])
+    .filter(d => d && d.read && on(d, JSON.stringify(d.frame || {}) + ' ' + readReportClean(d.read && d.read.read && d.read.read[0], 400))).slice(0, READ_REPORT.FRAMES);
+  const reads = (await sbRest(env, 'reads?created_at=gte.' + win.start + '&created_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) + '&select=id,query,read,insights,created_at&order=created_at.desc&limit=' + (recon ? READ_REPORT.READS * 6 : READ_REPORT.READS)) || [])
+    .filter(r => r && r.query && on(r, r.query)).slice(0, READ_REPORT.READS);
   stage('frames_reads', frames.length + reads.length);
-  const voices = await readReportVoices(env, stats, win);
+  const voices = await readReportVoices(env, stats, win, recon ? readReconVoiceQueries(recon.frame) : null);
   stage('voices', voices.quotes.length);
   const sections = [];
-  if (lake.length) sections.push('LAKE SIGNALS (' + lake.length + ', the window, not published by DAILY):\n' + lake.map((r, i) => readReportLakeLine(i + 1, r)).join('\n'));
+  if (lake.length) sections.push('LAKE SIGNALS (' + lake.length + ', the window, not published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + lake.map((r, i) => readReportLakeLine(i + 1, r)).join('\n'));
   if (record.length) sections.push('THE RECORD (' + record.length + ', older prominent sources; cite as context, never as this window):\n' + record.map((r, i) => readReportRecordLine(i + 1, r)).join('\n'));
   if (themes.length) sections.push('THEMES (' + themes.length + ', from STATS):\n' + themes.map((t, i) => readReportThemeLine(i + 1, t)).join('\n'));
   if (frames.length) sections.push('FRAMES (' + frames.length + ', the door\'s overnight reads):\n' + frames.map((d, i) => readReportFrameLine(i + 1, d)).join('\n'));
@@ -8539,6 +8595,93 @@ function readReportExtraIds(pack) {
   const out = [];
   for (const k of ['L', 'R', 'T', 'D', 'X']) { const n = Array.isArray(pack.ids[k]) ? pack.ids[k].length : 0; for (let i = 1; i <= n; i++) out.push(k + i); }
   for (let i = 1; i <= (pack.ids.V || 0); i++) out.push('V' + i);
+  return out;
+}
+
+/* SEAM:READ_RECON PURE: the brief as the engine holds it. meta.brief = {text, frame, days}; the frame is EXCAVATE's
+ * (excFrameClean shape). match(text) says whether a line bears on the brief: it carries an anchor, the entity or a
+ * competitor, and none of the frame's excludes. Words are matched whole, so "ai" never matches "said". */
+function readReconMatch(frame) {
+  const f = frame || {};
+  const esc = w => String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const words = []
+    .concat(f.anchors || [], f.entity ? [f.entity] : [], f.competitors || [])
+    .map(w => String(w || '').toLowerCase().replace(/\s+/g, ' ').trim()).filter(w => w.length > 1);
+  const rx = words.length ? new RegExp('(?:^|[^\\p{L}\\p{N}])(?:' + words.map(esc).join('|') + ')(?![\\p{L}\\p{N}])', 'iu') : null;
+  const ex = (f.exclude || []).map(w => String(w || '').toLowerCase().trim()).filter(w => w.length > 1);
+  const exRx = ex.length ? new RegExp('(?:^|[^\\p{L}\\p{N}])(?:' + ex.map(esc).join('|') + ')(?![\\p{L}\\p{N}])', 'iu') : null;
+  return text => { const t = String(text || '').toLowerCase(); if (!rx || !rx.test(t)) return false; return !(exRx && exRx.test(t)); };
+}
+function readReconOf(row) {
+  const b = (row && row.meta && row.meta.brief) || {};
+  const frame = excFrameClean(b.frame) || { entity: null, category: null, audience: null, market: 'US', competitors: [], question: String(b.text || '').slice(0, 220), anchors: [], exclude: [], queries: {} };
+  return { text: String(b.text || ''), frame, days: b.days || READ_RECON.DAYS, match: readReconMatch(frame) };
+}
+/* PURE: the brief, written out for the pack and the ground. */
+function readReconBriefText(recon) {
+  const f = (recon && recon.frame) || {};
+  const line = (k, v) => v && (Array.isArray(v) ? v.length : true) ? k + ': ' + (Array.isArray(v) ? v.join(', ') : v) + '\n' : '';
+  return 'BRIEF: ' + String((recon && recon.text) || '').replace(/\s+/g, ' ').trim() + '\n' + line('ENTITY', f.entity) + line('CATEGORY', f.category) + line('AUDIENCE', f.audience) +
+    line('MARKET', f.market) + line('COMPETITORS', f.competitors) + line('QUESTION', f.question) + line('ANCHORS', f.anchors);
+}
+/* PURE: what the voice rails are asked for a RECON: the question, the entity, how people say it, then the competitors. */
+function readReconVoiceQueries(frame) {
+  const f = frame || {}, q = f.queries || {}, out = [];
+  const add = x => { const t = String(x || '').replace(/\s+/g, ' ').trim(); if (t && !out.includes(t) && out.length < READ_REPORT.VOICE_QUERIES) out.push(t); };
+  add(f.entity && f.category ? f.entity + ' ' + f.category : f.entity || f.category); add(q.discourse); add(f.question); add(f.category);
+  for (const c of (f.competitors || [])) add(f.category ? c + ' ' + f.category : c);
+  return out;
+}
+/* PURE: the queries the gather runs before a RECON compiles: the entity, the brief's news and web phrasings, the competitors. */
+function readReconGatherQueries(frame) {
+  const f = frame || {}, q = f.queries || {}, out = [];
+  const add = x => { const t = String(x || '').replace(/\s+/g, ' ').trim(); if (t && !out.includes(t) && out.length < READ_RECON.GATHERS) out.push(t); };
+  add(f.entity ? f.entity + (f.category ? ' ' + f.category : '') : f.category); add(q.news); add(q.web); add(f.question);
+  for (const c of (f.competitors || [])) add(c + (f.category ? ' ' + f.category : ''));
+  return out;
+}
+/* PURE: STATS.recon, counted from the slice: how many signals, sources, stories and voices bear on the brief, by territory
+ * and by week (Monday weeks), and the share of the period's signals the slice is. Every figure here is ground. */
+function readReconStats(recon, items, pack) {
+  const L = (pack && pack.lines && pack.lines.L) || [], R = (pack && pack.lines && pack.lines.R) || [];
+  const byT = {}, byW = {}, outlets = new Set();
+  const week = d => { const x = readDay(String(d || '').slice(0, 10)); if (!x) return null; x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return readIso(x); };
+  for (const r of L) { const t = r.territory || 'unassigned'; byT[t] = (byT[t] || 0) + 1; if (r.source_name) outlets.add(String(r.source_name).toLowerCase()); const w = week(r.published_at); if (w) byW[w] = (byW[w] || 0) + 1; }
+  const storyT = {};
+  for (const it of (items || [])) { const t = it.territory || 'unassigned'; storyT[t] = (storyT[t] || 0) + 1; if (it.source_name) outlets.add(String(it.source_name).toLowerCase()); }
+  const weeks = Object.keys(byW).sort();
+  return { signals: L.length, record: R.length, stories: (items || []).length, outlets: outlets.size, voices: (pack && pack.counts && pack.counts.voices) || 0,
+    by_territory: byT, stories_by_territory: storyT, weeks, by_week: weeks.map(w => byW[w]),
+    week_high: weeks.length ? Math.max.apply(null, weeks.map(w => byW[w])) : 0, week_low: weeks.length ? Math.min.apply(null, weeks.map(w => byW[w])) : 0,
+    anchors: ((recon && recon.frame && recon.frame.anchors) || []).length, competitors: ((recon && recon.frame && recon.frame.competitors) || []).length };
+}
+/* PURE: the label and number of a RECON. Numbers count briefs; a recompile of the same brief keeps its number. */
+function readReconLabel(no, frame, win) {
+  const f = frame || {}, who = f.entity || f.category || 'brief';
+  return 'RECON ' + String(no).padStart(3, '0') + ': ' + who + (f.entity && f.category ? ', ' + f.category : '') + ' (' + win.label + ')';
+}
+async function readReconIssue(env, briefHash) {
+  const prior = await sbRest(env, 'house_reads?kind=eq.recon&select=meta&order=id.asc&limit=500') || [];
+  const same = prior.find(r => r.meta && r.meta.brief && r.meta.brief.hash === briefHash && r.meta.recon_no);
+  if (same) return same.meta.recon_no;
+  return new Set(prior.map(r => r.meta && r.meta.recon_no).filter(Boolean)).size + 1;
+}
+/* The gather before a RECON compiles: EXCAVATE's open gather on the brief's queries, captured into the lake with
+ * provenance recon_gather so the slice is fuller on that spot. Paid rails ride their own budget laws inside the gather;
+ * a rail that fails leaves the lake as it was. Runs inside readTick, never on the request. */
+async function readReconGather(env, row) {
+  const recon = readReconOf(row), queries = readReconGatherQueries(recon.frame), terr = typeof excTerritoryOf === 'function' ? excTerritoryOf(recon.frame) : null;
+  const out = { queries, captured: 0, items: 0, at: new Date().toISOString(), failed: [] };
+  for (const q of queries) {
+    try {
+      const g = await gatherOpenSignals(env, q, { frame: recon.frame });
+      if (!g || !g.ok) { out.failed.push(q); continue; }
+      out.items += (g.items || []).length;
+      out.captured += await lakeCapture(env, g.items, { provenance: 'recon_gather', query: q, territory: terr || undefined });
+    } catch (e) { out.failed.push(q); console.log('recon_gather', String(e && e.message).slice(0, 80)); }
+  }
+  await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { gather: out }) });
+  logEvent(env, 'intelligence', 'reads', 'recon_gather', null, { id: row.id, queries: queries.length, captured: out.captured, failed: out.failed.length });
   return out;
 }
 /* PURE: the supports law and the momentum law, applied on landing. The outlet of an id: S and L and R carry their
@@ -8670,21 +8813,23 @@ async function readChildrenSettled(env, row) {
 /* The one spender in this seam: build the pack, submit to the doc tier. */
 async function readSubmit(env, row) {
   const K = HOUSE_READ.KINDS[row.kind];
-  const report = row.kind === 'report';   // SEAM:READ_REPORT
+  const report = readIsReport(row.kind);   // SEAM:READ_REPORT (SEAM:READ_RECON: a RECON rides the report's line)
+  const recon = row.kind === 'recon' ? readReconOf(row) : null;
   const t0 = Date.now(), stage = (name, extra) => console.log('read_submit_stage', JSON.stringify(Object.assign({ id: row.id, kind: row.kind, stage: name, ms: Date.now() - t0 }, extra || {})));
   let stats = await sbRest(env, 'rpc/' + (report ? 'house_report_stats' : 'house_read_stats'), { method: 'POST',
     body: { p_start: row.window_start, p_end: row.window_end } }) || {};
   if (report) stats = readReportShape(stats);   // SEAM:READ_BASELINE: share, high and low week, direction, and whether the period before is a baseline
   else stats = readStatsWithCounts(stats);   // SEAM:READ_COUNTS: how many territories, formats, sources and threads, as figures
   stage('stats');
-  const items = await readWindowItems(env, row.window_start, row.window_end);
-  stage('stories', { n: items.length });
-  if (!items.length) {
+  const allItems = await readWindowItems(env, row.window_start, row.window_end);
+  const items = recon ? allItems.filter(it => recon.match([it.headline, it.take, it.apply].join(' '))) : allItems;   // SEAM:READ_RECON: the brief's stories
+  stage('stories', { n: items.length, all: allItems.length });
+  if (!items.length && !recon) {
     await readPatch(env, row.id, { status: 'failed', error: 'empty_window', stats });
     return { ok: false, error: 'empty_window' };
   }
   let children = [];
-  for (const ck of (report ? ['monthly', 'weekly'] : row.kind === 'record' ? ['report', 'monthly'] : (K.child ? [K.child] : []))) {   // the report builds on every monthly and weekly inside it; the record on every report and monthly
+  for (const ck of (row.kind === 'report' ? ['monthly', 'weekly'] : row.kind === 'record' ? ['report', 'monthly'] : (K.child ? [K.child] : []))) {   // the report builds on every monthly and weekly inside it; the record on every report and monthly
     const kids = await sbRest(env, 'house_reads?kind=eq.' + ck + '&status=in.(ready,published)' +
       '&window_start=gte.' + row.window_start + '&window_end=lte.' + row.window_end +
       '&select=id,label,read,version&order=window_start.asc,version.desc') || [];
@@ -8692,17 +8837,28 @@ async function readSubmit(env, row) {
     children = children.concat(kids.filter(k => !seen.has(k.label) && seen.add(k.label)));
   }
   stage('children', { n: children.length });
-  const pack2 = report ? await readReportPack(env, row, stats) : null;   // SEAM:READ_REPORT
+  const pack2 = report ? await readReportPack(env, row, stats, recon) : null;   // SEAM:READ_REPORT (SEAM:READ_RECON: sliced to the brief)
   if (pack2) stage('pack', pack2.counts);
+  if (recon) {   // SEAM:READ_RECON: the slice is the ground; too thin a slice is said plainly instead of written around
+    stats.recon = readReconStats(recon, items, pack2);
+    if (stats.recon.signals + stats.recon.stories < READ_RECON.MIN_SLICE) {
+      await readPatch(env, row.id, { status: 'failed', error: 'thin_slice:' + stats.recon.signals + '+' + stats.recon.stories, stats });
+      return { ok: false, error: 'thin_slice', signals: stats.recon.signals, stories: stats.recon.stories };
+    }
+  }
   let label = row.label;
   if (row.kind === 'record' && stats.issues && stats.issues.first)
     label = 'DAILY: The Record, Issues ' + String(stats.issues.first).padStart(3, '0') + ' to ' + String(stats.issues.last).padStart(3, '0');
   const pack = items.map(it => readPackLine(it, K.take)).join('\n');
-  const prompt = 'STATS (exact, computed by the database):\n' + JSON.stringify(stats) +
-    '\n\nSTORIES (' + items.length + ', published by DAILY):\n' + pack +
+  const desk = await readDeskInputs(env, row.kind);   // SEAM:READ_DESK: the editors' standing inputs ride every compile
+  const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +   // SEAM:READ_RECON
+    (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
+    'STATS (exact, computed by the database' + (recon ? '; STATS.recon counts the brief\'s slice' : '') + '):\n' + JSON.stringify(stats) +
+    (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + pack : '') +
     (pack2 && pack2.text ? '\n\n' + pack2.text : '') +
     (children.length ? '\n\nCHILD READS (' + children.length + '):\n' + readChildDigest(children) : '') +
-    (report ? '\n\nWrite the Cultural Intelligence Report for ' + label + ' (' + row.window_start + ' to ' + row.window_end + '). Return only the JSON object.'
+    (recon ? '\n\nWrite the RECON ' + label + ' (' + row.window_start + ' to ' + row.window_end + '), answering the brief. Return only the JSON object.'
+            : report ? '\n\nWrite the Cultural Intelligence Report for ' + label + ' (' + row.window_start + ' to ' + row.window_end + '). Return only the JSON object.'
             : '\n\nWrite the ' + row.kind + ' read for ' + label + '. Return only the JSON object.');
   stage('prompt', { chars: prompt.length });
   const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
@@ -8716,11 +8872,57 @@ async function readSubmit(env, row) {
     return sub;
   }
   await readPatch(env, row.id, { status: 'compiling', error: null, stats, label,
-    pack_ids: items.map(it => it.id), meta: Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id) },
+    pack_ids: items.map(it => it.id), meta: Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id), desk_chars: desk.length },
       pack2 ? { pack: { ids: pack2.ids, lines: pack2.lines, voices: pack2.voices, counts: pack2.counts, text: pack2.text } } : {}) });
   stage('patched');
   logEvent(env, 'intelligence', 'reads', 'read_submit', null, { id: row.id, kind: row.kind, stories: items.length, children: children.length, pack: pack2 ? pack2.counts : null });
   return { ok: true, id: row.id, batch_id: sub.batch_id, stories: items.length, children: children.length, est_usd: sub.est_usd, pack: pack2 ? pack2.counts : null };
+}
+
+/* SEAM:READ_DESK: the stories a prior read stood on, by id, with their dates and issues. */
+async function readItemsByIds(env, ids) {
+  const out = [], list = (ids || []).map(n => parseInt(n, 10)).filter(Number.isFinite);
+  for (let i = 0; i < list.length; i += 40) {
+    const rows = await sbRest(env, 'edition_items?id=in.(' + list.slice(i, i + 40).join(',') + ')&select=id,edition_id,ord,kicker,headline,take,apply,territory,format,source_name&limit=200') || [];
+    out.push(...rows);
+  }
+  const eds = {}; const eids = [...new Set(out.map(r => r.edition_id))];
+  for (let i = 0; i < eids.length; i += 40) { for (const e of (await sbRest(env, 'editions?id=in.(' + eids.slice(i, i + 40).join(',') + ')&select=id,issue_no,date') || [])) eds[e.id] = e; }
+  const pos = {}; list.forEach((id, i) => { pos[id] = i; });
+  return out.map(r => Object.assign(r, { date: (eds[r.edition_id] || {}).date, issue_no: (eds[r.edition_id] || {}).issue_no })).sort((a, b) => pos[a.id] - pos[b.id]);
+}
+/* SEAM:READ_DESK: compile a revision. The row is the new version (meta.plan revise, meta.revised_from the prior id, meta.notes
+ * the notes it applies); the ground is the prior row's: its stats, its stories, its pack. The prompt carries the prior read,
+ * the notes and the revision law. The same spender (claudeBatchSubmit on the doc tier), the same landing. */
+async function readSubmitRevision(env, row) {
+  const K = HOUSE_READ.KINDS[row.kind];
+  const prior = await readRow(env, row.meta && row.meta.revised_from);
+  if (!prior || !prior.read) { await readPatch(env, row.id, { status: 'failed', error: 'no_prior_read' }); return { ok: false, error: 'no_prior_read' }; }
+  const notes = readNotesOpen(row);
+  const stats = prior.stats || {};
+  const items = await readItemsByIds(env, prior.pack_ids || []);
+  const pk = (prior.meta && prior.meta.pack) || null;
+  const desk = await readDeskInputs(env, row.kind);
+  const recon = row.kind === 'recon' ? readReconOf(row) : null;
+  const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +
+    (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
+    'STATS (exact, computed by the database):\n' + JSON.stringify(stats) +
+    (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY):\n' + items.map(it => readPackLine(it, K.take)).join('\n') : '') +
+    (pk && pk.text ? '\n\n' + pk.text : '') +
+    '\n\nPRIOR READ (version ' + prior.version + ', the object you are revising):\n' + JSON.stringify(prior.read) +
+    '\n\nDESK NOTES (' + notes.length + '):\n' + (notes.length ? readNotesText(notes) : '(none: apply the HOUSE DESK inputs and change nothing else)') +
+    '\n\n' + READ_REVISION_LAW + '\n\nWrite version ' + row.version + ' of ' + row.label + '. Return only the JSON object.';
+  const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
+    custom_id: 'hr-' + row.id + '-v' + row.version,
+    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
+    prompt, max_tokens: K.max_tokens, thinking: { type: 'adaptive' }, output_config: { effort: K.effort },
+    meta: { house_read_id: row.id } }]);
+  if (!sub.ok) { await readPatch(env, row.id, { status: 'queued', error: sub.error + (sub.detail ? ': ' + String(sub.detail).slice(0, 120) : '') }); return sub; }
+  await readPatch(env, row.id, { status: 'compiling', error: null, stats, label: row.label, pack_ids: prior.pack_ids || [],
+    meta: Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: (prior.meta && prior.meta.children) || [], desk_chars: desk.length,
+      notes: ((row.meta && row.meta.notes) || []).map(n => Object.assign({}, n, { status: 'applied', applied_in: row.id })) }, pk ? { pack: pk } : {}) });   // the notes it applied stay as its record; new notes start open
+  logEvent(env, 'intelligence', 'reads', 'read_revise', null, { id: row.id, from: prior.id, kind: row.kind, notes: notes.length });
+  return { ok: true, id: row.id, from: prior.id, batch_id: sub.batch_id, notes: notes.length, est_usd: sub.est_usd };
 }
 
 /* Called by claudeBatchDrain when a house_* job lands. */
@@ -8733,7 +8935,7 @@ async function readLand(env, id, text, cost, stopReason, force) {
   const truncated = stopReason === 'max_tokens';
   const parsed = truncated ? null : (parseModelJson(text) || extractJson(text));   // fences, curly quotes, trailing commas
   const v = readValidate(row.kind, parsed, ground, row.pack_ids || [], extra);
-  if (v.read && row.kind === 'report') {   // SEAM:READ_REPORT: the supports law and the momentum law land before the copy desk
+  if (v.read && readIsReport(row.kind)) {   // SEAM:READ_REPORT: the supports law and the momentum law land before the copy desk (SEAM:READ_RECON too)
     const laws = readReportLaws(v.read, row, items);
     v.read = laws.read; v.notes = v.notes.concat(laws.notes);
   } else if (v.read) {   // SEAM:READ_SWEEP: every kind is checked for the reader law (ids or house words in prose are noted; the page numbers the sources)
@@ -8966,7 +9168,8 @@ async function readProofRun(env, kind, read, ground, packIds, extraIds) {
 }
 function readGroundOf(row, items) {
   // SEAM:READ_COUNTS: a read landed before the counts existed gets them on the ground. The stories' lines are ground; so are the lake lines (SEAM:READ_REPORT).
-  return JSON.stringify(row.kind === 'report' ? (row.stats || {}) : readStatsWithCounts(row.stats || {})) + '\n' +
+  return JSON.stringify(readIsReport(row.kind) ? (row.stats || {}) : readStatsWithCounts(row.stats || {})) + '\n' +
+    (row.kind === 'recon' && row.meta && row.meta.brief ? readReconBriefText(readReconOf(row)) + '\n' : '') +   // SEAM:READ_RECON: the brief's own words are ground
     (items || []).map(it => [it.headline, it.take, it.apply, it.date, it.issue_no].join(' ')).join('\n') +
     (row.meta && row.meta.pack && row.meta.pack.text ? '\n' + row.meta.pack.text : '');
 }
@@ -9016,12 +9219,14 @@ function readReaderVoice(read) {
 
 async function readTick(env) {
   const q = await sbRest(env, 'house_reads?status=eq.queued&select=*&order=window_start.asc&limit=40') || [];
-  const order = { weekly: 0, monthly: 1, record: 2, report: 3 };
-  q.sort((a, b) => order[a.kind] - order[b.kind] || String(a.window_start).localeCompare(String(b.window_start)));
+  const order = { weekly: 0, monthly: 1, record: 2, report: 3, recon: 4 };
+  q.sort((a, b) => (order[a.kind] || 0) - (order[b.kind] || 0) || String(a.window_start).localeCompare(String(b.window_start)));
   const out = { queued: q.length, submitted: 0, waiting: 0, refused: 0 };
   for (const row of q) {
     if (out.submitted >= HOUSE_READ.TICK_MAX) break;
     if (!(await readChildrenSettled(env, row))) { out.waiting++; continue; }
+    if (row.meta && row.meta.plan === 'revise') { const rv = await readSubmitRevision(env, row); if (rv.ok) out.submitted++; else out.refused++; continue; }   // SEAM:READ_DESK: a revision rides the prior pack
+    if (row.kind === 'recon' && !(row.meta && row.meta.gather)) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); }   // SEAM:READ_RECON: gather before the compile
     const r = await readSubmit(env, row);
     if (r.ok) out.submitted++; else out.refused++;
   }
@@ -9052,8 +9257,8 @@ function readSellable(row) {
   const leaks = v.filter(n => /^(?:house_word|id_in_prose):/.test(String(n)));
   if (leaks.length) fails.push('reader_law:' + leaks.length);
   const lake = (r.stats && r.stats.lake) || {};
-  if (r.kind === 'report' && (!lake.shape || typeof lake.prior_comparable !== 'boolean')) fails.push('no_shape');
-  if (r.kind === 'report') {
+  if (readIsReport(r.kind) && (!lake.shape || typeof lake.prior_comparable !== 'boolean')) fails.push('no_shape');
+  if (readIsReport(r.kind)) {   // SEAM:READ_RECON: a RECON is sold under the same law; its number is the brief's
     if (!findings.length) fails.push('no_findings');
     const voiced = findings.filter(f => Array.isArray(f.voices) && f.voices.length).length;
     if (voiced < SELL_LAW.VOICED_FINDINGS) fails.push('voices:' + voiced + '_of_' + SELL_LAW.VOICED_FINDINGS);
@@ -9067,7 +9272,9 @@ function readSellable(row) {
       if (!f.supports || f.supports.outlets < 2) bad.push('outlets');
       if (bad.length) fails.push('finding_' + (i + 1) + ':' + bad.join('+'));
     });
-    if (!meta.issue_no) fails.push('no_issue_no');
+    if (r.kind === 'report' && !meta.issue_no) fails.push('no_issue_no');
+    if (r.kind === 'recon' && (!meta.recon_no || !meta.brief || !meta.brief.text)) fails.push('no_brief');
+    if (r.kind === 'recon' && (!x.brief_answer || !x.for_the_brief || !x.for_the_brief.where_to_enter)) fails.push('no_brief_answer');
   }
   if (!r.window_start || !r.window_end || !r.version) fails.push('no_period');
   return { ok: !fails.length, fails };
@@ -9344,8 +9551,8 @@ function readHex(bytes) { return Array.from(new Uint8Array(bytes)).map(b => b.to
 /* PURE: the running footer. Chromium's header template takes no web fonts, so it is set in the system monospace. */
 function readPdfFooter(row) {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const kind = row.kind === 'report' ? 'CULTURAL INTELLIGENCE' : row.kind === 'weekly' ? 'THE WEEKLY READ' : row.kind === 'record' ? 'THE RECORD' : 'THE MONTHLY READ';
-  const label = String(row.label || '').replace(/^Cultural Intelligence Report, /, '');
+  const kind = row.kind === 'report' ? 'CULTURAL INTELLIGENCE' : row.kind === 'recon' ? 'RECON' : row.kind === 'weekly' ? 'THE WEEKLY READ' : row.kind === 'record' ? 'THE RECORD' : 'THE MONTHLY READ';
+  const label = String(row.label || '').replace(/^Cultural Intelligence Report, /, '').replace(/^RECON /, '');
   const left = 'UNSURFACED\u2122 ' + kind + ' \u00B7 ' + label.toUpperCase() + ' \u00B7 V' + (row.version || 1);
   return '<div style="width:100%;box-sizing:border-box;padding:0 0.75in 0.16in;font-family:Menlo,Consolas,\'DejaVu Sans Mono\',monospace;font-size:6.5px;letter-spacing:1.4px;color:#6B6455;display:flex;justify-content:space-between;align-items:flex-end">' +
     '<span>' + esc(left) + '</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>';
@@ -9693,6 +9900,85 @@ async function readRoute(path, body, env, origin, user) {
     await readQueue(env, 'record', { start: a, end: b, label: 'DAILY: The Record' }, { plan: 'record' }); made.record++;
     const tick = await readTick(env);
     return json({ ok: true, window: { start: a, end: b }, queued: made, tick }, 200, origin, env);
+  }
+  if (path === '/reads/note') {
+    // SEAM:READ_DESK: pin a note to a read. { id, text, scope? } (admin). scope is a path in the read such as findings[2] or patterns[0].why_it_matters, or empty for the whole read.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    const text = String(body.text || '').replace(/\s+/g, ' ').trim().slice(0, READ_DESK.NOTE_MAX);
+    if (text.length < 3) return json({ ok: false, error: 'note_too_short' }, 200, origin, env);
+    const scope = String(body.scope || '').trim();
+    if (scope && !READ_DESK.SCOPE_RX.test(scope)) return json({ ok: false, error: 'bad_scope' }, 200, origin, env);
+    const notes = ((row.meta && row.meta.notes) || []).slice(-READ_DESK.NOTES_MAX + 1);
+    const n = { n: notes.reduce((m, x) => Math.max(m, x.n || 0), 0) + 1, by: String(user.email || user.id).replace(/@.*$/, ''), at: new Date().toISOString(), scope, text, status: 'open' };
+    notes.push(n);
+    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { notes }) });
+    logEvent(env, 'intelligence', 'reads', 'read_note', null, { id: row.id, n: n.n, scope: scope || null, by: user.id });
+    return json({ ok: true, id: row.id, note: n, open: notes.filter(x => x.status !== 'applied').length }, 200, origin, env);
+  }
+  if (path === '/reads/note-drop') {
+    // SEAM:READ_DESK: take an open note back. { id, n } (admin). An applied note stays as the record of what the revision did.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    const notes = (row.meta && row.meta.notes) || [], hit = notes.find(x => x.n === parseInt(body.n, 10));
+    if (!hit) return json({ ok: false, error: 'no_such_note' }, 200, origin, env);
+    if (hit.status === 'applied') return json({ ok: false, error: 'already_applied' }, 200, origin, env);
+    const kept = notes.filter(x => x !== hit);
+    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { notes: kept }) });
+    return json({ ok: true, id: row.id, open: kept.filter(x => x.status !== 'applied').length }, 200, origin, env);
+  }
+  if (path === '/reads/revise') {
+    // SEAM:READ_DESK: revise a read under its open notes. { id } (admin). Any written read at any state (ready, held, published): a new
+    // version is queued with the notes it applies and compiled at once from the prior pack; the prior row's notes are marked applied.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
+    if (row.status === 'compiling' || row.status === 'queued') return json({ ok: false, error: 'still_compiling' }, 200, origin, env);
+    const notes = readNotesOpen(row);
+    const desk = await readDeskInputs(env, row.kind);
+    if (!notes.length && !desk) return json({ ok: false, error: 'nothing_to_apply' }, 200, origin, env);
+    const carry = {}; for (const k of ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue']) if (row.meta && row.meta[k] != null) carry[k] = row.meta[k];
+    const { row: next } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(carry, { plan: 'revise', revised_from: row.id, revised_from_version: row.version, revised_by: String(user.email || user.id).replace(/@.*$/, ''), notes: notes.map(n => Object.assign({}, n, { status: 'applying' })) }));
+    if (!next) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
+    const applied = ((row.meta && row.meta.notes) || []).map(n => notes.includes(n) ? Object.assign({}, n, { status: 'applied', applied_in: next.id }) : n);
+    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { notes: applied }) });
+    const sub = await readSubmitRevision(env, next);
+    return json(Object.assign({ id: next.id, from: row.id, version: next.version, notes: notes.length }, sub), 200, origin, env);
+  }
+  if (path === '/reads/desk') {
+    // SEAM:READ_DESK: the editors' standing inputs. { kind } reads them; { kind, inputs } writes them (admin). kind is a read kind or 'all'.
+    const kind = HOUSE_READ.KINDS[body.kind] ? body.kind : body.kind === 'all' ? 'all' : null;
+    if (!kind) return json({ ok: false, error: 'bad_kind' }, 200, origin, env);
+    if (typeof body.inputs === 'string') {
+      const inputs = body.inputs.replace(/\u2014/g, ':').trim().slice(0, READ_DESK.INPUTS_MAX);
+      await sbRest(env, 'house_desk?on_conflict=kind', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: [{ kind, inputs, updated_by: String(user.email || user.id).replace(/@.*$/, ''), updated_at: new Date().toISOString() }] });
+      logEvent(env, 'intelligence', 'reads', 'desk_inputs', null, { kind, chars: inputs.length, by: user.id });
+    }
+    const rows = await sbRest(env, 'house_desk?kind=in.(' + kind + ',all)&select=kind,inputs,updated_by,updated_at') || [];
+    return json({ ok: true, kind, rows, applies: readDeskText(rows, kind) }, 200, origin, env);
+  }
+  if (path === '/reads/commission') {
+    // SEAM:READ_RECON: commission a RECON. { brief, days? (default 90), end? (default yesterday), now? } (admin). The brief is framed
+    // by EXCAVATE's framer; the row is queued with meta {plan recon, recon_no, brief {text, hash, frame, days}}; the tick
+    // gathers on the brief, then submits. now:true runs the gather and the submit on this request instead of waiting for the tick.
+    const text = String((body && body.brief) || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+    if (text.length < 12) return json({ ok: false, error: 'brief_too_short' }, 200, origin, env);
+    const frame = await excFrameFor(env, text);
+    if (!frame) return json({ ok: false, error: 'unframeable' }, 200, origin, env);
+    const days = Math.max(14, Math.min(366, parseInt(body.days, 10) || READ_RECON.DAYS));
+    const endD = readDay(body.end) || readAddDays(readDay(new Date().toISOString().slice(0, 10)), -1);
+    const win = readReportWindow(readIso(readAddDays(endD, -(days - 1))), readIso(endD));
+    if (!win) return json({ ok: false, error: 'bad_window' }, 200, origin, env);
+    const hash = (await sha256hex(text.toLowerCase())).slice(0, 16);
+    const no = await readReconIssue(env, hash);
+    win.label = readReconLabel(no, frame, win);
+    const { row, prev } = await readQueue(env, 'recon', win, { plan: 'recon', recon_no: no, brief: { text, hash, frame, days } });
+    if (!row) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
+    logEvent(env, 'intelligence', 'reads', 'recon_commissioned', null, { id: row.id, recon_no: no, days, by: user.id });
+    let sub = { ok: true, waiting: 'tick' };
+    if (body.now) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); sub = await readSubmit(env, row); sub.gather = { captured: g.captured, failed: g.failed.length }; }
+    return json(Object.assign({ id: row.id, kind: 'recon', recon_no: no, window: win, version: row.version, replaces: prev ? prev.id : null, frame }, sub), 200, origin, env);
   }
   // /reads/compile { kind: weekly | monthly | report, start?, end? (report: both required) }
   const kind = body.kind === 'monthly' ? 'monthly' : body.kind === 'report' ? 'report' : 'weekly';

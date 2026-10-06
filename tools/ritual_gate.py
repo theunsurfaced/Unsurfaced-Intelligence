@@ -214,6 +214,7 @@ SPENDERS = {
     'studioCaption': 'cron-bounded manifest + admin cut-story',
     'studioMemeLines': 'cron-bounded manifest + admin cut-story',
     'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap); admin route or readTick only',
+    'readSubmitRevision': 'claudeGate via claudeBatchSubmit (doc tier cap) on the prior pack; /reads/revise (admin) or readTick on a queued revise row only (SEAM:READ_DESK)',
     'readProofPart': 'claudeGate on the live tier per part; called by readProof only, which readLand (the batch drain) and the admin /reads/proof door call; READ_PROOF.PARALLEL parts at once',
     'callClaudeStream': 'claudeGate: tier dollar cap + KV kill switch, the same row in claude_jobs; called by excCompile only',
     'doorPass': 'claudeBatchSubmit on the live tier under the overnight share (OVERNIGHT_SHARE of the live cap), cron-bounded (06:10 chain) or the admin /excavate/desk door; stamp reuse asks the model only about frames whose evidence moved',

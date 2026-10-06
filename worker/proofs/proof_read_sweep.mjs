@@ -16,7 +16,7 @@ const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } p
 const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return src.slice(i, j); };
 
 // ── M ─────────────────────────────────────────────────────────────────
-ok(/^Version 3\.0\./m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.0 and takes the ids out of the prose');
+ok(/^Version 3\.[1-9]\./m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.1 or later and takes the ids out of the prose');
 ok(/\*\*The advantage law\.\*\*/.test(method) && /\*\*The reader law\.\*\*/.test(method) && /## The expert's voice/.test(method) && /Take a position\./.test(method) && /Name the mechanism\./.test(method) && /would a strategist pay for this sentence\?/.test(method),
   'M2 the advantage law, the reader law and the expert\'s voice are in the Method');
 ok(/## The nine questions/.test(method) && /\*\*Why does it work\?\*\*/.test(method) && /\*\*What is the edge\?\*\*/.test(method), 'M3 the nine questions ask why it works and what the edge is');
@@ -51,7 +51,7 @@ ok(/f\.advantage \? '<p class="edge"><b>THE EDGE<\/b>' \+ prose\(f\.advantage\)/
 ok(/h \+= inner\(band\(pad\(sec\), "Sources", EXPLAIN\.receipts\)/.test(page) && /contents\.push\(\["Sources", "Every source cited, numbered"\]\);/.test(page) && !/S-numbers such as S739/.test(page) && /Small numbers in the text point to the sources at the back/.test(page),
   'P6 the back page is Sources, in order of first mention, and the reader\'s guide says so');
 // the numbering, run: the editorial helpers on a tiny fixture
-const helpers = between(page, '/* SEAM:READ_SWEEP: sources never interrupt the thought.', 'if (row.kind === "report") {');
+const helpers = between(page, '/* SEAM:READ_SWEEP: sources never interrupt the thought.', 'if (row.kind === "report" || row.kind === "recon") {');
 const rc = { S11: { headline: 'a', source_name: 'Billboard' }, S12: { headline: 'b', source_name: 'Vogue' } }, cited = {};
 const H = new Function('rc', 'cited', 'esc', 'real', helpers + '; return { num, refs, prose, srcline, order };')(rc, cited, s => String(s), s => rc[s] ? s : null);
 ok(H.prose('Fans paid (S12, S11) and again S12 and S99.') === 'Fans paid<span class="rp-refs"><sup>1</sup><sup>2</sup></span> and again <sup>1</sup> and S99.' && H.order.join() === 'S12,S11' && H.srcline(['S11', 'S12', 'S99']) === '<div class="ev">SOURCES · 2 · 1</div>' && cited.S11 === 1,

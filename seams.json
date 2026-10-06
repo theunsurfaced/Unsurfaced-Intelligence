@@ -112,7 +112,7 @@
   "SEAM:THUMB@cabinet": {
    "file": "arcade/thumb/index.html",
    "tag": "SEAM:THUMB",
-   "purpose": "thumb wrestling cabinet: pure match core, drag + camera translators, spine + match rail"
+   "purpose": "thumb wrestling cabinet: pure match recon, drag + camera translators, spine + match rail"
   },
   "SEAM:THUMB@arcade-hub": {
    "file": "arcade/index.html",
@@ -122,7 +122,7 @@
   "SEAM:CHESS@cabinet": {
    "file": "arcade/chess/index.html",
    "tag": "SEAM:CHESS",
-   "purpose": "chess cabinet: proven 0x88 core, tiered brain, THE Hand twice on the 3D table, hold-to-move + orbit"
+   "purpose": "chess cabinet: proven 0x88 recon, tiered brain, THE Hand twice on the 3D table, hold-to-move + orbit"
   },
   "SEAM:CHESS@arcade-hub": {
    "file": "arcade/index.html",
@@ -915,7 +915,7 @@
   },
   "SEAM:READ_DESK": {
    "file": "worker/src/index.js",
-   "purpose": "the copy desk in parts. The desk writes the whole read back as JSON, and at the live tier's pace a report takes six to eight minutes in one call, past the two-minute clock (Oct 4: claude_network on Issue 001; no read longer than a weekly was ever proofread). readProofParts (pure) splits a read longer than READ_PROOF.PART_CHARS by whole fields: a top-level array of objects longer than a part gives one part per element (the findings, the executive summary), every other key is grouped in order until a part fills; a read that fits is one call as before. readProofPool runs READ_PROOF.PARALLEL parts at once; readProofAssemble puts the edited parts back (a key the desk dropped keeps the original; the accept law judges the whole). One failed part skips the desk with the part named (part_k_of_n:reason) and the read stands; the receipt carries parts and what was spent even then"
+   "purpose": "the editors' desk above the engine, for every kind. Notes: POST /reads/note {id, text, scope?} pins a note (who, when, a path such as findings[2] or the whole read) to house_reads.meta.notes; /reads/note-drop {id, n} takes an open note back. Revise: POST /reads/revise {id} on any written read at any state (ready, held, published) queues a new version (meta.plan revise, revised_from, revised_from_version, revised_by, the notes it applies; issue_no, month, recon_no, brief, gather carried) and readSubmitRevision compiles it at once from the prior row's ground (its stats, its stories by readItemsByIds, its pack), with the prior read, the DESK NOTES and READ_REVISION_LAW in the prompt under the same contract; the prior row's notes are marked applied with applied_in; the revision's notes are its record; readTick submits a queued revise row the same way; the stand changes only when the revision is staged or replaces its issue. Standing inputs: house_desk (migration 0036) holds the editors' standing instructions per kind and for 'all'; /reads/desk {kind, inputs?} reads or writes them; readDeskInputs puts them in every compile and every revision as HOUSE DESK (meta.desk_chars). Same spender (claudeBatchSubmit via readSubmitRevision), same landing, same laws, same sell law."
   },
   "SEAM:READ_PRUNE": {
    "file": "worker/src/index.js",
@@ -977,6 +977,20 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:REPORT_PRICE",
    "purpose": "the stand bar carries Price $ and Set price for a staged or live report, confirms what the change means (live: the next checkout pays it; staged: it applies at Send live), and Send live names the issue's price"
+  },
+  "SEAM:READ_RECON": {
+   "file": "worker/src/index.js",
+   "purpose": "the RECON, a commissioned report that starts from a brief. POST /reads/commission {brief, days?, end?, now?} (admin): excFrameFor frames the brief (entity, category, audience, market, competitors, question, anchors, exclude, rail queries); the row is queued as kind recon with meta {plan recon, recon_no (counts briefs by hash; a recompile keeps its number), brief {text, hash, frame, days}} and the label RECON 00N; readTick runs readReconGather first (EXCAVATE's gatherOpenSignals on readReconGatherQueries, captured with provenance recon_gather, receipt in meta.gather), then readSubmit. readSubmit slices the stories and readReportPack slices the lake, record, themes, frames and reads to readReconMatch (whole-word anchors, entity and competitors, minus excludes), asks the voice rails readReconVoiceQueries, writes STATS.recon from the slice (readReconStats: signals, record, stories, outlets, voices, by territory, by week), and fails thin_slice under READ_RECON.MIN_SLICE; the brief's text is the pack's first section and ground (readReconBriefText). READ_CONTRACT.recon is the report's contract answering the brief, plus brief_answer and for_the_brief {who_is_in, who_is_absent, where_to_enter, evidence}. readIsReport names report and recon wherever the production line keys on the report: window, laws, ground, desk, footer (RECON), sell law (no_brief, no_brief_answer in place of no_issue_no). A RECON is delivered as the PDF, never staged on the public stand (/reads/stand refuses). Method 3.1 names the RECON."
+  },
+  "SEAM:READ_RECON@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_RECON",
+   "purpose": "a RECON renders in the report layout: the cover says Unsurfaced RECON 00N and carries the brief; the one-page section is The answer (the brief, then brief_answer in place of the thesis); the tiles and cover numbers are the slice's (STATS.recon); For the brief (who is in, who is absent, where to enter) follows the findings; no stand bar"
+  },
+  "SEAM:READ_DESK@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_DESK",
+   "purpose": "The desk button on any written read opens the desk panel: the open notes (scope, text, who, when, Drop), Add a note (scope optional), Revise this read (confirm, then the new version compiles and lands in the library), the standing inputs for this kind and for every read with Save; a revision's bar says what it was revised from, on how many notes, by whom"
   }
  },
  "planned": [
