@@ -165,7 +165,7 @@ const D = new Function('feedCacheKey', 'feedWarm', 'loadTracks', 'FEED', 'sbRest
   () => 'prop', async () => ({ proposed: [{ cluster_id: 'th1', title: 'Texture-first shelves', subtitle: 'Who wins the curl aisle?', query: 'curl hair care shelf', lens: 'market', evidence: { recent_7d: 9, territories: ['fashion-beauty'] } }, { cluster_id: 'th2', title: 'Quiet theme', subtitle: '', lens: 'culture', evidence: { recent_7d: 1 } }] }),
   async () => [{ id: 'tr1', name: 'Nike', aliases: ['NKE'], sector: 'Athletic footwear' }], { TRACKS_KEY: 'tracks:stats' },
   async (env, path, opts) => {
-    if (/^signals\?/.test(path)) return Array.from({ length: 6 }, (_, i) => ({ id: 's' + i, title: (/theme_id\.eq\.th1/.test(path) ? 'Curl aisle story ' : /Nike/.test(path) ? 'Nike story ' : 'thin ') + i, url: 'https://lake.example/' + path.slice(8, 12) + i, summary: 'summary ' + i, source_name: 'outlet' + (i % 3), source_tier: 3, published_at: ago(i + 1), captured_at: ago(i + 1) })).slice(0, /th2/.test(path) ? 2 : 6);
+    if (/^signals\?/.test(path)) return Array.from({ length: 6 }, (_, i) => ({ id: 's' + i, title: (/theme_id\.eq\.th1/.test(path) ? 'Curl aisle story ' : /Nike/.test(path) ? 'Nike story ' : 'thin ') + i, url: 'https://lake.example/' + path.slice(8, 12) + i, summary: 'summary ' + i, source_name: 'outlet' + (i % 3), source_tier: 3, published_at: ago(i + 1), captured_at: ago(i + 1), image: /theme_id\.eq\.th1/.test(path) && i === 0 ? 'https://img.example/curl0.jpg' : /theme_id\.eq\.th1/.test(path) && i === 1 ? 'http://img.example/insecure.jpg' : null })).slice(0, /th2/.test(path) ? 2 : 6);
     if (/^door_reads\?on_conflict/.test(path)) { upserts.push(opts.body.length); return opts.body.map(r => { const prev = table.find(x => x.frame_key === r.frame_key && x.night === r.night); if (prev) { Object.assign(prev, r); return prev; } const row = Object.assign({ id: 'd' + (nextId++) }, r); table.push(row); return row; }); }
     if (/^door_reads\?id=eq\./.test(path) && opts && opts.method === 'PATCH') { const id = path.match(/id=eq\.([^&]+)/)[1]; const row = table.find(r => r.id === id); if (row) Object.assign(row, opts.body); patches.push({ id, body: opts.body }); return null; }
     if (/^door_reads\?/.test(path)) {
@@ -203,6 +203,10 @@ const th1 = table.find(r => r.frame_key === 'theme:th1'), th2 = table.find(r => 
 
 ok(table.filter(r => r.status === 'compiling').length === 2 && th2.status === 'failed' && th2.error === 'thin_evidence' && th1.evidence.length === 7 && th1.evidence[0].text !== undefined && th1.meta.batch_id === 'b1' && th1.meta.set_aside === 0 && th1.measures.recent_7d === 9 && th1.frame.anchors.length === 1,
   'D3 every row keeps its frame (whole), its measures, its evidence pack and the batch it waits on, and the pack includes the news top-up');
+ok(th1.evidence.filter(e => e.image).length === 1 && th1.evidence.find(e => e.image).image === 'https://img.example/curl0.jpg' && th1.evidence.every(e => 'image' in e),
+  'D3b each stored line keeps its https image (an http one is dropped), so the photograph survives into the landing');
+ok(/^v3\.2q~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '3.2q',
+  'D3c the reuse stamp carries the door\'s voice version');
 const landedText = JSON.stringify({ read: ['Texture-first shelving now owns 30% of fashion beauty signals this week.', 'Put the curl line on the endcap.'], insights: [{ category: 'market', title: 'Shelves sort by curl', excerpt: 'Curl aisle story 0 says so.', evidence: [1] }, { category: 'consumer', title: 'Buyers read labels', excerpt: 'x', evidence: [2] }, { category: 'brand', title: 'Being leads', excerpt: 'x', evidence: [3] }], ideas: [{ type: 'Channel', for: 'retail', headline: 'Pitch the curl endcap to Target', body: 'b', because: 'c', proof: 'p', evidence: [1], from: 0 }], brief: 'Where it is.' });
 const q7 = quiet();
 const land = await D.doorLand(env, th1.id, landedText, 0.02, 'end_turn');
@@ -212,7 +216,9 @@ ok(land.status === 'ready' && row0.status === 'ready' && row0.read.read[0].start
   'D4 a landed read is compiled under the laws (evidence mapped, confidence earned, numbers checked) and stored ready with its cost');
 const set = JSON.parse(kv['door:v2']);
 ok(set.tiles.length === 1 && set.pending === 1 && set.tiles[0].claim.startsWith('Texture-first') && set.tiles[0].move === 'Pitch the curl endcap to Target' && set.tiles[0].measures.recent_7d === 9 && set.tiles[0].measures.state === 'ACCELERATING' && set.tiles[0].frame.audience === 'Gen Z' && set.tiles[0].label === 'Gen Z hair care' && set.tiles[0].image === null,
-  'D5 the published tile carries the claim, the move, the measures, the frame and no photo; a read still compiling is counted as pending');
+  'D5 the published tile carries the claim, the move, the measures and the frame; a read still compiling is counted as pending');
+ok(row0.read.insights[0].image === 'https://img.example/curl0.jpg' && set.tiles[0].photo && set.tiles[0].photo.src === 'https://img.example/curl0.jpg' && set.tiles[0].photo.credit === 'outlet0',
+  'D5b the photograph a cited line carried reaches the published tile, credited to the outlet by name (no lake label, no tier)');
 // Night two: nothing moved for th1 → reused; Nike's row still compiling counts as not ready.
 D.DOOR.WANT = 12;
 const q8 = quiet();
@@ -238,6 +244,15 @@ q8c.done();
 const nk = pub.tiles.find(t => t.key === 'track:tr1');
 ok(pub.tiles.length === 2 && pub.pending === 1 && pub.night !== '2000-01-01' && nk && nk.carried === true && nk.night === '2000-01-01' && nk.claim === 'Nike held the shelf.' && pub.tiles.find(t => t.key === 'theme:th1').status === 'reused',
   'D6c a frame whose read is still being written keeps last night\'s tile on the door, marked carried, beside tonight\'s; the set is dated tonight');
+// D6d: a new voice is a new read. Same evidence, next night, voice bumped: nothing is reused, every frame is asked again.
+D.DOOR.VOICE = '9.9z';
+table.forEach(r => { r.night = '2000-01-02'; });
+const q8d = quiet();
+const outV = await D.doorPass(env, { force: true });
+q8d.done();
+D.DOOR.VOICE = '3.2q';
+ok(outV.reused === 0 && outV.kept === 0 && outV.queued === 2 && table.filter(r => r.night !== '2000-01-02' && r.frame_key === 'theme:th1')[0].status === 'compiling',
+  'D6d when the voice changes, a frame whose evidence did not move is written again: no read from the old voice is reused');
 ok(/"read":\["line 1: one plain sentence, at most 30 words, stating what people are doing/.test(D.excDoorPrompt(frame, 'E', m)) && /"question":"the question this read answers/.test(D.excDoorPrompt(frame, 'E', m)) && /3 to 4 of \{"category"/.test(D.excDoorPrompt(frame, 'E', m)) && /Lead with what changed/.test(D.excDoorPrompt(frame, 'E', m)), 'D7 the door asks for the light shape under the headline and question laws: a plain line about people and the question, three or four findings, one or two moves, a brief');
 ok(/if \(path === '\/excavate\/door\/read' && request\.method === 'GET'\) return doorReadRoute\(request, env, origin\);/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /row\.kind === 'door_read' && row\.meta && row\.meta\.door_id/.test(w) && /which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /door: door && door\.tiles && door\.tiles\.length \? door : null/.test(w),
   'D8 the read route, the cron chain, the batch drain, the admin door and the feed all know the door');

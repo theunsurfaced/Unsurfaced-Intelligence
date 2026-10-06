@@ -23,6 +23,7 @@ ok(/question: parsed && typeof parsed\.question === 'string' \? parsed\.question
 // ── T ─────────────────────────────────────────────────────────────────
 const photoSrc = helper('doorPhoto', '/* SEAM:EXC_DOOR_VOICE: what the door says');
 const doorPhoto = new Function(photoSrc + '; return doorPhoto;')();
+ok(doorPhoto({ insights: [{ image: 'https://z/d.jpg', source: 'Unsurfaced Lake · Highsnobiety (T2)' }] }, []).credit === 'Highsnobiety' && doorPhoto({ insights: [] }, [{ image: 'https://z/e.jpg', source: 'Unsurfaced Lake · signal (T?)' }]).credit === 'signal', 'T1b a photograph is credited to the outlet by name; the lake label and the tier never reach a reader');
 ok(doorPhoto({ insights: [{ image: 'http://x/a.jpg', source: 'A' }, { image: 'https://x/b.jpg', source: 'Hypebeast' }] }, []).src === 'https://x/b.jpg' && doorPhoto({ insights: [] }, [{ image: 'https://y/c.jpg', source_name: 'Vogue' }]).credit === 'Vogue' && doorPhoto({ insights: [{ image: 'data:image/png;base64,xx' }] }, []) === null && doorPhoto(null, null) === null,
   'T1 the tile\'s photograph is the first https image a cited insight or an evidence line carries, credited to its outlet; http, data and nothing else');
 ok(/question: \(rd && rd\.question\) \|\| f\.question \|\| null,/.test(w) && /photo: doorPhoto\(rd, r\.evidence\),/.test(w), 'T2 the tile carries the question (the read\'s, else the frame\'s) and the photograph');
@@ -69,16 +70,26 @@ ok(ord2.leads.length === 2 && ord2.leads[0].id === 'b', 'P11b with no photograph
 ok(OO._moveSize({ measures: { velocity_pct: -100, recent_7d: 0, prior_7d: 1 } }) === 0 && OO._moveSize({ measures: { velocity_pct: 100, recent_7d: 2, prior_7d: 1 } }) === 0 && OO._moveSize({ measures: { velocity_pct: -51, recent_7d: 33, prior_7d: 67 } }) === 51 && OO._moveSize({ measures: { velocity_pct: 163, recent_7d: 50, prior_7d: 19 } }) === 163,
   'P15 one story falling to none is no move; a fall from 67 to 33 and a rise from 19 to 50 are');
 const ord3 = O([tl('z', -100, 0, true, 1), tl('a', 51, 68, true, 45), tl('b', -17, 45, true, 54)]);
-ok(ord3.leads.map(t => t.id).join(',') === 'a,b' && ord3.rest[0].id === 'z', 'P15b the subject with one story never leads the board on its hundred percent fall');
+ok(ord3.leads.map(t => t.id).join(',') === 'a,b' && ord3.quiet[0].id === 'z', 'P15b the subject with one story never leads the board on its hundred percent fall');
 ok(/const moved = withM\.filter\(t => t\.measures\.velocity_pct != null && _moveSize\(t\) > 0\);/.test(page), 'P15c the week\'s movers sit above the same floor: no sharpest fall from one story to none');
-// the room is fluid: it runs edge to edge in the hub's gutter, one knob scales it with the canvas, and the lead count follows the canvas
-ok(/--k:1;--k:clamp\(1,calc\(\.42 \+ \.58\*tan\(atan2\(100vw,1440px\)\)\),1\.75\);/.test(page) && /--room-g:clamp\(24px,5vw,calc\(64px\*var\(--k\)\)\);--leads:2\}/.test(page) && /@media \(min-width:1800px\)\{:root\{--leads:3\}\}/.test(page) && /@media \(min-width:2400px\)\{:root\{--leads:4\}\}/.test(page),
-  'P16 the room scales with the canvas (1 at 1440, 1.75 wide), keeps the hub\'s gutter, and leads with 2, 3 or 4 positions by width');
-ok(/#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr;gap:calc\(56px\*var\(--k\)\);align-items:center;padding:calc\(48px\*var\(--k\)\) var\(--room-g\) calc\(44px\*var\(--k\)\);max-width:none;margin:0\}/.test(page) && /#main-dashboard\{max-width:none;gap:0;padding:0 var\(--room-g\) calc\(40px\*var\(--k\)\)\}/.test(page) && /nav\{padding:0 var\(--room-g\)\}/.test(page) && !/max-width:1240px/.test(page),
-  'P16b no 1240px strip: the hero, the board and the nav share the gutter edge to edge');
-ok(/#featured-insights-grid\.insights-grid\{grid-template-columns:repeat\(var\(--leads\),minmax\(0,1fr\)\)!important/.test(page) && leadsOf(4)._doorLeads() === 4 && leadsOf(3)._doorLeads() === 3 && leadsOf('')._doorLeads() === 2 && leadsOf(9)._doorLeads() === 2,
-  'P16c the board reads its lead count from the stylesheet');
-ok(/window\._doorLast = \{ door, proposed, leads: order\.leads\.length \};/.test(page) && /_doorLeads\(\) !== L\.leads\) _renderDoorGrid\(L\.door, L\.proposed\)/.test(page), 'P16d a resize that changes the lead count lays the board again from the same feed');
+// the room is one centered page that scales with the canvas; the stepped knob resolves in every browser (the trig formula did not)
+ok(/--k:1;--room-w:calc\(1240px\*var\(--k\)\);--room-g:40px;--leads:2\}/.test(page) && /@media \(min-width:1680px\)\{:root\{--k:1\.15\}\}/.test(page) && /@media \(min-width:2360px\)\{:root\{--k:1\.5\}\}/.test(page) && /@media \(min-width:3300px\)\{:root\{--k:1\.75\}\}/.test(page) && !/tan\(atan2/.test(page),
+  'P16 the room is 1240px at 1440 and scales by steps to 1.75 on a wide canvas; no formula a browser may not resolve');
+ok(/#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr;gap:calc\(56px\*var\(--k\)\);align-items:center;padding:calc\(48px\*var\(--k\)\) var\(--room-g\) calc\(44px\*var\(--k\)\);max-width:var\(--room-w\);margin:0 auto\}/.test(page) && /#main-dashboard\{max-width:var\(--room-w\);margin:0 auto;gap:0;padding:0 var\(--room-g\) calc\(40px\*var\(--k\)\)\}/.test(page) && !/max-width:1240px/.test(page) && !/nav\{padding:0 var\(--room-g\)\}/.test(page),
+  'P16b the hero and the board share one centered room; the nav keeps its own gutter');
+ok(/#featured-insights-grid\.insights-grid\{grid-template-columns:repeat\(var\(--leads\),minmax\(0,1fr\)\)!important/.test(page) && leadsOf(4)._doorLeads() === 4 && leadsOf('')._doorLeads() === 2 && leadsOf(9)._doorLeads() === 2 && !/window\._doorLast/.test(page),
+  'P16c the board reads its lead count from the stylesheet; no resize machinery');
+// quiet subjects and the patterns beneath the board speak the room's language
+const Q = leadsOf(2);
+const ordQ = Q._doorOrder([tl('z', -100, 0, true, 1), tl('a', 51, 68, true, 45), tl('b', -17, 45, false, 54), { id: 'y', measures: { velocity_pct: 0, recent_7d: 0, prior_7d: 0 } }]);
+ok(ordQ.leads.map(t => t.id).join(',') === 'a,b' && ordQ.rest.length === 0 && ordQ.quiet.map(t => t.id).join(',') === 'z,y', 'P17 a subject with no stories this week is quiet: never a lead, never a row of zeros, named at the end');
+ok(/function _renderQuietRow\(t\)/.test(page) && /class="row quiet"/.test(page) && /<span>No stories this week<\/span>/.test(page) && /weeks on record<\/span>/.test(page) && /Quiet this week<\/div>' \+ order\.quiet\.map\(t => _renderQuietRow\(t\)\)/.test(page),
+  'P17b the quiet list is one line per subject under its own divider');
+const lakeRow = phelper('_renderLakeRow', 'function _renderDoorRow(');
+ok(/function _renderLakeRow\(c\)/.test(page) && /Also moving, not yet read<\/div>' \+ rest\.map\(c => _renderLakeRow\(c\)\)/.test(page) && !/_renderLakeCard\(c, tiles\.length \+ i\)/.test(page) && /<i>Not yet read<\/i>/.test(lakeRow) && /Answers<\/i>\$\{safe\(c\.subtitle\)\}/.test(lakeRow) && /c\.line \|\| c\.hook \|\| c\.deck \|\| c\.title/.test(lakeRow) && !/card-cat|fi-state-tag|card-title|text-transform:uppercase/.test(lakeRow),
+  'P17c the patterns not yet read are rows in the room\'s language: the one-line read, the question, the counts in words; no serif title, no lens badge, no uppercase');
+ok(/list\.classList\.toggle\('nothumbs', !order\.rest\.some\(hasPhoto\) && !rest\.some\(c => c\.image\)\);/.test(page) && /#board-list\.nothumbs \.row\{grid-template-columns:minmax\(0,1\.2fr\) calc\(360px\*var\(--k\)\) minmax\(0,1fr\)\}/.test(page) && /#board-list\.nothumbs \.row \.photo\.empty\{display:none\}/.test(page),
+  'P17d when no row has a photograph the thumbnail column leaves instead of standing as a column of empty squares');
 ok(/<section class="hub-block room-sec room-voices" id="voices-block"/.test(page) && /\.room-voices \.track\{display:flex/.test(page) && !/\.voices \.track\{/.test(page) && !/behind the house's recent readings/.test(page),
   'P16e the voices block owns its own class (the reading page owns .voices) and its line names no house');
 ok(/function _renderDoorRow\(t\)/.test(page) && /<figure class="photo empty" aria-hidden="true"><\/figure>/.test(page) && /id="board-list"/.test(page) && /list\.innerHTML = order\.rest\.map\(t => _renderDoorRow\(t\)\)/.test(page) && /\.pos \.figures,\.row \.figures\{[^}]*grid-template-columns:1fr 1fr/.test(page),

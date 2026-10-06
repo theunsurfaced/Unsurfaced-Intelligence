@@ -7323,7 +7323,7 @@ async function excFrameTiles(env, tiles, edition, generated) {
  * Every read is kept in door_reads, so a tile says what changed since last
  * night. A visitor pays nothing: tiles come from KV, the read from the table.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const DOOR = { WANT: 12, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 9000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 2 };   // Oct 3: 2600 was spent thinking, 11 of 12 reads landed empty; EVERY_D 2: a new batch every other night while the platform evolves
+const DOOR = { WANT: 12, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 9000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 2, VOICE: '3.2q' };   // Oct 3: 2600 was spent thinking, 11 of 12 reads landed empty; EVERY_D 2: a new batch every other night while the platform evolves
 function doorNight() { return new Date().toISOString().slice(0, 10); }
 /* SEAM:DOOR_CADENCE: how many nights apart the door compiles a new batch. DOOR.EVERY_D is the house setting (2 while the
  * platform evolves, 1 nightly); the DOOR_EVERY_D secret overrides it without a deploy. A night inside the gap publishes the
@@ -7370,12 +7370,15 @@ async function doorEvidence(env, cand, frame, tiers) {
   const plan = excBudget(items, []);
   return { merged: plan.merged, set_aside: gate.dropped.length };
 }
+/* SEAM:EXC_DOOR_VOICE: the stamp carries the door's voice version (DOOR.VOICE, the Method version whose laws the prompt carries). Same
+ * evidence under a new voice is not the same read: a read written before the version changed is never reused after it. Bump VOICE
+ * whenever excDoorPrompt's laws change; the next pass recompiles every tile once. */
 function doorStamp(merged) {
   const lake = (merged || []).filter(c => c && c.sid);
   const base = lake.length ? lake : (merged || []);
   const keys = base.map(c => c.sid ? String(c.sid) : excKey(c)).sort();
   const newest = base.map(c => excWhen(c)).filter(Boolean).sort((a, b) => b - a)[0];
-  return keys.join('|') + '#' + (newest ? newest.toISOString().slice(0, 10) : 'undated');
+  return 'v' + DOOR.VOICE + '~' + keys.join('|') + '#' + (newest ? newest.toISOString().slice(0, 10) : 'undated');
 }
 function excDoorPrompt(frame, evidence, measures) {
   return excFrameBlock(frame) + excMeasureLine(measures) + 'EVIDENCE:\n' + evidence + '\n\n' +
@@ -7442,7 +7445,7 @@ async function doorPass(env, opts) {
       const pm = prev && prev.measures && prev.measures.recent_7d != null ? prev.measures : null;   // "since" needs a measured last night
       // Every row carries the same keys: an upsert writes the whole row, so a key left out would be nulled on another row.
       const base = { frame_key: cand.key, night, frame: Object.assign({ title: cand.title, subtitle: cand.subtitle, kind: cand.kind, lens: cand.lens, query: cand.query }, frame ? { entity: frame.entity, category: frame.category, audience: frame.audience, market: frame.market, competitors: frame.competitors, question: frame.question, anchors: frame.anchors, exclude: frame.exclude, queries: frame.queries } : {}),
-        measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700) })),
+        measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null })),   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
         meta: { set_aside: ev.set_aside, prev_id: prev ? prev.id : null, prev_night: prev ? prev.night : null, since: pm ? { recent_delta: (measures ? measures.recent_7d : 0) - (pm.recent_7d || 0), outlets_delta: (measures ? measures.outlets : 0) - (pm.outlets || 0) } : null },
         status: 'queued', error: null, stamp: null, read: null, cost_usd: null };
       if (ev.merged.length < DOOR.MIN_EVIDENCE) { out.thin++; rowsOut.push(Object.assign(base, { status: 'failed', error: 'thin_evidence' })); continue; }
@@ -7479,7 +7482,7 @@ async function doorPass(env, opts) {
 async function doorLand(env, id, text, cost, stopReason) {
   const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame,measures,evidence,status').catch(excQuiet('door_rows', []))) || [];
   const row = rows[0]; if (!row) return { skipped: 'no_row' };
-  const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text }));
+  const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));   // the image survives the round trip, so a cited insight carries its photograph
   const got = excReadOf(text || '');
   if (!got) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('door_land_patch')); return { id, status: 'failed' }; }
   const read = doorCompileRead(got.read, merged, row.frame, row.measures);
@@ -7506,8 +7509,10 @@ function doorTile(r) {
  * first evidence line with an https image. Never stock, always credited to the outlet. */
 function doorPhoto(rd, evidence) {
   const ok = u => typeof u === 'string' && /^https:\/\//.test(u);
-  for (const x of ((rd && rd.insights) || [])) if (x && ok(x.image)) return { src: x.image, credit: String(x.source || '').slice(0, 80) || null };
-  for (const e of (evidence || [])) if (e && ok(e.image)) return { src: e.image, credit: String(e.source || e.source_name || '').slice(0, 80) || null };
+  // the credit is the outlet's name only: a lake line is labeled for the model ("Unsurfaced Lake · Hypebeast (T2)"), never for a reader
+  const outlet = v => String(v || '').replace(/^Unsurfaced Lake\s*·\s*/i, '').replace(/\s*\(T[0-9?]\)\s*$/, '').trim().slice(0, 80) || null;
+  for (const x of ((rd && rd.insights) || [])) if (x && ok(x.image)) return { src: x.image, credit: outlet(x.source) };
+  for (const e of (evidence || [])) if (e && ok(e.image)) return { src: e.image, credit: outlet(e.source || e.source_name) };
   return null;
 }
 /* SEAM:EXC_DOOR_VOICE: what the door says beside the board, cached an hour. voices: the latest report's or RECON's consumer quotes
