@@ -858,7 +858,7 @@
     actions.innerHTML = "";
     call("/reads/list", {}).then(function (d) {
       if (!d || !d.ok) return say("The library could not load: " + ((d && d.error) || "no answer") + ".");
-      var groups = { report: [], weekly: [], monthly: [], record: [] };
+      var groups = { recon: [], report: [], weekly: [], monthly: [], record: [] };   /* SEAM:READ_RECON */
       (d.reads || []).forEach(function (r) { if (groups[r.kind]) groups[r.kind].push(r); });
       var html = '<section class="lib"><h1>The Read</h1><div class="sub">Every read the house has compiled, newest first</div>';
       ["recon", "report", "record", "monthly", "weekly"].forEach(function (k) {   /* SEAM:READ_RECON: commissioned work shelves first */

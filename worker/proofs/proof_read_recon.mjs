@@ -139,7 +139,7 @@ ok(/UNSURFACED™ RECON · 001: FIELD, SMART GLASSES \(JUL 7 TO OCT 4, 2026\) ·
 ok(/if \(row\.kind !== 'report'\) return json\(\{ ok: false, error: 'not_a_report' \}/.test(w), 'F2 the public stand still takes reports only; a RECON is delivered, not staged');
 
 // ── P ─────────────────────────────────────────────────────────────────
-ok(/recon: "RECON" \}/.test(page) && /row\.kind === "report" \|\| row\.kind === "recon"/.test(page) && /"For the brief", "Who is in, who is absent, where to enter"/.test(page) && /Unsurfaced RECON/.test(page) && /The brief: ' \+ esc\(recon\.text\)/.test(page) &&
+ok(/recon: "RECON" \}/.test(page) && /var groups = \{ recon: \[\], report: \[\], weekly: \[\], monthly: \[\], record: \[\] \};/.test(page) && /row\.kind === "report" \|\| row\.kind === "recon"/.test(page) && /"For the brief", "Who is in, who is absent, where to enter"/.test(page) && /Unsurfaced RECON/.test(page) && /The brief: ' \+ esc\(recon\.text\)/.test(page) &&
   /\[cs\.signals, "Signals on the brief"\]/.test(page) && /recon && x\.brief_answer \? x\.brief_answer : x\.thesis/.test(page) && /a RECON is delivered, never staged: no stand bar/.test(page) && /\.rp-rec2 > div \{ break-inside: avoid; \}/.test(page),
   'P1 the page renders a RECON in the report layout: the brief on the cover and the one-page section, the slice\'s numbers, the answer in place of the thesis, For the brief after the findings, no stand bar');
 
@@ -147,4 +147,4 @@ ok(/recon: "RECON" \}/.test(page) && /row\.kind === "report" \|\| row\.kind === 
 ok(/^Version 3\.1\./m.test(method) && /- \*\*The RECON\*\*: one brief, to depth\./.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)) && !/—/.test(method),
   'G1 Method 3.1 names the RECON and the worker carries the exact text');
 
-console.log('\nproof_read_core: ' + pass + ' checks PASS');
+console.log('\nproof_read_recon: ' + pass + ' checks PASS');
