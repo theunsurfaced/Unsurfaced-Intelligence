@@ -57,13 +57,30 @@ ok(!/\b(signal|signals|lake|overnight|frame|frames)\b/i.test(visible) && !/Featu
 ok(/function _renderWeek\(data\)/.test(page) && /function _renderVoices\(voices\)/.test(page) && /function _renderRecord\(record\)/.test(page) && /function _pulse\(series\)/.test(page) && /function _drawPulses\(\)/.test(page) && /function _countUp\(el, from, to, ms\)/.test(page) && /_renderWeek\(data\); _renderVoices\(data\.voices\); _renderRecord\(data\.record\);/.test(page),
   'P5 the week, the voices and the record render on every feed; the pulses draw once and the movers count');
 // the hybrid board: the movers lead as cards, the rest follow as rows; the first screen carries the invitation and the week's read
-const orderSrc = page.slice(page.indexOf('const DOOR_LEADS = 2;'), page.indexOf('function _renderDoorRow(t)'));
-const O = new Function(orderSrc + '; return _doorOrder;')();
-const tl = (id, v, cov, photo) => ({ id, photo: photo ? { src: 'https://x/' + id } : null, measures: { velocity_pct: v, recent_7d: cov } });
+const orderSrc = page.slice(page.indexOf('function _doorLeads()'), page.indexOf('function _renderDoorRow(t)'));
+const leadsOf = n => new Function('getComputedStyle', 'document', orderSrc + '; return { _doorOrder, _moveSize, _doorLeads };')(() => ({ getPropertyValue: () => ' ' + n }), { documentElement: {} });
+const OO = leadsOf(2), O = OO._doorOrder;
+const tl = (id, v, cov, photo, prior) => ({ id, photo: photo ? { src: 'https://x/' + id } : null, measures: { velocity_pct: v, recent_7d: cov, prior_7d: prior == null ? Math.max(cov, 9) : prior } });
 const ord = O([tl('a', 51, 68, true), tl('b', 163, 50, true), tl('c', -17, 45, false), tl('d', -51, 33, true), tl('e', -6, 31, false)]);
 ok(ord.leads.map(t => t.id).join(',') === 'b,a' && ord.rest.map(t => t.id).join(',') === 'c,d,e', 'P11 the two subjects that moved most lead (the most covered breaks a tie), photographs preferred; the rest keep the board\'s order as rows');
 const ord2 = O([tl('a', 5, 10, false), tl('b', 50, 20, false)]);
 ok(ord2.leads.length === 2 && ord2.leads[0].id === 'b', 'P11b with no photographs the movers still lead');
+// the coverage floor: a move counts only when the side that defines it carries five stories or more
+ok(OO._moveSize({ measures: { velocity_pct: -100, recent_7d: 0, prior_7d: 1 } }) === 0 && OO._moveSize({ measures: { velocity_pct: 100, recent_7d: 2, prior_7d: 1 } }) === 0 && OO._moveSize({ measures: { velocity_pct: -51, recent_7d: 33, prior_7d: 67 } }) === 51 && OO._moveSize({ measures: { velocity_pct: 163, recent_7d: 50, prior_7d: 19 } }) === 163,
+  'P15 one story falling to none is no move; a fall from 67 to 33 and a rise from 19 to 50 are');
+const ord3 = O([tl('z', -100, 0, true, 1), tl('a', 51, 68, true, 45), tl('b', -17, 45, true, 54)]);
+ok(ord3.leads.map(t => t.id).join(',') === 'a,b' && ord3.rest[0].id === 'z', 'P15b the subject with one story never leads the board on its hundred percent fall');
+ok(/const moved = withM\.filter\(t => t\.measures\.velocity_pct != null && _moveSize\(t\) > 0\);/.test(page), 'P15c the week\'s movers sit above the same floor: no sharpest fall from one story to none');
+// the room is fluid: it runs edge to edge in the hub's gutter, one knob scales it with the canvas, and the lead count follows the canvas
+ok(/--k:1;--k:clamp\(1,calc\(\.42 \+ \.58\*tan\(atan2\(100vw,1440px\)\)\),1\.75\);/.test(page) && /--room-g:clamp\(24px,5vw,calc\(64px\*var\(--k\)\)\);--leads:2\}/.test(page) && /@media \(min-width:1800px\)\{:root\{--leads:3\}\}/.test(page) && /@media \(min-width:2400px\)\{:root\{--leads:4\}\}/.test(page),
+  'P16 the room scales with the canvas (1 at 1440, 1.75 wide), keeps the hub\'s gutter, and leads with 2, 3 or 4 positions by width');
+ok(/#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr;gap:calc\(56px\*var\(--k\)\);align-items:center;padding:calc\(48px\*var\(--k\)\) var\(--room-g\) calc\(44px\*var\(--k\)\);max-width:none;margin:0\}/.test(page) && /#main-dashboard\{max-width:none;gap:0;padding:0 var\(--room-g\) calc\(40px\*var\(--k\)\)\}/.test(page) && /nav\{padding:0 var\(--room-g\)\}/.test(page) && !/max-width:1240px/.test(page),
+  'P16b no 1240px strip: the hero, the board and the nav share the gutter edge to edge');
+ok(/#featured-insights-grid\.insights-grid\{grid-template-columns:repeat\(var\(--leads\),minmax\(0,1fr\)\)!important/.test(page) && leadsOf(4)._doorLeads() === 4 && leadsOf(3)._doorLeads() === 3 && leadsOf('')._doorLeads() === 2 && leadsOf(9)._doorLeads() === 2,
+  'P16c the board reads its lead count from the stylesheet');
+ok(/window\._doorLast = \{ door, proposed, leads: order\.leads\.length \};/.test(page) && /_doorLeads\(\) !== L\.leads\) _renderDoorGrid\(L\.door, L\.proposed\)/.test(page), 'P16d a resize that changes the lead count lays the board again from the same feed');
+ok(/<section class="hub-block room-sec room-voices" id="voices-block"/.test(page) && /\.room-voices \.track\{display:flex/.test(page) && !/\.voices \.track\{/.test(page) && !/behind the house's recent readings/.test(page),
+  'P16e the voices block owns its own class (the reading page owns .voices) and its line names no house');
 ok(/function _renderDoorRow\(t\)/.test(page) && /<figure class="photo empty" aria-hidden="true"><\/figure>/.test(page) && /id="board-list"/.test(page) && /list\.innerHTML = order\.rest\.map\(t => _renderDoorRow\(t\)\)/.test(page) && /\.pos \.figures,\.row \.figures\{[^}]*grid-template-columns:1fr 1fr/.test(page),
   'P12 the rows carry a square thumbnail or an honest empty square; the figures sit in a two-by-two grid on cards and rows');
 ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && /<section class="week nophoto" id="week-block"[^]*?<\/section>\s*<\/section>/.test(page) && /#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr/.test(page) && /@media \(max-width:1000px\)\{#sec-explore \.hero\{grid-template-columns:1fr/.test(page) && /function _dashShow\(on\)/.test(page) && (page.match(/_dashShow\(/g) || []).length >= 6,
@@ -77,7 +94,7 @@ const row = phelper('_doorMeasureRow', 'function _pulse(');
 ok(/stories this week/.test(row) && /on last week/.test(row) && /of \$\{safe\(String\(m\.weeks \|\| 12\)\)\} weeks/.test(row) && /stories since the last reading/.test(row) && !/this wk|wks|signals/.test(row), 'P7 the figures say their unit in words');
 const strip = phelper('_renderStateStrip', 'function _renderLakeCard(');
 ok(/if \(!n\) continue;/.test(strip) && /k\.charAt\(0\) \+ k\.slice\(1\)\.toLowerCase\(\)/.test(strip) && />All<span class="fi-chip-n">/.test(strip), 'P8 a filter with nothing in it is not shown; words in sentence case');
-ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test(page) && /#sec-explore h1\.hero-title\{font-family:'Syne'/.test(page) && /nav \.nav-links \.nlb\{font-family:'Space Mono'/.test(page) && /@media \(prefers-reduced-motion:reduce\)\{\.voices \.track\{animation:none\}/.test(page),
+ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test(page) && /#sec-explore h1\.hero-title\{font-family:'Syne'/.test(page) && /nav \.nav-links \.nlb\{font-family:'Space Mono'/.test(page) && /@media \(prefers-reduced-motion:reduce\)\{\.room-voices \.track\{animation:none\}/.test(page),
   'P9 the room\'s styles: Syne for words, the grid paper gone, the nav in the house\'s type, reduced motion honored');
 ok(!/style="color:var\(--deep2\)">◆ Spaces/.test(page) && /#nav-spaces::first-letter\{color:var\(--room-red\)\}/.test(page), 'P10 the nav\'s diamond is the house red, not purple');
 
