@@ -170,17 +170,18 @@ const sse = evts => evts.map(e => 'event: ' + e.type + '\ndata: ' + JSON.stringi
 const body = sse([{ type: 'message_start', message: { id: 'msg_1', usage: { input_tokens: 1000, cache_read_input_tokens: 800 } } },
   { type: 'content_block_delta', delta: { type: 'text_delta', text: '{"read":["a"' } }, { type: 'ping' },
   { type: 'content_block_delta', delta: { type: 'text_delta', text: ',"b"]}' } }, { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 20 } }]);
-const chunks = [], recorded = [];
-const CS = new Function('CLAUDE', 'claudeParams', 'claudeEstimate', 'claudeGate', 'claudeHeaders', 'claudeCost', 'claudeLedgerAdd', 'claudeRecord', 'excQuiet', 'fetch',
+const chunks = [], recorded = [], closed = [];
+const CS = new Function('CLAUDE', 'claudeParams', 'claudeEstimate', 'claudeGate', 'claudeHeaders', 'claudeCost', 'claudeLedgerAdd', 'claudeRecord', 'claudeRecordEnd', 'excQuiet', 'fetch',
   streamSrc + '; return callClaudeStream;')({ API: 'x', TIERS: { live: { model: 'claude-sonnet-5' } }, LIVE_TIMEOUT_MS: 5000 }, (t, r) => ({ model: 'claude-sonnet-5', max_tokens: r.max_tokens }), () => 0.01,
-  async () => ({ ok: true }), () => ({}), (m, u) => (u.output_tokens || 0) * 1e-5, async () => {}, async (env, rows) => { recorded.push(rows[0]); return [9]; }, () => () => null,
+  async () => ({ ok: true }), () => ({}), (m, u) => (u.output_tokens || 0) * 1e-5, async () => {}, async (env, rows) => { recorded.push(rows[0]); return [9]; }, async (env, id, row) => { closed.push(Object.assign({ id }, row)); return id; }, () => () => null,
   async (url, o) => { const p = JSON.parse(o.body); chunks.push(p); const enc = new TextEncoder(); const b = enc.encode(body);
     return { ok: true, body: new ReadableStream({ start(c) { c.enqueue(b.slice(0, 40)); c.enqueue(b.slice(40)); c.close(); } }) }; });
 const heard = [];
 const sr = await CS({}, 'live', { prompt: 'P', max_tokens: 100, kind: 'excavate_report' }, t => heard.push(t));
 ok(sr.ok && sr.text === '{"read":["a","b"]}' && sr.stop_reason === 'end_turn' && sr.truncated === false && heard.length === 2 && heard[0] === '{"read":["a"' && chunks[0].stream === true,
   'C1 the live call streams: each delta is heard with the text so far, the stop reason and the whole text come back');
-ok(recorded[0].status === 'done' && recorded[0].meta.stream === true && recorded[0].usage.output_tokens === 20 && Math.abs(recorded[0].cost_usd - 0.0002) < 1e-9, 'C2 a streamed call lands in the same ledger with its usage and cost');
+ok(recorded[0].status === 'submitted' && closed[0].id === 9 && closed[0].status === 'done' && closed[0].meta.stream === true && closed[0].usage.output_tokens === 20 && Math.abs(closed[0].cost_usd - 0.0002) < 1e-9 && sr.job_id === 9,
+  'C2 a streamed call opens its row when it starts and closes it in the same ledger with its usage and cost (SEAM:EXC_STALL)');
 const ssSrc = between('async function synthesizeStream(', 'function corsHeaders(');
 const SS = new Function('synthesize', 'corsHeaders', 'excDraft', 'EXC_SPEED', 'excQuiet', ssSrc + '; return synthesizeStream;')(
   async (b, env, origin, hooks) => { hooks.onStage({ stage: 'writing', evidence: 3 }); hooks.onText(half); await new Promise(res => setTimeout(res, 20)); hooks.onText(modelOut); return hooks.reply({ ok: true, data: { insights: [1] } }); },

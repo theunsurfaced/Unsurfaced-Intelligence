@@ -77,8 +77,9 @@ let t = await run([{ text: full }]);
 ok(t.res.o.ok === true && t.calls.length === 1 && t.calls[0].max_tokens === 16000 && t.res.o.data.insights.length === 7 && t.res.o.data.model.reason === null,
   'S1 a whole reply is one call at 16000 tokens of room and a full read');
 t = await run([{ text: cutInMoves, stop_reason: 'max_tokens', truncated: true }]);
-ok(t.res.o.ok === true && t.calls.length === 1 && t.res.o.data.insights.length === 7 && /salvaged_cut/.test(t.res.o.data.model.reason),
-  'S2 the Oct 2 failure now returns the seven finished findings on the first call, labeled salvaged, with nothing spent twice');
+ok(t.res.o.ok === true && t.calls.length === 2 && t.calls[1].kind === 'excavate_report_complete' && t.calls[1].noReserve === true && t.calls[1].max_tokens === 6000 && t.res.o.data.insights.length === 7 && /salvaged_cut/.test(t.res.o.data.model.reason)
+  && t.res.o.data.partial && t.res.o.data.partial.missing.join() === 'ideas,brief',
+  'S2 the Oct 2 failure returns the seven finished findings; the missing moves and brief are asked for in one short completion call, never a second full report, and a read still missing it lands labeled partial (SEAM:EXC_STALL)');
 logs.length = 0;
 t = await run([{ text: 'I cannot comply with JSON today.' }, { text: '```json\n' + full + '\n```' }]);
 ok(t.res.o.ok === true && t.calls.length === 2 && t.calls[1].max_tokens === 32000 && /ROOM LAW/.test(t.calls[1].prompt) && t.calls[1].kind === 'excavate_report_retry' && !t.calls[1].reserveOnly,

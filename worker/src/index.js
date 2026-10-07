@@ -550,7 +550,7 @@ async function synthesize(body, env, origin, hooks) {
     if (env.RATE_LIMIT) {
       try {
         const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
-        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights)) { j.model = Object.assign({}, j.model, { cached: true }); return reply({ ok: true, data: j }, 200, origin, env); } }
+        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights) && (!j.partial || body.cache_only)) { j.model = Object.assign({}, j.model, { cached: true }); return reply({ ok: true, data: j }, 200, origin, env); } }
       } catch (e) { console.log('exc_cache_read', String(e && e.message).slice(0, 80)); }
     }
     // SEAM:EXC_STREAM: a caller whose stream was cut asks cache_only while the worker's own read lands; nothing is compiled twice.
@@ -694,9 +694,35 @@ async function synthesize(body, env, origin, hooks) {
     };
     stage({ stage: 'writing', evidence: merged.length, dropped: gate.dropped.length });
     T.model_start = Date.now();
+    // SEAM:EXC_STALL: the writing has a wall clock. Past EXC_SPEED.WRITE_MS no new live pass starts and what is written lands.
+    const writeLeft = () => EXC_SPEED.WRITE_MS - (Date.now() - T.model_start);
     let got = await attempt(base, 'first');
-    if (!got.p && got.c.lane === 'live')
-      got = await attempt(Object.assign({}, base, { prompt: usr + tight, max_tokens: Math.min(base.max_tokens * 2, EXC_ROOM.ceiling), kind: base.kind + '_retry' }), 'second');
+    // SEAM:EXC_STALL: complete, never rewrite. A cut reply that kept its findings is finished by one short call that writes
+    // only what is missing (the moves, the brief, the two lines), with the finished work handed in. A miss here costs
+    // seconds, not a second full report.
+    let filled = [];
+    if (got.p && got.c.lane === 'live' && excCut(got.c) && writeLeft() > 20000) {
+      const miss = excMissing(got.p.read, isReport);
+      if (miss.length) {
+        stage({ stage: 'completing', missing: miss, findings: (got.p.read.insights || []).length, moves: (got.p.read.ideas || []).filter(x => x && x.headline).length });
+        const have = { read: got.p.read.read || null, insights: (got.p.read.insights || []).map((x, i) => ({ index: i, category: x.category, title: x.title, evidence: x.evidence })),
+          ideas: (got.p.read.ideas || []).filter(x => x && x.headline).map(x => ({ type: x.type, headline: x.headline, from: x.from })) };
+        const ask = usr + '\n\nYOU ALREADY WROTE THIS PART OF THE READ (keep it; never repeat or rewrite it):\n' + JSON.stringify(have) +
+          '\n\nWrite ONLY what is missing: ' + miss.map(m => m === 'ideas' ? '"ideas" (the remaining moves, so the read has 3 to 5 in all, each in the full move shape above; "from" is the index of a finding already written)' : m === 'brief' ? '"brief"' : '"read" (the two lines)').join(', ') +
+          '. Return one JSON object with only those keys. JSON only, no fences.';
+        const room = Math.max(5000, Math.min(EXC_SPEED.COMPLETE_MS, writeLeft()));
+        let tc = null;
+        const c2 = await Promise.race([excCompile(env, { system: base.system, prompt: ask, max_tokens: EXC_SPEED.COMPLETE_TOKENS, kind: base.kind + '_complete', timeout_ms: room, noReserve: true }),
+          new Promise(res => { tc = setTimeout(() => res({ text: '', lane: 'live', reason: 'complete_slow', stop_reason: 'stream_deadline' }), room + 2000); })]).finally(() => clearTimeout(tc));
+        const fill = extractJson(c2.text || '') || excSalvage(c2.text || '', 0);
+        filled = excFill(got.p.read, fill);
+        passes.push({ pass: 'complete', lane: c2.lane, reason: c2.reason || null, stop: c2.stop_reason || null, truncated: !!c2.truncated,
+          chars: String(c2.text || '').length, parsed: filled.length ? 'filled:' + filled.join('+') : null, blocks: c2.blocks || null, out_tokens: c2.out_tokens || null });
+        if (!filled.length) console.log('exc_complete_miss', JSON.stringify({ q: query.slice(0, 80), missing: miss, reason: c2.reason || null, stop: c2.stop_reason || null, chars: String(c2.text || '').length }));
+      }
+    }
+    if (!got.p && got.c.lane === 'live' && writeLeft() > 45000)
+      got = await attempt(Object.assign({}, base, { prompt: usr + tight, max_tokens: Math.min(base.max_tokens * 2, EXC_ROOM.ceiling), kind: base.kind + '_retry', timeout_ms: writeLeft() }), 'second');
     if (!got.p)
       got = await attempt(Object.assign({}, base, { prompt: usr + tight, reserveOnly: got.c.reason || 'parse_failed' }), 'reserve');
     const compiled = got.c;
@@ -705,7 +731,10 @@ async function synthesize(body, env, origin, hooks) {
       return reply({ ok: false, error: 'synthesis_unparsable', passes }, 200, origin, env);
     }
     const parsed = got.p.read;
-    if (got.p.how === 'salvaged') compiled.reason = (compiled.reason ? compiled.reason + '+' : '') + 'salvaged_cut';
+    if (got.p.how === 'salvaged') compiled.reason = (compiled.reason ? compiled.reason + '+' : '') + 'salvaged_cut' + (filled.length ? '+completed' : '');
+    // SEAM:EXC_STALL: a read that still lacks parts lands, and says so; it is never cached as a whole read.
+    const stillMissing = excCut(compiled) ? excMissing(parsed, isReport) : [];
+    const partial = stillMissing.length ? { missing: stillMissing, stop: compiled.stop_reason || null, filled } : null;
     // SEAM:EXCAVATE_WIRE earned confidence: the number of DISTINCT sources the insight
     // itself cites. Never the size of its category, never the model's opinion of itself.
     // Source and link come from the cited evidence, not from the model's copy of it.
@@ -774,13 +803,13 @@ async function synthesize(body, env, origin, hooks) {
       readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
-        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped,
+        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL: the ledger knows a partial read
           window: excWindow(merged, now), widened: !!plan.widened, model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cost_usd: compiled.cost_usd } } });   // SEAM:EXC_INTEL
       const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: a.signalType === 'social' ? 'discourse' : (a.signalType || 'news'), published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: Math.max(1, excTier(c)), kind: c.kind || c.lens || 'open', published_at: c.published_at || null, rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
     } catch (e) {}
-    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped,
+    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
       relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, hits: gate.hits || null, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
@@ -798,7 +827,7 @@ async function synthesize(body, env, origin, hooks) {
     data.score = excReadScore(data, merged, frame0, data.timing);   // SEAM:EXC_SCORE
     console.log('exc_read', JSON.stringify({ q: query.slice(0, 60), ev: merged.length, aside: gate.dropped.length, lane: compiled.lane, passes: passes.length, score: data.score.score, ms: data.timing, harvest: data.harvest }));
     if (env.RATE_LIMIT && compiled.lane === 'live') {
-      try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: EXC_MODEL.CACHE_TTL }); }
+      try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: partial ? EXC_SPEED.PARTIAL_TTL : EXC_MODEL.CACHE_TTL }); }   // SEAM:EXC_STALL: a partial read waits briefly for the page that lost its stream
       catch (e) { console.log('exc_cache_write', String(e && e.message).slice(0, 80)); }
     }
     return reply({ ok: true, data }, 200, origin, env);
@@ -875,7 +904,8 @@ function extractJson(s) {
  * not thrown away: every finding (and move) the model finished is kept, the open brackets are closed, and the
  * read is used when it carries at least EXC_ROOM.MIN_SALVAGE findings. Only text that never parses is a miss. */
 const EXC_ROOM = { report: 16000, plain: 8000, ceiling: 32000, MIN_SALVAGE: 3 };   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
-const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4 };   // SEAM:EXC_SPEED
+const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4,   // SEAM:EXC_SPEED
+  BEAT_MS: 15000, WRITE_MS: 165000, COMPLETE_MS: 60000, COMPLETE_TOKENS: 6000, PARTIAL_TTL: 900 };   // SEAM:EXC_STALL: the heartbeat, the writing's wall clock, the completion call, a partial read's short cache
 // A quiet failure still leaves a line: what fell over, and where. Never an empty catch.
 const excQuiet = (where, v) => e => { console.log('exc_quiet', where, String(e && e.message || e).slice(0, 100)); return v; };
 function excSalvage(s, min, maxTries) {
@@ -940,6 +970,28 @@ function excReadOf(text) {
   const part = excSalvage(text);
   return part ? { read: part, how: 'salvaged' } : null;
 }
+/* SEAM:EXC_STALL: complete, never rewrite. A reply cut at its token limit, by a stall or by the deadline keeps what it
+ * finished; excMissing names what the read still lacks, and excFill lays a short completion call's answer onto it. */
+function excCut(c) { return !!(c && (c.truncated || /^stream_/.test(String(c.stop_reason || '')))); }
+function excMissing(read, isReport) {
+  const r = read || {}, miss = [];
+  if ((Array.isArray(r.ideas) ? r.ideas.filter(x => x && x.headline).length : 0) < 3) miss.push('ideas');
+  if (!String(r.brief || '').trim()) miss.push('brief');
+  if (isReport && !(Array.isArray(r.read) && r.read.filter(Boolean).length === 2)) miss.push('read');
+  return miss;
+}
+function excFill(read, fill) {
+  const got = [];
+  if (!read || !fill || typeof fill !== 'object') return got;
+  if (Array.isArray(fill.ideas) && fill.ideas.length) {
+    const have = new Set((read.ideas || []).map(x => String((x && x.headline) || '').toLowerCase().trim()));
+    const add = fill.ideas.filter(x => x && x.headline && !have.has(String(x.headline).toLowerCase().trim()));
+    if (add.length) { read.ideas = (read.ideas || []).filter(x => x && x.headline).concat(add).slice(0, 6); got.push('ideas'); }
+  }
+  if (!String(read.brief || '').trim() && String(fill.brief || '').trim()) { read.brief = String(fill.brief); got.push('brief'); }
+  if (!(Array.isArray(read.read) && read.read.filter(Boolean).length === 2) && Array.isArray(fill.read) && fill.read.filter(Boolean).length === 2) { read.read = fill.read; got.push('read'); }
+  return got;
+}
 
 // Server-side connectors — fetched by the Worker itself (keyless, and not subject
 // to browser CORS, so they enrich the corpus with sources the client can't reach).
@@ -965,17 +1017,18 @@ async function excCompile(env, o) {
   }
   if (o.reserveOnly) why = String(o.reserveOnly);   // SEAM:EXC_PARSE: the live lane answered twice and neither reply could be read
   if (!why) {
-    const req = { system: String(o.system || ''), cache: true, prompt: String(o.prompt || ''), max_tokens, kind: o.kind || 'excavate' };
+    const req = { system: String(o.system || ''), cache: true, prompt: String(o.prompt || ''), max_tokens, kind: o.kind || 'excavate', timeout_ms: o.timeout_ms || null };   // SEAM:EXC_STALL: the caller's deadline
     // SEAM:EXC_STREAM: a caller with an ear (onText) hears the read as it is written; the ledger is the same.
     const ask = () => (o.onText ? callClaudeStream(env, EXC_MODEL.TIER, req, o.onText) : callClaude(env, EXC_MODEL.TIER, req));
     let r = await ask();
-    if (!r.ok && /^claude_(?:network|429|5\d\d)$/.test(String(r.error || ''))) {
+    if (!r.ok && /^claude_(?:network|stall|429|5\d\d)$/.test(String(r.error || ''))) {   // SEAM:EXC_STALL: a stall with nothing written is retried once
       await new Promise(res => setTimeout(res, EXC_MODEL.RETRY_MS));
       r = await ask();
     }
     if (r.ok) return { text: r.text || '', lane: 'live', model: CLAUDE.TIERS[EXC_MODEL.TIER].model, reason: null, cost_usd: r.cost_usd || 0, truncated: !!r.truncated, stop_reason: r.stop_reason || null, blocks: r.blocks || null, out_tokens: (r.usage && r.usage.output_tokens) || null };
     why = String(r.error || 'claude_failed');
   }
+  if (o.noReserve) return { text: '', lane: 'none', model: null, reason: why, cost_usd: 0, truncated: false, stop_reason: null };   // SEAM:EXC_STALL: a completion is the live lane's or nothing
   const text = await callModel(env, o.reserve || 't3',
     [{ role: 'system', content: String(o.system || '') }, { role: 'user', content: String(o.prompt || '') }], { max_tokens: Math.min(max_tokens, EXC_RESERVE_MAX) });
   return { text: text || '', lane: 'reserve', model: CONFIG.TEXT_MODEL, reason: why, cost_usd: 0, truncated: false, stop_reason: null };
@@ -3470,10 +3523,14 @@ function allowed(origin, env) {
 }
 /* SEAM:EXC_STREAM: POST /excavate/synthesize {stream:true} answers as server-sent events: `stage` while the
  * evidence is read, `draft` while the read is written (the finished parts, every STREAM_EVERY_MS), then `final`,
- * the same payload the plain door returns. A client that cannot read a stream asks without stream:true. */
+ * the same payload the plain door returns. A client that cannot read a stream asks without stream:true.
+ * SEAM:EXC_STALL: a comment line (`: beat`) every BEAT_MS while the worker works, so the page can tell a quiet model
+ * from a dead stream; exc_stream_end says how every stream ended and how long it took. */
 async function synthesizeStream(body, env, origin, wctx) {
   const ts = new TransformStream(), w = ts.writable.getWriter(), enc = new TextEncoder();
-  const send = (event, data) => w.write(enc.encode('event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n')).catch(excQuiet('stream_send'));
+  let open = true;
+  const write = str => (open ? w.write(enc.encode(str)).catch(e => { open = false; excQuiet('stream_send')(e); }) : Promise.resolve());
+  const send = (event, data) => write('event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n');
   let last = 0, lastSig = '';
   const onText = t => {
     const now = Date.now();
@@ -3485,16 +3542,25 @@ async function synthesizeStream(body, env, origin, wctx) {
     if (sig === lastSig) return;
     lastSig = sig; send('draft', d);
   };
+  const T0 = Date.now();
+  const beat = setInterval(() => { write(': beat ' + Math.round((Date.now() - T0) / 1000) + '\n\n'); }, EXC_SPEED.BEAT_MS || 15000);
   const job = (async () => {
+    let outcome = 'ok';
     try {
       send('stage', { stage: 'reading' });
       let out = await synthesize(body, env, origin, { onText, onStage: st => send('stage', st), reply: payload => payload });
-      if (out instanceof Response) out = await out.json().catch(() => ({ ok: false, error: 'stream_mode' }));
+      if (out instanceof Response) out = await out.json().catch(excQuiet('stream_mode', { ok: false, error: 'stream_mode' }));
+      outcome = out && out.ok ? (out.data && out.data.partial ? 'partial' : 'ok') : String((out && out.error) || 'failed');
       await send('final', out);
     } catch (e) {
+      outcome = 'error';
       console.log('exc_stream_error', String(e && e.message).slice(0, 160));
       await send('final', { ok: false, error: 'stream_failed' });
-    } finally { try { await w.close(); } catch (e) { excQuiet('stream_close')(e); } }
+    } finally {
+      clearInterval(beat);
+      console.log('exc_stream_end', JSON.stringify({ q: String((body && body.query) || '').slice(0, 60), outcome, ms: Date.now() - T0, client: open }));
+      try { await w.close(); } catch (e) { excQuiet('stream_close')(e); }
+    }
   })();
   if (wctx && wctx.waitUntil) wctx.waitUntil(job);
   const h = corsHeaders(origin, env);
@@ -8944,6 +9010,7 @@ const CLAUDE = {
   BATCH_MAX: 100,
   DRAIN_ROWS: 150,
   LIVE_TIMEOUT_MS: 120000,
+  STREAM_IDLE_MS: 45000,   // SEAM:EXC_STALL: a stream that sends no bytes at all (text, thinking or ping) for this long is stalled and cancelled
   RECON_TIMEOUT_MS: 300000   // SEAM:READ_DEEP: a RECON's research plan thinks at high effort on the tick, never on a reader's request
 };
 function claudeMonth(d) { return (d || new Date()).toISOString().slice(0, 7); }
@@ -9045,6 +9112,17 @@ async function claudeRecord(env, rows) {
   }
 }
 
+/* SEAM:EXC_STALL: a row opened when a call starts is closed here. Without an id (the opening insert failed) the
+ * whole row is written now, so no call ever leaves the ledger without its row. */
+async function claudeRecordEnd(env, id, row) {
+  if (id) {
+    try { await sbRest(env, 'claude_jobs?id=eq.' + encodeURIComponent(id), { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: row }); return id; }
+    catch (e) { console.log('claude_record_end_error', String(e && e.message).slice(0, 120)); return id; }
+  }
+  const ids = await claudeRecord(env, [row]);
+  return (ids && ids[0]) || null;
+}
+
 /* Live: one request, answered now. For short work only; documents ride batch. */
 async function callClaude(env, tier, req) {
   if (!CLAUDE.TIERS[tier]) return { ok: false, error: 'claude_bad_tier' };
@@ -9079,7 +9157,11 @@ async function callClaude(env, tier, req) {
 }
 
 /* SEAM:EXC_STREAM: the live call, heard as it is written. Same gate, same ledger, same row as callClaude;
- * onText receives the text so far after every delta. A stream cut after text arrived returns what came. */
+ * onText receives the text so far after every delta. A stream cut after text arrived returns what came.
+ * SEAM:EXC_STALL: the claude_jobs row is opened when the call starts and closed when it ends, whatever the outcome, so a
+ * call that never ends shows as a row still `submitted`. No bytes for STREAM_IDLE_MS is a stall; the ceiling (the caller's
+ * timeout_ms, at most LIVE_TIMEOUT_MS) is a hard deadline. Either cancels the read and returns what was written:
+ * reader.read() alone waits on a quiet socket forever. A cut stream is billed on what it wrote. */
 async function callClaudeStream(env, tier, req, onText) {
   if (!CLAUDE.TIERS[tier]) return { ok: false, error: 'claude_bad_tier' };
   const params = Object.assign(claudeParams(tier, req), { stream: true });
@@ -9087,24 +9169,48 @@ async function callClaudeStream(env, tier, req, onText) {
   const gate = await claudeGate(env, tier, est);
   if (!gate.ok) return gate;
   const kind = String((req && req.kind) || 'live').slice(0, 40);
+  const T0 = Date.now(), idleMs = CLAUDE.STREAM_IDLE_MS || 30000;
+  const ceiling = Math.min(parseInt(req && req.timeout_ms, 10) || CLAUDE.LIVE_TIMEOUT_MS, CLAUDE.LIVE_TIMEOUT_MS);
+  const opened = await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'submitted', est_usd: est, meta: { stream: true, opened: true } }]);
+  const rowId = (opened && opened[0]) || null;
+  const close = row => claudeRecordEnd(env, rowId, Object.assign({ tier, kind, mode: 'live', model: params.model, est_usd: est }, row, { ended_at: new Date().toISOString() }));
+  const ctl = new AbortController();
+  const hard = setTimeout(() => ctl.abort(), ceiling);
   let r = null;
   try {
-    r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env),
-      body: JSON.stringify(params), signal: AbortSignal.timeout(CLAUDE.LIVE_TIMEOUT_MS) });
-  } catch (e) { return { ok: false, error: 'claude_network' }; }
+    r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env), body: JSON.stringify(params), signal: ctl.signal });
+  } catch (e) {
+    clearTimeout(hard);
+    await close({ status: 'failed', error: 'claude_network ' + String(e && e.message).slice(0, 120), cost_usd: 0, meta: { stream: true, ms: Date.now() - T0 } });
+    return { ok: false, error: 'claude_network' };
+  }
   if (!r.ok || !r.body) {
+    clearTimeout(hard);
     const j = await r.json().catch(excQuiet('stream_err_body', null));
     const detail = String((j && j.error && j.error.message) || '').slice(0, 300);
-    await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',
-      error: ('claude_' + r.status + ' ' + detail).slice(0, 300), est_usd: est, cost_usd: 0, ended_at: new Date().toISOString() }]);
+    await close({ status: 'failed', error: ('claude_' + r.status + ' ' + detail).slice(0, 300), cost_usd: 0, meta: { stream: true, ms: Date.now() - T0 } });
     return { ok: false, error: 'claude_' + r.status, detail };
   }
   const reader = r.body.getReader(), dec = new TextDecoder();
-  let buf = '', text = '', stop = null, msgId = null;
+  let buf = '', text = '', thought = 0, stop = null, msgId = null, quiet = null, fault = null;
   const usage = {};
+  // Every read races a timer: the stall window, or what is left of the ceiling when that is shorter.
+  const next = () => {
+    const left = ceiling - (Date.now() - T0);
+    let t = null;
+    const timer = new Promise(res => { t = setTimeout(() => res({ quiet: left <= idleMs ? 'deadline' : 'stall' }), Math.max(0, Math.min(idleMs, left))); });
+    return Promise.race([reader.read(), timer]).finally(() => clearTimeout(t));
+  };
   try {
     for (;;) {
-      const step = await reader.read();
+      const step = await next();
+      if (step.quiet) {
+        quiet = step.quiet;
+        console.log('claude_stream_' + quiet, JSON.stringify({ kind, chars: text.length, ms: Date.now() - T0 }));
+        ctl.abort();
+        reader.cancel().catch(excQuiet('stream_cancel'));
+        break;
+      }
       if (step.done) break;
       buf += dec.decode(step.value, { stream: true });
       let k;
@@ -9115,20 +9221,29 @@ async function callClaudeStream(env, tier, req, onText) {
         let d = null; try { d = JSON.parse(line.slice(5).trim()); } catch (e) { continue; }
         if (d.type === 'message_start' && d.message) { msgId = d.message.id || null; Object.assign(usage, d.message.usage || {}); }
         else if (d.type === 'content_block_delta' && d.delta && d.delta.type === 'text_delta') { text += d.delta.text || ''; if (onText) { try { onText(text); } catch (e) { excQuiet('on_text')(e); } } }
+        else if (d.type === 'content_block_delta' && d.delta && d.delta.type === 'thinking_delta') thought += String(d.delta.thinking || '').length;
         else if (d.type === 'message_delta') { if (d.delta && d.delta.stop_reason) stop = d.delta.stop_reason; if (d.usage) Object.assign(usage, d.usage); }
         else if (d.type === 'error') throw new Error('stream_error ' + String((d.error && d.error.type) || ''));
       }
     }
   } catch (e) {
-    console.log('claude_stream_cut', String(e && e.message).slice(0, 120));
-    if (!text) return { ok: false, error: /overloaded/.test(String(e && e.message)) ? 'claude_529' : 'claude_network' };
-    stop = stop || 'stream_cut';
+    fault = String((e && e.message) || e).slice(0, 120);
+    console.log('claude_stream_cut', fault);
   }
+  clearTimeout(hard);
+  if (quiet) stop = 'stream_' + quiet;
+  else if (fault) stop = stop || 'stream_cut';
+  // A stream cut before message_delta never sent its output count: bill what was written (text and thinking, 3.5 chars a token).
+  if ((quiet || fault) && (text || thought)) { usage.output_tokens = Math.max(usage.output_tokens || 0, Math.ceil((text.length + thought) / 3.5)); usage.estimated = true; }
   const cost = claudeCost(params.model, usage, false);
   await claudeLedgerAdd(env, tier, cost);
-  const ids = await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'done',
-    result: text, usage, stop_reason: stop, est_usd: est, cost_usd: cost, meta: { msg_id: msgId, stream: true }, ended_at: new Date().toISOString() }]);
-  return { ok: true, text, usage, cost_usd: cost, stop_reason: stop, truncated: stop === 'max_tokens', job_id: ids && ids[0] || null };
+  if (!text) {
+    const error = quiet ? 'claude_stall' : (/overloaded/.test(String(fault)) ? 'claude_529' : 'claude_network');
+    await close({ status: 'failed', error: (error + ' ' + (quiet || fault || 'empty')).slice(0, 300), usage, stop_reason: stop, cost_usd: cost, meta: { msg_id: msgId, stream: true, ms: Date.now() - T0 } });
+    return { ok: false, error };
+  }
+  const id = await close({ status: 'done', result: text, usage, stop_reason: stop, cost_usd: cost, meta: { msg_id: msgId, stream: true, ms: Date.now() - T0, cut: quiet || (fault ? 'cut' : null) } });
+  return { ok: true, text, usage, cost_usd: cost, stop_reason: stop, truncated: stop === 'max_tokens', job_id: id };
 }
 
 /* Batch: half price, answered within the hour as a rule. items are

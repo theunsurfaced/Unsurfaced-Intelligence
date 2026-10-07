@@ -2557,19 +2557,31 @@ async function _synthesizeStream(payload, onEvent, state) {
   state = state || {};
   const _h = await _authHeader();
   payload = await _withLake(payload, _h);
+  // SEAM:EXC_STALL: the watchdog. The worker beats every 15s while it works; QUIET_MS without a byte means the stream is
+  // dead, and MAX_MS is the outer bound on any read. Either one aborts, and the cut path takes over.
+  const QUIET_MS = state.quiet_ms || 45000, MAX_MS = state.max_ms || 360000;
+  const ctl = new AbortController(), t0 = Date.now();
+  let lastByte = t0, why = null;
+  const dog = setInterval(() => {
+    if (Date.now() - lastByte > QUIET_MS) why = 'quiet'; else if (Date.now() - t0 > MAX_MS) why = 'too_long';
+    if (why) { clearInterval(dog); ctl.abort(); }
+  }, Math.min(2000, QUIET_MS));
+  try {
   let r = null;
   try {
-    r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/synthesize', { method: 'POST',
+    r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/synthesize', { method: 'POST', signal: ctl.signal,
       headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'text/event-stream' }, _h), body: JSON.stringify(Object.assign({}, payload, { stream: true })) });
   } catch (e) { r = null; }
-  if (!r || !r.ok) throw new Error('stream door ' + (r ? r.status : 'down'));
+  if (!r || !r.ok) throw new Error('stream door ' + (r ? r.status : (why || 'down')));
   const ct = r.headers.get('content-type') || '';
   if (!/event-stream/.test(ct)) return r.json();   // an older worker answered plainly
   const reader = r.body.getReader(), dec = new TextDecoder();
   let buf = '', fin = null;
   for (;;) {
-    const step = await reader.read();
+    let step = null;
+    try { step = await reader.read(); } catch (e) { throw new Error('stream ' + (why || 'cut')); }
     if (step.done) break;
+    lastByte = Date.now();
     buf += dec.decode(step.value, { stream: true });
     let k;
     while ((k = buf.indexOf('\n\n')) >= 0) {
@@ -2580,8 +2592,9 @@ async function _synthesizeStream(payload, onEvent, state) {
       if (m[1] === 'final') fin = d; else { state.heard = true; try { onEvent && onEvent(m[1], d); } catch (e) {} }
     }
   }
-  if (!fin) throw new Error('stream ended without a read');
+  if (!fin) throw new Error('stream ended without a read' + (why ? ' (' + why + ')' : ''));
   return fin;
+  } finally { clearInterval(dog); state.why = why; }
 }
 // A stream that was cut after it had started leaves a read still compiling on the worker. The page asks the door
 // cache_only every few seconds until that read lands (up to 90s), and compiles afresh only if it never does.
@@ -2592,11 +2605,20 @@ async function _synthesizePlainAfterCut(payload, heard) {
       try { const c = await api('excavate/synthesize', Object.assign({}, payload, { cache_only: true })); if (c && c.ok && c.data) return c; } catch (e) {}
     }
   }
-  return api('excavate/synthesize', payload);
+  // SEAM:EXC_STALL: the fresh compile has a deadline too; past it the search lands the structured signals and says so.
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 300000);
+  try {
+    const _h = await _authHeader();
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/synthesize', { method: 'POST', signal: ctl.signal,
+      headers: Object.assign({ 'Content-Type': 'application/json' }, _h), body: JSON.stringify(await _withLake(payload, _h)) });
+    if (!r.ok) throw new Error('Proxy excavate/synthesize failed: ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
 }
 function _loaderStage(st) {
   const lbl = document.getElementById('fetch-label'); if (!lbl) return;
   if (st && (st.stage === 'reading' || st.stage === 'tabling') && st.note) { [0, 1].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; }); const c = document.getElementById('ls2'); if (c) c.className = 'lstep active'; lbl.textContent = st.note + '.'; return; }   // SEAM:EXC_HARVEST
+  if (st && st.stage === 'completing') { const part = { ideas: 'the remaining moves', brief: 'the brief', read: 'the two-line read' }; lbl.textContent = 'Finishing the read: ' + (st.findings || 0) + ' findings written, now writing ' + (st.missing || []).map(m => part[m] || m).join(' and ') + '.'; return; }   // SEAM:EXC_STALL
   if (st && st.stage === 'writing') { [0, 1, 2].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; });
     const w = document.getElementById('ls3'); if (w) w.className = 'lstep active';
     lbl.textContent = 'Reading ' + (st.evidence || 0) + ' lines of evidence' + (st.dropped ? ' (' + st.dropped + ' set aside as off-frame)' : '') + '. Writing.'; }
@@ -3306,6 +3328,7 @@ async function runLiveSearch(q){
     } catch(e){ synthesis=null; }   // Worker down / 401 / unparsable → template read
     hideLoader();
     if(!synthesis) showToast('AI fusion unavailable — showing the structured signals');
+    else if(synthesis.partial){ const _pn={ideas:'moves',brief:'brief',read:'two-line read'}; showToast('This read landed before its '+(synthesis.partial.missing||[]).map(m=>_pn[m]||m).join(' and ')+' finished. Run it again for the whole read.'); }   // SEAM:EXC_STALL
     _renderLive(q, { items:g.items, synthesis, sources:g.sources });
   } catch(e){
     hideLoader();
@@ -4912,10 +4935,10 @@ async function _runLensPipeline(q, cat) {
   if (cat === 'consumer') {
     // Consumer: academic (behavior science) + community voice + practitioner
     const [wSum, wSrch, oa, ss, pm, cr, reddit, hn] = await Promise.allSettled([
-      T(fetchWikiSummary(enc(lensQ.split(' ').slice(0,5).join(' ')))),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(fetchWikiSearch(lensQ)),
       T(_fetchJSON(`https://api.openalex.org/works?search=${enc(lensQ)}&sort=cited_by_count:desc&per-page=8&filter=open_access.is_oa:true&mailto=excavate@unsurfaced.com`)),
-      T(_fetchJSON(`https://api.semanticscholar.org/graph/v1/paper/search?query=${enc(lensQ)}&fields=title,abstract,year,citationCount,authors,openAccessPdf&limit=6`)),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(fetchPubMed(lensQ)),
       T(fetchCrossRef(lensQ)),
       T(fetchReddit(q, 'marketing')),
@@ -4926,21 +4949,21 @@ async function _runLensPipeline(q, cat) {
   } else if (cat === 'market') {
     // Market: economic data + research + news + innovation signal
     const [wSum, wSrch, oa, cr, wb, patents, gdelt, ax] = await Promise.allSettled([
-      T(fetchWikiSummary(enc(lensQ.split(' ').slice(0,5).join(' ')))),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(fetchWikiSearch(lensQ)),
       T(_fetchJSON(`https://api.openalex.org/works?search=${enc(lensQ)}&sort=cited_by_count:desc&per-page=8&filter=open_access.is_oa:true&mailto=excavate@unsurfaced.com`)),
       T(fetchCrossRef(lensQ)),
       T(fetchWorldBank(q)),
-      T(fetchPatents(q)),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       Promise.resolve(null),   // GDELT is the worker's rail now (SEAM:GATHER_SERVER); asked from the browser it answered 429
-      T(fetchArxiv(lensQ)),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
     ]);
     return _synthesiseLens(q, cat, {wSum, wSrch, oa, cr, wb, patents, gdelt, ax});
 
   } else if (cat === 'culture') {
     // Culture: community voice + cultural production + practitioner discourse + news
     const [wSum, wSrch, reddit, ol, hn, gdelt, concepts, wd] = await Promise.allSettled([
-      T(fetchWikiSummary(enc(lensQ.split(' ').slice(0,5).join(' ')))),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(fetchWikiSearch(lensQ)),
       T(fetchReddit(q)),
       T(fetchOpenLibrary(lensQ)),
@@ -4954,13 +4977,13 @@ async function _runLensPipeline(q, cat) {
   } else {
     // Brand: citation impact + research + practitioner + innovation + news
     const [wSum, wSrch, cr, ss, oa, patents, guardian, hn] = await Promise.allSettled([
-      T(fetchWikiSummary(enc(lensQ.split(' ').slice(0,5).join(' ')))),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(fetchWikiSearch(lensQ)),
       T(fetchCrossRef(lensQ)),
-      T(_fetchJSON(`https://api.semanticscholar.org/graph/v1/paper/search?query=${enc(lensQ)}&fields=title,abstract,year,citationCount,authors&limit=6`)),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(_fetchJSON(`https://api.openalex.org/works?search=${enc(lensQ)}&sort=cited_by_count:desc&per-page=8&filter=open_access.is_oa:true&mailto=excavate@unsurfaced.com`)),
-      T(fetchPatents(q)),
-      T(fetchGuardian(lensQ)),
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
+      Promise.resolve(null),   // SEAM:EXC_STALL: retired from the browser (CORS, 429, a test key); the worker's gather carries it
       T(_fetchJSON(`https://hn.algolia.com/api/v1/search?query=${enc(lensQ)}&tags=story&hitsPerPage=8&numericFilters=points>5`)),
     ]);
     return _synthesiseLens(q, cat, {wSum, wSrch, cr, ss, oa, patents, guardian, hn});

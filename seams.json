@@ -1111,6 +1111,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:MEMORY",
    "purpose": "EX20: every board tile (lead, row, quiet) has a History control that opens the subject's history as a dialog (Escape and Back close it): its weeks since first seen, exact, red when on our board, the current week as so far, a week not watched said so; what the board posted and what our reads said, newest first; each call's grade at 30, 60 and 90 days with the numbers behind it; every week in a table; how a call is graded. The brand room's record is the brand's history. The track record is the graded calls (held, faded, open at 30 days), each opening its history. Cloudflare's visitor analytics allowed in the page policies"
+  },
+  "SEAM:EXC_STALL": {
+   "file": "worker/src/index.js",
+   "purpose": "no read waits forever: callClaudeStream races every read against a stall window (CLAUDE.STREAM_IDLE_MS) and a hard ceiling, cancels the stream and returns what was written; the claude_jobs row is opened at the start and closed at the end (claudeRecordEnd), with estimated usage when a cut stream never sent its totals; synthesizeStream beats every EXC_SPEED.BEAT_MS and logs exc_stream_end; synthesize completes a cut read with one short call for only the missing parts (excCut, excMissing, excFill), keeps a wall clock on the writing (WRITE_MS), and lands a read that still lacks parts as partial, cached PARTIAL_TTL for cache_only callers only"
+  },
+  "SEAM:EXC_STALL@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_STALL",
+   "purpose": "_synthesizeStream has a watchdog (45s without a byte, 6 minutes in all) that aborts and hands over to the cut path; the fresh compile after a cut has a 5 minute deadline; the loader names the completion step and a partial read says what it lacks; the browser rails that only failed (Semantic Scholar, Guardian test key, arXiv, PatentsView, the Wikipedia summary) are retired from the lens pipeline"
   }
  },
  "planned": [
