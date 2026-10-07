@@ -110,6 +110,8 @@ ok(rows.length === 3 && rows.find(r => r.title === 'news').status === 'raw' && r
    'T6 live searches write news as raw and papers or reference pages as reference; lens copies never enter');
 await LC({}, [{ url: 'https://p.example/2', title: 'paper', kind: 'research' }], { provenance: 'spine' });
 ok(rows.length === 1 && rows[0].title === 'paper' && rows[0].status === 'raw', 'T7 the house spine still captures every kind it chooses, as raw');
+await LC({}, [{ url: 'https://n.example/9', title: 'gathered', kind: 'news' }], { provenance: 'recon_gather' });
+ok(rows.length === 1 && !('research' in rows[0]) && rows[0].momentum.provenance === 'recon_gather', 'T7b a capture never sends the research flag: the database sets it from the provenance it carries (SEAM:SWEEP_MEASURE, 0038)');
 ok(/'rpc\/match_signals_read'/.test(between('async function brandSignal(', 'async function excavateLake(')) &&
    /'rpc\/match_signals_read'/.test(between('async function excavateLake(', 'async function fieldRail(')), 'T8 brand signal and the lake search read match_signals_read');
 ok((w.match(/'rpc\/match_signals'/g) || []).length >= 3, 'T9 DAILY keeps its own match_signals: its ranking does not move');
@@ -119,7 +121,7 @@ ok(/p_query     vector\(384\),\s+p_count     int default 12,\s+p_territory text 
    /p_query: vec, p_count: 24, p_territory: null, p_min_tier: 4,/.test(w), 'T12 the callers pass exactly the named arguments match_signals_read takes');
 ok(/momentum: Object\.assign\(\{\}, r\.momentum, \{ echo_of: echo\.id \}\)/.test(w) && /momentum: Object\.assign\(\{\}, r\.momentum, \{ novelty, announcement: true \}\)/.test(w), 'T13 rejection merges momentum, never erases it');
 ok(/api-key=' \+ encodeURIComponent\(env\.GUARDIAN_KEY \|\| 'test'\)/.test(w), 'T14 the Guardian reads its key from env');
-ok(/Date\.parse\(lakeWhen\(r\)\) >= Date\.parse\(d7\)/.test(w) && /const rows = fetched\.filter\(r => \{ const w = lakeWhen\(r\)/.test(w), 'T15 track and audience counts use the date each row speaks for');
+ok(/Date\.parse\(lakeWhen\(r\)\) > Date\.parse\(d7\)/.test(w) && /const rows = fetched\.filter\(r => \{ const w = lakeWhen\(r\)/.test(w), 'T15 track and audience counts use the date each row speaks for');
 
 // ── C the page ────────────────────────────────────────────────────────────
 ok(/'\/excavate\/gather',\{method:'POST',headers:Object\.assign\(\{'Content-Type':'application\/json'\},_hdr\)/.test(page) && /const _hdr=await _authHeader\(\);/.test(page), 'C1 the page signs its gather call (EX4: with the header it fetched once for gather and lake together)');

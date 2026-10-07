@@ -418,7 +418,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
   .brand-row{flex-direction:column;}
   .idb-overlay,.idb-content{padding-left:14px !important;padding-right:14px !important;}
   .idb-title{font-size:clamp(22px,7vw,30px) !important;}
-  button,.mr-btn,.brand-card-btn{min-height:40px;}
+  button,.mr-btn{min-height:40px;}
   input,select,textarea{font-size:16px;}
   /* SEAM:DOOR_GATE — hub + turnstile on phones: doors stack, type scales,
      the escape button clears the gate chrome. */
@@ -717,306 +717,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 @media(max-width:900px){.truth-signals{grid-template-columns:1fr 1fr;}.lens-ideas-row{grid-template-columns:1fr 1fr;}.idb-hero,.idb-lens-bar,.idb-body{padding-left:20px;padding-right:20px;}.idb-overview-grid,.idb-quad-grid,.idb-sources-grid,.idb-actions-grid{grid-template-columns:1fr;}.idb-finding{grid-template-columns:1fr;}}
 
 
-/* ── BRANDS PAGE ─────────────────────────────────────────────── */
-.brands-header {
-  padding: 56px 40px 32px;
-  max-width: 1400px;
-  margin: 0 auto;
-  border-bottom: 1px solid var(--border);
-}
-.brands-eyebrow {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.brands-eyebrow::before {
-  content: '';
-  width: 20px;
-  height: 1px;
-  background: var(--accent);
-}
-.brands-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: clamp(32px, 4vw, 58px);
-  line-height: 1.02;
-  letter-spacing: -.02em;
-  margin-bottom: 12px;
-}
-.brands-sub {
-  font-size: 14px;
-  color: var(--text2);
-  max-width: 520px;
-  line-height: 1.65;
-}
-
-/* Brand search bar */
-.brands-search-row {
-  padding: 24px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-}
-.brands-search-input {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  font-family: 'Syne', sans-serif;
-  font-size: 15px;
-  padding: 13px 18px;
-  outline: none;
-  caret-color: var(--accent);
-  transition: border-color .2s;
-}
-.brands-search-input:focus { border-color: var(--accent); }
-.brands-search-btn {
-  background: var(--accent);
-  border: none;
-  color: #fff;
-  font-family: 'Space Mono', monospace;
-  font-weight: 700;
-  font-size: 10px;
-  letter-spacing: .12em;
-  padding: 13px 22px;
-  cursor: pointer;
-  transition: background .18s;
-  white-space: nowrap;
-}
-.brands-search-btn:hover { background: #ff5555; }
-
-/* Category filter chips */
-.brands-cat-row {
-  padding: 14px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
-}
-.bcat-chip {
-  background: none;
-  border: 1px solid var(--border2);
-  color: var(--text3);
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: all .18s;
-}
-.bcat-chip:hover, .bcat-chip.active {
-  background: var(--surface2);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* Brand grid */
-.brands-grid-wrap {
-  padding: 28px 40px 0;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.brands-grid-label {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.brands-grid-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-.brands-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
-  margin-bottom: 40px;
-}
-.brand-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 20px 18px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: border-color .2s, transform .18s;
-}
-.brand-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  transition: height .2s;
-}
-.brand-card:hover {
-  border-color: var(--border2);
-  transform: translateY(-2px);
-}
-.brand-card:hover::before { height: 3px; }
-.brand-card-ticker {
-  font-family: 'Space Mono', monospace;
-  font-size: 8px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 6px;
-}
-.brand-card-name {
-  font-family: 'DM Serif Display', serif;
-  font-size: 20px;
-  line-height: 1.15;
-  margin-bottom: 4px;
-  color: var(--text);
-}
-.brand-card-sector {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  color: var(--text3);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.brand-score-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.brand-score-item {
-  background: var(--surface2);
-  padding: 8px;
-  text-align: center;
-}
-.brand-score-val {
-  font-family: 'DM Serif Display', serif;
-  font-size: 22px;
-  line-height: 1;
-  display: block;
-  margin-bottom: 2px;
-}
-.brand-score-lbl {
-  font-family: 'Space Mono', monospace;
-  font-size: 7px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--text3);
-}
-.brand-card-bar {
-  height: 2px;
-  background: var(--surface3);
-  margin-bottom: 8px;
-}
-.brand-card-bar-fill {
-  height: 100%;
-  transition: width .6s ease;
-}
-.brand-card-trend {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .08em;
-  margin-bottom: 10px;
-}
-.brand-card-btn {
-  width: 100%;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text3);
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .1em;
-  padding: 7px;
-  cursor: pointer;
-  transition: all .18s;
-  text-transform: uppercase;
-}
-.brand-card-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* Intelligence feed */
-.brands-feed-section {
-  padding: 0 40px 60px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.brands-feed-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding-top: 32px;
-  border-top: 1px solid var(--border);
-}
-.brands-feed-title {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: var(--text2);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.brands-feed-title::before {
-  content: '';
-  width: 6px; height: 6px;
-  background: var(--accent);
-  transform: rotate(45deg);
-  display: inline-block;
-  flex-shrink: 0;
-}
-.brands-feed-refresh {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  color: var(--text3);
-  cursor: pointer;
-  letter-spacing: .1em;
-  background: none;
-  border: none;
-  transition: color .18s;
-}
-.brands-feed-refresh:hover { color: var(--accent); }
-.brands-feed-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-.brand-feed-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 22px;
-  cursor: pointer;
-  transition: border-color .2s, transform .18s;
-  position: relative;
-}
-.brand-feed-card:hover {
-  border-color: var(--border2);
-  transform: translateY(-2px);
-}
-
-@media (max-width: 1200px) { .brands-grid { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 900px)  { .brands-grid { grid-template-columns: repeat(3, 1fr); } .brands-feed-grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 600px)  { .brands-grid { grid-template-columns: 1fr 1fr; } .brands-feed-grid { grid-template-columns: 1fr; } .brands-header, .brands-search-row, .brands-cat-row, .brands-grid-wrap, .brands-feed-section { padding-left: 20px; padding-right: 20px; } }
+/* ── BRANDS PAGE: retired in EX19 for the brand room (SEAM:BRAND_ROOM, styled with the room below). ── */
 
 
 /* ── LOGIN GATE ──────────────────────────────────────────────── */
@@ -1695,6 +1396,176 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 @media (max-width:1000px){.row{grid-template-columns:96px 1fr 240px}.row .move{grid-column:2/-1}#board-list.nothumbs .row{grid-template-columns:1fr 240px}#board-list.nothumbs .row .move{grid-column:1/-1}}
 @media (max-width:640px){.row{grid-template-columns:84px 1fr}.row .mid,.row .move{grid-column:1/-1}#board-list.nothumbs .row{grid-template-columns:1fr}}
 .fi-divider{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);grid-column:1/-1;padding-top:10px}
+/* SEAM:LIBRARY: the library, in the room's design */
+.lib{max-width:var(--room-w);margin:0 auto;padding:calc(48px*var(--k)) var(--room-g) calc(64px*var(--k))}
+.lib-head{padding-bottom:calc(36px*var(--k))}
+.lib-head .room-dateline{margin-bottom:calc(14px*var(--k))}
+.lib-head h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(30px,3.4vw,calc(48px*var(--k)));line-height:1.04;letter-spacing:-.03em;color:var(--room-ivory);margin:0 0 calc(16px*var(--k));max-width:18ch}
+.lib-head p{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(17px*var(--k));line-height:1.5;color:var(--room-fg2);max-width:62ch;margin:0}
+.lib-shelf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:calc(16px*var(--k))}
+@media (max-width:1100px){.lib-shelf{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:800px){.lib-shelf{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.lib-shelf{grid-template-columns:1fr}}
+.lib-card{background:var(--room-card);border:1px solid var(--room-rule);display:flex;flex-direction:column;gap:calc(10px*var(--k));padding:0 0 calc(18px*var(--k));text-decoration:none;color:inherit;transition:border-color .2s,transform .45s cubic-bezier(.2,.7,.2,1)}
+.lib-card:hover{border-color:#3A3A3A}
+.lib-card .lib-cover{margin:0;position:relative;aspect-ratio:612/792;background:var(--room-card2);overflow:hidden;border-bottom:1px solid var(--room-rule)}
+.lib-card .lib-cover img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.82) sepia(.06);transition:filter .4s}
+.lib-card:hover .lib-cover img{filter:none}
+.lib-card .lib-cover .lib-word{position:absolute;left:calc(14px*var(--k));top:calc(14px*var(--k));font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(10,10,10,.6);padding:calc(3px*var(--k)) calc(7px*var(--k))}
+.lib-card .lib-cover.none{display:flex;flex-direction:column;justify-content:flex-end;gap:calc(10px*var(--k));padding:calc(18px*var(--k));border-top:6px solid var(--room-red)}
+.lib-card .lib-cover.none .lib-word{position:static;background:none;padding:0;color:var(--room-red);font-size:calc(12px*var(--k))}
+.lib-card .lib-cover .lib-lead{font-family:'Syne',sans-serif;font-weight:800;font-size:calc(22px*var(--k));line-height:1.08;letter-spacing:-.02em;color:var(--room-ivory)}
+.lib-card .lib-meta,.lib-card h3,.lib-card p,.lib-card .lib-foot{margin-left:calc(20px*var(--k));margin-right:calc(20px*var(--k))}
+.lib-card .lib-meta{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-red);margin-top:calc(8px*var(--k))}
+.lib-card h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(18px*var(--k));line-height:1.22;letter-spacing:-.02em;color:var(--room-ivory);margin-top:0;margin-bottom:0}
+.lib-card p{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.5;color:var(--room-fg2);margin-top:0;margin-bottom:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.lib-card .lib-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;padding-top:calc(6px*var(--k));font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k))}
+.lib-card .lib-foot .open{color:var(--room-ivory);border-bottom:1px solid var(--room-red)}
+.lib-card:hover .lib-foot .open{border-bottom-width:2px}
+.lib-card .lib-foot .lib-n{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);white-space:nowrap}
+@media (max-width:900px){.lib{padding-left:20px;padding-right:20px}}
+.lib-empty{grid-column:1/-1;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg3);max-width:60ch;margin:0}
+.lib-list{border-top:1px solid var(--room-rule)}
+.lib-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:calc(20px*var(--k));padding:calc(16px*var(--k)) 0;border-bottom:1px solid var(--room-rule);text-decoration:none;color:inherit;align-items:baseline}
+.lib-row b{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(16px*var(--k));line-height:1.3;color:var(--room-ivory);letter-spacing:-.01em}
+.lib-row small{display:block;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);margin-top:4px}
+.lib-row .open{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-ivory);border-bottom:1px solid var(--room-red);white-space:nowrap}
+/* SEAM:BRAND_ROOM: the brands and their rooms */
+.bfind{display:flex;max-width:calc(560px*var(--k));border:1px solid var(--room-ivory);margin-top:calc(24px*var(--k))}
+.bfind input{flex:1;min-width:0;background:transparent;border:0;color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:500;font-size:calc(16px*var(--k));padding:calc(13px*var(--k)) calc(16px*var(--k));outline:none;caret-color:var(--room-red)}
+.bfind input:focus{outline:2px solid var(--room-red);outline-offset:-2px}
+.bfind button{background:var(--room-ivory);color:#0A0A0A;border:0;font-family:'Syne',sans-serif;font-weight:700;font-size:calc(14px*var(--k));padding:0 calc(20px*var(--k));cursor:pointer}
+.bfind-note{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);margin-top:calc(12px*var(--k));min-height:1em}
+.bfind-note button{background:none;border:0;border-bottom:1px solid var(--room-red);color:var(--room-ivory);font:inherit;padding:0;margin-left:calc(10px*var(--k));cursor:pointer;text-align:left;max-width:100%}
+/* a brand's name can be one long word: every line in Brands and Audiences may break inside a word rather than widen a phone */
+.brands-room,.broom,.lib.people{overflow-wrap:anywhere}
+.bgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(16px*var(--k))}
+@media (max-width:1000px){.bgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.bgrid{grid-template-columns:minmax(0,1fr)}}
+.bcard{background:var(--room-card);border:1px solid var(--room-rule);display:flex;flex-direction:column;gap:calc(10px*var(--k));padding:0 0 calc(18px*var(--k));cursor:pointer;text-align:left;color:inherit;font:inherit;transition:border-color .2s}
+.bcard:hover,.bcard:focus-visible{border-color:#3A3A3A;outline:none}
+.bcard>*:not(.photo){margin-left:calc(22px*var(--k));margin-right:calc(22px*var(--k))}
+.bcard .photo{margin:0;aspect-ratio:2/1;background:var(--room-card2);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.bcard .photo img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.82) sepia(.06)}
+.bcard .photo.logo img{object-fit:contain;padding:12%;background:#F2EFE9;filter:none}
+.bcard .who{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-fg3);margin-top:calc(16px*var(--k))}
+.bcard h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(21px*var(--k));line-height:1.15;letter-spacing:-.02em;color:var(--room-ivory);margin-top:0;margin-bottom:0;overflow-wrap:anywhere}
+.bcard .pulse,.brow .pulse{height:calc(46px*var(--k));position:relative}
+.bcard .pulse svg,.brow .pulse svg{width:100%;height:100%;display:block;overflow:visible}
+.bcard .pulse .pf,.brow .pulse .pf{fill:var(--room-pulse);stroke:none}
+.bcard .pulse .pl,.brow .pulse .pl{fill:none;stroke:var(--room-red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.bcard .pulse circle,.brow .pulse circle{fill:var(--room-red)}
+.bcard .figures{font-family:'Space Mono',monospace;font-size:calc(12px*var(--k));color:var(--room-fg2);display:grid;grid-template-columns:1fr 1fr;gap:calc(4px*var(--k)) calc(14px*var(--k));font-variant-numeric:tabular-nums}
+.bcard .figures b{color:var(--room-ivory);font-weight:700}
+.bcard .foot{margin-top:auto;padding-top:2px;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k))}
+.bcard .foot span{color:var(--room-ivory);border-bottom:1px solid var(--room-red)}
+.bcard.watch{cursor:default;justify-content:center;padding:calc(22px*var(--k)) 0}
+.bcard.watch p{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);margin-top:0;margin-bottom:0}
+.bcard.watch .bfind{margin-top:calc(6px*var(--k))}
+.broom-back{background:none;border:0;color:var(--room-fg2);font-family:'Space Mono',monospace;font-size:calc(12px*var(--k));padding:0;cursor:pointer;margin-bottom:calc(22px*var(--k))}
+.broom-back:hover{color:var(--room-ivory)}
+.broom-head{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:calc(40px*var(--k));align-items:start;padding-bottom:calc(36px*var(--k))}
+.broom-head.nophoto{grid-template-columns:minmax(0,1fr)}
+.broom-head figure{margin:0}
+.broom-head figure img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;filter:saturate(.85)}
+.broom-head figure.logo img{object-fit:contain;background:#F2EFE9;padding:14%}
+.broom-head figcaption{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));color:var(--room-fg3);margin-top:calc(8px*var(--k))}
+.broom-head h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(34px,4vw,calc(56px*var(--k)));line-height:1;letter-spacing:-.03em;color:var(--room-ivory);margin:calc(12px*var(--k)) 0 calc(14px*var(--k));overflow-wrap:anywhere}
+.broom-head h1:focus{outline:none}
+.broom-head .desc{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(16px*var(--k));line-height:1.5;color:var(--room-fg2);max-width:60ch;margin:0 0 calc(24px*var(--k));overflow-wrap:anywhere}
+.bstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:calc(18px*var(--k));border-top:1px solid var(--room-rule);padding-top:calc(18px*var(--k))}
+@media (max-width:900px){.broom-head{grid-template-columns:minmax(0,1fr)}.bstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bstat .v{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(30px*var(--k));line-height:1;letter-spacing:-.03em;color:var(--room-ivory)}
+.bstat .l{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(12.5px*var(--k));line-height:1.4;color:var(--room-fg3);margin-top:calc(6px*var(--k))}
+.bstat .d{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg2);margin-top:calc(4px*var(--k))}
+.bboard h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(24px*var(--k));line-height:1.2;letter-spacing:-.02em;color:var(--room-ivory);margin:0 0 calc(12px*var(--k));max-width:44ch}
+.bboard .move{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));line-height:1.45;color:var(--room-ivory);border-left:2px solid var(--room-red);padding-left:calc(12px*var(--k));max-width:56ch;margin:0 0 calc(10px*var(--k))}
+.bboard .q{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));color:var(--room-fg3);margin:0}
+.bquotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(14px*var(--k));margin-top:calc(22px*var(--k))}
+@media (max-width:900px){.bquotes{grid-template-columns:1fr}}
+.bquotes .quote{width:auto}
+.viz{position:relative}
+.viz svg{display:block;width:100%;height:auto;overflow:visible}
+.viz .grid line{stroke:var(--room-rule);stroke-width:1}
+.viz .axis text,.viz .vlabel{font-family:'Space Mono',monospace;font-size:11px;fill:var(--room-fg3)}
+.viz .vlabel.strong{fill:var(--room-ivory)}
+.viz .col{fill:var(--room-red)}
+.viz .col.dim{fill:#7A1E2B}
+.viz .hit{fill:transparent;cursor:default}
+.viz .hit:focus{outline:none}
+.viz .hit:hover+.col,.viz .hit:focus+.col{fill:#FF4A61}
+.viz .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.viz .xh{stroke:var(--room-fg3);stroke-width:1}
+.viz-tip{position:absolute;pointer-events:none;background:#0A0A0A;border:1px solid #3A3A3A;padding:8px 10px;font-family:'Syne',sans-serif;font-size:12.5px;line-height:1.45;color:var(--room-fg2);white-space:nowrap;display:none;z-index:var(--z-raise)}
+.viz-tip b{font-family:'Syne',sans-serif;font-weight:700;color:var(--room-ivory)}
+.viz-tip i{display:inline-block;width:12px;height:2px;vertical-align:middle;margin-right:6px}
+.viz-legend{display:flex;gap:calc(18px*var(--k));flex-wrap:wrap;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-fg2);margin:0 0 calc(12px*var(--k))}
+.viz-legend i{display:inline-block;width:16px;height:2px;vertical-align:middle;margin-right:8px}
+.viz-note{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.55;color:var(--room-fg2);max-width:70ch;margin:calc(14px*var(--k)) 0 0}
+.viz-src{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));color:var(--room-fg3);margin-top:calc(8px*var(--k))}
+details.viz-table{margin-top:calc(10px*var(--k));font-family:'Syne',sans-serif;font-size:calc(13px*var(--k));color:var(--room-fg2)}
+details.viz-table summary{cursor:pointer;color:var(--room-fg3)}
+details.viz-table table{border-collapse:collapse;margin-top:8px;font-family:'Space Mono',monospace;font-size:12px}
+details.viz-table td,details.viz-table th{border-bottom:1px solid var(--room-rule);padding:4px 14px 4px 0;text-align:left;font-weight:400;color:var(--room-fg2)}
+.bset{border-top:1px solid var(--room-rule)}
+.brow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) repeat(3,minmax(0,.45fr));gap:calc(18px*var(--k));align-items:center;padding:calc(14px*var(--k)) 0;border-bottom:1px solid var(--room-rule);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;width:100%;text-align:left;color:inherit;font:inherit}
+.brow.self{cursor:default}
+.brow b{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(16px*var(--k));color:var(--room-ivory);overflow-wrap:anywhere}
+.brow.self b::after{content:' (this brand)';font-weight:500;color:var(--room-fg3);font-size:calc(13px*var(--k))}
+.brow span.n{font-family:'Space Mono',monospace;font-size:calc(12.5px*var(--k));color:var(--room-fg2);font-variant-numeric:tabular-nums}
+.brow span.n small{display:block;color:var(--room-fg3);font-size:calc(10.5px*var(--k))}
+@media (max-width:700px){.brow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.brow .pulse{grid-column:1/-1;order:3}}
+.bstories{border-top:1px solid var(--room-rule)}
+.bstory{display:grid;grid-template-columns:calc(120px*var(--k)) minmax(0,1fr);gap:calc(18px*var(--k));padding:calc(14px*var(--k)) 0;border-bottom:1px solid var(--room-rule);text-decoration:none;color:inherit}
+.bstory.nophoto{grid-template-columns:1fr}
+.bstory img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block;filter:saturate(.82)}
+.bstory small{display:block;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);margin-bottom:4px}
+.bstory span{font-family:'Syne',sans-serif;font-weight:600;font-size:calc(16px*var(--k));line-height:1.35;color:var(--room-ivory)}
+.bstory:hover span{text-decoration:underline;text-decoration-color:var(--room-red);text-underline-offset:3px}
+/* SEAM:PEOPLE: the people behind the subjects */
+.people-figs{margin-top:calc(26px*var(--k))}
+.pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(16px*var(--k))}
+@media (max-width:860px){.pgrid{grid-template-columns:minmax(0,1fr)}}
+.pcard{background:var(--room-card);border:1px solid var(--room-rule);padding:calc(22px*var(--k)) calc(24px*var(--k))}
+.pcard h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(24px*var(--k));letter-spacing:-.02em;color:var(--room-ivory);margin:0}
+.pcard .pn{font-family:'Space Mono',monospace;font-size:calc(12px*var(--k));color:var(--room-red);margin:calc(6px*var(--k)) 0 calc(12px*var(--k))}
+.pcard .pons{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 calc(14px*var(--k))}
+.pcard .pons span{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(12.5px*var(--k));color:var(--room-fg2);border:1px solid var(--room-rule);padding:3px 9px}
+.pcard figure{margin:0;padding:calc(12px*var(--k)) 0;border-top:1px dashed var(--room-rule)}
+.pcard figure p{font-family:'Syne',sans-serif;font-weight:600;font-size:calc(15.5px*var(--k));line-height:1.42;color:var(--room-ivory);margin:0 0 6px}
+.pcard figure cite{font-style:normal;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(12.5px*var(--k));color:var(--room-fg3)}
+.pearly{border-top:1px solid var(--room-rule)}
+.prow{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:calc(20px*var(--k));padding:calc(14px*var(--k)) 0;border-bottom:1px solid var(--room-rule)}
+.prow b{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(16px*var(--k));color:var(--room-ivory)}
+.prow b small{display:block;font-family:'Space Mono',monospace;font-weight:400;font-size:calc(11.5px*var(--k));color:var(--room-fg3);margin-top:4px}
+.prow p{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));line-height:1.45;color:var(--room-fg2);margin:0}
+@media (max-width:640px){.prow{grid-template-columns:1fr}}
+.quote .q-on{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));line-height:1.4;color:var(--room-red);margin:0 0 calc(10px*var(--k))}
+/* the latest report leads its shelf, wide */
+.lib-card.lib-feature{grid-column:span 2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-auto-rows:min-content;gap:calc(12px*var(--k)) 0;padding:0}
+.lib-card.lib-feature .lib-cover{grid-row:1 / span 6;border-bottom:0;border-right:1px solid var(--room-rule)}
+.lib-card.lib-feature>:not(.lib-cover){grid-column:2;margin-left:calc(26px*var(--k));margin-right:calc(26px*var(--k))}
+.lib-card.lib-feature .lib-meta{margin-top:calc(26px*var(--k))}
+.lib-card.lib-feature h3{font-size:calc(26px*var(--k));line-height:1.12}
+.lib-card.lib-feature p{-webkit-line-clamp:6;font-size:calc(15px*var(--k))}
+.lib-card.lib-feature .lib-foot{margin-top:calc(10px*var(--k));padding-bottom:calc(24px*var(--k))}
+.lib-card.lib-feature .lib-foot .open{font-weight:700;color:#0A0A0A;background:var(--room-ivory);border:0;padding:calc(10px*var(--k)) calc(16px*var(--k))}
+/* on a phone a card is a row: the cover beside its words */
+@media (max-width:560px){
+  .lib-shelf{grid-template-columns:1fr;gap:calc(12px*var(--k))}
+  .lib-card,.lib-card.lib-feature{grid-column:auto;display:grid;grid-template-columns:104px minmax(0,1fr);grid-auto-rows:min-content;gap:6px 0;padding:0}
+  .lib-card .lib-cover,.lib-card.lib-feature .lib-cover{grid-row:1 / span 6;border-bottom:0;border-right:1px solid var(--room-rule);align-self:start}
+  .lib-card>:not(.lib-cover),.lib-card.lib-feature>:not(.lib-cover){grid-column:2;margin-left:14px;margin-right:14px}
+  .lib-card .lib-meta,.lib-card.lib-feature .lib-meta{margin-top:12px;font-size:11px}
+  .lib-card h3,.lib-card.lib-feature h3{font-size:16px}
+  .lib-card p,.lib-card.lib-feature p{font-size:13px;-webkit-line-clamp:3}
+  .lib-card .lib-foot,.lib-card.lib-feature .lib-foot{padding-bottom:12px;margin-top:4px}
+  .lib-card.lib-feature .lib-foot .open{padding:7px 11px}
+  .lib-card .lib-cover .lib-word{display:none}
+  .lib-card .lib-cover.none{padding:10px;border-top-width:4px}
+  .lib-card .lib-cover.none .lib-word{display:block;font-size:9px}
+  .lib-card .lib-cover .lib-lead{font-size:13px}
+}
 /* what people are saying */
 .room-voices{overflow:hidden}
 .room-voices .track{display:flex;gap:calc(16px*var(--k));width:max-content;animation:roomdrift 70s linear infinite;margin-top:calc(20px*var(--k))}
@@ -2190,8 +2061,7 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
     <li><button class="nlb active" id="nav-explore" onclick="navTo('explore')">Explore</button></li>
     <li><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands</button></li>
     <li><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences</button></li>
-    <li><button class="nlb" id="nav-reports" onclick="navTo('reports')">Reports</button></li>
-    <li><button class="nlb" id="nav-deploy" onclick="navTo('deploy')">Deploy</button></li>
+    <li><button class="nlb" id="nav-library" onclick="navTo('library')">Library</button></li>
   </ul>
   <div class="nav-right">
     <a class="nlb nav-sign" id="nav-sign" href="#" onclick="_gateForDoor('excavate');return false">Sign in</a>
@@ -2302,12 +2172,11 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
     <div id="board-list"></div>
     <p class="room-more" id="board-more" style="display:none"></p>
     <span id="fi-live-badge" style="display:none"></span><span id="fi-refresh-label" style="display:none"></span>
-    <div id="lake-signal-block"></div>
     <div id="trending-now-list" style="display:none"></div>
   </section>
 
   <section class="hub-block room-sec room-voices" id="voices-block" style="display:none">
-    <div class="room-head"><h2>What people are saying</h2><div class="sub">Comments quoted as written, from the sources behind recent readings.</div></div>
+    <div class="room-head"><h2>What people are saying</h2><div class="sub">Comments quoted as written, about the subjects on the board and the month behind them.</div></div>
     <div class="track" id="voices-track"></div>
   </section>
 
@@ -2517,100 +2386,70 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
 
 <!-- ══ BRANDS ══ -->
 <div id="sec-brands" class="page-section">
-
-  <!-- Header -->
-  <div class="brands-header">
-    <div class="brands-eyebrow">Brand Intelligence</div>
-    <h1 class="brands-title">Track. Measure.<br><em style="color:var(--accent)">Outmaneuver.</em></h1>
-    <p class="brands-sub">Monitor brand health, consumer perception, and cultural momentum. Search any brand or click a card to excavate live intelligence across all four lenses.</p>
+  <!-- SEAM:BRAND_ROOM: the brands we watch, each measured every week, and a room per brand: its weeks of coverage, three years of the
+       attention people pay it, its set, its latest stories, the board's reading and what people say. Every figure a count. -->
+  <div class="lib brands-room" id="brands-list">
+    <header class="lib-head">
+      <div class="room-dateline">Brands</div>
+      <h1>Every brand we watch, measured every week.</h1>
+      <p>Open a brand for its weeks of coverage, three years of the attention people pay it, the brands it competes with and what people say about it.</p>
+      <form class="bfind" onsubmit="event.preventDefault();_brandFind()">
+        <input type="text" id="brand-find" placeholder="Find a brand we watch" autocomplete="off" aria-label="Find a brand we watch">
+        <button type="submit">Open</button>
+      </form>
+      <div class="bfind-note" id="brand-find-note" aria-live="polite"></div>
+    </header>
+    <section class="room-sec">
+      <div class="room-head"><h2>The brands we watch</h2><div class="sub">Stories a week for the last twelve weeks, counted on our regular sweep by the date each was published.</div></div>
+      <div class="bgrid" id="brand-grid"><p class="lib-empty">Opening the brands.</p></div>
+    </section>
   </div>
-
-  <!-- Search bar -->
-  <div class="brands-search-row">
-    <input class="brands-search-input" id="brand-search-input"
-      placeholder="Search any brand — Nike, Patagonia, Oatly, Lululemon…"
-      onkeydown="if(event.key==='Enter') searchBrand()"
-      oninput="toggleBrandClearBtn()"/>
-    <button id="brand-search-clear" onclick="clearBrandSearch()"
-      style="display:none;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 8px;transition:color .18s"
-      onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">✕</button>
-    <button class="brands-search-btn" onclick="searchBrand()">EXCAVATE BRAND →</button>
-  </div>
-
-  <!-- Category filter -->
-  <div class="brands-cat-row" id="brand-cat-row">
-    <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;margin-right:4px">FILTER:</span>
-    <button class="bcat-chip active" onclick="filterBrandsByCategory('all',this)">All</button>
-    <button class="bcat-chip" onclick="filterBrandsByCategory('tech',this)">Technology</button>
-    <button class="bcat-chip" onclick="filterBrandsByCategory('retail',this)">Retail</button>
-    <button class="bcat-chip" onclick="filterBrandsByCategory('finance',this)">Finance</button>
-    <button class="bcat-chip" onclick="filterBrandsByCategory('lifestyle',this)">Lifestyle & Apparel</button>
-    <button class="bcat-chip" onclick="filterBrandsByCategory('media',this)">Media & Entertainment</button>
-    <button class="bcat-chip" onclick="filterBrandsByCategory('cpg',this)">CPG & Food</button>
-  </div>
-
-  <!-- Intelligence feed -->
-  <div class="brands-feed-section">
-    <div class="brands-feed-header">
-      <span class="brands-feed-title">What is emerging on tracked brands</span>
-      <button class="brands-feed-refresh" onclick="_loadTracks()">REFRESH ↺</button>
-    </div>
-    <div class="brands-feed-grid" id="brand-feed-grid"></div>
-  </div>
-
-  <!-- Brand grid -->
-  <div class="brands-grid-wrap">
-    <div class="brands-grid-label">Tracked brands — every number is a count from the lake</div>
-    <div class="brands-grid" id="brand-tracker-grid"></div>
-  </div>
-
+  <div class="lib broom" id="brand-room" style="display:none"></div>
 </div>
 
 <!-- ══ AUDIENCES ══ -->
 <div id="sec-audiences" class="page-section">
-  <div style="padding:60px 40px 40px;max-width:1400px;margin:0 auto;">
-    <p style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);margin-bottom:18px;display:flex;align-items:center;gap:12px;">Audience Intelligence</p>
-    <h1 style="font-family:'DM Serif Display',serif;font-size:clamp(32px,4vw,56px);color:var(--t1);margin-bottom:10px;line-height:1.0;">Know your audience. <em style="font-style:italic;color:var(--red)">Own the moment.</em></h1>
-    <p style="font-size:14px;color:var(--t2);max-width:480px;line-height:1.65;margin-bottom:28px;">Deep demographic and psychographic profiles from open consumer research. Click any segment to excavate live intelligence.</p>
+  <!-- SEAM:PEOPLE: the people behind this week's subjects, in their own words, grouped by what they say about themselves -->
+  <div class="lib people">
+    <header class="lib-head">
+      <div class="room-dateline" id="people-dateline">Audiences</div>
+      <h1>The people behind this week's subjects, in their own words.</h1>
+      <p>We group what people write by what they say about themselves: their generation, their work, their role at home. A group stands once we have read 25 of its comments; below that it is an early read, and says so. One person can write more than one comment, so the counts are comments, not people.</p>
+      <div class="movers people-figs" id="people-figs"></div>
+    </header>
+    <section class="room-sec" id="people-groups-sec">
+      <div class="room-head"><h2>Who is talking</h2><div class="sub" id="people-groups-sub">Each group with how many spoke, the subjects they spoke to and their words, as written.</div></div>
+      <div class="pgrid" id="people-groups"><p class="lib-empty">Listening.</p></div>
+    </section>
+    <section class="room-sec" id="people-early-sec" style="display:none">
+      <div class="room-head"><h2>Early reads</h2><div class="sub">Groups with fewer than 25 comments so far. Their words, not yet a finding.</div></div>
+      <div class="pearly" id="people-early"></div>
+    </section>
+    <p class="room-more" id="people-note"></p>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:1400px;margin:0 auto 24px;padding:0 40px;" id="aud-grid"></div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1400px;margin:0 auto;padding:0 40px 60px;" id="aud-detail"></div>
 </div>
 
-<!-- ══ REPORTS ══ -->
-<div id="sec-reports" class="page-section">
-  <div style="padding:60px 40px 32px;max-width:1400px;margin:0 auto;">
-    <p style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);margin-bottom:18px;display:flex;align-items:center;gap:12px;">Research Reports</p>
-    <h1 style="font-family:'DM Serif Display',serif;font-size:clamp(32px,4vw,56px);color:var(--t1);margin-bottom:10px;line-height:1.0;">Intelligence you can <em style="font-style:italic;color:var(--red)">deploy.</em></h1>
-    <p style="font-size:14px;color:var(--t2);max-width:480px;line-height:1.65;margin-bottom:28px;">Generate custom reports from any query. Each report is unique, sourced from live open data, and ready to download.</p>
-  </div>
-  <div style="background:var(--surface);border:1px solid var(--border);padding:26px;margin:0 40px 22px;max-width:1320px;position:relative;">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));"></div>
-    <h2 style="font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:5px;">Generate New Report</h2>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Enter any topic, brand, or question. Excavate pulls from 7 open-source APIs and builds a full structured report ready to download.</p>
-    <div style="display:flex;gap:10px;margin-bottom:14px;">
-      <input type="text" id="rg-input" style="flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'Syne',sans-serif;font-size:15px;padding:14px 18px;outline:none;caret-color:var(--accent);" placeholder="e.g. Gen Z brand trust, luxury market 2025, creator economy ROI…" onkeydown="if(event.key===&quot;Enter&quot;)generateReport()"/>
-      <button onclick="generateReport()" style="background:var(--accent);border:none;color:#fff;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:.1em;padding:14px 24px;cursor:pointer;white-space:nowrap;">GENERATE →</button>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="rg-types"></div>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1400px;margin:0 auto;padding:0 40px 60px;" id="report-grid"></div>
-</div>
-
-<!-- ══ DEPLOY ══ -->
-<div id="sec-deploy" class="page-section">
-  <div style="padding:60px 40px 40px;max-width:1400px;margin:0 auto;">
-    <p style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);margin-bottom:18px;display:flex;align-items:center;gap:12px;">Deploy Intelligence</p>
-    <h1 style="font-family:'DM Serif Display',serif;font-size:clamp(32px,4vw,56px);color:var(--t1);margin-bottom:10px;line-height:1.0;">From insight to <em style="font-style:italic;color:var(--red)">action.</em></h1>
-    <p style="font-size:14px;color:var(--t2);max-width:480px;line-height:1.65;margin-bottom:28px;">Package your research into production-ready deliverables. Download or deploy to clients and teams.</p>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1400px;margin:0 auto;padding:0 40px;" id="dep-cards"></div>
-  <div style="max-width:1400px;margin:24px auto 60px;padding:0 40px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--t2);display:flex;align-items:center;gap:10px;"><span style="width:8px;height:8px;background:var(--red);transform:rotate(45deg);display:inline-block;"></span>Deploy Queue</span>
-      <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--t3);cursor:pointer;" onclick="renderDeployQueue()">REFRESH ↺</span>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);padding:20px;"><div id="dep-queue"></div></div>
+<!-- ══ LIBRARY ══ SEAM:LIBRARY: every read we have published, in the room's design. The Weekly Read and the Cultural Intelligence
+     Report come from the stand's own public lists; a signed-in admin also sees the RECONs from the desk. Nothing here is typed by hand. -->
+<div id="sec-library" class="page-section">
+  <div class="lib">
+    <header class="lib-head">
+      <div class="room-dateline">The library</div>
+      <h1>Every read we have published.</h1>
+      <p>The Weekly Read is one week of culture and what it means for the people who work in it. The Cultural Intelligence Report is a month in depth, with the evidence behind every finding. Every issue stays on the shelf.</p>
+    </header>
+    <section class="room-sec" id="lib-weekly-sec">
+      <div class="room-head"><h2>The Weekly Read</h2><div class="sub">Free with your details or a sign-in. Each issue opens on the stand.</div></div>
+      <div class="lib-shelf" id="lib-weekly"><p class="lib-empty">Opening the shelf.</p></div>
+    </section>
+    <section class="room-sec" id="lib-report-sec">
+      <div class="room-head"><h2>The Cultural Intelligence Report</h2><div class="sub">The month in depth: the findings, the numbers behind them and the moves they imply.</div></div>
+      <div class="lib-shelf" id="lib-report"><p class="lib-empty">Opening the shelf.</p></div>
+    </section>
+    <section class="room-sec" id="lib-recon-sec" style="display:none">
+      <div class="room-head"><h2>RECONs</h2><div class="sub">Commissioned reads. Only admins see this list: a RECON belongs to whoever commissioned it.</div></div>
+      <div class="lib-list" id="lib-recon"></div>
+    </section>
   </div>
 </div>
 
@@ -4026,7 +3865,7 @@ function renderHubBuilder(){
   if(cats) cats.innerHTML=_RPT_TYPES.map(t=>`<button class="rpt-cat" onclick="startReportFor('${t}')"><div class="rpt-cat-title">${t}</div><div class="rpt-cat-desc">${_RPT_CAT_DESC[t]||''}</div></button>`).join('');
   if(rows){
     const list=_reportStore.slice(0,6);
-    rows.innerHTML=list.length?list.map(r=>`<div class="rpt-row" onclick="${r.status==='ready'?`openRptModal('${r.id}')`:`navTo('reports')`}">
+    rows.innerHTML=list.length?list.map(r=>`<div class="rpt-row" onclick="${r.status==='ready'?`openRptModal('${r.id}')`:`navTo('library')`}">
         <span class="rpt-row-q">${safe(r.query)}</span>
         <span class="rpt-row-meta">${safe(r.type)} · ${r.status==='ready'?'READY':'GENERATING '+(r.progress||0)+'%'}</span>
         ${r.status==='ready'?`<button class="builder-btn secondary" style="flex:0 0 auto;padding:6px 10px" onclick="event.stopPropagation();downloadReport('${r.id}')">↓</button>`:''}
@@ -4036,11 +3875,8 @@ function renderHubBuilder(){
 }
 function startReportFor(type){
   _activeReportType=type;
-  navTo('reports');
-  setTimeout(()=>{
-    document.querySelectorAll('#rg-types button').forEach(b=>{ if(b.textContent.trim()===type) selectRptType(b,type); });
-    const inp=document.getElementById('rg-input'); if(inp){ inp.focus(); inp.placeholder=`${type}: name the brand, category, behavior, or person…`; }
-  },60);
+  navTo('explore');   // SEAM:LIBRARY: the generator is retired; a report starts as a search
+  setTimeout(()=>{ const inp=document.getElementById('search-input'); if(inp){ inp.focus(); inp.placeholder=`${type}: name the brand, category, behavior or person`; } },60);
 }
 function copyBrief(){
   const b=document.getElementById('builder-result').textContent;
@@ -4131,6 +3967,8 @@ function exportBrief(){
 
 // ══ NAV SECTION ROUTING ══
 function navTo(section) {
+  if (section === 'reports' || section === 'deploy') section = 'library';   // SEAM:LIBRARY: the retired doors lead to the Library
+  if (section !== 'brands' && typeof _brandHash === 'function' && _brandHash()) { try { history.replaceState(null, '', location.pathname + location.search); _brands.open = null; } catch (e) { /* the address stays */ } }   // SEAM:BRAND_ROOM: a room's address leaves with the room
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nlb').forEach(b => b.classList.remove('active'));
   const sec = document.getElementById('sec-' + section);
@@ -4141,8 +3979,7 @@ function navTo(section) {
   if (section === 'explore')   initFeaturedInsights();
   if (section === 'brands')    initBrandsPage();
   if (section === 'audiences') initAudiencesPage();
-  if (section === 'reports')   initReportsPage();
-  if (section === 'deploy')    initDeployPage();
+  if (section === 'library')   initLibraryPage();
 }
 
 
@@ -4240,8 +4077,7 @@ function _saveReport(q, data, mode) {
     insights: (data.insights || []).slice(0, 6),
     ideas: (data.ideas || []).slice(0, 6),
   });
-  const rg = document.getElementById('report-grid');
-  if (rg) renderReportCards();
+  renderReportCards();   // SEAM:LIBRARY: the builder's list refreshes with every read the session saves
 }
 
 
@@ -4250,97 +4086,233 @@ function _saveReport(q, data, mode) {
 // ══════════════════════════════════════════════════════════════
 
 
-let _activeBrandCat = 'all';
-let _brandSearchActive = false;
-
-// ── Brand page init ──────────────────────────────────────────────
-function initBrandsPage() {
-  // Update grid label with live count
-  const label = document.querySelector('.brands-grid-label');
-  if (label) label.textContent = 'Tracked brands — every number is a count from the lake';
-  _loadTracks();
-  renderBrandFeed();
+/* SEAM:TRACKS SEAM:BRAND_ROOM: the brands we watch as cards (their twelve weeks counted on the sweep), and a room per brand from
+   GET /excavate/brand: coverage week by week, three years of attention against its rivals, its set, its latest stories, the board's
+   reading and what people say. Charts follow the house's marks: thin columns with rounded tops, 2px lines, a tooltip on every mark
+   and the numbers in a table beneath. */
+const _brands = { tracks: [], at: 0, open: null, room: null };
+const _BRAND_SERIES = ['#E8243E', '#3987e5', '#199e70'];   // validated on the dark surface: the brand, then up to two rivals; direct labels carry identity too
+function _fmtN(n) { return n == null ? '' : Number(n).toLocaleString('en-US'); }
+function _fmtC(n) { return n == null ? '' : new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n); }
+function _day(d, year) { const t = d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z') : null; return t && !isNaN(t) ? t.toLocaleDateString('en-US', year ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' }) : ''; }
+function _month(m) { const t = m ? new Date(m + '-15T12:00:00Z') : null; return t && !isNaN(t) ? t.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''; }
+// A brand's id as the server writes it (a uuid in lower case), else '': nothing else is ever written into a handler or an address.
+function _uuid(id) { const v = String(id || '').toLowerCase(); return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v) ? v : ''; }
+function _brandHash() { const m = /#brand=([0-9a-fA-F-]{36})(?:$|[&?])/.exec(location.hash || ''); return m ? _uuid(m[1]) : ''; }
+async function initBrandsPage() {
+  if (Date.now() - _brands.at > 300000) {
+    _brands.loading = true;
+    try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/tracks', { cache: 'no-store' }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _brands.tracks = j.tracks || []; _brands.at = Date.now(); } } catch (e) { /* the grid says so */ }
+    _brands.loading = false;
+  }
+  _renderBrandGrid();
+  // The address decides, read after the wait: a room opened while the brands were loading stays open.
+  const id = _brandHash();
+  if (id) { if (_brands.open !== id) _openBrand(id, true); } else if (!_brands.open) _closeBrand(true);
 }
-
-// ── Search ───────────────────────────────────────────────────────
-function searchBrand() {
-  const q = (document.getElementById('brand-search-input')?.value||'').trim();
-  if (!q) return;
-  _brandSearchActive = true;
-  // Open the insight dashboard with a brand-specific search
-  openInsightDashboard({
-    title: q,
-    cat:   'brand',
-    query: q + ' brand consumer perception marketing strategy brand equity',
-    deck:  `Live brand intelligence for ${q} — consumer trust, market dynamics, cultural signal, and brand health excavated from open-source data across all four intelligence lenses.`,
-  });
+// Back and Forward move between the brands and a room; an address typed by hand opens its room.
+function _brandRoute() {
+  if (window._signedOut) return;
+  const id = _brandHash(), sec = document.getElementById('sec-brands');
+  if (!sec || !sec.classList.contains('active')) { if (id) navTo('brands'); return; }
+  if (id && id !== _brands.open) _openBrand(id, true); else if (!id && _brands.open) _closeBrand(true);
 }
-
-function clearBrandSearch() {
-  const inp = document.getElementById('brand-search-input');
-  if (inp) { inp.value = ''; inp.focus(); }
-  document.getElementById('brand-search-clear').style.display = 'none';
-  _brandSearchActive = false;
+window.addEventListener('popstate', _brandRoute); window.addEventListener('hashchange', _brandRoute);
+function _brandPhoto(t, cls) {
+  if (!t || !/^https:\/\//.test(String(t.image || ''))) return '';
+  const logo = /logo|\.svg|\.png/i.test(String(t.image));
+  return `<figure class="${cls || 'photo'}${logo ? ' logo' : ''}"><img src="${safeAttr(t.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="var h=this.closest('.broom-head');if(h)h.classList.add('nophoto');this.parentNode.remove()"></figure>`;
 }
-
-function toggleBrandClearBtn() {
-  const inp = document.getElementById('brand-search-input');
-  const btn = document.getElementById('brand-search-clear');
-  if (inp && btn) btn.style.display = inp.value.length > 0 ? 'block' : 'none';
+function _renderBrandGrid() {
+  const grid = document.getElementById('brand-grid'); if (!grid) return;
+  const list = (_brands.tracks || []).filter(t => _uuid(t.id)).sort((a, b) => ((b.counts || {}).captures_30d || 0) - ((a.counts || {}).captures_30d || 0));
+  if (!_brands.at) { grid.innerHTML = '<p class="lib-empty">The brands did not answer. Refresh in a moment.</p>'; return; }
+  const card = t => { const c = t.counts || {}, id = _uuid(t.id);
+    const figs = t.measurable === false ? '<span>Its name is too short to find in headlines, so it is not counted.</span>'
+      : c.captures_30d == null || !Array.isArray(t.weeks) ? '<span>Counted from the next daily count.</span>'
+      : `<span><b>${c.floor7 ? 'at least ' : ''}${_fmtN(c.captures_7d)}</b> in 7 days</span><span><b>${c.floor30 ? 'at least ' : ''}${_fmtN(c.captures_30d)}</b> in 30 days</span>${c.outlets_30d == null ? '' : `<span><b>${c.floor30 ? 'at least ' : ''}${_fmtN(c.outlets_30d)}</b> outlets</span>`}<span>${t.latest ? 'latest ' + safe(_day(t.latest)) : 'no story yet'}</span>`;
+    return `<article class="bcard" tabindex="0" role="button" data-id="${id}" aria-label="${safeAttr('Open the room for ' + (t.name || 'this brand'))}" onclick="_openBrand('${id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_openBrand('${id}')}">
+      ${_brandPhoto(t)}
+      <div class="who">${safe(t.sector || t.kind || 'Brand')}</div>
+      <h3>${safe(t.name)}</h3>
+      ${_pulseWeeks(t.weeks)}
+      <div class="figures">${figs}</div>
+      <div class="foot"><span>Open the room</span></div>
+    </article>`; };
+  grid.innerHTML = (list.length ? list.map(card).join('') : '<p class="lib-empty">No brand is watched yet.</p>')
+    + `<div class="bcard watch"><p>Watch a brand we do not follow yet. Its weeks start counting on the next run.</p><form class="bfind" onsubmit="event.preventDefault();trackThis(this.querySelector('input').value)"><input type="text" placeholder="Brand name" aria-label="Brand name"><button type="submit">Watch</button></form></div>`;
+  if (typeof _drawPulses === 'function') _drawPulses();
 }
-
-// ── Category filter ──────────────────────────────────────────────
-function filterBrandsByCategory(cat, btn) {
-  _activeBrandCat = cat;
-  document.querySelectorAll('.bcat-chip').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  const filtered = cat === 'all' ? _TRACKS : _TRACKS.filter(b => b.cat === cat);
-  renderBrandGrid(filtered);
+function _brandFind() {
+  const q = String((document.getElementById('brand-find') || {}).value || '').trim(), note = document.getElementById('brand-find-note'); if (!q || !note) return;
+  if (!_brands.at) { note.textContent = _brands.loading ? 'The brands are still loading. Try again in a moment.' : 'The brands did not load. Refresh in a moment.'; return; }
+  // An exact name or alias first; then, from two letters, a name that starts with what was typed; from three, one that contains it.
+  const k = q.toLowerCase(), all = (_brands.tracks || []).filter(t => _uuid(t.id)), names = t => [t.name].concat(t.aliases || []).map(n => String(n || '').toLowerCase());
+  const hit = all.find(t => names(t).some(n => n === k)) || (k.length >= 2 && all.find(t => names(t).some(n => n.startsWith(k)))) || (k.length >= 3 && all.find(t => names(t).some(n => n.includes(k))));
+  if (hit) { note.textContent = ''; _openBrand(hit.id); return; }
+  note.innerHTML = `We do not watch ${safe(q)} yet.<button type="button" onclick="trackThis(${safeAttr(JSON.stringify(q))})">Watch ${safe(q)}</button><button type="button" onclick="setSearch(${safeAttr(JSON.stringify(q))});navTo('explore');runSearch()">Read it now</button>`;
 }
-
-// ── Brand grid render ────────────────────────────────────────────
-/* SEAM:TRACKS — the Brands page is inverted: what is emerging about tracked brands first, then the tracks
-   themselves as computed cards. Every number is a lake count. Admins add tracks; anyone can excavate one. */
-let _TRACKS = [];
-const _SECTOR_CAT = { 'Technology': 'tech', 'Retail': 'retail', 'Finance': 'finance', 'Lifestyle & Apparel': 'lifestyle', 'Media & Entertainment': 'media', 'CPG & Food': 'cpg' };
-async function _loadTracks() {
-  try {
-    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/tracks', { cache: 'no-store' }); const j = r.ok ? await r.json() : null;
-    _TRACKS = ((j && j.tracks) || []).map(t => Object.assign({}, t, { cat: _SECTOR_CAT[t.sector] || 'other', query: t.query || t.name }));
-    renderBrandFeed((j && j.emerging) || []);
-    renderBrandGrid(_activeBrandCat && _activeBrandCat !== 'all' ? _TRACKS.filter(b => b.cat === _activeBrandCat) : _TRACKS);
-  } catch (e) { renderBrandFeed([]); renderBrandGrid([]); }
+function _closeBrand(quiet) {
+  const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room) return;
+  const was = _brands.open;
+  room.style.display = 'none'; room.innerHTML = ''; list.style.display = 'block'; _brands.open = null; _brands.room = null;
+  // The room's own step in the history is undone (so Back then leaves Brands as it would have); an address that came from
+  // outside is simply cleared.
+  if (!quiet && _brandHash()) { try { if (history.state && history.state.brand === was) history.back(); else history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* the address stays */ } }
+  // Focus returns to the brand's card, so a keyboard reader is where they left off.
+  if (was) { const c = document.querySelector('.bcard[data-id="' + was + '"]'); if (c && !quiet) c.focus({ preventScroll: false }); }
 }
-function renderBrandGrid(brands) {
-  const grid = document.getElementById('brand-tracker-grid');
-  if (!grid) return;
-  if (!brands.length) { grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text3)">No tracks yet. An admin can add one below, or search any brand above.</div>`; return; }
-  grid.innerHTML = brands.map((b, i) => `
-    <div class="insight-card" style="animation:fadeIn .35s ease ${i*0.05}s both;cursor:pointer" onclick="setSearch('${safe(b.query).replace(/'/g,'')}');navTo('explore');runSearch()">
-      ${b.image?`<img class="card-img" src="${safeUrl(b.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(b.image_license||'source')}</div>`:''}
-      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">${safe(b.sector||b.kind||'')}</p>
-      <h2 class="card-title">${safe(b.name)}</h2>
-      <p class="card-excerpt">${safe(b.description||'')}</p>
-      <div class="fi-receipts">${b.counts.captures_7d} CAPTURES 7D · ${b.counts.captures_30d} IN 30D${b.latest?' · LATEST '+safe(String(b.latest).slice(0,10)):''}</div>
-      <div class="card-meta"><span style="color:var(--text3)">EXCAVATE →</span></div>
-    </div>`).join('') + `<div class="insight-card" style="opacity:.85"><div class="idea-type">ADD A TRACK</div><p class="card-excerpt">Signed-in admins can add a brand, person, or category the house should follow.</p><div style="display:flex;gap:8px;margin-top:10px"><input id="track-add-name" placeholder="Name" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;font-size:13px"><button class="builder-btn primary" style="flex:0 0 auto;padding:8px 12px" onclick="trackThis(document.getElementById('track-add-name').value)">ADD</button></div></div>`;
+async function _openBrand(id, fromAddress) {
+  id = _uuid(id);
+  const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room || !id) return;
+  const fromRoom = !!_brands.open;
+  _brands.open = id; _brands.room = null;
+  list.style.display = 'none'; room.style.display = 'block';
+  room.innerHTML = '<button class="broom-back" onclick="_closeBrand()">&larr; All brands</button><p class="lib-empty" role="status">Opening the room.</p>';
+  // Opening from a card is a step Back undoes; opening from the address already has its step.
+  // A room opened from another room takes that room's step, so Back (or All brands) always returns to the brands.
+  if (!fromAddress && _brandHash() !== id) { try { if (fromRoom && _brandHash()) history.replaceState({ brand: id }, '', location.pathname + location.search + '#brand=' + id); else history.pushState({ brand: id }, '', location.pathname + location.search + '#brand=' + id); } catch (e) { /* the address stays */ } }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  let j = null;
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/brand?id=' + encodeURIComponent(id), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  if (_brands.open !== id) return;
+  if (!j || !j.ok) { room.innerHTML = '<button class="broom-back" onclick="_closeBrand()">&larr; All brands</button><p class="lib-empty" role="status">' + (j && j.error === 'not_tracked' ? 'We do not watch that brand.' : 'The room did not answer. Refresh in a moment.') + '</p>'; return; }
+  _brands.room = j; _paintBrandRoom(room, j, true);
+}
+function _paintBrandRoom(room, j, focus) {
+  try { room.innerHTML = _renderBrandRoom(j); }
+  catch (e) { console.warn('brand room', e); room.innerHTML = '<button class="broom-back" onclick="_closeBrand()">&larr; All brands</button><p class="lib-empty" role="status">The room could not be drawn. Refresh in a moment.</p>'; return; }
+  _wireColumns(room.querySelector('.viz.cols')); _wireLines(room.querySelector('.viz.lines')); if (typeof _drawPulses === 'function') _drawPulses();
+  if (focus) { const h = room.querySelector('h1'); if (h) h.focus({ preventScroll: true }); }
+}
+// A phone turned on its side crosses the chart breakpoint: the open room redraws at the new width.
+try { window.matchMedia('(max-width: 640px)').addEventListener('change', () => { const room = document.getElementById('brand-room'); if (_brands.room && _brands.open === (_brands.room.track || {}).id && room && room.style.display === 'block') _paintBrandRoom(room, _brands.room); }); } catch (e) { /* older browsers keep the first drawing */ }
+function _brandStat(v, l, d) { return `<div class="bstat"><div class="v">${v}</div><div class="l">${l}</div>${d ? `<div class="d">${d}</div>` : ''}</div>`; }
+function _renderBrandRoom(j) {
+  const t = j.track || {}, c = j.coverage && Array.isArray(j.coverage.weeks) && j.coverage.weeks.length >= 2 ? j.coverage : null, a = j.attention || null, st = a && a.stats, at = c && c.at_least ? 'at least ' : '', wk = c && c.this_floor ? 'at least ' : '';
+  const photo = _brandPhoto(t, 'bph');
+  // the change on the week before is said only when both weeks were counted whole
+  const delta = c && c.this_week != null && c.prior_week != null && !c.this_floor && !c.prior_floor ? (c.this_week === c.prior_week ? 'the same as the week before' : (c.this_week > c.prior_week ? 'up ' : 'down ') + _fmtN(Math.abs(c.this_week - c.prior_week)) + ' on the week before') : '';
+  const stats = (c ? (c.this_week != null ? _brandStat(wk + _fmtN(c.this_week), 'stories in the last 7 days', delta) : '') + _brandStat(at + _fmtN(c.total), 'stories in twelve weeks', null) + _brandStat(at + _fmtN(c.outlets), 'outlets in twelve weeks', null) : '')
+    + (st && st.recent_3m != null ? _brandStat(_fmtC(st.recent_3m), 'views of its Wikipedia article, last three months', st.yoy_pct != null ? (st.yoy_pct === 0 ? 'level with' : (st.yoy_pct > 0 ? 'up ' : 'down ') + Math.abs(st.yoy_pct) + '% on') + ' the same months last year' : null) : '');
+  const head = `<button class="broom-back" onclick="_closeBrand()">&larr; All brands</button>
+    <header class="broom-head${photo ? '' : ' nophoto'}">${photo ? photo.replace('</figure>', (t.image_license ? `<figcaption>Image: ${safe(t.image_license)}</figcaption>` : '') + '</figure>') : ''}
+      <div><div class="room-dateline">${safe(t.sector || 'Brand')} · measured ${safe(_day(j.measured_at, true))}</div><h1 tabindex="-1">${safe(t.name)}</h1>${t.description ? `<p class="desc">${safe(t.description)}</p>` : ''}<div class="bstats">${stats}</div>${j.measurable === false ? '<p class="room-more">Its name is too short to find in headlines, so its coverage is not counted.</p>' : ''}</div>
+    </header>`;
+  const b = j.board, board = b && b.claim ? `<section class="room-sec bboard"><div class="room-head"><h2>On the board this week</h2><div class="sub">Our reading of ${safe(t.name)} for the week of ${safe(_day(b.night, true))}.</div></div>
+      <h3>${safe(b.claim)}</h3>${b.move ? `<p class="move">${safe(b.move)}</p>` : ''}${b.question ? `<p class="q">Answers: ${safe(b.question)}</p>` : ''}
+      ${(b.voices || []).length ? `<div class="bquotes">${b.voices.slice(0, 3).map(v => { const s0 = v.self || {}, id = [s0.generation, s0.role ? (s0.generation ? 'a ' : 'A ') + s0.role : null].filter(Boolean); return `<figure class="quote"><p>“${safe(v.text)}”</p><cite>${safe((id.length ? id : ['Consumer']).concat(v.likes ? [_fmtN(v.likes) + (v.likes === 1 ? ' like' : ' likes')] : []).join(', '))}</cite></figure>`; }).join('')}</div>` : ''}</section>` : '';
+  const cov = c ? `<section class="room-sec"><div class="room-head"><h2>Coverage, week by week</h2><div class="sub">Stories about ${safe(t.name)} each week for twelve weeks, by the date each was published, on our regular sweep.</div></div>
+      ${_brandColumns(c.weeks)}
+      <p class="viz-note">${c.total ? `${at ? 'At least ' : ''}${_fmtN(c.total)} ${c.total === 1 ? 'story' : 'stories'} from ${at}${_fmtN(c.outlets)} ${c.outlets === 1 ? 'outlet' : 'outlets'} in twelve weeks.${c.weeks.some(w => w.n == null) ? ' The room reads the newest 1,000 stories, so the earliest weeks are not counted.' : ''}` : `No story about ${safe(t.name)} in twelve weeks of our sweep.`}</p>
+      <details class="viz-table"><summary>See the numbers</summary><table><tr><th>Week of</th><th>Stories</th><th>Outlets</th></tr>${c.weeks.map(w => `<tr><td>${safe(_day(w.start, true))}</td><td>${w.n == null ? 'not counted' : (w.floor ? 'at least ' : '') + _fmtN(w.n)}</td><td>${w.outlets == null ? 'not counted' : (w.floor ? 'at least ' : '') + _fmtN(w.outlets)}</td></tr>`).join('')}</table></details></section>` : '';
+  const lines = a && Array.isArray(a.series) && a.series.length ? _brandLines(a) : '';   // nothing to draw, no section
+  const att = lines ? `<section class="room-sec"><div class="room-head"><h2>Attention, three years</h2><div class="sub">Views of each brand's Wikipedia article, month by month, the brand against up to two of its set.</div></div>
+      ${lines}
+      ${st ? `<p class="viz-note">${st.recent_3m != null ? `${_fmtN(st.recent_3m)} views in the last three months${st.yoy_pct != null ? `, ${st.yoy_pct === 0 ? 'level with' : (st.yoy_pct > 0 ? 'up ' : 'down ') + Math.abs(st.yoy_pct) + '% on'} the same months last year` : ''}${st.two_year_pct != null ? ` and ${st.two_year_pct === 0 ? 'level with' : (st.two_year_pct > 0 ? 'up ' : 'down ') + Math.abs(st.two_year_pct) + '% on'} two years before` : ''}.` : ''}${st.peak_month ? ` The peak was ${safe(_month(st.peak_month))}, ${_fmtN(st.peak_views)} views.` : ''}</p>` : ''}
+      <div class="viz-src">Source: Wikimedia pageviews, English Wikipedia, people only. Article: ${safe((a.series.find(x => x.role === 'subject') || {}).article || '')}.</div></section>` : '';
+  // The set: every brand, this one included, on the daily count (the same seven and thirty days, the same rules), so the rows
+  // compare with each other; the figures above are this room's own read, measured on the date it shows.
+  const self = Object.assign({ id: t.id, name: t.name, self: true }, j.self || {});
+  const nums = x => x.measurable === false ? '<span class="n"><small>name too short to count</small></span><span class="n"></span><span class="n"></span>'
+    : x.n30 == null || !Array.isArray(x.weeks) ? '<span class="n"><small>counted from the next daily count</small></span><span class="n"></span><span class="n"></span>'
+    : `<span class="n">${x.floor7 ? 'at least ' : ''}${_fmtN(x.n7)}<small>7 days</small></span><span class="n">${x.floor30 ? 'at least ' : ''}${_fmtN(x.n30)}<small>30 days</small></span><span class="n">${x.outlets_30d == null ? '' : (x.floor30 ? 'at least ' : '') + _fmtN(x.outlets_30d)}<small>${x.outlets_30d == null ? '' : 'outlets, 30 days'}</small></span>`;
+  const row = x => { const id = _uuid(x.id), inner = `<b>${safe(x.name)}</b>${_pulseWeeks(x.weeks) || '<span></span>'}${nums(x)}`;
+    return x.self ? `<div class="brow self">${inner}</div>` : id ? `<button type="button" class="brow" onclick="_openBrand('${id}')" aria-label="${safeAttr('Open the room for ' + (x.name || 'this brand'))}">${inner}</button>` : ''; };
+  const set = (j.set || []).length ? `<section class="room-sec"><div class="room-head"><h2>Against its set</h2><div class="sub">The brands we watch in ${safe(t.sector || 'its sector')}, all on the same daily count.</div></div>
+      <div class="bset">${[self].concat(j.set).map(row).join('')}</div></section>` : '';
+  const stories = (j.stories || []).length ? `<section class="room-sec"><div class="room-head"><h2>The latest stories</h2><div class="sub">The newest coverage, each linked to its outlet.</div></div>
+      <div class="bstories">${j.stories.map(x => `<a class="bstory${x.image ? '' : ' nophoto'}" href="${safeUrl(x.url)}" target="_blank" rel="noopener">${x.image ? `<img src="${safeAttr(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('nophoto');this.remove()">` : ''}<div><small>${safe(x.source || '')} · ${safe(_day(x.date, true))}</small><span>${safe(x.title)}</span></div></a>`).join('')}</div></section>` : '';
+  const rec = j.record ? `<p class="room-more">${_fmtN(j.record.weeks)} ${j.record.weeks === 1 ? 'week' : 'weeks'} on record since ${safe(_day(j.record.since, true))}${j.record.on_board ? `, ${_fmtN(j.record.on_board)} of them on the board` : ''}.</p>` : '';
+  const cta = `<section class="partners"><p>Commission a RECON on ${safe(t.name)}: the deep read, built on demand, with every source, every count and the moves it implies.</p><a href="mailto:hello@unsurfaced-intelligence.com?subject=${encodeURIComponent('RECON: ' + (t.name || ''))}">Commission a RECON</a></section>`;
+  return head + board + cov + att + set + stories + rec + cta;
+}
+// A column chart: twelve weeks, one series. Columns at most 24px wide with a 4px rounded top, square at the baseline; the newest
+// carries its value; every column answers on hover and focus.
+function _brandColumns(weeks) {
+  const narrow = _vizNarrow(), w = narrow ? 400 : 1000, h = narrow ? 200 : 220, padL = 34, padB = 26, padT = 18, n = weeks.length, slot = (w - padL) / n, cw = Math.min(24, slot * 0.6);
+  const max = Math.max(1, ...weeks.map(x => x.n || 0)), step = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / step) * step;
+  const y = v => h - padB - (v / top) * (h - padB - padT);
+  const ticks = [0, top / 2, top].map(v => `<line x1="${padL}" x2="${w}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`).join('');
+  const tickLbl = [0, top / 2, top].map(v => `<text x="${padL - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${_fmtN(Math.round(v))}</text>`).join('');
+  const bars = weeks.map((x, i) => {
+    const cx = padL + slot * i + slot / 2, x0 = cx - cw / 2, y0 = y(x.n), base = h - padB, r = Math.min(4, Math.max(0, base - y0));
+    const d = x.n ? `M${x0.toFixed(1)} ${base}V${(y0 + r).toFixed(1)}Q${x0.toFixed(1)} ${y0.toFixed(1)} ${(x0 + r).toFixed(1)} ${y0.toFixed(1)}H${(x0 + cw - r).toFixed(1)}Q${(x0 + cw).toFixed(1)} ${y0.toFixed(1)} ${(x0 + cw).toFixed(1)} ${(y0 + r).toFixed(1)}V${base}Z` : '';
+    const fl = x.floor ? 'at least ' : '', label = x.n == null ? `Week of ${_day(x.start, true)}: not counted (the room reads the newest 1,000 stories)` : `Week of ${_day(x.start, true)}: ${fl}${_fmtN(x.n)} ${x.n === 1 ? 'story' : 'stories'}, ${fl}${_fmtN(x.outlets)} ${x.outlets === 1 ? 'outlet' : 'outlets'}`;
+    return `<rect class="hit" x="${(padL + slot * i).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${h - padB - padT}" tabindex="0" data-tip="${safeAttr(label)}" data-x="${cx.toFixed(1)}" aria-label="${safeAttr(label)}"></rect>${d ? `<path class="col${i === n - 1 ? '' : ' dim'}" d="${d}"/>` : ''}`;
+  }).join('');
+  const last = weeks[n - 1], lx = padL + slot * (n - 1) + slot / 2;
+  const xl = [0, Math.floor(n / 2), n - 1].map(i => `<text x="${(padL + slot * i + slot / 2).toFixed(1)}" y="${h - 6}" text-anchor="middle">${safe(_day(weeks[i].start))}</text>`).join('');
+  return `<div class="viz cols"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Stories a week for twelve weeks; the newest week ${safeAttr(_fmtN(last.n))}"><g class="grid">${ticks}</g><g class="axis">${tickLbl}${xl}</g>${bars}<text class="vlabel strong" x="${lx.toFixed(1)}" y="${(y(last.n) - 7).toFixed(1)}" text-anchor="middle">${_fmtN(last.n)}</text></svg><div class="viz-tip"></div></div>`;
+}
+// A line chart: up to three series over thirty-six months, 2px lines, an end dot and an end label for each, a legend above, a
+// crosshair that reads every series at the month under the pointer.
+function _brandLines(a) {
+  const narrow = _vizNarrow(), months = Array.isArray(a.months) ? a.months : [], series = (a.series || []).filter(s => s && Array.isArray(s.views) && s.views.length === months.length).slice(0, 3), w = narrow ? 400 : 1000, h = narrow ? 240 : 260, padL = 46, padR = narrow ? 76 : 120, padB = 26, padT = 14, n = months.length;
+  const all = series.flatMap(s => s.views.filter(v => v != null)); if (!all.length || n < 2) return '';
+  const max = Math.max(1, ...all), step = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / step) * step;
+  const x = i => padL + i * (w - padL - padR) / (n - 1), y = v => h - padB - (v / top) * (h - padB - padT);
+  const ticks = [0, top / 2, top].map(v => `<line x1="${padL}" x2="${w - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`).join('');
+  const tickLbl = [0, top / 2, top].map(v => `<text x="${padL - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${_fmtC(v)}</text>`).join('');
+  const xl = [0, Math.floor((n - 1) / 2), n - 1].map(i => `<text x="${x(i).toFixed(1)}" y="${h - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${safe(_month(months[i]))}</text>`).join('');
+  const ends = [];
+  const lines = series.map((s, k) => {
+    let d = '', pen = false; s.views.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); pen = true; });
+    let li = s.views.length - 1; while (li >= 0 && s.views[li] == null) li--;
+    if (li >= 0) ends.push({ k, x: x(li), y: y(s.views[li]), label: s.label });
+    return `<path class="ln" stroke="${_BRAND_SERIES[k]}" d="${d}"/>`;
+  }).join('');
+  // labels top to bottom, each at least 14 below where the one above it was drawn; a moved label gets a leader line
+  ends.sort((p, q) => p.y - q.y); let prevY = -Infinity; ends.forEach(e => { const at = Math.max(e.y, prevY + 14); if (at !== e.y) e.ly = at; prevY = at; });
+  const endMarks = ends.map(e => `<circle cx="${e.x.toFixed(1)}" cy="${e.y.toFixed(1)}" r="4" fill="${_BRAND_SERIES[e.k]}" stroke="#151515" stroke-width="2"/>${e.ly != null ? `<line x1="${(e.x + 6).toFixed(1)}" y1="${e.y.toFixed(1)}" x2="${(e.x + 12).toFixed(1)}" y2="${e.ly.toFixed(1)}" stroke="#3A3A3A"/>` : ''}<text class="vlabel${e.k === 0 ? ' strong' : ''}" x="${(e.x + 14).toFixed(1)}" y="${((e.ly != null ? e.ly : e.y) + 4).toFixed(1)}">${safe(String(e.label).slice(0, narrow ? 9 : 16))}</text>`).join('');
+  const legend = `<div class="viz-legend">${series.map((s, k) => `<span><i style="background:${_BRAND_SERIES[k]}"></i>${safe(s.label)}</span>`).join('')}</div>`;
+  const data = safeAttr(JSON.stringify({ months, series: series.map(s => ({ label: s.label, views: s.views })), x0: padL, x1: w - padR, w }));
+  const table = `<details class="viz-table"><summary>See the numbers</summary><table><tr><th>Month</th>${series.map(s => `<th>${safe(s.label)}</th>`).join('')}</tr>${months.map((m, i) => `<tr><td>${safe(_month(m))}</td>${series.map(s => `<td>${s.views[i] == null ? 'not measured' : _fmtN(s.views[i])}</td>`).join('')}</tr>`).join('')}</table></details>`;
+  return `${legend}<div class="viz lines" data-series="${data}"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Monthly views for thirty-six months"><g class="grid">${ticks}</g><g class="axis">${tickLbl}${xl}</g>${lines}${endMarks}<line class="xh" x1="0" x2="0" y1="${padT}" y2="${h - padB}" style="display:none"/><rect class="hit" tabindex="0" aria-label="Step through the months with the arrow keys" x="${padL}" y="${padT}" width="${w - padL - padR}" height="${h - padB - padT}"></rect></svg><div class="viz-tip" aria-live="polite"></div></div>${table}`;
+}
+// Phones draw the charts on a narrower canvas, so a label keeps its size instead of shrinking with a 1000-wide drawing.
+function _vizNarrow() { return window.matchMedia('(max-width: 640px)').matches; }
+function _vizTip(box, html, px, py) {
+  const tip = box.querySelector('.viz-tip'); if (!tip) return;
+  if (html == null) { tip.style.display = 'none'; return; }
+  tip.innerHTML = html; tip.style.display = 'block';
+  const bw = box.clientWidth, tw = tip.offsetWidth; tip.style.left = Math.max(0, Math.min(bw - tw, px - tw / 2)) + 'px'; tip.style.top = Math.max(0, py - tip.offsetHeight - 10) + 'px';
+}
+function _wireColumns(box) {
+  if (!box) return; const svg = box.querySelector('svg');
+  // the text goes in before the tooltip is measured, so the last column's tooltip stays inside the chart
+  const show = el => { const r = svg.getBoundingClientRect(), b = box.getBoundingClientRect(), sx = r.width / svg.viewBox.baseVal.width; _vizTip(box, '<b>' + safe(el.getAttribute('data-tip') || '') + '</b>', Number(el.getAttribute('data-x')) * sx + (r.left - b.left), Number(el.getAttribute('y')) * sx + (r.top - b.top) + 30); };
+  box.querySelectorAll('.hit').forEach(el => { el.addEventListener('pointerenter', () => show(el)); el.addEventListener('focus', () => show(el)); el.addEventListener('pointerleave', () => _vizTip(box, null)); el.addEventListener('blur', () => _vizTip(box, null)); });
+}
+function _wireLines(box) {
+  if (!box) return; let d = null; try { d = JSON.parse(box.getAttribute('data-series')); } catch (e) { return; }
+  const svg = box.querySelector('svg'), hit = svg.querySelector('.hit'), xh = svg.querySelector('.xh'), n = d.months.length;
+  let cur = n - 1;
+  const pos = i => { const r = svg.getBoundingClientRect(), sx = r.width / d.w; cur = Math.max(0, Math.min(n - 1, i)); return { i: cur, cx: d.x0 + cur * (d.x1 - d.x0) / (n - 1), sx, r }; };
+  const at = ev => { const r = svg.getBoundingClientRect(), vx = (ev.clientX - r.left) / (r.width / d.w); return pos(Math.round((vx - d.x0) / (d.x1 - d.x0) * (n - 1))); };
+  const draw = p => { xh.setAttribute('x1', p.cx); xh.setAttribute('x2', p.cx); xh.style.display = 'block'; const b = box.getBoundingClientRect();
+    _vizTip(box, '', p.cx * p.sx + (p.r.left - b.left), 40); const tip = box.querySelector('.viz-tip'); tip.textContent = '';
+    const head = document.createElement('div'); head.textContent = _month(d.months[p.i]); tip.appendChild(head);
+    d.series.forEach((s, k) => { const row = document.createElement('div'), key = document.createElement('i'), val = document.createElement('b'), lab = document.createElement('span'); key.style.background = _BRAND_SERIES[k]; val.textContent = s.views[p.i] == null ? 'not measured' : _fmtN(s.views[p.i]); lab.textContent = ' ' + s.label; row.appendChild(key); row.appendChild(val); row.appendChild(lab); tip.appendChild(row); });
+    _vizTip(box, tip.innerHTML, p.cx * p.sx + (p.r.left - b.left), 40); };
+  const hide = () => { xh.style.display = 'none'; _vizTip(box, null); };
+  hit.addEventListener('pointermove', ev => draw(at(ev))); hit.addEventListener('pointerleave', hide);
+  hit.addEventListener('focus', () => draw(pos(cur))); hit.addEventListener('blur', hide);
+  hit.addEventListener('keydown', ev => { const k = ev.key === 'ArrowLeft' ? -1 : ev.key === 'ArrowRight' ? 1 : ev.key === 'Home' ? -n : ev.key === 'End' ? n : 0; if (!k) return; ev.preventDefault(); draw(pos(cur + k)); });
 }
 async function trackThis(name) {
-  name = String(name||'').trim(); if (!name) { showToast('Name the track first'); return; }
+  name = String(name||'').trim(); if (!name) { showToast('Name the brand first'); return; }
   try {
-    const hh = await _authHeader(); if (!hh.Authorization) { showToast('Sign in to add a track'); return; }
+    const hh = await _authHeader(); if (!hh.Authorization) { showToast('Sign in to watch a brand'); return; }
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/track', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh), body: JSON.stringify({ name, query: name }) });
     const j = r.ok ? await r.json() : null;
-    if (j && j.ok) { showToast('Tracking ' + name + '. Counts land at 06:00.'); if (typeof _loadTracks === 'function') _loadTracks(); }
-    else showToast((j && j.error === 'auth_required') ? 'Sign in to add a track' : 'Could not add that track');
-  } catch (e) { showToast('Could not add that track'); }
+    if (j && j.ok) { showToast('Watching ' + name + '. Its weeks start counting on the next run.'); _brands.at = 0; if (document.getElementById('sec-brands')?.classList.contains('active')) initBrandsPage(); }
+    else showToast((j && j.error === 'auth_required') ? 'Sign in to watch a brand' : (j && j.error === 'exists_or_denied') ? 'We already watch ' + name : 'Could not watch that brand');
+  } catch (e) { showToast('Could not watch that brand'); }
 }
 
-// ── Click a brand card ───────────────────────────────────────────
-/* SEAM:MOAT_1 — the measured block. Fetches computed lake signal for the
- * brand and renders it labeled COMPUTED with its timestamp, above the modeled
- * chart. Thin lake says so plainly. Failures render nothing — a missing
- * measurement is not an error state, it is the pre-moat world. */
+/* SEAM:MOAT_1 (retired on this page in EX19): the brand dashboard and its measured block are gone; a brand's measured weeks live
+ * in its room (SEAM:BRAND_ROOM). The worker's computed brand signal stays for the reads that ask for it. */
 /* SEAM:DASH_READ — the dashboard learns judgment. After render, the base
  * findings package as a corpus and flow through the same compiler reports
  * use (api() joins the lake automatically): THE READ lands above the
@@ -4388,277 +4360,39 @@ async function _dashReadLoad(config, data) {
       + '</div>';
   } catch (e) { box.innerHTML = ''; }
 }
-async function _brandLakeLoad(name) {
-  const box = document.getElementById('lake-signal-block');
-  if (!box || !API_BASE) return;
-  box.innerHTML = '';
-  try {
-    const d = await api('excavate/brand-signal', { brand: name });
-    if (!d || !d.ok || !d.signal) return;
-    const sig = d.signal;
-    const mono = "font-family:'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase";
-    if (sig.thin) {
-      box.innerHTML = '<div style="border:1px solid var(--border);background:var(--surface);padding:14px 18px;margin:0 0 18px">'
-        + '<div style="' + mono + ';font-size:9px;color:var(--text3)">UNSURFACED LAKE \u00B7 COMPUTED</div>'
-        + '<div style="font-size:12px;color:var(--text2);margin-top:6px">' + (sig.matches || 0) + ' captured signal' + (sig.matches === 1 ? '' : 's') + ' touch this brand \u2014 not enough to measure yet. The lake deepens daily; measured momentum replaces the modeled chart when evidence earns it.</div></div>';
-      return;
-    }
-    const up = sig.momentum_pct >= 0;
-    box.innerHTML = '<div style="border:1px solid rgba(74,222,128,.35);background:var(--surface);padding:16px 18px;margin:0 0 18px">'
-      + '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">'
-      + '<span style="' + mono + ';font-size:9px;color:#4ade80">UNSURFACED LAKE \u00B7 COMPUTED \u2014 not modeled</span>'
-      + '<span style="' + mono + ';font-size:9px;color:var(--text3)">computed ' + new Date(d.computed_at).toLocaleDateString() + '</span></div>'
-      + '<div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:12px">'
-      + '<span><b style="font-size:20px">' + sig.mentions_90d + '</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">signals \u00B7 90d</span></span>'
-      + '<span><b style="font-size:20px;color:' + (up ? '#4ade80' : 'var(--accent)') + '">' + (up ? '\u25B2 +' : '\u25BC ') + sig.momentum_pct + '%</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">30d vs prior</span></span>'
-      + '<span><b style="font-size:20px">' + sig.tier1_share + '%</b> <span style="' + mono + ';font-size:9px;color:var(--text3)">tier-1 sources</span></span></div>'
-      + '<div style="' + mono + ';font-size:8px;color:var(--text3);margin-top:10px">Method: semantic match of captured lake signal \u00B7 similarity \u2265 .30 \u00B7 90-day window \u00B7 tier per source registry</div>'
-      + (sig.top && sig.top.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">Leading: '
-        + sig.top.slice(0, 2).map(t => (t.url ? '<a href="' + safeAttr(t.url) + '" target="_blank" rel="noopener" style="color:var(--text)">' + safe(t.title) + '</a>' : safe(t.title)) + ' <span style="color:var(--text3)">(' + safe(t.source) + ')</span>').join(' \u00B7 ') + '</div>' : '')
-      + '</div>';
-  } catch (e) { /* pre-moat world: render nothing */ }
-}
-function excavateBrand(name) {
-  // Find brand data for this brand
-  const brand = _TRACKS.find(b => b.name === name);
-  if (brand) {
-    // Open full intelligence dashboard with brand-specific query
-    setTimeout(function () { try { _brandLakeLoad(brand.name); } catch (e) {} }, 1400);
-    openInsightDashboard({
-      title:    brand.name + ' — Brand Intelligence',
-      cat:      'brand',
-      query:    brand.query,
-      deck:     brand.deck,
-    });
-  } else {
-    // Fallback: custom brand search
-    setTimeout(function () { try { _brandLakeLoad(name); } catch (e) {} }, 1400);
-    openInsightDashboard({
-      title:    name + ' — Brand Intelligence',
-      cat:      'brand',
-      query:    name + ' brand consumer perception marketing strategy brand equity',
-      deck:     `Live brand intelligence for ${name} — consumer trust, market dynamics, cultural signal, and brand health excavated across all four intelligence lenses.`,
-    });
-  }
-}
-
-// ── Intelligence feed ────────────────────────────────────────────
-function renderBrandFeed(emerging) {
-  const feed = document.getElementById('brand-feed-grid');
-  if (!feed) return;
-  const items = Array.isArray(emerging) ? emerging : [];
-  if (!items.length) { feed.innerHTML = `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">NOTHING EMERGING ON TRACKED BRANDS YET</div><p class="card-excerpt">The desk flags a tracked brand when a recurring cluster touches it. The first edition assembles at 06:00.</p></div>`; return; }
-  feed.innerHTML = items.slice(0, 6).map((it, i) => `
-    <div class="insight-card" style="animation:fadeIn .35s ease ${i*0.06}s both;cursor:pointer" onclick="setSearch('${safe(it.title||it.track).replace(/'/g,'')}');navTo('explore');runSearch()">
-      ${it.image?`<img class="card-img" src="${safeUrl(it.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(it.source_name||'source')}</div>`:''}
-      <span class="fi-state-tag">${safe(it.state||'')}</span>
-      <span class="card-cat ${CATS.includes(it.lens)?it.lens:'brand'}">● ${safe(it.track||'')}</span>
-      <h2 class="card-title">${safe(it.line||it.title||'')}</h2>
-      <p class="card-excerpt">${safe(it.title||'')}</p>
-      <div class="fi-receipts">${(it.counts||{}).recent_7d||0} CAPTURES 7D · ${(it.counts||{}).weeks||0}W · ${(it.counts||{}).sources||0} SRC${it.published_at?' · '+safe(String(it.published_at).slice(0,10)):''}</div>
-      ${it.url?`<div class="card-meta"><span style="color:var(--text3)">${safe(it.source_name||'')}</span><a class="proof-link" href="${safeUrl(it.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a></div>`:''}
-    </div>`).join('');
-}
+// SEAM:BRAND_ROOM: the old brand dashboard (a modeled chart with a lake block beside it) is retired; a brand opens its room.
 
 
-// ══ AUDIENCES PAGE ══
-const _AUD_CATS = [{n:'Skincare & Beauty',v:[78,71,54,62]},{n:'Food & Beverage',v:[81,76,72,68]},{n:'Technology',v:[94,88,79,71]},{n:'Travel',v:[72,81,77,65]},{n:'Fitness & Wellness',v:[88,74,69,58]}];
-const _AUD_MEDIA = [{n:'Short-form video',v:[94,76,58,44]},{n:'Streaming',v:[91,88,82,71]},{n:'Podcasts',v:[68,74,71,62]},{n:'Social feeds',v:[96,84,68,52]},{n:'Linear TV',v:[31,48,67,84]}];
-const _AUD_DRIVERS = [{n:'Peer recommendation',v:[89,74,61,52]},{n:'Brand authenticity',v:[84,71,68,64]},{n:'Price & value',v:[78,82,79,84]},{n:'Social proof',v:[91,76,62,48]},{n:'Creator endorsement',v:[86,67,44,31]}];
-
-/* SEAM:AUDIENCES — cohorts on evidence. Outlet coverage counts from the lake (30 days, title match), sources named
-   and dated, top territories per cohort. Census baselines arrive with the Census rail; MINE findings with fielded studies.
-   A cohort with nothing this month says so. */
+// ══ AUDIENCES PAGE ══ SEAM:AUDIENCES SEAM:PEOPLE: the people behind the board's subjects, grouped by what they say about themselves
+// (GET /excavate/people). A group stands at 25 voices; below it, an early read. Words as written; credited by generation or role,
+// else as Consumer; never a name, a handle, a platform or a link. The old cohort keyword counts (GET /excavate/audiences) stay in
+// the API and the ledger, not on the page.
+let _peopleAt = 0;
 async function initAudiencesPage() {
-  const grid = document.getElementById('aud-grid'); const detail = document.getElementById('aud-detail');
-  if (!grid) return;
-  grid.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Counting coverage…</div>`;
-  let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/audiences', { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) {}
-  const cohorts = (j && j.cohorts) || {};
-  const keys = Object.keys(cohorts);
-  if (!keys.length) { grid.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Coverage counts assemble at 06:00.</div>`; return; }
-  window._audData = cohorts;
-  grid.innerHTML = keys.map((k, i) => { const c = cohorts[k]; const terr = (c.top_territories||[]).map(t => String(t.territory).replace(/-/g,' ')).slice(0,3).join(', ');
-    return `<div class="insight-card" style="animation:fadeIn .35s ease ${i*0.06}s both;cursor:pointer" onclick="showAudienceDetail('${k}')">
-      <h2 class="card-title">${safe(c.label)}</h2>
-      <div class="fi-receipts">${c.mentions_30d} OUTLET MENTIONS · 30D · ${c.outlets} OUTLETS</div>
-      <p class="card-excerpt">${c.mentions_30d ? 'Most covered in ' + safe(terr||'no territory yet') + '.' : 'No outlet coverage captured this month. That is the finding.'}</p>
-      <div class="card-meta"><span style="color:var(--text3)">${j.census ? 'CENSUS BASELINE ON' : 'CENSUS BASELINE ARRIVES WITH THE CENSUS RAIL'}</span></div>
-    </div>`; }).join('');
-  if (detail) detail.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.06em">Pick a cohort for its latest sourced coverage. ${safe(j.note||'')}${j.computed_at?' · computed '+safe(String(j.computed_at).slice(0,16)).replace('T',' '):''}</div>`;
-}
-function showAudienceDetail(key) {
-  const c = (window._audData||{})[key]; const detail = document.getElementById('aud-detail'); if (!c || !detail) return;
-  const latest = c.latest||[];
-  detail.innerHTML = (latest.length ? latest.map((it, i) => `
-    <div class="insight-card" style="animation:fadeIn .3s ease ${i*0.05}s both;cursor:pointer" onclick="setSearch('${safe(c.label).replace(/'/g,'')} ${safe(it.title||'').replace(/'/g,'').slice(0,60)}');navTo('explore');runSearch()">
-      ${it.image?`<img class="card-img" src="${safeUrl(it.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(it.source_name||'source')}</div>`:''}
-      <span class="card-cat consumer">● ${safe(c.label)}</span>
-      <h2 class="card-title" style="font-size:16px">${safe(it.title||'')}</h2>
-      <div class="card-meta"><span style="color:var(--text3)">${safe(it.source_name||'')}${it.published_at?' · '+safe(String(it.published_at).slice(0,10)):''}</span>${it.url?`<a class="proof-link" href="${safeUrl(it.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
-    </div>`).join('') : `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">NO COVERAGE THIS MONTH</div><p class="card-excerpt">${safe(c.label)} did not appear in captured outlet titles in the last 30 days.</p></div>`)
-    + `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">TOP SOURCES</div><p class="card-excerpt">${(c.top_sources||[]).map(x=>safe(x.source)+' ('+x.n+')').join(' · ')||'none'}</p><div class="idea-type" style="margin-top:10px">FIELDED EVIDENCE</div><p class="card-excerpt">No MINE study fielded on ${safe(c.label)} this quarter. A study through MINE is the only honest source for a cohort percentage.</p></div>`;
+  if (Date.now() - _peopleAt < 300000) return;
+  let j = null;
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/people', { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const groupsEl = document.getElementById('people-groups'), earlyEl = document.getElementById('people-early'), earlySec = document.getElementById('people-early-sec'), figs = document.getElementById('people-figs'), note = document.getElementById('people-note'), sub = document.getElementById('people-groups-sub'), dl = document.getElementById('people-dateline');
+  if (!groupsEl) return;
+  if (!j || !j.ok) { groupsEl.innerHTML = '<p class="lib-empty">The comments did not answer. Refresh in a moment.</p>'; return; }
+  _peopleAt = Date.now();
+  if (dl) dl.textContent = 'Audiences' + (j.night ? ' · week of ' + _day(j.night, true) : '');
+  const groups = j.groups || [], stand = groups.filter(g => g.stands), early = groups.filter(g => !g.stands);
+  if (figs) figs.innerHTML = `<div><b>${_fmtN(j.heard || 0)}</b><span>comments read</span></div><div><b>${_fmtN(j.described || 0)}</b><span>said who wrote them</span></div><div><b>${_fmtN(stand.length)}</b><span>${stand.length === 1 ? 'group stands' : 'groups stand'}</span></div><div><b>${_fmtN(j.subjects || 0)}</b><span>subjects on the board</span></div>`;
+  const who = q => { const s0 = q.self || {}, id = [s0.generation, s0.role ? (s0.generation ? 'a ' : 'A ') + s0.role : null].filter(Boolean); return (id.length ? id : ['Consumer']).concat(q.likes ? [_fmtN(q.likes) + (q.likes === 1 ? ' like' : ' likes')] : []).join(', ') + (q.on ? ' · on ' + q.on : ''); };
+  const quote = q => `<figure><p>“${safe(q.text)}”</p><cite>${safe(who(q))}</cite></figure>`;
+  groupsEl.innerHTML = stand.length ? stand.map(g => `<article class="pcard"><h3>${safe(g.label)}</h3><div class="pn">${_fmtN(g.n)} ${g.n === 1 ? 'comment' : 'comments'} · ${_fmtN(g.subjects.length)} ${g.subjects.length === 1 ? 'subject' : 'subjects'}</div>${g.subjects.length ? `<div class="pons">${g.subjects.map(x => `<span>${safe(x.on)} · ${_fmtN(x.n)}</span>`).join('')}</div>` : ''}${g.quotes.map(quote).join('')}</article>`).join('')
+    : `<p class="lib-empty">No group has reached 25 comments yet. ${early.length ? 'The early reads below are what people have said so far.' : 'Groups form as the subjects on the board gather comments each week.'}</p>`;
+  if (sub) sub.textContent = stand.length ? 'Each group with how many of its comments we read, the subjects they spoke to and their words, as written.' : 'A group stands at 25 comments.';
+  if (earlySec && earlyEl) { earlySec.style.display = early.length ? 'block' : 'none'; earlyEl.innerHTML = early.map(g => `<div class="prow"><b>${safe(g.label)}<small>${_fmtN(g.n)} ${g.n === 1 ? 'comment' : 'comments'}${g.subjects.length ? ' · on ' + g.subjects.slice(0, 2).map(x => safe(x.on)).join(', ') : ''}</small></b><p>“${safe((g.quotes[0] || {}).text || '')}”</p></div>`).join(''); }
+  if (note) note.textContent = (j.heard ? 'Comments come from public posts and video comments gathered for the subjects on this week\'s board, some up to three months old, and from the latest monthly report. One person can write more than one, so every count here is of comments, not people. We keep the words and what people say about themselves; never a name, a handle or a link.' : '') + (j.computed_at ? ' Counted ' + _day(j.computed_at, true) + '.' : '');
 }
 
-function excavateAudience(gen) {
-  navTo('explore');
-  document.getElementById('search-input').value = gen + ' consumer behavior purchase trends media habits';
-  setTimeout(runSearch, 100);
-}
-
-// ══ REPORTS PAGE ══
+// ══ REPORTS (retired) ══ SEAM:LIBRARY: the generator and the Deploy page are gone. The generator wrote a report from three keyless
+// sources behind an animated bar; the Deploy page seeded a queue with deliverables nobody made. What a session reads still saves
+// (_saveReport) and downloads from the builder; everything published lives in the Library.
 const _RPT_TYPES = ['Brand Analysis','Consumer Study','Market Landscape','Cultural Mapping','Competitive Intel','Media Strategy'];
-
-function initReportsPage() {
-  const typeEl = document.getElementById('rg-types');
-  if (typeEl) {
-    typeEl.innerHTML = _RPT_TYPES.map(t =>
-      `<button onclick="selectRptType(this,'${t}')" style="background:none;border:1px solid var(--border);color:var(--text3);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;padding:5px 12px;cursor:pointer;transition:all .2s" 
-       onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-       onmouseout="if(!this.classList.contains('rgt-sel')){this.style.borderColor='var(--border)';this.style.color='var(--text3)'}"
-       class="${t===_activeReportType?'rgt-sel':''}" ${t===_activeReportType?'style="border-color:var(--accent);color:var(--accent);background:rgba(255,59,59,.05)"':''}>
-       ${t}</button>`).join('');
-  }
-  renderReportCards();
-}
-
-function selectRptType(btn, type) {
-  _activeReportType = type;
-  document.querySelectorAll('#rg-types button').forEach(b => {
-    b.classList.remove('rgt-sel');
-    b.style.borderColor = 'var(--border)';
-    b.style.color = 'var(--text3)';
-    b.style.background = 'none';
-  });
-  btn.classList.add('rgt-sel');
-  btn.style.borderColor = 'var(--accent)';
-  btn.style.color = 'var(--accent)';
-  btn.style.background = 'rgba(255,59,59,.05)';
-}
-
-// SEAM:HUB_FLOW — _seedInitialReports retired: it planted two invented reports (847 papers, 68% of Gen Z). Empty is honest.
-
-function generateReport() {
-  const q = (document.getElementById('rg-input') || {}).value?.trim();
-  if (!q) { document.getElementById('rg-input')?.focus(); return; }
-  const id = 'rpt_' + Date.now();
-  const newRpt = {id, query:q, type:_activeReportType, status:'generating', progress:0, created:new Date(), mode:'live', summary:'', insights:[], ideas:[]};
-  _reportStore.unshift(newRpt);
-  renderReportCards();
-  
-  // Animate progress
-  /* SEAM:INSIGHT_COMPILER — the bar is theater; the completion is not. It
-     parks at 94 until the evidence is in AND the compiler has answered. A
-     report that says READY has been judged, not animated. */
-  let prog = 0;
-  const pi = setInterval(() => {
-    prog += Math.random() * 8 + 3;
-    const r = _reportStore.find(r => r.id === id);
-    if (prog >= 94) {
-      prog = 94;
-      if (r && r._fetched && !r._compiling) { r._compiling = true; clearInterval(pi); _completeReport(id, q); }
-    }
-    if (r) { r.progress = Math.round(prog); renderReportCards(); }
-  }, 380);
-
-  // Fetch live data in background
-  _fetchReportData(q, id);
-  if (document.getElementById('rg-input')) document.getElementById('rg-input').value = '';
-  showToast('Report generating…');
-}
-
-async function _fetchReportData(q, id) {
-  try {
-    const [ws, oa, hn] = await Promise.allSettled([
-      fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q.split(' ').slice(0,4).join(' '))}`).then(r => r.ok ? r.json() : null),
-      fetch(`https://api.openalex.org/works?search=${encodeURIComponent(q)}&sort=cited_by_count:desc&per-page=3&filter=open_access.is_oa:true&mailto=excavate@unsurfaced.com`).then(r => r.ok ? r.json() : null),
-      fetch(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=4&numericFilters=points>5`).then(r => r.ok ? r.json() : null),
-    ]);
-    const rpt = _reportStore.find(r => r.id === id);
-    if (!rpt) return;
-    const ins = [];
-    if (ws.status === 'fulfilled' && ws.value?.extract) {
-      ins.push({category:classifyText(ws.value.extract,q), title:(ws.value.title||q)+' — Overview', excerpt:ws.value.extract.slice(0,280)+'…', stat:'↑ Wikipedia indexed', confidence:'High', source:'Wikipedia'});
-    }
-    if (oa.status === 'fulfilled' && oa.value?.results?.length) {
-      const top = oa.value.results[0];
-      ins.push({category:'culture', title:`Academic Signal: ${oa.value.meta?.count?.toLocaleString()||'Multiple'} Papers`, excerpt:`Top: "${(top.title||'').slice(0,90)}" (${top.publication_year||''}, ${top.cited_by_count||0} citations).`, stat:`${oa.value.meta?.count?.toLocaleString()||'Multiple'} papers`, confidence:'High', source:'OpenAlex'});
-      rpt._oaCount = oa.value.meta?.count;
-    }
-    if (hn.status === 'fulfilled' && hn.value?.hits?.length) {
-      const top = hn.value.hits[0];
-      ins.push({category:'market', title:`Practitioner Discourse: ${hn.value.nbHits?.toLocaleString()||'Multiple'} Discussions`, excerpt:`Top: "${(top.title||'').slice(0,100)}" — ${top.points||0} pts, ${top.num_comments||0} comments.`, stat:`${hn.value.nbHits?.toLocaleString()||'Multiple'} discussions`, confidence:'Medium', source:'Hacker News'});
-      rpt._hnCount = hn.value.nbHits;
-    }
-    if (ins.length) rpt.insights = ins;
-    /* SEAM:INSIGHT_COMPILER — the raw evidence rides with the report so the
-       compiler judges sources, not our template summaries of them. */
-    rpt._corpus = ins.map(x => ({ lens: x.category, source: x.source,
-      title: x.title, text: x.excerpt, url: x.sourceUrl || null }));
-    rpt._fetched = true;
-  } catch(e) { const rpt2 = _reportStore.find(r => r.id === id); if (rpt2) rpt2._fetched = true; }
-}
-
-async function _completeReport(id, q) {
-  const rpt = _reportStore.find(r => r.id === id);
-  if (!rpt) return;
-  /* SEAM:INSIGHT_COMPILER — the judgment layer. Evidence in, house shape
-     out: THE READ (reframe, then move), findings carrying implication and
-     EARNED confidence, a brief that says what the conversation means. When
-     the compiler cannot answer, the report ships wearing its true name —
-     RETRIEVAL SUMMARY — with confidence demoted, never dressed up. */
-  let compiled = null;
-  if ((rpt._corpus || []).length) {
-    try {
-      const d = await api('excavate/synthesize', { query: q, mode: 'report', corpus: rpt._corpus });
-      if (d && d.ok && d.data && (d.data.insights || []).length) compiled = d.data;
-    } catch (e) { /* fall through to the honest fallback */ }
-  }
-  rpt.status = 'ready'; rpt.progress = 100;
-  if (compiled) {
-    rpt.read = compiled.read || null;
-    rpt.summary = compiled.brief || '';
-    rpt.insights = compiled.insights.map(x => ({ category: x.category, title: x.title,
-      excerpt: x.excerpt + (x.implication ? ' \u2192 ' + x.implication : ''),
-      stat: x.source, confidence: x.confidence, source: x.source, sourceUrl: x.sourceUrl }));
-    rpt.ideas = (compiled.ideas || []).map(x => ({ type: x.type, headline: x.headline, body: x.body }));
-    rpt.compiled = true;
-  } else {
-    rpt.read = null; rpt.compiled = false;
-    rpt.summary = 'RETRIEVAL SUMMARY \u2014 synthesis unavailable for this run. Raw source signals below; regenerate to retry the compiler. '
-      + (rpt._oaCount ? rpt._oaCount.toLocaleString() + ' academic papers indexed. ' : '')
-      + (rpt._hnCount ? rpt._hnCount.toLocaleString() + ' practitioner discussions. ' : '');
-    rpt.insights = (rpt.insights || []).map(x => Object.assign({}, x, { confidence: 'Unverified' }));
-    rpt.ideas = [];
-  }
-  renderReportCards();
-  _addToDeployQueue(q, rpt.type, rpt.mode);
-  showToast(rpt.compiled ? 'Report compiled \u2014 ' + q.slice(0, 28) : 'Report ready (retrieval only) \u2014 ' + q.slice(0, 28));
-}
-
-function renderReportCards() {
-  if (typeof renderHubBuilder==='function') renderHubBuilder();   // SEAM:HUB_FLOW — hub mirror
-  const grid = document.getElementById('report-grid');
-  if (!grid) return;
-  if (!_reportStore.length) { grid.innerHTML = '<p style="font-size:12px;color:var(--text3);padding:20px;font-family:Space Mono,monospace">No reports yet. Generate one above.</p>'; return; }
-  grid.innerHTML = _reportStore.map((rpt,i) => `
-    <div style="background:var(--surface);border:1px solid ${rpt.status==='generating'?'rgba(255,59,59,.35)':'var(--border)'};padding:20px;cursor:pointer;transition:all .2s;position:relative;animation:fadeIn .35s ease ${i*0.06}s both${rpt.status==='generating'?';animation:rpulse 2s ease-in-out infinite':''}"
-         onmouseover="this.style.borderColor='var(--border2)';this.style.transform='translateY(-2px)'"
-         onmouseout="this.style.transform='';this.style.borderColor='${rpt.status==='generating'?'rgba(255,59,59,.35)':'var(--border)'}'">
-      <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid;color:${rpt.status==='generating'?'var(--accent)':'#4ade80'};border-color:${rpt.status==='generating'?'rgba(255,59,59,.3)':'rgba(74,222,128,.3)'}">
-        ${rpt.status==='generating'?'⟳ GENERATING':(rpt.compiled===false?'✓ READY · RETRIEVAL':'✓ READY')}
-      </div>
-      ${rpt.status==='generating'?`<div style="margin-bottom:8px"><div style="height:2px;background:var(--surface3)"><div style="height:100%;background:var(--accent);width:${rpt.progress}%;transition:width .5s ease"></div></div><div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--accent);margin-top:3px">Building… ${rpt.progress}%</div></div>`:''}
-      <div style="font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:5px;line-height:1.25">${rpt.query}</div>
-      <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:10px">${rpt.type} · ${rpt.mode.toUpperCase()} · ${rpt.created.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
-      ${rpt.summary?`<div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:12px">${rpt.summary.slice(0,160)}…</div>`:''}
-      ${rpt.status==='ready'?`<div style="display:flex;gap:7px">
-        <button onclick="event.stopPropagation();downloadReport('${rpt.id}')" style="flex:1;background:var(--accent);border:none;color:#fff;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.07em;padding:7px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#ff5555'" onmouseout="this.style.background='var(--accent)'">DOWNLOAD</button>
-        <button onclick="event.stopPropagation();openRptModal('${rpt.id}')" style="flex:1;background:none;border:1px solid var(--border2);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.07em;padding:7px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">OPEN</button>
-        <button onclick="event.stopPropagation();downloadBrief('${rpt.id}')" style="flex:1;background:none;border:1px solid var(--border2);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.07em;padding:7px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">BRIEF</button>
-      </div>`:''}
-    </div>`).join('');
-}
+function renderReportCards() { if (typeof renderHubBuilder === 'function') renderHubBuilder(); }   // SEAM:HUB_FLOW: the builder mirrors the session's reads
 
 function openRptModal(id) {
   const rpt = _reportStore.find(r => r.id === id);
@@ -4676,125 +4410,77 @@ function openRptModal(id) {
       <div class="modal-option" onclick="downloadReport('${id}');closeModalDirect()"><div class="modal-option-title">Download Full Report</div><div class="modal-option-desc">Formatted HTML document</div></div>
       <div class="modal-option" onclick="downloadBrief('${id}');closeModalDirect()"><div class="modal-option-title">Strategy Brief</div><div class="modal-option-desc">Download as brief doc</div></div>
       <div class="modal-option" onclick="navTo('explore');document.getElementById('search-input').value='${rpt.query.replace(/'/g,"\'")}';setTimeout(runSearch,100);closeModalDirect()"><div class="modal-option-title">Re-Excavate</div><div class="modal-option-desc">Fresh search on this query</div></div>
-      <div class="modal-option" onclick="_addToDeployQueue('${rpt.query.replace(/'/g,"\'")}','${rpt.type}','${rpt.mode}');showToast('Added to queue');closeModalDirect()"><div class="modal-option-title">Deploy Report</div><div class="modal-option-desc">Add to deploy queue</div></div>
     </div>
     <button class="modal-action" onclick="downloadReport('${id}');closeModalDirect()">DOWNLOAD FULL REPORT →</button>
   `);
 }
 
-// ══ DEPLOY PAGE ══
-const _DEP_TYPES = [
-  {key:'strategy', label:'Strategy Briefs', icon:'📋', desc:'Full strategic briefs grounded in Excavate intelligence — insight summaries, audience mapping, opportunity framing, and recommended actions.'},
-  {key:'creative', label:'Creative Briefs', icon:'✏️', desc:'Agency-ready creative briefs with tone of voice, creative territories, platform guidance, and audience truth derived from consumer intelligence.'},
-  {key:'media', label:'Media Plans', icon:'📡', desc:'Channel allocation models informed by audience consumption data and signal strength across earned, owned, and paid media.'},
-  {key:'pitch', label:'Pitch Decks', icon:'🎯', desc:'Stakeholder-ready decks combining executive summary, data visualization, strategic recommendation, and creative direction.'},
-];
-const _depStore = {strategy:[], creative:[], media:[], pitch:[]};
-
-function _addToDeployQueue(query, type, mode) {
-  const keys = ['strategy','creative','media','pitch'];
-  const k = keys[Math.floor(Math.random() * keys.length)];
-  _depStore[k].unshift({name:query.slice(0,40), meta:type+' · '+mode.toUpperCase(), status:'queued', created:new Date()});
-  if (document.getElementById('sec-deploy')?.classList.contains('active')) renderDeployQueue();
+/* ══ LIBRARY ══ SEAM:LIBRARY: every read we have published, from the stand's public lists (the Weekly Read, the Cultural Intelligence
+   Report), and for a signed-in admin the RECONs from the desk. The covers are the issues' own; nothing is typed by hand. */
+let _libAt = 0;
+async function initLibraryPage() {
+  if (Date.now() - _libAt < 60000) return;
+  _libAt = Date.now();
+  const base = API_BASE.replace(/\/$/, '');
+  const get = p => fetch(base + p, { headers: { Accept: 'application/json' }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const [wk, rs] = await Promise.all([get('/api/weekly/issues'), get('/api/report/issues')]);
+  _libShelf('lib-weekly', wk && wk.ok ? (wk.issues || []).map(_libWeeklyCard) : null, 'The first issue is on press.');
+  _libShelf('lib-report', rs && rs.ok ? (rs.issues || []).map((x, k) => _libReportCard(x, k === 0)) : null, 'The first report is on press.');   // the latest leads, wide
+  if (!(wk && wk.ok) || !(rs && rs.ok)) _libAt = 0;   // a shelf that did not answer is asked again on the next visit
+  _libRecons();
 }
-
-function initDeployPage() {
-  if (!_depStore.strategy.length) {
-    _depStore.strategy = [{name:'Creator Economy Strategy',meta:'Market Landscape · BASIC',status:'ready',created:new Date(Date.now()-3600000)},{name:'Gen Z Brand Trust Brief',meta:'Consumer Study · BASIC',status:'pending',created:new Date(Date.now()-86400000)}];
-    _depStore.creative = [{name:'Cultural Relevance Campaign',meta:'Cultural Mapping · BASIC',status:'ready',created:new Date(Date.now()-7200000)}];
-    _depStore.media = [{name:'Sports Marketing Media Plan',meta:'Market Landscape · BASIC',status:'pending',created:new Date(Date.now()-43200000)}];
-    _depStore.pitch = [{name:'Luxury Brand Intelligence Deck',meta:'Brand Analysis · BASIC',status:'queued',created:new Date()}];
-  }
-  renderDeployCards();
-  renderDeployQueue();
+function _libDay(d, year) { const t = d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z') : null; return t && !isNaN(t) ? t.toLocaleDateString('en-US', year ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' }) : ''; }
+function _libRange(a, b) { return a && b ? _libDay(a, false) + ' to ' + _libDay(b, true) : _libDay(a || b, true); }
+function _libNo(n) { return String(n || 0).padStart(3, '0'); }
+function _libCover(src, word, lead) {
+  return src ? `<figure class="lib-cover"><img src="${safeUrl(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="var f=this.parentNode;f.classList.add('none');this.remove()"><span class="lib-word">${safe(word)}</span></figure>`
+    : `<figure class="lib-cover none"><span class="lib-word">${safe(word)}</span><span class="lib-lead">${safe(lead || '')}</span></figure>`;
 }
-
-function renderDeployCards() {
-  const grid = document.getElementById('dep-cards');
-  if (!grid) return;
-  grid.innerHTML = _DEP_TYPES.map(dt => `
-    <div style="background:var(--surface);border:1px solid var(--border);padding:24px;position:relative">
-      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)"></div>
-      <div style="font-size:24px;margin-bottom:10px">${dt.icon}</div>
-      <div style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:5px">${dt.label}</div>
-      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">${dt.desc}</p>
-      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
-        ${(_depStore[dt.key]||[]).slice(0,3).map(item => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:all .2s"
-               onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"
-               onclick="openDepItemModal('${dt.key}','${item.name.replace(/'/g,'')}')">
-            <div><div style="font-size:12px;color:var(--text);font-weight:500">${item.name}</div><div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)">${item.meta}</div></div>
-            <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--accent)">OPEN →</span>
-          </div>`).join('')}
-        ${!_depStore[dt.key]?.length?'<p style="font-size:11px;color:var(--text3);font-family:Space Mono,monospace;padding:8px 0">No items yet. Generate a report to start.</p>':''}
-      </div>
-      <button onclick="createDeliverable('${dt.key}')" style="width:100%;padding:10px;background:var(--accent);border:none;color:#fff;font-family:'Space Mono',monospace;font-weight:700;font-size:10px;letter-spacing:.1em;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#ff5555'" onmouseout="this.style.background='var(--accent)'">CREATE NEW →</button>
-    </div>`).join('');
+function _libWeeklyCard(i) {
+  const src = i.cover_key ? API_BASE.replace(/\/$/, '') + '/media/' + i.cover_key : '';
+  return `<a class="lib-card" href="../weekly/?issue=${encodeURIComponent(i.issue_no)}">${_libCover(src, 'The Weekly Read', i.lead)}
+    <div class="lib-meta">Issue ${_libNo(i.issue_no)} · ${safe(_libRange(i.week_start, i.week_end))}</div>
+    <h3>${safe(i.lead || 'The Weekly Read')}</h3>${i.standfirst ? `<p>${safe(i.standfirst)}</p>` : ''}
+    <div class="lib-foot"><span class="open">Read issue ${_libNo(i.issue_no)}</span>${i.page_count ? `<span class="lib-n">${safe(String(i.page_count))} pages</span>` : ''}</div></a>`;
 }
-
-function renderDeployQueue() {
-  const qEl = document.getElementById('dep-queue');
-  if (!qEl) return;
-  const all = [..._depStore.strategy,..._depStore.creative,..._depStore.media,..._depStore.pitch].sort((a,b)=>b.created-a.created).slice(0,10);
-  const statuses = ['live','pending','queued'];
-  const dotColors = {live:'#4ade80',pending:'var(--accent4)',queued:'var(--surface3)'};
-  const txtColors = {live:'#4ade80',pending:'var(--accent4)',queued:'var(--text3)'};
-  qEl.innerHTML = all.length ? all.map((item,i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${dotColors[statuses[i%3]]}"></span>
-      <div style="flex:1"><div style="font-size:12px;color:var(--text);font-weight:500;margin-bottom:1px">${item.name}</div><div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3)">${item.meta} · ${item.created.toLocaleDateString()}</div></div>
-      <span style="font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:${txtColors[statuses[i%3]]}">${statuses[i%3].toUpperCase()}</span>
-    </div>`).join('') : '<p style="font-size:11px;color:var(--text3);font-family:Space Mono,monospace;padding:12px 0">No items yet. Generate a report to populate the queue.</p>';
+function _libReportCard(i, lead) {
+  const src = i.cover_url ? API_BASE.replace(/\/$/, '') + i.cover_url : '';
+  let price = '';
+  try { price = i.price_cents ? new Intl.NumberFormat('en-US', { style: 'currency', currency: String(i.currency || 'usd').toUpperCase(), minimumFractionDigits: i.price_cents % 100 ? 2 : 0 }).format(i.price_cents / 100) : ''; } catch (e) { price = ''; }
+  const facts = [i.page_count ? i.page_count + ' pages' : '', price].filter(Boolean).join(' · ');
+  // the stand sells the latest report; an earlier issue is asked for by name
+  const href = lead ? '../weekly/#report' : 'mailto:hello@unsurfaced-intelligence.com?subject=' + encodeURIComponent('Cultural Intelligence Report, Issue ' + _libNo(i.issue_no));
+  return `<a class="lib-card${lead ? ' lib-feature' : ''}" href="${safeAttr(href)}">${_libCover(src, 'The Report', i.title)}
+    <div class="lib-meta">Issue ${_libNo(i.issue_no)} · ${safe(_libRange(i.window_start, i.window_end))}</div>
+    <h3>${safe(i.title || 'The Cultural Intelligence Report')}</h3>${(i.thesis || i.subtitle) ? `<p>${safe(i.thesis || i.subtitle)}</p>` : ''}
+    <div class="lib-foot"><span class="open">${lead ? 'Get the report' : 'Ask for this issue'}</span>${facts ? `<span class="lib-n">${safe(facts)}</span>` : ''}</div></a>`;
 }
-
-function createDeliverable(type) {
-  const name = (document.getElementById('search-input')?.value || 'Latest Research').slice(0,40);
-  _depStore[type].unshift({name, meta:(_DEP_TYPES.find(d=>d.key===type)?.label||'Deliverable')+' · LIVE', status:'queued', created:new Date()});
-  renderDeployCards();
-  renderDeployQueue();
-  showToast('Added to deploy queue');
+function _libShelf(id, cards, empty) {
+  const el = document.getElementById(id); if (!el) return;
+  if (cards === null) { el.innerHTML = '<p class="lib-empty">The shelf did not answer. Refresh in a moment.</p>'; return; }
+  el.innerHTML = cards.length ? cards.join('') : `<p class="lib-empty">${safe(empty)}</p>`;
 }
-
-function openDepItemModal(type, name) {
-  showModal(`
-    <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:.15em;margin-bottom:8px">DEPLOY ITEM</div>
-    <h2 class="modal-title" style="font-size:19px">${name}</h2>
-    <div class="modal-sub">${(_DEP_TYPES.find(d=>d.key===type)?.label||'').toUpperCase()}</div>
-    <div class="modal-options">
-      <div class="modal-option" onclick="downloadDeliverable('${type}','${name}');closeModalDirect()"><div class="modal-option-title">Download</div><div class="modal-option-desc">Export formatted HTML doc</div></div>
-      <div class="modal-option" onclick="showToast('Share link copied');closeModalDirect()"><div class="modal-option-title">Share Link</div><div class="modal-option-desc">Send to client or team</div></div>
-      <div class="modal-option" onclick="showToast('Sent to client');closeModalDirect()"><div class="modal-option-title">Send to Client</div><div class="modal-option-desc">Email delivery</div></div>
-      <div class="modal-option" onclick="showToast('Presentation mode ready');closeModalDirect()"><div class="modal-option-title">Present Live</div><div class="modal-option-desc">Full-screen mode</div></div>
-    </div>
-    <button class="modal-action" onclick="downloadDeliverable('${type}','${name}');closeModalDirect()">DOWNLOAD & DEPLOY →</button>
-  `);
+function _libReconState(r) {
+  if (r.status === 'ready' || r.status === 'published') return 'Ready';
+  if (r.status === 'held') return 'Held: a note from our checks is on the desk';
+  if (r.status === 'failed') return 'Stopped';
+  if (r.deep_hold === 'evidence') return 'On hold: the evidence file is ready';
+  if (r.deep_hold === 'budget') return 'On hold: the ceiling';
+  if (r.deep_hold) return 'On hold';
+  if (r.status === 'compiling') return 'Writing';
+  return r.deep_stage ? 'Researching' : 'Queued';
 }
-
-function downloadDeliverable(type, name) {
-  const dt = _DEP_TYPES.find(d=>d.key===type);
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
-  const templates = {
-    strategy:['Brand Positioning Brief','Consumer Insight Summary','Go-to-Market Framework','Audience Mapping Document'],
-    creative:['Campaign Creative Brief','Tone of Voice Guide','Creative Territory Framework','Content Strategy Document'],
-    media:['Channel Allocation Model','Audience Media Plan','Platform Prioritization','Spend Efficiency Matrix'],
-    pitch:['Executive Pitch Deck','Client Intelligence Deck','Strategy Presentation','Research Summary Deck'],
-  };
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${dt?.label}: ${name}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Georgia,serif;color:#1a1a1a;max-width:780px;margin:0 auto;padding:64px 52px;line-height:1.75;}.brand{font-family:'Courier New',monospace;font-size:10px;letter-spacing:.22em;color:#FF3B3B;margin-bottom:5px;text-transform:uppercase;}.meta{font-family:'Courier New',monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:36px;padding-bottom:20px;border-bottom:1px solid #eee;}h1{font-size:32px;line-height:1.1;margin-bottom:10px;}h2{font-size:20px;font-weight:700;margin:28px 0 10px;border-bottom:2px solid #FF3B3B;padding-bottom:5px;}p{font-size:14px;color:#444;margin-bottom:12px;line-height:1.75;}.box{background:#f8f8f8;border-left:4px solid #FF3B3B;padding:18px 22px;margin:18px 0;font-size:14px;color:#333;line-height:1.75;}.item{background:#f9f9f9;border-left:3px solid #eee;padding:12px 16px;margin-bottom:9px;}.it{font-weight:700;font-size:14px;color:#1a1a1a;margin-bottom:3px;}.ib{font-size:13px;color:#555;line-height:1.6;}ol li{font-size:14px;color:#444;margin-bottom:8px;padding-left:4px;}.footer{margin-top:60px;padding-top:18px;border-top:1px solid #eee;font-family:'Courier New',monospace;font-size:9px;color:#bbb;text-align:center;}</style></head><body>
-<div class="brand">Excavate by Unsurfaced™</div>
-<div class="meta">${dt?.label?.toUpperCase()||'DELIVERABLE'} &nbsp;·&nbsp; Generated ${dateStr}</div>
-<h1>${name}</h1>
-<div class="box">This deliverable was generated from Excavate's intelligence pipeline. All strategic recommendations are grounded in open-source data signals from 7 verified public APIs.</div>
-<h2>Deliverable Components</h2>
-${(templates[type]||[]).map((t,i)=>`<div class="item"><div class="it">${i+1}. ${t}</div><div class="ib">Developed from open-source intelligence synthesis for "${name}". Validate with primary consumer research through MINE before full deployment.</div></div>`).join('')}
-<h2>Next Steps</h2>
-<ol><li>Review with key stakeholders and align on strategic priorities</li><li>Validate signals with primary consumer research through MINE</li><li>Brief creative and media teams using this document as the intelligence foundation</li><li>Set KPIs aligned with the identified opportunity signals</li></ol>
-<div class="footer">Excavate by Unsurfaced™ &nbsp;·&nbsp; ${dateStr}</div>
-
-</body></html>`;
-  _dlFile(html, 'Excavate_' + (dt?.label||'Deliverable').replace(/\s+/g,'_') + '_' + name.replace(/[^a-zA-Z0-9]/g,'_').slice(0,36) + '_' + now.toISOString().slice(0,10) + '.html');
-  showToast('Deliverable downloaded ✓');
+async function _libRecons() {
+  const sec = document.getElementById('lib-recon-sec'), el = document.getElementById('lib-recon'); if (!sec || !el) return;
+  sec.style.display = 'none';
+  let hh = {}; try { hh = await _authHeader(); } catch (e) { hh = {}; }
+  if (!hh || !hh.Authorization) return;
+  let j = null;
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/reads/list', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh), body: JSON.stringify({ kind: 'recon' }) }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const rows = j && j.ok && Array.isArray(j.reads) ? j.reads : [];
+  if (!rows.length) return;   // not an admin, or none commissioned yet
+  el.innerHTML = rows.map(r => `<a class="lib-row" href="read/?id=${encodeURIComponent(r.id)}"><span><b>${safe(r.label || 'RECON')}</b><small>Version ${safe(String(r.version || 1))} · ${safe(_libReconState(r))}${r.updated_at ? ' · ' + safe(_libDay(r.updated_at, true)) : ''}</small></span><span class="open">Open</span></a>`).join('');
+  sec.style.display = 'block';
 }
 
 // ════════════════════════════════════════════
@@ -6144,12 +5830,7 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('keydown', function(e) { if(e.key==='Enter') runSearch(); });
     searchInput.addEventListener('input', toggleClearBtn);
   }
-  // Brand page search — Enter key
-  const brandInput = document.getElementById('brand-search-input');
-  if (brandInput) {
-    brandInput.addEventListener('keydown', function(e) { if(e.key==='Enter') searchBrand(); });
-    brandInput.addEventListener('input', toggleBrandClearBtn);
-  }
+  // SEAM:BRAND_ROOM: the brand search is a form now (Enter submits it)
   if (typeof Chart !== 'undefined') { buildChart('30d'); }
   else {
     const cs=document.querySelector('script[src*="chart.umd"]');
@@ -6303,7 +5984,7 @@ function enterSpace(name){
   _uaiHide();
   if(name==='excavate'){
     document.body.style.overflow='';
-    if(typeof navTo==='function') navTo('explore');
+    if(typeof navTo==='function') navTo(typeof _brandHash === 'function' && _brandHash() ? 'brands' : 'explore');   // SEAM:BRAND_ROOM: a room's address opens the room
     window.scrollTo(0,0);
     return;
   }
@@ -9132,7 +8813,8 @@ document.addEventListener('keydown', function(e) {
 //  • renderTrendingNow(): sidebar rotation from a 20-topic pool
 // ════════════════════════════════════════════════════════════════
 
-const _FI_CACHE_KEY  = 'unsurfaced_fi_v5'; // v5: the overnight door (SEAM:EXC_DOOR v2); v4 held yesterday's tiles for a day
+const _FI_CACHE_KEY  = 'unsurfaced_fi_v6'; // v6 (SEAM:DOOR_VOICES): v5 could hold a day of quotes from a RECON; it is dropped below. v5: the overnight door (SEAM:EXC_DOOR v2)
+try { localStorage.removeItem('unsurfaced_fi_v5'); } catch (e) { /* storage off: nothing was kept */ }
 let   _FI_LAKE        = null;   // live PROPOSE payload when the lake owns the grid
 let   _fiStateFilter  = null;   // active state-strip filter, null = all
 const _FI_LAKE_MIN    = 2;      // SEAM:HUB_FEED — fewer honest cards beat a padded eight; below two, the grid says the lake is filling
@@ -9632,13 +9314,22 @@ function _pulse(series) {
   const fill = d + ' L' + x(v.length - 1).toFixed(1) + ' ' + h + ' L' + x(0).toFixed(1) + ' ' + h + ' Z';
   return `<div class="pulse"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path class="pf" d="${fill}"/><path class="pl" d="${d}"/><circle cx="${x(v.length - 1).toFixed(1)}" cy="${y(v[v.length - 1]).toFixed(1)}" r="3.5"/></svg></div>`;
 }
+// One observer for the page: each new line is set up once and drawn when it enters the viewport; a line whose room or card was
+// replaced is released, so opening and closing rooms never piles up observers or keeps old rooms alive.
+const _pulseIO = { io: null, watch: [] };
 function _drawPulses() {
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, paths = document.querySelectorAll('.pulse path.pl');
-  paths.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = reduce ? 0 : L; const c = p.parentNode.querySelector('circle'); if (c && !reduce) c.style.opacity = 0; });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, paths = [...document.querySelectorAll('.pulse path.pl')].filter(p => !p.dataset.pulse);
+  paths.forEach(p => { p.dataset.pulse = '1'; const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = reduce ? 0 : L; const c = p.parentNode.querySelector('circle'); if (c && !reduce) c.style.opacity = 0; });
   if (reduce || !('IntersectionObserver' in window)) return;
-  const io = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; const p = e.target; p.style.transition = 'stroke-dashoffset 1s cubic-bezier(.2,.7,.2,1)'; p.style.strokeDashoffset = 0;
-    const c = p.parentNode.querySelector('circle'); if (c) setTimeout(() => { c.style.transition = 'opacity .3s'; c.style.opacity = 1; }, 950); io.unobserve(p); }), { threshold: .3 });
-  paths.forEach(p => io.observe(p));
+  if (!_pulseIO.io) _pulseIO.io = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; const p = e.target; p.style.transition = 'stroke-dashoffset 1s cubic-bezier(.2,.7,.2,1)'; p.style.strokeDashoffset = 0;
+    const c = p.parentNode.querySelector('circle'); if (c) setTimeout(() => { c.style.transition = 'opacity .3s'; c.style.opacity = 1; }, 950); _pulseIO.io.unobserve(p); _pulseIO.watch = _pulseIO.watch.filter(x => x !== p); }), { threshold: .3 });
+  _pulseIO.watch = _pulseIO.watch.filter(p => { if (p.isConnected) return true; _pulseIO.io.unobserve(p); return false; }).concat(paths);
+  paths.forEach(p => _pulseIO.io.observe(p));
+}
+// A brand's twelve weeks as a line, from the first week that was counted (a week not counted is never drawn as a zero).
+function _pulseWeeks(weeks) {
+  if (!Array.isArray(weeks)) return ''; const i = weeks.findIndex(x => x != null), v = i < 0 ? [] : weeks.slice(i);
+  return v.length >= 2 && v.every(x => x != null) ? _pulse(v) : '';
 }
 function _renderDoorCard(t, i) {
   // SEAM:EXC_DOOR_VOICE: a position on the board. The sources' photograph (credited), who it is about, the claim, the question it
@@ -9781,14 +9472,16 @@ function _countUp(el, from, to, ms) {
   let t0 = null; const step = ts => { if (!t0) t0 = ts; let k = Math.min(1, (ts - t0) / ms); k = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(from + (to - from) * k); if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
 }
-/* SEAM:EXC_DOOR_VOICE: what people are saying (verbatim quotes from the house's reads, described only by what the speaker said
-   about themselves) and the track record (confirmed, missed, open). Both hidden when the feed has nothing for them. */
-function _renderVoices(voices) {
+/* SEAM:EXC_DOOR_VOICE: what people are saying (verbatim quotes about the board's own subjects and from the monthly report, described
+   only by what the speaker said about themselves, never by platform) and the track record (confirmed, missed, open). Both hidden
+   when the feed has nothing for them. SEAM:DOOR_VOICES: its own name; it once shared one with the custom read's voices, and the
+   later declaration won, so a custom read rendered the band's code (and threw on its gather's meta). */
+function _renderDoorVoices(voices) {
   const el = document.getElementById('voices-block'), track = document.getElementById('voices-track'); if (!el || !track) return;
   const list = (voices || []).filter(v => v && v.text);
   if (list.length < 3) { el.style.display = 'none'; return; }
-  const who = v => { const s = v.self || {}; return [v.source === 'youtube' ? 'YouTube comment' : v.source === 'mastodon' ? 'Mastodon post' : 'Comment', s.generation, s.role ? 'a ' + s.role : null, v.likes ? v.likes + ' likes' : null].filter(Boolean).join(', '); };
-  const card = v => `<figure class="quote"><p>“${safe(v.text)}”</p><cite>${safe(who(v))}</cite></figure>`;
+  const who = v => { const s = v.self || {}, id = [s.generation, s.role ? (s.generation ? 'a ' : 'A ') + s.role : null].filter(Boolean); return (id.length ? id : ['Consumer']).concat(v.likes ? [Number(v.likes).toLocaleString('en-US') + (Number(v.likes) === 1 ? ' like' : ' likes')] : []).join(', '); };
+  const card = v => `<figure class="quote">${v.on ? `<div class="q-on">${safe(v.on)}</div>` : ''}<p>“${safe(v.text)}”</p><cite>${safe(who(v))}</cite></figure>`;
   track.innerHTML = list.concat(list).map(card).join('');
   el.style.display = 'block';
 }
@@ -9826,7 +9519,7 @@ function _goDeeperLive() {
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');
   if (!grid) return;
-  _renderWeek(data); _renderVoices(data.voices); _renderRecord(data.record);   // SEAM:EXC_DOOR_VOICE
+  _renderWeek(data); _renderDoorVoices(data.voices); _renderRecord(data.record);   // SEAM:EXC_DOOR_VOICE
   if (data && data.door && Array.isArray(data.door.tiles) && data.door.tiles.length >= 4) { _renderDoorGrid(data.door, data.proposed || []); return; }
   const rd = document.getElementById('fi-field-read'); if (rd) rd.style.display = 'none';   // the week block carries the read now
   _renderStateStrip((data.field && data.field.states) || {});

@@ -83,7 +83,10 @@ export default {
         .catch(e => console.log('hub_refresh_error', String(e && e.message)))
         .then(() => doorPass(env))   // SEAM:EXC_DOOR v2: the door compiles after the feed and the tracks are fresh
         .then(s => console.log('door_pass', JSON.stringify(s)))
-        .catch(e => console.log('door_pass_error', String(e && e.message))));
+        .catch(e => console.log('door_pass_error', String(e && e.message)))
+        .then(async () => peopleLedger(env, await doorSet(env)))   // SEAM:PEOPLE: who spoke to the board, once a day
+        .then(n => console.log('people_ledger', n))
+        .catch(e => console.log('people_ledger_error', String(e && e.message))));
     } else {
       // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
       // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
@@ -144,6 +147,8 @@ export default {
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
+      if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
+      if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
       if (path === '/excavate/track' && request.method === 'POST') return excavateTrackAdd(request, env, origin);    // SEAM:TRACKS (signed in)
       if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
@@ -1471,27 +1476,29 @@ function excMeasureFrom(rows, terrRows, nowMs, hint) {
 }
 async function excMeasures(env, frame) {
   const anchors = excMeasureAnchors(frame);
-  if (!anchors.length) return null;
+  if (!anchors.length || ilikeOr(anchors) === 'id=is.null') return null;   // nothing we can find in a headline: no measures, never zeros
   const since = new Date(Date.now() - EXC_MEASURE.WEEKS * 7 * 864e5).toISOString();
   const sel = 'select=id,title,url,source_name,source_tier,territory,published_at,captured_at';
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: a read's measures never count what its own search brought in
   let rows = [];
-  try { rows = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(anchors) + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + EXC_MEASURE.ROWS + '&' + sel)) || []; }
+  try { rows = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(anchors) + sw + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + EXC_MEASURE.ROWS + '&' + sel)) || []; }
   catch (e) { console.log('exc_measure_error', String(e && e.message).slice(0, 80)); return null; }
   const hint = excTerritoryOf(frame);
   const m0 = excMeasureFrom(rows, [], Date.now(), hint);
   let terrRows = [];
   if (m0.territory && m0.territory_agree) {
     const wk = new Date(Date.now() - 8 * 864e5).toISOString();
-    try { terrRows = (await sbRest(env, 'signals?status=neq.rejected&territory=eq.' + encodeURIComponent(m0.territory) + '&captured_at=gte.' + wk + '&limit=' + EXC_MEASURE.TERR_ROWS + '&select=id,published_at,captured_at')) || []; } catch (e) { terrRows = []; }
+    try { terrRows = (await sbRest(env, 'signals?status=neq.rejected&territory=eq.' + encodeURIComponent(m0.territory) + sw + '&captured_at=gte.' + wk + '&limit=' + EXC_MEASURE.TERR_ROWS + '&select=id,published_at,captured_at')) || []; } catch (e) { terrRows = []; }
   }
   const m = excMeasureFrom(rows, terrRows, Date.now(), hint);
   m.anchors = anchors;
+  m.sweep = !!sw;   // SEAM:SWEEP_MEASURE: counted on the sweep only
   // SEAM:EXC_COMPETE: the competitive set, counted the same way over the same twelve weeks, so the page can draw them on one scale.
-  const names = ((frame && frame.competitors) || []).map(x => String(x || '').trim()).filter(x => x.length >= 3).slice(0, 5);
+  const names = ((frame && frame.competitors) || []).map(x => String(x || '').trim()).filter(x => x.length >= 3 && ilikeOr([x]) !== 'id=is.null').slice(0, 5);
   if (names.length) {
     // One query for the whole set, bucketed here by the name each title carries; a title naming two of them counts for both.
     // Newest first across the set, so a loud name can crowd a quiet one's older weeks; 600 rows a name leaves room.
-    const rows2 = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(names) + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + (600 * names.length) + '&select=id,title,url,source_name,territory,published_at,captured_at').catch(excQuiet('measure_competitor', []))) || [];
+    const rows2 = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(names) + sw + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + (600 * names.length) + '&select=id,title,url,source_name,territory,published_at,captured_at').catch(excQuiet('measure_competitor', []))) || [];
     m.competitors = names.map(nm => { const k = nm.toLowerCase(); const mm = excMeasureFrom(rows2.filter(r => String(r.title || '').toLowerCase().includes(k)), [], Date.now()); return { name: nm, series: mm.series, recent_7d: mm.recent_7d, prior_7d: mm.prior_7d, outlets: mm.outlets, weeks_touched: mm.weeks_touched, n: mm.n }; });
   }
   return m;
@@ -1734,6 +1741,39 @@ function lakeWhen(r) {
   if (r.published_at) return r.published_at;
   const live = r.momentum && /^live/.test(String(r.momentum.provenance || ''));
   return live ? null : (r.captured_at || null);
+}
+/* SEAM:SWEEP_MEASURE: measuring and finding are separate jobs. The lake keeps every row it is given and every row stays
+ * findable, but a public count or pick (the board's states and ranks, a tracked brand's counts, a cohort's coverage, a
+ * read's measures, the stories DAILY picks) stands on the sweep only: the rows the house's own steady capture brings in,
+ * the same way every day. A row a search brought in (EXCAVATE's live reads and gathers, a RECON's gathers and counter
+ * searches) is research: evidence for the read that asked for it, never a measure. Our own looking never reads as culture
+ * moving, and a client's RECON never moves or names anything on a public surface. The flag is signals.research (migration
+ * 0038), set by the database on every insert, whoever inserts. Until the column exists the reads that can count everything do,
+ * and say so once in the log; tracked brands and their rooms count nothing until it does (EX19). It looks again every ten minutes. */
+const SWEEP = { TTL_MS: 10 * 60 * 1000, CHUNK: 40 };   // which rows are research is the database's call (0038's trigger: momentum.provenance live_* or recon_*)
+const _sweep = { ready: null, at: 0 };
+async function sweepReady(env) {
+  if (_sweep.ready !== null && Date.now() - _sweep.at < SWEEP.TTL_MS) return _sweep.ready;
+  try { await sbRest(env, 'signals?select=research&limit=1', { retry: false }); _sweep.ready = true; }
+  catch (e) {
+    // A blip is not an answer: keep what we knew, and when we knew nothing, count the sweep only. Failing closed costs at most a
+    // query that errors (before migration 0038); failing open would put a search's rows, a RECON's among them, on a public count.
+    if (String(e && e.message) !== 'sb_400') return _sweep.ready !== false;   // a 401, 408 or 429 is a blip too: only "no such column" is an answer
+    if (_sweep.ready !== false) console.log('sweep_column_missing: run migration 0038');
+    _sweep.ready = false;
+  }
+  _sweep.at = Date.now();
+  return _sweep.ready;
+}
+async function sweepOnly(env) { return (await sweepReady(env)) ? '&research=is.false' : ''; }
+// The sweep found stories a search brought in first: from now on they count, as they would have. Returns how many it asked to flip.
+async function sweepRefound(env, rows, fresh) {
+  try {
+    if (!(await sweepReady(env))) return 0;
+    const got = new Set((fresh || []).map(r => r.content_hash)), again = (rows || []).map(r => r.content_hash).filter(h => h && /^[0-9a-f]+$/i.test(h) && !got.has(h));
+    for (let i = 0; i < again.length; i += SWEEP.CHUNK) await sbRest(env, 'signals?content_hash=in.(' + again.slice(i, i + SWEEP.CHUNK).join(',') + ')&research=is.true', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { research: false } });
+    return again.length;
+  } catch (e) { console.log('sweep_refound', String(e && e.message).slice(0, 60)); return 0; }
 }
 const LIVE_KINDS = new Set(['news', 'web', 'discourse', 'video']);
 const REF_KINDS = new Set(['academic', 'research', 'book', 'patent', 'filing', 'reference', 'paper', 'truth']);   // SEAM:EXC_INTEL: placed, never composed
@@ -4901,6 +4941,7 @@ async function spineCapture(env, opts) {
       headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
       body: rows
     }) || [];
+    await sweepRefound(env, rows, fresh);   // SEAM:SWEEP_MEASURE
   }
   return { captured: items.length, unique: rows.length, fresh, feedErrors,
     gdelt: gdeltSeen ? (gdeltKept + '/' + gdeltSeen) : null };
@@ -5008,8 +5049,9 @@ function assignFormat(c, idx, haveProvocation) {
 
 async function composeFromLake(env, today) {
   const since = new Date(Date.now() - 36 * 3600e3).toISOString();
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: the paper picks from the sweep, never from what a search or a RECON brought in
   const cands = (await sbRest(env,
-    `signals?status=in.(connected,filtered)&captured_at=gte.${since}` +
+    `signals?status=in.(connected,filtered)&captured_at=gte.${since}` + sw +
     '&order=captured_at.desc&limit=120' +
     '&select=id,url,title,summary,source_name,source_tier,territory,image,momentum,status'
   ) || []).filter(c => c.title && c.url && !mostlyNonLatin(c.title));
@@ -5169,7 +5211,14 @@ async function spineAdvance(env, budget) {
         calls++;
         const near = await sbRest(env, 'rpc/match_signals', { method: 'POST', body: { p_query: vec, p_count: 2 } }) || [];
         const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
-        if (echo) { updates.push(Object.assign(carry(r), { status: 'rejected', momentum: Object.assign({}, r.momentum, { echo_of: echo.id }) })); stats.rejected++; continue; }
+        if (echo) {
+          // SEAM:SWEEP_MEASURE: the sweep brought in a story a search already holds; the story is the sweep's, so the search's copy counts from now on.
+          if (echo.research === true && !/^(live|recon)/.test(String((r.momentum && r.momentum.provenance) || '')) && calls + 1 <= budget) {
+            calls++;
+            await sbRest(env, 'signals?id=eq.' + echo.id + '&research=is.true', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { research: false } }).catch(e => errs.push('sweep_echo:' + String(e && e.message).slice(0, 40)));
+          }
+          updates.push(Object.assign(carry(r), { status: 'rejected', momentum: Object.assign({}, r.momentum, { echo_of: echo.id }) })); stats.rejected++; continue;
+        }
         calls++;
         const reply = await callModel(env, 't1', [
           { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
@@ -5239,7 +5288,7 @@ async function spineAdvance(env, budget) {
     const updates = found.map(({ r, near, anchorId }) => {
       const cluster_id = (anchorId && clusterOf[anchorId]) || crypto.randomUUID();
       const novelty = (r.momentum && r.momentum.novelty) || 0;
-      const m = momentumMech(near, r.territory, r.source_tier, novelty);
+      const m = momentumMech(near.filter(n => n.research !== true), r.territory, r.source_tier, novelty);   // SEAM:SWEEP_MEASURE: research never ranks the paper
       return Object.assign(carry(r), { cluster_id, status: 'connected',
         momentum: Object.assign({}, r.momentum, m, { neighbors: near.slice(0, 4).map(n => n.id) }) });
     });
@@ -5656,7 +5705,8 @@ async function themePass(env, rounds, batch) {
 async function fetchRecurrenceRows(env, days, territory) {
   const nowMs = Date.now();
   const sliceMs = (days * 864e5) / RECUR.SLICES;
-  const base = 'signals?status=in.(connected,published)&cluster_id=not.is.null' +
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: the board's states and ranks count the sweep only
+  const base = 'signals?status=in.(connected,published)&cluster_id=not.is.null' + sw +
     (territory ? '&territory=eq.' + territory : '') +
     '&order=captured_at.desc&limit=' + RECUR.SLICE_ROWS +
     '&select=id,cluster_id,theme_id,title,url,source_name,source_tier,territory,status,captured_at,edition_item_id,image';   // SEAM:THEMES theme_id rides the rollup; SEAM:HUB_FEED — image rides the rollup
@@ -6330,6 +6380,7 @@ async function excavatePropose(request, env, origin, internal) {
     if (env.RATE_LIMIT) {
       await env.RATE_LIMIT.put(ck, JSON.stringify(out), { expirationTtl: 86400 }).catch(function () {});
     }
+    if (internal === true) await ledgerPut(env, 'board', ledgerBoardRows(proposed, themes, out, await sweepReady(env), ledgerWeek()));   // SEAM:LEDGER: the board's week, kept
     await logEvent(env, 'intelligence', 'excavate', 'propose', null,
       { scanned: rows.length, candidates: ranked.length, proposed: proposed.length, min_weeks: minWeeks });
     return json(out, 200, origin, env);
@@ -6372,7 +6423,7 @@ async function dailySpineGuarded(request, env, origin) {
  * territory, newest capture timestamp. Reads a bounded window, cheap. */
 async function dailyLakePublic(env, origin) {
   try {
-    const rows = await sbRest(env, 'signals?select=status,territory,captured_at&order=captured_at.desc&limit=500') || [];
+    const rows = await sbRest(env, 'signals?select=status,territory,captured_at' + (await sweepOnly(env)) + '&order=captured_at.desc&limit=500') || [];   // SEAM:SWEEP_MEASURE: the public ticker counts the sweep
     const byStatus = {}, byTerritory = {};
     rows.forEach(r => {
       byStatus[r.status] = (byStatus[r.status] || 0) + 1;
@@ -7109,7 +7160,7 @@ function territoryGuess(text) {
   return null;
 }
 async function lakeCapture(env, items, prov) {
-  const rows = []; const seen = new Set();
+  const rows = []; const seen = new Set();   // SEAM:SWEEP_MEASURE: signals.research is set by the database on insert (0038's trigger), from momentum.provenance
   for (const it of (items || [])) {
     if (!it || !it.url || !/^https?:\/\//.test(it.url) || !it.title) continue;
     if (it.kind === 'entity') continue;                       // entities are not signals
@@ -7163,7 +7214,7 @@ async function loadHouseFocus(env) {
   return DEFAULT_FOCUS;
 }
 async function loadTracks(env) {
-  try { return (await sbRest(env, 'tracks?select=id,name,aliases,kind,sector,active&active=eq.true&limit=200')) || []; } catch (e) { return []; }
+  try { return (await sbRest(env, 'tracks?select=id,name,aliases,kind,sector,description,query,kg_id,image,image_license,active&active=eq.true&limit=200')) || []; } catch (e) { return []; }   // SEAM:BRAND_ROOM: the description, image and KG id are read, so KG resolves once
 }
 // PURE: does this cluster touch a tracked entity? Returns the matched track name or null.
 function trackMatch(text, tracks) {
@@ -7302,7 +7353,7 @@ async function deskRunGuarded(request, env, origin) {
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -7389,6 +7440,145 @@ async function excFrameTiles(env, tiles, edition, generated) {
   // A complete set is kept for the edition; an incomplete one briefly, so a visitor never triggers the same misses twice.
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify(out), { expirationTtl: frames.every(Boolean) ? EXC_DOOR.TTL : EXC_DOOR.RETRY_TTL }); } catch (e) { excQuiet('door_cache_write')(e); } }
   return out;
+}
+
+/* ═══ SEAM:DOOR_VOICES: each subject on the board gathers its own voices on the weekly pass: comments under the month's videos
+ * (YouTube) and posts (Mastodon), asked the subject's own question, kept by the voice laws (no shared headline, nothing older
+ * than a quarter, English, verbatim), the most liked first and no more than two from one video. They ride on the subject's door
+ * row (meta.voices) and on its tile, so the arrival quotes people about the subjects it shows, from public sources only. A
+ * quote carries its words, its likes, its date and what the speaker said about themselves; never a platform, a handle, a
+ * channel or a link. The pass is free (YouTube's house allowance, Mastodon) and spends no model. ═══ */
+const DOOR_VOICES = { KEEP: 6, POOL: 40, POOL_PER: 15, SINCE_D: 30, FRESH_D: 90, MS: 12000, PASS_MS: 120000, PER_SOURCE: 2, BAND: 12 };   // the pool (SEAM:PEOPLE) stays on the row, never on a tile
+// The subject's own question (YouTube) and its shortest name (Mastodon reads a tag), through its frame, so a comment that is not
+// about the subject (on_frame false) is never quoted as if it were. Room for every comment the rails fetch: one video never fills it.
+async function doorVoices(env, cand, frame) {
+  const q = String((cand && (cand.query || cand.title)) || '').trim().slice(0, 180);
+  if (!q) return [];
+  const f = frame && Array.isArray(frame.anchors) && frame.anchors.length ? frame : null;
+  if (!f) return [];   // without a frame nothing can say a comment is about the subject; the subject keeps its last voices
+  const tag = String([f.entity].concat(f.anchors).filter(x => x && String(x).trim().length >= 3).sort((a, b) => String(a).length - String(b).length)[0] || (cand && cand.title) || q).slice(0, 60);
+  const ctx = { meta: {}, frame: f, since: new Date(Date.now() - DOOR_VOICES.SINCE_D * 864e5).toISOString().slice(0, 10), voiceMax: VOICES.VIDEOS * VOICES.PER_VIDEO + VOICES.POSTS };
+  const run = async () => {
+    try { if (RAIL_FNS.youtube && RAIL_BY_ID.youtube) await RAIL_FNS.youtube(env, q, ctx, RAIL_BY_ID.youtube); } catch (e) { excQuiet('door_voices_yt')(e); }
+    try { if (RAIL_FNS.mastodon && RAIL_BY_ID.mastodon) await RAIL_FNS.mastodon(env, tag, ctx, RAIL_BY_ID.mastodon); } catch (e) { excQuiet('door_voices_ma')(e); }
+  };
+  await Promise.race([run(), new Promise(res => setTimeout(res, DOOR_VOICES.MS))]);
+  return doorVoicePick(((ctx.meta.voices || {}).quotes || []).slice(), Date.now(), DOOR_VOICES.POOL, DOOR_VOICES.POOL_PER);   // the pool; the tile's six are picked from it
+}
+// PURE: the voices a subject keeps: the most liked, at most `per` from one video or tag (src rides along for that; never shown).
+function doorVoicePick(quotes, nowMs, keep, perSource) {
+  const K = keep || DOOR_VOICES.KEEP, PER = perSource || DOOR_VOICES.PER_SOURCE;
+  const fresh = q => { const t = q && q.when ? Date.parse(q.when) : NaN; return isNaN(t) || (nowMs - t) <= DOOR_VOICES.FRESH_D * 864e5; };
+  const list = (quotes || []).filter(q => q && q.text && q.on_frame !== false && !voiceShareOf(q) && fresh(q)).map(q => Object.assign({}, q, { text: voiceDisplay(q.text) }))
+    .filter(q => q.text.length >= VOICES.MIN).sort((a, b) => (b.likes || 0) - (a.likes || 0));
+  const seen = new Set(), per = {}, out = [];
+  for (const q of list) {
+    const k = q.text.toLowerCase(), s = q.src || 'none';
+    if (seen.has(k) || (per[s] || 0) >= PER) continue;
+    seen.add(k); per[s] = (per[s] || 0) + 1;
+    out.push({ text: q.text.slice(0, 420), likes: q.likes || 0, when: q.when ? String(q.when).slice(0, 10) : null, self: q.self || null, src: q.src || null });
+    if (out.length >= K) break;
+  }
+  return out;
+}
+// PURE: the band beside the board. One quote from each subject in turn, so no subject fills it, then the latest monthly
+// report's. Each quote says which subject it speaks to.
+function doorBand(tiles, reportQuotes) {
+  const out = [], seen = new Set();
+  const add = (q, on) => { const k = String((q && q.text) || '').toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); out.push({ text: q.text, likes: q.likes || 0, when: q.when || null, self: q.self || null, on: on || null }); };
+  const lists = (tiles || []).filter(t => t && Array.isArray(t.voices) && t.voices.length).map(t => ({ on: t.label || t.title || null, v: t.voices.slice() }));
+  while (out.length < DOOR_VOICES.BAND && lists.some(l => l.v.length)) for (const l of lists) { if (out.length >= DOOR_VOICES.BAND) break; const q = l.v.shift(); if (q) add(q, l.on); }
+  for (const q of (reportQuotes || [])) { if (out.length >= DOOR_VOICES.BAND) break; add(q, null); }
+  return out;
+}
+// PURE: what a subject keeps: tonight's voices, or the last ones it had when tonight's gather came back empty (a spent allowance,
+// a quiet week, a rail down); a subject is never emptied by a failed ask.
+// PURE: what a voice shows on a public surface: its words, likes, date and what the speaker said about themselves. Nothing else.
+function doorVoicePublic(v) { return { text: v.text, likes: v.likes || 0, when: v.when || null, self: v.self || null }; }
+function doorVoicesKeep(fresh, prevMeta, nowMs) {
+  const now = nowMs || Date.now();
+  if (Array.isArray(fresh) && fresh.length) return { voices: doorVoicePick(fresh, now).map(doorVoicePublic), voices_pool: fresh, voices_at: new Date(now).toISOString() };
+  const young = q => { const t = q && q.when ? Date.parse(q.when) : NaN; return isNaN(t) || (now - t) <= DOOR_VOICES.FRESH_D * 864e5; };
+  const pv = (prevMeta && Array.isArray(prevMeta.voices) ? prevMeta.voices : []).filter(young);   // kept voices still age out after a quarter
+  const pp = (prevMeta && Array.isArray(prevMeta.voices_pool) ? prevMeta.voices_pool : []).filter(young);
+  return { voices: pv, voices_pool: pp, voices_at: pv.length ? (prevMeta.voices_at || null) : null };
+}
+/* The voices alone, for the tiles standing now, without a new read: the desk's {run: 'voices'}. Free; no model. One subject at a
+ * time (a gather that hits its deadline may still be finishing as the next begins; the rails count every search they make). */
+async function doorVoicesPass(env) {
+  const set = await doorSet(env), tiles = ((set && set.tiles) || []).filter(t => t && t.id && !t.carried);
+  const out = { tiles: tiles.length, gathered: 0, quotes: 0, kept: 0 };
+  for (const t of tiles) {
+    const rows = (await sbRest(env, 'door_reads?id=eq.' + t.id + '&select=id,meta,frame').catch(excQuiet('door_rows', []))) || [];
+    if (!rows[0]) continue;
+    const fresh = await doorVoices(env, { query: (rows[0].frame && rows[0].frame.query) || (t.frame && t.frame.query) || t.title, title: t.title }, rows[0].frame || null);
+    const keep = doorVoicesKeep(fresh, rows[0].meta);
+    await sbRest(env, 'door_reads?id=eq.' + t.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, rows[0].meta || {}, keep) } }).catch(excQuiet('door_voices_patch'));
+    out.gathered++; out.quotes += fresh.length; if (!fresh.length && keep.voices.length) out.kept++;
+  }
+  const pub = await doorPublish(env);
+  try { if (env.RATE_LIMIT) { await env.RATE_LIMIT.delete(DOOR_EXTRAS.KEY); await env.RATE_LIMIT.delete(PEOPLE.KEY); } } catch (e) { excQuiet('door_extras_drop')(e); }   // SEAM:PEOPLE
+  out.ledgered = await peopleLedger(env, pub);   // SEAM:PEOPLE: the fresh comments, counted for the board's week
+  return out;
+}
+
+/* ═══ SEAM:LEDGER: EXCAVATE remembers what it posts. One row per subject per week (subject_weeks, migration 0038): what the board
+ * measured (board), what the arrival posted (door: its place, its claim, its move, its question, the voices it gathered), a
+ * tracked brand's counts (track), a cohort's counts (cohort), and the week's read itself (field:week). Each writer owns its
+ * column, so writers never clobber each other; a later write in the same week replaces that writer's earlier one, and
+ * first_at keeps when the week was first written. Rows are never deleted: the history EX19 counts and grades stands on them.
+ * The board's figures are as it computed them (sampled: true) until EX19 counts every week exactly; sweep says whether they
+ * counted the sweep only. A missing table costs a log line, never a page. ═══ */
+const LEDGER = { TABLE: 'subject_weeks', KINDS: ['theme', 'track', 'cohort', 'field'] };
+// PURE: the Monday (UTC) of the week a date speaks for.
+function ledgerWeek(d) {
+  const t = d ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? d + 'T12:00:00Z' : d) : new Date();
+  if (isNaN(t)) return null;
+  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - ((t.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
+}
+async function ledgerPut(env, col, rows) {
+  if (!['board', 'door', 'track', 'cohort'].includes(col)) return 0;
+  const at = new Date().toISOString(), by = new Map();
+  // The door's label rides inside its column: only the board, a track and a cohort name a subject, so a title never flips.
+  for (const r of (rows || []).filter(r => r && r.subject_key && r.week && LEDGER.KINDS.includes(r.kind)))
+    by.set(String(r.subject_key).slice(0, 120) + '|' + r.week, Object.assign({ subject_key: String(r.subject_key).slice(0, 120), kind: r.kind, week: r.week },
+      col === 'door' ? {} : { title: String(r.title || r.subject_key).slice(0, 160) }, { [col]: r.data || {}, updated_at: at }));   // one row per key: Postgres refuses a write that touches a row twice
+  const body = [...by.values()];
+  if (!body.length) return 0;
+  try { await sbRest(env, LEDGER.TABLE + '?on_conflict=subject_key,week', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body }); return body.length; }
+  catch (e) { console.log('ledger_put', col, String(e && e.message).slice(0, 60)); return 0; }
+}
+// PURE: what a voice count looks like in the ledger: how many, and who said what about themselves.
+function ledgerVoiceCounts(voices) {
+  const v = Array.isArray(voices) ? voices : [], gen = {}, role = {};
+  for (const q of v) { const s = (q && q.self) || {}; if (s.generation) gen[s.generation] = (gen[s.generation] || 0) + 1; if (s.role) role[s.role] = (role[s.role] || 0) + 1; }
+  return { n: v.length, generations: gen, roles: role };
+}
+// PURE: the board's rows for a week: each proposed subject with its place and measures, and the week's read.
+function ledgerBoardRows(proposed, themes, out, sweep, week) {
+  const by = new Map((themes || []).map(t => [t.cluster_id, t]));
+  const rows = (proposed || []).filter(p => p && p.cluster_id).map((p, i) => {
+    const t = by.get(p.cluster_id) || {}, ev = p.evidence || {};
+    return { subject_key: 'theme:' + p.cluster_id, kind: 'theme', week, title: p.title,
+      data: { place: i + 1, state: p.state || 'STEADY', shape: p.shape || null, recent_7d: ev.recent_7d || 0, prior_7d: ev.prior_7d || 0, weeks_touched: ev.weeks_touched || 0,
+        span_days: ev.span_days || 0, members: ev.members || 0, sources: ev.sources || 0, territories: ev.territories || [], published: ev.published || 0, best_tier: ev.best_tier || null,
+        first_seen: ev.first_seen || null, last_seen: ev.last_seen || null, week_series: Array.isArray(t.week_series) ? t.week_series : null, window_days: (out && out.window_days) || null, sampled: true, sweep: !!sweep } };
+  });
+  const f = (out && out.field) || {};
+  if (f.read) rows.push({ subject_key: 'field:week', kind: 'field', week, title: 'The week', data: { read: f.read, states: f.states || {}, scanned: (out && out.scanned) || 0, candidates: (out && out.candidates) || 0, window_days: (out && out.window_days) || null, sweep: !!sweep } });
+  return rows;
+}
+// PURE: the arrival's rows: each tile standing for its own night, with its rank (by stories this week, the order the page receives;
+// the page then leads with the two that moved most), what it posted and the voices it gathered.
+function ledgerDoorRows(tiles) {
+  return (tiles || []).filter(t => t && t.key && !t.carried && /^(theme|track):/.test(t.key)).map((t, i) => {
+    const m = t.measures || {};
+    return { subject_key: t.key, kind: t.key.split(':')[0], week: ledgerWeek(t.night), title: t.label || t.title,
+      data: { label: t.label || t.title || null, night: t.night || null, rank: i + 1, door_id: t.id || null, status: t.status || null, claim: t.claim || null, move: t.move || null, question: t.question || null, findings: t.findings || 0,
+        state: m.state || null, measures: { recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0,
+          weeks_touched: m.weeks_touched || 0, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, shape: m.shape || null, series: m.series || [] },
+        voices: ledgerVoiceCounts(t.voices) } };
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -7509,7 +7699,8 @@ async function doorPass(env, opts) {
   if (!cands.length) return out;
   const tiers = await excTiersLoad(env);
   // Last night's reads (for reuse and for "since"), and tonight's rows (a second pass the same night touches only what moved).
-  const prevRows = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=lt.' + night + '&order=night.desc&limit=200&select=id,frame_key,night,stamp,read,measures,frame').catch(excQuiet('door_rows', []))) || [];
+  const prevRows = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=lt.' + night + '&order=night.desc&limit=200&select=id,frame_key,night,stamp,read,measures,frame,meta').catch(excQuiet('door_rows', []))) || [];
+  let voicesSpent = 0;   // SEAM:DOOR_VOICES: the voices get two minutes of their own in the pass, never the whole cron
   const prevBy = new Map(); for (const r of prevRows) if (!prevBy.has(r.frame_key)) prevBy.set(r.frame_key, r);
   const tonightRows = (await sbRest(env, 'door_reads?night=eq.' + night + '&select=id,frame_key,status,stamp').catch(excQuiet('door_rows', []))) || [];
   const tonightBy = new Map(tonightRows.map(r => [r.frame_key, r]));
@@ -7520,7 +7711,7 @@ async function doorPass(env, opts) {
       const ev = await doorEvidence(env, cand, frame, tiers);
       const measures = frame ? await excMeasures(env, frame) : null;
       const prev = prevBy.get(cand.key) || null;
-      const pm = prev && prev.measures && prev.measures.recent_7d != null ? prev.measures : null;   // "since" needs a measured last night
+      const pm = prev && prev.measures && prev.measures.recent_7d != null && !!prev.measures.sweep === !!(measures && measures.sweep) ? prev.measures : null;   // "since" needs a measured last night, counted the same way (SEAM:SWEEP_MEASURE)
       // Every row carries the same keys: an upsert writes the whole row, so a key left out would be nulled on another row.
       const base = { frame_key: cand.key, night, frame: Object.assign({ title: cand.title, subtitle: cand.subtitle, kind: cand.kind, lens: cand.lens, query: cand.query }, frame ? { entity: frame.entity, category: frame.category, audience: frame.audience, market: frame.market, competitors: frame.competitors, question: frame.question, anchors: frame.anchors, exclude: frame.exclude, queries: frame.queries } : {}),
         measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null })),   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
@@ -7530,6 +7721,9 @@ async function doorPass(env, opts) {
       const stamp = doorStamp(ev.merged);
       const tn = tonightBy.get(cand.key);
       if (tn && tn.stamp === stamp && ['ready', 'reused', 'compiling', 'queued'].includes(tn.status)) { out.kept++; continue; }   // already read tonight on this evidence
+      const vt = Date.now(), heard = voicesSpent < DOOR_VOICES.PASS_MS ? await doorVoices(env, cand, frame) : [];   // SEAM:DOOR_VOICES
+      voicesSpent += Date.now() - vt;
+      Object.assign(base.meta, doorVoicesKeep(heard, prev && prev.meta)); out.voices = (out.voices || 0) + heard.length;
       if (prev && prev.stamp === stamp && prev.read) { out.reused++; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
       const now = Date.now();
       const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join('\n');
@@ -7581,7 +7775,8 @@ function doorTile(r) {
     question: (rd && rd.question) || f.question || null,   // SEAM:EXC_DOOR_VOICE: the question this reading answers
     photo: doorPhoto(rd, r.evidence),   // the sources' own photograph, credited; null when none of the lines carries one
     measures: { series: m.series || [], recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0, weeks_touched: m.weeks_touched || 0, weeks: m.weeks || 12, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, state: m.state || 'STEADY', shape: m.shape || null, newest: m.newest || null },
-    evidence_n: (r.evidence || []).length, since: s, image: null };
+    evidence_n: (r.evidence || []).length, since: s, image: null,
+    voices: (r.meta && Array.isArray(r.meta.voices) ? r.meta.voices : []).slice(0, DOOR_VOICES.KEEP).map(doorVoicePublic) };   // SEAM:DOOR_VOICES: the pool never rides a tile
 }
 /* SEAM:EXC_DOOR_VOICE PURE: the photograph a tile shows is one the read's own sources carried: the first cited insight's image, else the
  * first evidence line with an https image. Never stock, always credited to the outlet. */
@@ -7593,22 +7788,23 @@ function doorPhoto(rd, evidence) {
   for (const e of (evidence || [])) if (e && ok(e.image)) return { src: e.image, credit: outlet(e.source || e.source_name) };
   return null;
 }
-/* SEAM:EXC_DOOR_VOICE: what the door says beside the board, cached an hour. voices: the latest report's or RECON's consumer quotes
- * (verbatim, no names or handles by the voices laws), the most liked first. record: the house's calls from cluster_calls over the last
+/* SEAM:EXC_DOOR_VOICE: what the door says beside the board, cached an hour. voices (SEAM:DOOR_VOICES): the board's own subjects'
+ * voices, one subject at a time, then the latest monthly report's consumer quotes (verbatim, no names or handles by the voices
+ * laws), the most liked first. Never a RECON's: a RECON's quotes and its name belong to whoever commissioned it. record: the house's calls from cluster_calls over the last
  * 90 days, named by the feed's own theme titles (a call whose theme the feed no longer names is counted, not shown), as confirmed
  * (converted or held), missed (faded) and open. Public, like the feed; nothing here is a person. */
-const DOOR_EXTRAS = { KEY: 'door:extras:v2', TTL: 3600, VOICES: 12, CALLS: 24, DAYS: 90 };
-async function doorExtras(env, proposed) {
+const DOOR_EXTRAS = { KEY: 'door:extras:v3', TTL: 3600, VOICES: 12, CALLS: 24, DAYS: 90 };   // v3: v2 held RECON quotes; it is never read again
+async function doorExtras(env, proposed, door) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(DOOR_EXTRAS.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { console.log('door_extras_cache', String(e && e.message).slice(0, 60)); }
   const out = { voices: [], record: { confirmed: [], missed: [], open: [], counts: { confirmed: 0, missed: 0, open: 0 } } };
   try {
-    const rows = await sbRest(env, 'house_reads?kind=in.(report,recon)&status=in.(ready,published)&select=id,kind,label,meta&order=updated_at.desc&limit=3') || [];
+    const rows = await sbRest(env, 'house_reads?kind=eq.report&status=in.(ready,published)&select=id,kind,label,meta&order=updated_at.desc&limit=2') || [];
     const quotes = [];
     // SEAM:VOICE_LAW: a shared headline is nobody's voice; the band quotes consumers only, their words without link pieces or tag runs.
     // SEAM:READ_TIME: the arrival is this week's room, so a voice from before its report's period is not quoted there as now.
-    for (const r of rows) for (const q of (((r.meta || {}).pack || {}).voices || {}).quotes || []) if (q && q.text && !voiceShareOf(q) && !readIsThen(readBandOf(q)) && voiceDisplay(q.text).length >= VOICES.MIN) quotes.push({ text: voiceDisplay(q.text).slice(0, 420), source: q.source || 'comment', likes: q.likes || 0, when: q.when ? String(q.when).slice(0, 10) : null, self: q.self || null, from: r.label });
+    for (const r of rows) for (const q of (((r.meta || {}).pack || {}).voices || {}).quotes || []) if (q && q.text && !voiceShareOf(q) && !readIsThen(readBandOf(q)) && voiceDisplay(q.text).length >= VOICES.MIN) quotes.push({ text: voiceDisplay(q.text).slice(0, 420), likes: q.likes || 0, when: q.when ? String(q.when).slice(0, 10) : null, self: q.self || null });
     quotes.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-    const seen = new Set(); out.voices = quotes.filter(q => !seen.has(q.text) && seen.add(q.text)).slice(0, DOOR_EXTRAS.VOICES);
+    out.voices = doorBand((door && door.tiles) || [], quotes).slice(0, DOOR_EXTRAS.VOICES);   // SEAM:DOOR_VOICES
   } catch (e) { console.log('door_voices', String(e && e.message).slice(0, 80)); }
   try {
     const since = new Date(Date.now() - DOOR_EXTRAS.DAYS * 864e5).toISOString();
@@ -7645,6 +7841,7 @@ async function doorPublish(env) {
   tiles.sort((a, b) => (b.measures.recent_7d - a.measures.recent_7d));
   const set = { night: tiles.some(t => !t.carried) ? (tiles.find(t => !t.carried) || {}).night : (tiles[0] ? tiles[0].night : night), built_at: new Date().toISOString(), tiles, pending: pending.length };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(DOOR.KEY, JSON.stringify(set), { expirationTtl: DOOR.TTL }); } catch (e) { excQuiet('door_publish')(e); } }
+  await ledgerPut(env, 'door', ledgerDoorRows(tiles));   // SEAM:LEDGER: what the arrival posted, kept
   return set;
 }
 async function doorSet(env) {
@@ -7687,7 +7884,7 @@ async function excavateFeed(env, origin) {
   tiles.forEach(t => { const st = t.state || 'STEADY'; states[st] = (states[st] || 0) + 1; });
   const field = out.field ? Object.assign({}, out.field, { states }) : { read: '', states };
   const door = await doorSet(env);   // SEAM:EXC_DOOR v2: the overnight tiles ride the same door
-  const extras = await doorExtras(env, out.proposed);   // SEAM:EXC_DOOR_VOICE: what people are saying, and the track record
+  const extras = await doorExtras(env, out.proposed, door);   // SEAM:EXC_DOOR_VOICE: what people are saying (SEAM:DOOR_VOICES: the board's own subjects first), and the track record
   return json({ ok: true, proposed: tiles, field, trending, generated_at: out.generated_at || null, cached: !!out, door: door && door.tiles && door.tiles.length ? door : null, voices: extras.voices, record: extras.record }, 200, origin, env);
 }
 
@@ -7696,24 +7893,39 @@ async function excavateFeed(env, origin) {
  * resolved once a day. Knowledge Graph gives each track its description, type
  * and licensed image the first time it is seen. Nothing here is a score. */
 function ilikeOr(names) {
-  return 'or=(' + names.map(n => 'title.ilike.*' + encodeURIComponent(String(n).replace(/[%,()]/g, ' ')) + '*').join(',') + ')';
+  // A name or alias is matched as words: the pattern characters (* % _), PostgREST's own (, ( ) " \\) and runs of spaces go, and a
+  // name is kept when three or more characters are left, two of them letters or digits (H&M, P&G and M&S stay; "LG" and "***" go),
+  // so no alias can match every story. No name left matches nothing (id is never null), never everything.
+  const clean = (names || []).map(n => String(n || '').replace(/[%*_,()"\\]/g, ' ').replace(/\s+/g, ' ').trim()).filter(n => n.replace(/\s/g, '').length >= 3 && (n.match(/[\p{L}\p{N}]/gu) || []).length >= 2);
+  if (!clean.length) return 'id=is.null';
+  return 'or=(' + clean.map(n => 'title.ilike.*' + encodeURIComponent(n) + '*').join(',') + ')';
 }
 async function tracksRefresh(env) {
   const tracks = await loadTracks(env);
   if (!tracks.length) return { tracks: 0 };
-  const now = Date.now(); const d7 = new Date(now - 7 * 864e5).toISOString(), d30 = new Date(now - 30 * 864e5).toISOString();
+  const now = Date.now(); const d7 = new Date(now - 7 * 864e5).toISOString(), d30 = new Date(now - 30 * 864e5).toISOString(), d84 = new Date(now - BRAND_ROOM.WEEKS * 7 * 864e5).toISOString();
   const stats = {};
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE
+  let last = {}; try { last = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) { last = {}; }   // a count that fails keeps the last good one
   for (const t of tracks) {
     const names = [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3);
-    let n7 = 0, n30 = 0, latest = null, image = null, states = {};
+    let n7 = 0, n30 = 0, latest = null, image = null, states = {}, counted = false, weeks = null, outlets30 = 0, capped = false, floor7 = false, floor30 = false;
     try {
-      const rows = await sbRest(env, 'signals?select=id,title,captured_at,published_at,image,territory,momentum,cluster_id&' + ilikeOr(names) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=200') || [];
-      // SEAM:LAKE_TRUTH: counted by the date each row speaks for, not by when it was captured.
-      const dated = rows.filter(r => { const w = lakeWhen(r); return w && Date.parse(w) >= Date.parse(d30); });
-      n30 = dated.length; n7 = dated.filter(r => Date.parse(lakeWhen(r)) >= Date.parse(d7)).length;
+      if (!sw) throw new Error('sweep_unknown');   // SEAM:SWEEP_MEASURE: no count beats a count with a search's rows in it; the last one stands
+      if (ilikeOr(names) === 'id=is.null') throw new Error('name_short');   // a name too short to find in a headline is never counted as zero
+      const rows = await sbRest(env, 'signals?select=id,title,captured_at,published_at,image,territory,momentum,cluster_id,source_name&' + ilikeOr(names) + sw + '&status=neq.rejected&captured_at=gte.' + d84 + '&order=captured_at.desc&limit=' + BRAND_ROOM.TRACK_ROWS) || [];
+      // SEAM:LAKE_TRUTH: counted by the date each row speaks for, not by when it was captured; a date after now is not counted.
+      const dated = rows.filter(r => { const w = lakeWhen(r), t0 = w ? Date.parse(w) : NaN; return t0 >= Date.parse(d30) && t0 <= now; });
+      n30 = dated.length; n7 = dated.filter(r => Date.parse(lakeWhen(r)) > Date.parse(d7)).length;   // the same seven days as the newest week
+      // SEAM:BRAND_ROOM: a read that hit its row limit saw only the newest captures. Weeks wholly before the oldest capture it saw
+      // are unknown (null), never zero; a count whose span reaches past that capture is a floor.
+      const cut = brandCut(rows, BRAND_ROOM.TRACK_ROWS);
+      weeks = brandWeeks(rows, now, null, cut).map(x => x.n); outlets30 = new Set(dated.map(r => r.source_name).filter(Boolean)).size; capped = !!cut;
+      floor30 = !!cut && Date.parse(cut) > Date.parse(d30); floor7 = !!cut && Date.parse(cut) > Date.parse(d7);
       latest = dated.map(lakeWhen).sort().pop() || null;
       image = (rows.find(r => r.image) || {}).image || null;
-    } catch (e) {}
+      counted = true;
+    } catch (e) { console.log('tracks_count', String(e && e.message).slice(0, 60)); }
     // Knowledge Graph resolution, once.
     if (!t.kg_id && env.GOOGLE_KG_KEY) {
       try {
@@ -7729,10 +7941,13 @@ async function tracksRefresh(env) {
         }
       } catch (e) {}
     }
-    stats[t.id] = { n7, n30, latest, image: t.image || image, states };
+    stats[t.id] = counted || !last[t.id] ? { n7, n30, latest, image: t.image || image, states, counted, weeks, outlets_30d: outlets30, capped, floor7, floor30 } : Object.assign({}, last[t.id], { counted: false });
   }
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put(FEED.TRACKS_KEY, JSON.stringify({ at: new Date().toISOString(), stats }), { expirationTtl: 3 * 86400 }).catch(() => {});
-  return { tracks: tracks.length };
+  const ledgered = await ledgerPut(env, 'track', tracks.filter(t => (stats[t.id] || {}).counted).map(t => ({ subject_key: 'track:' + t.id, kind: 'track', week: ledgerWeek(), title: t.name,
+    data: { n7: (stats[t.id] || {}).n7 || 0, n30: (stats[t.id] || {}).n30 || 0, latest: (stats[t.id] || {}).latest || null, weeks: (stats[t.id] || {}).weeks || null, outlets_30d: (stats[t.id] || {}).outlets_30d || 0,
+      capped: !!(stats[t.id] || {}).capped, floor7: !!(stats[t.id] || {}).floor7, floor30: !!(stats[t.id] || {}).floor30, sweep: !!sw } })));   // SEAM:LEDGER
+  return { tracks: tracks.length, ledgered };
 }
 async function excavateTracks(env, origin) {
   const tracks = await loadTracks(env);
@@ -7740,8 +7955,131 @@ async function excavateTracks(env, origin) {
   let ed = null; try { ed = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(DESK.EDITION_KEY)) || 'null'); } catch (e) {}
   const emerging = ((ed && ed.items) || []).filter(i => i.components && i.components.tracked).map(i => ({ track: i.components.tracked, line: i.line, title: i.title, url: i.url, source_name: i.source_name, published_at: i.published_at, image: i.image, state: i.state, lens: i.lens, counts: i.components.counts, entered_at: i.entered_at }));
   const out = tracks.map(t => ({ id: t.id, name: t.name, kind: t.kind, sector: t.sector, description: t.description, query: t.query, image: t.image || (st[t.id] || {}).image || null, image_license: t.image_license || null,
-    counts: { captures_7d: (st[t.id] || {}).n7 || 0, captures_30d: (st[t.id] || {}).n30 || 0 }, latest: (st[t.id] || {}).latest || null }));
+    aliases: (t.aliases || []).slice(0, 8), measurable: ilikeOr([t.name].concat(t.aliases || []).filter(n => n && n.length >= 3)) !== 'id=is.null', counts: brandCounts(st[t.id]), weeks: brandCounted(st[t.id]) ? st[t.id].weeks : null, capped: !!(st[t.id] || {}).capped, latest: (st[t.id] || {}).latest || null }));   // SEAM:BRAND_ROOM: twelve weeks ride every track
   return json({ ok: true, tracks: out, emerging, computed_at: null }, 200, origin, env);
+}
+/* ═══ SEAM:BRAND_ROOM: one tracked brand over time, against its set. GET /excavate/brand?id= (public; one copy for six hours).
+ * Twelve weeks of coverage counted on the sweep (stories by the date each speaks for, and the outlets behind them), the latest
+ * stories with their outlets, the tracked brands that share its sector on the same counts, three years of monthly readers of its
+ * English Wikipedia article and up to two rivals' (people only; an article is used only when it is about what was asked), the
+ * board's reading of it when it stands on the board this week, with the voices gathered for it, and how many weeks the ledger
+ * holds for it. Every figure is a count; a count that hit its row limit says "at least"; nothing is estimated. ═══ */
+// ROWS stays inside PostgREST's default ceiling (max_rows 1000), so a read that hit its limit always knows it did.
+const BRAND_ROOM = { WEEKS: 12, ROWS: 1000, TRACK_ROWS: 600, STORIES: 6, SET: 8, RIVALS: 2, TTL: 6 * 3600, ATTN_TTL: 7 * 86400, KEY: 'brand:v2:', ATTN_KEY: 'brand:attn:v2:' };
+// PURE: the oldest capture a read saw when it hit its limit (rows come newest capture first), else null: the read saw everything.
+function brandCut(rows, limit) {
+  if (!Array.isArray(rows) || rows.length < limit) return null;
+  const t = rows.map(r => Date.parse(r && r.captured_at)).filter(Number.isFinite);
+  return t.length ? new Date(Math.min.apply(null, t)).toISOString() : null;
+}
+// PURE: rolling weeks ending now (the newest last), each with its stories and its outlets, by the date each row speaks for. With a
+// cut (brandCut), a week that ended before it is unknown (n and outlets null) and a week the cut falls inside is a floor.
+// A story is captured on or after the date it speaks for, so every week that starts at or after the cut is whole.
+function brandWeeks(rows, nowMs, n, cut) {
+  const W = n || BRAND_ROOM.WEEKS, WK = 7 * 864e5, c = cut ? Date.parse(cut) : NaN;
+  const out = Array.from({ length: W }, (_, i) => { const s0 = nowMs - (W - i) * WK; return { start: new Date(s0).toISOString().slice(0, 10), s0, n: 0, outlets: new Set() }; });
+  for (const r of rows || []) {
+    const w = lakeWhen(r); if (!w) continue;
+    const age = nowMs - Date.parse(w); if (!(age >= 0) || age >= W * WK) continue;
+    const b = out[W - 1 - Math.floor(age / WK)]; b.n++; if (r.source_name) b.outlets.add(r.source_name);
+  }
+  return out.map(b => Number.isFinite(c) && b.s0 + WK <= c ? { start: b.start, n: null, outlets: null }
+    : Object.assign({ start: b.start, n: b.n, outlets: b.outlets.size }, Number.isFinite(c) && b.s0 < c ? { floor: true } : {}));
+}
+// PURE: the coverage block: the weeks, this week against the one before, the twelve-week total and outlets. A read that hit its
+// limit says so (at_least): its total and outlets are floors, and a week it could not see is null, never zero.
+function brandCoverage(rows, nowMs, cap) {
+  const cut = brandCut(rows, cap || BRAND_ROOM.ROWS), weeks = brandWeeks(rows, nowMs, null, cut), last = weeks[weeks.length - 1], prev = weeks[weeks.length - 2];
+  const outlets = new Set((rows || []).filter(r => { const w = lakeWhen(r), age = w ? nowMs - Date.parse(w) : NaN; return age >= 0 && age < BRAND_ROOM.WEEKS * 7 * 864e5; }).map(r => r.source_name).filter(Boolean));
+  return { weeks, this_week: last.n, prior_week: prev.n, this_floor: !!last.floor, prior_floor: !!prev.floor, total: weeks.reduce((a, b) => a + (b.n || 0), 0), outlets: outlets.size, at_least: !!cut };
+}
+// PURE: a tracked brand has been counted on the room's rules (EX19 onward) when its stats carry its weeks.
+function brandCounted(s0) { return !!(s0 && Array.isArray(s0.weeks)); }
+// PURE: the counts a brand list or a set row shows: null until the brand is counted, never a zero that was never measured.
+function brandCounts(s0) {
+  if (!brandCounted(s0)) return { captures_7d: null, captures_30d: null, outlets_30d: null, floor7: false, floor30: false };
+  return { captures_7d: s0.n7 || 0, captures_30d: s0.n30 || 0, outlets_30d: typeof s0.outlets_30d === 'number' ? s0.outlets_30d : null, floor7: !!s0.floor7, floor30: !!s0.floor30 };
+}
+// PURE: the words a sector and a description give an article check: never the brand's own name, which the wrong article shares.
+const BRAND_ATTN_STOP = new Set(['with', 'from', 'that', 'this', 'their', 'based', 'into', 'over', 'also', 'more', 'most', 'other', 'which', 'known', 'founded', 'headquartered', 'american', 'british', 'german', 'french', 'japanese', 'chinese', 'italian', 'korean', 'swedish', 'swiss', 'dutch', 'canadian', 'australian', 'spanish', 'multinational', 'international', 'global']);
+function brandAttnWords(t) {
+  const words = String(((t && t.sector) || '') + ' ' + ((t && t.description) || '')).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !BRAND_ATTN_STOP.has(w));
+  return [...new Set(words)].slice(0, 12);
+}
+// PURE: the latest stories, one per headline, newest first, each with its outlet, its date and its own https photograph. A story
+// dated after tomorrow is a wrong date, never the latest story.
+function brandStories(rows, n, nowMs) {
+  const seen = new Set(), out = [], edge = (nowMs || Date.now()) + 864e5;
+  const list = (rows || []).filter(r => r && r.title && r.url && lakeWhen(r) && Date.parse(lakeWhen(r)) <= edge).sort((a, b) => Date.parse(lakeWhen(b)) - Date.parse(lakeWhen(a)));
+  for (const r of list) {
+    const k = String(r.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (seen.has(k)) continue; seen.add(k);
+    out.push({ title: String(r.title).slice(0, 220), url: String(r.url).slice(0, 600), source: String(r.source_name || '').slice(0, 80) || null, date: String(lakeWhen(r)).slice(0, 10),
+      image: /^https:\/\//.test(String(r.image || '')) ? String(r.image).slice(0, 600) : null });
+    if (out.length >= (n || BRAND_ROOM.STORIES)) break;
+  }
+  return out;
+}
+async function brandAttention(env, t, peers) {
+  const rv = (peers || []).filter(p => p && p.name).slice(0, BRAND_ROOM.RIVALS), rivals = rv.map(p => p.name);
+  const key = BRAND_ROOM.ATTN_KEY + t.id + (rv.length ? ':' + rv.map(p => String(p.id).slice(0, 8)).join('.') : '');
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(key) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('brand_attn_cache')(e); }
+  // The subject is the brand's own article (never its sector's), and the rivals' are theirs. An article counts only when its title or
+  // summary names the trade (the sector's and the description's words), never just the name: "Nike" the goddess, "Puma" the cat and
+  // "Apple" the fruit share a name with the brand. A brand with no sector and no description measures nothing rather than the wrong thing.
+  const anchors = brandAttnWords(t);
+  if (!anchors.length) return null;
+  const frame = { entity: t.name, category: null, anchors, competitors: rivals };
+  let out = null;
+  try { const att = await readReconAttention(env, frame, new Date().toISOString().slice(0, 10)); out = att ? { months: att.months, series: att.series.map(x => ({ label: x.label, role: x.role, article: x.article, views: x.views })), stats: readAttnStats(att), source: 'Wikimedia pageviews' } : null; }
+  catch (e) { console.log('brand_attention', String(e && e.message).slice(0, 60)); out = null; }
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify(out), { expirationTtl: out ? BRAND_ROOM.ATTN_TTL : BRAND_ROOM.TTL }); } catch (e) { excQuiet('brand_attn_put')(e); } }   // none found is asked again in six hours
+  return out;
+}
+async function brandRoom(env, t, tracks) {
+  const now = Date.now(), names = [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3);
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: a brand's coverage counts the sweep
+  const since = new Date(now - BRAND_ROOM.WEEKS * 7 * 864e5).toISOString();
+  // A name too short to find in a headline is not measured (and says so); the room is still kept, so a visit costs one read of KV.
+  const measurable = ilikeOr(names) !== 'id=is.null';
+  let rows = null, partial = false;   // a part that failed to load: the room is shown, never kept
+  // momentum rides along: lakeWhen needs it to leave a search's undated capture undated rather than dated the day it was found.
+  if (measurable && sw) {
+    try { rows = (await sbRest(env, 'signals?select=id,title,url,source_name,published_at,captured_at,image,momentum&' + ilikeOr(names) + sw + '&status=neq.rejected&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + BRAND_ROOM.ROWS)) || []; }
+    catch (e) { console.log('brand_rows', String(e && e.message).slice(0, 60)); rows = null; }
+  }
+  let st = {}; try { st = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) { st = {}; }
+  // The set: the tracked brands that share its sector, the most covered first (then by name), so the rivals are the same on every visit.
+  const n30 = x => (brandCounted(st[x.id]) ? st[x.id].n30 || 0 : -1);
+  const peers = t.sector ? (tracks || []).filter(x => x.id !== t.id && x.sector === t.sector).sort((a, b) => n30(b) - n30(a) || String(a.name).localeCompare(String(b.name))).slice(0, BRAND_ROOM.SET) : [];
+  const setRow = (x, s0) => { const c = brandCounts(s0); return { n7: c.captures_7d, n30: c.captures_30d, outlets_30d: c.outlets_30d, floor7: c.floor7, floor30: c.floor30, weeks: brandCounted(s0) ? s0.weeks : null }; };
+  const set = peers.map(x => Object.assign({ id: x.id, name: x.name, image: x.image || (st[x.id] || {}).image || null, measurable: ilikeOr([x.name].concat(x.aliases || []).filter(n => n && n.length >= 3)) !== 'id=is.null' }, setRow(x, st[x.id])));
+  const self = st[t.id] || {};
+  const attention = await brandAttention(env, t, peers);
+  let board = null;
+  try {
+    const door = await doorSet(env), tile = ((door && door.tiles) || []).find(x => x && x.key === 'track:' + t.id);
+    if (tile) board = { night: tile.night || null, claim: tile.claim || null, move: tile.move || null, question: tile.question || null, state: (tile.measures && tile.measures.state) || null, carried: !!tile.carried,
+      voices: (tile.voices || []).map(v => ({ text: v.text, likes: v.likes || 0, when: v.when || null, self: v.self || null })).slice(0, DOOR_VOICES.KEEP) };
+  } catch (e) { excQuiet('brand_board')(e); partial = true; }
+  let record = null;
+  try {
+    const led = (await sbRest(env, LEDGER.TABLE + '?subject_key=eq.' + encodeURIComponent('track:' + t.id) + '&select=week,door&order=week.asc&limit=260')) || [];
+    if (led.length) record = { weeks: led.length, since: led[0].week, on_board: led.filter(r => r.door).length };
+  } catch (e) { excQuiet('brand_record')(e); partial = true; }
+  return { ok: true, track: { id: t.id, name: t.name, kind: t.kind || 'brand', sector: t.sector || null, description: t.description || null, image: t.image || self.image || null, image_license: t.image_license || null },
+    measured_at: new Date(now).toISOString(), sweep: !!sw, measurable, coverage: rows ? brandCoverage(rows, now) : null, stories: rows ? brandStories(rows, null, now) : [], set,
+    self: Object.assign(brandCounted(st[t.id]) ? setRow(t, st[t.id]) : {}, { measurable }), attention, board, record, partial };   // the set's own counts, so the brand sits in its row on the same terms
+}
+async function excavateBrand(request, env, origin) {
+  const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40).toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(BRAND_ROOM.KEY + id) : null; if (hit) return json(Object.assign(JSON.parse(hit), { cached: true }), 200, origin, env); } catch (e) { excQuiet('brand_cache')(e); }
+  const tracks = await loadTracks(env), t = tracks.find(x => String(x.id).toLowerCase() === id);
+  if (!t) return json({ ok: false, error: 'not_tracked' }, 200, origin, env);
+  const out = await brandRoom(env, t, tracks);
+  // Kept six hours when it was measured on the sweep, or when the name cannot be measured at all; a failed or unknown read is not kept.
+  if (env.RATE_LIMIT && out.sweep && !out.partial && (out.coverage || !out.measurable)) { try { await env.RATE_LIMIT.put(BRAND_ROOM.KEY + id, JSON.stringify(out), { expirationTtl: BRAND_ROOM.TTL }); } catch (e) { excQuiet('brand_cache_put')(e); } }
+  return json(out, 200, origin, env);
 }
 async function excavateTrackAdd(request, env, origin) {
   const user = await authenticate(request, env);
@@ -7767,9 +8105,11 @@ const COHORTS = [
 ];
 async function audiencesRefresh(env) {
   const d30 = new Date(Date.now() - 30 * 864e5).toISOString(); const out = {};
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE
+  let last = {}; try { last = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.AUD_KEY)) || 'null') || {}).cohorts || {}; } catch (e) { last = {}; }   // a count that fails keeps the last good one
   for (const c of COHORTS) {
     try {
-      const fetched = await sbRest(env, 'signals?select=id,title,url,source_name,source_tier,territory,captured_at,published_at,image,momentum&' + ilikeOr(c.terms) + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=120') || [];
+      const fetched = await sbRest(env, 'signals?select=id,title,url,source_name,source_tier,territory,captured_at,published_at,image,momentum&' + ilikeOr(c.terms) + sw + '&captured_at=gte.' + d30 + '&order=captured_at.desc&limit=120') || [];
       // SEAM:LAKE_TRUTH: mentions by the date each row speaks for; live captures without a date do not count.
       const rows = fetched.filter(r => { const w = lakeWhen(r); return w && Date.parse(w) >= Date.parse(d30); });
       const terr = {}; const src = {};
@@ -7778,10 +8118,89 @@ async function audiencesRefresh(env) {
         top_territories: Object.entries(terr).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => ({ territory: k, n: v })),
         top_sources: Object.entries(src).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => ({ source: k, n: v })),
         latest: rows.slice(0, 3).map(r => ({ title: r.title, url: r.url, source_name: r.source_name, published_at: r.published_at || r.captured_at, image: r.image })) };
-    } catch (e) { out[c.key] = { label: c.label, mentions_30d: 0, outlets: 0, top_territories: [], top_sources: [], latest: [] }; }
+    } catch (e) { out[c.key] = Object.assign({ label: c.label, mentions_30d: 0, outlets: 0, top_territories: [], top_sources: [], latest: [] }, last[c.key] || {}, { failed: true }); }
   }
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put(FEED.AUD_KEY, JSON.stringify({ at: new Date().toISOString(), cohorts: out }), { expirationTtl: 3 * 86400 }).catch(() => {});
-  return { cohorts: COHORTS.length };
+  const ledgered = await ledgerPut(env, 'cohort', COHORTS.filter(c => out[c.key] && !out[c.key].failed).map(c => ({ subject_key: 'cohort:' + c.key, kind: 'cohort', week: ledgerWeek(), title: c.label,
+    data: { mentions_30d: (out[c.key] || {}).mentions_30d || 0, outlets: (out[c.key] || {}).outlets || 0, top_territories: (out[c.key] || {}).top_territories || [], sweep: !!sw } })));   // SEAM:LEDGER
+  return { cohorts: COHORTS.length, ledgered };
+}
+/* ═══ SEAM:PEOPLE: the people behind this week's subjects, in their own words. GET /excavate/people (public; one copy an hour).
+ * The voices the board's subjects gathered (each subject's pool, kept on its door row) and the monthly report's, grouped by what
+ * the speakers said about themselves: their generation, their role (a parent, a nurse, a student). Never a RECON's. A group
+ * stands once PEOPLE.FLOOR people have spoken (the floor law's number); below it, from PEOPLE.EARLY, it is an early read and says
+ * so. Each group carries how many spoke, the subjects they spoke to and their most liked words, verbatim, with no name, handle,
+ * platform or link. The groups' counts go in the ledger each week (cohort:self:<key>). ═══ */
+// The counts are comments, not people: a comment carries no name, by design, so two comments by one person count twice. FLOOR and
+// EARLY are counts of comments, and the page says so.
+const PEOPLE = { KEY: 'people:v2', TTL: 3600, FLOOR: 25, EARLY: 5, QUOTES: 3, SUBJECTS: 4 };
+// The roles voiceSelf gives (VOICE_RE.role): a nurse, a doctor or a dermatologist is a practitioner there.
+const PEOPLE_GEN_PLURAL = { Millennial: 'Millennials', Boomer: 'Boomers' };   // a group is named as people say it: Millennials, Gen Z
+const PEOPLE_ROLE_PLURAL = { parent: 'Parents', practitioner: 'Practitioners', teacher: 'Teachers', student: 'Students', stylist: 'Stylists', 'retail worker': 'Retail workers' };
+// PURE: who a quote's speaker says they are, as group keys.
+function peopleKeys(self) {
+  const s = self || {}, out = [];
+  if (s.generation) out.push({ key: 'gen:' + String(s.generation).toLowerCase().replace(/[^a-z]+/g, '_'), label: PEOPLE_GEN_PLURAL[s.generation] || String(s.generation), kind: 'generation' });
+  if (s.role) { const r = String(s.role).toLowerCase(); out.push({ key: 'role:' + r.replace(/[^a-z]+/g, '_'), label: PEOPLE_ROLE_PLURAL[r] || (r.charAt(0).toUpperCase() + r.slice(1) + (/s$/.test(r) ? '' : 's')), kind: 'role' }); }
+  return out;
+}
+// PURE: the groups. quotes: [{ text, likes, when, self, on }].
+function peopleGroups(quotes) {
+  const by = new Map(), seen = new Set();
+  let heard = 0, described = 0;
+  for (const q of quotes || []) {
+    if (!q || !q.text) continue;
+    const k0 = String(q.text).toLowerCase(); if (seen.has(k0)) continue; seen.add(k0);
+    heard++;
+    const keys = peopleKeys(q.self); if (keys.length) described++;
+    for (const k of keys) {
+      const g = by.get(k.key) || { key: k.key, label: k.label, kind: k.kind, n: 0, board: 0, report: 0, likes: 0, subjects: {}, quotes: [] };
+      g.n++; if (q.from === 'report') g.report++; else g.board++; g.likes += q.likes || 0; if (q.on) g.subjects[q.on] = (g.subjects[q.on] || 0) + 1;
+      g.quotes.push({ text: q.text, likes: q.likes || 0, when: q.when || null, self: q.self || null, on: q.on || null });
+      by.set(k.key, g);
+    }
+  }
+  const groups = [...by.values()].map(g => {
+    const qs = g.quotes.sort((a, b) => (b.likes || 0) - (a.likes || 0)), picked = [], ons = new Set();
+    for (const q of qs) { if (picked.length >= PEOPLE.QUOTES) break; if (q.on && ons.has(q.on) && qs.some(x => x.on && !ons.has(x.on) && !picked.includes(x))) continue; picked.push(q); if (q.on) ons.add(q.on); }
+    for (const q of qs) { if (picked.length >= PEOPLE.QUOTES) break; if (!picked.includes(q)) picked.push(q); }
+    return { key: g.key, label: g.label, kind: g.kind, n: g.n, board: g.board, report: g.report, likes: g.likes, stands: g.n >= PEOPLE.FLOOR,
+      subjects: Object.entries(g.subjects).sort((a, b) => b[1] - a[1]).slice(0, PEOPLE.SUBJECTS).map(([on, n]) => ({ on, n })), quotes: picked };
+  }).filter(g => g.n >= PEOPLE.EARLY).sort((a, b) => b.n - a.n || b.likes - a.likes);
+  return { heard, described, groups };
+}
+// The comments the people are counted on: every board subject's gathered comments (its six when it has no pool), each naming its
+// subject, then the latest monthly report's. Either read failing throws: a partial count is never shown, kept or written down.
+async function peopleQuotes(env, door) {
+  const tiles = ((door && door.tiles) || []).filter(t => t && t.id), quotes = [];
+  const rows = tiles.length ? (await sbRest(env, 'door_reads?id=in.(' + tiles.map(t => t.id).join(',') + ')&select=id,voices:meta->voices,pool:meta->voices_pool')) || [] : [];
+  const on = new Map(tiles.map(t => [t.id, t.label || t.title || null]));
+  for (const r of rows) for (const v of ((Array.isArray(r.pool) && r.pool.length ? r.pool : r.voices) || [])) if (v && v.text) quotes.push({ text: v.text, likes: v.likes || 0, when: v.when || null, self: v.self || null, on: on.get(r.id) || null, from: 'board' });
+  // only the report's comments travel, never the rest of its pack
+  const reps = await sbRest(env, 'house_reads?kind=eq.report&status=in.(ready,published)&select=voices:meta->pack->voices->quotes&order=updated_at.desc&limit=1') || [];
+  for (const r of reps) for (const q of (Array.isArray(r.voices) ? r.voices : [])) if (q && q.text && !voiceShareOf(q) && !readIsThen(readBandOf(q)) && voiceDisplay(q.text).length >= VOICES.MIN) quotes.push({ text: voiceDisplay(q.text).slice(0, 420), likes: q.likes || 0, when: q.when ? String(q.when).slice(0, 10) : null, self: q.self || null, on: null, from: 'report' });
+  return { quotes, subjects: tiles.length };
+}
+async function excavatePeople(env, origin) {
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(PEOPLE.KEY) : null; if (hit) return json(Object.assign(JSON.parse(hit), { cached: true }), 200, origin, env); } catch (e) { excQuiet('people_cache')(e); }
+  const door = await doorSet(env);
+  let q = null; if (door && door.night) { try { q = await peopleQuotes(env, door); } catch (e) { console.log('people_rows', String(e && e.message).slice(0, 60)); } }
+  if (!q) return json({ ok: false, error: 'not_ready' }, 200, origin, env);   // no board to count against, or a read failed: nothing shown or kept
+  const g = peopleGroups(q.quotes);
+  const out = { ok: true, night: (door && door.night) || null, computed_at: new Date().toISOString(), heard: g.heard, described: g.described, floor: PEOPLE.FLOOR, early: PEOPLE.EARLY, subjects: q.subjects, groups: g.groups };
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(PEOPLE.KEY, JSON.stringify(out), { expirationTtl: PEOPLE.TTL }); } catch (e) { excQuiet('people_put')(e); } }
+  return json(out, 200, origin, env);
+}
+// SEAM:LEDGER: the groups' counts for the board's week, written once a day after the board's pass and after a fresh gather of
+// comments (never on a visitor's call, never per landed read). Without a board, or when a read fails, nothing is written and the
+// week's last good row stands. A group below EARLY this time keeps no row.
+async function peopleLedger(env, door) {
+  if (!door || !door.night) return 0;
+  const week = ledgerWeek(door.night); if (!week) return 0;
+  let q = null; try { q = await peopleQuotes(env, door); } catch (e) { console.log('people_ledger', String(e && e.message).slice(0, 60)); return 0; }
+  const g = peopleGroups(q.quotes);
+  return ledgerPut(env, 'cohort', g.groups.map(x => ({ subject_key: 'cohort:self:' + x.key, kind: 'cohort', week, title: x.label,
+    data: { n: x.n, board: x.board, report: x.report, stands: x.stands, likes: x.likes, subjects: x.subjects, heard: g.heard, described: g.described } })));
 }
 async function excavateAudiences(env, origin) {
   let j = null; try { j = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.AUD_KEY)) || 'null'); } catch (e) {}

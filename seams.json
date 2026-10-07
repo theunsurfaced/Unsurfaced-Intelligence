@@ -360,7 +360,7 @@
   "SEAM:MOAT_1@arrival": {
    "file": "intelligence/index.html",
    "tag": "SEAM:MOAT_1",
-   "purpose": "LAKE SIGNAL block above the modeled chart on brand dashboards, badged COMPUTED — not modeled, with its timestamp; thin lake says 'not enough to measure yet'; failures render nothing; both excavateBrand branches fire the load"
+   "purpose": "retired on the page in EX19: the brand dashboard and its LAKE SIGNAL block are gone; a brand's measured weeks live in its room (SEAM:BRAND_ROOM). The tag stays as the marker of where it stood; the worker's /excavate/brand-signal stays for the reads that call it"
   },
   "SEAM:DASH_READ": {
    "file": "intelligence/index.html",
@@ -598,7 +598,7 @@
   "SEAM:TRACKS@page": {
    "file": "intelligence/index.html",
    "tag": "SEAM:TRACKS",
-   "purpose": "Brands page inverted: emerging on tracked brands first, then tracks as computed cards, add-a-track form; _BRAND_DATA retired; TRACK THIS on the read"
+   "purpose": "Brands is the brands we watch (EX19): each a card with its twelve weeks counted on the sweep, 7 days, 30 days and outlets (with floors), or plainly not counted yet, or a name too short to count; a room per brand (SEAM:BRAND_ROOM); watch a brand we do not follow; the emerging list (the board's stories twice) is gone"
   },
   "SEAM:AUDIENCES": {
    "file": "worker/src/index.js",
@@ -607,7 +607,7 @@
   "SEAM:AUDIENCES@page": {
    "file": "intelligence/index.html",
    "tag": "SEAM:AUDIENCES",
-   "purpose": "Audiences page on evidence: cohort cards with outlet mention counts, detail with sourced dated coverage, honest empty state, Census and MINE stated as the only rails for a baseline or a percentage; _AUD_DATA retired"
+   "purpose": "Audiences is the people behind the board's subjects (EX19, SEAM:PEOPLE): groups by what speakers say about themselves, a group standing at 25 comments, early reads below it, words as written; the cohort keyword counts stay in the API and the ledger, off the page"
   },
   "SEAM:BACKFILL": {
    "file": "worker/src/index.js",
@@ -1058,6 +1058,50 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_THINK",
    "purpose": "a RECON thought through, on the page and in the PDF: the decisions answered after the answer; what we tested (supported, broken, still open) after the findings; the market after for the brief (a driver with no figure says not measured); the response map after the competitive sets; three futures with signposts, the concept territories with their drawings labeled imagined, the product concepts with a first test and the first 90 days before the outlook; the data appendix (every count the worker made and every source read in full) before the sources. The evidence file shows the four passes and their lines on the receipt; the library shows each pass and its wait; the sell line names unanswered decisions, unjudged expectations and a missing plan."
+  },
+  "SEAM:SWEEP_MEASURE": {
+   "file": "worker/src/index.js",
+   "purpose": "measuring and finding are separate jobs (EX18b): signals.research (migration 0038) marks a row a search brought in (EXCAVATE live reads and gathers, a RECON's gathers and counter searches); the board's recurrence, tracked-brand and cohort counts, a read's measures and DAILY's picks read research = false only; every row stays findable and usable as evidence; a sweep capture that finds a research row first flips it to the sweep; until the column exists the worker counts as before and logs once"
+  },
+  "SEAM:DOOR_VOICES": {
+   "file": "worker/src/index.js",
+   "purpose": "each subject on the board gathers its own voices on the weekly door pass (YouTube comments under the month's videos, Mastodon posts), kept by the voice laws, at most six a subject and two a video, on door_reads.meta.voices and the tile; the arrival's band quotes the subjects one at a time, then the monthly report; never a RECON (its quotes and name belong to whoever commissioned it); a quote carries words, likes, date, self-description and its subject only; the desk's {run: voices} gathers them without a new read; extras cached under door:extras:v3"
+  },
+  "SEAM:DOOR_VOICES@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:DOOR_VOICES",
+   "purpose": "the band renders under its own name (_renderDoorVoices), credits a speaker by generation or as Consumer, never by platform, and names the subject each quote speaks to"
+  },
+  "SEAM:LEDGER": {
+   "file": "worker/src/index.js",
+   "purpose": "EXCAVATE remembers what it posts: subject_weeks (migration 0038), one row per subject per week; the board (feed warm: place, state, measures, week series, the week's read as field:week), the door (publish: place, claim, move, question, voice counts), tracked brands and cohorts (their refreshes) each own a column; merge per week, never deleted; figures as computed (sampled) with a sweep flag until EX19 counts exactly"
+  },
+  "SEAM:LIBRARY": {
+   "file": "intelligence/index.html",
+   "purpose": "Reports and Deploy retire (the generator wrote from three keyless sources behind an animated bar; Deploy seeded a queue of deliverables nobody made); the Library in the room's design shows every Weekly Read and Cultural Intelligence Report from the stand's public lists with their own covers, and a signed-in admin's RECONs from /reads/list; the old doors lead to it; Brands' emerging list (the board's stories shown twice) is gone"
+  },
+  "SEAM:LIBRARY@stand": {
+   "file": "weekly/index.html",
+   "tag": "SEAM:LIBRARY",
+   "purpose": "the Library's report card lands on the report: with #report in the address the stand scrolls to it once the report list renders"
+  },
+  "SEAM:BRAND_ROOM": {
+   "file": "worker/src/index.js",
+   "purpose": "GET /excavate/brand?id= (public, six hours, kept only when measured on the sweep): twelve rolling weeks of a tracked brand's coverage counted on the sweep (stories and outlets; a read that hits its 1,000-row limit marks the weeks it could not see as unknown, never zero, and its counts as floors), the latest stories (never one dated after tomorrow), the tracked brands in its sector on the same daily count (most covered first; a brand not yet counted carries nulls), the brand's own row on that count, thirty-six months of its Wikipedia views and up to two rivals' (an article counts only when it names the brand's trade, never just its name; cached a week under the rivals read), the board's reading and voices when it stands on the board, the ledger's weeks; an unknown sweep counts nothing (fails closed); tracksRefresh counts twelve weeks, outlets and floors for every track and keeps the last count when the sweep is unknown; ilikeOr matches names as words and never everything; loadTracks reads the description, image and KG id (KG resolved once)"
+  },
+  "SEAM:BRAND_ROOM@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:BRAND_ROOM",
+   "purpose": "the brands as cards in the room's design with their twelve-week pulse (from the first week counted), a search on names and aliases that opens a room or offers to watch, and the room at its own address (#brand=<id>; Back closes it, entry opens it): stat tiles with floors, the board's reading with its voices, a column chart of twelve weeks (24px columns, 4px rounded tops, tooltip on every column, a week not counted says so, the numbers in a table), a three-year line chart of views against up to two rivals (validated palette, legend, end labels that never collide, crosshair with keyboard steps, table), the set on the same daily count, the latest stories, the record and a RECON commission; phones draw the charts on a 400-wide canvas; only a brand id reaches a handler"
+  },
+  "SEAM:PEOPLE": {
+   "file": "worker/src/index.js",
+   "purpose": "GET /excavate/people (public, an hour): the comments the board's subjects gathered (each subject's pool on its door row, forty at most, fifteen from one video) and the latest monthly report's, grouped by generation and role from what speakers said about themselves; counts are comments, not people; a group stands at 25 comments, early from 5; most liked words verbatim with their subject; never a RECON's; a failed read is never shown, kept or written down; the groups' counts go in the ledger when the board is published (peopleLedger from doorPublish, cohort:self:<key>), never on a visitor's call"
+  },
+  "SEAM:PEOPLE@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PEOPLE",
+   "purpose": "Audiences in the room's design: the figures (comments read, said who wrote them, groups standing, subjects), standing groups as cards with their comment counts, subjects and words, early reads as rows, a plain note on where the comments come from, how old they can be and that the counts are comments, not people (no platform credited)"
   }
  },
  "planned": [

@@ -32,23 +32,34 @@ ok(/question: \(rd && rd\.question\) \|\| f\.question \|\| null,/.test(w) && /ph
 // SEAM:VOICE_LAW, SEAM:READ_TIME: the extras read voices through the voice helpers and the time bands
 const voiceSrc = w.slice(w.indexOf('const VOICES = {'), w.indexOf('function voiceOnFrame(')) + w.slice(w.indexOf('function stripHtml('), w.indexOf('function hintsOf('));
 const bandSrc = w.slice(w.indexOf('function readBandOf('), w.indexOf('/* PURE: the date on a voice line'));
-const extrasSrc = voiceSrc + bandSrc + w.slice(w.indexOf('const DOOR_EXTRAS = {'), w.indexOf('async function doorPublish('));
+const extrasSrc = voiceSrc + bandSrc + w.slice(w.indexOf('const DOOR_VOICES = {'), w.indexOf('/* The voices alone, for the tiles standing now')) + w.slice(w.indexOf('const DOOR_EXTRAS = {'), w.indexOf('async function doorPublish('));
 let calls = [];
 const sbRest = async (env, path) => { calls.push(path);
-  if (path.startsWith('house_reads?kind=in.(report,recon)')) return [{ id: 14, kind: 'report', label: 'Issue 001', meta: { pack: { voices: { quotes: [{ text: 'the quiet one says little', source: 'youtube', likes: 3 }, { text: 'the loud one says a lot', source: 'mastodon', likes: 90, when: '2026-09-30T10:00:00Z', self: { generation: 'Gen Z' } }, { text: 'the loud one says a lot', source: 'youtube', likes: 5 },
+  if (path.startsWith('house_reads?kind=eq.report&')) return [{ id: 14, kind: 'report', label: 'Issue 001', meta: { pack: { voices: { quotes: [{ text: 'the quiet one says little', source: 'youtube', likes: 3 }, { text: 'the loud one says a lot', source: 'mastodon', likes: 90, when: '2026-09-30T10:00:00Z', self: { generation: 'Gen Z' } }, { text: 'the loud one says a lot', source: 'youtube', likes: 5 },
     { text: 'an old voice from years before the period', source: 'youtube', likes: 4000, when: '2014-04-16', band: 'earlier' }, { text: 'The law will not save us | Jonathan Liew theguardian.com/commentisfree/2026/aug/31/x', source: 'mastodon', likes: 500 }] } } } }];
+  if (/house_reads\?kind=[^&]*recon/.test(path)) return [{ id: 18, kind: 'recon', label: 'RECON 001: a client topic', meta: { pack: { voices: { quotes: [{ text: 'a quote from a client brief', likes: 9999 }] } } } }];
   if (path.startsWith('cluster_calls?')) return [{ cluster_id: 'c1', state: 'EMERGING', called_at: '2026-09-14T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'converted' }, { cluster_id: 'c2', state: 'EMERGING', called_at: '2026-09-07T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'faded' }, { cluster_id: 'c3', state: 'ACCELERATING', called_at: '2026-09-28T00:00:00Z', resolved_at: null, outcome: null }, { cluster_id: 'c9', state: 'EMERGING', called_at: '2026-09-20T00:00:00Z', resolved_at: null, outcome: null }];
   return []; };
 let kv = {}; const env = { RATE_LIMIT: { get: async k => kv[k] || null, put: async (k, v) => { kv[k] = v; } } };
-const X = new Function('sbRest', extrasSrc + '; return { doorExtras, DOOR_EXTRAS };')(sbRest);
-const ex = await X.doorExtras(env, [{ cluster_id: 'c1', title: 'Presales clear first' }, { cluster_id: 'c2', title: 'Ad fatigue cancels' }, { cluster_id: 'c3', title: 'Proximity pricing spreads' }]);
-ok(ex.voices.length === 2 && ex.voices[0].text === 'the loud one says a lot' && ex.voices[0].likes === 90 && ex.voices[0].self.generation === 'Gen Z' && ex.voices[0].when === '2026-09-30' && !ex.voices.some(v => v.name || v.handle || v.url),
-  'X1 voices: the latest report\'s quotes, most liked first, deduplicated by text, carrying only likes, date, source and what the speaker said about themselves; a shared headline and a voice from before the period never reach the arrival');
+const X = new Function('sbRest', 'excQuiet', 'RAIL_FNS', 'RAIL_BY_ID', extrasSrc + '; return { doorExtras, DOOR_EXTRAS, doorBand, DOOR_VOICES };')(sbRest, () => () => null, {}, {});
+const door = { tiles: [
+  { label: 'Smart glasses', voices: [{ text: 'I wear mine every day at work', likes: 40, when: '2026-10-01', self: { role: 'nurse' } }, { text: 'the battery dies by lunch', likes: 12, when: '2026-10-02', self: null }] },
+  { label: 'Curl care', voices: [{ text: 'my 4c hair finally has a shelf', likes: 70, when: '2026-09-29', self: { generation: 'Gen Z', trait: '4c hair' } }] },
+  { label: 'No voices yet', voices: [] }] };
+const ex = await X.doorExtras(env, [{ cluster_id: 'c1', title: 'Presales clear first' }, { cluster_id: 'c2', title: 'Ad fatigue cancels' }, { cluster_id: 'c3', title: 'Proximity pricing spreads' }], door);
+ok(ex.voices.map(v => v.text).join('|') === 'I wear mine every day at work|my 4c hair finally has a shelf|the battery dies by lunch|the loud one says a lot|the quiet one says little'
+   && ex.voices[0].on === 'Smart glasses' && ex.voices[1].on === 'Curl care' && ex.voices[3].on === null && ex.voices[3].self.generation === 'Gen Z' && ex.voices[3].when === '2026-09-30',
+  'X1 the band quotes the board\'s own subjects one at a time, each naming the subject it speaks to, then the monthly report\'s most liked; deduplicated by text; a shared headline and a voice from before the period never reach the arrival');
+ok(!calls.some(c => /recon/.test(c)) && !ex.voices.some(v => /client brief/.test(v.text)) && ex.voices.every(v => Object.keys(v).sort().join(',') === 'likes,on,self,text,when'),
+  'X1b never a RECON: the band never asks for one, and a quote carries only its words, likes, date, what the speaker said about themselves and its subject; no platform, no handle, no link, no read\'s name');
 ok(ex.record.counts.confirmed === 1 && ex.record.counts.missed === 1 && ex.record.counts.open === 2 && ex.record.confirmed[0].title === 'Presales clear first' && ex.record.missed[0].called === '2026-09-07' && ex.record.open.length === 1,
   'X2 record: calls over 90 days as confirmed, missed and open, named by the feed\'s theme titles; an unnamed call is counted, not shown');
-calls = []; const again = await X.doorExtras(env, []);
-ok(calls.length === 0 && again.voices.length === 2 && X.DOOR_EXTRAS.TTL === 3600, 'X3 the extras are cached an hour in KV: the second call reads nothing from the database');
-ok(/const extras = await doorExtras\(env, out\.proposed\);/.test(w) && /voices: extras\.voices, record: extras\.record \}/.test(w), 'X4 the public feed carries voices and record');
+calls = []; const again = await X.doorExtras(env, [], null);
+ok(calls.length === 0 && again.voices.length === 5 && X.DOOR_EXTRAS.TTL === 3600 && X.DOOR_EXTRAS.KEY === 'door:extras:v3', 'X3 the extras are cached an hour in KV under a new key (the old one held RECON quotes): the second call reads nothing from the database');
+ok(/const extras = await doorExtras\(env, out\.proposed, door\);/.test(w) && /voices: extras\.voices, record: extras\.record \}/.test(w), 'X4 the public feed carries voices and record, the board\'s tiles passed in');
+const many = { tiles: Array.from({ length: 5 }, (_, i) => ({ label: 'S' + i, voices: Array.from({ length: 6 }, (_, j) => ({ text: 'v' + i + '-' + j + ' long enough', likes: 10 - j })) })) };
+const band = X.doorBand(many.tiles, []);
+ok(band.length === X.DOOR_VOICES.BAND && band.slice(0, 5).map(v => v.on).join(',') === 'S0,S1,S2,S3,S4' && band[5].on === 'S0', 'X5 twelve quotes at most, one subject at a time, so no subject fills the band');
 
 // ── P ─────────────────────────────────────────────────────────────────
 const arrival = page.slice(page.indexOf('<section class="hero">'), page.indexOf('<!-- RESULTS PANEL -->'));
@@ -59,7 +70,7 @@ ok(/id="week-block"/.test(arrival) && /id="week-movers"/.test(arrival) && /id="b
   'P3 the five movements mount in order and the engine\'s mount points keep their ids');
 const visible = arrival.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');
 ok(!/\b(signal|signals|lake|overnight|frame|frames)\b/i.test(visible) && !/Featured Insights|Trending Now|THE READ · FROM THE LAKE/.test(arrival), 'P4 no machinery word in the arrival\'s visible copy; the old headers are gone');
-ok(/function _renderWeek\(data\)/.test(page) && /function _renderVoices\(voices\)/.test(page) && /function _renderRecord\(record\)/.test(page) && /function _pulse\(series\)/.test(page) && /function _drawPulses\(\)/.test(page) && /function _countUp\(el, from, to, ms\)/.test(page) && /_renderWeek\(data\); _renderVoices\(data\.voices\); _renderRecord\(data\.record\);/.test(page),
+ok(/function _renderWeek\(data\)/.test(page) && /function _renderDoorVoices\(voices\)/.test(page) && /function _renderRecord\(record\)/.test(page) && /function _pulse\(series\)/.test(page) && /function _drawPulses\(\)/.test(page) && /function _countUp\(el, from, to, ms\)/.test(page) && /_renderWeek\(data\); _renderDoorVoices\(data\.voices\); _renderRecord\(data\.record\);/.test(page),
   'P5 the week, the voices and the record render on every feed; the pulses draw once and the movers count');
 // the hybrid board: the movers lead as cards, the rest follow as rows; the first screen carries the invitation and the week's read
 const orderSrc = page.slice(page.indexOf('function _doorLeads()'), page.indexOf('function _renderDoorRow(t)'));

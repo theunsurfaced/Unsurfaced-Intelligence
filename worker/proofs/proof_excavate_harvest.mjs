@@ -161,6 +161,8 @@ const doorSrc = between(w, 'const DOOR = { WANT: 12', 'async function excavateFe
 const kv = {}, table = [], patches = [], batch = [], upserts = [];
 let nextId = 1;
 const D = new Function('feedCacheKey', 'feedWarm', 'loadTracks', 'FEED', 'sbRest', 'ilikeOr', 'excStampTiers', 'excRelevance', 'excReadPages', 'excBudget', 'excKey', 'excWhen', 'excLine', 'excFrameBlock', 'excMeasureLine', 'excFrameClean', 'excFrameFor', 'excMeasures', 'excTiersLoad', 'excTier', 'excBand', 'excGround', 'excEarned', 'excClip', 'excShort', 'excWindow', 'excReadOf', 'excFrameLabel', 'claudeBatchSubmit', 'claudeSpent', 'claudeCap', 'EXC_MODEL', 'EXC_VOICE_SYS', 'EXC_MOVE_LAW', 'EXC_TIME_LAW', 'EXC_NUMBER_LAW', 'RAIL_FNS', 'RAIL_BY_ID', 'excRailQuery', 'excQuiet', 'logEvent', 'excavateAuth', 'json', 'CLAUDE',
+  "const doorVoices = async (env, cand) => (!globalThis.__voiceNight && cand && cand.key === 'theme:th1' ? [{ text: 'night one voice', likes: 3, when: null, self: null }] : []); const DOOR_VOICES = { KEEP: 6, PASS_MS: 120000, FRESH_D: 90 }; const doorVoicePick = q => (q || []).slice(0, 6); const ledgerPut = async () => 0; const ledgerDoorRows = () => []; const peopleLedger = async () => 0;\n" +   // EX18b: the voices (gathered the first night only) and the ledger; both are proved in full in proof_sweep_ledger
+  between(w, '// PURE: what a subject keeps:', '/* The voices alone') +
   doorSrc + '; return { doorCandidates, doorEvidence, doorStamp, doorPass, doorLand, doorPublish, doorTile, doorCompileRead, excDoorPrompt, DOOR, doorEvery };')(
   () => 'prop', async () => ({ proposed: [{ cluster_id: 'th1', title: 'Texture-first shelves', subtitle: 'Who wins the curl aisle?', query: 'curl hair care shelf', lens: 'market', evidence: { recent_7d: 9, territories: ['fashion-beauty'] } }, { cluster_id: 'th2', title: 'Quiet theme', subtitle: '', lens: 'culture', evidence: { recent_7d: 1 } }] }),
   async () => [{ id: 'tr1', name: 'Nike', aliases: ['NKE'], sector: 'Athletic footwear' }], { TRACKS_KEY: 'tracks:stats' },
@@ -226,10 +228,13 @@ const night2 = (new Date(Date.now() + day)).toISOString().slice(0, 10);
 const realNight = D.doorPass; void realNight;
 // Shift the night by stubbing Date-independent reuse: run the pass again on the same night is an upsert; so simulate by moving row nights back one day.
 table.forEach(r => { r.night = '2000-01-01'; });
+globalThis.__voiceNight = 1;   // the second night's gather comes back empty
 const out2 = await D.doorPass(env);
 q8.done();
 ok(out2.reused === 1 && out2.queued === 1 && table.filter(r => r.status === 'reused').length === 1 && table.find(r => r.status === 'reused').read.read[0].startsWith('Texture-first') && table.find(r => r.status === 'reused').meta.prev_night === '2000-01-01',
   'D6 the next night, a frame whose evidence did not move keeps its read without a model call; the one that was never written is asked again');
+ok(table.find(r => r.frame_key === 'theme:th1' && r.night === '2000-01-01').meta.voices[0].text === 'night one voice' && table.find(r => r.status === 'reused').meta.voices[0].text === 'night one voice',
+  'D6v a subject whose voices come back empty the next night keeps the ones it had (SEAM:DOOR_VOICES)');
 const upN = upserts.length, batchN = batch.length;
 const q8b = quiet();
 const out3 = await D.doorPass(env);

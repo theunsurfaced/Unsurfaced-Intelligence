@@ -12,6 +12,7 @@ Checks:
   5. Quote scan       curly quotes in importmap/JSON script blocks (silent killers)
   5c. Stacking law   every z-index on intelligence/index.html is a --z-* token
   5d. Content law    no hand-typed content pools render on intelligence/index.html
+  5e. One name        no page declares the same top-level function twice
   6. Seam registry    every registered seam exists; every SEAM: tag is registered
   7. Voice law        no em dash in any worker string literal (glyph or escape)
   8. Swallow ratchet  empty catches may only go down
@@ -133,11 +134,27 @@ if os.path.exists(_zf):
 _cf = "intelligence/index.html"
 if os.path.exists(_cf):
     _cs = load(_cf)
-    _cbad = [n for n in ("_TRENDING_POOL", "_AUD_DATA", "_BRAND_DATA", "_seedInitialReports(") if n in _cs]
+    _cbad = [n for n in ("_TRENDING_POOL", "_AUD_DATA", "_BRAND_DATA", "_seedInitialReports(", "_AUD_CATS", "_AUD_MEDIA", "_AUD_DRIVERS", "_depStore") if n in _cs]   # EX18b: invented percentages and a seeded deploy queue
     _cbad += [m.group(0) for m in re.finditer(r"const _[A-Z_]+_POOL\s*=\s*\[\s*\{", _cs)]
     if _cbad:
         FAIL.append(f"[content] {_cf}: hand-typed pools present: {_cbad[:4]}")
     print(f"  content {_cf}: {len(_cbad)} typed pools")
+
+# ── 5e. One name, one function (every surface) ──────────────────────────
+# Two top-level declarations of one function in a page's classic scripts:
+# the later one wins everywhere, silently. EX15's door band took the name
+# of the custom read's voices and broke every custom read's render (EX18b).
+for f in surfaces:
+    _seen = {}
+    for _attrs, _body in re.findall(r"<script([^>]*)>(.*?)</script>", load(f), re.S):
+        if any(k in _attrs for k in ("src=", "module", "json", "importmap", "octet-stream")):
+            continue
+        for _fn in re.findall(r"^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(", _body, re.M):
+            _seen[_fn] = _seen.get(_fn, 0) + 1
+    _dup = sorted(k for k, v in _seen.items() if v > 1)
+    if _dup:
+        FAIL.append(f"[dup] {f}: functions declared twice (the later wins): {_dup[:5]}")
+print(f"  dup     {len(surfaces)} surfaces scanned")
 
 # ── 6. Seam registry (surfaces + worker source) ──────────────────────────
 found = {}  # (file, tag) presence
@@ -172,7 +189,7 @@ for f in worker_js:
 # An empty catch hides a failure. Some are deliberate (logging must never
 # break a request), so the count is not zero; it can only go down. Lower
 # SWALLOW_CEILING whenever a cut removes some.
-SWALLOW_CEILING = 125
+SWALLOW_CEILING = 124
 for f in worker_js:
     _s = load(f)
     _sw = len(re.findall(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}", _s)) + len(re.findall(r"\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\{\s*\}|null|undefined|\[\]|''|false)\s*\)", _s))

@@ -32,5 +32,5 @@ ok(card.indexOf('class="card-img"') < card.indexOf('fi-state-tag') && card.index
 ok(/has-img/.test(card) && /\.insight-card\.has-img::after\{display:none\}/.test(page) && /\.insight-card\.has-img \.fi-state-tag\{background:rgba\(8,8,10,\.82\);z-index:var\(--z-raise\)\}/.test(page), 'P2 the tag rides on a dark plate; the corner ornament steps aside');
 ok(/k\.classList\.remove\('has-img'\)/.test(card), 'P3 a photo that fails returns the tile to its text layout');
 ok(/\$\{safe\(card\.title\)\}/.test(card), 'P4 tile titles are escaped');
-ok(/_FI_CACHE_KEY  = 'unsurfaced_fi_v5'/.test(page), 'P5 the grid cache moves on (v5: the overnight door): visitors see the new grid now');
+ok(/_FI_CACHE_KEY  = 'unsurfaced_fi_v6'/.test(page) && /localStorage\.removeItem\('unsurfaced_fi_v5'\)/.test(page), 'P5 the grid cache moves on (v6: the band never carries a RECON\'s quotes; v5 is dropped): visitors see the new grid now');
 console.log(`\nproof_excavate_arrival: ${pass} checks PASS`);

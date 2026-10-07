@@ -843,7 +843,8 @@ function loadReports() {
   $('r-relink').addEventListener('submit', reportRelink);
   fetch(CONFIG.API_BASE + '/api/report/issues', { headers: { Accept: 'application/json' } })
     .then(function (x) { return x.json(); })
-    .then(function (j) { report.issues = (j && j.ok && Array.isArray(j.issues)) ? j.issues : []; report.issue = report.issues[0] || null; renderReport(); reportNotice(); reportReturn(); })
+    .then(function (j) { report.issues = (j && j.ok && Array.isArray(j.issues)) ? j.issues : []; report.issue = report.issues[0] || null; renderReport(); reportNotice(); reportReturn();
+      if (location.hash === '#report' && report.issue) setTimeout(function () { $('report').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); })   // SEAM:LIBRARY: the Library's report card lands on the report
     .catch(function () { report.issues = []; report.issue = null; renderReport(); });
 }
 
