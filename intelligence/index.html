@@ -403,6 +403,16 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .cm-trow a{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);text-decoration:none;white-space:nowrap;}
 .cm-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
 .cm-shelf-acts{display:flex;gap:8px;margin-top:10px;}
+
+/* SEAM:READ_FOLIO: the folio tray */
+.folio-pill{position:fixed;left:20px;bottom:20px;z-index:var(--z-menu);background:var(--surface);border:1px solid var(--accent);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;padding:10px 14px;cursor:pointer;text-transform:uppercase;}
+.folio-pill:hover{background:rgba(255,59,59,0.08);}
+.fo-cov{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);margin-top:8px;}
+.fo-cov b{color:var(--text);font-weight:700;}
+.fo-item{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--border);background:var(--surface2);padding:10px 12px;}
+.fo-item small{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}
+.fo-item span{font-size:13px;color:var(--text);line-height:1.45;}
+.fo-list{display:flex;flex-direction:column;gap:6px;}
 @media (max-width:720px){.cm-grid,.cm-depth{grid-template-columns:1fr;}}
 
 /* ── ERROR / TOAST ── */
@@ -2294,6 +2304,7 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
         <button class="btn-new-search" onclick="clearSearch()">← New Search</button>
         <button class="btn-export-pdf" onclick="exportToPDF()">↓ Download Report</button>
         <button class="btn-new-search" id="btn-make-recon" style="display:none" onclick="makeReconFromRead()">Make this a RECON</button><!-- SEAM:READ_COMMISSION -->
+        <button class="btn-new-search" id="btn-pin-read" style="display:none" onclick="pinLiveRead()">Pin to folio</button><!-- SEAM:READ_FOLIO -->
       </div>
     </div>
   </div>
@@ -2352,6 +2363,7 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
   <div class="modal-box"><button class="modal-close" onclick="closeModalDirect()">✕</button><div id="modal-content"></div></div>
 </div>
 <div class="toast" id="toast"></div>
+<button class="folio-pill" id="folio-pill" type="button" style="display:none" onclick="openFolio()">Folio · <span id="folio-n">0</span></button><!-- SEAM:READ_FOLIO -->
 <!-- SEAM:MEMORY: a subject's history, opened from any board tile or the track record -->
 <div class="tl-room" id="tl-room" role="dialog" aria-modal="true" aria-labelledby="tl-title" hidden>
   <div class="tl-inner"><button type="button" class="broom-back" onclick="closeTimeline()">&larr; Back to the board</button><div id="tl-body"></div></div>
@@ -3235,7 +3247,7 @@ function _renderLive(q, data){
   const items=(data&&data.items)||[];
   const syn=data&&data.synthesis;
   window._liveLast={ q, synthesis: syn||null };   // SEAM:READ_COMMISSION: Make this a RECON starts from the read on screen
-  _cmAdmin().then(a=>{ const b=document.getElementById('btn-make-recon'); if(b) b.style.display=a?'':'none'; });
+  _cmAdmin().then(a=>{ const b=document.getElementById('btn-make-recon'); if(b) b.style.display=a?'':'none'; const p=document.getElementById('btn-pin-read'); if(p) p.style.display=a?'':'none'; });   // SEAM:READ_FOLIO: Pin to folio beside it
   let insights, ideas, brief, synthd=false;
   if(syn && Array.isArray(syn.insights) && syn.insights.length){
     // SEAM:EXC_ACCURACY: confidence is what the compiler earned (corroboration weighed by tier), never the card's position;
@@ -4773,6 +4785,7 @@ function _cmPayload(st) {
     decisions: (st.decisions || []).map(d => String(d || '').trim()).filter(d => d.length >= 6).slice(0, 5),
     audience: f.audience || undefined, competitors: (f.competitors || []).slice(0, _CM_LIMIT.competitors) };
   if (st.depth !== 'draft') { body.budget = Number(st.budget) || 30; body.hold = !!st.hold; }
+  if (st.folio && st.folio.id) body.folio_id = st.folio.id;   // SEAM:READ_FOLIO: the folio is the ground
   return body;
 }
 /* PURE: what a tracker row says about where a RECON is. */
@@ -4822,6 +4835,7 @@ function _cmRender() {
     <h2 class="modal-title">Ask the house for a RECON</h2>
     <div class="modal-sub">THE FRAME FIRST, THEN THE SPEND</div>
     ${st.from ? `<div class="cm-note">From the read: ${_cmEsc(st.from)}</div>` : ''}
+    ${st.folio ? `<div class="cm-note">Ground: the folio ${_cmEsc(st.folio.title)} (${st.folio.n} item${st.folio.n === 1 ? '' : 's'}). Its lines lead the RECON; the lake and the research fill around them.</div>` : ''}
     <label class="cm-k">The brief</label>
     <textarea class="cm-ta" id="cm-brief" rows="4" maxlength="600" placeholder="What the client needs to know, in their terms: the brand or category, the people, the question." oninput="_cm.brief=this.value;document.getElementById('cm-count').textContent=this.value.length+' / 600'">${_cmEsc(st.brief)}</textarea>
     <div class="cm-row"><span class="cm-count" id="cm-count">${String(st.brief).length} / 600</span><span style="display:flex;gap:8px"><button class="cm-btn" type="button" onclick="openCommissionTrack()">Track RECONs</button><button class="cm-btn" type="button" onclick="_cmFrame()"${st.busy ? ' disabled' : ''}>${f ? 'Read the frame again' : 'Read the frame'}</button></span></div>
@@ -6319,6 +6333,119 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
   const a = document.getElementById('nav-sign'), b = document.getElementById('nav-new-report');
   if (a) a.style.display = window._signedOut === false ? 'none' : '';
   if (b) b.style.display = window._signedOut === false ? '' : 'none';
+  if (window._signedOut === false && !window._foBooted) { window._foBooted = true; _foBoot(); }   // SEAM:READ_FOLIO: the open folio's pill, for an admin
+}
+
+/* SEAM:READ_FOLIO: the folio tray (admin). Pin reads, door frames and house reads; add the editor's framing; see the ground's
+   real coverage; compile it as a RECON. The folio lives in the database; this browser only remembers which one is open. */
+const _FO_KIND = { read: 'EXCAVATE read', door: 'Door frame', story: 'DAILY story', house: 'House read', note: 'Editor note' };
+/* PURE: the key an item holds in its folio, the same as the worker's. */
+function _foKey(it) { return it.k === 'note' ? 'note:' + String(it.note || '').toLowerCase().slice(0, 80) : it.k + ':' + it.ref + (it.path ? ':' + it.path : ''); }
+/* PURE: what the live read on screen can be pinned as: its ledger row, else the door frame it came from. */
+function _foLiveItem(L, door) {
+  if (!L || !L.q) return null;
+  const syn = L.synthesis || {};
+  if (syn.read_id) return { k: 'read', ref: syn.read_id, title: String(L.q) };
+  if (door && door.id && door.query === L.q) return { k: 'door', ref: door.id, title: String(L.q) };
+  return null;
+}
+/* PURE: the coverage line, real counts only, and a warning when the ground is thin. */
+function _foCoverText(c) {
+  if (!c) return { line: '', thin: '' };
+  const bits = [[c.lines, 'evidence line', 'evidence lines'], [c.outlets, 'outlet', 'outlets'], [c.reads, 'EXCAVATE read', 'EXCAVATE reads'], [c.frames, 'door frame', 'door frames'],
+    [c.stories, 'DAILY story', 'DAILY stories'], [c.views, 'prior house view', 'prior house views'], [c.notes, 'editor note', 'editor notes']]
+    .filter(b => b[0] > 0).map(b => '<span><b>' + b[0] + '</b> ' + (b[0] === 1 ? b[1] : b[2]) + '</span>');
+  if (c.span) bits.push('<span>' + c.span.from + ' to ' + c.span.to + '</span>');
+  return { line: bits.join(''), thin: c.lines < 12 ? 'Thin ground: fewer than 12 evidence lines. A RECON from this folio will lean on the lake and its own research.' : '' };
+}
+function _foPill(f) {
+  const p = document.getElementById('folio-pill'); if (!p) return;
+  if (!f) { p.style.display = 'none'; return; }
+  p.style.display = ''; const n = document.getElementById('folio-n'); if (n) n.textContent = String((f.items || []).length);
+}
+async function _foBoot() {
+  if (!(await _cmAdmin())) return;
+  let id = null; try { id = parseInt(localStorage.getItem('exc_folio') || '', 10) || null; } catch (e) { id = null; }
+  if (!id) return;
+  const d = await _cmApi('/reads/folio', { id });
+  if (d && d.ok) { window._fo = { folio: d.folio, coverage: d.coverage }; _foPill(d.folio); }
+}
+async function _foPin(item) {
+  const cur = window._fo && window._fo.folio;
+  const d = await _cmApi('/reads/folio-pin', Object.assign({ item }, cur ? { id: cur.id } : {}));
+  if (!d || !d.ok) return showToast(d && d.error === 'folio_full' ? 'This folio holds 40 items. Start a new one.' : 'Could not pin: ' + ((d && d.error) || 'no answer'));
+  window._fo = { folio: d.folio, coverage: null };
+  try { localStorage.setItem('exc_folio', String(d.folio.id)); } catch (e) { /* the pill still shows this folio for this visit */ }
+  _foPill(d.folio); showToast(d.added ? 'Pinned to ' + d.folio.title : 'Already in ' + d.folio.title);
+}
+function pinLiveRead() {
+  const it = _foLiveItem(window._liveLast, window._doorOpen);
+  if (!it) return showToast('This read has no record to pin yet');
+  _foPin(it);
+}
+async function openFolio(id) {
+  const cur = window._fo && window._fo.folio, want = id || (cur && cur.id);
+  _cmBox(true);
+  showModal('<div class="cm"><div class="cm-eye">Folio</div><h2 class="modal-title">Opening the folio</h2></div>');
+  const [d, l] = await Promise.all([want ? _cmApi('/reads/folio', { id: want }) : Promise.resolve(null), _cmApi('/reads/folios', {})]);
+  window._fo = d && d.ok ? { folio: d.folio, coverage: d.coverage } : null;
+  window._foList = l && l.ok ? l.folios : [];
+  if (window._fo) { try { localStorage.setItem('exc_folio', String(window._fo.folio.id)); } catch (e) { /* this visit only */ } }
+  _foPill(window._fo && window._fo.folio);
+  _foRender();
+}
+function _foRender(said) {
+  const F = window._fo, list = window._foList || [];
+  _cmBox(true);
+  const pick = list.length ? `<select class="cm-sel" style="max-width:320px" onchange="if(this.value)openFolio(parseInt(this.value,10))"><option value="">Open another folio</option>${list.map(f => `<option value="${f.id}"${F && F.folio.id === f.id ? ' selected' : ''}>${_cmEsc(f.title)} · ${f.n} item${f.n === 1 ? '' : 's'}${f.status === 'commissioned' ? ' · commissioned' : ''}</option>`).join('')}</select>` : '';
+  if (!F) {
+    showModal(`<div class="cm"><div class="cm-eye">Folio</div><h2 class="modal-title">No folio open</h2>
+      <div class="cm-note">Pin a read, a door frame or a house read and a folio starts itself. Or start one here.</div>
+      <div class="cm-acts">${pick}<button class="cm-btn" type="button" onclick="_foNew()">New folio</button></div><div class="cm-say">${_cmEsc(said || '')}</div></div>`);
+    return;
+  }
+  const f = F.folio, cov = _foCoverText(F.coverage), items = f.items || [];
+  showModal(`<div class="cm"><div class="cm-eye">Folio${f.status === 'commissioned' ? ' · commissioned as RECON ' + _cmEsc((f.recon_ids || []).join(', ')) : ''}</div>
+    <input class="cm-in" id="fo-title" style="font-family:'DM Serif Display',serif;font-size:22px;margin-top:4px" value="${safeAttr(f.title)}">
+    <label class="cm-k">The question this folio answers</label>
+    <textarea class="cm-ta" id="fo-brief" rows="3" maxlength="600" placeholder="It becomes the RECON's brief.">${_cmEsc(f.brief || '')}</textarea>
+    <label class="cm-k">What it stands on</label>
+    <div class="fo-cov">${cov.line || '<span>Nothing pinned yet.</span>'}</div>${cov.thin ? `<div class="cm-note cm-warn">${cov.thin}</div>` : ''}
+    <label class="cm-k">${items.length} item${items.length === 1 ? '' : 's'}</label>
+    <div class="fo-list">${items.map(it => `<div class="fo-item"><span><small>${_FO_KIND[it.k] || it.k}${it.path ? ' · ' + _cmEsc(it.path) : ''}</small>${_cmEsc(it.k === 'note' ? it.note : it.title)}</span><button class="cm-btn" type="button" onclick="_foUnpin(${items.indexOf(it)})">Remove</button></div>`).join('')}</div>
+    <label class="cm-k">Add the editor's framing</label>
+    <textarea class="cm-ta" id="fo-note" rows="2" placeholder="A thought-starter or a direction. It frames the RECON; it is never cited as evidence."></textarea>
+    <div class="cm-row"><span></span><button class="cm-btn" type="button" onclick="_foNote()">Add note</button></div>
+    <div class="cm-acts">${pick}<button class="cm-btn" type="button" onclick="_foSave()">Save</button><button class="cm-btn" type="button" onclick="_foNew()">New folio</button></div>
+    <button class="modal-action" style="margin-top:16px" onclick="_foCompile()"${items.length ? '' : ' disabled'}>Compile as a RECON →</button>
+    <div class="cm-say" id="cm-say">${_cmEsc(said || '')}</div></div>`);
+}
+async function _foSave(quiet) {
+  const F = window._fo; if (!F) return null;
+  const d = await _cmApi('/reads/folio-save', { id: F.folio.id, title: (document.getElementById('fo-title') || {}).value || F.folio.title, brief: (document.getElementById('fo-brief') || {}).value || '' });
+  if (d && d.ok) { F.folio = d.folio; _foPill(d.folio); if (!quiet) _foRender('Saved.'); return d.folio; }
+  if (!quiet) _foRender('Could not save: ' + ((d && d.error) || 'no answer'));
+  return null;
+}
+async function _foNew() {
+  const d = await _cmApi('/reads/folio-save', { items: [] });
+  if (!d || !d.ok) return _foRender('Could not start a folio: ' + ((d && d.error) || 'no answer'));
+  openFolio(d.folio.id);
+}
+async function _foUnpin(i) {
+  const F = window._fo, it = F && (F.folio.items || [])[i]; if (!it) return;
+  const d = await _cmApi('/reads/folio-unpin', { id: F.folio.id, key: _foKey(it) });
+  if (d && d.ok) openFolio(F.folio.id); else _foRender('Could not remove: ' + ((d && d.error) || 'no answer'));
+}
+async function _foNote() {
+  const F = window._fo, t = ((document.getElementById('fo-note') || {}).value || '').trim(); if (!F || t.length < 3) return;
+  const d = await _cmApi('/reads/folio-pin', { id: F.folio.id, item: { k: 'note', note: t } });
+  if (d && d.ok) openFolio(F.folio.id); else _foRender('Could not add the note: ' + ((d && d.error) || 'no answer'));
+}
+async function _foCompile() {
+  const f = await _foSave(true); if (!f) return _foRender('Save the folio first.');
+  if (String(f.brief || '').trim().length < 12) return _foRender('Write the question this folio answers first. It becomes the RECON\'s brief.');
+  openCommission({ brief: f.brief, folio: { id: f.id, title: f.title, n: (f.items || []).length } });
 }
 function _gateForDoor(name) {
   try { if (name) sessionStorage.setItem('pending_door', name); else sessionStorage.removeItem('pending_door'); } catch (e) {}

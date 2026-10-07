@@ -1134,6 +1134,20 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_COMMISSION",
    "purpose": "the desk shows \"This RECON, every version\" for a RECON and saves it under recon:<brief hash>, so the draft's direction reaches the deep compile and every revision"
+  },
+  "SEAM:READ_FOLIO": {
+   "file": "worker/src/index.js",
+   "purpose": "EX23 COMPILE: a folio (table folios, 0041) is a brief plus the ground the editor chose: EXCAVATE reads, door frames, DAILY stories, house reads (whole or one path) and editor notes. /reads/folios, /reads/folio (with folioCoverage), /reads/folio-save, /reads/folio-pin, /reads/folio-unpin. A commission with folio_id freezes the folio into meta.include (folioInclude) and records the RECON on the folio; readSubmit reads the ground once (folioGround: a read's own lines from the lake by momentum read_id, a house read's cited S stories and L and R lines through its pack) and readReportPack leads the lake, frames, reads and stories with it past the brief's word filter (folioLead); notes and prior house views open the pack as framing, never evidence (folioFraming)"
+  },
+  "SEAM:READ_FOLIO@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:READ_FOLIO",
+   "purpose": "Pin to folio on every live read and door frame (admin); the folio tray opens the folio: title, brief, items, real coverage with a thin-ground warning, editor notes, other folios, and Compile as a RECON, which opens Commission with the folio as its ground (folio_id)"
+  },
+  "SEAM:READ_FOLIO@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_FOLIO",
+   "purpose": "Pin to folio on every house read: it brings the stories and lines its claims cite, and its words as a prior view"
   }
  },
  "planned": [

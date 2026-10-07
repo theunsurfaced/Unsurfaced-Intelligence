@@ -1383,7 +1383,19 @@
       if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="desk">The desk</button>');   // SEAM:READ_DESK: notes, revise, standing inputs
+      if (x.title) btns.push('<button class="btn" id="pin-folio">Pin to folio</button>');   // SEAM:READ_FOLIO
       actions.innerHTML = btns.join(" ");
+      /* SEAM:READ_FOLIO: a house read pinned to the open folio brings the stories and lines its claims cite, and its words as a prior view. */
+      var pinb = document.getElementById("pin-folio"); if (pinb) pinb.onclick = function () {
+        var fid = null; try { fid = parseInt(localStorage.getItem("exc_folio") || "", 10) || null; } catch (e) { fid = null; }
+        pinb.disabled = true;
+        call("/reads/folio-pin", Object.assign({ item: { k: "house", ref: row.id, title: row.label + " v" + row.version } }, fid ? { id: fid } : {})).then(function (d) {
+          pinb.disabled = false;
+          if (!d || !d.ok) { pinb.textContent = "Could not pin"; return; }
+          pinb.textContent = d.added ? "Pinned to " + d.folio.title : "Already in " + d.folio.title;
+          try { localStorage.setItem("exc_folio", String(d.folio.id)); } catch (e) { fid = d.folio.id; }
+        });
+      };
       if (row.meta && row.meta.plan === "revise") actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">Revised from v' + esc(String(row.meta.revised_from_version || "?")) + (row.meta.revised_from ? " (#" + esc(String(row.meta.revised_from)) + ")" : "") + " on " + ((row.meta.notes || []).length) + " note" + ((row.meta.notes || []).length === 1 ? "" : "s") + (row.meta.revised_by ? " by " + esc(row.meta.revised_by) : "") + "</span>");
       if (row.meta && row.meta.proof && row.meta.proof.applied_at) actions.insertAdjacentHTML("beforeend", ' <span style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">proofread ' + esc(String(row.meta.proof.applied_at).slice(0, 10)) + ' · ' + esc(String(row.meta.proof.changes || 0)) + ' fixes</span>');   // READ_PROOF receipt
       if (!RT) deepShow(row);   /* SEAM:READ_DEEP: the evidence file, on screen only */

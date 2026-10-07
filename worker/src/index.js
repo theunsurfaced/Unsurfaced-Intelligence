@@ -238,6 +238,11 @@ export default {
         case '/reads/commission':    // SEAM:READ_RECON: commission a RECON from a brief
         case '/reads/frame':         // SEAM:READ_COMMISSION: the frame before the spend
         case '/reads/track':         // SEAM:READ_COMMISSION: the tracker
+        case '/reads/folios':        // SEAM:READ_FOLIO: the folios
+        case '/reads/folio':
+        case '/reads/folio-save':
+        case '/reads/folio-pin':
+        case '/reads/folio-unpin':
         case '/reads/release':       // SEAM:READ_DEEP: release a deep RECON from its hold (the evidence file, or its ceiling)
         case '/reads/note':          // SEAM:READ_DESK: the editors' notes, revisions and standing inputs
         case '/reads/note-drop':
@@ -9930,6 +9935,8 @@ async function readReportPack(env, row, stats, recon, deep) {   // SEAM:READ_REC
   const notS = r => !sIds.has(r.id) && !(deepUrlKey(r.url) && sKeys.has(deepUrlKey(r.url))), notC = r => !(deepUrlKey(r.url) && cKeys.has(deepUrlKey(r.url)));
   let lake = deep ? deepLakeMerge(lakeOn.filter(r => notS(r) && notC(r)), (deep.lake || []).filter(r => notS(r) && notC(r)), READ_DEEP.PACK.LAKE)   // SEAM:READ_DEEP: the brief's words and the meaning search, once each
     : recon ? lakeOn.slice(0, READ_REPORT.LAKE) : readReportSpread(lakeOn, READ_REPORT.LAKE);   // a RECON keeps its slice whole, best tier then newest; the house report spreads across territories
+  const inc = recon && recon.inc ? recon.inc : null;   // SEAM:READ_FOLIO: the folio's lines lead, past the brief's word filter
+  if (inc) lake = folioLead(inc.lake, lake, r => r.id);
   stage('lake', lake.length);
   // SEAM:READ_TIME: a RECON's record is asked for by the brief's own words across every year before the period, then spread by
   // year (newest year first, round robin), so the record reaches back instead of stopping at the newest few hundred rows.
@@ -9943,10 +9950,11 @@ async function readReportPack(env, row, stats, recon, deep) {   // SEAM:READ_REC
     : rq ? readRecordSpread(recordRows, READ_REPORT.RECORD) : recordRows.slice(0, READ_REPORT.RECORD);
   stage('record', record.length);
   const themes = ((stats && stats.themes) || []).filter(t => t && t.id && on(t, t.title || ''));
-  const frames = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=gte.' + win.start + '&night=lte.' + win.end + '&select=id,frame_key,night,frame,measures,read&order=night.desc&limit=' + (recon ? READ_REPORT.FRAMES * 4 : READ_REPORT.FRAMES)) || [])
+  let frames = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=gte.' + win.start + '&night=lte.' + win.end + '&select=id,frame_key,night,frame,measures,read&order=night.desc&limit=' + (recon ? READ_REPORT.FRAMES * 4 : READ_REPORT.FRAMES)) || [])
     .filter(d => d && d.read && on(d, JSON.stringify(d.frame || {}) + ' ' + readReportClean(d.read && d.read.read && d.read.read[0], 400))).slice(0, READ_REPORT.FRAMES);
-  const reads = (await sbRest(env, 'reads?created_at=gte.' + win.start + '&created_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) + '&select=id,query,read,insights,created_at&order=created_at.desc&limit=' + (recon ? READ_REPORT.READS * 6 : READ_REPORT.READS)) || [])
+  let reads = (await sbRest(env, 'reads?created_at=gte.' + win.start + '&created_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) + '&select=id,query,read,insights,created_at&order=created_at.desc&limit=' + (recon ? READ_REPORT.READS * 6 : READ_REPORT.READS)) || [])
     .filter(r => r && r.query && on(r, r.query)).slice(0, READ_REPORT.READS);
+  if (inc) { frames = folioLead(inc.frames, frames, d => d.id); reads = folioLead(inc.reads, reads, r => r.id); }   // SEAM:READ_FOLIO
   stage('frames_reads', frames.length + reads.length);
   const voices = deep ? deep.voices : await readReportVoices(env, stats, win, recon ? readReconVoiceQueries(recon.frame) : null);   // SEAM:READ_DEEP: the coded voices, already read
   stage('voices', voices.quotes.length);
@@ -9966,6 +9974,7 @@ async function readReportPack(env, row, stats, recon, deep) {   // SEAM:READ_REC
     counts = deepCountsBlock(deep.meta, outletTypes);
   }
   const sections = [];
+  if (inc && folioFraming(inc)) sections.push(folioFraming(inc));   // SEAM:READ_FOLIO: framing first, labeled, never ground
   if (lake.length) sections.push('LAKE SIGNALS (' + lake.length + ', the window, not published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + lake.map((r, i) => readReportLakeLine(i + 1, r)).join('\n'));
   if (record.length) sections.push('THE RECORD (' + record.length + ', older prominent sources; cite as context, never as this window):\n' + record.map((r, i) => readReportRecordLine(i + 1, r)).join('\n'));
   if (cards.length) sections.push('SOURCES READ IN FULL (' + cards.length + ' evidence cards: every quote and figure checked against the page; cite as C ids):\n' + cards.map((c, i) => deepCardLine(i + 1, c)).join('\n'));
@@ -11680,6 +11689,7 @@ async function readSubmit(env, row) {
   const report = readIsReport(row.kind);   // SEAM:READ_REPORT (SEAM:READ_RECON: a RECON rides the report's line)
   const recon = row.kind === 'recon' ? readReconOf(row) : null;
   const deep = recon ? deepOf(row) : null;   // SEAM:READ_DEEP: a deep RECON compiles from its evidence file, on the recon ledger
+  if (recon && row.meta && row.meta.include) recon.inc = await folioGround(env, row.meta.include);   // SEAM:READ_FOLIO: the editor's ground, read once
   const t0 = Date.now(), stage = (name, extra) => console.log('read_submit_stage', JSON.stringify(Object.assign({ id: row.id, kind: row.kind, stage: name, ms: Date.now() - t0 }, extra || {})));
   let stats = await sbRest(env, 'rpc/' + (report ? 'house_report_stats' : 'house_read_stats'), { method: 'POST',
     body: { p_start: row.window_start, p_end: row.window_end } }) || {};
@@ -11688,7 +11698,8 @@ async function readSubmit(env, row) {
   stage('stats');
   const allItems = await readWindowItems(env, row.window_start, row.window_end);
   const dpi = deep ? await deepPackInputs(env, row, deep) : null;   // SEAM:READ_DEEP: the evidence file, from the store
-  const items = recon ? (dpi ? deepSItems(allItems, recon, dpi.lake_ids) : allItems.filter(it => recon.match([it.headline, it.take, it.apply].join(' ')))) : allItems;   // SEAM:READ_RECON: the brief's stories (SEAM:READ_DEEP: and DAILY's own the meaning search found)
+  let items = recon ? (dpi ? deepSItems(allItems, recon, dpi.lake_ids) : allItems.filter(it => recon.match([it.headline, it.take, it.apply].join(' ')))) : allItems;   // SEAM:READ_RECON: the brief's stories (SEAM:READ_DEEP: and DAILY's own the meaning search found)
+  if (recon && recon.inc && recon.inc.stories.length) items = folioLead(await readItemsByIds(env, recon.inc.stories), items, it => it.id);   // SEAM:READ_FOLIO: the folio's stories lead
   if (dpi) dpi.items = items;
   stage('stories', { n: items.length, all: allItems.length });
   if (!items.length && !recon) {
@@ -12526,9 +12537,15 @@ async function readCommission(env, body, user) {
     const no = await readReconIssue(env, hash);
     win.label = readReconLabel(no, frame, win);
     const meta = { plan: 'recon', recon_no: no, brief: Object.assign({ text, hash, frame, days }, decisions.length ? { decisions } : {}) };
+    // SEAM:READ_FOLIO: a commission from a folio carries the folio as it stood; later pins never change a RECON already commissioned.
+    const folio = body.folio_id ? await folioRow(env, body.folio_id) : null;
+    if (body.folio_id && !folio) return { ok: false, error: 'folio_not_found' };
+    if (folio) meta.include = folioInclude(folio);
     if (deep) meta.deep = { v: 1, stage: 'plan', budget_usd: budget, hold: body.hold === true, started_at: new Date().toISOString(), by: String(user.email || user.id).replace(/@.*$/, ''), spend: {}, counts: {}, log: [] };
     const { row, prev } = await readQueue(env, 'recon', win, meta);
     if (!row) return { ok: false, error: 'queue_failed' };
+    if (folio) await sbRest(env, 'folios?id=eq.' + folio.id, { method: 'PATCH', body: { status: 'commissioned', recon_ids: [...new Set((folio.recon_ids || []).concat([row.id]))], updated_at: new Date().toISOString() } })
+      .catch(e => console.log('folio_mark', String(e && e.message).slice(0, 80)));   // the RECON is queued either way; the folio's record of it is a courtesy
     logEvent(env, 'intelligence', 'reads', 'recon_commissioned', null, { id: row.id, recon_no: no, days, deep, decisions: decisions.length, by: user.id });
     let sub = { ok: true, waiting: 'tick' };
     if (body.now && deep) sub = Object.assign({ ok: true, waiting: 'tick' }, { advanced: await deepAdvance(env, row, { ms: 100000, deadline: Date.now() + 470000 }) });   // SEAM:READ_DEEP: the first stages now, the rest on the tick
@@ -12554,6 +12571,112 @@ function readTrackRow(r) {
     deep: d ? { stage: d.stage || null, hold: !!d.hold, hold_reason: d.hold_reason || null, failed_stage: d.failed_stage || null, waiting: d.waiting || null,
       budget_usd: Number(d.budget_usd) || null, spent_usd: deepSpent(d), started_at: d.started_at || null, stage_at: d.stage_at || null,
       last: last ? { stage: last.stage || null, to: last.to || null, at: last.at || null, error: last.error || null } : null } : null };
+}
+
+/* ═══ SEAM:READ_FOLIO (EX23 COMPILE): many runs, one report ═══════════════════════════════════════════════════════
+ * A folio is a brief plus the ground the editor chose. Items: read (an EXCAVATE ledger row), door (a door frame), story
+ * (a DAILY story), house (a house read, whole or one path in it), note (the editor's framing). A RECON commissioned from
+ * a folio writes from that ground first; its lines lead every section of the pack and skip the brief's word filter. */
+const FOLIO = { MAX_ITEMS: 40, NOTE_MAX: 1200, TITLE_MAX: 120, BRIEF_MAX: 600, LINES: 160, STORIES: 200, VIEWS: 12, VIEW_CHARS: 700,
+  KINDS: { read: 'EXCAVATE read', door: 'Door frame', story: 'DAILY story', house: 'House read', note: 'Editor note' } };
+const FOLIO_SIG = 'id,title,summary,source_name,source_tier,territory,published_at,url';
+/* PURE: one pinned item, cleaned; null when it is not a folio item. */
+function folioItemClean(it, by) {
+  if (!it || typeof it !== 'object' || !FOLIO.KINDS[it.k]) return null;
+  const txt = (v, n) => String(v == null ? '' : v).replace(/[<>`]/g, '').replace(/\u2014/g, ':').replace(/\s+/g, ' ').trim().slice(0, n);
+  const out = { k: it.k, title: txt(it.title, FOLIO.TITLE_MAX) || FOLIO.KINDS[it.k], at: it.at || new Date().toISOString(), by: txt(it.by || by || '', 40) || null };
+  if (it.k === 'note') { out.note = txt(it.note || it.title, FOLIO.NOTE_MAX); if (out.note.length < 3) return null; out.title = txt(out.note, 80); return out; }
+  const ref = parseInt(it.ref, 10); if (!(ref > 0)) return null; out.ref = ref;
+  if (it.k === 'house' && it.path) { const p = String(it.path).trim(); if (!READ_DESK.SCOPE_RX.test(p)) return null; out.path = p; }
+  if (it.note) out.note = txt(it.note, 300);
+  return out;
+}
+/* PURE: the key one item holds in its folio; the same read pinned twice is one item. */
+function folioKey(it) { return it.k === 'note' ? 'note:' + String(it.note || '').toLowerCase().slice(0, 80) : it.k + ':' + it.ref + (it.path ? ':' + it.path : ''); }
+/* PURE: a folio's items, cleaned, deduped (the first pin wins) and capped. */
+function folioItems(list, by) {
+  const seen = new Set(), out = [];
+  for (const raw of (Array.isArray(list) ? list : [])) { const it = folioItemClean(raw, by); if (!it) continue; const k = folioKey(it); if (seen.has(k)) continue; seen.add(k); out.push(it); if (out.length >= FOLIO.MAX_ITEMS) break; }
+  return out;
+}
+/* PURE: what a commission carries from its folio, frozen at the moment it was commissioned. */
+function folioInclude(f) {
+  const items = folioItems((f && f.items) || []), of = k => items.filter(it => it.k === k);
+  return { folio_id: f && f.id || null, title: (f && f.title) || null, reads: of('read').map(it => it.ref), doors: of('door').map(it => it.ref), stories: of('story').map(it => it.ref),
+    houses: of('house').map(it => (it.path ? { id: it.ref, path: it.path } : { id: it.ref })), notes: of('note').map(it => it.note) };
+}
+/* PURE: the value at a path such as findings[2] or patterns[0].why_it_matters. */
+function folioPath(obj, path) {
+  let cur = obj;
+  for (const part of String(path || '').split('.')) {
+    if (!part) continue;
+    const m = /^([a-z_]+)(?:\[(\d+)\])?$/.exec(part); if (!m || cur == null) return null;
+    cur = cur[m[1]]; if (m[2] != null) cur = Array.isArray(cur) ? cur[parseInt(m[2], 10)] : null;
+  }
+  return cur == null ? null : cur;
+}
+/* PURE: what a pinned house read brings: the S stories and the L and R lines its claims cite (resolved through its own pack),
+ * and its own words as a prior house view, framing only. */
+function folioHouseGround(rows, refs) {
+  const stories = [], lake = [], views = [];
+  for (const ref of (refs || [])) {
+    const row = (rows || []).find(r => r && String(r.id) === String(ref.id)); if (!row || !row.read) continue;
+    const target = ref.path ? folioPath(row.read, ref.path) : row.read; if (target == null) continue;
+    const lines = row.lines || {};
+    const walk = v => {
+      if (typeof v === 'string') { let m = /^S(\d+)$/.exec(v); if (m) { stories.push(parseInt(m[1], 10)); return; } m = /^([LR])(\d+)$/.exec(v); if (m) { const l = (lines[m[1]] || [])[parseInt(m[2], 10) - 1]; if (l && l.id) lake.push(l.id); } return; }
+      if (Array.isArray(v)) { v.forEach(walk); return; }
+      if (v && typeof v === 'object') Object.keys(v).forEach(k => walk(v[k]));
+    };
+    walk(target);
+    const words = typeof target === 'string' ? target : ['title', 'name', 'claim', 'thesis', 'answer', 'what_happened', 'why_it_matters', 'implication', 'excerpt']
+      .map(k => (typeof target[k] === 'string' ? target[k] : '')).filter(Boolean).join(' ');
+    if (words) views.push({ label: String(row.label || row.kind || 'House read') + (ref.path ? ', ' + ref.path : ''), text: words.replace(/\s+/g, ' ').trim().slice(0, FOLIO.VIEW_CHARS) });
+  }
+  return { stories: [...new Set(stories)], lake: [...new Set(lake)], views: views.slice(0, FOLIO.VIEWS) };
+}
+/* PURE: the folio's rows first, then the rest without them. */
+function folioLead(lead, rest, key) {
+  const seen = new Set(), out = [];
+  for (const r of [].concat(lead || [], rest || [])) { if (!r) continue; const k = key(r); if (k == null || seen.has(String(k))) continue; seen.add(String(k)); out.push(r); }
+  return out;
+}
+/* PURE: the folio's framing block. Framing, never evidence: the writer cites the ids in the sections, never this block. */
+function folioFraming(g) {
+  if (!g || !((g.notes || []).length || (g.views || []).length)) return '';
+  return 'THE FOLIO' + (g.title ? ': ' + g.title : '') + ' (the ground the editor chose leads every section below. This block is framing, never evidence: cite the ids in the sections, never this block)\n' +
+    (g.notes || []).map(n => '- The editor: ' + n).concat((g.views || []).map(v => '- A prior house view (' + v.label + '): ' + v.text)).join('\n');
+}
+/* The folio's ground, read from the database. Every ask has its own catch: a slow ask leaves its lines out, never the read. */
+async function folioGround(env, inc) {
+  const ids = a => [...new Set((Array.isArray(a) ? a : []).map(x => parseInt(x, 10)).filter(n => n > 0))].slice(0, FOLIO.MAX_ITEMS);
+  const ask = async p => { try { return (await sbRest(env, p)) || []; } catch (e) { console.log('folio_ground', p.split('?')[0], String(e && e.message).slice(0, 80)); return []; } };
+  const readIds = ids(inc && inc.reads), doorIds = ids(inc && inc.doors), storyIds = ids(inc && inc.stories);
+  const houseRefs = ((inc && inc.houses) || []).filter(h => h && parseInt(h.id, 10) > 0).slice(0, FOLIO.MAX_ITEMS);
+  const [reads, frames, houses, own] = await Promise.all([
+    readIds.length ? ask('reads?id=in.(' + readIds.join(',') + ')&select=id,query,read,insights,created_at') : [],
+    doorIds.length ? ask('door_reads?id=in.(' + doorIds.join(',') + ')&select=id,frame_key,night,frame,measures,read') : [],
+    houseRefs.length ? ask('house_reads?id=in.(' + [...new Set(houseRefs.map(h => parseInt(h.id, 10)))].join(',') + ')&select=id,kind,label,read,lines:meta->pack->lines') : [],
+    readIds.length ? ask('signals?status=neq.rejected&momentum->>read_id=in.(' + readIds.join(',') + ')&select=' + FOLIO_SIG + '&order=source_tier.asc,published_at.desc&limit=' + FOLIO.LINES) : []]);
+  const hg = folioHouseGround(houses, houseRefs);
+  const cited = hg.lake.length ? await ask('signals?id=in.(' + hg.lake.slice(0, FOLIO.LINES).join(',') + ')&select=' + FOLIO_SIG) : [];
+  const order = (rows, list) => list.map(id => rows.find(r => r && r.id === id)).filter(Boolean);
+  return { folio_id: (inc && inc.folio_id) || null, title: (inc && inc.title) || null, reads: order(reads, readIds), frames: order(frames, doorIds),
+    lake: folioLead(cited, own, r => r.id).slice(0, FOLIO.LINES), stories: [...new Set(storyIds.concat(hg.stories))].slice(0, FOLIO.STORIES), views: hg.views,
+    notes: ((inc && inc.notes) || []).map(n => String(n || '').trim()).filter(Boolean).slice(0, FOLIO.VIEWS) };
+}
+/* What a folio stands on before it is compiled: real counts, so a thin spot is seen before anything is spent. */
+async function folioCoverage(env, f) {
+  const g = await folioGround(env, folioInclude(f));
+  const days = [].concat(g.lake.map(r => r.published_at), g.reads.map(r => r.created_at), g.frames.map(d => d.night)).filter(Boolean).map(x => String(x).slice(0, 10)).sort();
+  const outlets = new Set(g.lake.map(r => String(r.source_name || '').toLowerCase().trim()).filter(Boolean));
+  return { items: ((f && f.items) || []).length, reads: g.reads.length, frames: g.frames.length, lines: g.lake.length, outlets: outlets.size, stories: g.stories.length,
+    views: g.views.length, notes: g.notes.length, span: days.length ? { from: days[0], to: days[days.length - 1] } : null };
+}
+async function folioRow(env, id) {
+  const n = parseInt(id, 10); if (!(n > 0)) return null;
+  const rows = await sbRest(env, 'folios?id=eq.' + n + '&select=*') || [];
+  return rows[0] || null;
 }
 
 async function readQueue(env, kind, win, meta) {
@@ -13145,6 +13268,44 @@ async function readRoute(path, body, env, origin, user) {
     }
     const one = depth ? Object.assign({}, body, { deep: depth === 'deep', now: depth === 'draft' ? true : body.now }) : body;
     return json(Object.assign({ depth: one.deep === false ? 'draft' : 'deep' }, await readCommission(env, one, user)), 200, origin, env);
+  }
+  if (path === '/reads/folios') {
+    // SEAM:READ_FOLIO: the folios, newest first. {} (admin)
+    const rows = await sbRest(env, 'folios?select=id,title,brief,status,items,recon_ids,updated_at&order=updated_at.desc&limit=30') || [];
+    return json({ ok: true, folios: rows.map(f => ({ id: f.id, title: f.title, brief: f.brief, status: f.status, n: (f.items || []).length, recon_ids: f.recon_ids || [], updated_at: f.updated_at })) }, 200, origin, env);
+  }
+  if (path === '/reads/folio') {
+    // SEAM:READ_FOLIO: one folio and its coverage. { id } (admin)
+    const f = await folioRow(env, body.id);
+    if (!f) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    return json({ ok: true, folio: f, coverage: await folioCoverage(env, f) }, 200, origin, env);
+  }
+  if (path === '/reads/folio-save' || path === '/reads/folio-pin' || path === '/reads/folio-unpin') {
+    // SEAM:READ_FOLIO: save { id?, title?, brief?, items? }; pin { id?, title?, item } (no id: the newest open folio, or a new one);
+    // unpin { id, key }. Items are cleaned, deduped and capped on every write. (admin)
+    const by = String(user.email || user.id).replace(/@.*$/, '');
+    let f = body.id ? await folioRow(env, body.id) : null;
+    if (body.id && !f) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (!f && path === '/reads/folio-pin') f = ((await sbRest(env, 'folios?status=eq.open&select=*&order=updated_at.desc&limit=1')) || [])[0] || null;
+    if (!f && path === '/reads/folio-unpin') return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    let items = f ? (f.items || []) : [], added = false;
+    if (path === '/reads/folio-pin') {
+      const it = folioItemClean(body.item, by);
+      if (!it) return json({ ok: false, error: 'bad_item' }, 200, origin, env);
+      added = !items.some(x => folioKey(x) === folioKey(it));
+      if (added && items.length >= FOLIO.MAX_ITEMS) return json({ ok: false, error: 'folio_full', max: FOLIO.MAX_ITEMS }, 200, origin, env);
+      items = items.concat([it]);
+    } else if (path === '/reads/folio-unpin') items = items.filter(x => folioKey(x) !== String(body.key || ''));
+    else if (Array.isArray(body.items)) items = body.items;
+    const patch = { items: folioItems(items, by), updated_at: new Date().toISOString() };
+    if (typeof body.title === 'string' && body.title.trim()) patch.title = body.title.replace(/\s+/g, ' ').trim().slice(0, FOLIO.TITLE_MAX);
+    if (typeof body.brief === 'string') patch.brief = body.brief.replace(/\s+/g, ' ').trim().slice(0, FOLIO.BRIEF_MAX);
+    if (path === '/reads/folio-save' && ['open', 'archived'].includes(body.status)) patch.status = body.status;
+    const back = f ? await sbRest(env, 'folios?id=eq.' + f.id + '&select=*', { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: patch })
+      : await sbRest(env, 'folios?select=*', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [Object.assign({ title: 'Folio ' + new Date().toISOString().slice(0, 10), created_by: by }, patch)] });
+    const row = (back || [])[0] || null;
+    if (!row) return json({ ok: false, error: 'folio_write_failed' }, 200, origin, env);
+    return json({ ok: true, folio: row, added }, 200, origin, env);
   }
   if (path === '/reads/track') {
     // SEAM:READ_COMMISSION: the tracker. { ids?: [...] } or { recent?: n } (admin): one small row per RECON, the newest first.
