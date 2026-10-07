@@ -1120,6 +1120,20 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_STALL",
    "purpose": "_synthesizeStream has a watchdog (45s without a byte, 6 minutes in all) that aborts and hands over to the cut path; the fresh compile after a cut has a 5 minute deadline; the loader names the completion step and a partial read says what it lacks; the browser rails that only failed (Semantic Scholar, Guardian test key, arXiv, PatentsView, the Wikipedia summary) are retired from the lens pipeline"
+  },
+  "SEAM:READ_COMMISSION": {
+   "file": "worker/src/index.js",
+   "purpose": "EX22, the RECON generator: /reads/frame reads a brief's frame with nothing queued and says whether the brief is already a RECON; readCommission is the commission as a function, the editor's confirmed frame winning field by field through excFrameClean (readFrameEdits); /reads/commission takes depth draft | deep | draft_deep (the draft compiles now, the deep version queues as the next version of the same RECON); /reads/track answers one small row per RECON (readTrackRow: stage, spend against the ceiling, the last step); house_desk kind recon:<brief hash> is one RECON's own inputs, read first by every version's compile and revision (readDeskScope, readDeskInputs, readDeskText)"
+  },
+  "SEAM:READ_COMMISSION@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:READ_COMMISSION",
+   "purpose": "New Report is real (an admin commissions, a member runs the question as a live read); the Commission form reads the frame back as editable fields and chips before any spend, takes the client's decisions, the window, the depth, the ceiling and the hold; the tracker names every stage in plain words with Collect now and Open; Make this a RECON on a live read (admin); Commission and Track on the Library's RECON shelf"
+  },
+  "SEAM:READ_COMMISSION@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_COMMISSION",
+   "purpose": "the desk shows \"This RECON, every version\" for a RECON and saves it under recon:<brief hash>, so the draft's direction reaches the deep compile and every revision"
   }
  },
  "planned": [

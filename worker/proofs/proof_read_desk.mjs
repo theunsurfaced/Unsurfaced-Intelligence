@@ -99,7 +99,7 @@ ok(items.map(i => i.id).join(',') === '2,1' && items[0].date === '2026-09-23' &&
 
 // ── M, W, P ───────────────────────────────────────────────────────────
 ok(/create table if not exists public\.house_desk/.test(mig) && /kind\s+text primary key/.test(mig) && /revoke all on public\.house_desk from anon, authenticated/.test(mig), 'M1 0036 makes house_desk, one row per kind, service role only');
-ok(/case '\/reads\/note':/.test(w) && /case '\/reads\/note-drop':/.test(w) && /case '\/reads\/revise':/.test(w) && /case '\/reads\/desk':/.test(w) && /const desk = await readDeskInputs\(env, row\.kind\);   \/\/ SEAM:READ_DESK/.test(w) && /desk_chars: desk\.length/.test(w),
+ok(/case '\/reads\/note':/.test(w) && /case '\/reads\/note-drop':/.test(w) && /case '\/reads\/revise':/.test(w) && /case '\/reads\/desk':/.test(w) && /const desk = await readDeskInputs\(env, row\.kind, row\);   \/\/ SEAM:READ_DESK/.test(w) && /desk_chars: desk\.length/.test(w),
   'W1 the four doors are dispatched; every fresh compile carries the standing inputs and records their size');
 ok(/id="desk">The desk<\/button>/.test(page) && /function deskPanel\(html\)/.test(page) && /function deskShow\(row, deskRows\)/.test(page) && /call\("\/reads\/revise", \{ id: row\.id \}\)/.test(page) && /call\("\/reads\/note", \{ id: row\.id, text: t, scope: sc \}\)/.test(page) &&
   /call\("\/reads\/desk", \{ kind: "all", inputs: document\.getElementById\("desk-all"\)\.value \}\)/.test(page) && /Revised from v' \+ esc\(String\(row\.meta\.revised_from_version/.test(page) && /window\.confirm\("Revise "/.test(page),

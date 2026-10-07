@@ -370,6 +370,41 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .modal-action.deep{background:var(--deep);}
 .modal-action.deep:hover{background:#6d28d9;}
 
+/* SEAM:READ_COMMISSION: the RECON generator */
+.modal-box.cm-wide{max-width:880px;}
+.cm-eye{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.15em;margin-bottom:6px;text-transform:uppercase;}
+.cm-k{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin:18px 0 6px;}
+.cm-in,.cm-ta,.cm-sel{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;padding:10px 12px;outline:none;width:100%;box-sizing:border-box;}
+.cm-ta{resize:vertical;line-height:1.55;}
+.cm-in:focus,.cm-ta:focus,.cm-sel:focus{border-color:var(--accent);}
+.cm-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap;}
+.cm-count{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);}
+.cm-btn{background:none;border:1px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;padding:9px 14px;cursor:pointer;}
+.cm-btn:hover{border-color:var(--accent);color:var(--accent);}
+.cm-btn:disabled{opacity:.45;cursor:default;}
+.cm-frame{border:1px solid var(--border2);background:var(--surface2);padding:16px 18px;margin-top:14px;}
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+.cm-grid .cm-k{margin:0 0 4px;}
+.cm-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.cm-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);padding:4px 8px;font-size:12px;color:var(--text);background:var(--surface);}
+.cm-chip button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0;line-height:1;}
+.cm-chip button:hover{color:var(--accent);}
+.cm-chip-add{background:transparent;border:1px dashed var(--border2);color:var(--text);font-size:12px;padding:4px 8px;width:150px;outline:none;font-family:'Syne',sans-serif;}
+.cm-note{font-size:12px;color:var(--text2);line-height:1.6;margin-top:10px;}
+.cm-frame>.cm-note{margin:0 0 14px;}
+.cm-warn{color:var(--accent4);}
+.cm-depth{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.cm-depth .modal-option.on{border-color:var(--accent);background:rgba(255,59,59,0.05);}
+.cm-say{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);margin-top:12px;min-height:16px;line-height:1.6;}
+.cm-track{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.cm-trow{display:flex;justify-content:space-between;gap:14px;border:1px solid var(--border);background:var(--surface2);padding:12px 14px;align-items:center;}
+.cm-trow b{font-size:13px;color:var(--text);display:block;margin-bottom:3px;}
+.cm-trow small{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.04em;line-height:1.6;}
+.cm-trow a{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);text-decoration:none;white-space:nowrap;}
+.cm-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+.cm-shelf-acts{display:flex;gap:8px;margin-top:10px;}
+@media (max-width:720px){.cm-grid,.cm-depth{grid-template-columns:1fr;}}
+
 /* ── ERROR / TOAST ── */
 .error-banner{background:rgba(245,90,140,0.08);border:1px solid rgba(245,90,140,0.25);border-left:3px solid var(--accent2);padding:14px 20px;font-family:'Space Mono',monospace;font-size:12px;color:var(--accent2);letter-spacing:0.06em;line-height:1.6;display:none;max-width:1400px;margin:0 auto 20px;position:relative;z-index:var(--z-page);padding-left:40px;padding-right:40px;}
 .toast{position:fixed;bottom:32px;right:32px;background:var(--accent);color:#fff;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;padding:14px 24px;z-index:var(--z-toast);transform:translateY(100px);opacity:0;transition:all 0.4s ease;letter-spacing:0.08em;}
@@ -2258,6 +2293,7 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
       <div style="display:flex;gap:8px;">
         <button class="btn-new-search" onclick="clearSearch()">← New Search</button>
         <button class="btn-export-pdf" onclick="exportToPDF()">↓ Download Report</button>
+        <button class="btn-new-search" id="btn-make-recon" style="display:none" onclick="makeReconFromRead()">Make this a RECON</button><!-- SEAM:READ_COMMISSION -->
       </div>
     </div>
   </div>
@@ -2478,7 +2514,8 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
       <div class="lib-shelf" id="lib-report"><p class="lib-empty">Opening the shelf.</p></div>
     </section>
     <section class="room-sec" id="lib-recon-sec" style="display:none">
-      <div class="room-head"><h2>RECONs</h2><div class="sub">Commissioned reads. Only admins see this list: a RECON belongs to whoever commissioned it.</div></div>
+      <div class="room-head"><h2>RECONs</h2><div class="sub">Commissioned reads. Only admins see this list: a RECON belongs to whoever commissioned it.</div>
+        <div class="cm-shelf-acts"><button class="cm-btn" type="button" onclick="openCommission()">Commission a RECON</button><button class="cm-btn" type="button" onclick="openCommissionTrack([])">Track</button></div><!-- SEAM:READ_COMMISSION --></div>
       <div class="lib-list" id="lib-recon"></div>
     </section>
   </div>
@@ -3197,6 +3234,8 @@ function _liveBrief(q, items, connectors){
 function _renderLive(q, data){
   const items=(data&&data.items)||[];
   const syn=data&&data.synthesis;
+  window._liveLast={ q, synthesis: syn||null };   // SEAM:READ_COMMISSION: Make this a RECON starts from the read on screen
+  _cmAdmin().then(a=>{ const b=document.getElementById('btn-make-recon'); if(b) b.style.display=a?'':'none'; });
   let insights, ideas, brief, synthd=false;
   if(syn && Array.isArray(syn.insights) && syn.insights.length){
     // SEAM:EXC_ACCURACY: confidence is what the compiler earned (corroboration weighed by tier), never the card's position;
@@ -3885,7 +3924,8 @@ function deployIdea(e,title){
 }
 
 function openModal(type){
-  if(type==='new-report'){
+  if(type==='new-report') return _newReport();   // SEAM:READ_COMMISSION: New Report is real
+  if(type==='new-report-legacy'){
     showModal(`
       <div style="margin-bottom:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.15em;">NEW REPORT</div>
       <h2 class="modal-title">Configure Analysis</h2>
@@ -4687,7 +4727,197 @@ function toggleFilter(btn){document.querySelectorAll('.filter-bar .tag').forEach
 function showError(msg){const b=document.getElementById('error-banner');b.textContent='⚠ '+msg;b.style.display='block';}
 function showModal(html){document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-overlay').classList.add('open');}
 function closeModal(e){if(e.target===document.getElementById('modal-overlay'))closeModalDirect();}
-function closeModalDirect(){document.getElementById('modal-overlay').classList.remove('open');}
+function closeModalDirect(){document.getElementById('modal-overlay').classList.remove('open');_cmBox(false);if(window._cmPoll){clearInterval(window._cmPoll);window._cmPoll=null;}}   // SEAM:READ_COMMISSION: the tracker stops polling when the modal closes
+
+/* SEAM:READ_COMMISSION: the RECON generator (admin). The frame is read back and confirmed before anything is spent; the
+   depth decides how long it takes; the tracker follows it until it is written. Members get New Report as a live read. */
+const _CM_DEPTH = {
+  draft: { t: 'Draft', d: 'One pass, about an hour. Read it, edit it, then go deeper.' },
+  deep: { t: 'Deep', d: 'The full research: a plan, sources read in full, the voices, four passes. A working day.' },
+  draft_deep: { t: 'Draft, then Deep', d: 'The draft prints first for your edits. The deep version follows as the next version.' }
+};
+const _CM_LIMIT = { competitors: 5, anchors: 16, exclude: 8 };
+const _CM_STAGE = { plan: 'Writing the research plan', search: 'Searching the lake by meaning', gather: 'Gathering fresh sources', voices: 'Reading what people say',
+  read: 'Reading sources in full', wait: 'Waiting on the source cards', measure: 'Measuring attention', evidence: 'Building the evidence file',
+  compile: 'Preparing the write', analysis: 'Thinking: the analysis', strategy: 'Thinking: the strategy', write: 'Writing the RECON', compiled: 'Written; the copy desk is checking' };
+const _CM_HOLD = { budget: 'Held at its ceiling. Raise it on the READ page to resume.', evidence: 'Held for your evidence review on the READ page.', no_cards: 'Held: no source read in full bore on the question.' };
+function _cmState(pre) {
+  return Object.assign({ brief: '', frame: null, framedFor: '', prior: null, decisions: ['', '', '', '', ''], days: 90, depth: 'draft_deep', budget: 30, hold: false,
+    busy: false, said: '', view: 'form', ids: [], from: null }, pre || {});
+}
+async function _cmApi(path, body) {
+  const h = await _authHeader();
+  if (!h || !h.Authorization) return { ok: false, error: 'signed_out' };
+  const r = await fetch(API_BASE.replace(/\/$/, '') + path, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify(body || {}) });
+  return r.ok ? r.json() : { ok: false, error: 'http_' + r.status };
+}
+function _cmAdmin() { if (!window._cmAdminP) window._cmAdminP = _isAdmin().catch(() => false); return window._cmAdminP; }
+function _cmBox(wide) { const b = document.querySelector('#modal-overlay .modal-box'); if (b) b.classList.toggle('cm-wide', !!wide); }
+function openCommission(pre) {
+  if (!window._cm || pre) window._cm = _cmState(pre);
+  window._cm.view = 'form';
+  _cmRender();
+}
+function openCommissionTrack(ids, said) {
+  if (!window._cm) window._cm = _cmState();
+  window._cm.view = 'track'; window._cm.said = said || '';
+  if (Array.isArray(ids)) window._cm.ids = ids;
+  _cmRender();
+}
+/* PURE: the commission the form describes. The frame the editor confirmed rides whole; decisions are the client's words. */
+function _cmPayload(st) {
+  const f = st.frame || {};
+  const body = { brief: String(st.brief || '').replace(/\s+/g, ' ').trim(), depth: st.depth, days: st.days,
+    frame: { entity: f.entity || '', category: f.category || '', audience: f.audience || '', market: f.market || '', question: f.question || '',
+      competitors: (f.competitors || []).slice(0, _CM_LIMIT.competitors), anchors: (f.anchors || []).slice(0, _CM_LIMIT.anchors), exclude: (f.exclude || []).slice(0, _CM_LIMIT.exclude) },
+    decisions: (st.decisions || []).map(d => String(d || '').trim()).filter(d => d.length >= 6).slice(0, 5),
+    audience: f.audience || undefined, competitors: (f.competitors || []).slice(0, _CM_LIMIT.competitors) };
+  if (st.depth !== 'draft') { body.budget = Number(st.budget) || 30; body.hold = !!st.hold; }
+  return body;
+}
+/* PURE: what a tracker row says about where a RECON is. */
+function _cmStageText(r) {
+  if (!r) return '';
+  if (r.status === 'failed') return 'Failed' + (r.error ? ': ' + r.error : '');
+  if (r.status === 'ready' || r.status === 'published') return r.status === 'published' ? 'Published' : 'Written and ready';
+  if (r.status === 'held' && !(r.deep && r.deep.stage === 'hold')) return 'Written; the sell law holds it until its notes are fixed';
+  if (r.deep) {
+    if (r.deep.stage === 'hold') return _CM_HOLD[r.deep.hold_reason] || 'Held';
+    if (r.deep.stage === 'failed') return 'Failed at ' + (r.deep.failed_stage || 'a stage') + (r.error ? ': ' + r.error : '');
+    return _CM_STAGE[r.deep.stage] || ('Working: ' + (r.deep.stage || 'queued'));
+  }
+  return r.status === 'compiling' ? 'Compiling: the draft is with the writer' : 'Queued';
+}
+function _cmEsc(v) { return safe(v == null ? '' : String(v)); }
+function _cmRender() {
+  const st = window._cm; if (!st) return;
+  _cmBox(true);
+  if (st.view === 'track') return _cmRenderTrack();
+  const f = st.frame, stale = !!f && st.framedFor !== String(st.brief).replace(/\s+/g, ' ').trim();
+  const chips = (k) => `<div class="cm-chips">${(f[k] || []).map((x, i) => `<span class="cm-chip">${_cmEsc(x)}<button type="button" aria-label="Remove" onclick="_cmChipDel('${k}',${i})">×</button></span>`).join('')}${(f[k] || []).length < _CM_LIMIT[k] ? `<input class="cm-chip-add" placeholder="Add, then Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();_cmChipAdd('${k}',this.value)}">` : ''}</div>`;
+  const field = (k, label) => `<div><label class="cm-k">${label}</label><input class="cm-in" value="${safeAttr(f[k] || '')}" oninput="_cm.frame['${k}']=this.value"></div>`;
+  const frameHtml = !f ? '' : `<div class="cm-frame">
+      ${st.prior ? `<div class="cm-note cm-warn">This brief is already RECON ${String(st.prior.recon_no || '').padStart(3, '0')} (${st.prior.versions} version${st.prior.versions === 1 ? '' : 's'}). Commissioning writes its next version. Change the brief to start a new RECON.</div>` : ''}
+      ${stale ? `<div class="cm-note cm-warn">The brief changed after this frame was read. Read the frame again before commissioning.</div>` : ''}
+      <div class="cm-grid">${field('entity', 'Entity')}${field('category', 'Category')}${field('audience', 'Audience')}${field('market', 'Market')}</div>
+      <label class="cm-k">The question the RECON answers</label><textarea class="cm-ta" rows="2" oninput="_cm.frame.question=this.value">${_cmEsc(f.question || '')}</textarea>
+      <label class="cm-k">Competitors (up to 5)</label>${chips('competitors')}
+      <label class="cm-k">Anchors: what a line must be about (up to 16)</label>${chips('anchors')}
+      <label class="cm-k">Leave out (up to 8)</label>${chips('exclude')}
+    </div>`;
+  const deepOn = st.depth !== 'draft';
+  const rest = !f ? '' : `
+    <label class="cm-k">The client's decisions (up to 5, in their words)</label>
+    ${st.decisions.map((d, i) => `<input class="cm-in" style="margin-bottom:6px" placeholder="${i === 0 ? 'Where should the next bet go?' : 'Another decision this RECON should inform'}" value="${safeAttr(d)}" oninput="_cm.decisions[${i}]=this.value">`).join('')}
+    <label class="cm-k">The window</label>
+    <select class="cm-sel" onchange="_cm.days=parseInt(this.value,10)">${[90, 180, 365].map(n => `<option value="${n}"${st.days === n ? ' selected' : ''}>The last ${n} days</option>`).join('')}</select>
+    <label class="cm-k">Depth</label>
+    <div class="cm-depth">${Object.keys(_CM_DEPTH).map(k => `<div class="modal-option${st.depth === k ? ' on' : ''}" onclick="_cm.depth='${k}';_cmRender()"><div class="modal-option-title">${_CM_DEPTH[k].t}</div><div class="modal-option-desc">${_CM_DEPTH[k].d}</div></div>`).join('')}</div>
+    ${deepOn ? `<div class="cm-grid" style="margin-top:12px"><div><label class="cm-k">Ceiling for the deep version (USD)</label><input class="cm-in" type="number" min="10" max="100" step="5" value="${safeAttr(st.budget)}" oninput="_cm.budget=this.value"></div>
+      <div><label class="cm-k">Evidence review</label><label class="cm-note" style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox"${st.hold ? ' checked' : ''} onchange="_cm.hold=this.checked"> Stop at the evidence file so I can review it before the write</label></div></div>` : ''}
+    <div class="cm-note">Expected spend: ${st.depth === 'draft' ? 'about $1.30' : st.depth === 'deep' ? 'about $9 to $12, never past the ceiling' : 'about $1.30 for the draft, then about $9 to $12 for the deep version, never past the ceiling'}.</div>
+    <button class="modal-action" style="margin-top:16px" id="cm-go" onclick="_cmGo()"${stale || st.busy ? ' disabled' : ''}>${st.busy ? 'Commissioning' : 'Commission'}</button>`;
+  showModal(`<div class="cm">
+    <div class="cm-eye">Commission · RECON</div>
+    <h2 class="modal-title">Ask the house for a RECON</h2>
+    <div class="modal-sub">THE FRAME FIRST, THEN THE SPEND</div>
+    ${st.from ? `<div class="cm-note">From the read: ${_cmEsc(st.from)}</div>` : ''}
+    <label class="cm-k">The brief</label>
+    <textarea class="cm-ta" id="cm-brief" rows="4" maxlength="600" placeholder="What the client needs to know, in their terms: the brand or category, the people, the question." oninput="_cm.brief=this.value;document.getElementById('cm-count').textContent=this.value.length+' / 600'">${_cmEsc(st.brief)}</textarea>
+    <div class="cm-row"><span class="cm-count" id="cm-count">${String(st.brief).length} / 600</span><span style="display:flex;gap:8px"><button class="cm-btn" type="button" onclick="openCommissionTrack()">Track RECONs</button><button class="cm-btn" type="button" onclick="_cmFrame()"${st.busy ? ' disabled' : ''}>${f ? 'Read the frame again' : 'Read the frame'}</button></span></div>
+    ${frameHtml}${rest}
+    <div class="cm-say" id="cm-say">${_cmEsc(st.said)}</div>
+  </div>`);
+}
+function _cmChipDel(k, i) { const st = window._cm; if (!st || !st.frame) return; st.frame[k] = (st.frame[k] || []).filter((x, j) => j !== i); _cmRender(); }
+function _cmChipAdd(k, v) {
+  const st = window._cm, t = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 40); if (!st || !st.frame || !t) return;
+  const list = st.frame[k] || [];
+  if (list.length >= _CM_LIMIT[k] || list.some(x => String(x).toLowerCase() === t.toLowerCase())) return;
+  st.frame[k] = list.concat([t]); _cmRender();
+}
+async function _cmFrame() {
+  const st = window._cm, brief = String(st.brief || '').replace(/\s+/g, ' ').trim();
+  if (brief.length < 12) { st.said = 'Write the brief first: at least a sentence.'; return _cmRender(); }
+  st.busy = true; st.said = 'Reading the frame.'; _cmRender();
+  let d = null; try { d = await _cmApi('/reads/frame', { brief }); } catch (e) { d = { ok: false, error: 'network' }; }
+  st.busy = false;
+  if (!d || !d.ok) { st.said = d && d.error === 'unframeable' ? 'The framer could not place this brief. Name the brand, category or people it is about.' : 'The house refused: ' + ((d && d.error) || 'no answer'); return _cmRender(); }
+  st.frame = Object.assign({ competitors: [], anchors: [], exclude: [] }, d.frame); st.framedFor = d.brief; st.prior = d.prior || null;
+  st.said = 'Check every field. What you confirm here is what the RECON researches.'; _cmRender();
+}
+async function _cmGo() {
+  const st = window._cm; if (!st || !st.frame || st.busy) return;
+  const body = _cmPayload(st);
+  if (!body.frame.entity && !body.frame.category) { st.said = 'The frame needs an entity or a category.'; return _cmRender(); }
+  const spend = st.depth === 'draft' ? 'about $1.30' : 'up to $' + body.budget + ' for the deep version' + (st.depth === 'draft_deep' ? ', plus about $1.30 for the draft' : '');
+  if (!window.confirm('Commission this RECON (' + _CM_DEPTH[st.depth].t + ')? Spend: ' + spend + '.')) return;
+  st.busy = true; st.said = st.depth === 'deep' ? 'Queuing the deep RECON.' : 'Gathering the draft\'s evidence and sending it to the writer. About a minute or two.'; _cmRender();
+  let d = null; try { d = await _cmApi('/reads/commission', body); } catch (e) { d = { ok: false, error: 'network' }; }
+  st.busy = false;
+  const ids = d ? [d.draft && d.draft.id, d.deep && d.deep.id, d.id].filter(Boolean) : [];
+  if (!ids.length) { st.said = 'The house refused: ' + ((d && d.error) || 'no answer'); return _cmRender(); }
+  const warn = d.draft && d.draft.ok === false ? ' The draft did not reach the writer (' + (d.draft.error || 'no reason') + '); the deep version still runs.' : (d.ok === false && d.error ? ' Note: ' + d.error + '.' : '');
+  st.ids = ids;
+  try { localStorage.setItem('exc_cm_ids', JSON.stringify(ids)); } catch (e) { /* the tracker still has them for this visit */ }
+  openCommissionTrack(ids, 'Commissioned as RECON ' + String(d.recon_no || '').padStart(3, '0') + '.' + warn);
+}
+async function _cmRenderTrack() {
+  const st = window._cm;
+  if (!st.ids.length) { try { const k = JSON.parse(localStorage.getItem('exc_cm_ids') || '[]'); if (Array.isArray(k)) st.ids = k; } catch (e) { st.ids = []; } }
+  showModal(`<div class="cm"><div class="cm-eye">Commission · Tracking</div><h2 class="modal-title">Where the RECONs are</h2>
+    <div class="modal-sub">${st.ids.length ? 'THIS COMMISSION' : 'THE LATEST RECONS'}</div>
+    <div class="cm-track" id="cm-track"><div class="cm-note">Reading the desk.</div></div>
+    <div class="cm-acts"><button class="cm-btn" type="button" onclick="_cmCollect()">Collect now</button><button class="cm-btn" type="button" onclick="_cmTrackLoad()">Refresh</button>
+      <button class="cm-btn" type="button" onclick="window._cm.ids=[];_cmTrackLoad()">All recent</button><button class="cm-btn" type="button" onclick="openCommission(_cmState())">New commission</button></div>
+    <div class="cm-say" id="cm-say">${_cmEsc(st.said)}</div></div>`);
+  _cmTrackLoad();
+  if (window._cmPoll) clearInterval(window._cmPoll);
+  window._cmPoll = setInterval(() => { const o = document.getElementById('modal-overlay'); if (!o || !o.classList.contains('open') || !document.getElementById('cm-track')) { clearInterval(window._cmPoll); window._cmPoll = null; return; } _cmTrackLoad(); }, 30000);
+}
+async function _cmTrackLoad() {
+  const st = window._cm, el = document.getElementById('cm-track'); if (!el) return;
+  let d = null; try { d = await _cmApi('/reads/track', st.ids.length ? { ids: st.ids } : { recent: 8 }); } catch (e) { d = null; }
+  const rows = d && d.ok ? d.rows : [];
+  if (!rows.length) { el.innerHTML = '<div class="cm-note">No RECONs to show yet.</div>'; return; }
+  el.innerHTML = rows.map(r => {
+    const open = ['ready', 'held', 'published'].includes(r.status);
+    const spend = r.deep && r.deep.budget_usd ? ' · $' + (Number(r.deep.spent_usd) || 0).toFixed(2) + ' of $' + r.deep.budget_usd : '';
+    const when = r.updated_at ? ' · ' + new Date(r.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    return `<div class="cm-trow"><span><b>${_cmEsc(r.label || 'RECON')}</b><small>${r.depth === 'deep' ? 'Deep' : 'Draft'} · version ${_cmEsc(r.version)} · ${_cmEsc(_cmStageText(r))}${spend}${when}</small></span>${open ? `<a href="read/?id=${encodeURIComponent(r.id)}" target="_blank" rel="noopener">Open →</a>` : ''}</div>`;
+  }).join('');
+}
+async function _cmCollect() {
+  const st = window._cm; st.said = 'Collecting: finished batches land and the deep RECONs take their next step.'; const s = document.getElementById('cm-say'); if (s) s.textContent = st.said;
+  let d = null; try { d = await _cmApi('/reads/collect', {}); } catch (e) { d = null; }
+  st.said = d && d.ok ? 'Collected at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.' : 'The collect did not answer. The house collects on its own every half hour.';
+  if (s) s.textContent = st.said;
+  _cmTrackLoad();
+}
+/* A live read becomes a commission: its question is the brief, its frame's people and competitors carry over. */
+function makeReconFromRead() {
+  const L = window._liveLast; if (!L || !L.q) return showToast('Run a search first');
+  const fr = (L.synthesis && L.synthesis.frame) || {};
+  openCommission({ brief: String(L.q), from: String(L.q), decisions: ['', '', '', '', ''] });
+  if (fr.audience || (fr.competitors || []).length) window._cm.said = 'The read framed this for ' + [fr.audience, (fr.competitors || []).length ? 'against ' + fr.competitors.join(', ') : ''].filter(Boolean).join(', ') + '. Read the frame to confirm it.';
+  _cmRender();
+}
+/* New Report: an admin commissions; a member asks the question as a live read now. */
+async function _newReport() {
+  if (await _cmAdmin()) return openCommission();
+  _cmBox(false);
+  showModal(`<div class="cm-eye">New report</div><h2 class="modal-title">Ask culture a question</h2>
+    <div class="modal-sub">A LIVE READ, WRITTEN NOW FROM THE SOURCES</div>
+    <input class="cm-in" id="nr-q" placeholder="A brand, a category, the people, or the question itself" onkeydown="if(event.key==='Enter'){event.preventDefault();_newReportRun()}">
+    <div class="cm-note">The read lands here in a couple of minutes, with its sources on every finding. A full commissioned report, a RECON, is made by the house on request.</div>
+    <button class="modal-action" style="margin-top:16px" onclick="_newReportRun()">Read it now →</button>`);
+  setTimeout(() => { const i = document.getElementById('nr-q'); if (i) i.focus(); }, 50);
+}
+function _newReportRun() {
+  const q = (document.getElementById('nr-q') || {}).value || ''; if (q.trim().length < 2) return;
+  closeModalDirect(); const inp = document.getElementById('search-input'); if (inp) inp.value = q.trim();
+  navTo('explore'); runSearch();
+}
 function showToast(msg){const t=document.getElementById('toast');t.textContent='✓ '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 
 

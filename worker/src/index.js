@@ -236,6 +236,8 @@ export default {
         case '/reads/sweep':         // SEAM:READ_SWEEP: recut every existing weekly and monthly under the Method, then apply
         case '/reads/proof':         // SEAM:READ_PROOF recut
         case '/reads/commission':    // SEAM:READ_RECON: commission a RECON from a brief
+        case '/reads/frame':         // SEAM:READ_COMMISSION: the frame before the spend
+        case '/reads/track':         // SEAM:READ_COMMISSION: the tracker
         case '/reads/release':       // SEAM:READ_DEEP: release a deep RECON from its hold (the evidence file, or its ceiling)
         case '/reads/note':          // SEAM:READ_DESK: the editors' notes, revisions and standing inputs
         case '/reads/note-drop':
@@ -9527,14 +9529,22 @@ function readNotesText(notes) {
   return (notes || []).map((n, i) => (i + 1) + '. ' + (n.scope ? '[' + n.scope + '] ' : '[whole read] ') + String(n.text).replace(/\s+/g, ' ').trim() + ' (' + (n.by || 'editor') + ')').join('\n');
 }
 /* PURE: the standing inputs that apply to a kind: the kind's own row, then 'all'. */
-function readDeskText(rows, kind) {
+function readDeskText(rows, kind, scoped) {
   const by = {}; for (const r of (rows || [])) if (r && r.kind) by[r.kind] = String(r.inputs || '').trim();
-  const parts = []; if (by[kind]) parts.push(by[kind]); if (by.all) parts.push(by.all);
-  return parts.join('\n').slice(0, READ_DESK.INPUTS_MAX * 2);
+  const parts = []; if (scoped && by[scoped]) parts.push('FOR THIS RECON (every version): ' + by[scoped]);   // SEAM:READ_COMMISSION: the RECON's own direction first
+  if (by[kind]) parts.push(by[kind]); if (by.all) parts.push(by.all);
+  return parts.join('\n').slice(0, READ_DESK.INPUTS_MAX * 3);
 }
-async function readDeskInputs(env, kind) {
-  const rows = await sbRest(env, 'house_desk?kind=in.(' + kind + ',all)&select=kind,inputs,updated_by,updated_at') || [];
-  return readDeskText(rows, kind);
+/* SEAM:READ_COMMISSION: a RECON's own desk key, recon:<brief hash>. Every version of one RECON shares its brief hash, so
+ * what the editor writes on the draft reaches the deep compile and every revision after it. */
+function readDeskScope(row) {
+  const h = row && row.kind === 'recon' && row.meta && row.meta.brief ? String(row.meta.brief.hash || '') : '';
+  return /^[0-9a-f]{16}$/.test(h) ? 'recon:' + h : null;
+}
+async function readDeskInputs(env, kind, row) {
+  const scoped = readDeskScope(row);
+  const rows = await sbRest(env, 'house_desk?kind=in.(' + [scoped, kind, 'all'].filter(Boolean).join(',') + ')&select=kind,inputs,updated_by,updated_at') || [];
+  return readDeskText(rows, kind, scoped);
 }
 const READ_CONTRACT = {
   weekly: 'CONTRACT (weekly). Return one JSON object with exactly these keys: ' +
@@ -11709,7 +11719,7 @@ async function readSubmit(env, row) {
   if (row.kind === 'record' && stats.issues && stats.issues.first)
     label = 'DAILY: The Record, Issues ' + String(stats.issues.first).padStart(3, '0') + ' to ' + String(stats.issues.last).padStart(3, '0');
   const pack = items.map(it => readPackLine(it, K.take)).join('\n');
-  const desk = await readDeskInputs(env, row.kind);   // SEAM:READ_DESK: the editors' standing inputs ride every compile
+  const desk = await readDeskInputs(env, row.kind, row);   // SEAM:READ_DESK: the editors' standing inputs ride every compile (SEAM:READ_COMMISSION: and the RECON's own)
   const memo = typeof memoryReadBrief === 'function' ? await memoryReadBrief(env, items, stats).catch(excQuiet('read_memory', '')) : '';   // SEAM:MEMORY: what we said before on this read's subjects
   const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +   // SEAM:READ_RECON
     (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
@@ -11796,7 +11806,7 @@ async function readSubmitRevision(env, row) {
   const items = await readItemsByIds(env, prior.pack_ids || []);
   const dEarly = row.kind === 'recon' ? (deepOf(row) || deepOf(prior)) : null;   // SEAM:READ_DEEP: one figure for the comments read, in the revision's ground too
   const pk = readPackVoicesRefresh((prior.meta && prior.meta.pack) || null, { start: prior.window_start, end: prior.window_end }, dEarly && dEarly.comments ? dEarly.comments.read : null);   // SEAM:VOICE_LAW: the same ground, its voices read under the voice law (SEAM:READ_TIME: banded by date)
-  const desk = await readDeskInputs(env, row.kind);
+  const desk = await readDeskInputs(env, row.kind, readDeskScope(row) ? row : prior);   // SEAM:READ_COMMISSION: a revision reads its RECON's own inputs
   const recon = row.kind === 'recon' ? readReconOf(row) : null;
   const deep = recon ? deepOf(row) || deepOf(prior) : null;   // SEAM:READ_DEEP: a deep RECON's revision stands on the same evidence, on the same ledger, under the same law
   if (deep && pk && !pk.win) pk.win = { start: prior.window_start, end: prior.window_end };
@@ -12486,6 +12496,66 @@ async function readCadence(env, now) {
   if (out.weekly || out.report) out.tick = await readTick(env);
   return out;
 }
+/* SEAM:READ_COMMISSION: the commission, callable once or twice in one request (draft_deep). Answers a plain object; the route
+ * answers it as JSON. Everything the old route did, unchanged, plus the editor's confirmed frame. */
+async function readCommission(env, body, user) {
+    // SEAM:READ_RECON: commission a RECON. { brief, days? (default 90), end? (default yesterday), now? } (admin). The brief is framed
+    // by EXCAVATE's framer; the row is queued with meta {plan recon, recon_no, brief {text, hash, frame, days}}; the tick
+    // gathers on the brief, then submits. now:true runs the gather and the submit on this request instead of waiting for the tick.
+    const text = String((body && body.brief) || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+    if (text.length < 12) return { ok: false, error: 'brief_too_short' };
+    const frame = await excFrameFor(env, text);
+    if (!frame) return { ok: false, error: 'unframeable' };
+    // SEAM:READ_COMMISSION: the frame the editor confirmed in the preview wins, field by field, through the same cleaner.
+    if (body.frame && typeof body.frame === 'object') { const f2 = excFrameClean(Object.assign({}, frame, readFrameEdits(body.frame, frame))); if (f2) Object.assign(frame, f2); }
+    // SEAM:READ_DEEP: the client's decisions (up to five), the audience and the competitors as the client names them, the ceiling, the
+    // hold. Every RECON is deep unless the commission says deep:false (the shallow path: one gather, one compile).
+    const deep = body.deep !== false;
+    const words = (t, n) => { const x = String(t).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim(); if (x.length <= n) return x; const c = x.slice(0, n), sp = c.lastIndexOf(' '); return sp > n / 2 ? c.slice(0, sp) : c; };   // cut at a word, as the frame keeps it
+    const decisions = (Array.isArray(body.decisions) ? body.decisions : []).filter(d => typeof d === 'string').map(d => words(d, 240)).filter(d => d.length >= 6).slice(0, READ_DEEP.DECISIONS);   // the client's words only: they are ground
+    if (typeof body.audience === 'string' && body.audience.trim()) frame.audience = words(body.audience, 40) || frame.audience;
+    const named = (Array.isArray(body.competitors) ? body.competitors : []).filter(c => typeof c === 'string').map(c => words(c, 40)).filter(Boolean).slice(0, 5);
+    if (named.length) frame.competitors = named;
+    const asked = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
+    const budget = Number.isFinite(asked) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, asked)) : READ_DEEP.BUDGET_USD;
+    const days = Math.max(14, Math.min(366, parseInt(body.days, 10) || READ_RECON.DAYS));
+    const endD = readDay(body.end) || readAddDays(readDay(new Date().toISOString().slice(0, 10)), -1);
+    const win = readReportWindow(readIso(readAddDays(endD, -(days - 1))), readIso(endD));
+    if (!win) return { ok: false, error: 'bad_window' };
+    const hash = (await sha256hex(text.toLowerCase())).slice(0, 16);
+    const no = await readReconIssue(env, hash);
+    win.label = readReconLabel(no, frame, win);
+    const meta = { plan: 'recon', recon_no: no, brief: Object.assign({ text, hash, frame, days }, decisions.length ? { decisions } : {}) };
+    if (deep) meta.deep = { v: 1, stage: 'plan', budget_usd: budget, hold: body.hold === true, started_at: new Date().toISOString(), by: String(user.email || user.id).replace(/@.*$/, ''), spend: {}, counts: {}, log: [] };
+    const { row, prev } = await readQueue(env, 'recon', win, meta);
+    if (!row) return { ok: false, error: 'queue_failed' };
+    logEvent(env, 'intelligence', 'reads', 'recon_commissioned', null, { id: row.id, recon_no: no, days, deep, decisions: decisions.length, by: user.id });
+    let sub = { ok: true, waiting: 'tick' };
+    if (body.now && deep) sub = Object.assign({ ok: true, waiting: 'tick' }, { advanced: await deepAdvance(env, row, { ms: 100000, deadline: Date.now() + 470000 }) });   // SEAM:READ_DEEP: the first stages now, the rest on the tick
+    else if (body.now) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); sub = await readSubmit(env, row); sub.gather = { captured: g.captured, failed: g.failed.length }; }
+    return Object.assign({ id: row.id, kind: 'recon', recon_no: no, window: win, version: row.version, replaces: prev ? prev.id : null, frame }, deep ? { deep: { budget_usd: budget, hold: body.hold === true, decisions: decisions.length } } : {}, sub);
+}
+/* PURE: the fields an editor may set on a frame, and nothing else. queries merge into the framer's own. */
+function readFrameEdits(e, base) {
+  const out = {};
+  for (const k of ['entity', 'category', 'audience', 'market', 'question']) if (typeof e[k] === 'string' && e[k].trim()) out[k] = e[k];
+  for (const k of ['competitors', 'anchors', 'exclude']) if (Array.isArray(e[k])) out[k] = e[k].filter(x => typeof x === 'string' && x.trim());
+  if (Array.isArray(out.anchors) && !out.anchors.length) delete out.anchors;   // a frame never loses every anchor in an edit
+  if (e.queries && typeof e.queries === 'object') out.queries = Object.assign({}, (base && base.queries) || {}, e.queries);
+  return out;
+}
+/* PURE: one RECON's state for the tracker, small enough to poll. */
+function readTrackRow(r) {
+  const d = r && r.deep && typeof r.deep === 'object' ? r.deep : null, log = d && Array.isArray(d.log) ? d.log : [];
+  const last = log.length ? log[log.length - 1] : null;
+  return { id: r.id, kind: r.kind, version: r.version, status: r.status, error: r.error || null, label: r.label || null, recon_no: r.recon_no || null,
+    window: { start: r.window_start, end: r.window_end }, batch: !!r.batch_id, created_at: r.created_at, updated_at: r.updated_at,
+    depth: d ? 'deep' : 'draft',
+    deep: d ? { stage: d.stage || null, hold: !!d.hold, hold_reason: d.hold_reason || null, failed_stage: d.failed_stage || null, waiting: d.waiting || null,
+      budget_usd: Number(d.budget_usd) || null, spent_usd: deepSpent(d), started_at: d.started_at || null, stage_at: d.stage_at || null,
+      last: last ? { stage: last.stage || null, to: last.to || null, at: last.at || null, error: last.error || null } : null } : null };
+}
+
 async function readQueue(env, kind, win, meta) {
   const prev = await sbRest(env, 'house_reads?kind=eq.' + kind + '&window_start=eq.' + win.start + '&window_end=eq.' + win.end +
     '&select=id,version,status&order=version.desc&limit=1') || [];
@@ -13018,7 +13088,7 @@ async function readRoute(path, body, env, origin, user) {
     if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
     if (row.status === 'compiling' || row.status === 'queued') return json({ ok: false, error: 'still_compiling' }, 200, origin, env);
     const notes = readNotesOpen(row);
-    const desk = await readDeskInputs(env, row.kind);
+    const desk = await readDeskInputs(env, row.kind, row);
     if (!notes.length && !desk) return json({ ok: false, error: 'nothing_to_apply' }, 200, origin, env);
     const dd = row.kind === 'recon' ? deepOf(row) : null;   // SEAM:READ_DEEP: a revision of a deep RECON is paid inside its ceiling; { budget } may raise it
     const askedB = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
@@ -13036,7 +13106,9 @@ async function readRoute(path, body, env, origin, user) {
   }
   if (path === '/reads/desk') {
     // SEAM:READ_DESK: the editors' standing inputs. { kind } reads them; { kind, inputs } writes them (admin). kind is a read kind or 'all'.
-    const kind = HOUSE_READ.KINDS[body.kind] ? body.kind : body.kind === 'all' ? 'all' : null;
+    // SEAM:READ_COMMISSION: or recon:<brief hash>, one RECON's own inputs, read beside the standing RECON and house inputs.
+    const scoped = /^recon:[0-9a-f]{16}$/.test(String(body.kind || '')) ? String(body.kind) : null;
+    const kind = scoped || (HOUSE_READ.KINDS[body.kind] ? body.kind : body.kind === 'all' ? 'all' : null);
     if (!kind) return json({ ok: false, error: 'bad_kind' }, 200, origin, env);
     if (typeof body.inputs === 'string') {
       const inputs = body.inputs.replace(/\u2014/g, ':').trim().slice(0, READ_DESK.INPUTS_MAX);
@@ -13044,43 +13116,43 @@ async function readRoute(path, body, env, origin, user) {
         body: [{ kind, inputs, updated_by: String(user.email || user.id).replace(/@.*$/, ''), updated_at: new Date().toISOString() }] });
       logEvent(env, 'intelligence', 'reads', 'desk_inputs', null, { kind, chars: inputs.length, by: user.id });
     }
-    const rows = await sbRest(env, 'house_desk?kind=in.(' + kind + ',all)&select=kind,inputs,updated_by,updated_at') || [];
-    return json({ ok: true, kind, rows, applies: readDeskText(rows, kind) }, 200, origin, env);
+    const base = scoped ? 'recon' : kind;
+    const rows = await sbRest(env, 'house_desk?kind=in.(' + [scoped, base, 'all'].filter(Boolean).join(',') + ')&select=kind,inputs,updated_by,updated_at') || [];
+    return json({ ok: true, kind, rows, applies: readDeskText(rows, base, scoped) }, 200, origin, env);
   }
-  if (path === '/reads/commission') {
-    // SEAM:READ_RECON: commission a RECON. { brief, days? (default 90), end? (default yesterday), now? } (admin). The brief is framed
-    // by EXCAVATE's framer; the row is queued with meta {plan recon, recon_no, brief {text, hash, frame, days}}; the tick
-    // gathers on the brief, then submits. now:true runs the gather and the submit on this request instead of waiting for the tick.
+  if (path === '/reads/frame') {
+    // SEAM:READ_COMMISSION: the frame before the spend. { brief } (admin): the framer's read of the brief, nothing queued. The framer
+    // caches a week by brief, so the commission that follows reuses this frame. prior says whether the brief is already a RECON.
     const text = String((body && body.brief) || '').replace(/\s+/g, ' ').trim().slice(0, 600);
     if (text.length < 12) return json({ ok: false, error: 'brief_too_short' }, 200, origin, env);
     const frame = await excFrameFor(env, text);
     if (!frame) return json({ ok: false, error: 'unframeable' }, 200, origin, env);
-    // SEAM:READ_DEEP: the client's decisions (up to five), the audience and the competitors as the client names them, the ceiling, the
-    // hold. Every RECON is deep unless the commission says deep:false (the shallow path: one gather, one compile).
-    const deep = body.deep !== false;
-    const words = (t, n) => { const x = String(t).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim(); if (x.length <= n) return x; const c = x.slice(0, n), sp = c.lastIndexOf(' '); return sp > n / 2 ? c.slice(0, sp) : c; };   // cut at a word, as the frame keeps it
-    const decisions = (Array.isArray(body.decisions) ? body.decisions : []).filter(d => typeof d === 'string').map(d => words(d, 240)).filter(d => d.length >= 6).slice(0, READ_DEEP.DECISIONS);   // the client's words only: they are ground
-    if (typeof body.audience === 'string' && body.audience.trim()) frame.audience = words(body.audience, 40) || frame.audience;
-    const named = (Array.isArray(body.competitors) ? body.competitors : []).filter(c => typeof c === 'string').map(c => words(c, 40)).filter(Boolean).slice(0, 5);
-    if (named.length) frame.competitors = named;
-    const asked = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
-    const budget = Number.isFinite(asked) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, asked)) : READ_DEEP.BUDGET_USD;
-    const days = Math.max(14, Math.min(366, parseInt(body.days, 10) || READ_RECON.DAYS));
-    const endD = readDay(body.end) || readAddDays(readDay(new Date().toISOString().slice(0, 10)), -1);
-    const win = readReportWindow(readIso(readAddDays(endD, -(days - 1))), readIso(endD));
-    if (!win) return json({ ok: false, error: 'bad_window' }, 200, origin, env);
     const hash = (await sha256hex(text.toLowerCase())).slice(0, 16);
-    const no = await readReconIssue(env, hash);
-    win.label = readReconLabel(no, frame, win);
-    const meta = { plan: 'recon', recon_no: no, brief: Object.assign({ text, hash, frame, days }, decisions.length ? { decisions } : {}) };
-    if (deep) meta.deep = { v: 1, stage: 'plan', budget_usd: budget, hold: body.hold === true, started_at: new Date().toISOString(), by: String(user.email || user.id).replace(/@.*$/, ''), spend: {}, counts: {}, log: [] };
-    const { row, prev } = await readQueue(env, 'recon', win, meta);
-    if (!row) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
-    logEvent(env, 'intelligence', 'reads', 'recon_commissioned', null, { id: row.id, recon_no: no, days, deep, decisions: decisions.length, by: user.id });
-    let sub = { ok: true, waiting: 'tick' };
-    if (body.now && deep) sub = Object.assign({ ok: true, waiting: 'tick' }, { advanced: await deepAdvance(env, row, { ms: 100000, deadline: Date.now() + 470000 }) });   // SEAM:READ_DEEP: the first stages now, the rest on the tick
-    else if (body.now) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); sub = await readSubmit(env, row); sub.gather = { captured: g.captured, failed: g.failed.length }; }
-    return json(Object.assign({ id: row.id, kind: 'recon', recon_no: no, window: win, version: row.version, replaces: prev ? prev.id : null, frame }, deep ? { deep: { budget_usd: budget, hold: body.hold === true, decisions: decisions.length } } : {}, sub), 200, origin, env);
+    const seen = (await sbRest(env, 'house_reads?kind=eq.recon&select=id,version,status,label,hash:meta->brief->>hash,no:meta->>recon_no&order=id.desc&limit=500') || []).filter(r => r && r.hash === hash);
+    const prior = seen.length ? { recon_no: parseInt(seen[0].no, 10) || null, versions: seen.length, latest: { id: seen[0].id, version: seen[0].version, status: seen[0].status, label: seen[0].label } } : null;
+    return json({ ok: true, brief: text, frame, prior }, 200, origin, env);
+  }
+  if (path === '/reads/commission') {
+    // SEAM:READ_RECON + SEAM:READ_COMMISSION: { brief, frame?, decisions?, audience?, competitors?, days?, end?, budget?, hold?, now?, deep?,
+    // depth? } (admin). depth draft is one pass compiled now; deep is the four-pass research; draft_deep commissions both: the draft
+    // compiles on this request, and the deep version queues as the next version of the same RECON for the tick.
+    const depth = ['draft', 'deep', 'draft_deep'].includes(body && body.depth) ? body.depth : null;
+    if (depth === 'draft_deep') {
+      const draft = await readCommission(env, Object.assign({}, body, { deep: false, now: true }), user);
+      if (!draft || !draft.id) return json(draft || { ok: false, error: 'commission_failed' }, 200, origin, env);
+      const deepRun = await readCommission(env, Object.assign({}, body, { deep: true, now: false }), user);
+      return json({ ok: !!(deepRun && deepRun.id), depth, recon_no: draft.recon_no, draft, deep: deepRun }, 200, origin, env);
+    }
+    const one = depth ? Object.assign({}, body, { deep: depth === 'deep', now: depth === 'draft' ? true : body.now }) : body;
+    return json(Object.assign({ depth: one.deep === false ? 'draft' : 'deep' }, await readCommission(env, one, user)), 200, origin, env);
+  }
+  if (path === '/reads/track') {
+    // SEAM:READ_COMMISSION: the tracker. { ids?: [...] } or { recent?: n } (admin): one small row per RECON, the newest first.
+    const ids = (Array.isArray(body && body.ids) ? body.ids : []).map(x => parseInt(x, 10)).filter(n => n > 0).slice(0, 20);
+    const lim = ids.length || Math.max(1, Math.min(20, parseInt(body && body.recent, 10) || 8));
+    const rows = await sbRest(env, 'house_reads?' + (ids.length ? 'id=in.(' + ids.join(',') + ')' : 'kind=eq.recon') +
+      '&select=id,kind,version,status,error,label,window_start,window_end,created_at,updated_at,deep:meta->deep,recon_no:meta->recon_no,batch_id:meta->batch_id&order=id.desc&limit=' + lim) || [];
+    return json({ ok: true, rows: rows.map(readTrackRow) }, 200, origin, env);
   }
   if (path === '/reads/release') {
     // SEAM:READ_DEEP: release a deep RECON. { id, budget? } (admin). Held at its evidence file (or with no source read in full that bore

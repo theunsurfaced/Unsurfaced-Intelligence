@@ -1662,9 +1662,12 @@
     var dk = document.getElementById("desk"); if (dk) dk.onclick = function () {
       var el = document.getElementById("desk-panel"); if (el && el.innerHTML) { deskPanel(""); return; }
       deskPanel('<div class="pf-head">Opening the desk</div>');
-      call("/reads/desk", { kind: row.kind }).then(function (d) { deskShow(row, (d && d.rows) || []); });
+      call("/reads/desk", { kind: deskScope(row) || row.kind }).then(function (d) { deskShow(row, (d && d.rows) || []); });   // SEAM:READ_COMMISSION
     };
+    /* SEAM:READ_COMMISSION: one RECON's own desk key; every version shares it, so the draft's direction reaches the deep compile. */
+    function deskScope(row) { var h = row && row.kind === "recon" && row.meta && row.meta.brief ? String(row.meta.brief.hash || "") : ""; return /^[0-9a-f]{16}$/.test(h) ? "recon:" + h : null; }
     function deskShow(row, deskRows) {
+      var scope = deskScope(row), own = scope ? (deskRows.filter(function (r) { return r.kind === scope; })[0] || { inputs: "" }) : null;
       var mono = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase";
       var notes = (row.meta && row.meta.notes) || [], open = notes.filter(function (n) { return n.status !== "applied"; }), done = notes.length - open.length;
       var mine = deskRows.filter(function (r) { return r.kind === row.kind; })[0] || { inputs: "" }, all = deskRows.filter(function (r) { return r.kind === "all"; })[0] || { inputs: "" };
@@ -1676,6 +1679,8 @@
         '<textarea id="desk-text" rows="3" placeholder="The implication, the thought-starter, the correction. Written to the writer." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414"></textarea>' +
         '<div style="margin-top:8px"><button class="btn" id="desk-add" style="color:#141414;border-color:rgba(20,20,20,.45)">Add note</button> ' +
         '<button class="btn red" id="desk-revise">Revise this read' + (open.length ? " with " + open.length + " note" + (open.length === 1 ? "" : "s") : "") + '</button> <span id="desk-say" style="font-size:12px;opacity:.75"></span></div></div>';
+      if (own) html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">This RECON · every version' + (own.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(own.updated_by) + "</small>" : "") + "</div>" +
+        '<textarea id="desk-own" rows="3" placeholder="Direction for this RECON only. It reaches the deep version and every revision of it." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414">' + esc(own.inputs || "") + "</textarea></div>";
       html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">Standing inputs · ' + esc(KIND[row.kind] || row.kind) + (mine.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(mine.updated_by) + "</small>" : "") + "</div>" +
         '<textarea id="desk-kind" rows="3" placeholder="Applied to every ' + esc(KIND[row.kind] || row.kind) + '." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414">' + esc(mine.inputs || "") + "</textarea>" +
         '<div style="' + mono + ';margin:10px 0 6px">Standing inputs · every read' + (all.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(all.updated_by) + "</small>" : "") + "</div>" +
@@ -1702,7 +1707,9 @@
       };
       var sv = document.getElementById("desk-save"); if (sv) sv.onclick = function () {
         sv.disabled = true; sv.textContent = "Saving";
-        call("/reads/desk", { kind: row.kind, inputs: document.getElementById("desk-kind").value }).then(function () { return call("/reads/desk", { kind: "all", inputs: document.getElementById("desk-all").value }); })
+        var ownEl = document.getElementById("desk-own");
+        (ownEl && scope ? call("/reads/desk", { kind: scope, inputs: ownEl.value }) : Promise.resolve(null))
+          .then(function () { return call("/reads/desk", { kind: row.kind, inputs: document.getElementById("desk-kind").value }); }).then(function () { return call("/reads/desk", { kind: "all", inputs: document.getElementById("desk-all").value }); })
           .then(function () { sv.disabled = false; sv.textContent = "Saved"; setTimeout(function () { sv.textContent = "Save standing inputs"; }, 1500); });
       };
       var cl = document.getElementById("desk-close"); if (cl) cl.onclick = function () { deskPanel(""); };
