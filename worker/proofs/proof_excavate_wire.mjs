@@ -5,6 +5,7 @@
  * v3 (EX3a): the read compiles through excCompile; evidence lines are dated; reference kinds are placed.
  */
 import fs from 'fs';
+function require_sql() { return fs.readFileSync('supabase/migrations/0040_memory.sql', 'utf-8'); }
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
 const page = fs.readFileSync('intelligence/index.html', 'utf-8');
 const mig = fs.readFileSync('supabase/migrations/0027_lake_truth.sql', 'utf-8');
@@ -121,7 +122,7 @@ ok(/p_query     vector\(384\),\s+p_count     int default 12,\s+p_territory text 
    /p_query: vec, p_count: 24, p_territory: null, p_min_tier: 4,/.test(w), 'T12 the callers pass exactly the named arguments match_signals_read takes');
 ok(/momentum: Object\.assign\(\{\}, r\.momentum, \{ echo_of: echo\.id \}\)/.test(w) && /momentum: Object\.assign\(\{\}, r\.momentum, \{ novelty, announcement: true \}\)/.test(w), 'T13 rejection merges momentum, never erases it');
 ok(/api-key=' \+ encodeURIComponent\(env\.GUARDIAN_KEY \|\| 'test'\)/.test(w), 'T14 the Guardian reads its key from env');
-ok(/Date\.parse\(lakeWhen\(r\)\) > Date\.parse\(d7\)/.test(w) && /const rows = fetched\.filter\(r => \{ const w = lakeWhen\(r\)/.test(w), 'T15 track and audience counts use the date each row speaks for');
+ok(/rpc\/track_rollup/.test(w) && /public\.sweep_when\(s\.published_at, s\.captured_at\)/.test(require_sql()) && /const rows = fetched\.filter\(r => \{ const w = lakeWhen\(r\)/.test(w), 'T15 track and audience counts use the date each row speaks for (tracked brands in the database, by the counting rule)');
 
 // ── C the page ────────────────────────────────────────────────────────────
 ok(/'\/excavate\/gather',\{method:'POST',headers:Object\.assign\(\{'Content-Type':'application\/json'\},_hdr\)/.test(page) && /const _hdr=await _authHeader\(\);/.test(page), 'C1 the page signs its gather call (EX4: with the header it fetched once for gather and lake together)');

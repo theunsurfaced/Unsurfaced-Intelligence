@@ -14,13 +14,14 @@ const fnOf = (src, name) => { const i = src.indexOf('async function ' + name + '
 const day = 864e5, NOW = Date.parse('2026-10-06T12:00:00Z'), ago = n => new Date(NOW - n * day).toISOString();
 const lakeWhen = new Function(fnOf(w, 'lakeWhen') + '; return lakeWhen;')();   // the shipped one
 const ilikeOr = new Function(fnOf(w, 'ilikeOr') + '; return ilikeOr;')();
+const sweepWhen = new Function(fnOf(w, 'sweepWhen') + '; return sweepWhen;')();
 const esc = x => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // ── B: the brand room ───────────────────────────────────────────────────
 const roomSrc = between(w, 'const BRAND_ROOM = {', 'async function excavateTrackAdd(');
-const mkRoom = (deps) => new Function('lakeWhen', 'sbRest', 'sweepOnly', 'FEED', 'readReconAttention', 'readAttnStats', 'doorSet', 'DOOR_VOICES', 'LEDGER', 'loadTracks', 'json', 'excQuiet', 'ilikeOr',
+const mkRoom = (deps) => new Function('lakeWhen', 'sweepWhen', 'sbRest', 'sweepOnly', 'FEED', 'readReconAttention', 'readAttnStats', 'doorSet', 'DOOR_VOICES', 'LEDGER', 'loadTracks', 'json', 'excQuiet', 'ilikeOr',
   roomSrc + '; return { BRAND_ROOM, brandCut, brandWeeks, brandCoverage, brandStories, brandCounted, brandCounts, brandAttnWords, brandAttention, brandRoom, excavateBrand };')(
-  lakeWhen, deps.sbRest, deps.sw || (async () => '&research=is.false'), { TRACKS_KEY: 'tracks:stats' }, deps.attn || (async () => null), x => x ? { recent_3m: 900, yoy_pct: -8 } : null, deps.doorSet || (async () => null), { KEEP: 6 }, { TABLE: 'subject_weeks' },
+  lakeWhen, sweepWhen, deps.sbRest, deps.sw || (async () => '&research=is.false'), { TRACKS_KEY: 'tracks:stats' }, deps.attn || (async () => null), x => x ? { recent_3m: 900, yoy_pct: -8 } : null, deps.doorSet || (async () => null), { KEEP: 6 }, { TABLE: 'subject_weeks' },
   deps.loadTracks || (async () => []), (o, s) => Object.assign({ _status: s }, o), () => () => null, ilikeOr);
 const B0 = mkRoom({ sbRest: async () => [] });
 const rows = [
@@ -94,7 +95,7 @@ paths = [];
 const again = await R.excavateBrand(new Request('https://x/excavate/brand?id=11111111-1111-1111-1111-111111111111'), env, '');
 const readsAgain = paths.length;
 const upper = await R.excavateBrand(new Request('https://x/excavate/brand?id=' + 'aaaa1111-1111-1111-1111-111111111111'.toUpperCase()), env, '');
-ok(bad.error === 'bad_id' && none.error === 'not_tracked' && first.ok && !first.cached && again.cached === true && readsAgain === 0 && kv['brand:v2:11111111-1111-1111-1111-111111111111:ttl'] === 6 * 3600 && upper.ok && upper.track.name === 'Converse',
+ok(bad.error === 'bad_id' && none.error === 'not_tracked' && first.ok && !first.cached && again.cached === true && readsAgain === 0 && kv['brand:v3:11111111-1111-1111-1111-111111111111:ttl'] === 6 * 3600 && upper.ok && upper.track.name === 'Converse',
   'B10 GET /excavate/brand: a malformed id and an untracked brand are refused; a room is kept six hours, so a second visit reads nothing; an id in capitals is the same brand');
 let kvU = {}, pathsU = [];
 const RU = mkRoom({ sw: async () => '', sbRest: async (e, p) => { pathsU.push(p); return /^signals\?/.test(p) ? rows : []; }, loadTracks: async () => tracks });
@@ -103,35 +104,42 @@ const roomU = await RU.excavateBrand(new Request('https://x/excavate/brand?id=11
 const shortT = [{ id: '66666666-6666-6666-6666-666666666666', name: 'LG', aliases: ['**'], sector: 'Technology' }];
 const RS = mkRoom({ sbRest: async (e, p) => { pathsU.push(p); return []; }, loadTracks: async () => shortT });
 pathsU.length = 0; const roomS = await RS.excavateBrand(new Request('https://x/excavate/brand?id=66666666-6666-6666-6666-666666666666'), envU, '');
-ok(roomU.ok && roomU.coverage === null && roomU.stories.length === 0 && !kvU['brand:v2:11111111-1111-1111-1111-111111111111'] && roomS.ok && roomS.measurable === false && roomS.coverage === null && !pathsU.some(p => /^signals\?/.test(p)) && kvU['brand:v2:66666666-6666-6666-6666-666666666666'],
+ok(roomU.ok && roomU.coverage === null && roomU.stories.length === 0 && !kvU['brand:v3:11111111-1111-1111-1111-111111111111'] && roomS.ok && roomS.measurable === false && roomS.coverage === null && !pathsU.some(p => /^signals\?/.test(p)) && kvU['brand:v3:66666666-6666-6666-6666-666666666666'],
   'B10b when the sweep cannot be told apart, a room counts nothing and lists nothing, and is not kept; a name too short to find is never read for, and that answer is kept');
 let kvP = {};
 const RP = mkRoom({ sbRest: async (e, p) => { if (/^subject_weeks\?/.test(p)) throw new Error('sb_503'); return /^signals\?/.test(p) ? rows : []; }, loadTracks: async () => tracks });
 const roomP = await RP.excavateBrand(new Request('https://x/excavate/brand?id=11111111-1111-1111-1111-111111111111'), { RATE_LIMIT: { get: async k => kvP[k] || null, put: async (k, v) => { kvP[k] = v; } } }, '');
-ok(roomP.ok && roomP.partial === true && roomP.coverage && !kvP['brand:v2:11111111-1111-1111-1111-111111111111'] && /if \(!anchors\.length \|\| ilikeOr\(anchors\) === 'id=is\.null'\) return null;/.test(fnOf(w, 'excMeasures')) && /ilikeOr\(\[x\]\) !== 'id=is\.null'\)\.slice\(0, 5\)/.test(fnOf(w, 'excMeasures')),
+ok(roomP.ok && roomP.partial === true && roomP.coverage && !kvP['brand:v3:11111111-1111-1111-1111-111111111111'] && /if \(!anchors\.length \|\| ilikeOr\(anchors\) === 'id=is\.null'\) return null;/.test(fnOf(w, 'excMeasures')) && /ilikeOr\(\[x\]\) !== 'id=is\.null'\)\.slice\(0, 5\)/.test(fnOf(w, 'excMeasures')),
   'B10c a room with a part that failed to load is shown, never kept; a read whose names cannot be found in a headline gets no measures (never zeros), and such a competitor is left out');
 const tr = fnOf(w, 'tracksRefresh');
 // tracksRefresh, run: a capped brand, a future-dated story, a blip that keeps the last count
 const trSrc = fnOf(w, 'tracksRefresh');
 let trKv = {}, trLedger = [], trSw = '&research=is.false';
 const trTracks = [{ id: 't1', name: 'Nike', aliases: [], kg_id: 'k' }, { id: 't2', name: 'Puma', aliases: [], kg_id: 'k' }, { id: 't3', name: 'LG', aliases: [], kg_id: 'k' }];
-const hot = Array.from({ length: 600 }, (_, i) => ({ id: i, title: 'Nike', published_at: new Date(NOW - 864e5 * 0.05 * i).toISOString(), captured_at: new Date(NOW - 864e5 * 0.05 * i).toISOString(), source_name: 'S' + (i % 7) }));
-const calm = [{ title: 'Puma', published_at: ago(2), captured_at: ago(2), source_name: 'A' }, { title: 'Puma', published_at: ago(40), captured_at: ago(40), source_name: 'B' }, { title: 'Puma next', published_at: new Date(NOW + 5 * day).toISOString(), captured_at: ago(1), source_name: 'C' }];
-let trPaths = [];
-const TR = new Function('loadTracks', 'sbRest', 'sweepOnly', 'lakeWhen', 'FEED', 'ilikeOr', 'env0', 'RAIL_FNS', 'RAIL_BY_ID', 'railFetch', 'ledgerPut', 'ledgerWeek', 'Date',
-  roomSrc + trSrc + '; return tracksRefresh;')(async () => trTracks, async (e, p) => { trPaths.push(p); return /Nike/.test(p) ? hot : /Puma/.test(p) ? calm : []; }, async () => trSw, lakeWhen, { TRACKS_KEY: 'tracks:stats' }, ilikeOr, null, {}, {}, null,
+let trPaths = [], trRpc = [], trFail = false;
+const rollRow = (id, weeks, n7, n30, o30, latest, image) => ({ track_id: id, weeks, outlets: weeks.map(x => Math.min(x, 3)), n7, n30, outlets30: o30, outlets84: o30 + 2, latest, image });
+const TR = new Function('loadTracks', 'sbRest', 'sweepOnly', 'lakeWhen', 'sweepWhen', 'FEED', 'ilikeOr', 'MEMORY', 'RAIL_FNS', 'RAIL_BY_ID', 'railFetch', 'ledgerPut', 'ledgerWeek', 'Date',
+  roomSrc + trSrc + '; return tracksRefresh;')(async () => trTracks, async (e, p, o) => { trPaths.push(p);
+    if (p === 'rpc/track_rollup') { trRpc.push(o.body.p_ids); if (trFail) throw new Error('sb_500');
+      return o.body.p_ids.map(id => id === 't1' ? rollRow('t1', [0, 0, 0, 0, 0, 0, 0, 40, 140, 140, 140, 140], 140, 600, 7, ago(0), 'https://img/n.jpg') : id === 't2' ? rollRow('t2', [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1], 1, 1, 1, ago(2), 'http://img/plain.jpg') : rollRow(id, Array(12).fill(0), 0, 0, 0, null, null)); }
+    return []; }, async () => trSw, lakeWhen, sweepWhen, { TRACKS_KEY: 'tracks:stats' }, ilikeOr, { TRACK_CHUNK: 2 }, {}, {}, null,
   async (e, col, r) => { trLedger.push({ col, r }); return r.length; }, () => '2026-10-05', class extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } });
 const trEnv = { RATE_LIMIT: { get: async k => trKv[k] || null, put: async (k, v) => { trKv[k] = v; } } };
 await TR(trEnv);
 const trSt = JSON.parse(trKv['tracks:stats']).stats;
-ok(trSt.t1.capped && trSt.t1.weeks.slice(0, 7).every(x => x === null) && trSt.t1.weeks[7] === 40 && trSt.t1.weeks[11] === 140 && trSt.t1.n7 === 140 && trSt.t1.floor30 === true && trSt.t1.floor7 === false && trSt.t2.n7 === 1 && trSt.t2.n30 === 1 && trSt.t2.weeks[11] === 1 && !trSt.t2.capped
-   && !trSt.t3.counted && trSt.t3.weeks === null && !trPaths.some(p => /LG/.test(p)) && trLedger[0].r.length === 2 && trLedger[0].r[0].data.capped === true && trLedger[0].r[0].data.floor30 === true,
-  'B11 every tracked brand counts its twelve weeks on each refresh: a brand whose read hit its limit has its unseen weeks unknown and its 7 and 30 day counts marked as floors, in the list and in the ledger; a story dated after today is not counted; a name too short to find is never counted');
-trSw = ''; const before = JSON.stringify(trSt.t2); trLedger = [];
+ok(trRpc.length === 2 && trRpc[0].join(',') === 't1,t2' && trRpc[1].join(',') === 't3' && !trPaths.some(p => /^signals\?/.test(p))
+   && trSt.t1.counted && trSt.t1.weeks.join(',') === '0,0,0,0,0,0,0,40,140,140,140,140' && trSt.t1.n7 === 140 && trSt.t1.n30 === 600 && trSt.t1.outlets_30d === 7 && trSt.t1.capped === false && trSt.t1.floor30 === false && trSt.t1.image === 'https://img/n.jpg'
+   && trSt.t2.image === null && !trSt.t3.counted && trSt.t3.weeks === null && trLedger[0].r.length === 2 && trLedger[0].r[0].data.capped === false,
+  'B11 every tracked brand is counted by the database, exactly, forty to a call (never a scan per brand, never a floor); an https lake photo only; a name too short to find is never counted');
+trSw = ''; const before = JSON.stringify(trSt.t2); trLedger = []; trRpc = [];
 await TR(trEnv);
 const trSt2 = JSON.parse(trKv['tracks:stats']).stats;
-ok(JSON.stringify(Object.assign({}, trSt2.t2, { counted: true })) === before && trSt2.t2.counted === false && trLedger[0].r.length === 0,
-  'B11b when the sweep cannot be told apart, every brand keeps its last good count and nothing is written down');
+ok(trRpc.length === 0 && JSON.stringify(Object.assign({}, trSt2.t2, { counted: true })) === before && trSt2.t2.counted === false && trLedger[0].r.length === 0,
+  'B11b when the sweep cannot be told apart, the database is not asked: every brand keeps its last good count and nothing is written down');
+trSw = '&research=is.false'; trFail = true; trLedger = [];
+await TR(trEnv);
+const trSt3 = JSON.parse(trKv['tracks:stats']).stats;
+ok(trSt3.t1.counted === false && trSt3.t1.n30 === 600 && trLedger[0].r.length === 0, 'B11d a count the database could not give keeps the last good one');
 const xt = fnOf(w, 'excavateTracks');
 ok(/counts: brandCounts\(st\[t\.id\]\), weeks: brandCounted\(st\[t\.id\]\) \? st\[t\.id\]\.weeks : null/.test(xt) && /aliases: \(t\.aliases \|\| \[\]\)\.slice\(0, 8\), measurable:/.test(xt)
    && JSON.stringify(R.brandCounts({ n7: 4, n30: 0, latest: null })) === JSON.stringify({ captures_7d: null, captures_30d: null, outlets_30d: null, floor7: false, floor30: false }) && R.brandCounts({ n7: 4, n30: 9, weeks: [1], outlets_30d: 3, floor30: true }).captures_30d === 9,
@@ -196,14 +204,15 @@ const brandsHtml = between(page, '<div id="sec-brands" class="page-section">', '
 ok(/id="brand-grid"/.test(brandsHtml) && /id="brand-find"/.test(brandsHtml) && /id="brand-room"/.test(brandsHtml) && !/brand-tracker-grid|brand-search-input|brand-cat-row|Outmaneuver/.test(page) && /class="room-dateline">Brands</.test(brandsHtml),
   'G1 Brands is built in the room: the brands, a search, a room; the old grid, search, filter chips and headline are gone');
 const visible = h => h.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');
-ok([brandsHtml, audHtml].every(h => !/\b(signal|signals|lake|overnight|frame|frames)\b/i.test(visible(h)) && !/the house/i.test(visible(h)) && !/[—–]/.test(visible(h))), 'G2 no machinery word and no dash in either room\'s copy');
+ok([brandsHtml, audHtml].every(h => !/\b(signal|signals|lake|overnight|frame|frames)\b/i.test(visible(h)) && !/the house/i.test(visible(h)) && !/[\u2014\u2013]/.test(visible(h))), 'G2 no machinery word and no dash in either room\'s copy');
 const brandJs = between(page, 'const _brands = { tracks: [], at: 0, open: null, room: null };', 'async function trackThis(name)');
 let phone = false; const mq = [];
 const win = { matchMedia: q => ({ matches: phone && /max-width: 640px/.test(q), addEventListener: (ev, fn) => mq.push(fn) }), addEventListener: () => {} };
 const pulseStub = s => '<div class="pulse">' + (s || []).length + '</div>';
 const pulseWeeks = new Function('_pulse', fnOf(page, '_pulseWeeks') + '; return _pulseWeeks;')(pulseStub);
-const BJ = new Function('safe', 'safeAttr', 'safeUrl', 'API_BASE', '_pulse', '_pulseWeeks', 'window', brandJs + '; return { _brandColumns, _brandLines, _renderBrandRoom, _BRAND_SERIES, _fmtC, _day, _uuid };')(
-  esc, esc, u => /^https?:\/\//.test(String(u)) ? esc(u) : '#', 'https://api.example/', pulseStub, pulseWeeks, win);
+const docStub = { addEventListener: () => {}, getElementById: () => null };
+const BJ = new Function('safe', 'safeAttr', 'safeUrl', 'API_BASE', '_pulse', '_pulseWeeks', 'window', 'document', brandJs + '; return { _brandColumns, _brandLines, _renderBrandRoom, _BRAND_SERIES, _fmtC, _day, _uuid, _tlKey, _tlButton, _tlColumns, _renderTimeline, _tlGrade, _tlGradeNumbers, _tlAddWeeks };')(
+  esc, esc, u => /^https?:\/\//.test(String(u)) ? esc(u) : '#', 'https://api.example/', pulseStub, pulseWeeks, win, docStub);
 const weeks = Array.from({ length: 12 }, (_, i) => ({ start: ago((12 - i) * 7).slice(0, 10), n: i === 3 ? 0 : i + 1, outlets: Math.max(0, i - 1) }));
 const col = BJ._brandColumns(weeks, '');
 const widths = [...col.matchAll(/H([\d.]+)Q/g)].length;
@@ -255,7 +264,7 @@ phone = false;
 ok(/viewBox="0 0 400 200"/.test(colP) && /viewBox="0 0 400 240"/.test(lnP) && />Adidas Or<\/text>/.test(lnP) && /viewBox="0 0 1000 220"/.test(BJ._brandColumns(weeks, '')) && mq.length === 1,
   'G3c a phone draws both charts on a 400-wide canvas so their labels keep their size, end labels shorten to fit, and the open room redraws when the width crosses');
 const plain = visible(html);
-ok(!/[—–]/.test(plain) && !/\b(signal|signals|lake|overnight|frame)\b/i.test(plain) && !/youtube|mastodon/i.test(plain), 'G7 no dash, no machinery word and no platform in a room');
+ok(!/[\u2014\u2013]/.test(plain) && !/\b(signal|signals|lake|overnight|frame)\b/i.test(plain) && !/youtube|mastodon/i.test(plain), 'G7 no dash, no machinery word and no platform in a room');
 const bare = BJ._renderBrandRoom({ ok: true, measured_at: '2026-10-06T12:00:00Z', track: { name: 'Quiet' }, coverage: { weeks: weeks.map(x => Object.assign({}, x, { n: 0, outlets: 0 })), this_week: 0, prior_week: 0, total: 0, outlets: 0, at_least: false }, attention: null, set: [], stories: [], board: null, record: null });
 ok(!/On the board this week|Attention, three years|Against its set|The latest stories/.test(bare) && /No story about Quiet in twelve weeks of our sweep\./.test(bare) && /the same as the week before/.test(bare), 'G8 a quiet brand says so plainly: no empty sections, no invented line');
 const audJs = between(page, 'let _peopleAt = 0;', '// ══ REPORTS (retired) ══');
@@ -274,6 +283,54 @@ const counts = {}; for (const m of page.matchAll(/<script([^>]*)>([\s\S]*?)<\/sc
 ok(Object.values(counts).every(n => n === 1) && counts._renderBrandRoom === 1 && counts.trackThis === 1 && !counts.searchBrand && !counts.excavateBrand && !counts._brandLakeLoad && !counts.showAudienceDetail, 'G11 one function per name; the retired brand dashboard and cohort cards are gone');
 
 // ── Z: seams ────────────────────────────────────────────────────────────
+// ── the history (SEAM:MEMORY, EX20) ──
+ok(BJ._tlKey('THEME:AAAAAAAA-0000-0000-0000-000000000001') === 'theme:aaaaaaaa-0000-0000-0000-000000000001' && BJ._tlKey("theme:x');alert(1)") === '' && BJ._tlKey('cohort:self:gen:gen_z') === ''
+   && BJ._tlButton('track:11111111-1111-1111-1111-111111111111', 'Nike "Air"') === `<button type="button" class="tl-open" aria-label="History of Nike &quot;Air&quot;" onclick="event.stopPropagation();openTimeline('track:11111111-1111-1111-1111-111111111111', this)">History</button>` && BJ._tlButton('nope') === '',
+  'G14 a History control only for a theme or a brand id, named for its subject, and opening it never opens the tile behind it');
+const tlj = { ok: true, key: 'theme:aaaaaaaa-0000-0000-0000-000000000001', title: 'Smart glasses <b>at work</b>', counted: '2026-07-06', first: '2026-09-14', stories: 27, board_weeks: 1, weeks: [
+  { week: '2026-08-31', n: 0, outlets: 0, board: null, posted: null, said: [], grade: null },
+  { week: '2026-09-07', n: null, outlets: null, board: null, posted: null, said: [], grade: null },
+  { week: '2026-09-14', n: 4, outlets: 3, board: null, posted: null, said: [], grade: null },
+  { week: '2026-09-21', n: 9, outlets: 6, board: { state: 'ACCELERATING', place: 2, tile: true }, posted: { claim: 'Commuters are buying glasses for the office.', move: 'Sell the commute.' }, said: [], grade: { state: 'ACCELERATING', d30: { verdict: 'held', after: 13.5, before: 2, active: 4, of: 4 }, d60: { verdict: 'open' }, d90: { verdict: 'open' } } },
+  { week: '2026-09-28', n: 14, outlets: 8, board: null, posted: null, said: [{ kind: 'weekly', label: 'Week of Sep 28', name: 'Ray-Ban owns the commute', dek: 'Glasses are a work tool now' }], grade: null },
+  { week: '2026-10-05', n: 2, outlets: 2, partial: true, board: { state: 'EMERGING', place: null, tile: false }, posted: null, said: [], grade: { state: 'EMERGING', d30: { verdict: 'open' } } }] };
+const tlh = BJ._renderTimeline(tlj), tlPlain = visible(tlh);
+const order = ['Called emerging', 'Ray-Ban owns the commute', 'Commuters are buying glasses'].map(x => tlPlain.indexOf(x));
+ok(/<h2 id="tl-title" tabindex="-1">Smart glasses &lt;b&gt;at work&lt;\/b&gt;<\/h2>/.test(tlh) && /first seen the week of Sep 14, 2026/.test(tlh) && /<b>27<\/b><span>stories since the week of Sep 14, 2026<\/span>/.test(tlh) && /<b>1<\/b><span>week on our board<\/span>/.test(tlh)
+   && order.every((x, i) => x >= 0 && (i === 0 || x > order[i - 1])) && /<span class="src">The Weekly Read · Week of Sep 28<\/span>/.test(tlh) && /<b>30 days<\/b>: held \(13\.5 stories a week after, 2 before\)/.test(tlh) && /Checked at 30 days, the week of Nov 9/.test(tlh) && /<b>1 of 1<\/b><span>call held at 30 days<\/span>/.test(tlh)
+   && /We have counted every week since the week of Jul 6, 2026\./.test(tlh) && /<td>not watched<\/td>/.test(tlh) && /<td>2 so far<\/td>/.test(tlh),
+  'G15 the history: its figures, what the board posted and what our reads said, newest first, each call with how it graded and the numbers behind it (an open call says when it is checked), every week in a table');
+const tc = BJ._tlColumns(tlj.weeks);
+const cols = [...tc.matchAll(/<path class="(col[^"]*)"/g)].map(m => m[1]);
+const tWidths = [...tc.matchAll(/<path class="col[^"]*" d="M([\d.]+) [\d.]+V[\d.]+Q[\d.]+ [\d.]+ [\d.]+ [\d.]+H[\d.]+Q([\d.]+)/g)].map(m => Number(m[2]) - Number(m[1]));
+ok(cols.join(',') === 'col dim,col,col dim,col part' && tWidths.every(x => x <= 24.01) && (tc.match(/<rect class="hit"/g) || []).length === 6 && /data-tip="Week of Sep 7, 2026: not watched yet"/.test(tc) && /data-tip="Week of Sep 21, 2026: 9 stories, 6 outlets · on our board \(#2\), accelerating"/.test(tc) && /data-tip="Week of Oct 5, 2026: 2 stories, 2 outlets so far · on our board, emerging"/.test(tc)
+   && /<span><i class="dim"><\/i>Stories a week<\/span><span><i style="background:var\(--room-red\)"><\/i>On our board that week<\/span>/.test(tc),
+  'G16 the history\'s columns: red for the weeks on our board, the current week marked as so far, a week we did not watch drawn as nothing and said so, a legend, every week answering on hover and focus, never wider than 24');
+ok(!/[\u2014\u2013]/.test(tlPlain) && !/\b(signal|signals|lake|overnight|frame)\b/i.test(tlPlain) && !/youtube|mastodon/i.test(tlPlain), 'G17 no dash, no machinery word, no platform in a history');
+const recSrc = between(page, 'function _renderRecord(record) {', 'async function _openDoorRead(t) {');
+const recEls = { 'record-block': { style: {} }, 'record-ledger': { innerHTML: '' }, 'record-score': { textContent: '' } };
+const RR = new Function('document', 'safe', '_fmtN', '_day', '_tlAddWeeks', '_tlGradeNumbers', '_tlKey', recSrc + '; return _renderRecord;')({ getElementById: id => recEls[id] || null }, esc, n => Number(n).toLocaleString('en-US'), BJ._day, BJ._tlAddWeeks, BJ._tlGradeNumbers, BJ._tlKey);
+RR({ counts: { held: 3, faded: 1, open: 2, unmeasured: 1 }, d60: { held: 1, faded: 1 }, d90: { held: 0, faded: 0 }, next_due: '2026-10-26',
+  held: [{ key: 'theme:aaaaaaaa-0000-0000-0000-000000000001', title: 'Presales clear first', state: 'EMERGING', week: '2026-08-17', d30: { verdict: 'held', active: 3, of: 4 } }], faded: [{ key: 'bad', title: 'Ad fatigue', state: 'ACCELERATING', week: '2026-08-24', d30: { verdict: 'faded', after: 2, before: 3 } }],
+  open: [{ key: 'theme:aaaaaaaa-0000-0000-0000-000000000002', title: 'Glasses', state: 'ACCELERATING', week: '2026-09-28', d30: { verdict: 'open' } }] });
+ok(/<b>3<\/b>held at 30 days/.test(recEls['record-ledger'].innerHTML) && /onclick="openTimeline\('theme:aaaaaaaa-0000-0000-0000-000000000001', this\)">Presales clear first<\/button><small>Called emerging the week of Aug 17, held \(stories in 3 of the 4 weeks after\)<\/small>/.test(recEls['record-ledger'].innerHTML)
+   && /<div class="call">Ad fatigue<small>Called accelerating the week of Aug 24, faded \(2 stories a week after, 3 before\)<\/small>/.test(recEls['record-ledger'].innerHTML) && /checked the week of Nov 2/.test(recEls['record-ledger'].innerHTML)
+   && recEls['record-score'].textContent === '3 of 4 calls graded at 30 days held. At 60 days, 1 of 2 held. 2 are still open; the next is checked the week of Oct 26. 1 call was not graded: the weeks it needed were not watched.' && recEls['record-block'].style.display === 'block',
+  'G18 the track record: held, faded and open at 30 days, each call with the numbers it was graded on and its history a click away (only for a real subject), 60 and 90 days in a line, when the next is checked');
+ok(/<span class="open">Open the reading<\/span>\$\{_tlButton\(t\.key, t\.label \|\| t\.title\)\}<span class="state">/.test(page) && /<span class="open">Open the reading<\/span>\$\{_tlButton\(t\.key, t\.label \|\| t\.title\)\}<\/div><\/div>/.test(page) && /<span class="open">Open the reading<\/span>\$\{_tlButton\(t\.key, f\.entity \|\| f\.category \|\| t\.title\)\}<\/article>/.test(page)
+   && /<div class="tl-room" id="tl-room" role="dialog" aria-modal="true" aria-labelledby="tl-title" hidden>/.test(page) && /if \(e\.key === 'Escape'\)/.test(page) && /if \(!tl\) closeTimeline\(true\); else if \(room && room\.hidden\) openTimeline\(tl, null, true\);/.test(page)
+   && /if \(room\.hidden \|\| seq !== _tlSeq\) return;/.test(page) && /for \(let el = room; el && el\.parentElement && el !== document\.body; el = el\.parentElement\)/.test(page) && /if \(sib !== el && !sib\.inert/.test(page)
+   && /<section class="room-sec" id="brand-record" data-key=/.test(page) && /if \(_brands\.open !== _uuid\(id\) \|\| !slot\.isConnected\) return;/.test(page),
+  'G19 every tile on the board (lead, row and quiet) opens its history; the history is a dialog that Escape and Back close and Forward reopens, the page behind it inert (every sibling on the way up, never the dialog\'s own section); a late answer never replaces the history now open; a brand room\'s record is its history, and a late answer never lands in another brand\'s room');
+const tcs = BJ._tlColumns([{ week: '2026-09-28', n: 1, outlets: 1, board: null }, { week: '2026-10-05', n: 3, outlets: 2, partial: true, board: { state: 'EMERGING', place: 2 } }]);
+const smallCol = BJ._brandColumns(Array.from({ length: 12 }, (_, i) => ({ start: '2026-07-1' + (i % 9), n: i === 11 ? 3 : 1, outlets: 1 })));
+const tlPaid = BJ._renderTimeline({ ok: true, title: 'x', weeks: [{ week: '2026-09-28', n: 2, said: [{ kind: 'report', label: 'September 2026', name: null, findings: 2 }] }, { week: '2026-10-05', n: 0, board: { state: 'EMERGING' }, grade: { state: 'EMERGING', d30: { verdict: 'unmeasured' } } }] });
+ok(/<path class="col part"/.test(tcs) && /On our board that week<\/span><span><i class="part"><\/i>This week so far<\/span>/.test(tcs) && /\.viz \.col\.part\{fill-opacity:\.28;stroke:var\(--room-red\)/.test(page) && (tcs.match(/tabindex="0"/g) || []).length === 1 && (smallCol.match(/tabindex="0"/g) || []).length === 1
+   && />2<\/text>/.test(tcs) && />4<\/text>/.test(tcs) && !/>2<\/text>[^]*>2<\/text>/.test(tcs.replace(/<text class="vlabel[^]*$/, '')) && />2<\/text>/.test(smallCol) && />4<\/text>/.test(smallCol)
+   && /2 findings in this issue speak to it\.<\/p><small>For subscribers\.<\/small>/.test(tlPaid) && /Not graded: the weeks it needed were not watched/.test(tlPaid),
+  'G21 the current week keeps its board color, outlined and lighter, with a legend of its own; one tab stop per chart (the arrow keys move along it); a small scale tops out even, so its middle line is a whole story; a paid issue is named, never quoted; a call that could not be graded says why');
+ok(['intelligence/index.html', 'intelligence/read/index.html', 'daily/index.html'].every(f => { const c = fs.readFileSync(f, 'utf-8').match(/Content-Security-Policy" content="([^"]*)"/)[1]; return /script-src [^;]*https:\/\/static\.cloudflareinsights\.com/.test(c) && /connect-src [^;]*https:\/\/cloudflareinsights\.com/.test(c); }),
+  'G20 Cloudflare\'s visitor analytics may load on every page that sets its own policy');
 ok(['SEAM:BRAND_ROOM', 'SEAM:BRAND_ROOM@page', 'SEAM:PEOPLE', 'SEAM:PEOPLE@page'].every(k => seams.registry[k]) && /EX19/.test(seams.registry['SEAM:TRACKS@page'].purpose) && /EX19/.test(seams.registry['SEAM:AUDIENCES@page'].purpose), 'Z1 the seams are registered and the old ones say what they are now');
 
 console.log('\nproof_rooms: ' + pass + ' checks PASS');

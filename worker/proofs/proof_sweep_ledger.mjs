@@ -45,7 +45,7 @@ await fr({}, 60, null);
 ok(paths.length === 10 && paths.every(p => /status=in\.\(connected,published\)&cluster_id=not\.is\.null&research=is\.false&order=captured_at\.desc&limit=120/.test(p)),
   'S6 the board\'s states and ranks count the sweep: every slice of the recurrence scan asks research = false, inside its 120 rows');
 const tr = fnOf('tracksRefresh'), au = fnOf('audiencesRefresh'), em = fnOf('excMeasures'), cf = fnOf('composeFromLake');
-ok(/const sw = await sweepOnly\(env\);/.test(tr) && /ilikeOr\(names\) \+ sw \+ '&status=neq\.rejected&captured_at=gte\.' \+ d84/.test(tr), 'S7 a tracked brand counts the sweep');
+ok(/const sw = await sweepOnly\(env\);/.test(tr) && /if \(sw\) for \(let i = 0; i < tracks\.length; i \+= MEMORY\.TRACK_CHUNK\)/.test(tr) && /s\.title ilike tp\.pat and s\.research = false and s\.status <> 'rejected'/.test(fs.readFileSync('supabase/migrations/0040_memory.sql', 'utf-8')), 'S7 a tracked brand counts the sweep (the database\'s rollup reads research = false only, and is asked only when the sweep is known)');
 ok(/const sw = await sweepOnly\(env\);/.test(au) && /ilikeOr\(c\.terms\) \+ sw \+ '&captured_at=gte\.'/.test(au), 'S8 a cohort counts the sweep');
 ok((em.match(/\+ sw \+ '&captured_at=gte\./g) || []).length === 3, 'S9 a read\'s measures (the subject, its territory, its competitors) never count what its own search brought in');
 ok(/`signals\?status=in\.\(connected,filtered\)&captured_at=gte\.\$\{since\}` \+ sw \+/.test(cf), 'S10 DAILY picks from the sweep: a RECON\'s gathers never become the paper');
@@ -174,13 +174,15 @@ ok(db.length === 2 && db.every(r => !('title' in r) && Object.keys(r).sort().joi
 ok(/if \(internal === true\) await ledgerPut\(env, 'board', ledgerBoardRows\(proposed, themes, out, await sweepReady\(env\), ledgerWeek\(\)\)\);/.test(w), 'L8 the board\'s week is kept when the feed warms (the internal propose), never on a visitor\'s call');
 ok(/await ledgerPut\(env, 'door', ledgerDoorRows\(tiles\)\);/.test(fnOf('doorPublish')) && /ledgerPut\(env, 'track', tracks\.filter\(t => \(stats\[t\.id\] \|\| \{\}\)\.counted\)\.map/.test(fnOf('tracksRefresh')) && /counted = true;/.test(fnOf('tracksRefresh')) && /ledgerPut\(env, 'cohort', COHORTS\.filter\(c => out\[c\.key\] && !out\[c\.key\]\.failed\)\.map/.test(fnOf('audiencesRefresh')) && /last\[c\.key\] \|\| \{\}, \{ failed: true \}\); \}/.test(fnOf('audiencesRefresh')) && /counted \|\| !last\[t\.id\] \?/.test(fnOf('tracksRefresh')) && /sweep: !!sw/.test(fnOf('tracksRefresh')) && /sweep: !!sw/.test(fnOf('audiencesRefresh')),
   'L9 the arrival, the tracked brands and the cohorts each write their own column, saying whether they counted the sweep; a count that failed is never kept as a zero, and the public counts keep the last good one');
-ok(!/method: 'DELETE'[^\n]*(subject_weeks|LEDGER\.TABLE)|(subject_weeks|LEDGER\.TABLE)[^\n]*method: 'DELETE'/.test(w) && (w.match(/LEDGER\.TABLE \+/g) || []).length === 2 && !/'subject_weeks\?/.test(w) && /LEDGER\.TABLE \+ '\?subject_key=eq\.' \+ encodeURIComponent\('track:' \+ t\.id\) \+ '&select=week,door&order=week\.asc&limit=260'/.test(w), 'L10 nothing deletes a ledger row: the table is named through LEDGER.TABLE twice, the writer\'s upsert and a brand room\'s read');
+const ledgerLines = w.split('\n').filter(l => /LEDGER\.TABLE \+/.test(l));
+ok(!/method: 'DELETE'[^\n]*(subject_weeks|LEDGER\.TABLE)|(subject_weeks|LEDGER\.TABLE)[^\n]*method: 'DELETE'/.test(w) && ledgerLines.length >= 2 && ledgerLines.every(l => !/method: '(DELETE|PATCH)'/.test(l) && (!/method: 'POST'/.test(l) || /resolution=merge-duplicates/.test(l))) && !/'subject_weeks\?/.test(w) && /LEDGER\.TABLE \+ '\?subject_key=eq\.' \+ encodeURIComponent\('track:' \+ t\.id\) \+ '&select=week,door&order=week\.asc&limit=260'/.test(w),
+  'L10 nothing deletes or patches a ledger row: every write through LEDGER.TABLE is an upsert that merges (each writer its own columns), every other use is a read');
 
 // ── the band, at the feed ─────────────────────────────────────────────────
 const ex = fnOf('doorExtras');
 ok(/house_reads\?kind=eq\.report&status=in\.\(ready,published\)/.test(ex) && !/recon/.test(ex.replace(/\/\/[^\n]*/g, '')) && /out\.voices = doorBand\(\(door && door\.tiles\) \|\| \[\], quotes\)/.test(ex) && !/from: r\.label|source: q\.source/.test(ex),
   'V11 the band asks the monthly report only, never a RECON, and no read\'s name or platform rides on a quote');
-ok(/const DOOR_EXTRAS = \{ KEY: 'door:extras:v3'/.test(w), 'V12 the extras move to a new key: the cached copy that held RECON quotes is never served again');
+ok(/const DOOR_EXTRAS = \{ KEY: 'door:extras:v[4-9]'/.test(w), 'V12 the extras move to a new key: the cached copy that held RECON quotes (v2) is never served again');
 
 // ── P: the page ───────────────────────────────────────────────────────────
 ok(/<button class="nlb" id="nav-library" onclick="navTo\('library'\)">Library<\/button>/.test(page) && !/id="nav-reports"|id="nav-deploy"|id="sec-reports"|id="sec-deploy"/.test(page) && /if \(section === 'reports' \|\| section === 'deploy'\) section = 'library';/.test(page) && /if \(section === 'library'\)   initLibraryPage\(\);/.test(page),

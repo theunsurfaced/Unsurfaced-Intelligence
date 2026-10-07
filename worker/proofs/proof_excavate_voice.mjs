@@ -41,7 +41,7 @@ const sbRest = async (env, path) => { calls.push(path);
   if (path.startsWith('cluster_calls?')) return [{ cluster_id: 'c1', state: 'EMERGING', called_at: '2026-09-14T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'converted' }, { cluster_id: 'c2', state: 'EMERGING', called_at: '2026-09-07T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'faded' }, { cluster_id: 'c3', state: 'ACCELERATING', called_at: '2026-09-28T00:00:00Z', resolved_at: null, outcome: null }, { cluster_id: 'c9', state: 'EMERGING', called_at: '2026-09-20T00:00:00Z', resolved_at: null, outcome: null }];
   return []; };
 let kv = {}; const env = { RATE_LIMIT: { get: async k => kv[k] || null, put: async (k, v) => { kv[k] = v; } } };
-const X = new Function('sbRest', 'excQuiet', 'RAIL_FNS', 'RAIL_BY_ID', extrasSrc + '; return { doorExtras, DOOR_EXTRAS, doorBand, DOOR_VOICES };')(sbRest, () => () => null, {}, {});
+const X = new Function('sbRest', 'excQuiet', 'RAIL_FNS', 'RAIL_BY_ID', 'memoryRecord', extrasSrc + '; return { doorExtras, DOOR_EXTRAS, doorBand, DOOR_VOICES };')(sbRest, () => () => null, {}, {}, async () => ({ counts: { held: 2, faded: 1, open: 3, unmeasured: 0 }, held: [{ title: 'Presales clear first' }], faded: [], open: [] }));
 const door = { tiles: [
   { label: 'Smart glasses', voices: [{ text: 'I wear mine every day at work', likes: 40, when: '2026-10-01', self: { role: 'nurse' } }, { text: 'the battery dies by lunch', likes: 12, when: '2026-10-02', self: null }] },
   { label: 'Curl care', voices: [{ text: 'my 4c hair finally has a shelf', likes: 70, when: '2026-09-29', self: { generation: 'Gen Z', trait: '4c hair' } }] },
@@ -52,10 +52,10 @@ ok(ex.voices.map(v => v.text).join('|') === 'I wear mine every day at work|my 4c
   'X1 the band quotes the board\'s own subjects one at a time, each naming the subject it speaks to, then the monthly report\'s most liked; deduplicated by text; a shared headline and a voice from before the period never reach the arrival');
 ok(!calls.some(c => /recon/.test(c)) && !ex.voices.some(v => /client brief/.test(v.text)) && ex.voices.every(v => Object.keys(v).sort().join(',') === 'likes,on,self,text,when'),
   'X1b never a RECON: the band never asks for one, and a quote carries only its words, likes, date, what the speaker said about themselves and its subject; no platform, no handle, no link, no read\'s name');
-ok(ex.record.counts.confirmed === 1 && ex.record.counts.missed === 1 && ex.record.counts.open === 2 && ex.record.confirmed[0].title === 'Presales clear first' && ex.record.missed[0].called === '2026-09-07' && ex.record.open.length === 1,
-  'X2 record: calls over 90 days as confirmed, missed and open, named by the feed\'s theme titles; an unnamed call is counted, not shown');
+ok(ex.record.counts.held === 2 && ex.record.held[0].title === 'Presales clear first' && !calls.some(c => /^cluster_calls\?/.test(c)) && /try \{ out\.record = await memoryRecord\(env\); \}/.test(extrasSrc),
+  'X2 record: the calls graded on their own weekly stories (SEAM:MEMORY), never the scoreboard\'s board-presence outcomes');
 calls = []; const again = await X.doorExtras(env, [], null);
-ok(calls.length === 0 && again.voices.length === 5 && X.DOOR_EXTRAS.TTL === 3600 && X.DOOR_EXTRAS.KEY === 'door:extras:v3', 'X3 the extras are cached an hour in KV under a new key (the old one held RECON quotes): the second call reads nothing from the database');
+ok(calls.length === 0 && again.voices.length === 5 && X.DOOR_EXTRAS.TTL === 3600 && X.DOOR_EXTRAS.KEY === 'door:extras:v4', 'X3 the extras are cached an hour in KV under a new key (v3 graded calls on the board; v2 held RECON quotes): the second call reads nothing from the database');
 ok(/const extras = await doorExtras\(env, out\.proposed, door\);/.test(w) && /voices: extras\.voices, record: extras\.record \}/.test(w), 'X4 the public feed carries voices and record, the board\'s tiles passed in');
 const many = { tiles: Array.from({ length: 5 }, (_, i) => ({ label: 'S' + i, voices: Array.from({ length: 6 }, (_, j) => ({ text: 'v' + i + '-' + j + ' long enough', likes: 10 - j })) })) };
 const band = X.doorBand(many.tiles, []);

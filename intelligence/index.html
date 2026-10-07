@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; frame-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://*.workers.dev https://api.openalex.org https://openalex.org https://api.gdeltproject.org https://api.semanticscholar.org https://www.semanticscholar.org https://en.wikipedia.org https://*.wikipedia.org https://www.wikidata.org https://query.wikidata.org https://export.arxiv.org https://arxiv.org https://hn.algolia.com https://api.crossref.org https://search.crossref.org https://api.worldbank.org https://data.worldbank.org https://content.guardianapis.com https://www.theguardian.com https://openlibrary.org https://api.patentsview.org https://patentsview.org https://www.reddit.com https://eutils.ncbi.nlm.nih.gov https://pubmed.ncbi.nlm.nih.gov https://doi.org">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: https:; media-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; frame-src 'self' https://api.unsurfaced-intelligence.com https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://*.workers.dev https://api.openalex.org https://openalex.org https://api.gdeltproject.org https://api.semanticscholar.org https://www.semanticscholar.org https://en.wikipedia.org https://*.wikipedia.org https://www.wikidata.org https://query.wikidata.org https://export.arxiv.org https://arxiv.org https://hn.algolia.com https://api.crossref.org https://search.crossref.org https://api.worldbank.org https://data.worldbank.org https://content.guardianapis.com https://www.theguardian.com https://openlibrary.org https://api.patentsview.org https://patentsview.org https://www.reddit.com https://eutils.ncbi.nlm.nih.gov https://pubmed.ncbi.nlm.nih.gov https://doi.org https://cloudflareinsights.com">
 <title>Unsurfaced™ Intelligence · Consumer & Market Intelligence</title>
 <meta name="description" content="One intelligence, three spaces. EXCAVATE digs the public surface, MINE goes straight to the source, PLAY makes what comes next. Real answers from real people.">
 <meta property="og:title" content="Unsurfaced™ Intelligence">
@@ -1496,7 +1496,7 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 .viz .hit:hover+.col,.viz .hit:focus+.col{fill:#FF4A61}
 .viz .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .viz .xh{stroke:var(--room-fg3);stroke-width:1}
-.viz-tip{position:absolute;pointer-events:none;background:#0A0A0A;border:1px solid #3A3A3A;padding:8px 10px;font-family:'Syne',sans-serif;font-size:12.5px;line-height:1.45;color:var(--room-fg2);white-space:nowrap;display:none;z-index:var(--z-raise)}
+.viz-tip{position:absolute;pointer-events:none;background:#0A0A0A;border:1px solid #3A3A3A;padding:8px 10px;font-family:'Syne',sans-serif;font-size:12.5px;line-height:1.45;color:var(--room-fg2);white-space:normal;width:max-content;box-sizing:border-box;display:none;z-index:var(--z-raise)}
 .viz-tip b{font-family:'Syne',sans-serif;font-weight:700;color:var(--room-ivory)}
 .viz-tip i{display:inline-block;width:12px;height:2px;vertical-align:middle;margin-right:6px}
 .viz-legend{display:flex;gap:calc(18px*var(--k));flex-wrap:wrap;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-fg2);margin:0 0 calc(12px*var(--k))}
@@ -1583,6 +1583,33 @@ details.viz-table td,details.viz-table th{border-bottom:1px solid var(--room-rul
 .ledger .call{padding:calc(11px*var(--k)) 0;border-top:1px dashed var(--room-rule);font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.45;color:var(--room-ivory);max-width:52ch}
 .ledger .call:first-of-type{border-top:0}
 .ledger .call small{display:block;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);margin-top:4px}
+/* SEAM:MEMORY: a subject's history. Columns for its weeks (red when it stood on the board), what we said beside them, how each call graded. */
+.tl-open{background:none;border:0;border-bottom:1px solid var(--room-rule);color:var(--room-fg2);font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.06em;text-transform:uppercase;padding:2px 0;cursor:pointer;margin-left:calc(14px*var(--k))}
+.tl-open:hover,.tl-open:focus-visible{color:var(--room-ivory);border-bottom-color:var(--room-red);outline:none}
+.tl-room{position:fixed;inset:0;z-index:var(--z-modal);background:#0B0B0B;overflow-y:auto;overflow-x:hidden;overflow-wrap:anywhere}
+.tl-room[hidden]{display:none}
+.tl-inner{max-width:var(--room-w);margin:0 auto;padding:calc(36px*var(--k)) var(--room-g) calc(72px*var(--k))}
+.tl-inner h2{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(28px,3.4vw,calc(44px*var(--k)));line-height:1.05;letter-spacing:-.03em;color:var(--room-ivory);margin:calc(10px*var(--k)) 0 calc(18px*var(--k))}
+.tl-inner h2:focus{outline:none}
+.tl-figs{display:flex;flex-wrap:wrap;gap:calc(28px*var(--k));margin:0 0 calc(26px*var(--k))}
+.tl-figs div b{display:block;font-family:'Syne',sans-serif;font-weight:800;font-size:calc(28px*var(--k));line-height:1;color:var(--room-ivory);letter-spacing:-.02em}
+.tl-figs div span{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-fg3)}
+.viz .col.part{fill-opacity:.28;stroke:var(--room-red);stroke-width:1.5}
+.viz .col.dim.part{stroke:#7A1E2B}
+.viz-legend.sq i.part{background:transparent;border:1.5px solid currentColor;box-sizing:border-box}
+.viz-legend i.dim{background:#7A1E2B}
+.viz-legend.sq i{width:10px;height:10px;border-radius:2px}
+.tl-said{list-style:none;margin:calc(26px*var(--k)) 0 0;padding:0;border-top:1px solid var(--room-rule)}
+.tl-said li{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:calc(18px*var(--k));padding:calc(16px*var(--k)) 0;border-bottom:1px solid var(--room-rule)}
+.tl-said time{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);padding-top:3px}
+.tl-said .src{display:block;font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.05em;text-transform:uppercase;color:var(--room-red);margin-bottom:6px}
+.tl-said p{margin:0;font-family:'Syne',sans-serif;font-weight:600;font-size:calc(16px*var(--k));line-height:1.4;color:var(--room-ivory);max-width:64ch}
+.tl-said small{display:block;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.5;color:var(--room-fg2);margin-top:6px;max-width:64ch}
+.tl-said .grade{display:block;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg2);margin-top:8px}
+.tl-said .grade b{color:var(--room-ivory);font-weight:700}
+@media (max-width:640px){.tl-said li{grid-template-columns:minmax(0,1fr);gap:4px}.tl-inner{padding-left:16px;padding-right:16px}}
+.ledger .call button{all:unset;cursor:pointer;border-bottom:1px solid transparent}
+.ledger .call button:hover,.ledger .call button:focus-visible{border-bottom-color:var(--room-red)}
 .room-score{margin-top:calc(16px*var(--k));font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);max-width:66ch}
 /* partners */
 .partners{padding:calc(40px*var(--k)) 0 calc(48px*var(--k));border-top:1px solid var(--room-rule);display:flex;justify-content:space-between;gap:calc(30px*var(--k));flex-wrap:wrap;align-items:center}
@@ -2181,7 +2208,7 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
   </section>
 
   <section class="hub-block room-sec" id="record-block" style="display:none">
-    <div class="room-head"><h2>Track record</h2><div class="sub">Each reading that calls a pattern emerging or accelerating is checked a month later. We record what happened.</div></div>
+    <div class="room-head"><h2>Track record</h2><div class="sub">Every call we make on the board is checked 30, 60 and 90 days later against what the subject itself did, week by week: never on whether it stayed on our board.</div></div>
     <div class="ledger" id="record-ledger"></div>
     <p class="room-score" id="record-score"></p>
   </section>
@@ -2289,6 +2316,10 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
   <div class="modal-box"><button class="modal-close" onclick="closeModalDirect()">✕</button><div id="modal-content"></div></div>
 </div>
 <div class="toast" id="toast"></div>
+<!-- SEAM:MEMORY: a subject's history, opened from any board tile or the track record -->
+<div class="tl-room" id="tl-room" role="dialog" aria-modal="true" aria-labelledby="tl-title" hidden>
+  <div class="tl-inner"><button type="button" class="broom-back" onclick="closeTimeline()">&larr; Back to the board</button><div id="tl-body"></div></div>
+</div>
 
 
 
@@ -4184,6 +4215,17 @@ function _paintBrandRoom(room, j, focus) {
   catch (e) { console.warn('brand room', e); room.innerHTML = '<button class="broom-back" onclick="_closeBrand()">&larr; All brands</button><p class="lib-empty" role="status">The room could not be drawn. Refresh in a moment.</p>'; return; }
   _wireColumns(room.querySelector('.viz.cols')); _wireLines(room.querySelector('.viz.lines')); if (typeof _drawPulses === 'function') _drawPulses();
   if (focus) { const h = room.querySelector('h1'); if (h) h.focus({ preventScroll: true }); }
+  _fillBrandRecord(room, j);   // SEAM:MEMORY
+}
+async function _fillBrandRecord(room, j) {
+  const sec = room.querySelector('#brand-record'), slot = sec && sec.querySelector('.tl-slot'); if (!slot) return;
+  const key = sec.getAttribute('data-key'), id = (j.track || {}).id;
+  const tl = await _tlFetch(key);
+  if (_brands.open !== _uuid(id) || !slot.isConnected) return;   // the room changed while the record loaded
+  if (!tl || !tl.ok) { if (/Opening the record/.test(slot.textContent)) slot.innerHTML = '<p class="room-more">' + (tl && tl.error === 'not_counted' ? 'This record is still being filled. Look again later today.' : 'The record did not answer. Refresh in a moment.') + '</p>'; return; }
+  if (tl.empty) { if (/Opening the record/.test(slot.textContent)) slot.innerHTML = '<p class="room-more">The record starts this week: every week from now on is counted and kept.</p>'; return; }
+  slot.innerHTML = _renderTimeline(tl, { inline: true });
+  _wireColumns(slot.querySelector('.viz.cols'));
 }
 // A phone turned on its side crosses the chart breakpoint: the open room redraws at the new width.
 try { window.matchMedia('(max-width: 640px)').addEventListener('change', () => { const room = document.getElementById('brand-room'); if (_brands.room && _brands.open === (_brands.room.track || {}).id && room && room.style.display === 'block') _paintBrandRoom(room, _brands.room); }); } catch (e) { /* older browsers keep the first drawing */ }
@@ -4223,7 +4265,10 @@ function _renderBrandRoom(j) {
       <div class="bset">${[self].concat(j.set).map(row).join('')}</div></section>` : '';
   const stories = (j.stories || []).length ? `<section class="room-sec"><div class="room-head"><h2>The latest stories</h2><div class="sub">The newest coverage, each linked to its outlet.</div></div>
       <div class="bstories">${j.stories.map(x => `<a class="bstory${x.image ? '' : ' nophoto'}" href="${safeUrl(x.url)}" target="_blank" rel="noopener">${x.image ? `<img src="${safeAttr(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('nophoto');this.remove()">` : ''}<div><small>${safe(x.source || '')} · ${safe(_day(x.date, true))}</small><span>${safe(x.title)}</span></div></a>`).join('')}</div></section>` : '';
-  const rec = j.record ? `<p class="room-more">${_fmtN(j.record.weeks)} ${j.record.weeks === 1 ? 'week' : 'weeks'} on record since ${safe(_day(j.record.since, true))}${j.record.on_board ? `, ${_fmtN(j.record.on_board)} of them on the board` : ''}.</p>` : '';
+  // SEAM:MEMORY: the record is the brand's history, every week we counted it, the weeks on our board and what we said (filled after paint)
+  const recLine = j.record ? `${_fmtN(j.record.weeks)} ${j.record.weeks === 1 ? 'week' : 'weeks'} on record since ${safe(_day(j.record.since, true))}${j.record.on_board ? `, ${_fmtN(j.record.on_board)} of them on the board` : ''}.` : '';
+  const rec = _tlKey('track:' + (t.id || '')) ? `<section class="room-sec" id="brand-record" data-key="${_tlKey('track:' + t.id)}"><div class="room-head"><h2>The record</h2><div class="sub">Every week we counted ${safe(t.name)}, the weeks it stood on our board and what we said about it.</div></div><div class="tl-slot">${recLine ? `<p class="room-more">${recLine}</p>` : '<p class="lib-empty">Opening the record.</p>'}</div></section>`
+    : (recLine ? `<p class="room-more">${recLine}</p>` : '');
   const cta = `<section class="partners"><p>Commission a RECON on ${safe(t.name)}: the deep read, built on demand, with every source, every count and the moves it implies.</p><a href="mailto:hello@unsurfaced-intelligence.com?subject=${encodeURIComponent('RECON: ' + (t.name || ''))}">Commission a RECON</a></section>`;
   return head + board + cov + att + set + stories + rec + cta;
 }
@@ -4231,7 +4276,7 @@ function _renderBrandRoom(j) {
 // carries its value; every column answers on hover and focus.
 function _brandColumns(weeks) {
   const narrow = _vizNarrow(), w = narrow ? 400 : 1000, h = narrow ? 200 : 220, padL = 34, padB = 26, padT = 18, n = weeks.length, slot = (w - padL) / n, cw = Math.min(24, slot * 0.6);
-  const max = Math.max(1, ...weeks.map(x => x.n || 0)), step = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / step) * step;
+  const max = Math.max(1, ...weeks.map(x => x.n || 0)), step = Math.pow(10, Math.floor(Math.log10(max))), top0 = Math.ceil(max / step) * step, top = top0 < 10 && top0 % 2 ? top0 + 1 : top0;   // an even top, so the middle line is a whole story
   const y = v => h - padB - (v / top) * (h - padB - padT);
   const ticks = [0, top / 2, top].map(v => `<line x1="${padL}" x2="${w}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`).join('');
   const tickLbl = [0, top / 2, top].map(v => `<text x="${padL - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${_fmtN(Math.round(v))}</text>`).join('');
@@ -4239,7 +4284,7 @@ function _brandColumns(weeks) {
     const cx = padL + slot * i + slot / 2, x0 = cx - cw / 2, y0 = y(x.n), base = h - padB, r = Math.min(4, Math.max(0, base - y0));
     const d = x.n ? `M${x0.toFixed(1)} ${base}V${(y0 + r).toFixed(1)}Q${x0.toFixed(1)} ${y0.toFixed(1)} ${(x0 + r).toFixed(1)} ${y0.toFixed(1)}H${(x0 + cw - r).toFixed(1)}Q${(x0 + cw).toFixed(1)} ${y0.toFixed(1)} ${(x0 + cw).toFixed(1)} ${(y0 + r).toFixed(1)}V${base}Z` : '';
     const fl = x.floor ? 'at least ' : '', label = x.n == null ? `Week of ${_day(x.start, true)}: not counted (the room reads the newest 1,000 stories)` : `Week of ${_day(x.start, true)}: ${fl}${_fmtN(x.n)} ${x.n === 1 ? 'story' : 'stories'}, ${fl}${_fmtN(x.outlets)} ${x.outlets === 1 ? 'outlet' : 'outlets'}`;
-    return `<rect class="hit" x="${(padL + slot * i).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${h - padB - padT}" tabindex="0" data-tip="${safeAttr(label)}" data-x="${cx.toFixed(1)}" aria-label="${safeAttr(label)}"></rect>${d ? `<path class="col${i === n - 1 ? '' : ' dim'}" d="${d}"/>` : ''}`;
+    return `<rect class="hit" x="${(padL + slot * i).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${h - padB - padT}" tabindex="${i === n - 1 ? 0 : -1}" data-tip="${safeAttr(label)}" data-x="${cx.toFixed(1)}" aria-label="${safeAttr(label)}"></rect>${d ? `<path class="col${i === n - 1 ? '' : ' dim'}" d="${d}"/>` : ''}`;
   }).join('');
   const last = weeks[n - 1], lx = padL + slot * (n - 1) + slot / 2;
   const xl = [0, Math.floor(n / 2), n - 1].map(i => `<text x="${(padL + slot * i + slot / 2).toFixed(1)}" y="${h - 6}" text-anchor="middle">${safe(_day(weeks[i].start))}</text>`).join('');
@@ -4275,13 +4320,17 @@ function _vizNarrow() { return window.matchMedia('(max-width: 640px)').matches; 
 function _vizTip(box, html, px, py) {
   const tip = box.querySelector('.viz-tip'); if (!tip) return;
   if (html == null) { tip.style.display = 'none'; return; }
-  tip.innerHTML = html; tip.style.display = 'block';
-  const bw = box.clientWidth, tw = tip.offsetWidth; tip.style.left = Math.max(0, Math.min(bw - tw, px - tw / 2)) + 'px'; tip.style.top = Math.max(0, py - tip.offsetHeight - 10) + 'px';
+  tip.innerHTML = html; tip.style.display = 'block'; tip.style.left = '0px';
+  const bw = box.clientWidth; tip.style.maxWidth = bw + 'px'; const tw = tip.offsetWidth; tip.style.left = Math.max(0, Math.min(bw - tw, px - tw / 2)) + 'px'; tip.style.top = Math.max(0, py - tip.offsetHeight - 10) + 'px';
 }
 function _wireColumns(box) {
   if (!box) return; const svg = box.querySelector('svg');
   // the text goes in before the tooltip is measured, so the last column's tooltip stays inside the chart
   const show = el => { const r = svg.getBoundingClientRect(), b = box.getBoundingClientRect(), sx = r.width / svg.viewBox.baseVal.width; _vizTip(box, '<b>' + safe(el.getAttribute('data-tip') || '') + '</b>', Number(el.getAttribute('data-x')) * sx + (r.left - b.left), Number(el.getAttribute('y')) * sx + (r.top - b.top) + 30); };
+  // one tab stop per chart (the newest week); the arrow keys, Home and End move along the weeks
+  const hits = [...box.querySelectorAll('.hit')];
+  hits.forEach((el, i) => el.addEventListener('keydown', ev => { const j = ev.key === 'ArrowLeft' ? i - 1 : ev.key === 'ArrowRight' ? i + 1 : ev.key === 'Home' ? 0 : ev.key === 'End' ? hits.length - 1 : null;
+    if (j == null || j < 0 || j >= hits.length) return; ev.preventDefault(); hits.forEach(h => h.setAttribute('tabindex', '-1')); hits[j].setAttribute('tabindex', '0'); hits[j].focus(); }));
   box.querySelectorAll('.hit').forEach(el => { el.addEventListener('pointerenter', () => show(el)); el.addEventListener('focus', () => show(el)); el.addEventListener('pointerleave', () => _vizTip(box, null)); el.addEventListener('blur', () => _vizTip(box, null)); });
 }
 function _wireLines(box) {
@@ -4300,6 +4349,105 @@ function _wireLines(box) {
   hit.addEventListener('focus', () => draw(pos(cur))); hit.addEventListener('blur', hide);
   hit.addEventListener('keydown', ev => { const k = ev.key === 'ArrowLeft' ? -1 : ev.key === 'ArrowRight' ? 1 : ev.key === 'Home' ? -n : ev.key === 'End' ? n : 0; if (!k) return; ev.preventDefault(); draw(pos(cur + k)); });
 }
+/* SEAM:MEMORY: a subject's history (GET /excavate/timeline): its weeks since it was first seen, each counted exactly on our sweep, red
+   when it stood on our board; what the board posted and what our reads said, newest first; how each call graded. */
+function _tlKey(k) { const v = String(k || '').toLowerCase(); return /^(theme|track):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v) ? v : ''; }
+function _tlButton(key, name) { const k = _tlKey(key); return k ? `<button type="button" class="tl-open" aria-label="${safeAttr('History of ' + (name || 'this subject'))}" onclick="event.stopPropagation();openTimeline('${k}', this)">History</button>` : ''; }
+function _tlAddWeeks(week, n) { const t = Date.parse(String(week || '').slice(0, 10) + 'T00:00:00Z'); return isNaN(t) ? '' : new Date(t + n * 7 * 864e5).toISOString().slice(0, 10); }
+const _tlCache = new Map();
+async function _tlFetch(key) {
+  const k = _tlKey(key); if (!k) return null;
+  const hit = _tlCache.get(k); if (hit && Date.now() - hit.at < 600000) return hit.j;
+  let j = null;
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/timeline?key=' + encodeURIComponent(k), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  if (j && j.ok) _tlCache.set(k, { at: Date.now(), j });
+  return j;
+}
+// The numbers a grade stands on, in words.
+function _tlGradeNumbers(g) {
+  if (!g || !g.verdict) return '';
+  const what = g.verdict === 'held' ? 'held' : g.verdict === 'faded' ? 'faded' : g.verdict;
+  return what + (g.before != null ? ` (${g.after} stories a week after, ${g.before} before)` : g.of ? ` (stories in ${g.active} of the ${g.of} weeks after)` : '');
+}
+function _tlGrade(grade, week) {
+  if (!grade) return '';
+  const parts = [['d30', 30], ['d60', 60], ['d90', 90]].map(([k, d]) => { const g = grade[k]; if (!g) return '';
+    if (g.verdict === 'open') return k === 'd30' ? `Checked at 30 days, the week of ${_day(_tlAddWeeks(week, 5))}` : '';
+    if (g.verdict === 'unmeasured') return k === 'd30' ? 'Not graded: the weeks it needed were not watched' : '';
+    return `<b>${d} days</b>: ${safe(_tlGradeNumbers(g))}`; }).filter(Boolean);
+  return parts.length ? `<span class="grade">${parts.join(' · ')}</span>` : '';
+}
+// Columns for a run of weeks (up to a year): stories a week, red when the subject stood on the board, the current week marked as so far.
+function _tlColumns(weeks) {
+  const narrow = _vizNarrow(), w = narrow ? 400 : 1000, h = narrow ? 190 : 210, padL = 34, padB = 26, padT = 18, n = weeks.length, slot = (w - padL) / Math.max(n, 1), cw = Math.min(24, Math.max(2, slot * 0.62));
+  const max = Math.max(1, ...weeks.map(x => x.n || 0)), step = Math.pow(10, Math.floor(Math.log10(max))), top0 = Math.ceil(max / step) * step, top = top0 < 10 && top0 % 2 ? top0 + 1 : top0;   // an even top, so the middle line is a whole story
+  const y = v => h - padB - (v / top) * (h - padB - padT);
+  const grid = [0, top / 2, top].map(v => `<line x1="${padL}" x2="${w}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/>`).join('');
+  const tl = [0, top / 2, top].map(v => `<text x="${padL - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${_fmtN(Math.round(v))}</text>`).join('');
+  const cols = weeks.map((x, i) => {
+    const cx = padL + slot * i + slot / 2, x0 = cx - cw / 2, base = h - padB, y0 = x.n ? y(x.n) : base, r = Math.min(4, cw / 2, Math.max(0, base - y0));
+    const d = x.n ? `M${x0.toFixed(1)} ${base}V${(y0 + r).toFixed(1)}Q${x0.toFixed(1)} ${y0.toFixed(1)} ${(x0 + r).toFixed(1)} ${y0.toFixed(1)}H${(x0 + cw - r).toFixed(1)}Q${(x0 + cw).toFixed(1)} ${y0.toFixed(1)} ${(x0 + cw).toFixed(1)} ${(y0 + r).toFixed(1)}V${base}Z` : '';
+    const b = x.board ? ` · on our board${x.board.place ? ' (#' + x.board.place + ')' : ''}, ${String(x.board.state || '').toLowerCase()}` : '';
+    const label = x.n == null ? `Week of ${_day(x.week, true)}: not watched yet` : `Week of ${_day(x.week, true)}: ${_fmtN(x.n)} ${x.n === 1 ? 'story' : 'stories'}${x.outlets != null ? ', ' + _fmtN(x.outlets) + ' ' + (x.outlets === 1 ? 'outlet' : 'outlets') : ''}${x.partial ? ' so far' : ''}${b}`;
+    return `<rect class="hit" x="${(padL + slot * i).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${h - padB - padT}" tabindex="${i === n - 1 ? 0 : -1}" data-tip="${safeAttr(label)}" data-x="${cx.toFixed(1)}" aria-label="${safeAttr(label)}"></rect>${d ? `<path class="col${x.board ? '' : ' dim'}${x.partial ? ' part' : ''}" d="${d}"/>` : ''}`;
+  }).join('');
+  const idx = [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+  const xl = idx.map(i => `<text x="${(padL + slot * i + slot / 2).toFixed(1)}" y="${h - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${safe(_day(weeks[i].week))}</text>`).join('');
+  return `<div class="viz-legend sq"><span><i class="dim"></i>Stories a week</span><span><i style="background:var(--room-red)"></i>On our board that week</span>${weeks.some(x => x.partial) ? '<span><i class="part"></i>This week so far</span>' : ''}</div><div class="viz cols"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Stories a week for ${n} weeks"><g class="grid">${grid}</g><g class="axis">${tl}${xl}</g>${cols}</svg><div class="viz-tip"></div></div>`;
+}
+function _renderTimeline(j, opts) {
+  const weeks = Array.isArray(j.weeks) ? j.weeks.filter(x => x && x.week) : [];
+  if (!weeks.length) return '<p class="room-more">Nothing is on record for this subject yet.</p>';
+  const src = { weekly: 'The Weekly Read', monthly: 'The monthly', report: 'The Cultural Intelligence Report' };
+  const said = [];
+  weeks.slice().reverse().forEach(x => {
+    if (x.posted) said.push(`<li><time>Week of ${safe(_day(x.week, true))}</time><div><span class="src">On our board${x.board && x.board.state ? ' · ' + safe(String(x.board.state).toLowerCase()) : ''}</span><p>${safe(x.posted.claim)}</p>${x.posted.move ? `<small>${safe(x.posted.move)}</small>` : ''}${_tlGrade(x.grade, x.week)}</div></li>`);
+    else if (x.grade && x.board) said.push(`<li><time>Week of ${safe(_day(x.week, true))}</time><div><span class="src">On our board · ${safe(String(x.board.state || '').toLowerCase())}</span><p>Called ${safe(String(x.board.state || '').toLowerCase())}.</p>${_tlGrade(x.grade, x.week)}</div></li>`);
+    (x.said || []).forEach(s => said.push(`<li><time>Week of ${safe(_day(x.week, true))}</time><div><span class="src">${safe(src[s.kind] || 'Our reading')}${s.label ? ' · ' + safe(s.label) : ''}</span>${s.name ? `<p>${safe(s.name)}</p>${s.dek ? `<small>${safe(s.dek)}</small>` : ''}` : `<p>${s.findings > 1 ? _fmtN(s.findings) + ' findings in this issue speak to it.' : 'A finding in this issue speaks to it.'}</p><small>For subscribers.</small>`}</div></li>`));
+  });
+  const first = j.first ? _day(j.first, true) : null, on = j.board_weeks || 0;
+  const graded = weeks.map(x => x.grade && x.grade.d30 && x.grade.d30.verdict).filter(v => v === 'held' || v === 'faded'), held = graded.filter(v => v === 'held').length;
+  const figs = `<div class="tl-figs"><div><b>${_fmtN(j.stories || 0)}</b><span>stories since ${first ? 'the week of ' + safe(first) : 'we started counting'}</span></div><div><b>${_fmtN(on)}</b><span>${on === 1 ? 'week' : 'weeks'} on our board</span></div>`
+    + (graded.length ? `<div><b>${held} of ${graded.length}</b><span>${graded.length === 1 ? 'call' : 'calls'} held at 30 days</span></div>` : '') + `</div>`;
+  const table = `<details class="viz-table"><summary>See the numbers</summary><table><tr><th>Week of</th><th>Stories</th><th>Outlets</th><th>On our board</th></tr>${weeks.map(x => `<tr><td>${safe(_day(x.week, true))}</td><td>${x.n == null ? 'not watched' : _fmtN(x.n) + (x.partial ? ' so far' : '')}</td><td>${x.outlets == null ? '' : _fmtN(x.outlets)}</td><td>${x.board ? safe(String(x.board.state || '').toLowerCase()) : ''}</td></tr>`).join('')}</table></details>`;
+  const head = opts && opts.inline ? '' : `<div class="room-dateline">History${first ? ' · first seen the week of ' + safe(first) : ''}</div><h2 id="tl-title" tabindex="-1">${safe(j.title || 'This subject')}</h2>`;
+  return head + figs + _tlColumns(weeks) + `<p class="viz-note">Counted on our regular sweep, each story in the week it was published. ${j.counted ? 'We have counted every week since the week of ' + safe(_day(j.counted, true)) + '.' : ''}</p>` + table
+    + (said.length ? `<ol class="tl-said">${said.slice(0, 24).join('')}</ol>` : '<p class="room-more">We have not written about it yet.</p>')
+    + `<p class="viz-src">How a call is graded: at 30, 60 and 90 days, on the subject's own stories a week. Emerging holds with stories in at least half the weeks after; structural in two thirds of them; accelerating holds at one and a half times the weekly pace before its rise; cooling holds when the pace stays below its twelve-week average.</p>`;
+}
+let _tlOpener = null, _tlSeq = 0, _tlInert = [];
+// While the history is open the page behind it is inert: Tab stays in the dialog and a screen reader reads only the dialog.
+// The dialog lives inside the Explore section, so every sibling on the way up to the body goes inert, never an ancestor of the dialog.
+function _tlInertOn(on) {
+  if (on) { const room = document.getElementById('tl-room'); _tlInert = [];
+    for (let el = room; el && el.parentElement && el !== document.body; el = el.parentElement) [...el.parentElement.children].forEach(sib => { if (sib !== el && !sib.inert && sib.tagName !== 'SCRIPT' && sib.tagName !== 'STYLE') _tlInert.push(sib); });
+    _tlInert.forEach(el => { el.inert = true; }); }
+  else { _tlInert.forEach(el => { el.inert = false; }); _tlInert = []; }
+}
+async function openTimeline(key, opener, fromHistory) {
+  const k = _tlKey(key), room = document.getElementById('tl-room'), body = document.getElementById('tl-body'); if (!k || !room || !body) return;
+  const seq = ++_tlSeq;
+  if (room.hidden) { _tlOpener = opener || document.activeElement; _tlInertOn(true); }
+  body.innerHTML = '<p class="lib-empty" role="status">Opening the history.</p>';
+  room.hidden = false; document.body.style.overflow = 'hidden'; room.scrollTop = 0;
+  if (!fromHistory) { try { if (history.state && history.state.tl) history.replaceState({ tl: k }, '', location.href); else history.pushState({ tl: k }, '', location.href); } catch (e) { /* Back closes it only where the browser allows */ } }
+  const j = await _tlFetch(k);
+  if (room.hidden || seq !== _tlSeq) return;   // closed, or another history opened while this one loaded
+  body.innerHTML = j && j.ok && !j.empty ? _renderTimeline(j) : '<p class="lib-empty" role="status">' + (j && j.empty ? 'Nothing is on record for this subject yet.' : j && j.error === 'not_counted' ? 'This history is still being filled. Look again later today.' : 'The history did not answer. Try again in a moment.') + '</p>';
+  _wireColumns(body.querySelector('.viz.cols'));
+  const h = body.querySelector('#tl-title') || room.querySelector('.broom-back'); if (h) h.focus({ preventScroll: true });
+}
+function closeTimeline(fromHistory) {
+  const room = document.getElementById('tl-room'); if (!room || room.hidden) return;
+  _tlSeq++; room.hidden = true; document.body.style.overflow = ''; _tlInertOn(false);
+  if (!fromHistory) { try { if (history.state && history.state.tl) history.back(); } catch (e) { /* the step stays */ } }
+  if (_tlOpener && _tlOpener.isConnected) _tlOpener.focus({ preventScroll: true }); _tlOpener = null;
+}
+window.addEventListener('popstate', () => {
+  const room = document.getElementById('tl-room'), tl = history.state && history.state.tl;
+  if (!tl) closeTimeline(true); else if (room && room.hidden) openTimeline(tl, null, true);   // Forward opens it again
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const room = document.getElementById('tl-room'); if (room && !room.hidden) { e.preventDefault(); closeTimeline(); } } });
 async function trackThis(name) {
   name = String(name||'').trim(); if (!name) { showToast('Name the brand first'); return; }
   try {
@@ -9347,7 +9495,7 @@ function _renderDoorCard(t, i) {
       ${_pulse(m.series)}
       ${_doorMeasureRow(m, t.since)}
       ${t.move ? `<div class="move"><i>Recommended move</i><br>${safe(t.move)}</div>` : ''}
-      <div class="foot"><span class="open">Open the reading</span><span class="state">${t.carried ? 'a new reading is compiling' : state && state !== 'steady' ? safe(state) : ''}</span></div>
+      <div class="foot"><span class="open">Open the reading</span>${_tlButton(t.key, t.label || t.title)}<span class="state">${t.carried ? 'a new reading is compiling' : state && state !== 'steady' ? safe(state) : ''}</span></div>
     </article>`;
 }
 /* SEAM:EXC_DOOR_VOICE: the board is a hybrid. The subjects that moved most this week (by the size of the move, the most covered
@@ -9380,7 +9528,7 @@ function _renderQuietRow(t) {
   const m = t.measures || {}, f = t.frame || {};
   const name = safe(f.entity || f.category || t.title || ''), who = f.audience ? '<span>' + safe(f.audience) + '</span>' : '';
   const weeks = typeof m.weeks_touched === 'number' ? '<span>' + safe(String(m.weeks_touched)) + ' of ' + safe(String(m.weeks || 12)) + ' weeks on record</span>' : '';
-  return `<article class="row quiet" onclick="openFeaturedCard('${safeAttr(t.id)}')"><b>${name}</b>${who}<span>No stories this week</span>${weeks}<span class="open">Open the reading</span></article>`;
+  return `<article class="row quiet" onclick="openFeaturedCard('${safeAttr(t.id)}')"><b>${name}</b>${who}<span>No stories this week</span>${weeks}<span class="open">Open the reading</span>${_tlButton(t.key, f.entity || f.category || t.title)}</article>`;
 }
 /* A pattern the engine is watching but has not read yet, as a row in the same language as the board: the sources' image, who
    it is about, the one-line read, the question, the counts in words. No lens badge, no uppercase, no serif. */
@@ -9407,7 +9555,7 @@ function _renderDoorRow(t) {
   const who = [f.entity || f.category, f.audience].filter(Boolean).map(safe).join(' · ') + (Array.isArray(f.competitors) && f.competitors.length ? ' · vs ' + f.competitors.slice(0, 3).map(safe).join(', ') : '');
   const photo = t.photo && t.photo.src ? `<figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.className='photo empty';this.remove()"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : '<figure class="photo empty" aria-hidden="true"></figure>';
   return `<article class="row" data-state="${safeAttr(m.state || 'STEADY')}" onclick="openFeaturedCard('${safeAttr(t.id)}')">${photo}
-    <div><div class="who">${who}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.question ? `<p class="q"><i>Answers</i>${safe(t.question)}</p>` : ''}<div class="foot"><span class="open">Open the reading</span></div></div>
+    <div><div class="who">${who}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.question ? `<p class="q"><i>Answers</i>${safe(t.question)}</p>` : ''}<div class="foot"><span class="open">Open the reading</span>${_tlButton(t.key, t.label || t.title)}</div></div>
     <div class="mid">${_pulse(m.series)}${_doorMeasureRow(m, t.since)}</div>
     ${t.move ? `<div class="move"><i>Recommended move</i><br>${safe(t.move)}</div>` : '<div></div>'}</article>`;
 }
@@ -9485,15 +9633,20 @@ function _renderDoorVoices(voices) {
   track.innerHTML = list.concat(list).map(card).join('');
   el.style.display = 'block';
 }
+/* SEAM:MEMORY: the record, graded on counts. Every call of the last 150 days at 30 days: held, faded, still open, each named with its
+   numbers; how many held at 60 and 90 days; when the next is checked. A call opens its subject's history. */
 function _renderRecord(record) {
   const el = document.getElementById('record-block'), ledger = document.getElementById('record-ledger'), score = document.getElementById('record-score'); if (!el || !ledger) return;
-  const r = record || {}, c = r.counts || { confirmed: 0, missed: 0, open: 0 }, total = c.confirmed + c.missed + c.open;
-  if (!total) { el.style.display = 'none'; return; }
-  const day = d => { const t = d ? new Date(d + 'T12:00:00Z') : null; return t && !isNaN(t) ? t.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : (d || ''); };
-  const when = x => x.resolved ? (x.outcome === 'faded' ? 'Called ' + day(x.called) + ', missed ' + day(x.resolved) : 'Called ' + day(x.called) + ', ' + (x.outcome === 'converted' ? 'confirmed ' : 'holding since ') + day(x.resolved)) : 'Called ' + day(x.called) + ', checked after 30 days';
-  const col = (label, n, list) => `<div class="col"><h3><b>${n}</b>${label}</h3>${(list || []).slice(0, 4).map(x => `<div class="call">${safe(x.title)}<small>${safe(when(x))}</small></div>`).join('') || '<div class="call" style="color:var(--room-fg3)">Nothing named here yet.</div>'}</div>`;
-  ledger.innerHTML = col('confirmed', c.confirmed, r.confirmed) + col('missed', c.missed, r.missed) + col('open', c.open, r.open);
-  if (score) score.textContent = (c.confirmed + c.missed) ? `${c.confirmed} of ${c.confirmed + c.missed} calls checked so far were confirmed. ${c.open} ${c.open === 1 ? 'is' : 'are'} still open.` : `${c.open} call${c.open === 1 ? '' : 's'} open, none checked yet.`;
+  const r = record || {}, c = r.counts || {}, held = c.held || 0, faded = c.faded || 0, open = c.open || 0;
+  if (!(held + faded + open)) { el.style.display = 'none'; return; }
+  const line = x => { const g = x.d30 || {}, called = 'Called ' + String(x.state || '').toLowerCase() + ' the week of ' + _day(x.week);
+    return g.verdict === 'open' ? called + ', checked the week of ' + _day(_tlAddWeeks(x.week, 5)) : called + ', ' + _tlGradeNumbers(g); };
+  const col = (label, n, list) => `<div class="col"><h3><b>${_fmtN(n)}</b>${label}</h3>${(list || []).slice(0, 4).map(x => `<div class="call">${_tlKey(x.key) ? `<button type="button" onclick="openTimeline('${_tlKey(x.key)}', this)">${safe(x.title)}</button>` : safe(x.title)}<small>${safe(line(x))}</small></div>`).join('') || '<div class="call" style="color:var(--room-fg3)">Nothing named here yet.</div>'}</div>`;
+  ledger.innerHTML = col('held at 30 days', held, r.held) + col('faded at 30 days', faded, r.faded) + col('still open', open, r.open);
+  const later = h => (r[h] && (r[h].held + r[h].faded)) ? ` At ${h === 'd60' ? 60 : 90} days, ${r[h].held} of ${r[h].held + r[h].faded} held.` : '';
+  if (score) score.textContent = ((held + faded) ? `${held} of ${held + faded} calls graded at 30 days held.` : 'No call has reached its 30 days yet.') + later('d60') + later('d90')
+    + (open ? ` ${open} ${open === 1 ? 'is' : 'are'} still open${r.next_due ? '; the next is checked the week of ' + _day(r.next_due) : ''}.` : '')
+    + (c.unmeasured ? ` ${c.unmeasured} ${c.unmeasured === 1 ? 'call was' : 'calls were'} not graded: the weeks ${c.unmeasured === 1 ? 'it' : 'they'} needed were not watched.` : '');
   el.style.display = 'block';
 }
 async function _openDoorRead(t) {

@@ -86,7 +86,10 @@ export default {
         .catch(e => console.log('door_pass_error', String(e && e.message)))
         .then(async () => peopleLedger(env, await doorSet(env)))   // SEAM:PEOPLE: who spoke to the board, once a day
         .then(n => console.log('people_ledger', n))
-        .catch(e => console.log('people_ledger_error', String(e && e.message))));
+        .catch(e => console.log('people_ledger_error', String(e && e.message)))
+        .then(() => memoryDaily(env))   // SEAM:MEMORY: every subject's week counted, history filled, what the reads said filed, calls graded
+        .then(s => console.log('memory_daily', JSON.stringify(s)))
+        .catch(e => console.log('memory_daily_error', String(e && e.message))));
     } else {
       // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
       // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
@@ -149,6 +152,7 @@ export default {
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
       if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
       if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
+      if (path === '/excavate/timeline' && request.method === 'GET') return excavateTimeline(request, env, origin);  // SEAM:MEMORY
       if (path === '/excavate/track' && request.method === 'POST') return excavateTrackAdd(request, env, origin);    // SEAM:TRACKS (signed in)
       if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
@@ -6281,6 +6285,10 @@ async function excavatePropose(request, env, origin, internal) {
       const nowMs = Date.now();
       themes.forEach(t => { t.state = clusterState(t, nowMs); t.shape = clusterShape(t.week_series); });
     }
+    if (typeof caseLive === 'function' && caseLive(env) && themes.length) {   // SEAM:MEMORY: the case windows call the board's states on exact counts (a contested theme stays contested)
+      const cs = await memoryCaseStates(env, themes.map(t => 'theme:' + t.cluster_id)).catch(excQuiet('case_states', new Map()));
+      for (const t of themes) { const c = cs.get('theme:' + t.cluster_id); if (c && c.state && t.state !== 'CONTESTED') { t.state = c.state; t.windows = { why: c.why, week: c.week }; } }
+    }
     if (!themes.length) {
       return json({ ok: true, proposed: [], scanned: rows.length, window_days: days, min_weeks: minWeeks,
         note: 'no cluster has recurred across ' + minWeeks + '+ weeks in this window yet: '
@@ -7214,7 +7222,7 @@ async function loadHouseFocus(env) {
   return DEFAULT_FOCUS;
 }
 async function loadTracks(env) {
-  try { return (await sbRest(env, 'tracks?select=id,name,aliases,kind,sector,description,query,kg_id,image,image_license,active&active=eq.true&limit=200')) || []; } catch (e) { return []; }   // SEAM:BRAND_ROOM: the description, image and KG id are read, so KG resolves once
+  try { return (await sbRest(env, 'tracks?select=id,name,aliases,kind,sector,description,query,kg_id,image,image_license,active,created_at&active=eq.true&limit=200')) || []; } catch (e) { return []; }   // SEAM:BRAND_ROOM: the description, image and KG id are read, so KG resolves once
 }
 // PURE: does this cluster touch a tracked entity? Returns the matched track name or null.
 function trackMatch(text, tracks) {
@@ -7353,7 +7361,7 @@ async function deskRunGuarded(request, env, origin) {
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -7529,7 +7537,7 @@ async function doorVoicesPass(env) {
  * first_at keeps when the week was first written. Rows are never deleted: the history EX19 counts and grades stands on them.
  * The board's figures are as it computed them (sampled: true) until EX19 counts every week exactly; sweep says whether they
  * counted the sweep only. A missing table costs a log line, never a page. ═══ */
-const LEDGER = { TABLE: 'subject_weeks', KINDS: ['theme', 'track', 'cohort', 'field'] };
+const LEDGER = { TABLE: 'subject_weeks', KINDS: ['theme', 'track', 'cohort', 'field', 'territory'] };   // SEAM:MEMORY: territories counted since EX20
 // PURE: the Monday (UTC) of the week a date speaks for.
 function ledgerWeek(d) {
   const t = d ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? d + 'T12:00:00Z' : d) : new Date();
@@ -7537,12 +7545,12 @@ function ledgerWeek(d) {
   return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - ((t.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
 }
 async function ledgerPut(env, col, rows) {
-  if (!['board', 'door', 'track', 'cohort'].includes(col)) return 0;
+  if (!['board', 'door', 'track', 'cohort', 'grade'].includes(col)) return 0;   // SEAM:MEMORY: the grader owns grade
   const at = new Date().toISOString(), by = new Map();
   // The door's label rides inside its column: only the board, a track and a cohort name a subject, so a title never flips.
   for (const r of (rows || []).filter(r => r && r.subject_key && r.week && LEDGER.KINDS.includes(r.kind)))
     by.set(String(r.subject_key).slice(0, 120) + '|' + r.week, Object.assign({ subject_key: String(r.subject_key).slice(0, 120), kind: r.kind, week: r.week },
-      col === 'door' ? {} : { title: String(r.title || r.subject_key).slice(0, 160) }, { [col]: r.data || {}, updated_at: at }));   // one row per key: Postgres refuses a write that touches a row twice
+      col === 'door' || col === 'grade' ? {} : { title: String(r.title || r.subject_key).slice(0, 160) }, { [col]: r.data === null ? null : (r.data || {}), updated_at: at }));   // one row per key: Postgres refuses a write that touches a row twice; null clears the column
   const body = [...by.values()];
   if (!body.length) return 0;
   try { await sbRest(env, LEDGER.TABLE + '?on_conflict=subject_key,week', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body }); return body.length; }
@@ -7579,6 +7587,590 @@ function ledgerDoorRows(tiles) {
           weeks_touched: m.weeks_touched || 0, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, shape: m.shape || null, series: m.series || [] },
         voices: ledgerVoiceCounts(t.voices) } };
   });
+}
+
+/* ═══ SEAM:MEMORY (EX20): EXCAVATE remembers every week of every subject, what it said about each, and whether its calls held.
+ * The database counts (memory_count_weeks, migration 0040): every theme of three stories or more (and any subject the board has
+ * shown), every territory and every tracked brand, every week, exactly, on the sweep, by the counting rule (sweep_when: the week a
+ * story was published, when the sweep found it within a month). History is filled back to the first week the sweep counted
+ * (memory_start); before that a week was not watched, and it is never shown as zero. Beside the counts sits what we said: every
+ * tile the board posted (the door column, filled back from the stored tile reads) and every weekly, monthly and report pattern,
+ * filed to its subjects through its own evidence (the said column; no model reads anything to file it). A RECON never enters this
+ * memory: what a client commissioned belongs to the client. A call (emerging, accelerating, structural, cooling) is graded at 30,
+ * 60 and 90 days against the subject's own weekly stories, never on whether it stayed on the board (gradeCall). Each read and each
+ * tile read is handed what we said before on its subjects (memoryBrief); every subject has a timeline (GET /excavate/timeline).
+ * The case windows (caseState) run beside the board's states in shadow; the CASE_WINDOWS setting set to live puts them on the
+ * board. No model is called anywhere in this section. ═══ */
+const MEMORY = {
+  STEP_W: 4,              // weeks one counter call covers (the database allows ten)
+  TRACK_CHUNK: 40,        // tracked brands one counter call covers
+  DAILY_THEME_W: 12,      // themes and territories are recounted this far back each day
+  DAILY_TRACK_W: 5,       // tracked brands this far back (a story the sweep found up to a month late still counts in its week)
+  CASE_W: 52,             // the case windows look back a year: "first seen" means first seen in a year we watched
+  PAGE: 1000,             // PostgREST's page; a longer read is paged
+  BUDGET_MS: 40000,       // a backfill run's share of one invocation; the next run resumes where it stopped
+  TRIES: 3,               // a span that keeps failing is skipped after this many runs, and the skip is kept on the cursor
+  CURSOR_KEY: 'memory:cursor:v1', START_KEY: 'memory:start:v1', DOOR_KEY: 'memory:door:v1', SAID_KEY: 'memory:said:v1', CALLS_KEY: 'memory:calls:v1',
+  CALLS: ['EMERGING', 'ACCELERATING', 'STRUCTURAL', 'COOLING'],
+  HORIZONS: [{ k: 'd30', d: 30, w: 4 }, { k: 'd60', d: 60, w: 9 }, { k: 'd90', d: 90, w: 13 }],
+  GRADE_BACK_D: 150,      // calls this recent are graded again each day until their 90 days are in
+  KEYS_PER_ASK: 25,       // subjects one ledger read covers
+  BRIEF: { SUBJECTS: 8, WEEKS: 12, SAID: 3, CHARS: 4200, LINE: 620 },
+  TL: { WEEKS: 52, KEY: 'tl:v1:', TTL: 6 * 3600 },
+  RECORD_D: 150
+};
+// PURE: a Monday n weeks from a Monday.
+function memoryAddWeeks(week, n) { return new Date(Date.parse(week + 'T00:00:00Z') + n * 7 * 864e5).toISOString().slice(0, 10); }
+// PURE: the Mondays from a to b inclusive, oldest first.
+function memoryMondays(a, b) {
+  const out = []; let w = ledgerWeek(a); const end = ledgerWeek(b);
+  if (!w || !end) return out;
+  while (w <= end && out.length < 600) { out.push(w); w = memoryAddWeeks(w, 1); }
+  return out;
+}
+// PURE: a Monday as the reader says it.
+function memoryDay(week, year) {
+  const t = week ? new Date(String(week).slice(0, 10) + 'T12:00:00Z') : null;
+  return t && !isNaN(t) ? t.toLocaleDateString('en-US', year === false ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+}
+// PURE: the counting rule, as the database has it (sweep_when): a story speaks for the date it was published when the sweep found it
+// within a month of that date; dated after the day it was found, or found more than a month late, it speaks for no week.
+function sweepWhen(r) {
+  if (!r || !r.captured_at) return null;
+  const cap = Date.parse(r.captured_at);
+  if (!r.published_at) return r.captured_at;
+  const pub = Date.parse(r.published_at);
+  if (!Number.isFinite(pub) || !Number.isFinite(cap)) return null;
+  if (pub > cap + 864e5 || pub < cap - 30 * 864e5) return null;
+  return r.published_at;
+}
+// Every row of a read, a page at a time (PostgREST stops at a thousand); at most `max` rows. The path carries its own order.
+async function memoryAll(env, path, max) {
+  const out = [];
+  for (let off = 0; off < (max || 20000); off += MEMORY.PAGE) {
+    const got = (await sbRest(env, path + '&limit=' + MEMORY.PAGE + '&offset=' + off)) || [];
+    out.push(...got); if (got.length < MEMORY.PAGE) break;
+  }
+  return out;
+}
+// PURE: what we posted about a subject in a week: the tile's state, else the board's.
+function memoryPostedState(r) { const s = (r && r.door && r.door.state) || (r && r.board && r.board.state) || null; return s ? String(s).toUpperCase() : null; }
+// PURE: a subject's weeks from `from` to `to`, every Monday present: its stories and outlets, what we posted, what the reads said
+// and how a call graded. A counted week with no row is zero; a week is null (not watched, never zero) when it is before `counted`,
+// inside a span the history fill had to skip (`gaps`), or when the subject has no counted week at all in the run (it was never counted).
+function memorySeries(rows, from, to, counted, gaps) {
+  const by = new Map((rows || []).filter(r => r && r.week).map(r => [String(r.week).slice(0, 10), r]));
+  const ever = (rows || []).some(r => r && r.counts);
+  return memoryMondays(from, to).map(week => {
+    const r = by.get(week) || {}, c = r.counts || null, watched = ever && !!counted && week >= counted && !(gaps && gaps.has(week));
+    return { week, n: c ? (c.n || 0) : watched ? 0 : null, outlets: c ? (c.outlets || 0) : watched ? 0 : null, outlets_4w: c ? (c.outlets_4w != null ? c.outlets_4w : c.outlets || 0) : watched ? 0 : null,
+      state: memoryPostedState(r), board: r.board || null, door: r.door || null, said: r.said || null, grade: r.grade || null, title: r.title || null };
+  });
+}
+// PURE: the calls in a run: the first week of each run of the same posted state, for the four states we call.
+function memoryCalls(series) {
+  const out = [];
+  for (let i = 0; i < (series || []).length; i++) { const s = series[i].state; if (s && MEMORY.CALLS.includes(s) && (i === 0 || series[i - 1].state !== s)) out.push(i); }
+  return out;
+}
+// PURE: one call graded at one horizon on the subject's own weekly stories. The weeks after the call must all be counted and over.
+//   emerging: stories in at least half the weeks after;  structural: stories in at least two thirds of them;
+//   accelerating: the weekly pace after at least one and a half times the pace of the eight weeks before its rise (and at least one a week);
+//   cooling: the weekly pace after below its own twelve-week average up to the call.
+// open: not enough weeks yet; unmeasured: the weeks it needs were not watched.
+function gradeCall(series, ci, state, w, nowWeek) {
+  const after = series.slice(ci + 1, ci + 1 + w);
+  if (after.length < w || after[after.length - 1].week >= nowWeek) return { w, verdict: 'open' };
+  if (after.some(x => x.n == null)) return { w, verdict: 'unmeasured' };
+  const mean = a => a.reduce((s, x) => s + (x.n || 0), 0) / a.length, r1 = x => Math.round(x * 10) / 10;
+  const active = after.filter(x => x.n > 0).length, out = { w, after: r1(mean(after)), active, of: w };
+  if (state === 'EMERGING') return Object.assign(out, { verdict: active >= Math.ceil(w / 2) ? 'held' : 'faded' });
+  if (state === 'STRUCTURAL') return Object.assign(out, { verdict: active >= Math.ceil(2 * w / 3) ? 'held' : 'faded' });
+  if (state === 'ACCELERATING') {
+    const base = series.slice(Math.max(0, ci - 11), Math.max(0, ci - 3)).filter(x => x.n != null);
+    if (!base.length) return { w, verdict: 'unmeasured' };
+    const b = mean(base); out.before = r1(b);
+    return Object.assign(out, { verdict: mean(after) >= Math.max(1.5 * b, 1) ? 'held' : 'faded' });
+  }
+  if (state === 'COOLING') {
+    const base = series.slice(Math.max(0, ci - 11), ci + 1).filter(x => x.n != null);
+    if (base.length < 4) return { w, verdict: 'unmeasured' };
+    const b = mean(base); out.before = r1(b);
+    return Object.assign(out, { verdict: mean(after) < b ? 'held' : 'faded' });
+  }
+  return { w, verdict: 'unmeasured' };
+}
+// PURE: a call's grade at every horizon.
+function gradeAll(series, ci, nowWeek) {
+  const st = series[ci].state, g = { state: st, week: series[ci].week, from: series[ci].door && series[ci].door.state ? 'tile' : 'board' };
+  for (const h of MEMORY.HORIZONS) g[h.k] = gradeCall(series, ci, st, h.w, nowWeek);
+  return g;
+}
+// PURE: the case windows (proposed Oct 6), on complete weeks of exact counts, for week i of a run. Order is the law: youth, then
+// acceleration, then structure, then cooling. A rule that needs weeks we did not watch does not call.
+//   emerging: first seen within four weeks, after four or more weeks we watched without it, with three or more outlets;
+//   accelerating: the last four weeks at least double the weekly pace of the eight before, with twelve or more stories across four or more outlets;
+//   structural: stories in eight of the last twelve weeks;
+//   cooling: below its own twelve-week average three weeks running, from an average of at least one story a week.
+function caseState(series, i) {
+  const at = series[i];
+  if (!at || at.n == null) return { state: null, why: 'not watched' };
+  const sum = a => a.reduce((s, x) => s + (x.n || 0), 0), counted = a => a.length && a.every(x => x.n != null);
+  const win = (a, b) => series.slice(Math.max(0, a), b + 1);
+  // first seen within the year before this week (CASE_W), whatever run the caller passed
+  const lo = Math.max(0, i - (MEMORY.CASE_W - 1)), yr = series.slice(lo, i + 1), f0 = yr.findIndex(x => x.n > 0), first = f0 < 0 ? -1 : lo + f0;
+  const watchedBefore = first < 0 ? 0 : series.slice(lo, first).filter(x => x.n != null).length;
+  const last4 = win(i - 3, i), sum4 = sum(last4), o4 = at.outlets_4w || 0;
+  if (first >= 0 && first <= i && first >= i - 3 && watchedBefore >= 4 && o4 >= 3)
+    return { state: 'EMERGING', why: 'first seen the week of ' + memoryDay(series[first].week, false) + ', ' + o4 + ' outlets since' };
+  const base = win(i - 11, i - 4);
+  if (i >= 11 && counted(base) && counted(last4)) {
+    const pace = sum4 / 4, b = sum(base) / 8;
+    if (sum4 >= 12 && o4 >= 4 && pace >= 2 * b && pace > b) return { state: 'ACCELERATING', why: sum4 + ' stories in four weeks, ' + Math.round(pace * 10) / 10 + ' a week against ' + Math.round(b * 10) / 10 + ' before' };
+  }
+  const w12 = win(i - 11, i);
+  if (i >= 11 && counted(w12)) {
+    const active = w12.filter(x => x.n > 0).length;
+    if (active >= 8) return { state: 'STRUCTURAL', why: 'stories in ' + active + ' of the last twelve weeks' };
+    const avg = sum(w12) / 12;
+    if (avg >= 1 && series[i].n < avg && series[i - 1].n < avg && series[i - 2].n < avg) return { state: 'COOLING', why: 'below its twelve-week average of ' + Math.round(avg * 10) / 10 + ' three weeks running' };
+    return { state: 'STEADY', why: 'none of the windows' };
+  }
+  return { state: null, why: 'waiting for twelve weeks watched' };   // no call, and the board keeps its own state
+}
+function caseLive(env) { return String((env && env.CASE_WINDOWS) || '').toLowerCase() === 'live'; }
+
+async function memoryCount(env, from, to, kind, ids) {
+  return Number(await sbRest(env, 'rpc/memory_count_weeks', { method: 'POST', body: Object.assign({ p_from: from, p_to: to, p_kind: kind }, ids ? { p_ids: ids } : {}) })) || 0;
+}
+// The first week the sweep counted anything (a day's copy); null before migration 0040.
+async function memoryStart(env) {
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(MEMORY.START_KEY) : null; if (hit && /^\d{4}-\d{2}-\d{2}$/.test(hit)) return hit; } catch (e) { excQuiet('memory_start_cache')(e); }
+  let w = null;
+  try { const d = await sbRest(env, 'rpc/memory_start', { method: 'POST', body: {} }); w = typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null; } catch (e) { console.log('memory_start', String(e && e.message).slice(0, 60)); }
+  if (w && env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(MEMORY.START_KEY, w, { expirationTtl: 86400 }); } catch (e) { excQuiet('memory_start_put')(e); } }
+  return w;
+}
+// What can be trusted as zero: from `counted` (the first week the sweep counted once the history is filled; until then the oldest
+// week filled so far; the daily count always holds the last two of every kind), except the weeks of a span the fill had to skip
+// (`gaps`, unwatched until a later run counts them). `done`: the history is filled.
+async function memoryWatch(env) {
+  const start = await memoryStart(env); if (!start) return { counted: null, gaps: new Set(), done: false };
+  let cur = null; try { cur = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(MEMORY.CURSOR_KEY)) || 'null'); } catch (e) { cur = null; }
+  const gaps = new Set();
+  for (const sp of (cur && cur.skipped) || []) { const [a, b] = String(sp).split('..'); for (const w of memoryMondays(a, b)) gaps.add(w); }
+  if (cur && cur.done) return { counted: start, gaps, done: true };
+  const w = cur && cur.next ? memoryAddWeeks(cur.next, 1) : memoryAddWeeks(ledgerWeek(), -1);
+  return { counted: w < start ? start : w, gaps, done: false };
+}
+async function memoryCounted(env) { return (await memoryWatch(env)).counted; }
+// One run of weeks for the kinds asked, tracked brands in chunks. A failed call is counted and logged; the caller decides.
+async function memoryCountSpan(env, from, to, kinds, tracks) {
+  const out = { theme: 0, territory: 0, track: 0, failed: 0 };
+  for (const kind of kinds.filter(k => k !== 'track')) {
+    try { out[kind] += await memoryCount(env, from, to, kind); } catch (e) { out.failed++; console.log('memory_count', kind, from, String(e && e.message).slice(0, 60)); }
+  }
+  if (kinds.includes('track')) {
+    const ids = (tracks || []).map(t => t.id).filter(Boolean);
+    for (let i = 0; i < ids.length; i += MEMORY.TRACK_CHUNK) {
+      try { out.track += await memoryCount(env, from, to, 'track', ids.slice(i, i + MEMORY.TRACK_CHUNK)); } catch (e) { out.failed++; console.log('memory_count', 'track', from, String(e && e.message).slice(0, 60)); }
+    }
+  }
+  return out;
+}
+// History, newest first, back to the first week the sweep counted, inside a time budget; the cursor keeps its place.
+async function memoryBackfill(env, budgetMs) {
+  const t0 = Date.now(), start = await memoryStart(env);
+  if (!start) return { done: false, error: 'no_start' };
+  let cur = null; try { cur = JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(MEMORY.CURSOR_KEY)) || 'null'); } catch (e) { cur = null; }
+  if (cur && cur.done && !(cur.skipped || []).length) return { done: true, start, weeks: cur.weeks || 0 };
+  const tracks = await loadTracks(env);
+  if (cur && cur.done) {   // everything else is in: try a skipped span again, one a run
+    const [from, to] = String(cur.skipped[0]).split('..'), r = await memoryCountSpan(env, from, to, ['theme', 'territory', 'track'], tracks);
+    if (!r.failed) cur.skipped = cur.skipped.slice(1);
+    if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(MEMORY.CURSOR_KEY, JSON.stringify(cur)); } catch (e) { excQuiet('memory_cursor')(e); } }
+    return { done: true, start, weeks: cur.weeks || 0, retried: from + '..' + to, filled: !r.failed, skipped: cur.skipped };
+  }
+  const c = Object.assign({ next: memoryAddWeeks(ledgerWeek(), -2), weeks: 0, rows: 0, tries: 0, skipped: [] }, cur || {});   // the daily count holds the last two weeks of every kind
+  let ran = 0;
+  while (c.next >= start && Date.now() - t0 < (budgetMs || MEMORY.BUDGET_MS)) {
+    let from = memoryAddWeeks(c.next, -(MEMORY.STEP_W - 1)); if (from < start) from = start;
+    const r = await memoryCountSpan(env, from, c.next, ['theme', 'territory', 'track'], tracks);
+    ran++;
+    if (r.failed) {
+      c.tries = (c.tries || 0) + 1;
+      if (c.tries < MEMORY.TRIES) break;   // the same span again next run
+      c.skipped = (c.skipped || []).concat([from + '..' + c.next]).slice(-20); console.log('memory_skip', from, c.next);
+    }
+    c.tries = 0; c.rows += r.theme + r.territory + r.track; c.weeks += memoryMondays(from, c.next).length; c.next = memoryAddWeeks(from, -1);
+  }
+  c.done = c.next < start; c.start = start; c.at = new Date().toISOString();
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(MEMORY.CURSOR_KEY, JSON.stringify(c)); } catch (e) { excQuiet('memory_cursor')(e); } }
+  return { done: c.done, start, next: c.done ? null : c.next, weeks: c.weeks, rows: c.rows, spans: ran, skipped: c.skipped || [] };
+}
+// The tiles the board posted before the ledger began, from the stored tile reads: each subject's last tile of each week, ranked as
+// the board ranked that night (most stories first). Once; a flag keeps it from running twice.
+async function memoryDoorBackfill(env) {
+  try { if (env.RATE_LIMIT && await env.RATE_LIMIT.get(MEMORY.DOOR_KEY)) return { done: true, skipped: true }; } catch (e) { excQuiet('memory_door_flag')(e); }
+  const nights = (await memoryAll(env, 'door_reads?status=in.(ready,reused)&select=night&order=night.asc,id.asc', 20000)).map(r => r.night).filter((n, i, a) => n && a.indexOf(n) === i);
+  const byWeek = new Map(); let n = 0;
+  for (let i = 0; i < nights.length; i += 10) {
+    const sl = nights.slice(i, i + 10);
+    const rows = await memoryAll(env, 'door_reads?status=in.(ready,reused)&night=gte.' + sl[0] + '&night=lte.' + sl[sl.length - 1] +
+      '&select=id,frame_key,night,status,frame,measures,claim:read->read->>0,move:read->ideas->0->>headline,question:read->>question,voices:meta->voices&order=night.asc,id.asc', 5000);
+    const perNight = new Map();
+    for (const r of rows) { if (!perNight.has(r.night)) perNight.set(r.night, []); perNight.get(r.night).push(r); }
+    for (const [night, list] of perNight) {
+      list.sort((a, b) => ((b.measures && b.measures.recent_7d) || 0) - ((a.measures && a.measures.recent_7d) || 0));
+      const tiles = list.map(r => { const f = r.frame || {}, m = r.measures || {}; return { id: r.id, key: r.frame_key, night, status: r.status, label: excFrameLabel(f) || f.title || null, title: f.title || null,
+        claim: r.claim || null, move: r.move || null, question: r.question || f.question || null, findings: 0, measures: Object.assign({}, m, { state: m.state || 'STEADY' }), voices: Array.isArray(r.voices) ? r.voices : [] }; });
+      for (const row of ledgerDoorRows(tiles)) { byWeek.set(row.subject_key + '|' + row.week, row); n++; }
+    }
+  }
+  const all = [...byWeek.values()]; let written = 0;
+  for (let i = 0; i < all.length; i += 200) written += await ledgerPut(env, 'door', all.slice(i, i + 200));
+  if (env.RATE_LIMIT && (written === all.length)) { try { await env.RATE_LIMIT.put(MEMORY.DOOR_KEY, new Date().toISOString()); } catch (e) { excQuiet('memory_door_put')(e); } }
+  return { done: written === all.length, nights: nights.length, tiles: n, weeks: all.length, written };
+}
+// The board's earlier calls (the scoreboard kept them before the ledger began), as the board column of the week each was made,
+// where that week has no board row of its own. Once.
+async function memoryCallsBackfill(env) {
+  try { if (env.RATE_LIMIT && await env.RATE_LIMIT.get(MEMORY.CALLS_KEY)) return { done: true, skipped: true }; } catch (e) { excQuiet('memory_calls_flag')(e); }
+  const calls = await memoryAll(env, 'cluster_calls?select=cluster_id,state,called_at&order=called_at.asc,cluster_id.asc', 20000);
+  const rows = calls.filter(c => c && c.cluster_id && c.state && c.called_at).map(c => ({ subject_key: 'theme:' + c.cluster_id, kind: 'theme', week: ledgerWeek(c.called_at), title: null, data: { state: String(c.state).toUpperCase(), place: null, from: 'scoreboard', called_at: c.called_at } }));
+  const keys = [...new Set(rows.map(r => r.subject_key))], have = new Set();
+  for (let i = 0; i < keys.length; i += MEMORY.KEYS_PER_ASK) {
+    const got = await memoryAll(env, LEDGER.TABLE + '?subject_key=in.(' + keys.slice(i, i + MEMORY.KEYS_PER_ASK).map(k => '"' + encodeURIComponent(k) + '"').join(',') + ')&board=not.is.null&select=subject_key,week&order=subject_key.asc,week.asc', 5000);
+    for (const g of got) have.add(g.subject_key + '|' + g.week);
+  }
+  const fresh = new Map(rows.filter(r => r.week && !have.has(r.subject_key + '|' + r.week)).map(r => [r.subject_key + '|' + r.week, r]));
+  const list = [...fresh.values()]; let written = 0;
+  for (let i = 0; i < list.length; i += 200) written += await ledgerPutBoardOnly(env, list.slice(i, i + 200));
+  if (env.RATE_LIMIT && written === list.length) { try { await env.RATE_LIMIT.put(MEMORY.CALLS_KEY, new Date().toISOString()); } catch (e) { excQuiet('memory_calls_put')(e); } }
+  return { done: written === list.length, calls: calls.length, weeks: list.length, written };
+}
+// The board column alone, leaving a title the week already has (an earlier call has no title of its own).
+async function ledgerPutBoardOnly(env, rows) {
+  const body = (rows || []).map(r => ({ subject_key: r.subject_key, kind: r.kind, week: r.week, board: r.data, updated_at: new Date().toISOString() }));
+  if (!body.length) return 0;
+  try { await sbRest(env, LEDGER.TABLE + '?on_conflict=subject_key,week', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body }); return body.length; }
+  catch (e) { console.log('ledger_board_only', String(e && e.message).slice(0, 60)); return 0; }
+}
+// PURE: the items a read says something in: the weekly's patterns, the monthly's features, the report's findings.
+function memoryReadItems(read, kind) {
+  const list = !read ? [] : kind === 'weekly' ? read.patterns : kind === 'monthly' ? read.features : kind === 'report' ? read.findings : [];
+  const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+  return (Array.isArray(list) ? list : []).filter(x => x && x.name).slice(0, 12).map(x => ({ name: clip(x.name, 160), dek: clip(x.dek, 280), strength: x.strength === 'signal' ? 'signal' : 'pattern',
+    evidence: (Array.isArray(x.evidence) ? x.evidence : []).map(e => String(e).trim()).filter(e => /^[SLRT]\d+$/.test(e)).slice(0, 40) }));
+}
+// PURE: which subjects an item speaks to: a theme two or more of its stories belong to, or a theme it cites by its T line; a tracked
+// brand it names in its own words.
+function memoryItemSubjects(item, sigKey, themeIds, tracks) {
+  const n = new Map();
+  for (const e of item.evidence || []) {
+    if (e[0] === 'T') { const id = themeIds[parseInt(e.slice(1), 10) - 1]; if (id) n.set('theme:' + id, 99); continue; }
+    const k = sigKey.get(e); if (k) n.set('theme:' + k, (n.get('theme:' + k) || 0) + 1);
+  }
+  const keys = [...n.entries()].filter(([, c]) => c >= 2).map(([k]) => k);
+  const text = ' ' + (item.name + ' ' + item.dek).toLowerCase().replace(/[^a-z0-9&]+/g, ' ') + ' ';
+  for (const t of tracks || []) {
+    const names = [t.name].concat(t.aliases || []).map(x => String(x || '').toLowerCase().replace(/[^a-z0-9&]+/g, ' ').trim()).filter(x => x.length >= 3);
+    if (names.some(x => text.includes(' ' + x + ' '))) keys.push('track:' + t.id);
+  }
+  return [...new Set(keys)];
+}
+// What our weeklies, monthlies and reports said, filed to each subject's week (the week the read's period ends in). Only the newest
+// published version of each read (a draft the editors have not published is not ours to remember yet); never a RECON. A new version
+// takes its entry off the subjects it no longer speaks to. `since` limits it to reads changed after a date (the daily run).
+async function memorySaid(env, since) {
+  const all = await memoryAll(env, 'house_reads?kind=in.(weekly,monthly,report)&status=eq.published' + (since ? '&updated_at=gte.' + since : '') +
+    '&select=id,kind,label,version,window_start,window_end&order=window_start.asc,version.desc', 5000);
+  const newest = new Map(); for (const r of all) { const k = r.kind + ':' + r.window_start + ':' + r.window_end; if (!newest.has(k)) newest.set(k, r); }
+  const tracks = await loadTracks(env), out = { reads: 0, items: 0, subjects: 0 };
+  for (const head of newest.values()) {
+    const row = ((await sbRest(env, 'house_reads?id=eq.' + head.id + '&select=id,kind,label,version,window_start,window_end,read,ids:meta->pack->ids')) || [])[0];
+    if (!row || !row.read) continue;
+    const items = memoryReadItems(row.read, row.kind);   // a read with no items still runs, so an old version's entries come off
+    const ids = row.ids || {}, sIds = new Set(), sigOf = new Map();
+    for (const it of items) for (const e of it.evidence) {
+      if (e[0] === 'S') sIds.add(e.slice(1));
+      else if (e[0] === 'L' || e[0] === 'R') { const sid = (ids[e[0]] || [])[parseInt(e.slice(1), 10) - 1]; if (sid) sigOf.set(e, sid); }
+    }
+    const sList = [...sIds].filter(x => /^\d+$/.test(x));
+    for (let i = 0; i < sList.length; i += 150) {
+      const eis = (await sbRest(env, 'edition_items?id=in.(' + sList.slice(i, i + 150).join(',') + ')&select=id,signal_id')) || [];
+      for (const ei of eis) if (ei.signal_id) sigOf.set('S' + ei.id, ei.signal_id);
+    }
+    const sigIds = [...new Set(sigOf.values())].filter(x => /^[0-9a-f-]{36}$/i.test(String(x))), keyOf = new Map();
+    for (let i = 0; i < sigIds.length; i += 100) {
+      const sg = (await sbRest(env, 'signals?id=in.(' + sigIds.slice(i, i + 100).join(',') + ')&select=id,theme_id,cluster_id')) || [];
+      for (const s of sg) { const k = lakeKey(s); if (k) keyOf.set(s.id, k); }
+    }
+    const sigKey = new Map([...sigOf.entries()].map(([e, sid]) => [e, keyOf.get(sid)]).filter(([, k]) => k));
+    const week = ledgerWeek(row.window_end), entryKey = row.kind + ':' + row.window_start, bySubject = new Map();
+    for (const it of items) for (const sk of memoryItemSubjects(it, sigKey, Array.isArray(ids.T) ? ids.T : [], tracks)) {
+      if (!bySubject.has(sk)) bySubject.set(sk, []);
+      bySubject.get(sk).push({ name: it.name, dek: it.dek, strength: it.strength });
+    }
+    const put = [...bySubject.entries()].map(([sk, its]) => ({ subject_key: sk, kind: sk.split(':')[0], week, title: sk.startsWith('track:') ? ((tracks.find(t => 'track:' + t.id === sk) || {}).name || null) : its[0].name,
+      said: { [entryKey]: { read_id: row.id, version: row.version, kind: row.kind, label: String(row.label || '').slice(0, 120), window_end: row.window_end, items: its.slice(0, 4) } } }));
+    try { await sbRest(env, 'rpc/ledger_said_put', { method: 'POST', body: { p_rows: put, p_entry: entryKey, p_week: week } }); out.subjects += put.length; } catch (e) { console.log('memory_said', row.id, String(e && e.message).slice(0, 60)); }
+    out.reads++; out.items += items.length;
+  }
+  return out;
+}
+// Ledger rows for many subjects over a span, in chunks of keys.
+async function memoryRows(env, keys, from, sel) {
+  const out = [];
+  for (let i = 0; i < keys.length; i += MEMORY.KEYS_PER_ASK) {
+    out.push(...await memoryAll(env, LEDGER.TABLE + '?subject_key=in.(' + keys.slice(i, i + MEMORY.KEYS_PER_ASK).map(k => '"' + encodeURIComponent(k) + '"').join(',') + ')&week=gte.' + from +
+      '&select=' + (sel || 'subject_key,week,title,counts,board,door,said,grade') + '&order=subject_key.asc,week.asc', 20000));
+  }
+  const by = new Map(); for (const r of out) { if (!by.has(r.subject_key)) by.set(r.subject_key, []); by.get(r.subject_key).push(r); }
+  return by;
+}
+// Every call made in the last GRADE_BACK_D days, graded at 30, 60 and 90 days; a grade is written only when it changed.
+async function memoryGrade(env) {
+  const nowWeek = ledgerWeek(), back = memoryAddWeeks(nowWeek, -Math.ceil(MEMORY.GRADE_BACK_D / 7)), watch = await memoryWatch(env), counted = watch.counted;
+  if (!counted) return { graded: 0, error: 'no_counts' };
+  const st = MEMORY.CALLS.join(',');
+  // the weeks holding a call, and the weeks holding a grade (a call the board has since rewritten loses its grade)
+  const heads = await memoryAll(env, LEDGER.TABLE + '?week=gte.' + back + '&or=(door->>state.in.(' + st + '),board->>state.in.(' + st + '),grade.not.is.null)&select=subject_key&order=subject_key.asc,week.asc', 20000);
+  const keys = [...new Set(heads.map(h => h.subject_key))].filter(k => /^(theme|track):/.test(k));
+  const by = await memoryRows(env, keys, memoryAddWeeks(back, -12), 'subject_key,week,title,counts,board,door,grade');
+  const put = []; let calls = 0;
+  for (const [key, rows] of by) {
+    const series = memorySeries(rows, memoryAddWeeks(back, -12), nowWeek, counted, watch.gaps);
+    const callAt = new Set(memoryCalls(series).map(ci => series[ci].week));
+    // a week that is no longer a call (its posted state changed since) loses the grade it had
+    for (const x of series) if (x.grade && x.week >= back && !callAt.has(x.week)) put.push({ subject_key: key, kind: key.split(':')[0], week: x.week, data: null });
+    for (const ci of memoryCalls(series)) {
+      if (series[ci].week < back) continue;
+      calls++;
+      const g = gradeAll(series, ci, nowWeek), was = series[ci].grade;
+      const same = was && MEMORY.HORIZONS.every(h => JSON.stringify(was[h.k]) === JSON.stringify(g[h.k])) && was.state === g.state;
+      if (!same) put.push({ subject_key: key, kind: key.split(':')[0], week: series[ci].week, data: Object.assign(g, { at: new Date().toISOString() }) });
+    }
+  }
+  let written = 0; for (let i = 0; i < put.length; i += 200) written += await ledgerPut(env, 'grade', put.slice(i, i + 200));
+  return { subjects: by.size, calls, graded: written };
+}
+// PURE: a grade in the reader's words, at the furthest horizon that is in.
+function memoryGradeWords(g) {
+  if (!g) return '';
+  for (const h of MEMORY.HORIZONS.slice().reverse()) {
+    const x = g[h.k]; if (!x || x.verdict === 'open' || x.verdict === 'unmeasured') continue;
+    const pace = x.before != null ? ' (' + x.after + ' stories a week after, ' + x.before + ' before)' : ' (stories in ' + x.active + ' of ' + x.of + ' weeks after)';
+    return 'at ' + h.d + ' days it ' + (x.verdict === 'held' ? 'held' : 'faded') + pace;
+  }
+  return 'not yet graded';
+}
+// PURE: one subject's M line: its stories a week (the last complete weeks counted), what we said (newest first) and how calls graded.
+function memoryBriefLine(i, key, rows, counted, nowWeek, titleOf, gaps) {
+  const series = memorySeries(rows, memoryAddWeeks(nowWeek, -MEMORY.BRIEF.WEEKS), memoryAddWeeks(nowWeek, -1), counted, gaps);
+  const seen = series.filter(x => x.n != null), clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+  // the subject by the name we gave it (a tile's label, the board's title, a read's own words); never a headline, never a key
+  const named = titleOf || rows.map(r => (r.door && r.door.label) || r.title).filter(Boolean).pop() || rows.flatMap(r => Object.values(r.said || {}).flatMap(e => ((e && e.items) || []).map(it => it.name))).filter(Boolean).pop();
+  if (!named) return '';
+  const title = clip(named, 90);
+  const parts = [];
+  if (seen.length >= 2) parts.push('stories a week from the week of ' + memoryDay(seen[0].week, false) + ', oldest first (exact): ' + seen.map(x => x.n).join(', '));
+  const said = [];
+  for (const r of rows.slice().reverse()) {
+    if (said.length >= MEMORY.BRIEF.SAID) break;
+    if (r.door && r.door.claim) said.push('on the board the week of ' + memoryDay(r.week, false) + (r.door.state ? ' (' + String(r.door.state).toLowerCase() + ')' : '') + ': "' + clip(r.door.claim, 220) + '"' + (r.grade ? '; ' + memoryGradeWords(r.grade) : ''));
+    else if (r.grade && r.board && r.board.state) said.push('called ' + String(r.board.state).toLowerCase() + ' the week of ' + memoryDay(r.week, false) + '; ' + memoryGradeWords(r.grade));
+    for (const e of Object.values(r.said || {})) for (const it of (e && e.items) || []) if (said.length < MEMORY.BRIEF.SAID)
+      said.push((e.kind === 'weekly' ? 'the Weekly Read' : e.kind === 'monthly' ? 'the monthly' : 'the Cultural Intelligence Report') + ', ' + clip(e.label, 60) + ': "' + clip(it.name, 160) + '"');
+  }
+  if (said.length) parts.push('we said: ' + said.join(' / '));
+  if (!parts.length) return '';
+  return ('M' + i + ' | ' + title + ' | ' + parts.join(' | ')).slice(0, MEMORY.BRIEF.LINE);
+}
+// The memory a read is handed: one M line per subject, at most BRIEF.SUBJECTS, at most BRIEF.CHARS. '' when there is nothing to say.
+async function memoryBrief(env, keys, titles) {
+  const ks = [...new Set((keys || []).filter(k => /^(theme|track):/.test(k)))].slice(0, MEMORY.BRIEF.SUBJECTS);
+  if (!ks.length) return '';
+  const nowWeek = ledgerWeek(), watch = await memoryWatch(env);
+  const by = await memoryRows(env, ks, memoryAddWeeks(nowWeek, -26));
+  const lines = []; let i = 0;
+  for (const k of ks) { const rows = by.get(k); if (!rows || !rows.length) continue; const l = memoryBriefLine(i + 1, k, rows, watch.counted, nowWeek, titles && titles[k], watch.gaps); if (l) { lines.push(l); i++; } }
+  if (!lines.length) return '';
+  let text = 'WHAT WE SAID (' + lines.length + ' M lines: our own earlier lines on the subjects in this pack, with their exact stories a week and how each call graded; our record, never evidence for a fact):\n';
+  for (const l of lines) { if (text.length + l.length + 1 > MEMORY.BRIEF.CHARS) break; text += l + '\n'; }
+  return text.trim();
+}
+// One tile's memory, for the door's prompt (without the M numbering).
+async function memoryDoorBriefs(env, keys, titles) {
+  const out = new Map(), ks = [...new Set((keys || []).filter(k => /^(theme|track):/.test(k)))];
+  if (!ks.length) return out;
+  const nowWeek = ledgerWeek(), watch = await memoryWatch(env);
+  const by = await memoryRows(env, ks, memoryAddWeeks(nowWeek, -26));
+  for (const k of ks) { const rows = by.get(k); if (!rows || !rows.length) continue; const l = memoryBriefLine(1, k, rows, watch.counted, nowWeek, titles && titles[k], watch.gaps); if (l) out.set(k, l.replace(/^M1 \| [^|]*\| /, '')); }
+  return out;
+}
+// The subjects a read is about: themes two or more of its stories belong to (most first), the report's own themes and tracked
+// brands, and brands named in two or more of its headlines.
+async function memoryReadKeys(env, items, stats) {
+  const keys = [], st = stats || {};
+  for (const t of (Array.isArray(st.themes) ? st.themes : []).slice(0, 6)) if (t && t.id) keys.push('theme:' + t.id);
+  const sids = [...new Set((items || []).map(it => it.signal_id).filter(x => /^[0-9a-f-]{36}$/i.test(String(x || ''))))];
+  const n = new Map();
+  for (let i = 0; i < sids.length; i += 100) {
+    const sg = (await sbRest(env, 'signals?id=in.(' + sids.slice(i, i + 100).join(',') + ')&select=id,theme_id,cluster_id').catch(excQuiet('memory_read_keys', []))) || [];
+    for (const s of sg) { const k = lakeKey(s); if (k) n.set(k, (n.get(k) || 0) + 1); }
+  }
+  for (const [k] of [...n.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1])) keys.push('theme:' + k);
+  for (const t of (Array.isArray(st.tracks) ? st.tracks : []).filter(t => t && t.id && t.n > 0).slice(0, 2)) keys.push('track:' + t.id);
+  if (!(Array.isArray(st.tracks) && st.tracks.length)) {
+    const tracks = await loadTracks(env), tn = new Map();
+    for (const it of items || []) { const m = trackMatch(it.headline, tracks); if (m) tn.set(m, (tn.get(m) || 0) + 1); }
+    for (const [name] of [...tn.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 2)) { const t = tracks.find(x => x.name === name); if (t) keys.push('track:' + t.id); }
+  }
+  return [...new Set(keys)];
+}
+async function memoryReadBrief(env, items, stats) { return memoryBrief(env, await memoryReadKeys(env, items, stats)); }
+// The case windows for subjects, at the last complete week: key -> {state, why, week}.
+async function memoryCaseStates(env, keys) {
+  const out = new Map(), ks = [...new Set((keys || []).filter(k => /^(theme|track):/.test(k)))];
+  if (!ks.length) return out;
+  const nowWeek = ledgerWeek(), last = memoryAddWeeks(nowWeek, -1), watch = await memoryWatch(env);
+  if (!watch.counted || !watch.done) return out;   // the windows call nothing until the history is filled
+  let from = memoryAddWeeks(last, -(MEMORY.CASE_W - 1)); if (from < watch.counted) from = watch.counted;
+  const by = await memoryRows(env, ks, from, 'subject_key,week,counts');
+  for (const k of ks) {
+    const rows = by.get(k); if (!rows || !rows.some(r => r.counts)) continue;   // never counted: no call
+    const series = memorySeries(rows, from, last, watch.counted, watch.gaps), c = caseState(series, series.length - 1);
+    if (c.state) out.set(k, Object.assign(c, { week: last }));
+  }
+  return out;
+}
+// The daily memory: this week and the twelve before for themes and territories, the last two for tracked brands (and a new brand's
+// whole history), history filled a step further, the tiles and calls from before the ledger (once), what the reads said in the
+// last three days, and every recent call graded.
+async function memoryDaily(env, opts) {
+  const t0 = Date.now(), out = {}, nowWeek = ledgerWeek(), tracks = await loadTracks(env);
+  if (!(await memoryStart(env))) return { error: 'no_start' };   // migration 0040 not run, or no sweep yet
+  const w12 = memoryAddWeeks(nowWeek, -(MEMORY.DAILY_THEME_W - 1));
+  out.recent = { theme: 0, territory: 0, track: 0, failed: 0 };
+  for (let w = w12; w <= nowWeek; w = memoryAddWeeks(w, MEMORY.STEP_W)) {
+    let to = memoryAddWeeks(w, MEMORY.STEP_W - 1); if (to > nowWeek) to = nowWeek;
+    const r = await memoryCountSpan(env, w, to, ['theme', 'territory'], tracks); for (const k in r) out.recent[k] += r[k];
+  }
+  const r2 = await memoryCountSpan(env, memoryAddWeeks(nowWeek, -(MEMORY.DAILY_TRACK_W - 1)), nowWeek, ['track'], tracks); out.recent.track += r2.track; out.recent.failed += r2.failed;
+  const start = await memoryStart(env);
+  // a whole history for subjects that may not have one: brands added in the last three days, every theme the board or a tile showed
+  // in the last three days (cheap, and a theme new to the ledger gets its weeks), and themes that have just reached three stories
+  const history = async (kind, ids) => { const histTo = memoryAddWeeks(nowWeek, -(kind === 'track' ? MEMORY.DAILY_TRACK_W : MEMORY.DAILY_THEME_W)); if (!ids.length || !start || histTo < start) return;   // up to the weeks the daily count holds
+    for (let w = start; w <= histTo; w = memoryAddWeeks(w, 10)) {
+      let to = memoryAddWeeks(w, 9); if (to > histTo) to = histTo;
+      for (let i = 0; i < ids.length; i += MEMORY.TRACK_CHUNK) { try { out.recent[kind] += await memoryCount(env, w, to, kind, ids.slice(i, i + MEMORY.TRACK_CHUNK)); } catch (e) { out.recent.failed++; console.log('memory_history', kind, w, String(e && e.message).slice(0, 60)); } }
+    } };
+  await history('track', tracks.filter(t => t.created_at && Date.now() - Date.parse(t.created_at) < 3 * 864e5).map(t => t.id));
+  const since3 = new Date(Date.now() - 3 * 864e5).toISOString();
+  const joined = (await memoryAll(env, LEDGER.TABLE + '?kind=eq.theme&first_at=gte.' + since3 + '&or=(board.not.is.null,door.not.is.null)&select=subject_key&order=subject_key.asc', 2000).catch(excQuiet('memory_joined', [])))
+    .map(r => String(r.subject_key).slice(6)).filter(x => /^[0-9a-f-]{36}$/.test(x));
+  const grown = (await memoryAll(env, 'themes?updated_at=gte.' + new Date(Date.now() - 2 * 864e5).toISOString() + '&n=eq.3&select=id&order=id.asc', 2000).catch(excQuiet('memory_grown', []))).map(r => r.id);
+  await history('theme', [...new Set(joined.concat(grown))]);
+  try { out.door = await memoryDoorBackfill(env); } catch (e) { out.door = { error: String(e && e.message).slice(0, 60) }; }
+  try { out.calls = await memoryCallsBackfill(env); } catch (e) { out.calls = { error: String(e && e.message).slice(0, 60) }; }
+  let saidDone = false; try { saidDone = !!(env.RATE_LIMIT && await env.RATE_LIMIT.get(MEMORY.SAID_KEY)); } catch (e) { excQuiet('memory_said_flag')(e); }
+  try { out.said = await memorySaid(env, saidDone ? new Date(Date.now() - 3 * 864e5).toISOString() : null); if (!saidDone && env.RATE_LIMIT) await env.RATE_LIMIT.put(MEMORY.SAID_KEY, new Date().toISOString()); } catch (e) { out.said = { error: String(e && e.message).slice(0, 60) }; }
+  const left = Math.max(5000, ((opts && opts.budgetMs) || MEMORY.BUDGET_MS) - (Date.now() - t0));
+  try { out.history = await memoryBackfill(env, left); } catch (e) { out.history = { error: String(e && e.message).slice(0, 60) }; }
+  try { out.grades = await memoryGrade(env); } catch (e) { out.grades = { error: String(e && e.message).slice(0, 60) }; }
+  try { if (env.RATE_LIMIT) await env.RATE_LIMIT.delete(DOOR_EXTRAS.KEY); } catch (e) { excQuiet('memory_extras_drop')(e); }   // the record reads the new grades
+  out.ms = Date.now() - t0;
+  return out;
+}
+// GET /excavate/timeline?key=theme:<id>|track:<id> (public, six hours): a subject's weeks since it was first seen (at most a year):
+// its exact stories and outlets each week, the weeks it stood on the board and what the tile said, what our reads said, how each
+// call graded. Only what we published; a RECON never reaches it.
+async function excavateTimeline(request, env, origin) {
+  const key = String(new URL(request.url).searchParams.get('key') || '').slice(0, 60).toLowerCase();
+  if (!/^(theme|track):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(key)) return json({ ok: false, error: 'bad_key' }, 200, origin, env);
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(MEMORY.TL.KEY + key) : null; if (hit) return json(Object.assign(JSON.parse(hit), { cached: true }), 200, origin, env); } catch (e) { excQuiet('timeline_cache')(e); }
+  const watch = await memoryWatch(env), counted = watch.counted, nowWeek = ledgerWeek();
+  if (!counted) return json({ ok: false, error: 'not_counted' }, 200, origin, env);   // the memory has not run yet: the page says it is being filled
+  let rows = null;
+  try { rows = (await sbRest(env, LEDGER.TABLE + '?subject_key=eq.' + encodeURIComponent(key) + '&week=gte.' + memoryAddWeeks(nowWeek, -(MEMORY.TL.WEEKS - 1)) + '&select=week,title,counts,board,door,said,grade&order=week.asc&limit=60')) || []; }
+  catch (e) { console.log('timeline_rows', String(e && e.message).slice(0, 60)); return json({ ok: false, error: 'not_ready' }, 200, origin, env); }
+  const out = timelineOf(key, rows, counted, nowWeek, watch.gaps);
+  // kept only once the history is filled: while it fills, each pass adds weeks, and a kept copy would show them as not watched for hours
+  if (env.RATE_LIMIT && !out.empty && watch.done) { try { await env.RATE_LIMIT.put(MEMORY.TL.KEY + key, JSON.stringify(out), { expirationTtl: MEMORY.TL.TTL }); } catch (e) { excQuiet('timeline_put')(e); } }
+  return json(out, 200, origin, env);
+}
+// PURE: the timeline a subject's rows make: from the first week with a story (or with anything we said), every week to now. What the
+// weekly said is public; the monthly and the report are paid, so the history names the issue and keeps its words inside it.
+function timelineOf(key, rows, counted, nowWeek, gaps) {
+  const first = (rows || []).find(r => (r.counts && r.counts.n > 0) || r.door || r.board || r.said);
+  if (!first) return { ok: true, key, kind: key.split(':')[0], empty: true, counted };
+  // two quiet weeks before the first story show where it began; never weeks we did not watch, unless we said something then
+  const f = String(first.week).slice(0, 10); let from = memoryAddWeeks(f, -2);
+  if (from < counted) from = f < counted ? f : counted;
+  const series = memorySeries(rows, from, nowWeek, counted, gaps), clip = (s, n) => s == null ? null : String(s).replace(/\s+/g, ' ').trim().slice(0, n);
+  const title = clip(rows.map(r => (r.door && r.door.label) || r.title).filter(Boolean).pop() || rows.flatMap(r => Object.values(r.said || {}).filter(e => e && e.kind === 'weekly').flatMap(e => (e.items || []).map(it => it.name))).filter(Boolean).pop() || null, 120);
+  const weeks = series.map(x => ({ week: x.week, n: x.n, outlets: x.outlets, partial: x.week === nowWeek,
+    board: x.state ? { state: x.state, place: (x.door && x.door.rank) || (x.board && x.board.place) || null, tile: !!(x.door && x.door.claim) } : null,
+    posted: x.door && x.door.claim ? { claim: clip(x.door.claim, 420), move: clip(x.door.move, 200), question: clip(x.door.question, 220) } : null,
+    said: Object.values(x.said || {}).flatMap(e => e && e.kind === 'weekly' ? (e.items || []).map(it => ({ kind: e.kind, label: clip(e.label, 120), name: clip(it.name, 160), dek: clip(it.dek, 280) }))
+      : e ? [{ kind: e.kind, label: clip(e.label, 120), name: null, dek: null, findings: ((e.items) || []).length }] : []).slice(0, 6),
+    grade: x.grade ? { state: x.grade.state, d30: x.grade.d30 || null, d60: x.grade.d60 || null, d90: x.grade.d90 || null } : null }));
+  const firstStory = weeks.find(w => w.n > 0);
+  return { ok: true, key, kind: key.split(':')[0], title, counted, first: firstStory ? firstStory.week : null,
+    stories: weeks.reduce((a, w) => a + (w.n || 0), 0), board_weeks: weeks.filter(w => w.board).length, weeks };
+}
+// Desk {run: windows}: the case windows against the states we posted, on the subjects the board has shown. For each subject and
+// each complete week: the state we posted and the state the windows would have called; the calls each made and how those calls
+// graded at 30 days. Nothing changes on the board.
+async function memoryWindows(env) {
+  const nowWeek = ledgerWeek(), last = memoryAddWeeks(nowWeek, -1), watch = await memoryWatch(env), counted = watch.counted;
+  if (!counted) return { error: 'no_counts' };
+  const back = memoryAddWeeks(nowWeek, -Math.ceil(MEMORY.GRADE_BACK_D / 7));
+  const heads = await memoryAll(env, LEDGER.TABLE + '?week=gte.' + back + '&or=(door.not.is.null,board.not.is.null)&select=subject_key&order=subject_key.asc,week.asc', 20000);
+  const keys = [...new Set(heads.map(h => h.subject_key))].filter(k => /^(theme|track):/.test(k));
+  let from = memoryAddWeeks(back, -(MEMORY.CASE_W - 1)); if (from < counted) from = counted;   // a year before the first week judged, as live
+  const by = await memoryRows(env, keys, from, 'subject_key,week,title,counts,board,door');
+  const tally = () => ({ calls: 0, graded: 0, held: 0, faded: 0, by_state: {} });
+  const posted = tally(), windows = tally(), now = [];
+  for (const [key, rows] of by) {
+    const series = memorySeries(rows, from, last, counted, watch.gaps);
+    for (const ci of memoryCalls(series)) {
+      if (series[ci].week < back) continue;
+      const g = gradeCall(series, ci, series[ci].state, 4, nowWeek); posted.calls++; posted.by_state[series[ci].state] = (posted.by_state[series[ci].state] || 0) + 1;
+      if (g.verdict === 'held' || g.verdict === 'faded') { posted.graded++; posted[g.verdict]++; }
+    }
+    const shadow = series.map((x, i) => Object.assign({}, x, { state: x.week >= back ? caseState(series, i).state : null }));
+    for (const ci of memoryCalls(shadow)) {
+      const g = gradeCall(shadow, ci, shadow[ci].state, 4, nowWeek); windows.calls++; windows.by_state[shadow[ci].state] = (windows.by_state[shadow[ci].state] || 0) + 1;
+      if (g.verdict === 'held' || g.verdict === 'faded') { windows.graded++; windows[g.verdict]++; }
+    }
+    const lastRow = series[series.length - 1], c = caseState(series, series.length - 1);
+    if (lastRow.state || rows.some(r => String(r.week) >= memoryAddWeeks(nowWeek, -2) && (r.door || r.board)))
+      now.push({ key, title: String(rows.map(r => (r.door && r.door.label) || r.title).filter(Boolean).pop() || key).slice(0, 80), posted: lastRow.state || 'STEADY', windows: c.state, why: c.why });
+  }
+  const rate = t => t.graded ? Math.round(100 * t.held / t.graded) + '% held at 30 days' : 'none graded yet';
+  return { week: last, counted_from: counted, history_filled: watch.done, skipped: [...watch.gaps].length, subjects: by.size, posted: Object.assign(posted, { rate: rate(posted) }), windows: Object.assign(windows, { rate: rate(windows) }),
+    board_now: now.sort((a, b) => a.title.localeCompare(b.title)).slice(0, 40), live: caseLive(env) };
+}
+// The record the arrival shows: every call of the last RECORD_D days graded at 30 days (held, faded, still open), and how many held
+// at 60 and 90 days where those are in. A call the weeks it needs were not watched for is left out of the counts, and says so.
+async function memoryRecord(env) {
+  const since = memoryAddWeeks(ledgerWeek(), -Math.ceil(MEMORY.RECORD_D / 7));
+  const rows = await memoryAll(env, LEDGER.TABLE + '?grade=not.is.null&week=gte.' + since + '&select=subject_key,week,title,grade,label:door->>label&order=week.desc,subject_key.asc', 20000);
+  const out = { held: [], faded: [], open: [], counts: { held: 0, faded: 0, open: 0, unmeasured: 0 }, d60: { held: 0, faded: 0 }, d90: { held: 0, faded: 0 }, since, next_due: null };
+  const clip = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  for (const r of rows) {
+    const g = r.grade || {}, v = g.d30 && g.d30.verdict;
+    if (!v || !MEMORY.CALLS.includes(g.state)) continue;
+    if (v === 'unmeasured') { out.counts.unmeasured++; continue; }
+    out.counts[v]++;
+    for (const h of ['d60', 'd90']) { const x = g[h]; if (x && (x.verdict === 'held' || x.verdict === 'faded')) out[h][x.verdict]++; }
+    if (v === 'open') { const due = memoryAddWeeks(String(r.week).slice(0, 10), 5); if (!out.next_due || due < out.next_due) out.next_due = due; }
+    const title = clip(r.label || r.title);
+    if (title && out[v].length < 6) out[v].push({ key: r.subject_key, title, state: g.state, week: String(r.week).slice(0, 10), d30: g.d30 || null, d60: g.d60 || null, d90: g.d90 || null });
+  }
+  return out;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -7648,8 +8240,11 @@ function doorStamp(merged) {
   const newest = base.map(c => excWhen(c)).filter(Boolean).sort((a, b) => b - a)[0];
   return 'v' + DOOR.VOICE + '~' + keys.join('|') + '#' + (newest ? newest.toISOString().slice(0, 10) : 'undated');
 }
-function excDoorPrompt(frame, evidence, measures) {
-  return excFrameBlock(frame) + excMeasureLine(measures) + 'EVIDENCE:\n' + evidence + '\n\n' +
+function excDoorPrompt(frame, evidence, measures, memory) {
+  return excFrameBlock(frame) + excMeasureLine(measures) +
+    // SEAM:MEMORY: what we said before on this subject, with its exact weeks and how each call graded; never evidence
+    (memory ? 'WHAT WE SAID BEFORE (our own earlier lines on this subject, its exact stories a week and how each call graded; build on what held; if the evidence now says otherwise, line 1 says so plainly; never cite it): ' + memory + '\n\n' : '') +
+    'EVIDENCE:\n' + evidence + '\n\n' +
     'Write the overnight read for this frame. Return JSON exactly shaped as:\n' +
     // SEAM:EXC_DOOR_VOICE: the headline law and the question law. Line 1 is a plain statement about people (who is doing what), with the
     // measured number where MEASURES gives one; never a count of coverage dressed as a finding ("chatter jumped to 68 signals"), never
@@ -7704,6 +8299,7 @@ async function doorPass(env, opts) {
   const prevBy = new Map(); for (const r of prevRows) if (!prevBy.has(r.frame_key)) prevBy.set(r.frame_key, r);
   const tonightRows = (await sbRest(env, 'door_reads?night=eq.' + night + '&select=id,frame_key,status,stamp').catch(excQuiet('door_rows', []))) || [];
   const tonightBy = new Map(tonightRows.map(r => [r.frame_key, r]));
+  const memo = typeof memoryDoorBriefs === 'function' ? await memoryDoorBriefs(env, cands.map(c => c.key), Object.fromEntries(cands.map(c => [c.key, c.title]))).catch(excQuiet('door_memory', new Map())) : new Map();   // SEAM:MEMORY
   const jobs = [], rowsOut = [];
   for (const cand of cands) {
     try {
@@ -7727,7 +8323,7 @@ async function doorPass(env, opts) {
       if (prev && prev.stamp === stamp && prev.read) { out.reused++; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
       const now = Date.now();
       const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join('\n');
-      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW, prompt: excDoorPrompt(frame, evidence, measures) });
+      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '') });
     } catch (e) { out.failed++; console.log('door_cand_error', cand.key, String(e && e.message).slice(0, 100)); }
   }
   // Rows first (so a landing has somewhere to go), then one batch for every read that must be written.
@@ -7793,10 +8389,10 @@ function doorPhoto(rd, evidence) {
  * laws), the most liked first. Never a RECON's: a RECON's quotes and its name belong to whoever commissioned it. record: the house's calls from cluster_calls over the last
  * 90 days, named by the feed's own theme titles (a call whose theme the feed no longer names is counted, not shown), as confirmed
  * (converted or held), missed (faded) and open. Public, like the feed; nothing here is a person. */
-const DOOR_EXTRAS = { KEY: 'door:extras:v3', TTL: 3600, VOICES: 12, CALLS: 24, DAYS: 90 };   // v3: v2 held RECON quotes; it is never read again
+const DOOR_EXTRAS = { KEY: 'door:extras:v4', TTL: 3600, VOICES: 12, CALLS: 24, DAYS: 90 };   // v4: the record is graded on counts (EX20)   // v3: v2 held RECON quotes; it is never read again
 async function doorExtras(env, proposed, door) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(DOOR_EXTRAS.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { console.log('door_extras_cache', String(e && e.message).slice(0, 60)); }
-  const out = { voices: [], record: { confirmed: [], missed: [], open: [], counts: { confirmed: 0, missed: 0, open: 0 } } };
+  const out = { voices: [], record: null };
   try {
     const rows = await sbRest(env, 'house_reads?kind=eq.report&status=in.(ready,published)&select=id,kind,label,meta&order=updated_at.desc&limit=2') || [];
     const quotes = [];
@@ -7806,18 +8402,8 @@ async function doorExtras(env, proposed, door) {
     quotes.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     out.voices = doorBand((door && door.tiles) || [], quotes).slice(0, DOOR_EXTRAS.VOICES);   // SEAM:DOOR_VOICES
   } catch (e) { console.log('door_voices', String(e && e.message).slice(0, 80)); }
-  try {
-    const since = new Date(Date.now() - DOOR_EXTRAS.DAYS * 864e5).toISOString();
-    const calls = await sbRest(env, 'cluster_calls?called_at=gte.' + since + '&select=cluster_id,state,called_at,resolved_at,outcome&order=called_at.desc&limit=' + DOOR_EXTRAS.CALLS) || [];
-    const title = new Map((proposed || []).filter(p => p && p.cluster_id).map(p => [p.cluster_id, p.title || p.subtitle || null]));
-    const day = v => v ? String(v).slice(0, 10) : null;
-    for (const c of calls) {
-      const bucket = !c.resolved_at ? 'open' : c.outcome === 'faded' ? 'missed' : 'confirmed';
-      out.record.counts[bucket]++;
-      const t = title.get(c.cluster_id); if (!t) continue;
-      out.record[bucket].push({ title: t, state: c.state, called: day(c.called_at), resolved: day(c.resolved_at), outcome: c.outcome || null });
-    }
-  } catch (e) { console.log('door_record', String(e && e.message).slice(0, 80)); }
+  try { out.record = await memoryRecord(env); }   // SEAM:MEMORY: every call graded on its own weekly stories, never on the board
+  catch (e) { console.log('door_record', String(e && e.message).slice(0, 80)); }
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(DOOR_EXTRAS.KEY, JSON.stringify(out), { expirationTtl: DOOR_EXTRAS.TTL }); } catch (e) { console.log('door_extras_put', String(e && e.message).slice(0, 60)); } }
   return out;
 }
@@ -7839,6 +8425,10 @@ async function doorPublish(env) {
     if (last[0] && last[0].night !== night) tiles = ((await sbRest(env, 'door_reads?night=eq.' + last[0].night + '&status=in.(ready,reused)&' + SEL + '&order=created_at.asc').catch(excQuiet('door_rows', []))) || []).map(doorTile);
   }
   tiles.sort((a, b) => (b.measures.recent_7d - a.measures.recent_7d));
+  if (typeof caseLive === 'function' && caseLive(env) && tiles.length) {   // SEAM:MEMORY: the case windows call each tile's state on exact counts
+    const cs = await memoryCaseStates(env, tiles.map(t => t.key)).catch(excQuiet('case_states', new Map()));
+    for (const t of tiles) { const c = cs.get(t.key); if (c && c.state && t.measures.state !== 'CONTESTED') { t.measures.state = c.state; t.measures.windows = { why: c.why, week: c.week }; } }
+  }
   const set = { night: tiles.some(t => !t.carried) ? (tiles.find(t => !t.carried) || {}).night : (tiles[0] ? tiles[0].night : night), built_at: new Date().toISOString(), tiles, pending: pending.length };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(DOOR.KEY, JSON.stringify(set), { expirationTtl: DOOR.TTL }); } catch (e) { excQuiet('door_publish')(e); } }
   await ledgerPut(env, 'door', ledgerDoorRows(tiles));   // SEAM:LEDGER: what the arrival posted, kept
@@ -7907,25 +8497,24 @@ async function tracksRefresh(env) {
   const stats = {};
   const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE
   let last = {}; try { last = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) { last = {}; }   // a count that fails keeps the last good one
+  // SEAM:MEMORY: the database counts every brand exactly (track_rollup, migration 0040): one call per forty brands instead of one
+  // capped scan per brand. No row limit, so no floors. A chunk that fails keeps its brands' last good counts.
+  const roll = new Map();
+  if (sw) for (let i = 0; i < tracks.length; i += MEMORY.TRACK_CHUNK) {
+    try { for (const r of ((await sbRest(env, 'rpc/track_rollup', { method: 'POST', body: { p_ids: tracks.slice(i, i + MEMORY.TRACK_CHUNK).map(t => t.id) } })) || [])) roll.set(r.track_id, r); }
+    catch (e) { console.log('tracks_rollup', String(e && e.message).slice(0, 60)); }
+  }
   for (const t of tracks) {
     const names = [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3);
     let n7 = 0, n30 = 0, latest = null, image = null, states = {}, counted = false, weeks = null, outlets30 = 0, capped = false, floor7 = false, floor30 = false;
     try {
       if (!sw) throw new Error('sweep_unknown');   // SEAM:SWEEP_MEASURE: no count beats a count with a search's rows in it; the last one stands
       if (ilikeOr(names) === 'id=is.null') throw new Error('name_short');   // a name too short to find in a headline is never counted as zero
-      const rows = await sbRest(env, 'signals?select=id,title,captured_at,published_at,image,territory,momentum,cluster_id,source_name&' + ilikeOr(names) + sw + '&status=neq.rejected&captured_at=gte.' + d84 + '&order=captured_at.desc&limit=' + BRAND_ROOM.TRACK_ROWS) || [];
-      // SEAM:LAKE_TRUTH: counted by the date each row speaks for, not by when it was captured; a date after now is not counted.
-      const dated = rows.filter(r => { const w = lakeWhen(r), t0 = w ? Date.parse(w) : NaN; return t0 >= Date.parse(d30) && t0 <= now; });
-      n30 = dated.length; n7 = dated.filter(r => Date.parse(lakeWhen(r)) > Date.parse(d7)).length;   // the same seven days as the newest week
-      // SEAM:BRAND_ROOM: a read that hit its row limit saw only the newest captures. Weeks wholly before the oldest capture it saw
-      // are unknown (null), never zero; a count whose span reaches past that capture is a floor.
-      const cut = brandCut(rows, BRAND_ROOM.TRACK_ROWS);
-      weeks = brandWeeks(rows, now, null, cut).map(x => x.n); outlets30 = new Set(dated.map(r => r.source_name).filter(Boolean)).size; capped = !!cut;
-      floor30 = !!cut && Date.parse(cut) > Date.parse(d30); floor7 = !!cut && Date.parse(cut) > Date.parse(d7);
-      latest = dated.map(lakeWhen).sort().pop() || null;
-      image = (rows.find(r => r.image) || {}).image || null;
+      const r = roll.get(t.id); if (!r || !Array.isArray(r.weeks)) throw new Error('not_counted');
+      n7 = r.n7 || 0; n30 = r.n30 || 0; weeks = r.weeks.map(x => Number(x) || 0); outlets30 = r.outlets30 || 0;
+      latest = r.latest || null; image = /^https:\/\//.test(String(r.image || '')) ? r.image : null;
       counted = true;
-    } catch (e) { console.log('tracks_count', String(e && e.message).slice(0, 60)); }
+    } catch (e) { if (!/name_short|not_counted|sweep_unknown/.test(String(e && e.message))) console.log('tracks_count', String(e && e.message).slice(0, 60)); }
     // Knowledge Graph resolution, once.
     if (!t.kg_id && env.GOOGLE_KG_KEY) {
       try {
@@ -7965,7 +8554,12 @@ async function excavateTracks(env, origin) {
  * board's reading of it when it stands on the board this week, with the voices gathered for it, and how many weeks the ledger
  * holds for it. Every figure is a count; a count that hit its row limit says "at least"; nothing is estimated. ═══ */
 // ROWS stays inside PostgREST's default ceiling (max_rows 1000), so a read that hit its limit always knows it did.
-const BRAND_ROOM = { WEEKS: 12, ROWS: 1000, TRACK_ROWS: 600, STORIES: 6, SET: 8, RIVALS: 2, TTL: 6 * 3600, ATTN_TTL: 7 * 86400, KEY: 'brand:v2:', ATTN_KEY: 'brand:attn:v2:' };
+const BRAND_ROOM = { WEEKS: 12, ROWS: 1000, TRACK_ROWS: 600, STORY_ROWS: 60, STORIES: 6, SET: 8, RIVALS: 2, TTL: 6 * 3600, ATTN_TTL: 7 * 86400, KEY: 'brand:v3:', ATTN_KEY: 'brand:attn:v2:' };   // v3: exact counts (EX20)
+// PURE: the coverage block from the database's rollup (track_rollup): twelve rolling weeks ending now, exact; never a floor.
+function brandCoverageFrom(r, nowMs) {
+  const W = BRAND_ROOM.WEEKS, weeks = Array.from({ length: W }, (_, i) => ({ start: new Date(nowMs - (W - i) * 7 * 864e5).toISOString().slice(0, 10), n: Number((r.weeks || [])[i]) || 0, outlets: Number((r.outlets || [])[i]) || 0 }));
+  return { weeks, this_week: weeks[W - 1].n, prior_week: weeks[W - 2].n, this_floor: false, prior_floor: false, total: weeks.reduce((a, b) => a + b.n, 0), outlets: Number(r.outlets84) || 0, at_least: false, exact: true };
+}
 // PURE: the oldest capture a read saw when it hit its limit (rows come newest capture first), else null: the read saw everything.
 function brandCut(rows, limit) {
   if (!Array.isArray(rows) || rows.length < limit) return null;
@@ -7979,7 +8573,7 @@ function brandWeeks(rows, nowMs, n, cut) {
   const W = n || BRAND_ROOM.WEEKS, WK = 7 * 864e5, c = cut ? Date.parse(cut) : NaN;
   const out = Array.from({ length: W }, (_, i) => { const s0 = nowMs - (W - i) * WK; return { start: new Date(s0).toISOString().slice(0, 10), s0, n: 0, outlets: new Set() }; });
   for (const r of rows || []) {
-    const w = lakeWhen(r); if (!w) continue;
+    const w = lakeWhen(r) ? sweepWhen(r) : null; if (!w) continue;   // SEAM:MEMORY: the database's counting rule (sweep_when)
     const age = nowMs - Date.parse(w); if (!(age >= 0) || age >= W * WK) continue;
     const b = out[W - 1 - Math.floor(age / WK)]; b.n++; if (r.source_name) b.outlets.add(r.source_name);
   }
@@ -8043,9 +8637,14 @@ async function brandRoom(env, t, tracks) {
   const measurable = ilikeOr(names) !== 'id=is.null';
   let rows = null, partial = false;   // a part that failed to load: the room is shown, never kept
   // momentum rides along: lakeWhen needs it to leave a search's undated capture undated rather than dated the day it was found.
+  let cov = null;
   if (measurable && sw) {
-    try { rows = (await sbRest(env, 'signals?select=id,title,url,source_name,published_at,captured_at,image,momentum&' + ilikeOr(names) + sw + '&status=neq.rejected&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + BRAND_ROOM.ROWS)) || []; }
+    // SEAM:MEMORY: the twelve weeks counted by the database, exact (track_rollup); the latest stories are a short read of their own
+    try { const r = ((await sbRest(env, 'rpc/track_rollup', { method: 'POST', body: { p_ids: [t.id] } })) || [])[0]; if (r && Array.isArray(r.weeks)) cov = brandCoverageFrom(r, now); }
+    catch (e) { console.log('brand_rollup', String(e && e.message).slice(0, 60)); }
+    try { rows = (await sbRest(env, 'signals?select=id,title,url,source_name,published_at,captured_at,image,momentum&' + ilikeOr(names) + sw + '&status=neq.rejected&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + (cov ? BRAND_ROOM.STORY_ROWS : BRAND_ROOM.ROWS))) || []; }
     catch (e) { console.log('brand_rows', String(e && e.message).slice(0, 60)); rows = null; }
+    if (!cov && rows) cov = brandCoverage(rows, now);   // the database did not answer: the capped read, with its floors
   }
   let st = {}; try { st = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) { st = {}; }
   // The set: the tracked brands that share its sector, the most covered first (then by name), so the rivals are the same on every visit.
@@ -8067,7 +8666,7 @@ async function brandRoom(env, t, tracks) {
     if (led.length) record = { weeks: led.length, since: led[0].week, on_board: led.filter(r => r.door).length };
   } catch (e) { excQuiet('brand_record')(e); partial = true; }
   return { ok: true, track: { id: t.id, name: t.name, kind: t.kind || 'brand', sector: t.sector || null, description: t.description || null, image: t.image || self.image || null, image_license: t.image_license || null },
-    measured_at: new Date(now).toISOString(), sweep: !!sw, measurable, coverage: rows ? brandCoverage(rows, now) : null, stories: rows ? brandStories(rows, null, now) : [], set,
+    measured_at: new Date(now).toISOString(), sweep: !!sw, measurable, coverage: cov, stories: rows ? brandStories(rows, null, now) : [], set,
     self: Object.assign(brandCounted(st[t.id]) ? setRow(t, st[t.id]) : {}, { measurable }), attention, board, record, partial };   // the set's own counts, so the brand sits in its row on the same terms
 }
 async function excavateBrand(request, env, origin) {
@@ -8756,7 +9355,7 @@ async function editionToday(env, origin) {
  * Children first: a monthly waits until no weekly inside it is queued or
  * compiling; the record waits on its monthlies. readTick walks the queue on
  * the 30-minute cron and on POST /reads/collect. */
-const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 4.1, the house style. This document is our method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), the Record, and the RECON (a commissioned report on one brief). It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We sound like a strategist who has run the brief and a creative director who has shipped the work, edited by the best magazine editor either of them knows. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday. The uncanny part is noticing: a read names what the reader half saw and never put into words, and proves it. We never tell the reader we are smart; being specific does that, and so does being right in public later.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, arguably, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate, game-changer). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is an early signal and is labeled that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: stories, posts, outlets, sources, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, anchor, ground, edition, house read, or DAILY inside prose, and never \"signal\" except as \"early signal\" for a finding that rests on one source. In a trade's own sense those words are the trade's language: optical frames, a limited edition, a sneaker pack. Never write \"the house\" in prose: when the read takes a position, it says \"we\". A story is a story wherever it ran: never split the evidence for the reader into stories we published and stories we did not. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n12. **The question law.** Every read is the answer to a question a professional brought to culture, for the people they serve. The read names the question it answers and who is served by the answer, and answers it in terms that let that professional win in that space: what people are doing, how much, and the move to make. A read that describes a space without answering a question about it is reference, and we do not sell reference.\n13. **The voice law.** A consumer voice is a person speaking in their own words about their own life, quoted word for word. Attribute it to a consumer, never to the platform it was posted on: \"a consumer\", or by generation, role or place only when the voice line says the speaker stated it (\"a Gen Z consumer\", \"a parent\"). Never guess a generation. A post that only passes on a headline or a link is the outlet's story, not a voice: the pack marks it as a shared story, and it is cited as that outlet's reporting. Each voice is quoted once in a read, beside the one finding it proves or among the voices in their own words, never both, and its words are not quoted again in prose. A voice that does not bear on the question is left out without comment.\n14. **The register law.** We write as a professional briefing a client. Slurs, insults and loaded labels never appear in our own sentences, attributed or not: \"what critics called\" followed by the label is still our sentence. When such words are themselves the evidence, they appear once in the read, inside the one verbatim quote that carries them, attributed to whoever said them. Otherwise name the behavior plainly: recording people without their consent. No mockery, no sneer, no sensational adjective.\n15. **Tell it once.** Each event is told in full once, in the section that owns it, with its date and its actors. Every other section refers to it in a clause and adds something new, or leaves it out. A section with nothing new to add comes back empty. Depth is earned, never padded: when the evidence on the question is thin, widen it before you cut (the record, the voices across time, the attention series, the competitors), keep a finding that rests on one source and label it an early signal, and never fill a section with what another already says: territories only where the question has stories, no cross-current a finding already owns, no glossary term for the machinery. Repetition reads as padding, and padding reads as having nothing to say.\n16. **The numbers law.** The numbers prove the work and measure the question. They carry what we read (sources, stories and posts, comments, days) and the question's own counts (stories on it, outlets, voices, dated events), each in plain words. They never carry the machinery: search terms, anchors, the forecast ledger, a territory's share of the whole period, or a company's total mentions on topics the question is not about. A whole-period count enters a finding only when it measures the finding's subject, and it is stated once.\n17. **The time law.** The period leads: every section opens on what happened in it. What is older (a record line, a voice whose line says then, not now, a series that runs back years) is evidence of then, read by its date and set beside now to show what grew, what faded and what held. An older voice never speaks for the present: it carries its year, and it stands beside a voice from the period or in then and now. Growth is a comparison the evidence carries, the same months a year apart or the same question asked then and now, never a trend inferred from one point. Where nothing older bears on the question, say nothing about then.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section, and \"X, not Y\" never in a title, a finding's name, a dek or a cover line. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on that one finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice, and never cite the same voice twice.\n\n## The house style on the page\n\nProspects meet us in the library, so every read is a pitch: a stranger should finish one page knowing something about the people they serve that they did not know that morning. Excellence is range, imagination and invention on every page at once.\n\n- **Range.** Know how the industry makes money: its prices, its calendar, its channels, its gatekeepers and its own history. Would an analyst inside that industry learn something they did not know?\n- **Imagination.** Draw the implication nobody else drew and take a position on it. Would a creative director want to steal an idea from the read?\n- **Invention.** Hand every reader something to use at the depth they have time for: a line, a number, a move or a name for what they saw.\n- **Lead with what people did.** Coverage shows what journalists noticed. A finding about people carries a measure of behavior (searches, sales, attendance, streams, readers) or says plainly that it has none.\n- **Count the silence.** Who never spoke and what never ran become findings once a count proves them.\n- **History first.** Know the category's own history before borrowing another field's; then borrow one precedent from another field, and only one. Push to the second-order effect: who loses when the pattern wins, and what it makes possible next.\n- **The sentence.** A paragraph opens on its claim and ends on the line a reader would repeat in a meeting. A sentence carries one idea, and most run under 25 words. Concrete nouns, active verbs. One metaphor per page at most, and only one that sharpens.\n- **Headlines.** A title is 5 to 10 words in the present tense, a claim about the people the read is about. A finding's name is 4 to 9 words, a claim with a verb. A dek is one sentence on what the finding makes possible for the reader's business; a dek that summarizes the finding is wasted. A cover line is the read's one claim in 8 words or fewer. Never headline an announcement, a lone number, a question or a pun. Sentence case.\n- **Named ideas.** When a mechanism deserves a name, coin it once, define it in one sentence and use the same words every time after. One coinage per finding at most; a coinage that explains nothing is a slogan, and it goes. Every coinage is defined in the glossary.\n- **Proof in the sentence.** Speak to the source where it reads naturally (\"Business of Fashion reported\"). A finding never stands on a shared headline alone. Say plainly inside the read when the base is thin: \"Seven stories is a thin base, so we hold this finding at low confidence.\" A claim is as wide as its evidence: a European ban is not an American one.\n- **Both sides.** Each finding carries a voice from the people it describes when the pack holds one, and no two findings lean on the same voice. When the evidence holds one side only, say so.\n- **Conventions.** Numerals for 10 and above, for any figure with a unit ($2,200, 3%, 4 weeks) and in ranges (5 to 10); words for one through nine when counting in prose, and for any number that opens a sentence. \"October 2\" in prose; \"percent\" in prose, \"%\" in figures. Names as their owners style them.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The sign that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest evidence we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has evidence that pushes back. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the sign that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves. A V line marked as a shared story is the outlet's reporting: cite it as a story, never quote it as a consumer. Every V line carries its date; a voice from before the period says then, not now, and is kept so the read can show what changed in how people speak.\n- **ATTENTION** (RECON only, in `recon.attention` when gathered): three years of monthly readers of the Wikipedia article on the brief's subject, and on up to two competitors, with the last three months set against the same months one and two years before. It measures public curiosity, not sales or sentiment: name the article as the measure and read the change for what it means to the brief.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n- **The RECON**: one brief, to depth. A client asks one question, or we ask it ourselves, about one entity, category or topic, and the evidence is the slice of the period that bears on it: the sources, stories, record, themes, analyses and voices that name the brief's subject, its competitors or its anchors, with the brief's own counts in the stats block (`recon`). The thesis answers the brief's question and we take a position in the answer. Who is acting on the question, who is absent, and where a brand with this brief enters are written out for the brief itself. The whole period's counts are context only; the slice is the ground. A RECON is written for the one reader who asked, and it is sold under the same law as the report. It is the deepest read we make, commissioned for significant value: it keeps its depth and earns every page with evidence, measurement and thinking, never with repetition.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to nine words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more evidence.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
+const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 4.2, the house style. This document is our method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), the Record, and the RECON (a commissioned report on one brief). It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We sound like a strategist who has run the brief and a creative director who has shipped the work, edited by the best magazine editor either of them knows. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday. The uncanny part is noticing: a read names what the reader half saw and never put into words, and proves it. We never tell the reader we are smart; being specific does that, and so does being right in public later.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, arguably, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate, game-changer). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is an early signal and is labeled that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: stories, posts, outlets, sources, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, anchor, ground, edition, house read, or DAILY inside prose, and never \"signal\" except as \"early signal\" for a finding that rests on one source. In a trade's own sense those words are the trade's language: optical frames, a limited edition, a sneaker pack. Never write \"the house\" in prose: when the read takes a position, it says \"we\". A story is a story wherever it ran: never split the evidence for the reader into stories we published and stories we did not. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n12. **The question law.** Every read is the answer to a question a professional brought to culture, for the people they serve. The read names the question it answers and who is served by the answer, and answers it in terms that let that professional win in that space: what people are doing, how much, and the move to make. A read that describes a space without answering a question about it is reference, and we do not sell reference.\n13. **The voice law.** A consumer voice is a person speaking in their own words about their own life, quoted word for word. Attribute it to a consumer, never to the platform it was posted on: \"a consumer\", or by generation, role or place only when the voice line says the speaker stated it (\"a Gen Z consumer\", \"a parent\"). Never guess a generation. A post that only passes on a headline or a link is the outlet's story, not a voice: the pack marks it as a shared story, and it is cited as that outlet's reporting. Each voice is quoted once in a read, beside the one finding it proves or among the voices in their own words, never both, and its words are not quoted again in prose. A voice that does not bear on the question is left out without comment.\n14. **The register law.** We write as a professional briefing a client. Slurs, insults and loaded labels never appear in our own sentences, attributed or not: \"what critics called\" followed by the label is still our sentence. When such words are themselves the evidence, they appear once in the read, inside the one verbatim quote that carries them, attributed to whoever said them. Otherwise name the behavior plainly: recording people without their consent. No mockery, no sneer, no sensational adjective.\n15. **Tell it once.** Each event is told in full once, in the section that owns it, with its date and its actors. Every other section refers to it in a clause and adds something new, or leaves it out. A section with nothing new to add comes back empty. Depth is earned, never padded: when the evidence on the question is thin, widen it before you cut (the record, the voices across time, the attention series, the competitors), keep a finding that rests on one source and label it an early signal, and never fill a section with what another already says: territories only where the question has stories, no cross-current a finding already owns, no glossary term for the machinery. Repetition reads as padding, and padding reads as having nothing to say.\n16. **The numbers law.** The numbers prove the work and measure the question. They carry what we read (sources, stories and posts, comments, days) and the question's own counts (stories on it, outlets, voices, dated events), each in plain words. They never carry the machinery: search terms, anchors, the forecast ledger, a territory's share of the whole period, or a company's total mentions on topics the question is not about. A whole-period count enters a finding only when it measures the finding's subject, and it is stated once.\n17. **The time law.** The period leads: every section opens on what happened in it. What is older (a record line, a voice whose line says then, not now, a series that runs back years) is evidence of then, read by its date and set beside now to show what grew, what faded and what held. An older voice never speaks for the present: it carries its year, and it stands beside a voice from the period or in then and now. Growth is a comparison the evidence carries, the same months a year apart or the same question asked then and now, never a trend inferred from one point. Where nothing older bears on the question, say nothing about then.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section, and \"X, not Y\" never in a title, a finding's name, a dek or a cover line. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on that one finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice, and never cite the same voice twice.\n\n## The house style on the page\n\nProspects meet us in the library, so every read is a pitch: a stranger should finish one page knowing something about the people they serve that they did not know that morning. Excellence is range, imagination and invention on every page at once.\n\n- **Range.** Know how the industry makes money: its prices, its calendar, its channels, its gatekeepers and its own history. Would an analyst inside that industry learn something they did not know?\n- **Imagination.** Draw the implication nobody else drew and take a position on it. Would a creative director want to steal an idea from the read?\n- **Invention.** Hand every reader something to use at the depth they have time for: a line, a number, a move or a name for what they saw.\n- **Lead with what people did.** Coverage shows what journalists noticed. A finding about people carries a measure of behavior (searches, sales, attendance, streams, readers) or says plainly that it has none.\n- **Count the silence.** Who never spoke and what never ran become findings once a count proves them.\n- **History first.** Know the category's own history before borrowing another field's; then borrow one precedent from another field, and only one. Push to the second-order effect: who loses when the pattern wins, and what it makes possible next.\n- **The sentence.** A paragraph opens on its claim and ends on the line a reader would repeat in a meeting. A sentence carries one idea, and most run under 25 words. Concrete nouns, active verbs. One metaphor per page at most, and only one that sharpens.\n- **Headlines.** A title is 5 to 10 words in the present tense, a claim about the people the read is about. A finding's name is 4 to 9 words, a claim with a verb. A dek is one sentence on what the finding makes possible for the reader's business; a dek that summarizes the finding is wasted. A cover line is the read's one claim in 8 words or fewer. Never headline an announcement, a lone number, a question or a pun. Sentence case.\n- **Named ideas.** When a mechanism deserves a name, coin it once, define it in one sentence and use the same words every time after. One coinage per finding at most; a coinage that explains nothing is a slogan, and it goes. Every coinage is defined in the glossary.\n- **Proof in the sentence.** Speak to the source where it reads naturally (\"Business of Fashion reported\"). A finding never stands on a shared headline alone. Say plainly inside the read when the base is thin: \"Seven stories is a thin base, so we hold this finding at low confidence.\" A claim is as wide as its evidence: a European ban is not an American one.\n- **Both sides.** Each finding carries a voice from the people it describes when the pack holds one, and no two findings lean on the same voice. When the evidence holds one side only, say so.\n- **Conventions.** Numerals for 10 and above, for any figure with a unit ($2,200, 3%, 4 weeks) and in ranges (5 to 10); words for one through nine when counting in prose, and for any number that opens a sentence. \"October 2\" in prose; \"percent\" in prose, \"%\" in figures. Names as their owners style them.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The sign that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest evidence we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has evidence that pushes back. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the sign that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves. A V line marked as a shared story is the outlet's reporting: cite it as a story, never quote it as a consumer. Every V line carries its date; a voice from before the period says then, not now, and is kept so the read can show what changed in how people speak.\n- **ATTENTION** (RECON only, in `recon.attention` when gathered): three years of monthly readers of the Wikipedia article on the brief's subject, and on up to two competitors, with the last three months set against the same months one and two years before. It measures public curiosity, not sales or sentiment: name the article as the measure and read the change for what it means to the brief.\n- **WHAT WE SAID** (M), when given: our own earlier lines on the subjects in this pack: what the board posted, what our reads named, each subject's exact stories a week from our sweep, and how each call graded against those counts since. It is our record, never evidence for a fact, and it is never cited. Build on what held. When the evidence now says otherwise, say so plainly in the finding it touches: what we said, when, and what changed our mind. Never present an earlier line as new. A claim about direction (rising, fading, back) stands on eight weeks or more of these counts; one week against another is a change, not a direction.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n- **The RECON**: one brief, to depth. A client asks one question, or we ask it ourselves, about one entity, category or topic, and the evidence is the slice of the period that bears on it: the sources, stories, record, themes, analyses and voices that name the brief's subject, its competitors or its anchors, with the brief's own counts in the stats block (`recon`). The thesis answers the brief's question and we take a position in the answer. Who is acting on the question, who is absent, and where a brand with this brief enters are written out for the brief itself. The whole period's counts are context only; the slice is the ground. A RECON is written for the one reader who asked, and it is sold under the same law as the report. It is the deepest read we make, commissioned for significant value: it keeps its depth and earns every page with evidence, measurement and thinking, never with repetition.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to nine words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more evidence.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
 const HOUSE_READ = {
   KINDS: {
     // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
@@ -10996,12 +11595,14 @@ async function readSubmit(env, row) {
     label = 'DAILY: The Record, Issues ' + String(stats.issues.first).padStart(3, '0') + ' to ' + String(stats.issues.last).padStart(3, '0');
   const pack = items.map(it => readPackLine(it, K.take)).join('\n');
   const desk = await readDeskInputs(env, row.kind);   // SEAM:READ_DESK: the editors' standing inputs ride every compile
+  const memo = typeof memoryReadBrief === 'function' ? await memoryReadBrief(env, items, stats).catch(excQuiet('read_memory', '')) : '';   // SEAM:MEMORY: what we said before on this read's subjects
   const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +   // SEAM:READ_RECON
     (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
     (pack2 && pack2.plan ? pack2.plan + '\n\n' : '') +   // SEAM:READ_DEEP: the plan, beside the pack and never in the ground
     'STATS (exact, computed by the database' + (recon ? '; STATS.recon counts the brief\'s slice' : '') + '):\n' + JSON.stringify(stats) +
     (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + pack : '') +
     (pack2 && pack2.text ? '\n\n' + pack2.text : '') +
+    (memo ? '\n\n' + memo : '') +   // SEAM:MEMORY
     (children.length ? '\n\nCHILD READS (' + children.length + '):\n' + readChildDigest(children) : '') +
     (recon ? '\n\nWrite the RECON ' + label + ' (' + row.window_start + ' to ' + row.window_end + '), answering the brief. Return only the JSON object.'
             : report ? '\n\nWrite the Cultural Intelligence Report for ' + label + ' (' + row.window_start + ' to ' + row.window_end + '). Return only the JSON object.'

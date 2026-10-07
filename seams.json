@@ -1102,6 +1102,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:PEOPLE",
    "purpose": "Audiences in the room's design: the figures (comments read, said who wrote them, groups standing, subjects), standing groups as cards with their comment counts, subjects and words, early reads as rows, a plain note on where the comments come from, how old they can be and that the counts are comments, not people (no platform credited)"
+  },
+  "SEAM:MEMORY": {
+   "file": "worker/src/index.js",
+   "purpose": "EX20 THE MEMORY: the database counts every subject every week exactly (memory_count_weeks, migration 0040: themes of three stories or more and any subject the board showed, territories, tracked brands; the sweep only; the counting rule sweep_when), filled back to the first week the sweep counted (memory_start; before it a week is unwatched, never zero); what we said sits beside the counts (the door column filled back from the stored tile reads, the scoreboard's earlier calls, every weekly, monthly and report pattern filed to its subjects through its own evidence via ledger_said_put; never a RECON); every call graded at 30, 60 and 90 days on its own weekly stories (gradeCall), never on the board; each read and tile read handed what we said before (memoryBrief, the M lines; Method 4.2); GET /excavate/timeline for a subject's year; the record graded on counts (memoryRecord); the case windows (caseState) in shadow beside the board, live with CASE_WINDOWS=live; desk {run: memory} and {run: windows}; tracksRefresh and the brand room count through track_rollup; no model call anywhere"
+  },
+  "SEAM:MEMORY@page": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:MEMORY",
+   "purpose": "EX20: every board tile (lead, row, quiet) has a History control that opens the subject's history as a dialog (Escape and Back close it): its weeks since first seen, exact, red when on our board, the current week as so far, a week not watched said so; what the board posted and what our reads said, newest first; each call's grade at 30, 60 and 90 days with the numbers behind it; every week in a table; how a call is graded. The brand room's record is the brand's history. The track record is the graded calls (held, faded, open at 30 days), each opening its history. Cloudflare's visitor analytics allowed in the page policies"
   }
  },
  "planned": [
