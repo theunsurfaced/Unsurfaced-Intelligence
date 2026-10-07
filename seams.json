@@ -1000,6 +1000,64 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_DOOR_VOICE",
    "purpose": "EXCAVATE's arrival as the room: headline Ask culture a question with the search under it and four example questions; this week's read with its photograph and the three movers (most covered, fastest rise, sharpest fall: chosen, never summed; figures count from last week to this); the board (every subject: the sources' photograph, who it is about, the claim, what this answers, the twelve-week pulse that draws in once, the figures in words with the unit, the recommended move; filters only for states with something in them; a subject joins the board under the gate); what people are saying (verbatim, described only by what the speaker said about themselves); the track record (confirmed, missed, open); the client partner line; the original nav in the house's type. No signal, lake, frame or overnight in anything a reader sees; the grid paper is gone; Syne for words, Space Mono for figures, the house red"
+  },
+  "SEAM:VOICE_LAW": {
+   "file": "worker/src/index.js",
+   "purpose": "the voice law, enforced (EX16). voiceShare reads a post that passes on a headline or a link as the outlet's story ({outlet, headline, byline, date}; a bare link is nobody's voice); voiceDisplay strips link pieces and trailing tag runs; voiceSelf places a generation only from the speaker's own words (an age, a generation, a birth or class year, being in college, a 90s kid) and a parent from 'my daughter'; the rails mark shares (share on the quote). The pack's V lines name no platform ('consumer comment on <title>'), say what the speaker said about themselves, and mark a shared story to be cited as its outlet's reporting; readPackVoicesRefresh rewrites an old pack's voices under the law for a revision. readVoiceLaw at landing: a share cited as a voice moves to the finding's evidence, each voice once across findings, consumer_voice and then_and_now, at most two a finding; readRegister notes loaded labels in our own sentences (READ_LOADED, a sell-law leak), 'the house' in prose and repeated quotes; doorExtras quotes consumers only. Receipts resolve a finding's voices"
+  },
+  "SEAM:VOICE_LAW@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:VOICE_LAW",
+   "purpose": "the read page credits a voice to a person, never a platform (rpVoiceWho: a consumer, placed by generation, role or gender, trait and place only as the speaker said), prints each voice once in the whole report (shownV), and lists a comment in the sources by who said it and where, never its words a second time"
+  },
+  "SEAM:READ_NUMBERS": {
+   "file": "worker/src/index.js",
+   "purpose": "the numbers law (EX16): STATS.recon carries the question's own counts for the reader: stories_all (every story on the brief wherever it ran), by_outlet (top 12), stories_by_week, consumer voices, shared stories and comments read (readVoiceCounts); the contracts keep the machinery (calls, anchors, shape, the lake) out of by_the_numbers and a RECON's lines read STATS.recon only; a revision recomputes the reader's counts from the same pack"
+  },
+  "SEAM:READ_NUMBERS@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_NUMBERS",
+   "purpose": "the period in numbers follows the answer, the findings and the brief; a RECON's cover and answer carry the question's own figures (stories, outlets, voices, days) and its numbers page proves the work (what we read for the question, the whole period once) and measures the question (stories by week, who covered it, where it ran); rpStatOk keeps machinery lines off the page, rpStatLabel names every path in reader words, rpStatFmt prints a change with its sign and a year as a year"
+  },
+  "SEAM:READ_TIME": {
+   "file": "worker/src/index.js",
+   "purpose": "the time law (EX16): no source is too old to be relevant; the period leads and the years before are read as then. Voices: readVoiceBand (now / the year before / earlier / undated), readReportVoiceKeep keeps every band (the period first, at most VOICE_THEN older voices split between the year before and earlier, VOICE_PER_SOURCE a thread across bands) and stamps each voice's band; readReportVoices asks the period first (YouTube publishedAfter, Mastodon newest) and the VOICE_HISTORY lead questions again of the years before (publishedBefore; Mastodon max_id from the date); V lines carry the date and 'then, not now'; the contracts ask for consumer_voice.then_and_now and carry THE TIME LAW; readVoiceLaw pairs then with now, each voice once, and notes a finding that quotes only older voices; the arrival never quotes an older voice as this week's. The record: a RECON asks its record by the brief's own words across every year (readReconRecordQuery) and spreads it by year (readRecordSpread); STATS.recon.record_since. Attention: readReconAttention measures 36 months of Wikipedia readers for the brief's subject (the entity, else the category; the article must share a word with what was asked and name the brief) and up to two competitors, gathered with the RECON's gather; readAttnStats reads the last three months against the same months one and two years before (sums only, no subject no series) into STATS.recon.attention"
+  },
+  "SEAM:READ_TIME@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_TIME",
+   "purpose": "the read page dates an older voice with its year, prints Then and now (voices from before the period beside voices from it, the line naming what changed), and charts three years of attention for a RECON: the subject alone on its own axis with the last three months and the same months a year before shaded, the comparison as a computed sentence, and up to two competitors as small charts on their own axes"
+  },
+  "SEAM:READ_STYLE": {
+   "file": "worker/src/index.js",
+   "purpose": "the house style's mechanical checks (EX16, Method 4.0): readStyle notes by path, never a hold, a banned word in our own sentences (hedges, agency-speak, signal except early signal), X-not-Y in a headline line or twice in a section, a sentence opening on This means, The lesson is or a numeral, the which-means hinge twice in a section, an exclamation mark, a headline that asks a question; quotes are the speaker's and are not checked. Runs on every landing beside the reader law, so the editors see what the copy desk would fix"
+  },
+  "SEAM:READ_STYLE@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_STYLE",
+   "purpose": "the copy desk's notes on screen for the editor's last pass (deskNotesHtml): style, register, the reader law and the time law's notes in reader terms (Finding 3, why it matters), above a ready read; never printed, never in the PDF, never sold"
+  },
+  "SEAM:READ_DEPTH": {
+   "file": "worker/src/index.js",
+   "purpose": "the RECON keeps its depth (EX16b, Fresco Oct 6: the RECON is the product sold for significant value and v1's length was right): the RECON contract asks 5 to 8 findings (one resting on one source is kept and labeled an early signal), 6 to 8 executive lines, 5 to 10 numbers on the question, 8 to 16 voices, and carries THE DEPTH LAW (every page earned with evidence, measurement and thinking; depth never repetition). Method 4.1: depth is earned, never padded; when the evidence is thin, widen it before cutting"
+  },
+  "SEAM:READ_DEEP": {
+   "file": "worker/src/index.js",
+   "purpose": "the deep RECON, search and measure (EX17). /reads/commission {brief, decisions?, audience?, competitors?, budget? (default $30), hold?, deep? (default true)} queues a RECON with meta.deep; readTick advances one deep RECON a tick through deepAdvance: plan (Fable 5.1 live, high effort: sub-questions, hypotheses, segments the brief might miss, decisions mapped, coding themes) > search (Workers AI embeddings, match_signals_span inside the period and before it, deepKeep) > gather (gatherOpenSignals per sub-question and a counter search per hypothesis, voice rails skipped, captured into the lake as recon_gather and recon_counter, PER_TICK a tick) > voices (the voice rails on the plan's words, period and before, on their own YouTube allowance, every comment kept in chunks) > read (deepPickSources, Tavily extract then the worker's fetch, Sonnet 5.5 evidence cards and Haiku comment coding as batches on the recon tier, trimmed to the commission ceiling) > wait (cards cleaned: every quote and figure found in the page or dropped; labels cleaned to the plan's themes) > measure (deepCountComments, video views, outlet kinds by registry, rule, KV cache and one Haiku call; three years of attention) > evidence (deepFile; hold or compile). The compile reads deepPackInputs (lake and record by meaning merged with the brief's words, C lines, coded voices, the counts block; the plan rides beside the pack, never ground) under READ_DEEP_LAW on the recon tier. /reads/release {id, budget?} releases a hold. Evidence in recon_evidence (0037). C ids resolve as sources read in full."
+  },
+  "SEAM:READ_DEEP@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_DEEP",
+   "purpose": "the evidence file on the desk (on screen only, never printed): the stage, the plan with cards per sub-question and claims for and against each hypothesis, what cuts against the plan, the richest cards, what the comments raised, who covered it by kind of outlet, the receipt against the ceiling, the release; a deep RECON's cover and answer page carry sources read in full and comments read; the numbers page draws the coded themes and the kinds of outlet (a kind at zero is a silence) and the views; C ids are sources read in full; the library shows a deep RECON's stage"
+  },
+  "SEAM:READ_THINK": {
+   "file": "worker/src/index.js",
+   "purpose": "the deep RECON, think and deliver (EX18). The compile is four Fable 5.1 passes on the batch lane, each a stage of deepAdvance after deepCompile's claim: readSubmit writes the ground and sends the analysis (DEEP_ANALYST_SYS: every hypothesis judged, every decision weighed, findings with their figures, segments, the market, competitors, tensions, silences, gaps); the analysis stage sends the strategy (DEEP_STRATEGIST_SYS: decisions recommended, where to enter, the competitive map, three futures with signposts, concept territories with an illustrator's brief, product concepts with a first test, the 90-day plan, moves); the strategy stage sends the writer (READ_METHOD, READ_CONTRACT.recon, READ_DEEP_LAW, READ_THINK_CONTRACT, READ_WRITER_LAW); the write stage runs the landing laws on the draft (deepDraftNotesOf) and sends the editor (READ_EDITOR_LAW, the draft and the laws' notes) as house_recon hr-<id>-v<n>, which the drain lands through readLand with the copy desk. Every pass reads the same evidence (deepThinkEvidence, from the ground), is checked against the commission ceiling with the worst case of every pass after it (deepThinkChain), adopted from claude_jobs when a run died after sending it, and sent again when it fails or comes back cut or unusable (RESENDS, a cut answer asked again with room). The landing falls back to the draft when the editor's answer is unusable, notes the think contract (deepThinkLaws), reads the passes' spend back, and draws the concept territories (deepRenders: Workers AI flux, R2 under a random key, a brief drawn once, each version's own; deepRenderPrompt takes the brief's brands out, and a brief that still names a person, a place or a brand, or holds a surface with words, is not drawn: deepImageRisk). The editor's object is judged (deepThinkUsable): no read, and the draft lands; a required section dropped, and the draft's comes back (deepThinkRestore). The sell law refuses a thought-through RECON without every decision answered, every hypothesis judged and the 90-day plan. readValidate exempts targets and thresholds (plan_90, signposts, would_change, first_test) and the illustrator's brief from the number law."
+  },
+  "SEAM:READ_THINK@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_THINK",
+   "purpose": "a RECON thought through, on the page and in the PDF: the decisions answered after the answer; what we tested (supported, broken, still open) after the findings; the market after for the brief (a driver with no figure says not measured); the response map after the competitive sets; three futures with signposts, the concept territories with their drawings labeled imagined, the product concepts with a first test and the first 90 days before the outlook; the data appendix (every count the worker made and every source read in full) before the sources. The evidence file shows the four passes and their lines on the receipt; the library shows each pass and its wait; the sell line names unanswered decisions, unjudged expectations and a missing plan."
   }
  },
  "planned": [

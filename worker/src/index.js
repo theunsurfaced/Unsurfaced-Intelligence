@@ -29,6 +29,8 @@ const CONFIG = {
   RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
   PPLX_DAILY_DOLLARS: 0.40,  // SEAM:PPLX_RAIL \u2014 house cap on Perplexity spend per day (about 50 fresh reads; cached reads are free)
   SIGNAL_DAILY_DOLLARS: 1.5, // SEAM:SIGNAL_POOL \u2014 house cap on paid signal spend per day, tracked in REAL dollars from the provider's own costDollars
+  PPLX_RECON_DAILY_DOLLARS: 0.5,   // SEAM:READ_DEEP: a RECON's gathers ask Perplexity on their own daily allowance (about three RECONs a day), never the house's
+  SIGNAL_RECON_DAILY_DOLLARS: 1.0, // SEAM:READ_DEEP: and Exa on theirs, in the provider's real dollars
   RENDER_GLOBAL_SECONDS: 480, // SEAM:RENDER_CEILING: render seconds across EVERYONE per day (four full personal allowances); env RENDER_GLOBAL_SECONDS overrides without a code change
 };
 
@@ -51,7 +53,7 @@ export default {
     // Three crons, one worker: 05:15 capture · every 30' drain · 06:10 compose.
     // Compose sits ten minutes off the :00 drain so the two never share a
     // minute on the database (2026-09-12: the stacked burst was the 504).
-    const cron = String(event && event.cron || '');
+    const cron = String(event && event.cron || ''), t0 = Date.now();   // SEAM:READ_DEEP: the invocation's own clock (a cron has 15 minutes)
     if (cron === '15 5 * * *') {
       await (runDailySpine(env)
         .then(s => console.log('spine_capture', JSON.stringify(s)))
@@ -101,7 +103,7 @@ export default {
         .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
         .then(s => console.log('claude_drain', JSON.stringify(s)))
         .catch(e => console.log('claude_drain_error', String(e && e.message)))
-        .then(() => readTick(env))   // SEAM:READ_ENGINE: submit queued reads whose children have settled
+        .then(() => readTick(env, { deep: true, t0 }))   // SEAM:READ_ENGINE: submit queued reads whose children have settled (SEAM:READ_DEEP: and move the deep RECONs, on this invocation's clock)
         .then(s => console.log('read_tick', JSON.stringify(s)))
         .catch(e => console.log('read_tick_error', String(e && e.message))));
     }
@@ -225,6 +227,7 @@ export default {
         case '/reads/sweep':         // SEAM:READ_SWEEP: recut every existing weekly and monthly under the Method, then apply
         case '/reads/proof':         // SEAM:READ_PROOF recut
         case '/reads/commission':    // SEAM:READ_RECON: commission a RECON from a brief
+        case '/reads/release':       // SEAM:READ_DEEP: release a deep RECON from its hold (the evidence file, or its ceiling)
         case '/reads/note':          // SEAM:READ_DESK: the editors' notes, revisions and standing inputs
         case '/reads/note-drop':
         case '/reads/revise':
@@ -1801,11 +1804,12 @@ function serverConnectors(added) {
  * to [] and the free connectors carry the read alone.
  * Provenance: items enter the wire shape as signalType 'web' with the page's
  * own domain as source \u2014 the real-stats law holds through THE READ. */
-async function gatherPaidSignals(q, env) {
+async function gatherPaidSignals(q, env, lane) {
   if (!env.EXA_KEY) return [];
   const term = String(q || '').slice(0, 200).trim();
   if (!term) return [];
   const day = new Date().toISOString().slice(0, 10);
+  const recon = lane === 'recon', dk = (recon ? 'sigr:' : 'sigd:') + day;   // SEAM:READ_DEEP: a RECON's gathers spend on their own day
   let cacheKey = '';
   try {
     cacheKey = 'sg:' + (await _deepHash('exa|' + term.toLowerCase()));
@@ -1813,8 +1817,8 @@ async function gatherPaidSignals(q, env) {
     if (hit) { const j = JSON.parse(hit); if (Array.isArray(j)) return j; }
   } catch (e) {}
   try {
-    const spent = parseFloat((env.RATE_LIMIT && await env.RATE_LIMIT.get('sigd:' + day)) || '0') || 0;
-    const cap = parseFloat(env.SIGNAL_DAILY_DOLLARS) || CONFIG.SIGNAL_DAILY_DOLLARS;
+    const spent = parseFloat((env.RATE_LIMIT && await env.RATE_LIMIT.get(dk)) || '0') || 0;
+    const cap = recon ? (parseFloat(env.SIGNAL_RECON_DAILY_DOLLARS) || CONFIG.SIGNAL_RECON_DAILY_DOLLARS) : (parseFloat(env.SIGNAL_DAILY_DOLLARS) || CONFIG.SIGNAL_DAILY_DOLLARS);
     if (spent >= cap) return [];
   } catch (e) {}
   let out = null;
@@ -1833,8 +1837,8 @@ async function gatherPaidSignals(q, env) {
   const cost = (out.costDollars && Number(out.costDollars.total)) || 0;
   try {
     if (env.RATE_LIMIT) {
-      const spent = parseFloat(await env.RATE_LIMIT.get('sigd:' + day) || '0') || 0;
-      await env.RATE_LIMIT.put('sigd:' + day, (spent + cost).toFixed(4), { expirationTtl: 60 * 60 * 26 });
+      const spent = parseFloat(await env.RATE_LIMIT.get(dk) || '0') || 0;
+      await env.RATE_LIMIT.put(dk, (spent + cost).toFixed(4), { expirationTtl: 60 * 60 * 26 });
       if (cacheKey) await env.RATE_LIMIT.put(cacheKey, JSON.stringify(items), { expirationTtl: 60 * 60 * 6 });
     }
   } catch (e) {}
@@ -6514,8 +6518,13 @@ async function dailyHealth(env, nowMs) {
  * a read broken. Keyless rails identify the platform with one user-agent.
  * ═══════════════════════════════════════════════════════════════════════════ */
 const GATHER_UA = 'unsurfaced-excavate/1.0 (johnnie@unsurfacedside.com)';
-const GATHER = { TIMEOUT_MS: 6500, PAR: 6, MAX_ITEMS: 60, HELD: 10, CAP_DEFAULT: 400, YT_SEARCH_CAP: 60,
+const GATHER = { TIMEOUT_MS: 6500, PAR: 6, MAX_ITEMS: 60, HELD: 10, CAP_DEFAULT: 400, YT_SEARCH_CAP: 60, YT_RECON_CAP: 30,
   BUDGET_MS: 10000, RAIL_MS: 8000, KG_MS: 2500, FRAME_WAIT_MS: 3000 };   // SEAM:EXC_SPEED; +2 s for SEAM:EXC_GDELT_SPACE
+/* PURE: YouTube's quota day. It resets at midnight Pacific time, so a daily allowance is counted on that day, never the UTC one. */
+function ytQuotaDay(d) {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); }
+  catch (e) { return new Date(d.getTime() - 8 * 3600e3).toISOString().slice(0, 10); }   // no time zones: Pacific standard time
+}
 const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artificial-intelligence',
   'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
   'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'];
@@ -6540,12 +6549,25 @@ const VOICE_RE = {
   // "as a hairstylist in Texas": a place said of oneself, through a stated role, age or gender
   placeSelf: /\b(?:as an?|i(?:'| a)?m an?|i am an?)\s+(?:(?:licensed|professional|former|retired|new|single|busy|working|young|older|black|white|asian|latina|latino|brown|\d{2}[- ]?(?:yo|year|yr)[- ]?old)\s+)?(?:hairstylist|hair stylist|stylist|hairdresser|barber|dermatologist|derm|trichologist|esthetician|cosmetologist|salon owner|nurse|doctor|teacher|college student|student|nursing student|chemist|formulator|pharmacist|retail worker|parent|mom|mum|dad|mother|father|woman|girl|female|lady|man|guy|male|dude|husband|wife|grandma|grandpa|customer|consumer|shopper|user|teen|teenager|person)\s+(?:living|working|based)?\s*in\s+(the uk|uk|britain|england|scotland|ireland|canada|australia|new zealand|india|nigeria|ghana|kenya|south africa|germany|france|spain|italy|the netherlands|brazil|mexico|the philippines|japan|korea|the us|the usa|the states|america|texas|california|new york|florida|georgia|illinois|ohio|london|toronto|lagos|sydney)\b/i };
 const VOICE_PLACE = { london: 'UK', 'the uk': 'UK', uk: 'UK', britain: 'UK', england: 'UK', scotland: 'UK', toronto: 'Canada', lagos: 'Nigeria', sydney: 'Australia', 'the us': 'US', 'the usa': 'US', 'the states': 'US', america: 'US', texas: 'US (Texas)', california: 'US (California)', 'new york': 'US (New York)', florida: 'US (Florida)', georgia: 'US (Georgia)', illinois: 'US (Illinois)', ohio: 'US (Ohio)', korea: 'South Korea' };
-function voiceGeneration(age) { if (!Number.isFinite(age) || age < 10 || age > 95) return null; const born = new Date().getFullYear() - age; return born >= 2013 ? 'Gen Alpha' : born >= 1997 ? 'Gen Z' : born >= 1981 ? 'Millennial' : born >= 1965 ? 'Gen X' : 'Boomer'; }
+function voiceGeneration(age) { if (!Number.isFinite(age) || age < 10 || age > 95) return null; return voiceGenerationBorn(new Date().getFullYear() - age); }
+function voiceGenerationBorn(born) { if (!Number.isFinite(born) || born < 1925 || born > new Date().getFullYear() - 8) return null; return born >= 2013 ? 'Gen Alpha' : born >= 1997 ? 'Gen Z' : born >= 1981 ? 'Millennial' : born >= 1965 ? 'Gen X' : 'Boomer'; }
+/* SEAM:VOICE_LAW PURE: a generation is placed only from what the speaker said: an age, a generation, a birth year, a class year
+ * that lands in one generation either way (school or college), being in college, being a 90s kid. Nothing else places one. */
+function voiceGenerationCue(text) {
+  const t = ' ' + String(text || '') + ' ';
+  const by = t.match(/\bborn in (19[2-9]\d|20[0-2]\d)\b/i); if (by) return voiceGenerationBorn(parseInt(by[1], 10));
+  const cl = t.match(/\bclass of (19[5-9]\d|20[0-3]\d)\b/i); if (cl) { const g = parseInt(cl[1], 10), a = voiceGenerationBorn(g - 18), b = voiceGenerationBorn(g - 22); if (a && a === b) return a; }
+  if (/\b(?:i(?:'| a)?m|i am|as)\s+(?:a\s+)?(?:college|uni|university)\s+(?:student|freshman|sophomore|junior|senior)\b|\bi(?:'| a)?m in college\b/i.test(t)) return 'Gen Z';
+  if (/\b(?:a\s+)?(?:19)?90s kid\b|\bgrew up in the (?:19)?90s\b/i.test(t)) return 'Millennial';
+  return null;
+}
 function voiceSelf(text) {
   const t = ' ' + String(text || '') + ' ';
   const self = {};
   const g = t.match(VOICE_RE.gen); if (g) { const k = g[1].toLowerCase().replace(/\s+/g, ''); self.generation = k === 'zoomer' ? 'Gen Z' : k === 'genz' ? 'Gen Z' : k === 'genx' ? 'Gen X' : k === 'genalpha' ? 'Gen Alpha' : k === 'boomer' ? 'Boomer' : 'Millennial'; }
   const a = t.match(VOICE_RE.age) || t.match(VOICE_RE.bareAge); if (a && !self.generation) { const gen = voiceGeneration(parseInt(a[1], 10)); if (gen) self.generation = gen; }   // the age itself is never kept
+  if (!self.generation) { const cue = voiceGenerationCue(t); if (cue) self.generation = cue; }
+  if (!self.role && /\bmy (?:daughters?|sons?|kids|children|toddlers?)(?:'s)?\b/i.test(t)) self.role = 'parent';   // the speaker's own words make them a parent; the child's age is never theirs
   const s = t.match(VOICE_RE.gender); if (s) { const k = s[1].toLowerCase(); self.gender = /^(woman|girl|female|lady|mom|mum|mother|wife|girlfriend|grandma|grandmother)$/.test(k) ? 'woman' : 'man'; if (/^(mom|mum|mother|dad|father|grandma|grandmother|grandpa|grandfather)$/.test(k)) self.role = 'parent'; }
   const r = t.match(VOICE_RE.role); if (r) { const k = r[1].toLowerCase(); self.role = /^(mom|dad|mother|father|parent)$/.test(k) ? 'parent' : /^(hairstylist|hair stylist|stylist|hairdresser|barber|cosmetologist|salon owner)$/.test(k) ? 'stylist' : /^(dermatologist|derm|trichologist|esthetician|chemist|formulator|pharmacist|doctor|nurse)$/.test(k) ? 'practitioner' : /student$/.test(k) ? 'student' : k; }
   const tr = t.match(VOICE_RE.trait); if (tr) self.trait = tr[0].replace(/^\s*(?:my|i have|i've got|i got|with my|for my)\s+/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -6553,14 +6575,59 @@ function voiceSelf(text) {
   const pl = t.match(VOICE_RE.place) || t.match(VOICE_RE.placeSelf); if (pl) { const k = pl[1].toLowerCase(); self.place = VOICE_PLACE[k] || k.replace(/^the /, '').replace(/\b\w/g, c => c.toUpperCase()); }
   return Object.keys(self).length ? self : null;
 }
-function voiceClean(text) {
+function voiceFlat(text) {
   // A Mastodon mention is markup around a handle; it goes before the markup is flattened, so no handle survives as words.
-  const raw = env1(stripHtml(String(text || '').replace(/<a[^>]*class="[^"]*\bu-url\b[^"]*"[^>]*>[\s\S]*?<\/a>/gi, ' ').replace(/([#@])<span[^>]*>/gi, '$1').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))).replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"');
+  return env1(stripHtml(String(text || '').replace(/<a[^>]*class="[^"]*\bu-url\b[^"]*"[^>]*>[\s\S]*?<\/a>/gi, ' ').replace(/([#@])<span[^>]*>/gi, '$1').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"'))).replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"');
+}
+/* SEAM:VOICE_LAW PURE: a post that passes on a headline or a link is the outlet's story, not a consumer's voice. Mastodon prints a
+ * link as bare words ("theguardian.com/commentisfree/2026/aug/31/..."), often split by a space after the scheme, so the test reads
+ * the words: a domain with a path; a byline ("| Jonathan Liew", "By Gaby Hinsliff"); whether the poster speaks as I or my before
+ * the link. null is a voice. A share comes back as {outlet, headline, byline, date}; a headline under four words is null (a bare
+ * link is nobody's voice and nobody's story, and is not kept). */
+const VOICE_OUTLETS = { 'theguardian.com': 'The Guardian', 'nytimes.com': 'The New York Times', 'washingtonpost.com': 'The Washington Post', 'wsj.com': 'The Wall Street Journal', 'ft.com': 'Financial Times',
+  'bbc.co.uk': 'BBC', 'bbc.com': 'BBC', 'reuters.com': 'Reuters', 'apnews.com': 'AP', 'bloomberg.com': 'Bloomberg', 'cnn.com': 'CNN', 'nbcnews.com': 'NBC News', 'cnbc.com': 'CNBC', 'npr.org': 'NPR', 'axios.com': 'Axios',
+  'theverge.com': 'The Verge', 'techcrunch.com': 'TechCrunch', 'wired.com': 'Wired', 'engadget.com': 'Engadget', 'arstechnica.com': 'Ars Technica', 'gizmodo.com': 'Gizmodo', 'mashable.com': 'Mashable', 'cnet.com': 'CNET', 'zdnet.com': 'ZDNET',
+  'theregister.com': 'The Register', '404media.co': '404 Media', 'theatlantic.com': 'The Atlantic', 'vox.com': 'Vox', 'forbes.com': 'Forbes', 'businessinsider.com': 'Business Insider', 'fastcompany.com': 'Fast Company',
+  'billboard.com': 'Billboard', 'hypebeast.com': 'Hypebeast', 'highsnobiety.com': 'Highsnobiety', 'vogue.com': 'Vogue', 'businessoffashion.com': 'Business of Fashion', 'independent.co.uk': 'The Independent',
+  'telegraph.co.uk': 'The Telegraph', 'ppc.land': 'PPC Land' };
+const VOICE_MONTHS = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+// A link in a post's words: the scheme and "www." may stand apart (Mastodon hides "https://www." in its own span, so flattening
+// leaves "https://www. theguardian.com/tech nology/..."); the domain ends in a known top-level domain, so "Loved it.Best/worst" is
+// a sentence, not a link. Read at most VOICE_LINK_SCAN characters: the voice keeps 420, and a long dotted run never costs CPU.
+const VOICE_TLD = 'com|org|net|co|uk|io|news|land|tv|fm|me|ly|us|ca|au|de|fr|nl|it|es|eu|jp|kr|in|info|biz|app|dev|ai|social|online|site|media|press|today|blog|link|page|gov|edu|ie|nz|za|br|mx|ch|se|dk|fi|be|at|pl|pt|xyz|club|live|world|life|studio|art|design|style|fashion|shop|store|video';
+const VOICE_LINK = '(?:https?:\\/\\/\\s*)?(?:www\\.\\s*)?((?:[a-z0-9-]+\\.)+(?:' + VOICE_TLD + '))\\/\\S*', VOICE_LINK_SCAN = 2000;
+function voiceShare(text) {
+  const t = String(text || '').slice(0, VOICE_LINK_SCAN);
+  const link = new RegExp(VOICE_LINK, 'i').exec(t);
+  if (!link) return null;
+  const before = t.slice(0, link.index);
+  const byline = /\s\|\s*([A-Z][\w'.-]+\s+[A-Z][\w'.-]+)(?=\s|$)/.exec(before) || /\bBy\s+([A-Z][a-z'-]+\s+[A-Z][a-z'-]+)\b/.exec(before);
+  if (!byline && /(?:^|[^a-z'])(?:i|i'm|i've|i'd|i'll|my|me|mine|myself)(?=[^a-z']|$)/i.test(before)) return null;   // a person who links while speaking for themselves is still a voice
+  const domain = link[1].toLowerCase().replace(/^www\./, '');
+  const outlet = VOICE_OUTLETS[domain] || VOICE_OUTLETS[domain.split('.').slice(-2).join('.')] || domain;
+  let head = (byline ? before.slice(0, byline.index) : before).replace(/^\s*(?:fyi|via|read|new|breaking|must read|worth reading|h\/t)\s*[:-]\s*/i, '').replace(/\s*https?:\/\/\s*(?:www\.\s*)?$/i, '').replace(/\s+/g, ' ').trim();
+  if (head.length > 180) { const cut = head.slice(0, 180), at = Math.max(cut.lastIndexOf(': '), cut.lastIndexOf('. '), cut.lastIndexOf('? ')); head = at > 40 ? cut.slice(0, at + 1) : cut.replace(/\s+\S*$/, '') + ' \u2026'; }
+  head = head.replace(/\s*[:;,]\s*$/, '').trim();
+  const path = t.slice(link.index, link.index + 240).replace(/\s+/g, '');
+  const dm = /\/(20\d{2})\/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|0[1-9]|1[0-2])\/(\d{1,2})\//i.exec(path);
+  const date = dm ? dm[1] + '-' + (VOICE_MONTHS[dm[2].toLowerCase()] || dm[2]) + '-' + String(dm[3]).padStart(2, '0') : null;
+  return { outlet, headline: head.split(/\s+/).length >= 4 ? head : null, byline: byline ? byline[1] : null, date };
+}
+/* SEAM:VOICE_LAW PURE: a voice as a reader sees it: the person's words without the links Mastodon split into pieces and without the
+ * run of hashtags at the end. Hashtags inside a sentence are the speaker's words and stay. */
+function voiceDisplay(text) {
+  return String(text || '').slice(0, VOICE_LINK_SCAN).replace(new RegExp(VOICE_LINK + '(?:\\s+\\S*\\/\\S*)*', 'gi'), ' ').replace(/https?:\/\/\s*(?:www\.)?/gi, ' ')
+    .replace(/(?:\s*#[A-Za-z][\w]*)+\s*(?:\u2026)?\s*$/, '').replace(/\s+/g, ' ').trim();
+}
+/* PURE: the share mark a stored voice carries, or the one its words show (packs written before the mark existed). */
+function voiceShareOf(q) { return !q ? null : q.share !== undefined ? q.share : voiceShare(q.text); }
+function voiceClean(text) {
+  const raw = voiceFlat(String(text || '').slice(0, VOICE_LINK_SCAN * 2));   // markup counts against the scan; the voice keeps 420
   // A phone number: seven or more digits in one run with at least one group of three; an ISO date or a row of reps ("10 20 30") is not one.
   const digitsOnly = String(raw).replace(/\d{4}-\d{2}-\d{2}/g, ' ');
   const phone = (digitsOnly.match(/\+?\d[\d\s().-]{6,}\d/g) || []).some(run => run.replace(/\D/g, '').length >= 7 && /\d{3}/.test(run));
   if (/[\w.+-]+@[\w-]+\.[a-z]{2,}/i.test(raw) || phone) return null;   // an email or a phone number: dropped whole, before anything is stripped
-  let t = raw.replace(/https?:\/\/\S+/gi, '').replace(/@\s*[\w.-]{2,}/g, '').replace(/\s+/g, ' ').trim();
+  let t = voiceDisplay(raw.replace(/https?:\/\/\S+/gi, ' ').replace(/@\s*[\w.-]{2,}/g, ''));   // SEAM:VOICE_LAW: no link pieces, no trailing hashtags
   if (t.length < VOICES.MIN) return null;
   return t.length > VOICES.TEXT ? t.slice(0, VOICES.TEXT).replace(/\s+\S*$/, '') + ' …' : t;
 }
@@ -6719,13 +6786,15 @@ const RAIL_FNS = {
   async mastodon(env, q, ctx, rail) {
     // VOICE aggregate law: one row per tag per window, never per-post noise.
     const tag = String(q).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40); if (!tag) return [];
-    const posts = await railFetch('https://mastodon.social/api/v1/timelines/tag/' + tag + '?limit=' + VOICES.POSTS + '&local=false');
+    // SEAM:READ_TIME: posts from before a date: a status id carries its time (milliseconds shifted 16 bits), so max_id pages back to it.
+    const maxId = ctx && /^\d{4}-\d{2}-\d{2}$/.test(String(ctx.before || '')) ? '&max_id=' + String(BigInt(Date.parse(ctx.before + 'T00:00:00Z')) << 16n) : '';
+    const posts = await railFetch('https://mastodon.social/api/v1/timelines/tag/' + tag + '?limit=' + VOICES.POSTS + '&local=false' + maxId);
     if (!Array.isArray(posts) || !posts.length) return [];
     const ex = posts.slice(0, 3).map(p => stripHtml(p.content).slice(0, 140));
-    // SEAM:EXC_VOICES: each public post, verbatim, without its account.
-    if (ctx && ctx.meta) { const frame = ctx.frame; const src = { id: 'mast:' + tag, source: 'Mastodon', title: '#' + tag, url: 'https://mastodon.social/tags/' + tag, published_at: posts[0].created_at || null, n: posts.length };
+    // SEAM:EXC_VOICES: each public post, verbatim, without its account. SEAM:READ_DEEP: a RECON names its two passes (ctx.srcTag).
+    if (ctx && ctx.meta) { const frame = ctx.frame; const src = { id: 'mast:' + tag + (ctx.srcTag ? ':' + ctx.srcTag : maxId ? ':before' : ''), source: 'Mastodon', title: '#' + tag, url: 'https://mastodon.social/tags/' + tag, published_at: posts[0].created_at || null, n: posts.length };
       const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); voiceAdd(ctx, 'Mastodon', src);
-      for (const p of posts) { if (p.sensitive || p.spoiler_text) continue; const text = voiceClean(p.content); if (!text || !looksEnglish(text) || vv.quotes.length >= VOICES.MAX) continue; vv.quotes.push({ src: src.id, text, likes: parseInt(p.favourites_count, 10) || 0, when: p.created_at ? String(p.created_at).slice(0, 10) : null, self: voiceSelf(text), on_frame: voiceOnFrame(text, frame) }); } }
+      for (const p of posts) { if (p.sensitive || p.spoiler_text) continue; const clean = voiceClean(p.content); if (!clean) continue; const share = voiceShare(voiceFlat(p.content)); const text = share ? share.headline : clean; if (!text || !looksEnglish(text) || vv.quotes.length >= ((ctx && ctx.voiceMax) || VOICES.MAX)) continue; vv.quotes.push({ src: src.id, text, likes: parseInt(p.favourites_count, 10) || 0, when: p.created_at ? String(p.created_at).slice(0, 10) : null, self: share ? null : voiceSelf(text), on_frame: voiceOnFrame(text, frame), share: share || null }); } }   // SEAM:VOICE_LAW: a shared headline is marked, never a voice
     const newest = posts[0].created_at, oldest = posts[posts.length - 1].created_at;
     return [envelope(rail, { url: 'https://mastodon.social/tags/' + tag, title: '#' + tag + ' on Mastodon: ' + posts.length + ' posts in window', kind: 'discourse',
       text: 'Aggregate of ' + posts.length + ' public posts between ' + String(oldest).slice(0, 10) + ' and ' + String(newest).slice(0, 10) + '. Sample: ' + ex.join(' | '), published_at: newest })];
@@ -6756,11 +6825,18 @@ const RAIL_FNS = {
   },
   async youtube(env, q, ctx, rail) {
     const key = env.GOOGLE_API_KEY || env.GOOGLE_YT_KEY; if (!key) return [];
-    const day = new Date().toISOString().slice(0, 10);
-    const ck = 'railcap:yt_search:' + day;
+    // SEAM:READ_DEEP: a RECON's voice pass searches on its own daily allowance, so a commission never empties the house's searches.
+    // Both lanes together stay inside YouTube's 10,000 units a day (a search is 100; a page of comments is 1). The day is YouTube's
+    // own, Pacific midnight to midnight, so two UTC days never land in one quota day. A spent allowance says so (meta.yt_capped).
+    const day = ytQuotaDay(new Date());
+    const lane = ctx && ctx.ytLane === 'recon' ? 'yt_recon' : 'yt_search', capN = lane === 'yt_recon' ? GATHER.YT_RECON_CAP : GATHER.YT_SEARCH_CAP;
+    const ck = 'railcap:' + lane + ':' + day;
     const used = parseInt((env.RATE_LIMIT && await env.RATE_LIMIT.get(ck)) || '0', 10) || 0;
-    if (used >= GATHER.YT_SEARCH_CAP) return [];
-    const s = await railFetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&order=relevance&relevanceLanguage=en&q=' + encodeURIComponent(q) + '&key=' + key);
+    if (used >= capN) { if (ctx && ctx.meta) ctx.meta.yt_capped = true; return []; }
+    const iso = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x || ''));
+    const since = ctx && iso(ctx.since) ? '&publishedAfter=' + encodeURIComponent(ctx.since + 'T00:00:00Z') : '';   // SEAM:VOICE_LAW: a report asks for the period's videos, whose comments are the period's
+    const before = ctx && iso(ctx.before) ? '&publishedBefore=' + encodeURIComponent(ctx.before + 'T00:00:00Z') : '';   // SEAM:READ_TIME: and the years before it, to show what changed
+    const s = await railFetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&order=relevance&relevanceLanguage=en' + since + before + '&q=' + encodeURIComponent(q) + '&key=' + key);
     if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, String(used + 1), { expirationTtl: 90000 }).catch(() => {});
     const vids = ((s && s.items) || []).filter(v => v.id && v.id.videoId);
     const out = vids.map(v => envelope(rail, { url: 'https://www.youtube.com/watch?v=' + v.id.videoId, title: v.snippet.title, text: stripHtml(v.snippet.description).slice(0, 300) + ' · ' + (v.snippet.channelTitle || ''), image: v.snippet.thumbnails && (v.snippet.thumbnails.high || v.snippet.thumbnails.medium || {}).url, published_at: v.snippet.publishedAt, source_name: 'YouTube' }));
@@ -6774,9 +6850,10 @@ const RAIL_FNS = {
       for (const t of c.items) {
         const sn = t && t.snippet && t.snippet.topLevelComment && t.snippet.topLevelComment.snippet; if (!sn) continue;
         n++; vid.n++;
-        const text = voiceClean(sn.textDisplay || sn.textOriginal); if (!text || !looksEnglish(text)) continue;
+        const raw0 = sn.textDisplay || sn.textOriginal, clean = voiceClean(raw0); if (!clean) continue;
+        const share = voiceShare(voiceFlat(raw0)), text = share ? share.headline : clean; if (!text || !looksEnglish(text)) continue;   // SEAM:VOICE_LAW
         if (ex.length < 3) ex.push(text.slice(0, 120));
-        if (ctx && ctx.meta) { const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); if (vv.quotes.length < VOICES.MAX) vv.quotes.push({ src: vid.id, text, likes: parseInt(sn.likeCount, 10) || 0, when: sn.publishedAt ? String(sn.publishedAt).slice(0, 10) : null, self: voiceSelf(text), on_frame: voiceOnFrame(text, frame) }); }
+        if (ctx && ctx.meta) { const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); if (vv.quotes.length < ((ctx && ctx.voiceMax) || VOICES.MAX)) vv.quotes.push({ src: vid.id, text, likes: parseInt(sn.likeCount, 10) || 0, when: sn.publishedAt ? String(sn.publishedAt).slice(0, 10) : null, self: share ? null : voiceSelf(text), on_frame: voiceOnFrame(text, frame), share: share || null }); }
       }
       voiceAdd(ctx, 'YouTube', vid);
     });
@@ -6800,14 +6877,14 @@ const RAIL_FNS = {
      (title, url, date); the model's own prose is never evidence, it rides as a labeled framing in meta. */
   async pplx(env, q, ctx, rail) {
     const key = env.PPLX_API_KEY; if (!key) return [];
-    const day = new Date().toISOString().slice(0, 10);
-    const capD = parseFloat(env.PPLX_DAILY_DOLLARS) || (CONFIG.PPLX_DAILY_DOLLARS * (evolutionMode(env) ? 5 : 1));   // SEAM:EVOLUTION
+    const day = new Date().toISOString().slice(0, 10), recon = ctx && ctx.lane === 'recon', dk = (recon ? 'pplxr:' : 'pplxd:') + day;   // SEAM:READ_DEEP: a RECON's gathers spend on their own day
+    const capD = recon ? (parseFloat(env.PPLX_RECON_DAILY_DOLLARS) || CONFIG.PPLX_RECON_DAILY_DOLLARS) : (parseFloat(env.PPLX_DAILY_DOLLARS) || (CONFIG.PPLX_DAILY_DOLLARS * (evolutionMode(env) ? 5 : 1)));   // SEAM:EVOLUTION
     const COST = 0.008;   // sonar, low context: request fee plus tokens, rounded up
     let ck = ''; try { ck = 'sg:' + (await _deepHash('pplx|' + q.toLowerCase())); const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(ck) : null; if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.items)) { ctx.meta.pplx = j.meta || null; return j.items; } } } catch (e) {}
     try {
-      const spent = parseFloat((env.RATE_LIMIT && await env.RATE_LIMIT.get('pplxd:' + day)) || '0') || 0;
+      const spent = parseFloat((env.RATE_LIMIT && await env.RATE_LIMIT.get(dk)) || '0') || 0;
       if (spent + COST > capD) { ctx.meta.pplx_cap = true; return []; }
-      if (env.RATE_LIMIT) await env.RATE_LIMIT.put('pplxd:' + day, String(Math.round((spent + COST) * 10000) / 10000), { expirationTtl: 90000 });
+      if (env.RATE_LIMIT) await env.RATE_LIMIT.put(dk, String(Math.round((spent + COST) * 10000) / 10000), { expirationTtl: 90000 });
     } catch (e) {}
     const r = await fetch('https://api.perplexity.ai/chat/completions', { method: 'POST', headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': GATHER_UA },
       body: JSON.stringify({ model: 'sonar', temperature: 0.1, max_tokens: 400, search_recency_filter: 'month',
@@ -6824,7 +6901,7 @@ const RAIL_FNS = {
     return items;
   },
   async exa(env, q, ctx, rail) {
-    const got = await gatherPaidSignals(q, env);
+    const got = await gatherPaidSignals(q, env, ctx && ctx.lane === 'recon' ? 'recon' : null);   // SEAM:READ_DEEP
     return (got || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.snippet || a.text || '', published_at: a.published_at || a.date || null, source_name: a.source || 'Exa', image: a.image }));
   },
   async reddit(env, q, ctx, rail) { return []; },   // flag: off until credentials exist (Responsible Builder approval)
@@ -6929,6 +7006,7 @@ async function gatherOpenSignals(env, q, opts) {
   if (!query) return { ok: false, error: 'empty_query' };
   const day = new Date().toISOString().slice(0, 10);
   const ctx = { meta: {} };
+  if (opts.lane) ctx.lane = opts.lane;   // SEAM:READ_DEEP: a RECON's gathers spend on the paid rails' RECON lanes
   const T0 = Date.now();
   /* SEAM:EXC_SPEED: the gather used to run Knowledge Graph, then Wikipedia, then the rest in chunks of six that
    * each waited for their slowest member, about ten seconds. Now the frame and the entity lookup start together,
@@ -6941,7 +7019,7 @@ async function gatherOpenSignals(env, q, opts) {
     try { kgItems = await Promise.race([RAIL_FNS.kg(env, query, ctx, kgRail), new Promise(res => setTimeout(() => res([]), GATHER.KG_MS))]) || []; } catch (e) { excQuiet('kg')(e); }
   }
   const cls = opts.cls || classifyQuery(query, ctx.meta.kg);
-  const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id]);
+  const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id] && !(opts.skip || []).includes(r.id));   // SEAM:READ_DEEP: a RECON's gathers leave the voice rails to its own voice pass
   const stats = [{ id: 'kg', n: kgItems.length, ms: Date.now() - T0, ok: true }];
   let items = kgItems.slice();
   // A framed rail waits for the frame at most FRAME_WAIT_MS, then asks with the plain query.
@@ -7519,14 +7597,16 @@ function doorPhoto(rd, evidence) {
  * (verbatim, no names or handles by the voices laws), the most liked first. record: the house's calls from cluster_calls over the last
  * 90 days, named by the feed's own theme titles (a call whose theme the feed no longer names is counted, not shown), as confirmed
  * (converted or held), missed (faded) and open. Public, like the feed; nothing here is a person. */
-const DOOR_EXTRAS = { KEY: 'door:extras:v1', TTL: 3600, VOICES: 12, CALLS: 24, DAYS: 90 };
+const DOOR_EXTRAS = { KEY: 'door:extras:v2', TTL: 3600, VOICES: 12, CALLS: 24, DAYS: 90 };
 async function doorExtras(env, proposed) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(DOOR_EXTRAS.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { console.log('door_extras_cache', String(e && e.message).slice(0, 60)); }
   const out = { voices: [], record: { confirmed: [], missed: [], open: [], counts: { confirmed: 0, missed: 0, open: 0 } } };
   try {
     const rows = await sbRest(env, 'house_reads?kind=in.(report,recon)&status=in.(ready,published)&select=id,kind,label,meta&order=updated_at.desc&limit=3') || [];
     const quotes = [];
-    for (const r of rows) for (const q of (((r.meta || {}).pack || {}).voices || {}).quotes || []) if (q && q.text) quotes.push({ text: String(q.text).slice(0, 420), source: q.source || 'comment', likes: q.likes || 0, when: q.when ? String(q.when).slice(0, 10) : null, self: q.self || null, from: r.label });
+    // SEAM:VOICE_LAW: a shared headline is nobody's voice; the band quotes consumers only, their words without link pieces or tag runs.
+    // SEAM:READ_TIME: the arrival is this week's room, so a voice from before its report's period is not quoted there as now.
+    for (const r of rows) for (const q of (((r.meta || {}).pack || {}).voices || {}).quotes || []) if (q && q.text && !voiceShareOf(q) && !readIsThen(readBandOf(q)) && voiceDisplay(q.text).length >= VOICES.MIN) quotes.push({ text: voiceDisplay(q.text).slice(0, 420), source: q.source || 'comment', likes: q.likes || 0, when: q.when ? String(q.when).slice(0, 10) : null, self: q.self || null, from: r.label });
     quotes.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     const seen = new Set(); out.voices = quotes.filter(q => !seen.has(q.text) && seen.add(q.text)).slice(0, DOOR_EXTRAS.VOICES);
   } catch (e) { console.log('door_voices', String(e && e.message).slice(0, 80)); }
@@ -7825,21 +7905,28 @@ const CLAUDE = {
   API: 'https://api.anthropic.com/v1',
   VERSION: '2023-06-01',
   TIERS: {
-    doc:    { model: 'claude-fable-5-1', cap: 15, env: 'CLAUDE_DOC_MONTHLY' },
+    // Oct 6 (EX17): the written caps reset from real use. October 1 to 6 ran $18.04 on the doc tier and $5.79 on live, past the old
+    // $15 and $10; only evolution mode kept the WEEKLY running. Doc $50, live $30 a month.
+    doc:    { model: 'claude-fable-5-1', cap: 50, env: 'CLAUDE_DOC_MONTHLY' },
     ingest: { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_INGEST_MONTHLY' },
-    live:   { model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' },   // SEAM:EXC_INTEL: EXCAVATE reads, PROPOSE, theme reads
+    live:   { model: 'claude-sonnet-5',  cap: 30, env: 'CLAUDE_LIVE_MONTHLY' },   // SEAM:EXC_INTEL: EXCAVATE reads, PROPOSE, theme reads
+    // SEAM:READ_DEEP: every dollar a RECON spends, on any model it names, on one ledger, so a RECON never starves the WEEKLY and the
+    // house caps never stall a paid RECON. exact: evolution mode never multiplies it; each commission also carries its own ceiling.
+    recon:  { model: 'claude-fable-5-1', cap: 150, env: 'CLAUDE_RECON_MONTHLY', exact: true, models: ['claude-fable-5-1', 'claude-sonnet-5-5', 'claude-haiku-4-5-20251001'] },
     frame:  { model: 'claude-haiku-4-5-20251001', cap: 3, env: 'CLAUDE_FRAME_MONTHLY' },   // SEAM:EXC_FRAME: the query frame before the rails, and the gap check (0032)
     facts:  { model: 'claude-haiku-4-5-20251001', cap: 5, env: 'CLAUDE_FACTS_MONTHLY' }    // SEAM:EXC_FACTS: the fact table, its own ledger so a run of reads never closes the frame tier (0033)
   },
   PRICE: {
     'claude-fable-5-1': { in: 10, out: 50, cw: 12.5, cr: 0.25 },
     'claude-sonnet-5':  { in: 2,  out: 10, cw: 2.5,  cr: 0.2 },
+    'claude-sonnet-5-5': { in: 2, out: 10, cw: 2.5,  cr: 0.2 },   // SEAM:READ_DEEP: the evidence cards; checked Oct 6 on the price page, the same as Sonnet 5
     'claude-haiku-4-5-20251001': { in: 1, out: 5, cw: 1.25, cr: 0.1 }
   },
   MAX_TOKENS: 128000,   // the ceiling on any one call (Fable and Sonnet 5.5 write up to 128000); Oct 3: 32000 silently cut both compiles of issue 001
   BATCH_MAX: 100,
   DRAIN_ROWS: 150,
-  LIVE_TIMEOUT_MS: 120000
+  LIVE_TIMEOUT_MS: 120000,
+  RECON_TIMEOUT_MS: 300000   // SEAM:READ_DEEP: a RECON's research plan thinks at high effort on the tick, never on a reader's request
 };
 function claudeMonth(d) { return (d || new Date()).toISOString().slice(0, 7); }
 /* SEAM:EVOLUTION: while the platform evolves, every monthly Claude cap is ten times its written value and the
@@ -7852,7 +7939,7 @@ function claudeCap(env, tier) {
   const t = CLAUDE.TIERS[tier];
   const v = parseFloat(env && env[t.env]);
   if (Number.isFinite(v) && v >= 0) return v;
-  return evolutionMode(env) ? t.cap * 10 : t.cap;
+  return evolutionMode(env) && !t.exact ? t.cap * 10 : t.cap;   // SEAM:READ_DEEP: an exact tier is never multiplied
 }
 function claudeRound(x) { return Math.round(x * 1e6) / 1e6; }
 function claudeCost(model, usage, batch) {
@@ -7872,9 +7959,9 @@ function claudeModelMajor(model) {
   return m ? parseInt(m[1], 10) : 0;
 }
 function claudeParams(tier, req) {
-  const r = req || {};
+  const r = req || {}, t = CLAUDE.TIERS[tier];
   const p = {
-    model: CLAUDE.TIERS[tier].model,
+    model: t.models && r.model && t.models.includes(r.model) ? r.model : t.model,   // SEAM:READ_DEEP: a tier that lists models may be asked for one of them, never another
     max_tokens: Math.min(Math.max(parseInt(r.max_tokens, 10) || 1024, 1), CLAUDE.MAX_TOKENS),
     messages: Array.isArray(r.messages) ? r.messages : [{ role: 'user', content: String(r.prompt || '') }]
   };
@@ -7950,8 +8037,9 @@ async function callClaude(env, tier, req) {
   const kind = String((req && req.kind) || 'live').slice(0, 40);
   let r = null, j = null;
   try {
+    const ceiling = tier === 'recon' ? CLAUDE.RECON_TIMEOUT_MS : CLAUDE.LIVE_TIMEOUT_MS;   // SEAM:READ_DEEP
     r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env),
-      body: JSON.stringify(params), signal: AbortSignal.timeout(Math.min(parseInt(req && req.timeout_ms, 10) || CLAUDE.LIVE_TIMEOUT_MS, CLAUDE.LIVE_TIMEOUT_MS)) });
+      body: JSON.stringify(params), signal: AbortSignal.timeout(Math.min(parseInt(req && req.timeout_ms, 10) || CLAUDE.LIVE_TIMEOUT_MS, ceiling)) });
     j = await r.json().catch(() => null);
   } catch (e) {
     return { ok: false, error: 'claude_network' };
@@ -7960,14 +8048,14 @@ async function callClaude(env, tier, req) {
     const detail = String((j && j.error && j.error.message) || '').slice(0, 300);
     await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',
       error: ('claude_' + r.status + ' ' + detail).slice(0, 300), est_usd: est, cost_usd: 0,
-      ended_at: new Date().toISOString() }]);
+      meta: Object.assign({}, (req && req.meta) || {}), ended_at: new Date().toISOString() }]);
     return { ok: false, error: 'claude_' + r.status, detail };
   }
   const usage = j.usage || {}, cost = claudeCost(params.model, usage, false), text = claudeText(j);
   await claudeLedgerAdd(env, tier, cost);
   const ids = await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'done',
     result: text, usage, stop_reason: j.stop_reason || null, est_usd: est, cost_usd: cost,
-    meta: { msg_id: j.id || null }, ended_at: new Date().toISOString() }]);
+    meta: Object.assign({}, (req && req.meta) || {}, { msg_id: j.id || null }), ended_at: new Date().toISOString() }]);   // SEAM:READ_DEEP: a caller's tags (a RECON's id) ride the row
   return { ok: true, text, usage, cost_usd: cost, stop_reason: j.stop_reason || null, blocks: (j.content || []).map(b => b && b.type).filter(Boolean).join(','),
     truncated: j.stop_reason === 'max_tokens', job_id: ids && ids[0] || null };
 }
@@ -8249,13 +8337,15 @@ async function editionToday(env, origin) {
  * Children first: a monthly waits until no weekly inside it is queued or
  * compiling; the record waits on its monthlies. readTick walks the queue on
  * the 30-minute cron and on POST /reads/collect. */
-const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 3.2. This document is the house method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), the Record, and the RECON (a commissioned report on one brief). It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is a signal, not a pattern. Label it that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: sources, signals, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, ground, edition, house read, or DAILY inside prose. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n12. **The question law.** Every read is the answer to a question a professional brought to culture, for the people they serve. The read names the question it answers and who is served by the answer, and answers it in terms that let that professional win in that space: what people are doing, how much, and the move to make. A read that describes a space without answering a question about it is reference, and the house does not sell reference.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on the finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The signal that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest signal we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has a counter-signal. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the signal that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n- **The RECON**: one brief, to depth. A client, or the house, asks one question about one entity, category or topic, and the evidence is the slice of the period that bears on it: the sources, stories, record, themes, analyses and voices that name the brief's subject, its competitors or its anchors, with the brief's own counts in the stats block (`recon`). The thesis answers the brief's question and the house takes a position in the answer. Who is acting on the question, who is absent, and where a brand with this brief enters are written out for the brief itself. The whole period's counts are context only; the slice is the ground. A RECON is written for the one reader who asked, and it is sold under the same law as the report.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to eight words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more signal.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
+const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 4.1, the house style. This document is our method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), the Record, and the RECON (a commissioned report on one brief). It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We sound like a strategist who has run the brief and a creative director who has shipped the work, edited by the best magazine editor either of them knows. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday. The uncanny part is noticing: a read names what the reader half saw and never put into words, and proves it. We never tell the reader we are smart; being specific does that, and so does being right in public later.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, arguably, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate, game-changer). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is an early signal and is labeled that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: stories, posts, outlets, sources, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, anchor, ground, edition, house read, or DAILY inside prose, and never \"signal\" except as \"early signal\" for a finding that rests on one source. In a trade's own sense those words are the trade's language: optical frames, a limited edition, a sneaker pack. Never write \"the house\" in prose: when the read takes a position, it says \"we\". A story is a story wherever it ran: never split the evidence for the reader into stories we published and stories we did not. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n12. **The question law.** Every read is the answer to a question a professional brought to culture, for the people they serve. The read names the question it answers and who is served by the answer, and answers it in terms that let that professional win in that space: what people are doing, how much, and the move to make. A read that describes a space without answering a question about it is reference, and we do not sell reference.\n13. **The voice law.** A consumer voice is a person speaking in their own words about their own life, quoted word for word. Attribute it to a consumer, never to the platform it was posted on: \"a consumer\", or by generation, role or place only when the voice line says the speaker stated it (\"a Gen Z consumer\", \"a parent\"). Never guess a generation. A post that only passes on a headline or a link is the outlet's story, not a voice: the pack marks it as a shared story, and it is cited as that outlet's reporting. Each voice is quoted once in a read, beside the one finding it proves or among the voices in their own words, never both, and its words are not quoted again in prose. A voice that does not bear on the question is left out without comment.\n14. **The register law.** We write as a professional briefing a client. Slurs, insults and loaded labels never appear in our own sentences, attributed or not: \"what critics called\" followed by the label is still our sentence. When such words are themselves the evidence, they appear once in the read, inside the one verbatim quote that carries them, attributed to whoever said them. Otherwise name the behavior plainly: recording people without their consent. No mockery, no sneer, no sensational adjective.\n15. **Tell it once.** Each event is told in full once, in the section that owns it, with its date and its actors. Every other section refers to it in a clause and adds something new, or leaves it out. A section with nothing new to add comes back empty. Depth is earned, never padded: when the evidence on the question is thin, widen it before you cut (the record, the voices across time, the attention series, the competitors), keep a finding that rests on one source and label it an early signal, and never fill a section with what another already says: territories only where the question has stories, no cross-current a finding already owns, no glossary term for the machinery. Repetition reads as padding, and padding reads as having nothing to say.\n16. **The numbers law.** The numbers prove the work and measure the question. They carry what we read (sources, stories and posts, comments, days) and the question's own counts (stories on it, outlets, voices, dated events), each in plain words. They never carry the machinery: search terms, anchors, the forecast ledger, a territory's share of the whole period, or a company's total mentions on topics the question is not about. A whole-period count enters a finding only when it measures the finding's subject, and it is stated once.\n17. **The time law.** The period leads: every section opens on what happened in it. What is older (a record line, a voice whose line says then, not now, a series that runs back years) is evidence of then, read by its date and set beside now to show what grew, what faded and what held. An older voice never speaks for the present: it carries its year, and it stands beside a voice from the period or in then and now. Growth is a comparison the evidence carries, the same months a year apart or the same question asked then and now, never a trend inferred from one point. Where nothing older bears on the question, say nothing about then.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section, and \"X, not Y\" never in a title, a finding's name, a dek or a cover line. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on that one finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice, and never cite the same voice twice.\n\n## The house style on the page\n\nProspects meet us in the library, so every read is a pitch: a stranger should finish one page knowing something about the people they serve that they did not know that morning. Excellence is range, imagination and invention on every page at once.\n\n- **Range.** Know how the industry makes money: its prices, its calendar, its channels, its gatekeepers and its own history. Would an analyst inside that industry learn something they did not know?\n- **Imagination.** Draw the implication nobody else drew and take a position on it. Would a creative director want to steal an idea from the read?\n- **Invention.** Hand every reader something to use at the depth they have time for: a line, a number, a move or a name for what they saw.\n- **Lead with what people did.** Coverage shows what journalists noticed. A finding about people carries a measure of behavior (searches, sales, attendance, streams, readers) or says plainly that it has none.\n- **Count the silence.** Who never spoke and what never ran become findings once a count proves them.\n- **History first.** Know the category's own history before borrowing another field's; then borrow one precedent from another field, and only one. Push to the second-order effect: who loses when the pattern wins, and what it makes possible next.\n- **The sentence.** A paragraph opens on its claim and ends on the line a reader would repeat in a meeting. A sentence carries one idea, and most run under 25 words. Concrete nouns, active verbs. One metaphor per page at most, and only one that sharpens.\n- **Headlines.** A title is 5 to 10 words in the present tense, a claim about the people the read is about. A finding's name is 4 to 9 words, a claim with a verb. A dek is one sentence on what the finding makes possible for the reader's business; a dek that summarizes the finding is wasted. A cover line is the read's one claim in 8 words or fewer. Never headline an announcement, a lone number, a question or a pun. Sentence case.\n- **Named ideas.** When a mechanism deserves a name, coin it once, define it in one sentence and use the same words every time after. One coinage per finding at most; a coinage that explains nothing is a slogan, and it goes. Every coinage is defined in the glossary.\n- **Proof in the sentence.** Speak to the source where it reads naturally (\"Business of Fashion reported\"). A finding never stands on a shared headline alone. Say plainly inside the read when the base is thin: \"Seven stories is a thin base, so we hold this finding at low confidence.\" A claim is as wide as its evidence: a European ban is not an American one.\n- **Both sides.** Each finding carries a voice from the people it describes when the pack holds one, and no two findings lean on the same voice. When the evidence holds one side only, say so.\n- **Conventions.** Numerals for 10 and above, for any figure with a unit ($2,200, 3%, 4 weeks) and in ranges (5 to 10); words for one through nine when counting in prose, and for any number that opens a sentence. \"October 2\" in prose; \"percent\" in prose, \"%\" in figures. Names as their owners style them.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The sign that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest evidence we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has evidence that pushes back. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the sign that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves. A V line marked as a shared story is the outlet's reporting: cite it as a story, never quote it as a consumer. Every V line carries its date; a voice from before the period says then, not now, and is kept so the read can show what changed in how people speak.\n- **ATTENTION** (RECON only, in `recon.attention` when gathered): three years of monthly readers of the Wikipedia article on the brief's subject, and on up to two competitors, with the last three months set against the same months one and two years before. It measures public curiosity, not sales or sentiment: name the article as the measure and read the change for what it means to the brief.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n- **The RECON**: one brief, to depth. A client asks one question, or we ask it ourselves, about one entity, category or topic, and the evidence is the slice of the period that bears on it: the sources, stories, record, themes, analyses and voices that name the brief's subject, its competitors or its anchors, with the brief's own counts in the stats block (`recon`). The thesis answers the brief's question and we take a position in the answer. Who is acting on the question, who is absent, and where a brand with this brief enters are written out for the brief itself. The whole period's counts are context only; the slice is the ground. A RECON is written for the one reader who asked, and it is sold under the same law as the report. It is the deepest read we make, commissioned for significant value: it keeps its depth and earns every page with evidence, measurement and thinking, never with repetition.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to nine words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more evidence.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
 const HOUSE_READ = {
   KINDS: {
     // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
     // Thinking gets its own budget; the rest of max_tokens is room to write.
-    weekly:  { max_tokens: 20000, effort: 'medium', child: null,      take: 420 },
-    monthly: { max_tokens: 28000, effort: 'medium', child: 'weekly',  take: 240 },
+    // 2026-10-06: the Week of Sep 28 used 19,724 of its 20,000 output tokens and the September monthly 27,368 of 28,000 (real rows).
+    // Thinking counts inside the limit, so the room doubles; nothing extra is spent unless a read needs it.
+    weekly:  { max_tokens: 40000, effort: 'medium', child: null,      take: 420 },
+    monthly: { max_tokens: 56000, effort: 'medium', child: 'weekly',  take: 240 },
     record:  { max_tokens: 32000, effort: 'high',   child: 'monthly', take: 160 },
     // SEAM:READ_REPORT: the Cultural Intelligence Report, research grade, over an explicit window on the whole lake.
     // 2026-10-03: issue 001's first compile was cut at 48000 (thinking rides inside max_tokens; Fable's ceiling is 128000).
@@ -8274,7 +8364,11 @@ const HOUSE_READ = {
  * SUPPORTS: a finding stands on at least SUPPORTS_MIN dated lines from OUTLETS_MIN outlets inside the window, or it
  * lands as a signal. Momentum per territory is the database's word (STATS.momentum), never the writer's. */
 const READ_REPORT = { LAKE: 220, LAKE_SCAN: 900, RECORD: 40, FRAMES: 24, READS: 12, VOICE_QUERIES: 10, VOICE_KEEP: 80, VOICE_PER_QUERY: 12,
-  VOICE_DAYS: 180, VOICE_PER_SOURCE: 4, VOICE_TERRITORIES: 8, SUMMARY: 220, PACK_CHARS: 280000, SUPPORTS_MIN: 2, OUTLETS_MIN: 2 };
+  VOICE_PER_SOURCE: 4, VOICE_TERRITORIES: 8, SUMMARY: 220, PACK_CHARS: 280000, SUPPORTS_MIN: 2, OUTLETS_MIN: 2,
+  // SEAM:READ_TIME: no voice is too old to keep. The period's voices lead; the HISTORY lead questions are asked again of the years
+  // before the period; THEN older voices at most are kept (half the year before, half earlier, so old likes never crowd out the
+  // recent past), THEN_PER_QUERY from each history pass, and the year before is YEAR days.
+  VOICE_HISTORY: 4, VOICE_THEN: 16, VOICE_THEN_PER_QUERY: 6, VOICE_YEAR: 365 };
 /* SEAM:READ_RECON: a RECON is a report that starts from a brief instead of a calendar. The brief is framed by the same Haiku
  * framer EXCAVATE uses (entity, category, audience, market, competitors, question, anchors, exclude, rail queries); the
  * engine gathers on the brief before it compiles (readReconGather, provenance recon_gather), slices the lake, the stories,
@@ -8321,7 +8415,7 @@ const READ_CONTRACT = {
     '"against": one sentence naming the strongest evidence that cuts against this pattern and why it does not overturn it, ' +
     '"evidence": ["S<id>", ...], "strength": "pattern" or "signal", "moves": {"creative": s, "marketer": s, "founder": s, "exec": s, "talent": s}}; ' +
     '"cross_currents": 1 to 3 objects {"thread": one sentence, "evidence": ["S<id>", ...]}; ' +
-    '"contradiction": one paragraph on the counter-signal; ' +
+    '"contradiction": one paragraph on the evidence that pushes back; ' +
     '"whitespace": one paragraph on what nobody in the evidence is doing; ' +
     '"advertising_read": one paragraph on what the week means for creative, media and brand work; ' +
     '"watch": 2 to 4 sentences, THE RETURN; ' +
@@ -8340,15 +8434,15 @@ const READ_CONTRACT = {
     '"scoreboard": one paragraph using only STATS.calls_made and STATS.calls_resolved, or an empty string if both are empty; ' +
     '"whitespace": one paragraph; "advertising_read": one paragraph; "watch": 3 to 5 sentences for next month.',
   report: 'CONTRACT (report). This is a research report for a paying reader: a strategist, a marketer, a founder, a creative lead who has never seen the machinery behind it and never will. ' +
-    'THE READER LAW: write in the reader\'s words. Say sources, signals, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, ground, edition, house read, or DAILY in prose. Never put an id such as S12 or L4 inside prose; ids go only in the evidence and quotes arrays, and the page turns them into numbered sources. ' +
+    'THE READER LAW: write in the reader\'s words. Say stories, posts, outlets, sources, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, anchor, ground, edition, house read, or DAILY in prose, and never signal except as early signal. Never put an id such as S12 or L4 inside prose; ids go only in the evidence and quotes arrays, and the page turns them into numbered sources. ' +
     'THE FRUIT LAW: every section exists to change what the reader does. A finding is a pattern across several events or sources, stated as what people are doing and why, never one story retold; each finding\'s dek says what it means for the reader\'s business; each executive line pairs the observation with its implication. Numbers are read for their meaning (share, change, direction), never listed. ' +
     'Return one JSON object with exactly these keys: ' +
     '"title": 5 to 10 words, stated as a claim about culture; "subtitle": one line that tells the reader what this period showed about people; ' +
-    '"ground_line": one sentence for the cover in reader words naming what was read, with the signal count, the source count and the dates from STATS; ' +
+    '"ground_line": one sentence for the cover in reader words naming what was read, with the count of stories and posts read (STATS.lake.signals), the outlet count and the dates from STATS; ' +
     '"thesis": 3 sentences on what the whole period shows, written for the reader; ' +
-    '"executive_summary": 6 to 8 objects {"line": one sentence that states what happened and what it means for the reader, "evidence": [ids]}; ' +
+    '"executive_summary": 6 to 8 objects {"line": one sentence that states what happened and what it means for the reader, each line a different point, "evidence": [ids]}; ' +
     '"method": {"what_was_read": one paragraph in reader words naming the sources, the counts and the period; against the one before it only when STATS.lake.prior_comparable is true, otherwise saying once that the record begins with this period, "how_to_read": one paragraph on findings, sources, confidence and the moves, "limits": one paragraph on what this evidence cannot show}; ' +
-    '"by_the_numbers": 6 to 10 objects {"stat": a key path that exists in STATS such as "lake.signals", "lake.by_territory.music" or "daily.stories", "line": one sentence that reads the number for its meaning: against the period before when STATS.lake.prior_comparable is true, on its own shape (STATS.lake.shape: share, high and low week, direction) when it is false; a line that cites the scoreboard says in the same sentence what a call is (a published forecast the house checks later)}; ' +
+    '"by_the_numbers": 6 to 10 objects {"stat": a key path that exists in STATS such as "lake.signals", "lake.by_territory.music" or "daily.stories", "line": one sentence that reads the number for its meaning: against the period before when STATS.lake.prior_comparable is true, on its own shape (STATS.lake.shape: share, high and low week, direction) when it is false}; never a calls, anchors or shape path as the stat (the numbers law); ' +
     '"cover_image": the one "S<id>" whose photograph should open the report; ' +
     '"findings": 6 to 10 objects {"name": 4 to 9 words, stated as a claim about people, "dek": one sentence on what it means for the reader\'s business, "lead_image": the one "S<id>" in its evidence whose photograph leads it, ' +
     '"what_the_data_shows": three to five sentences of figures only, every sentence carrying a number from STATS or a cited line (a count, a share, a week, a poll figure, a price) and saying how big, how fast or compared with what; no events, no ids; a reader lifts it into a deck as it is, "what_happened": two to three sentences on the events, with dates and names, no ids, "why_it_matters": paragraph, the mechanism named and how to use it, ' +
@@ -8356,19 +8450,21 @@ const READ_CONTRACT = {
     '"advantage": one sentence naming the edge a reader could take from this finding, who it favors, and what it costs to ignore, ' +
     '"against": {"line": one sentence naming the strongest evidence that cuts against this finding and why it does not overturn it, "evidence": [ids]}, ' +
     '"reach": "category" (one category), "several" (several categories) or "culture" (the whole culture); "horizon": "now", "quarter" or "year", when the edge is there to take, ' +
-    '"voices": ["V<id>", ...] at most 2 consumer voices that prove the finding in the speaker\'s words, or [] when none given bear on it, ' +
-    '"evidence": [ids: at least 2 lines from 2 different outlets dated inside the window, or the finding is a signal], ' +
+    '"voices": ["V<id>", ...] at most 2 consumer voices that prove the finding in the speaker\'s words, never a V line marked as a shared story and never a voice another finding cites; a voice whose line says then, not now never proves what people do now and stands only beside a voice from the period; or [] when none bear on it, ' +
+    '"evidence": [ids: at least 2 lines from 2 different outlets dated inside the window, or the finding is an early signal], ' +
     '"confidence": "high", "medium" or "low", "strength": "pattern" or "signal", "moves": {"creative", "marketer", "founder", "exec", "talent"}, "trigger": one measurable sign that would prove or break the finding}; ' +
     '"territories": one object per key in STATS.lake.by_territory with real activity {"territory": the key, "headline": 4 to 8 words, "line": 2 to 3 sentences reading the count on its own shape from STATS.lake.shape (its share of the period, its high and low week, which way it moved) and, only when STATS.lake.prior_comparable is true, against its prior, "evidence": [ids]} (momentum is set by the database, do not write it); ' +
     '"competitive_sets": 0 to 6 objects {"category", "names": [entity names], "line": 2 sentences, "evidence": [ids]} from the tracked entities and the frames; ' +
-    '"consumer_voice": {"line": one paragraph on what people said in their own words, saying plainly when the voices given do not bear on the period, "quotes": ["V<id>", ...] 8 to 16 of them, "groups": 2 to 4 objects {"label": the generation when the speakers stated it, otherwise the subject they spoke about, never "not stated", "line", "quotes": ["V<id>", ...]}} or null when no V lines were given; ' +
+    '"consumer_voice": {"line": one paragraph on what people said in their own words, without quoting again any words a finding quotes, saying plainly when the voices given do not bear on the period, "quotes": ["V<id>", ...] 8 to 16 consumer voices that no finding cites (never a V line marked as a shared story), "groups": 2 to 4 objects {"label": the generation when the speakers stated it, otherwise the subject they spoke about, never "not stated", "line", "quotes": ["V<id>", ...]}, ' +
+    '"then_and_now": 0 to 3 objects {"line": one sentence naming what changed in how people speak about it between then and now, with the years, "then": ["V<id>", ...] 1 to 2 voices whose lines say then, not now, "now": ["V<id>", ...] 1 to 2 voices from the period} where the voices show a change, never a voice quoted elsewhere, or [] when none do} or null when no consumer voice bears on the period; ' +
     '"the_record": {"line": one paragraph on what the older reports and primary records say that still holds or was overturned, "evidence": ["R<id>", ...]} or null when no R lines were given; ' +
-    '"cross_currents": 2 to 4 objects {"thread": one sentence, "evidence": [ids]}; "contradiction": one paragraph on the counter-signal; "whitespace": one paragraph on what nobody in the evidence is doing; "advertising_read": one paragraph for creative, media and brand work; ' +
+    '"cross_currents": 0 to 4 objects {"thread": one sentence on a thread no finding already owns, "evidence": [ids]}; "contradiction": one paragraph on the evidence that pushes back on the findings, saying what no finding\'s counter-reading already says; "whitespace": one paragraph on what nobody in the evidence is doing; "advertising_read": one paragraph for creative, media and brand work; ' +
     '"outlook": {"next_30": 4 to 6 objects {"line", "trigger": a measurable sign, "evidence": [ids]}, "next_90": one paragraph}; ' +
-    '"glossary": 4 to 8 objects {"term", "definition": one sentence}; ' +
+    '"glossary": 3 to 8 objects {"term", "definition": one sentence} for terms a reader would not know, never a term for the machinery (call, anchor, frame, signal); ' +
     '"social": {"cover_line": at most 8 words, "frames": 5 to 7 objects {"kicker": at most 3 words, "headline": at most 12 words, "line": at most 25 words, "evidence": [ids]}, "caption": at most 600 characters, no hashtags}. ' +
-    'Ids (for the arrays only): S<id> a published story, L<id> a source signal, R<id> a record (older, prominent), T<id> a theme, D<id> a house analysis, X<id> a house analysis, V<id> a consumer voice. Cite only ids given to you. Every number comes from STATS or from a cited line; a weekly figure comes from STATS.lake.shape or STATS.lake.by_territory_week, never from your own arithmetic. ' +
-    'The baseline law: when STATS.lake.prior_comparable is false, the period before is not a baseline. Never compare against it, never quote its counts, never call a territory new; the record begins with this period and every count is read on its own shape. No em dashes.',
+    'Ids (for the arrays only): S<id> a published story, L<id> a source signal, R<id> a record (older, prominent), T<id> a theme, D<id> a house analysis, X<id> a house analysis, V<id> a consumer voice (its line carries its date, and says then, not now when it is from before the period) or, when its line says so, a shared story. Cite only ids given to you. The reader meets S and L lines alike as stories. Every number comes from STATS or from a cited line; a weekly figure comes from STATS.lake.shape or STATS.lake.by_territory_week, never from your own arithmetic. ' +
+    'The baseline law: when STATS.lake.prior_comparable is false, the period before is not a baseline. Never compare against it, never quote its counts, never call a territory new; the record begins with this period and every count is read on its own shape. ' +
+    'THE TIME LAW: the period leads every section. What is older (a record line, a voice whose line says then, not now, a series that runs back years) is read as then, by its date, and set against now to show what grew, what faded and what held; it is never presented as what is happening now. No em dashes.',
   record: 'CONTRACT (record). Return one JSON object with exactly these keys: ' +
     '"title": 4 to 8 words; "thesis": 2 sentences on what the whole archive shows; ' +
     '"the_arc": three paragraphs, the long view from the first issue to the last; ' +
@@ -8385,10 +8481,16 @@ READ_CONTRACT.recon = READ_CONTRACT.report
   .replace('CONTRACT (report). This is a research report for a paying reader:', 'CONTRACT (recon). This is a commissioned research report, a RECON, that answers one brief for a paying reader:')
   .replace('"title": 5 to 10 words, stated as a claim about culture;', '"title": 5 to 10 words, stated as a claim about the people the brief asks about;')
   .replace('"thesis": 3 sentences on what the whole period shows, written for the reader;', '"thesis": 3 sentences that answer the brief\'s question from the evidence, written for the reader;')
-  .replace('"competitive_sets": 0 to 6 objects', '"competitive_sets": 1 to 6 objects, the brief\'s competitors first,') +
-  ' THE BRIEF LAW: the brief is given at the top of the pack. Every section serves its question; the evidence is the slice of sources that bear on it, and STATS.recon counts that slice (STATS.lake is the whole period for context only; by_the_numbers reads STATS.recon first). ' +
+  .replace('"competitive_sets": 0 to 6 objects', '"competitive_sets": 1 to 6 objects, the brief\'s competitors first,')
+  .replace('"findings": 6 to 10 objects', '"findings": 5 to 8 objects, each standing on its own evidence (a finding that rests on one source is kept and labeled strength "signal"),')   // SEAM:READ_DEPTH: the RECON keeps its depth
+  .replace('"ground_line": one sentence for the cover in reader words naming what was read, with the count of stories and posts read (STATS.lake.signals), the outlet count and the dates from STATS;', '"ground_line": one sentence for the cover in reader words naming what was read for the brief: the stories on it (STATS.recon.stories_all), the outlets, the comments read and the dates;')
+  .replace(/"by_the_numbers": 6 to 10 objects \{[^}]*\}; never a calls, anchors or shape path as the stat \(the numbers law\); /, '"by_the_numbers": 5 to 10 objects {"stat": a key path in STATS.recon such as "recon.stories_all", "recon.outlets", "recon.voices", "recon.voices_read", "recon.voices_then", "recon.attention.yoy_pct" or "recon.by_territory.music", "line": one sentence that reads the brief\'s own number for its meaning, against the years before when the number is a comparison}; never a lake, calls, shape, anchors or competitors path (the whole period is stated once by the page, not in these lines); ')
+  .replace(/"territories": one object per key in STATS\.lake\.by_territory with real activity \{[^}]*\}/, '"territories": one object per territory where the brief\'s slice has stories (a key in STATS.recon.by_territory or STATS.recon.stories_by_territory) {"territory": the key, "headline": 4 to 8 words, "line": 1 to 2 sentences on what the brief\'s stories there add that the findings do not already say, never the territory\'s share of the whole period, "evidence": [ids]}')
+  .replace('"quotes": ["V<id>", ...] 8 to 16 consumer voices that no finding cites', '"quotes": ["V<id>", ...] 8 to 16 consumer voices on the brief that no finding cites') +
+  ' THE DEPTH LAW: a RECON is the deepest read we make, commissioned for significant value. It keeps its depth and earns every page with evidence, measurement and thinking: each finding carries its own figures, events, history, voices and counter-reading, and every section that serves the brief (the answer, for_the_brief, the competitive sets, the voices and then and now, the record, the outlook) adds what no other section says. Depth is never repetition: an event is told in full once. ' +
+  'THE BRIEF LAW: the brief is given at the top of the pack. Every section serves its question; the evidence is the slice of sources that bear on it, and STATS.recon counts that slice (STATS.lake is the whole period for context only, stated once; by_the_numbers reads STATS.recon only; STATS.recon.stories_all is every story on the brief, wherever it ran). STATS.recon.attention, when present, is three years of monthly readers of the Wikipedia article on the brief\'s subject (and on up to two competitors): read the last three months against the same months one and two years before (yoy_pct, two_year_pct), name the article as the measure, and say what the growth or the fall means for the brief. ' +
   'Two more keys, so the object has exactly the report\'s keys plus these: ' +
-  '"brief_answer": 2 to 3 sentences that answer the brief\'s question directly, the position the house takes, no ids; ' +
+  '"brief_answer": 2 to 3 sentences that answer the brief\'s question directly, the position we take, no ids; ' +
   '"for_the_brief": {"who_is_in": one paragraph naming who in the evidence is acting on the brief\'s question and how, "who_is_absent": one paragraph naming who is conspicuously absent or silent and what that leaves open, "where_to_enter": one paragraph on where a brand with this brief enters, the format, the audience, the timing, "evidence": [ids]}.';
 
 function readIso(d) { return d.toISOString().slice(0, 10); }
@@ -8496,7 +8598,7 @@ async function readWindowItems(env, start, end) {
   for (let i = 0; i < eds.length; i += 40) {
     const ids = eds.slice(i, i + 40).map(e => e.id).join(',');
     const rows = await sbRest(env, 'edition_items?edition_id=in.(' + ids + ')' +
-      '&select=id,edition_id,ord,kicker,headline,take,apply,territory,format,source_name&order=edition_id.asc,ord.asc&limit=5000') || [];
+      '&select=id,edition_id,ord,kicker,headline,take,apply,territory,format,source_name,source_url,signal_id&order=edition_id.asc,ord.asc&limit=5000') || [];   // SEAM:READ_DEEP: the page and the signal, so a story is counted once
     rows.forEach(r => { const e = byId[r.edition_id]; if (e) out.push(Object.assign(r, { date: e.date, issue_no: e.issue_no })); });
   }
   return out.slice(0, HOUSE_READ.STORY_CAP);
@@ -8522,11 +8624,13 @@ function readReportClean(t, n) { return String(t || '').replace(/\s+/g, ' ').tri
 function readReportDate(v) { const s = v ? String(v).slice(0, 10) : ''; return /^\d{4}-\d{2}-\d{2}$/.test(s) && s > '2001-01-01' ? s : 'undated'; }
 function readReportLakeLine(n, r) {
   return 'L' + n + ' | ' + readReportDate(r.published_at) + ' | ' + (r.territory || 'unassigned') + ' | T' + (r.source_tier == null ? 3 : r.source_tier) + ' | ' +
-    readReportClean(r.title) + (r.summary ? ' | ' + readReportClean(r.summary, READ_REPORT.SUMMARY) : '') + ' | ' + readReportClean(r.source_name || 'lake', 80);
+    readReportClean(r.title) + (r.summary ? ' | ' + readReportClean(r.summary, READ_REPORT.SUMMARY) : '') + ' | ' + readReportClean(r.source_name || 'lake', 80) +
+    (Array.isArray(r.qs) && r.qs.length ? ' | answers ' + r.qs.join(',') : '');   // SEAM:READ_DEEP: the sub-questions a line was found for
 }
 function readReportRecordLine(n, r) {
   return 'R' + n + ' | ' + readReportDate(r.published_at) + ' | ' + (r.territory || 'unassigned') + ' | T' + (r.source_tier == null ? 1 : r.source_tier) + ' | ' +
-    readReportClean(r.title) + (r.summary ? ' | ' + readReportClean(r.summary, READ_REPORT.SUMMARY) : '') + ' | ' + readReportClean(r.source_name || 'record', 80) + ' | (record: older than the window)';
+    readReportClean(r.title) + (r.summary ? ' | ' + readReportClean(r.summary, READ_REPORT.SUMMARY) : '') + ' | ' + readReportClean(r.source_name || 'record', 80) + ' | (record: older than the window)' +
+    (Array.isArray(r.qs) && r.qs.length ? ' | answers ' + r.qs.join(',') : '');
 }
 function readReportThemeLine(n, t) {
   return 'T' + n + ' | ' + readReportClean(t.title || 'untitled theme', 200) + ' | ' + (t.territory || 'unassigned') + ' | ' + (t.n || 0) + ' signals in the window, ' + (t.n_prior || 0) + ' in the prior window, ' +
@@ -8544,9 +8648,64 @@ function readReportReadLine(n, r) {
   return 'X' + n + ' | ' + readReportDate(r.created_at) + ' | QUERY: ' + readReportClean(r.query, 120) + ' | READ: ' + readReportClean(Array.isArray(r.read) ? r.read.join(' ') : '', 300) +
     (ins.length ? ' | FINDINGS: ' + ins.map(t => readReportClean(t, 90)).join('; ') : '');
 }
+/* SEAM:READ_TIME PURE: where a dated thing sits against the period. 'now' is on or after the period's start; 'before' is the YEAR
+ * days before it began; 'earlier' is older; 'undated' has no date. The period leads every list; the older bands are kept to show
+ * what changed, and never speak as now. */
+function readVoiceBand(when, win) {
+  const d = String(when || '').slice(0, 10), start = win && win.start ? String(win.start).slice(0, 10) : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d <= '2001-01-01') return 'undated';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || d >= start) return 'now';
+  return d >= readIso(readAddDays(readDay(start), -READ_REPORT.VOICE_YEAR)) ? 'before' : 'earlier';
+}
+/* PURE: a stored voice's band: its own mark, else its date read as the period's (a pack written before the mark held no older voice). */
+function readBandOf(q) { return !q ? null : q.band ? q.band : (/^\d{4}-\d{2}-\d{2}/.test(String(q.when || '')) ? 'now' : 'undated'); }
+function readIsThen(band) { return band === 'before' || band === 'earlier'; }
+/* PURE: the date on a voice line, with its band when it is older than the period: the writer reads it as then, never as now. */
+function readReportVoiceWhen(q) {
+  const d = q && q.when ? String(q.when).slice(0, 10) : '', b = readBandOf(q);
+  if (!d) return 'undated';
+  return b === 'before' ? d + ', the year before the period: then, not now' : b === 'earlier' ? d + ', from ' + d.slice(0, 4) + ': then, not now' : d;
+}
+/* SEAM:VOICE_LAW PURE: a voice line names no platform (a consumer is a consumer wherever they posted) and says what the speaker said
+ * about themselves; a shared headline is marked as the outlet's story; a bare link is marked not to be cited. The V numbers stay
+ * where the pack put them, so a read written before the mark still resolves. SEAM:READ_TIME: the date carries its band. */
 function readReportVoiceLine(n, q) {
-  const self = q.self || {}; const marks = ['generation', 'gender', 'role', 'trait', 'place'].map(k => self[k]).filter(Boolean);
-  return 'V' + n + ' | ' + (q.source || 'voice') + ' | ' + (q.likes || 0) + ' likes | ' + (q.when ? String(q.when).slice(0, 10) : 'undated') + ' | ' + (marks.length ? marks.join(', ') : 'no self-description') + ' | "' + readReportClean(q.text, 420) + '"';
+  const sh = voiceShareOf(q);
+  if (sh) return sh.headline ? 'V' + n + ' | shared story, not a consumer voice: cite it as ' + sh.outlet + '\'s reporting | ' + (sh.date || (q.when ? String(q.when).slice(0, 10) : 'undated')) + (sh.byline ? ' | by ' + sh.byline : '') + ' | "' + readReportClean(sh.headline, 300) + '"'
+    : 'V' + n + ' | a link without words, not a voice and not a story: do not cite';
+  const self = voiceSelf(q.text) || q.self || {}; const marks = ['generation', 'gender', 'role', 'trait', 'place'].map(k => self[k]).filter(Boolean);
+  return 'V' + n + ' | consumer comment' + (q.title ? ' on "' + readReportClean(q.title, 90) + '"' : '') + ' | ' + (q.likes || 0) + ' likes | ' + readReportVoiceWhen(q) + ' | ' + (marks.length ? 'the speaker said: ' + marks.join(', ') : 'no self-description') + ' | "' + readReportClean(voiceDisplay(q.text), 420) + '"' +
+    (q.coded && (q.coded.themes || []).length ? ' | coded: ' + q.coded.themes.join(', ') + (q.coded.stance && q.coded.stance !== 'none' ? '; ' + q.coded.stance : '') : '');   // SEAM:READ_DEEP: what we coded it as
+}
+/* PURE: the head of the voices section: how many are consumers (how many from the period, how many from before it and since when),
+ * how many are shared stories, how many comments and posts were read. */
+function readReportVoicesHead(vc, queries) {
+  return 'CONSUMER VOICES (' + vc.voices + ' consumer voices, verbatim' + (vc.then ? ': ' + vc.now + ' from this period, ' + vc.then + ' from before it' + (vc.since ? ' (the oldest from ' + vc.since + ')' : '') + ', kept to show what changed' : '') +
+    (vc.shares ? '; ' + vc.shares + ' shared stories, marked' : '') + (vc.read ? '; ' + vc.read + ' comments and posts read to find them' : '') + (queries && queries.length ? '; on: ' + queries.join('; ') : '') + '):\n';
+}
+/* SEAM:VOICE_LAW PURE: a stored pack's voices, read again: the voices section of its text is written fresh from its quotes (shares
+ * marked, no platform named, the counts honest), so a revision of a read compiled before the voice law stands on the law. Given the
+ * period, a voice without a band is banded by its date (SEAM:READ_TIME). */
+function readPackVoicesRefresh(pk, win, readN) {
+  if (!pk || !pk.voices || !Array.isArray(pk.voices.quotes) || !pk.voices.quotes.length || typeof pk.text !== 'string') return pk;
+  const quotes = pk.voices.quotes.map(q => q && !q.band && win && win.start && !voiceShareOf(q) ? Object.assign({}, q, { band: readVoiceBand(q.when, win) }) : q);
+  const voices = Object.assign({}, pk.voices, { quotes }), vc = readVoiceCounts(voices);
+  if (Number.isFinite(readN)) vc.read = readN;   // SEAM:READ_DEEP: a deep RECON's comments read are the ones it kept and coded
+  const block = readReportVoicesHead(vc, voices.queries || []) + quotes.map((q, i) => readReportVoiceLine(i + 1, q)).join('\n');
+  const at = pk.text.indexOf('CONSUMER VOICES (');
+  return Object.assign({}, pk, { voices, text: (at >= 0 ? pk.text.slice(0, at) : pk.text + '\n\n') + block,
+    counts: Object.assign({}, pk.counts || {}, { voices: vc.voices, shares: vc.shares, voices_read: vc.read, voices_then: vc.then }) });
+}
+/* PURE: what a pack's voices count for the reader: consumer voices (from the period and from before it, the oldest year), shared
+ * stories, and every comment and post read to find them. */
+function readVoiceCounts(v) {
+  const qs = (v && v.quotes) || [], src = (v && v.sources) || [];
+  let voices = 0, shares = 0, then = 0, since = null;
+  for (const q of qs) {
+    const sh = voiceShareOf(q); if (sh) { if (sh.headline) shares++; continue; }
+    voices++; if (readIsThen(readBandOf(q))) { then++; const y = String(q.when || '').slice(0, 4); if (/^\d{4}$/.test(y) && (!since || y < since)) since = y; }
+  }
+  return { voices, shares, read: src.reduce((a, x) => a + (parseInt(x && x.n, 10) || 0), 0), now: voices - then, then, since };
 }
 /* Spread the lake across territories: round robin over territory buckets, each bucket best tier then newest. */
 function readReportSpread(rows, max) {
@@ -8572,49 +8731,73 @@ function readReportVoiceQueries(stats) {
   for (const th of themes) add(th.title);
   return out;
 }
-/* PURE: a dated voice older than VOICE_DAYS before the window's end is not the period's voice and is dropped; undated
- * voices stay. At most VOICE_PER_SOURCE per thread, so one video never speaks for a theme. */
-function readReportVoiceKeep(quotes, winEnd) {
-  const end = readDay(winEnd), floor = end ? readIso(readAddDays(end, -READ_REPORT.VOICE_DAYS)) : null;
-  const perSrc = {}, out = [];
-  for (const q of quotes) {
-    if (!q || !q.text) continue;
-    if (floor && q.when && String(q.when).slice(0, 10) < floor) continue;
-    const k = q.src || 'none'; perSrc[k] = (perSrc[k] || 0) + 1;
-    if (perSrc[k] > READ_REPORT.VOICE_PER_SOURCE) continue;
-    out.push(q);
-  }
-  return out;
+/* SEAM:READ_TIME PURE: no voice is dropped for its age. The period's voices lead (most liked first), then the undated, then the
+ * older bands for comparison: at most THEN of them, half from the year before and half from earlier (likes pile up over years, so
+ * an old comment never outranks a new one on likes alone). At most VOICE_PER_SOURCE per thread across all bands, the period
+ * first, so one video never speaks for a theme. Each kept voice carries its band. A string is read as the period's end (no start). */
+function readReportVoiceKeep(quotes, win) {
+  const w = typeof win === 'string' ? { end: win } : (win || {});
+  const likes = (a, b) => (b.likes || 0) - (a.likes || 0);
+  const bands = { now: [], undated: [], before: [], earlier: [] };
+  for (const q of (quotes || [])) if (q && q.text) bands[readVoiceBand(q.when, w)].push(q);
+  const perSrc = {};
+  const take = (list, max) => { const out = []; for (const q of list.slice().sort(likes)) { if (out.length >= max) break; const k = q.src || 'none'; if ((perSrc[k] || 0) >= READ_REPORT.VOICE_PER_SOURCE) continue; perSrc[k] = (perSrc[k] || 0) + 1; out.push(q); } return out; };
+  const now = take(bands.now, READ_REPORT.VOICE_KEEP), undated = take(bands.undated, READ_REPORT.VOICE_KEEP);
+  let before = take(bands.before, Math.ceil(READ_REPORT.VOICE_THEN / 2));
+  const earlier = take(bands.earlier, READ_REPORT.VOICE_THEN - before.length);
+  if (before.length + earlier.length < READ_REPORT.VOICE_THEN) before = before.concat(take(bands.before.filter(q => !before.includes(q)), READ_REPORT.VOICE_THEN - before.length - earlier.length));
+  const then = before.concat(earlier);
+  const lead = now.concat(undated).slice(0, Math.max(0, READ_REPORT.VOICE_KEEP - then.length));
+  return lead.concat(then).map(q => Object.assign({}, q, { band: readVoiceBand(q.when, w) }));
 }
+/* SEAM:READ_TIME: the voices are asked of the period first (videos published since it began; the newest posts), and the HISTORY lead
+ * questions are asked again of the years before it (videos published before it began; posts from before it), so a read can show
+ * what changed in how people speak. Each pass keeps its own most liked: PER_QUERY from the period, THEN_PER_QUERY from history. */
 async function readReportVoices(env, stats, win, queriesGiven) {
   const queries = Array.isArray(queriesGiven) && queriesGiven.length ? queriesGiven.slice(0, READ_REPORT.VOICE_QUERIES) : readReportVoiceQueries(stats);   // SEAM:READ_RECON: a RECON asks the brief's questions
   const sources = [], quotes = [], seen = new Set();
   const yt = RAILS.find(r => r.id === 'youtube'), ma = RAILS.find(r => r.id === 'mastodon');
-  for (const q of queries) {
-    const ctx = { meta: {}, frame: null };
+  const since = win && /^\d{4}-\d{2}-\d{2}/.test(String(win.start || '')) ? String(win.start).slice(0, 10) : null;
+  const pass = async (q, ctx, max) => {
     try { if (yt && RAIL_FNS.youtube) await RAIL_FNS.youtube(env, q, ctx, yt); } catch (e) { console.log('report_voices_yt', String(e && e.message).slice(0, 80)); }
     try { if (ma && RAIL_FNS.mastodon) await RAIL_FNS.mastodon(env, q, ctx, ma); } catch (e) { console.log('report_voices_ma', String(e && e.message).slice(0, 80)); }
     const v = ctx.meta.voices || { sources: [], quotes: [] };
     for (const src of v.sources) if (!sources.some(x => x.id === src.id)) sources.push(Object.assign({ query: q }, src));
-    const mine = v.quotes.filter(x => x && x.text && !seen.has(x.text)).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, READ_REPORT.VOICE_PER_QUERY);
-    for (const x of mine) { seen.add(x.text); const src = sources.find(s => s.id === x.src); quotes.push({ src: x.src, source: src ? src.source : 'voice', title: src ? src.title : null, url: src ? src.url : null, query: q, text: x.text, likes: x.likes || 0, when: x.when || null, self: x.self || null }); }
+    const mine = v.quotes.filter(x => x && x.text && !seen.has(x.text)).sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, max);
+    for (const x of mine) { seen.add(x.text); const src = sources.find(s => s.id === x.src); quotes.push({ src: x.src, source: src ? src.source : 'voice', title: src ? src.title : null, url: src ? src.url : null, query: q, text: x.text, likes: x.likes || 0, when: x.when || null, self: x.self || null, share: x.share || null }); }
+  };
+  for (let i = 0; i < queries.length; i++) {
+    await pass(queries[i], { meta: {}, frame: null, since }, READ_REPORT.VOICE_PER_QUERY);   // SEAM:VOICE_LAW: the period's videos
+    if (since && i < READ_REPORT.VOICE_HISTORY) await pass(queries[i], { meta: {}, frame: null, before: since }, READ_REPORT.VOICE_THEN_PER_QUERY);   // SEAM:READ_TIME: the years before
   }
-  quotes.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-  const kept = readReportVoiceKeep(quotes, win && win.end);
-  return { sources, quotes: kept.slice(0, READ_REPORT.VOICE_KEEP), queries, dropped: quotes.length - kept.length };
+  const kept = readReportVoiceKeep(quotes, win);
+  return { sources, quotes: kept.slice(0, READ_REPORT.VOICE_KEEP), queries, dropped: quotes.length - kept.length, history: since ? Math.min(queries.length, READ_REPORT.VOICE_HISTORY) : 0 };
 }
-async function readReportPack(env, row, stats, recon) {   // SEAM:READ_RECON: with a recon, every section is the brief's slice
+async function readReportPack(env, row, stats, recon, deep) {   // SEAM:READ_RECON: with a recon, every section is the brief's slice (SEAM:READ_DEEP: and with a deep RECON, its evidence)
   const win = { start: row.window_start, end: row.window_end };
   const t0 = Date.now(), stage = (name, n) => console.log('read_pack_stage', JSON.stringify({ id: row.id, stage: name, n, ms: Date.now() - t0 }));
   const on = (r, text) => !recon || recon.match(text);
   const lakeRows = await sbRest(env, 'signals?status=neq.rejected&edition_item_id=is.null&source_tier=lte.3&published_at=gte.' + win.start + '&published_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) +
     '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=source_tier.asc,published_at.desc&limit=' + (recon ? READ_RECON.LAKE_SCAN : READ_REPORT.LAKE_SCAN)) || [];
   const lakeOn = lakeRows.filter(r => r && r.title && on(r, r.title + ' ' + (r.summary || '')));
-  const lake = recon ? lakeOn.slice(0, READ_REPORT.LAKE) : readReportSpread(lakeOn, READ_REPORT.LAKE);   // a RECON keeps its slice whole, best tier then newest; the house report spreads across territories
+  // SEAM:READ_DEEP: one story, one line. A signal DAILY published is its S line (never also an L line); a page read in full is its
+  // C line (never also an L or R line).
+  const sItems = (deep && deep.items) || [], sIds = new Set(sItems.map(it => it.signal_id).filter(Boolean)), sKeys = new Set(sItems.map(it => deepUrlKey(it.source_url)).filter(Boolean));
+  const cKeys = new Set(((deep && deep.cards) || []).map(c => deepUrlKey(c.url)).filter(Boolean));
+  const notS = r => !sIds.has(r.id) && !(deepUrlKey(r.url) && sKeys.has(deepUrlKey(r.url))), notC = r => !(deepUrlKey(r.url) && cKeys.has(deepUrlKey(r.url)));
+  let lake = deep ? deepLakeMerge(lakeOn.filter(r => notS(r) && notC(r)), (deep.lake || []).filter(r => notS(r) && notC(r)), READ_DEEP.PACK.LAKE)   // SEAM:READ_DEEP: the brief's words and the meaning search, once each
+    : recon ? lakeOn.slice(0, READ_REPORT.LAKE) : readReportSpread(lakeOn, READ_REPORT.LAKE);   // a RECON keeps its slice whole, best tier then newest; the house report spreads across territories
   stage('lake', lake.length);
-  const record = (await sbRest(env, 'signals?status=neq.rejected&source_tier=lte.1&published_at=gte.2001-01-01&published_at=lt.' + win.start +
-    '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=source_tier.asc,published_at.desc&limit=' + (recon ? READ_RECON.RECORD_SCAN : READ_REPORT.RECORD)) || [])
-    .filter(r => r && r.title && on(r, r.title + ' ' + (r.summary || ''))).slice(0, READ_REPORT.RECORD);
+  // SEAM:READ_TIME: a RECON's record is asked for by the brief's own words across every year before the period, then spread by
+  // year (newest year first, round robin), so the record reaches back instead of stopping at the newest few hundred rows.
+  const rq = recon ? readReconRecordQuery(recon.frame) : null;
+  const recordAsk = async q => { try { return await sbRest(env, 'signals?status=neq.rejected&source_tier=lte.1&published_at=gte.2001-01-01&published_at=lt.' + win.start + (q ? '&or=' + q : '') +
+    '&select=id,title,summary,source_name,source_tier,territory,published_at,url&order=' + (q ? 'published_at.desc' : 'source_tier.asc,published_at.desc') + '&limit=' + (recon ? READ_RECON.RECORD_SCAN : READ_REPORT.RECORD)); }
+    catch (e) { console.log('read_record_ask', String(e && e.message).slice(0, 80)); return []; } };   // a slow ask never stalls the tick: the record is context, the read compiles without it
+  let recordRows = ((await recordAsk(rq)) || []).filter(r => r && r.title && on(r, r.title + ' ' + (r.summary || '')));
+  if (rq && !recordRows.length) recordRows = ((await recordAsk(null)) || []).filter(r => r && r.title && on(r, r.title + ' ' + (r.summary || '')));   // the words found nothing (or the ask timed out): the newest prominent rows, as before
+  let record = deep ? readRecordSpread(deepLakeMerge(recordRows.filter(notC), (deep.record || []).filter(notC), 1000), READ_DEEP.PACK.RECORD)   // SEAM:READ_DEEP: the years before, by meaning and by word
+    : rq ? readRecordSpread(recordRows, READ_REPORT.RECORD) : recordRows.slice(0, READ_REPORT.RECORD);
   stage('record', record.length);
   const themes = ((stats && stats.themes) || []).filter(t => t && t.id && on(t, t.title || ''));
   const frames = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=gte.' + win.start + '&night=lte.' + win.end + '&select=id,frame_key,night,frame,measures,read&order=night.desc&limit=' + (recon ? READ_REPORT.FRAMES * 4 : READ_REPORT.FRAMES)) || [])
@@ -8622,23 +8805,41 @@ async function readReportPack(env, row, stats, recon) {   // SEAM:READ_RECON: wi
   const reads = (await sbRest(env, 'reads?created_at=gte.' + win.start + '&created_at=lt.' + readIso(readAddDays(readDay(win.end), 1)) + '&select=id,query,read,insights,created_at&order=created_at.desc&limit=' + (recon ? READ_REPORT.READS * 6 : READ_REPORT.READS)) || [])
     .filter(r => r && r.query && on(r, r.query)).slice(0, READ_REPORT.READS);
   stage('frames_reads', frames.length + reads.length);
-  const voices = await readReportVoices(env, stats, win, recon ? readReconVoiceQueries(recon.frame) : null);
+  const voices = deep ? deep.voices : await readReportVoices(env, stats, win, recon ? readReconVoiceQueries(recon.frame) : null);   // SEAM:READ_DEEP: the coded voices, already read
   stage('voices', voices.quotes.length);
+  const vc = readVoiceCounts(voices);
+  if (deep && deep.meta && deep.meta.comments) vc.read = deep.meta.comments.read || 0;   // SEAM:READ_DEEP: one figure for the comments read
+  const tail = [];
+  if (themes.length) tail.push('THEMES (' + themes.length + ', from STATS):\n' + themes.map((t, i) => readReportThemeLine(i + 1, t)).join('\n'));
+  if (frames.length) tail.push('FRAMES (' + frames.length + ', the door\'s overnight reads):\n' + frames.map((d, i) => readReportFrameLine(i + 1, d)).join('\n'));
+  if (reads.length) tail.push('EXCAVATE READS (' + reads.length + '):\n' + reads.map((r, i) => readReportReadLine(i + 1, r)).join('\n'));
+  const voiceBlock = voices.quotes.length ? readReportVoicesHead(vc, voices.queries) + voices.quotes.map((q, i) => readReportVoiceLine(i + 1, q)).join('\n') : '';
+  let cards = (deep && deep.cards) || [], counts = '', outletTypes = null;   // SEAM:READ_DEEP: the sources read in full, their claims and figures checked against the page
+  if (deep) {   // SEAM:READ_DEEP: the pack fits without cutting the voices; the kinds of outlet are counted over the stories it carries
+    const fit = deepFitPack(lake, cards, record, tail.join('\n\n').length + voiceBlock.length + 2500, READ_DEEP.PACK.CHARS);
+    lake = fit.lake; cards = fit.cards; record = fit.record;
+    const told = lake.map(r => ({ host: deepHost(r.url) })).concat(sItems.map(it => ({ host: deepHost(it.source_url) })), deepCInStories(cards, sItems, win).map(c => ({ host: deepHost(c.url) })));
+    outletTypes = deepCountTypes(told, ((deep.meta && deep.meta.outlet_types) || {}).types || {});
+    counts = deepCountsBlock(deep.meta, outletTypes);
+  }
   const sections = [];
   if (lake.length) sections.push('LAKE SIGNALS (' + lake.length + ', the window, not published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + lake.map((r, i) => readReportLakeLine(i + 1, r)).join('\n'));
   if (record.length) sections.push('THE RECORD (' + record.length + ', older prominent sources; cite as context, never as this window):\n' + record.map((r, i) => readReportRecordLine(i + 1, r)).join('\n'));
-  if (themes.length) sections.push('THEMES (' + themes.length + ', from STATS):\n' + themes.map((t, i) => readReportThemeLine(i + 1, t)).join('\n'));
-  if (frames.length) sections.push('FRAMES (' + frames.length + ', the door\'s overnight reads):\n' + frames.map((d, i) => readReportFrameLine(i + 1, d)).join('\n'));
-  if (reads.length) sections.push('EXCAVATE READS (' + reads.length + '):\n' + reads.map((r, i) => readReportReadLine(i + 1, r)).join('\n'));
-  if (voices.quotes.length) sections.push('CONSUMER VOICES (' + voices.quotes.length + ', verbatim, on: ' + voices.queries.join('; ') + '):\n' + voices.quotes.map((q, i) => readReportVoiceLine(i + 1, q)).join('\n'));
-  const text = sections.join('\n\n').slice(0, READ_REPORT.PACK_CHARS);
-  const ids = { L: lake.map(r => r.id), R: record.map(r => r.id), T: themes.map(t => t.id), D: frames.map(d => d.id), X: reads.map(r => r.id), V: voices.quotes.length };
+  if (cards.length) sections.push('SOURCES READ IN FULL (' + cards.length + ' evidence cards: every quote and figure checked against the page; cite as C ids):\n' + cards.map((c, i) => deepCardLine(i + 1, c)).join('\n'));
+  sections.push(...tail);
+  if (counts) sections.push(counts);   // SEAM:READ_DEEP: the counts, before the voices (a revision rewrites the voices from their head on)
+  if (voiceBlock) sections.push(voiceBlock);
+  const text = sections.join('\n\n').slice(0, deep ? READ_DEEP.PACK.CHARS : READ_REPORT.PACK_CHARS);
+  const ids = { L: lake.map(r => r.id), R: record.map(r => r.id), T: themes.map(t => t.id), D: frames.map(d => d.id), X: reads.map(r => r.id), V: voices.quotes.length, C: cards.length };
   const lines = { L: lake.map(r => ({ id: r.id, title: r.title, source_name: r.source_name, source_tier: r.source_tier, territory: r.territory, published_at: r.published_at, url: r.url })),
     R: record.map(r => ({ id: r.id, title: r.title, source_name: r.source_name, source_tier: r.source_tier, territory: r.territory, published_at: r.published_at, url: r.url })),
     T: themes.map(t => ({ id: t.id, title: t.title, territory: t.territory, n: t.n })),
     D: frames.map(d => ({ id: d.id, night: d.night, label: readReportClean((typeof excFrameLabel === 'function' ? excFrameLabel(d.frame || {}) : '') || (d.frame && d.frame.title) || d.frame_key, 120), claim: readReportClean(d.read && d.read.read && d.read.read[0], 240) })),
-    X: reads.map(r => ({ id: r.id, query: r.query, created_at: r.created_at })) };
-  return { text, ids, lines, voices, counts: { lake: lake.length, record: record.length, themes: themes.length, frames: frames.length, reads: reads.length, voices: voices.quotes.length } };
+    X: reads.map(r => ({ id: r.id, query: r.query, created_at: r.created_at })),
+    C: cards.map(c => ({ title: c.title, outlet: c.outlet, url: c.url, tier: c.tier, published_at: c.published_at || null, q: c.q || [], kind: c.kind, breaks: (c.claims || []).some(x => x.stance === 'breaks'), figures: (c.figures || []).length })) };   // SEAM:READ_DEEP
+  return Object.assign({ text, ids, lines, voices, counts: { lake: lake.length, record: record.length, themes: themes.length, frames: frames.length, reads: reads.length, voices: vc.voices, shares: vc.shares, voices_read: vc.read, voices_then: vc.then, cards: cards.length } },
+    deep ? { win: { start: win.start, end: win.end } } : {}, outletTypes ? { outlet_types: outletTypes } : {},
+    deep && deep.plan ? { plan: deep.plan } : {});   // SEAM:READ_DEEP: the plan rides beside the pack, never in its text (never ground)
 }
 /* PURE: every id a report may cite beyond S-ids. */
 function readReportExtraIds(pack) {
@@ -8646,6 +8847,7 @@ function readReportExtraIds(pack) {
   const out = [];
   for (const k of ['L', 'R', 'T', 'D', 'X']) { const n = Array.isArray(pack.ids[k]) ? pack.ids[k].length : 0; for (let i = 1; i <= n; i++) out.push(k + i); }
   for (let i = 1; i <= (pack.ids.V || 0); i++) out.push('V' + i);
+  for (let i = 1; i <= (pack.ids.C || 0); i++) out.push('C' + i);   // SEAM:READ_DEEP: a source read in full
   return out;
 }
 
@@ -8666,14 +8868,15 @@ function readReconMatch(frame) {
 function readReconOf(row) {
   const b = (row && row.meta && row.meta.brief) || {};
   const frame = excFrameClean(b.frame) || { entity: null, category: null, audience: null, market: 'US', competitors: [], question: String(b.text || '').slice(0, 220), anchors: [], exclude: [], queries: {} };
-  return { text: String(b.text || ''), frame, days: b.days || READ_RECON.DAYS, match: readReconMatch(frame) };
+  return { text: String(b.text || ''), frame, days: b.days || READ_RECON.DAYS, match: readReconMatch(frame), decisions: Array.isArray(b.decisions) ? b.decisions.filter(d => typeof d === 'string' && d.trim()) : [] };   // SEAM:READ_DEEP: the decisions the client must make
 }
 /* PURE: the brief, written out for the pack and the ground. */
 function readReconBriefText(recon) {
   const f = (recon && recon.frame) || {};
   const line = (k, v) => v && (Array.isArray(v) ? v.length : true) ? k + ': ' + (Array.isArray(v) ? v.join(', ') : v) + '\n' : '';
   return 'BRIEF: ' + String((recon && recon.text) || '').replace(/\s+/g, ' ').trim() + '\n' + line('ENTITY', f.entity) + line('CATEGORY', f.category) + line('AUDIENCE', f.audience) +
-    line('MARKET', f.market) + line('COMPETITORS', f.competitors) + line('QUESTION', f.question) + line('ANCHORS', f.anchors);
+    line('MARKET', f.market) + line('COMPETITORS', f.competitors) + line('QUESTION', f.question) + line('ANCHORS', f.anchors) +
+    ((recon && recon.decisions && recon.decisions.length) ? 'DECISIONS THE CLIENT MUST MAKE:\n' + recon.decisions.map((d, i) => (i + 1) + '. ' + String(d).replace(/\s+/g, ' ').trim()).join('\n') + '\n' : '');   // SEAM:READ_DEEP
 }
 /* PURE: what the voice rails are asked for a RECON: the question, the entity, how people say it, then the competitors. */
 function readReconVoiceQueries(frame) {
@@ -8681,6 +8884,28 @@ function readReconVoiceQueries(frame) {
   const add = x => { const t = String(x || '').replace(/\s+/g, ' ').trim(); if (t && !out.includes(t) && out.length < READ_REPORT.VOICE_QUERIES) out.push(t); };
   add(f.entity && f.category ? f.entity + ' ' + f.category : f.entity || f.category); add(q.discourse); add(f.question); add(f.category);
   for (const c of (f.competitors || [])) add(f.category ? c + ' ' + f.category : c);
+  return out;
+}
+/* SEAM:READ_TIME PURE: the brief's words as a PostgREST or-filter on title and summary (each word a case-blind substring, every mark
+ * between letters a wildcard, so "Ray-Ban" finds "Ray Ban" and "smart glasses" finds "smartglasses"). The match law still runs on
+ * what comes back. null when the brief has no words. */
+function readReconRecordQuery(frame) {
+  const f = frame || {}, seen = new Set(), conds = [];
+  for (const w of [].concat(f.entity ? [f.entity] : [], f.anchors || [], f.competitors || [])) {
+    const t = String(w || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '*').replace(/^\*+|\*+$/g, '');
+    if (t.length < 3 || seen.has(t) || seen.size >= 16) continue;
+    seen.add(t); conds.push('title.ilike.*' + t + '*', 'summary.ilike.*' + t + '*');
+  }
+  return conds.length ? encodeURIComponent('(' + conds.join(',') + ')') : null;
+}
+/* SEAM:READ_TIME PURE: older lines spread across years: newest year first, one line per year per round, newest first inside a year. */
+function readRecordSpread(rows, max) {
+  const by = {}, years = [];
+  for (const r of rows || []) { const y = String(r.published_at || '').slice(0, 4); if (!by[y]) { by[y] = []; years.push(y); } by[y].push(r); }
+  years.sort((a, b) => b.localeCompare(a));
+  for (const y of years) by[y].sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
+  const out = []; let any = true;
+  while (out.length < max && any) { any = false; for (const y of years) { const r = by[y].shift(); if (r) { out.push(r); any = true; if (out.length >= max) break; } } }
   return out;
 }
 /* PURE: the queries the gather runs before a RECON compiles: the entity, the brief's news and web phrasings, the competitors. */
@@ -8693,18 +8918,29 @@ function readReconGatherQueries(frame) {
 }
 /* PURE: STATS.recon, counted from the slice: how many signals, sources, stories and voices bear on the brief, by territory
  * and by week (Monday weeks), and the share of the period's signals the slice is. Every figure here is ground. */
-function readReconStats(recon, items, pack) {
+function readReconStats(recon, items, pack, attention) {
   const L = (pack && pack.lines && pack.lines.L) || [], R = (pack && pack.lines && pack.lines.R) || [];
   const byT = {}, byW = {}, outlets = new Set();
   const week = d => { const x = readDay(String(d || '').slice(0, 10)); if (!x) return null; x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return readIso(x); };
   for (const r of L) { const t = r.territory || 'unassigned'; byT[t] = (byT[t] || 0) + 1; if (r.source_name) outlets.add(String(r.source_name).toLowerCase()); const w = week(r.published_at); if (w) byW[w] = (byW[w] || 0) + 1; }
   const storyT = {};
   for (const it of (items || [])) { const t = it.territory || 'unassigned'; storyT[t] = (storyT[t] || 0) + 1; if (it.source_name) outlets.add(String(it.source_name).toLowerCase()); }
+  // SEAM:READ_DEEP: a source read in full is a story of the period when it is dated inside it and DAILY's own story is not its page.
+  const Cn = deepCInStories((pack && pack.lines && pack.lines.C) || [], items, pack && pack.win).map(c => ({ source_name: c.outlet, published_at: c.published_at }));
+  for (const c of Cn) if (c.source_name) outlets.add(String(c.source_name).toLowerCase());
   const weeks = Object.keys(byW).sort();
-  return { signals: L.length, record: R.length, stories: (items || []).length, outlets: outlets.size, voices: (pack && pack.counts && pack.counts.voices) || 0,
+  // SEAM:READ_NUMBERS: the reader's counts. A story is a story wherever it ran: stories_all, by outlet and by week, across every list.
+  const byO = {}, allW = {};
+  for (const r of L.concat(items || [], Cn)) { const o = String(r.source_name || '').trim(); if (o) byO[o] = (byO[o] || 0) + 1; const w = week(r.published_at || r.date); if (w) allW[w] = (allW[w] || 0) + 1; }
+  const oTop = Object.keys(byO).sort((a, b) => byO[b] - byO[a] || a.localeCompare(b)).slice(0, 12), sWeeks = Object.keys(allW).sort();
+  const vc = readVoiceCounts(pack && pack.voices), att = readAttnStats(attention);
+  return Object.assign({ signals: L.length, record: R.length, stories: (items || []).length, outlets: outlets.size, voices: vc.voices, shares: vc.shares, voices_read: vc.read,
+    voices_now: vc.now, voices_then: vc.then, voices_since: vc.since ? parseInt(vc.since, 10) : null,
+    record_since: R.reduce((a, r) => { const y = parseInt(String(r.published_at || '').slice(0, 4), 10); return Number.isFinite(y) && y > 2001 && (!a || y < a) ? y : a; }, null),   // SEAM:READ_TIME: how far back the record reaches
+    stories_all: L.length + (items || []).length + Cn.length, by_outlet: Object.fromEntries(oTop.map(o => [o, byO[o]])), stories_weeks: sWeeks, stories_by_week: sWeeks.map(w => allW[w]),
     by_territory: byT, stories_by_territory: storyT, weeks, by_week: weeks.map(w => byW[w]),
     week_high: weeks.length ? Math.max.apply(null, weeks.map(w => byW[w])) : 0, week_low: weeks.length ? Math.min.apply(null, weeks.map(w => byW[w])) : 0,
-    anchors: ((recon && recon.frame && recon.frame.anchors) || []).length, competitors: ((recon && recon.frame && recon.frame.competitors) || []).length };
+    anchors: ((recon && recon.frame && recon.frame.anchors) || []).length, competitors: ((recon && recon.frame && recon.frame.competitors) || []).length }, att ? { attention: att } : {});   // SEAM:READ_TIME: three years of attention, when gathered
 }
 /* PURE: the label and number of a RECON. Numbers count briefs; a recompile of the same brief keeps its number. */
 function readReconLabel(no, frame, win) {
@@ -8716,6 +8952,68 @@ async function readReconIssue(env, briefHash) {
   const same = prior.find(r => r.meta && r.meta.brief && r.meta.brief.hash === briefHash && r.meta.recon_no);
   if (same) return same.meta.recon_no;
   return new Set(prior.map(r => r.meta && r.meta.recon_no).filter(Boolean)).size + 1;
+}
+/* SEAM:READ_TIME: three years of public attention to a RECON's subject, so the period can be read against the years before it:
+ * monthly readers of the subject's Wikipedia article (Wikimedia pageviews, people only, English Wikipedia), and of up to RIVALS
+ * competitors'. An article is used only when its title shares a word with what was asked and its title or summary names the
+ * brief's category or one of its anchors, so a search that lands on the wrong article (FIELD on field hockey) measures nothing.
+ * Gathered before the compile with the rest of the gather, never on the request. */
+const READ_ATTENTION = { MONTHS: 36, RIVALS: 2, MIN_MONTHS: 24 };
+function readAttnMatch(q, title) {
+  const c = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const cq = c(q), ct = c(title); if (!cq || !ct) return false;
+  if (ct.includes(cq) || cq.includes(ct)) return true;
+  const words = x => String(x || '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 4);
+  const asked = new Set(words(q)); return words(title).some(t => asked.has(t));
+}
+/* PURE: the article is about the brief: its title or its search summary names the category or an anchor (marks and spaces aside). */
+function readAttnAbout(hit, frame) {
+  const c = x => String(x || '').toLowerCase().replace(/<[^>]+>/g, ' ').replace(/[^a-z0-9]+/g, '');
+  const text = c((hit && hit.title) + ' ' + (hit && hit.snippet)), f = frame || {};
+  return [f.category].concat(f.anchors || []).map(c).filter(w => w.length >= 4).some(w => text.includes(w));
+}
+/* PURE: the months measured: the MONTHS complete months before the month the period ends in, and the API's start and end stamps. */
+function readAttnMonths(end, n) {
+  const d = readDay(end); if (!d) return null;
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 0)), first = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() - (n - 1), 1));
+  const months = [];
+  for (let x = first; x <= last; x = new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + 1, 1))) months.push(x.getUTCFullYear() + '-' + String(x.getUTCMonth() + 1).padStart(2, '0'));
+  return { months, start: readIso(first).replace(/-/g, '') + '00', end: readIso(last).replace(/-/g, '') + '00' };
+}
+async function readReconAttention(env, frame, end) {
+  const f = frame || {}, span = readAttnMonths(end, READ_ATTENTION.MONTHS); if (!span) return null;
+  // The subject is the entity's article, else the category's (a young brand may have none); the rivals follow. No subject, no series.
+  const asks = [f.entity, f.category].filter(Boolean).map(l => ({ label: l, role: 'subject' })).concat((f.competitors || []).slice(0, READ_ATTENTION.RIVALS).map(c => ({ label: c, role: 'rival' })));
+  const series = [];
+  for (const a of asks) {
+    if (a.role === 'subject' && series.some(x => x.role === 'subject')) continue;
+    if (a.role === 'rival' && !series.some(x => x.role === 'subject')) break;
+    const j = await railFetch('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=3&srsearch=' + encodeURIComponent(a.label));
+    const hit = ((j && j.query && j.query.search) || []).find(h => h && h.title && readAttnMatch(a.label, h.title) && readAttnAbout(h, f));
+    if (!hit || series.some(x => x.article === hit.title)) continue;
+    const pv = await railFetch('https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/' + encodeURIComponent(hit.title.replace(/ /g, '_')) + '/monthly/' + span.start + '/' + span.end);
+    const by = {}; for (const it of ((pv && pv.items) || [])) { const t = String(it && it.timestamp || ''); if (t.length >= 6) by[t.slice(0, 4) + '-' + t.slice(4, 6)] = parseInt(it.views, 10) || 0; }
+    const views = span.months.map(m => (m in by ? by[m] : null));
+    if (views.filter(v => v != null).length < READ_ATTENTION.MIN_MONTHS) continue;
+    series.push({ label: String(a.label).slice(0, 80), role: a.role, article: hit.title, views });
+  }
+  return series.length ? { source: 'Wikimedia pageviews', months: span.months, series, at: new Date().toISOString() } : null;
+}
+/* SEAM:READ_TIME PURE: the attention read for the reader: the last three complete months against the same three months one and two
+ * years before, the change as a whole percent, the peak month. Every figure is a sum of the measured series; a sum with a missing
+ * month is null, never estimated. The subject leads; the rivals are read the same way. */
+function readAttnStats(att) {
+  if (!att || !Array.isArray(att.series) || !att.series.length || !Array.isArray(att.months) || !att.months.length) return null;
+  const n = att.months.length;
+  const sum = (v, a, b) => { if (a < 0) return null; let t = 0; for (let i = a; i < b; i++) { if (v[i] == null) return null; t += v[i]; } return t; };
+  const pct = (a, b) => a != null && b ? Math.round((a - b) / b * 100) : null;
+  const read = x => { const v = x.views || [], r3 = sum(v, n - 3, n), y3 = sum(v, n - 15, n - 12), z3 = sum(v, n - 27, n - 24);
+    let pk = -1; v.forEach((y, i) => { if (y != null && (pk < 0 || y > v[pk])) pk = i; });
+    return { label: x.label, article: x.article, views: v, recent_3m: r3, year_ago_3m: y3, two_years_ago_3m: z3, yoy_pct: pct(r3, y3), two_year_pct: pct(r3, z3),
+      peak_month: pk >= 0 ? att.months[pk] : null, peak_views: pk >= 0 ? v[pk] : null }; };
+  const subj = att.series.find(x => x.role === 'subject'); if (!subj) return null;   // a competitor never stands in for the subject
+  return Object.assign({ source: att.source || 'Wikimedia pageviews', months: att.months, recent_months: att.months.slice(-3) }, read(subj),
+    { rivals: att.series.filter(x => x !== subj).map(read) });
 }
 /* The gather before a RECON compiles: EXCAVATE's open gather on the brief's queries, captured into the lake with
  * provenance recon_gather so the slice is fuller on that spot. Paid rails ride their own budget laws inside the gather;
@@ -8731,21 +9029,1388 @@ async function readReconGather(env, row) {
       out.captured += await lakeCapture(env, g.items, { provenance: 'recon_gather', query: q, territory: terr || undefined });
     } catch (e) { out.failed.push(q); console.log('recon_gather', String(e && e.message).slice(0, 80)); }
   }
+  try { out.attention = await readReconAttention(env, recon.frame, row.window_end); } catch (e) { out.attention = null; console.log('recon_attention', String(e && e.message).slice(0, 80)); }   // SEAM:READ_TIME
   await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { gather: out }) });
-  logEvent(env, 'intelligence', 'reads', 'recon_gather', null, { id: row.id, queries: queries.length, captured: out.captured, failed: out.failed.length });
+  logEvent(env, 'intelligence', 'reads', 'recon_gather', null, { id: row.id, queries: queries.length, captured: out.captured, failed: out.failed.length, attention: out.attention ? out.attention.series.length : 0 });
   return out;
+}
+/* ═══ SEAM:READ_DEEP: the deep RECON, search and measure (EX17). ═══════════════════════════════════════════════════════
+ * A commission carries the client's decisions. Before a word is written the engine writes a research plan; searches the lake by
+ * meaning for every sub-question, inside the period and across the years before it; gathers fresh on every sub-question and again
+ * for whatever would break each hypothesis; reads the strongest sources in full into evidence cards whose every quote and figure is
+ * checked against the page; reads and codes every comment the voice rails return, then counts them; measures the views of the
+ * videos the comments came from and the kinds of outlet that covered the question; and lands an evidence file on the desk. Then the
+ * compile writes from that ground. Every stage is resumable and bounded per tick; every dollar lands on the recon ledger and on the
+ * row's receipt (meta.deep.spend); the commission's own ceiling stops a stage before it would cross it. Nothing here runs on a
+ * reader's request: the tick and the admin doors only. The evidence lives in recon_evidence (migration 0037), one row per item. */
+const READ_DEEP = {
+  // SEAM:READ_THINK: the compile is four Fable passes now (READ_THINK), so the room kept for it is their worst case (about $13 on a
+  // full pack, the copy desk apart) and the least a commission may set is $20. A desk revision is one pass: REVISE_RESERVE.
+  BUDGET_USD: 30, BUDGET_MIN: 20, BUDGET_MAX: 100, DECISIONS: 5, TRIES: 3, COMPILE_RESERVE: 13, REVISE_RESERVE: 4, DESK_USD: 0.6, STALE_MS: 93600000,
+  // Time: a tick moves stages for TICK_MS; no stage starts unless STAGE_MS is left before WALL_MS of the invocation (a cron has 15
+  // minutes); a row is held by one runner at a time (LEASE_MS; a lease older than that is a run that died, counted as a try).
+  TICK_MS: 240000, WALL_MS: 780000, STAGE_MS: 330000, LEASE_MS: 900000,
+  PLAN: { MODEL: 'claude-fable-5-1', MAX_TOKENS: 24000, EFFORT: 'high', TIMEOUT_MS: 300000, Q_MIN: 4, Q_MAX: 10, H_MAX: 8, THEMES_MIN: 3, THEMES_MAX: 10, SEG_MAX: 5 },
+  SEARCH: { NOW: 40, BEFORE: 15, SIM: 0.6, FLOOR: 0.45, KEEP_Q: 12, NOW_TIER: 3, BEFORE_TIER: 2, LAKE_MAX: 400, RECORD_MAX: 120, PHRASES: 3, MAX_PHRASES: 36, FAIL_MAX: 0.5 },
+  GATHER: { MAX: 20, PER_TICK: 8, SKIP: ['youtube', 'mastodon'], RAIL_USD: { pplx: 0.008, exa: 0.013 } },
+  VOICE: { QUERIES: 14, MAX_PER_PASS: 300, CHUNK: 40, KEEP: 6000, STEP_MS: 150000 },
+  READ: { SOURCES: 48, PER_Q: 3, PER_OUTLET: 4, CHARS: 24000, MIN_CHARS: 600, TAVILY: 20, CREDIT_USD: 0.008, FETCH_BYTES: 900000, FETCH_MS: 9000, PAR: 6,
+    UA: 'Mozilla/5.0 (compatible; UnsurfacedReader/1.0; +https://unsurfaced-intelligence.com)' },
+  QUOTE: { MIN: 12, PART: 8, GAP: 320 },
+  CARD: { MODEL: 'claude-sonnet-5-5', MAX_TOKENS: 3000, CLAIMS: 5, FIGURES: 8, MIN_CARDS: 12 },
+  LABEL: { MODEL: 'claude-haiku-4-5-20251001', MAX_TOKENS: 4000 },
+  OUTLET: { MODEL: 'claude-haiku-4-5-20251001', TTL: 7776000, MAX: 300, CHUNK: 150, MAX_TOKENS: 6000 },
+  PACK: { CHARS: 340000, LAKE: 260, LAKE_MIN: 80, RECORD: 60, RECORD_MIN: 20, CARDS: 48, CARDS_MIN: 16, VOICES: 80, THEN: 16 }
+};
+const deepLog = where => e => { console.log('read_deep', where, String((e && e.message) || e).slice(0, 120)); return null; };
+/* PURE: the deep block a row carries, its spend so far, and whether a cost still fits the commission's ceiling. Spend is the
+ * receipt: the rails and Tavily as they ran, every Claude call this RECON made (read back from its claude_jobs rows, a batch
+ * still in flight at its reservation), and each compile and copy desk as it landed. */
+function deepOf(row) { const d = row && row.meta && row.meta.deep; return d && typeof d === 'object' ? d : null; }
+function deepSpent(deep) { const s = (deep && deep.spend) || {}; return Math.round(Object.keys(s).reduce((a, k) => a + (Number(s[k]) || 0), 0) * 1e6) / 1e6; }
+function deepRoom(deep, est) { const cap = Number(deep && deep.budget_usd) || READ_DEEP.BUDGET_USD; return deepSpent(deep) + (Number(est) || 0) <= cap; }
+function deepAdd(spend, k, usd) { const s = Object.assign({}, spend || {}); s[k] = Math.round(((Number(s[k]) || 0) + (Number(usd) || 0)) * 1e6) / 1e6; return s; }
+/* PURE: text Postgres will keep: no NUL, no half of a surrogate pair (a cut at a UTF-16 index can leave one; jsonb refuses the row). */
+function deepSafeStr(s) { return String(s).replace(/\u0000/g, '').replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, ''); }
+function deepSafe(v) {
+  if (typeof v === 'string') return deepSafeStr(v);
+  if (Array.isArray(v)) return v.map(deepSafe);
+  if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) o[deepSafeStr(k)] = deepSafe(v[k]); return o; }
+  return v;
+}
+/* PURE: model text as a plain string: no markup, no em or en dash (a comma stands in), one line, capped. */
+function deepStr(v, n) { return deepSafeStr(String(v == null ? '' : v).replace(/<[^>]*>/g, ' ').replace(/[<>`]/g, '').replace(/\s*[–—]\s*/g, ', ').replace(/\s+/g, ' ').trim().slice(0, n || 300)); }
+/* PURE: the numbers a text carries, as the landing law reads them: separators gone, leading zeros gone ("3,200" is 3200). */
+function deepNums(s) { return (String(s || '').match(/\d[\d,]*(?:\.\d+)?/g) || []).map(x => x.replace(/,/g, '').replace(/^0+(?=\d)/, '')).filter(Boolean); }
+function deepHost(url) { try { return new URL(String(url)).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; } }
+function deepUrlKey(u) { const s = String(u || '').trim(); if (!/^https?:\/\//i.test(s)) return ''; return s.replace(/^https?:\/\/(www\.)?/i, '').replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase(); }
+
+/* ── The plan ───────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+const DEEP_PLAN_SYS = 'You are the research director at Unsurfaced, a cultural intelligence group. A client has commissioned a RECON: one brief, answered to depth. Before anyone searches, you write the research plan the whole team works from. Output STRICT JSON only, no fences, no prose before or after. ' +
+  'Shape: {"question": the decision question the RECON must answer, one sentence, ' +
+  '"sub_questions": 6 to 10 objects {"id": "SQ1", "ask": one question the evidence can answer, "why": one sentence on what the answer changes for the client, "lake": 2 to 3 search phrasings for a news and web archive, each under 9 words, "web": one news or web search under 8 words, "voice": the words ordinary people would use for it in a video title or a comment, under 7 words, "measure": the behavior that would measure it (sales, searches, views, attendance, returns, prices), in a few words}, ' +
+  '"hypotheses": 4 to 8 objects {"id": "HYP1", "q": "SQ<n>", "claim": what we expect the evidence to show, one sentence, "proves": the evidence that would prove it, "breaks": the evidence that would break it, "counter": a news or web search under 8 words for the evidence that would break it}, ' +
+  '"segments": 2 to 5 objects {"who": a group the brief might miss, "why": one sentence, "q": "SQ<n>"}, looking across occupation, age, income, place, culture and ability for people who use, refuse or depend on the subject for reasons the brief does not name, ' +
+  '"decisions": one object per decision the client listed {"n": its number, "decision": as listed, "q": ["SQ<n>", ...] the sub-questions that decide it}, or [] when none were listed, ' +
+  '"themes": 6 to 10 labels of one to three words for coding what consumers say about the subject: the topics people raise (for example price, quality, trust)}. ' +
+  'Rules: every sub-question names something a search can find. At least one sub-question asks what people do (behavior, measured), one asks who is absent or silent, and one asks what would prove the brief wrong. Every hypothesis can be broken by evidence. Never use the em dash character.';
+function deepPlanPrompt(recon, row) {
+  return readReconBriefText(recon) + 'THE PERIOD: ' + row.window_start + ' to ' + row.window_end + '.\n\nWrite the research plan. Return only the JSON object.';
+}
+/* PURE: the plan as the engine holds it. Sub-questions are renumbered SQ1..SQn and hypotheses HYP1..HYPn in order (the model's own
+ * ids map to them): ids no reader's prose carries (Q3 is a quarter, H1 a half year), so one left in a read is caught. Every
+ * reference to a sub-question or a hypothesis that does not exist is dropped; themes carry no dots (they become STATS keys). Too
+ * few sub-questions or themes is no plan. */
+function deepPlanClean(j, decisions) {
+  if (!j || typeof j !== 'object') return null;
+  const P = READ_DEEP.PLAN, arr = v => Array.isArray(v) ? v : [];
+  const raw = arr(j.sub_questions).filter(q => q && typeof q === 'object' && deepStr(q.ask)).slice(0, P.Q_MAX);
+  if (raw.length < P.Q_MIN) return null;
+  const idOf = new Map(raw.map((q, i) => [String(q.id || '').trim().toUpperCase(), 'SQ' + (i + 1)]));
+  const qs = raw.map((q, i) => {
+    const lake = arr(q.lake).map(x => deepStr(x, 90)).filter(Boolean).slice(0, READ_DEEP.SEARCH.PHRASES);
+    return { id: 'SQ' + (i + 1), ask: deepStr(q.ask, 260), why: deepStr(q.why, 260), lake: lake.length ? lake : [deepStr(q.ask, 90)], web: deepStr(q.web, 90), voice: deepStr(q.voice, 70), measure: deepStr(q.measure, 120) };
+  });
+  const ids = new Set(qs.map(q => q.id));
+  const qid = v => { const k = String(v || '').trim().toUpperCase(); return idOf.get(k) || (ids.has(k) ? k : null); };
+  const hs = arr(j.hypotheses).filter(h => h && deepStr(h.claim)).slice(0, P.H_MAX).map((h, i) => ({ id: 'HYP' + (i + 1), q: qid(h.q), claim: deepStr(h.claim, 260), proves: deepStr(h.proves, 220), breaks: deepStr(h.breaks, 220), counter: deepStr(h.counter, 90) }));
+  const seg = arr(j.segments).filter(s => s && deepStr(s.who)).slice(0, P.SEG_MAX).map(s => ({ who: deepStr(s.who, 120), why: deepStr(s.why, 220), q: qid(s.q) }));
+  const listed = (decisions || []).map((d, i) => ({ n: i + 1, decision: deepStr(d, 240), q: [] }));
+  arr(j.decisions).forEach(d => { const hit = listed.find(x => x.n === parseInt(d && d.n, 10)); if (hit) hit.q = arr(d.q).map(qid).filter(Boolean).slice(0, 6); });
+  const seen = new Set();
+  const themes = arr(j.themes).map(t => deepStr(t, 32).toLowerCase().replace(/\./g, '').trim()).filter(t => t && t.split(' ').length <= 3 && !seen.has(t) && seen.add(t)).slice(0, P.THEMES_MAX);
+  if (themes.length < P.THEMES_MIN) return null;
+  return { question: deepStr(j.question, 300), sub_questions: qs, hypotheses: hs, segments: seg, decisions: listed, themes };
+}
+/* PURE: the phrasings the lake is searched with: every sub-question's, then every group the brief might miss, once each. */
+function deepPhrases(plan) {
+  const out = [], seen = new Set();
+  const add = (q, t) => { const k = String(t || '').toLowerCase(); if (!t || seen.has(k)) return; seen.add(k); out.push({ q, text: t }); };
+  for (const q of (plan && plan.sub_questions) || []) for (const t of q.lake || []) add(q.id, t);
+  for (const s of (plan && plan.segments) || []) if (s.q) add(s.q, String(s.who || '').slice(0, 90));
+  return out.slice(0, READ_DEEP.SEARCH.MAX_PHRASES);
+}
+/* PURE: the searches the gather runs: every sub-question's web search, then one search per hypothesis for what would break it
+ * (the counter pass, never cut by the cap), then the brief's own queries while room is left. */
+function deepGatherQueries(plan, frame) {
+  const out = [], seen = new Set(), max = READ_DEEP.GATHER.MAX;
+  const add = (text, o) => { const t = deepStr(text, 120), k = t.toLowerCase(); if (!t || seen.has(k) || out.length >= max) return; seen.add(k); out.push(Object.assign({ text: t, q: null, h: null, counter: false }, o)); };
+  const subs = (plan && plan.sub_questions) || [], hyps = ((plan && plan.hypotheses) || []).filter(h => h.counter);
+  subs.slice(0, Math.max(0, max - hyps.length)).forEach(q => add(q.web || q.lake[0], { q: q.id }));
+  hyps.forEach(h => add(h.counter, { q: h.q, h: h.id, counter: true }));
+  readReconGatherQueries(frame).forEach(t => add(t, {}));
+  return out;
+}
+/* PURE: what the voice rails are asked: every sub-question in the words people use, then the brief's own voice queries. */
+function deepVoiceQueries(plan, frame) {
+  const out = [], seen = new Set();
+  const add = (text, q) => { const t = deepStr(text, 90), k = t.toLowerCase(); if (!t || seen.has(k) || out.length >= READ_DEEP.VOICE.QUERIES) return; seen.add(k); out.push({ text: t, q: q || null }); };
+  for (const q of (plan && plan.sub_questions) || []) add(q.voice, q.id);
+  for (const t of readReconVoiceQueries(frame)) add(t, null);
+  return out;
+}
+
+/* ── The lake, by meaning ───────────────────────────────────────────────────────────────────────────────────────────────── */
+async function deepEmbed(env, texts) {
+  const out = [];
+  for (let i = 0; i < texts.length; i += 20) {
+    const part = texts.slice(i, i + 20);
+    const r = await env.AI.run(KB_EMBED_MODEL, { text: part.map(t => BGE_QUERY_PREFIX + String(t || '')) });
+    const data = (r && r.data) || [];
+    for (let k = 0; k < part.length; k++) out.push(data[k] || null);
+  }
+  return out;
+}
+function deepExcludeRx(frame) {
+  const esc = w => String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const ex = ((frame && frame.exclude) || []).map(w => String(w || '').toLowerCase().trim()).filter(w => w.length > 1);
+  return ex.length ? new RegExp('(?:^|[^\\p{L}\\p{N}])(?:' + ex.map(esc).join('|') + ')(?![\\p{L}\\p{N}])', 'iu') : null;
+}
+/* PURE: lake rows from one search folded into the map: a row found by several sub-questions carries all of them and its best score. */
+function deepMerge(map, rows, q) {
+  for (const r of rows || []) {
+    if (!r || !r.id || !r.title) continue;
+    const had = map.get(r.id), sim = Math.round((Number(r.similarity) || 0) * 1000) / 1000;
+    if (had) { if (!had.qs.includes(q)) had.qs.push(q); had.sim = Math.max(had.sim, sim); continue; }
+    map.set(r.id, { id: r.id, title: r.title, summary: r.summary || null, source_name: r.source_name || null, source_tier: r.source_tier, territory: r.territory || null, published_at: r.published_at || null, url: r.url || null,
+      edition_item_id: r.edition_item_id || null, sim, qs: [q] });   // edition_item_id: DAILY published it (a story is counted once)
+  }
+  return map;
+}
+/* PURE: what the meaning search keeps: never a line the frame excludes; every line close in meaning (SIM); and for each sub-question
+ * its KEEP_Q closest above the FLOOR, so a sub-question the archive barely covers still brings its best. Lines that answer several
+ * sub-questions lead, then the closest, then the strongest outlets. */
+function deepKeep(rows, frame, max) {
+  const S = READ_DEEP.SEARCH, ex = deepExcludeRx(frame);
+  const ok = (rows || []).filter(r => !(ex && ex.test(String(r.title || '') + ' ' + String(r.summary || ''))));
+  const keep = new Set(ok.filter(r => r.sim >= S.SIM)), byQ = {};
+  for (const r of ok) for (const q of r.qs) (byQ[q] = byQ[q] || []).push(r);
+  for (const q of Object.keys(byQ)) byQ[q].filter(r => r.sim >= S.FLOOR).sort((a, b) => b.sim - a.sim).slice(0, S.KEEP_Q).forEach(r => keep.add(r));
+  const tier = r => r.source_tier == null ? 3 : r.source_tier;
+  return Array.from(keep).sort((a, b) => b.qs.length - a.qs.length || b.sim - a.sim || tier(a) - tier(b)).slice(0, max);
+}
+/* PURE: what a gather's paid rails cost: Perplexity and Exa per call that answered, at the house's rounded price. An estimate on the
+ * receipt; the rails keep their own real ledgers. */
+function deepRailCost(rails) {
+  const U = READ_DEEP.GATHER.RAIL_USD;
+  return Math.round((rails || []).reduce((a, r) => a + (r && r.ok && !r.skipped && r.n > 0 && U[r.id] ? U[r.id] : 0), 0) * 1e4) / 1e4;
+}
+function deepWebItem(it, g) {
+  return { url: String(it.url || '').slice(0, 600), title: deepStr(it.title, 300), text: deepStr(it.text, 700), source_name: deepStr(it.source_name, 80), source_tier: it.source_tier == null ? 3 : it.source_tier,
+    published_at: it.published_at || null, rail: it.rail || null, kind: it.kind || null, q: g.q || null, h: g.h || null, counter: !!g.counter, stance: it.stance || (g.counter ? 'against' : null) };
+}
+
+/* ── Reading in full ────────────────────────────────────────────────────────────────────────────────────────────────────── */
+const DEEP_UNREADABLE = /(^|\.)(youtube\.com|youtu\.be|mastodon\.social|x\.com|twitter\.com|facebook\.com|instagram\.com|tiktok\.com|reddit\.com|news\.google\.com|google\.com|gdeltproject\.org|linkedin\.com|pinterest\.com|threads\.net|bsky\.app)$/i;
+/* PURE: a page the reader can open: http(s), a public host, an article rather than a feed, a search page or an entity card. */
+function deepReadable(r) {
+  const url = String((r && r.url) || ''), host = deepHost(url);
+  if (!host || !/^https?:\/\//i.test(url) || DEEP_UNREADABLE.test(host) || /^(localhost|\d{1,3}(\.\d{1,3}){3})$/.test(host) || host.indexOf('.') < 0) return false;
+  if (/efts\.sec\.gov|\/search\?|\/results\?|\/tags?\//i.test(url)) return false;
+  if (['entity', 'attention', 'discourse'].includes(r.kind)) return false;
+  return !['youtube', 'mastodon', 'hn', 'kg', 'wikidata', 'wikimedia_pageviews', 'gdelt_volume', 'musicbrainz'].includes(r.rail);
+}
+/* PURE: the sources read in full. First the strongest page that could break each hypothesis, then the best PER_Q for every
+ * sub-question, then the rest by score (outlet strength, the counter pass, how many sub-questions it serves, closeness, the period
+ * first); never more than PER_OUTLET from one outlet, so one newsroom never speaks for the question. */
+function deepPickSources(rows, plan, win, max) {
+  const R = READ_DEEP.READ, cands = new Map();
+  for (const row of rows || []) {
+    const p = row.payload || {};
+    if (!deepReadable(p)) continue;
+    const key = deepUrlKey(p.url); if (!key) continue;
+    const qs = Array.isArray(p.qs) ? p.qs : p.q ? [p.q] : [], had = cands.get(key);
+    if (had) { qs.forEach(q => { if (!had.q.includes(q)) had.q.push(q); }); if (p.counter) { had.counter = true; had.h = had.h || p.h || null; } had.sim = Math.max(had.sim, Number(p.sim) || 0); continue; }
+    const d = String(p.published_at || '').slice(0, 10);
+    cands.set(key, { url: p.url, title: deepStr(p.title, 300), outlet: deepStr(p.source_name, 80) || deepHost(p.url), host: deepHost(p.url), tier: p.source_tier == null ? 3 : p.source_tier, published_at: /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null,
+      q: qs.slice(), h: p.h || null, counter: !!p.counter, sim: Number(p.sim) || 0, band: row.kind === 'record' ? 'before' : /^\d{4}-\d{2}-\d{2}$/.test(d) && win && win.start ? (d >= win.start ? 'now' : 'before') : 'undated' });
+  }
+  const score = c => (c.tier <= 1 ? 3 : c.tier === 2 ? 2 : c.tier === 3 ? 1 : 0) + (c.counter ? 3 : 0) + Math.min(c.q.length, 3) + c.sim * 2 + (c.band === 'now' ? 1 : c.band === 'before' ? -0.5 : 0);
+  const all = Array.from(cands.values()).sort((a, b) => score(b) - score(a) || String(a.url).localeCompare(String(b.url)));
+  const picked = [], perHost = {}, has = new Set();
+  const take = c => { if (picked.length >= max || has.has(c.url) || (perHost[c.host] || 0) >= R.PER_OUTLET) return false; picked.push(c); has.add(c.url); perHost[c.host] = (perHost[c.host] || 0) + 1; return true; };
+  for (const h of (plan && plan.hypotheses) || []) { const c = all.find(x => x.counter && x.h === h.id && !has.has(x.url) && (perHost[x.host] || 0) < R.PER_OUTLET); if (c) take(c); }
+  for (const q of (plan && plan.sub_questions) || []) { let n = 0; for (const c of all) { if (n >= R.PER_Q) break; if (c.q.includes(q.id) && take(c)) n++; } }
+  for (const c of all) { if (picked.length >= max) break; take(c); }
+  return picked;
+}
+/* PURE: entities a page carries, decoded; a dash of any width becomes a hyphen so the page, the card and its quotes read alike. */
+function deepEntities(s) {
+  const cp = c => c === 8211 || c === 8212 ? '-' : c > 31 && c < 1114112 ? String.fromCodePoint(c) : ' ';
+  return String(s || '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&(?:#39|apos|rsquo|lsquo);/gi, "'")
+    .replace(/&(?:ldquo|rdquo);/gi, '"').replace(/&(?:mdash|ndash|minus);/gi, '-').replace(/&hellip;/gi, '...')
+    .replace(/&#(\d{2,7});/g, (m, d) => cp(parseInt(d, 10))).replace(/&#x([0-9a-f]{2,6});/gi, (m, h) => cp(parseInt(h, 16))).replace(/&[a-z]{2,8};/gi, ' ');
+}
+function deepTextClean(t) { return deepSafeStr(deepEntities(String(t || '').slice(0, READ_DEEP.READ.CHARS * 3)).replace(/[–—]/g, '-').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, READ_DEEP.READ.CHARS)); }
+/* PURE: a page's article as text: scripts, styles and furniture gone; the article or main element with the most text when one carries
+ * enough (never simply the first: a teaser can come before the story); one line per block, short lines (menus, bylines, buttons) and
+ * repeats dropped. A form is kept: some sites wrap the whole page in one. */
+function deepHtmlText(html) {
+  const R = READ_DEEP.READ;
+  let h = String(html || '').slice(0, R.FETCH_BYTES).replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|svg|iframe|template|nav|header|footer|aside|button|select)(?=[\s/>])[\s\S]*?<\/\1\s*>/gi, ' ');   // (?=[\s/>]): <svg-icon> is a custom element, not the page's svg
+  let best = null, most = 0;
+  for (const m of h.matchAll(/<(article|main)\b[\s\S]*?<\/\1\s*>/gi)) { const n = m[0].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').length; if (n > most) { best = m[0]; most = n; } }
+  if (best && most > 1500) h = best;
+  h = h.replace(/<\/(p|h[1-6]|li|blockquote|div|tr|section|figcaption|dd|dt)\s*>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ');
+  const seen = new Set();
+  return deepSafeStr(deepEntities(h).replace(/[–—]/g, '-').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').split(/\n+/).map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s.length >= 40 && !seen.has(s) && seen.add(s)).join('\n').slice(0, R.CHARS));
+}
+/* PURE: the day a page says it was published, from its own metadata (a published-time meta, then the first datePublished), else
+ * null. Read only for a source the gather found without a date; never the model's guess. */
+function deepHtmlDate(html) {
+  const h = String(html || '').slice(0, 300000), K = '(?:article:published_time|og:published_time|datePublished|pubdate|publish-date|parsely-pub-date|sailthru\\.date|dc\\.date\\.issued)';
+  const m = new RegExp('<meta[^>]+(?:property|name|itemprop)=["\']' + K + '["\'][^>]*content=["\']([^"\']{8,40})["\']', 'i').exec(h)
+    || new RegExp('<meta[^>]+content=["\']([^"\']{8,40})["\'][^>]*(?:property|name|itemprop)=["\']' + K + '["\']', 'i').exec(h)
+    || /"datePublished"\s*:\s*"([^"]{8,40})"/.exec(h);
+  const d = m ? String(m[1]).trim().slice(0, 10) : '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= '1995-01-01' && d <= new Date().toISOString().slice(0, 10) ? d : null;
+}
+/* A body read only as far as it is used: FETCH_BYTES, then the rest is left on the wire (a 24 MB page never enters memory). */
+async function deepBodyCapped(r, max) {
+  if (!r.body || typeof r.body.getReader !== 'function') return String(await r.text()).slice(0, max);
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let out = '', got = 0;
+  for (;;) {
+    const step = await reader.read();
+    if (step.done) break;
+    got += step.value.byteLength; out += dec.decode(step.value, { stream: true });
+    if (got >= max) { await reader.cancel().catch(deepLog('body_cancel')); break; }
+  }
+  return out + dec.decode();
+}
+async function deepFetchText(url) {
+  const R = READ_DEEP.READ;
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': R.UA, Accept: 'text/html,application/xhtml+xml,text/plain' }, redirect: 'follow', signal: AbortSignal.timeout(R.FETCH_MS), cf: { cacheTtl: 3600 } });
+    const ct = r.headers.get('content-type') || '', len = parseInt(r.headers.get('content-length') || '0', 10) || 0;
+    if (!r.ok || !/html|text\/plain/i.test(ct) || len > R.FETCH_BYTES * 8) { if (r.body) await r.body.cancel().catch(deepLog('body_cancel')); return null; }
+    const body = await deepBodyCapped(r, R.FETCH_BYTES), html = /html/i.test(ct);
+    return { text: html ? deepHtmlText(body) : deepTextClean(body), date: html ? deepHtmlDate(body) : null };
+  } catch (e) { console.log('read_deep', 'fetch', deepHost(url), String(e && e.message).slice(0, 60)); return null; }
+}
+/* Each page once: Tavily's extract first (20 a call, a credit for every five pages it reads, FIELD_API_KEY), the worker's own fetch
+ * for whatever it could not read. A page under MIN_CHARS is not a source. The credits are counted from Tavily's own usage, else
+ * from its rule, so the receipt carries them. */
+async function deepExtract(env, urls) {
+  const R = READ_DEEP.READ, texts = new Map(), stats = { tavily: 0, fetched: 0, failed: 0, credits: 0 }, left = new Set(urls);
+  if (env.FIELD_API_KEY) {
+    for (let i = 0; i < urls.length; i += R.TAVILY) {
+      const part = urls.slice(i, i + R.TAVILY);
+      try {
+        const r = await fetch('https://api.tavily.com/extract', { method: 'POST', headers: { Authorization: 'Bearer ' + env.FIELD_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: part, extract_depth: 'basic', format: 'text', include_images: false, timeout: 30, include_usage: true }), signal: AbortSignal.timeout(45000) });
+        if (!r.ok) { console.log('read_deep', 'tavily_http', r.status); continue; }
+        const j = await r.json().catch(deepLog('tavily_json'));
+        const res = j && Array.isArray(j.results) ? j.results : [];
+        stats.credits += j && j.usage && Number.isFinite(Number(j.usage.credits)) ? Number(j.usage.credits) : Math.ceil(res.length / 5);
+        for (const x of res) {
+          const want = part.find(u => u === x.url) || part.find(u => deepUrlKey(u) === deepUrlKey(x.url)), text = deepTextClean(x.raw_content);
+          if (want && left.has(want) && text.length >= R.MIN_CHARS) { texts.set(want, { text, via: 'tavily' }); left.delete(want); stats.tavily++; }
+        }
+      } catch (e) { deepLog('tavily')(e); }
+    }
+  }
+  const rest = Array.from(left); let k = 0;
+  const lane = async () => { while (k < rest.length) { const u = rest[k++]; const t = await deepFetchText(u); if (t && t.text && t.text.length >= R.MIN_CHARS) { texts.set(u, { text: t.text, via: 'fetch', page_date: t.date || null }); stats.fetched++; } else stats.failed++; } };
+  await Promise.all(Array.from({ length: Math.min(R.PAR, rest.length) }, lane));
+  return { texts, stats };
+}
+
+/* ── The evidence cards ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+const DEEP_CARD_SYS = 'You read one source in full for a research team at Unsurfaced and return one JSON object, nothing else: no fences, no prose before or after. The team works from THE PLAN below: its sub-questions (SQ) and hypotheses (HYP). ' +
+  'Shape: {"relevant": true, or false when the source says nothing that bears on any sub-question, "q": ["SQ<n>", ...] the sub-questions it bears on, "kind": "reporting", "analysis", "opinion", "research", "company", "data" or "other", ' +
+  '"claims": 0 to 5 objects {"claim": one plain sentence on what the source shows, every number in it copied from its quote, "quote": the sentence or sentences from the source that carry it, copied exactly, "h": "HYP<n>" when it bears on a hypothesis, else null, "stance": "supports", "breaks" or "context" toward that hypothesis}, ' +
+  '"figures": 0 to 8 objects {"figure": a number exactly as the source writes it, with its unit, "quote": the one sentence from the source that contains it, copied exactly, "measures": what the number counts, in a few words}, ' +
+  '"who": up to 6 companies, people or groups the source is about}. ' +
+  'Rules: copy every quote exactly as it appears in the source; never paraphrase inside a quote; an ellipsis may skip words inside one passage, never between passages; never write a figure the source does not print; a figure appears inside its own quote; an empty list beats a guess; a source that cuts against a hypothesis is the most valuable thing you can find, so mark it breaks. Never use the em dash character.';
+function deepPlanText(plan) {
+  const p = plan || {};
+  return (p.question ? 'QUESTION: ' + p.question + '\n' : '') + (p.sub_questions || []).map(q => q.id + ': ' + q.ask).join('\n') + '\n' +
+    (p.hypotheses || []).map(h => h.id + (h.q ? ' (' + h.q + ')' : '') + ': ' + h.claim + ' | proves it: ' + h.proves + ' | breaks it: ' + h.breaks).join('\n');
+}
+function deepCardPrompt(s) {
+  return 'THE SOURCE\nOutlet: ' + (s.outlet || '') + '\nTitle: ' + (s.title || '') + '\nDate: ' + (s.published_at || 'undated') + '\nURL: ' + s.url + '\n\nTEXT:\n' + s.text + '\n\nReturn the JSON object for this source.';
+}
+/* PURE: text compared the way a reader would: case, curly quotes, dashes and spacing set aside. */
+function deepNorm(s) { return String(s || '').toLowerCase().replace(/[‘’‚‛′`]/g, "'").replace(/[“”„″]/g, '"').replace(/[‐-―−]/g, '-').replace(/[\u00a0\s]+/g, ' ').trim(); }
+/* PURE: is a quote in the page? T is the page already normalized. An ellipsis splits a quote into parts; every part must be found, in
+ * order, each within GAP characters of the one before (an ellipsis skips words inside a passage, never whole passages); at least
+ * one part is PART characters long, and the quote MIN. Every place the first part appears is tried. */
+function deepQuoteFound(T, quote) {
+  const Q = READ_DEEP.QUOTE, q = deepNorm(quote);
+  if (typeof T !== 'string' || q.length < Q.MIN) return false;
+  const parts = q.split(/\s*(?:\.\.\.|…)\s*/).map(x => x.replace(/^["']+|["']+$/g, '').trim()).filter(Boolean);
+  if (!parts.length || !parts.some(p => p.length >= Q.PART) || parts.join(' ').length < Q.MIN) return false;
+  // A part never starts or ends inside a number: "5% in the quarter" is not found in "15% in the quarter" (the 5 would be the 15's).
+  const dg = c => c >= '0' && c <= '9';
+  const findAt = (p, from, until) => { for (let i = T.indexOf(p, from); i >= 0 && (until < 0 || i <= until); i = T.indexOf(p, i + 1)) {
+    if (!(dg(p[0]) && i > 0 && dg(T[i - 1])) && !(dg(p[p.length - 1]) && dg(T[i + p.length] || ''))) return i; } return -1; };
+  for (let s = findAt(parts[0], 0, -1), tries = 0; s >= 0 && tries < 60; s = findAt(parts[0], s + 1, -1), tries++) {
+    let at = s + parts[0].length, ok = true;
+    for (let k = 1; k < parts.length && ok; k++) { const i = findAt(parts[k], at, at + Q.GAP); if (i < 0) ok = false; else at = i + parts[k].length; }
+    if (ok) return true;
+  }
+  return false;
+}
+/* PURE: every number in a text is one its quote carries (the landing law's own reading of a number). A claim is our sentence, so a
+ * number in it that its quote does not carry is a number we wrote; it never reaches the ground. */
+function deepNumsIn(text, quote) { const have = new Set(deepNums(quote)); return deepNums(text).every(n => have.has(n)); }
+/* PURE: the card as the engine keeps it. Every claim's quote and every figure's quote must be found in the page; every number in a
+ * claim must be in its quote; every figure must be a number its quote carries, whole (5% is not inside 15%); a figure's "measures"
+ * keeps no number its quote lacks. Whatever fails is dropped and counted. Ids are only the plan's. The date is the source's own
+ * (the gather's, else the page's metadata), never the model's. A card with nothing left is not relevant. */
+function deepCardClean(j, src, plan) {
+  if (!j || typeof j !== 'object' || !src || !src.text) return null;
+  const C = READ_DEEP.CARD, T = deepNorm(src.text), arr = v => Array.isArray(v) ? v : [];
+  const qIds = new Set(((plan && plan.sub_questions) || []).map(q => q.id)), hIds = new Set(((plan && plan.hypotheses) || []).map(h => h.id));
+  let dropped = 0;
+  const claims = arr(j.claims).slice(0, C.CLAIMS).map(c => {
+    if (!c || !deepStr(c.claim) || !deepQuoteFound(T, c.quote) || !deepNumsIn(c.claim, c.quote)) { dropped++; return null; }
+    const h = String(c.h || '').trim().toUpperCase(), on = hIds.has(h);
+    return { claim: deepStr(c.claim, 300), quote: deepStr(c.quote, 600), h: on ? h : null, stance: on && ['supports', 'breaks', 'context'].includes(c.stance) ? c.stance : 'context' };
+  }).filter(Boolean);
+  const figures = arr(j.figures).slice(0, C.FIGURES).map(f => {
+    const fig = deepStr(f && f.figure, 60), nums = deepNums(fig);
+    if (!f || !nums.length || !deepQuoteFound(T, f.quote) || !deepNumsIn(fig, f.quote)) { dropped++; return null; }
+    const measures = deepStr(f.measures, 120);
+    return { figure: fig, quote: deepStr(f.quote, 600), measures: deepNumsIn(measures, f.quote) ? measures : '' };
+  }).filter(Boolean);
+  return { relevant: j.relevant !== false && claims.length + figures.length > 0, q: arr(j.q).map(x => String(x || '').trim().toUpperCase()).filter(x => qIds.has(x)).slice(0, 6),
+    kind: ['reporting', 'analysis', 'opinion', 'research', 'company', 'data', 'other'].includes(j.kind) ? j.kind : 'other',
+    claims, figures, who: arr(j.who).map(x => deepStr(x, 60)).filter(Boolean).slice(0, 6), dropped,
+    url: src.url, title: src.title || '', outlet: src.outlet || deepHost(src.url), tier: src.tier == null ? 3 : src.tier, published_at: src.published_at || null, band: src.band || null, counter: !!src.counter };
+}
+
+/* ── Coding the comments ────────────────────────────────────────────────────────────────────────────────────────────────── */
+const DEEP_LABEL_SYS = 'You code consumer comments for a research team at Unsurfaced. Return one JSON object, nothing else: {"labels": [one object per numbered comment, in order: {"i": its number, "on": true when the comment speaks to THE SUBJECT, else false, "themes": up to 2 labels copied exactly from THE THEMES that the comment raises, or [], "stance": "for", "against", "mixed", "question" or "none" toward THE SUBJECT}]}. ' +
+  'Code what each comment says, never who wrote it: no age, gender, place, race or role, ever. A joke, a lyric or a greeting is on only when it speaks to the subject. Never use the em dash character.';
+function deepLabelSystem(plan, frame) {
+  const f = frame || {};
+  return DEEP_LABEL_SYS + '\n\nTHE SUBJECT: ' + [f.entity, f.category].filter(Boolean).join(', ') + (plan && plan.question ? '. The question: ' + plan.question : '') + '\nTHE THEMES:\n' + ((plan && plan.themes) || []).join('\n');
+}
+function deepLabelPrompt(items) { return 'COMMENTS:\n' + items.map(c => c.i + '. ' + String(c.text || '').replace(/\s+/g, ' ').slice(0, 420)).join('\n') + '\n\nReturn the JSON object with one label per comment.'; }
+/* PURE: the labels kept: one per comment the chunk carried, themes only from the plan's list, a stance from the five. */
+function deepLabelsClean(j, items, themes) {
+  const want = new Map((themes || []).map(t => [String(t).toLowerCase(), t])), got = new Map();
+  for (const l of (j && Array.isArray(j.labels) ? j.labels : [])) {
+    const i = parseInt(l && l.i, 10); if (!Number.isFinite(i) || got.has(i)) continue;
+    const th = (Array.isArray(l.themes) ? l.themes : []).map(t => want.get(String(t || '').toLowerCase().trim())).filter(Boolean);
+    got.set(i, { on: l.on === true, themes: Array.from(new Set(th)).slice(0, 2), stance: ['for', 'against', 'mixed', 'question', 'none'].includes(l.stance) ? l.stance : 'none' });
+  }
+  return (items || []).map(c => got.has(c.i) ? Object.assign({ i: c.i }, got.get(c.i)) : null).filter(Boolean);
+}
+/* PURE: a comment's band against the period: readVoiceBand's (now, before, earlier, undated), and 'after' for a comment dated after the
+ * period's last day (a video from the period keeps gathering comments; those are counted apart, never as the period's). */
+function deepVoiceBand(when, win) {
+  const d = String(when || '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d) && win && /^\d{4}-\d{2}-\d{2}/.test(String(win.end || '')) && d > String(win.end).slice(0, 10)) return 'after';
+  return readVoiceBand(when, win);
+}
+/* PURE: the counts. Every comment and post we kept; shared headlines set aside (an outlet's story, not a voice); what was coded; what
+ * speaks to the subject, by theme and by stance, from the period and from before it (an undated one is on the subject and in
+ * neither; one from after the period is counted apart and in nothing else). A share is a whole percent of the comments on the
+ * subject; then and now is compared only when each side has at least 30 such comments. */
+function deepCountComments(chunks, labelRows, themes) {
+  const lab = new Map();
+  for (const r of labelRows || []) for (const l of ((r.payload && r.payload.labels) || [])) lab.set(String(r.ref) + ':' + l.i, l);
+  const T = themes || [], z = () => Object.fromEntries(T.map(t => [t, 0]));
+  const c = { read: 0, shares: 0, coded: 0, on_subject: 0, now: 0, then: 0, undated: 0, after: 0, on_now: 0, on_then: 0, on_undated: 0, on_after: 0, sources: 0,
+    by_theme: z(), by_stance: { for: 0, against: 0, mixed: 0, question: 0, none: 0 } };
+  const tNow = z(), tThen = z(), srcs = new Set();
+  for (const ch of chunks || []) for (const it of ((ch.payload && ch.payload.items) || [])) {
+    c.read++; if (it.src) srcs.add(it.src);
+    if (it.share) { c.shares++; continue; }
+    const band = it.band === 'before' || it.band === 'earlier' ? 'then' : it.band === 'after' ? 'after' : it.band === 'undated' ? 'undated' : 'now';
+    c[band]++;
+    const l = lab.get(String(ch.ord) + ':' + it.i); if (!l) continue;
+    c.coded++; if (!l.on) continue;
+    c['on_' + band]++;
+    if (band === 'after') continue;
+    c.on_subject++;
+    c.by_stance[l.stance] = (c.by_stance[l.stance] || 0) + 1;
+    for (const t of l.themes || []) if (t in c.by_theme) { c.by_theme[t]++; if (band === 'then') tThen[t]++; else if (band === 'now') tNow[t]++; }
+  }
+  c.sources = srcs.size;
+  const pct = (n, d) => d ? Math.round(n / d * 100) : null, enough = c.on_then >= 30 && c.on_now >= 30;
+  c.by_theme_pct = Object.fromEntries(T.map(t => [t, pct(c.by_theme[t], c.on_subject)]));
+  c.by_stance_pct = Object.fromEntries(Object.keys(c.by_stance).map(k => [k, pct(c.by_stance[k], c.on_subject)]));
+  c.by_theme_now_pct = enough ? Object.fromEntries(T.map(t => [t, pct(tNow[t], c.on_now)])) : null;
+  c.by_theme_then_pct = enough ? Object.fromEntries(T.map(t => [t, pct(tThen[t], c.on_then)])) : null;
+  return c;
+}
+
+/* ── What people did, measured: views and the kinds of outlet ──────────────────────────────────────────────────────────── */
+async function deepViews(env, ids) {
+  const key = env.GOOGLE_API_KEY || env.GOOGLE_YT_KEY, list = Array.from(new Set((ids || []).filter(x => /^[\w-]{6,20}$/.test(String(x))))).slice(0, 150);
+  if (!key || !list.length) return null;
+  const vids = [];
+  for (let i = 0; i < list.length; i += 50) {
+    const j = await railFetch('https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=' + list.slice(i, i + 50).join(',') + '&key=' + key, null, 9000);
+    for (const v of ((j && j.items) || [])) { const s = v.statistics || {}, sn = v.snippet || {};
+      vids.push({ id: v.id, title: deepStr(sn.title, 140), when: String(sn.publishedAt || '').slice(0, 10) || null, views: parseInt(s.viewCount, 10) || 0, likes: parseInt(s.likeCount, 10) || 0, comments: parseInt(s.commentCount, 10) || 0 }); }
+  }
+  return deepViewsOf(vids);
+}
+/* PURE: the videos the comments came from, measured: how many, their views, likes and comments between them, the most watched. */
+function deepViewsOf(vids) {
+  if (!vids || !vids.length) return null;
+  const v = vids.slice().sort((a, b) => b.views - a.views), sum = k => v.reduce((a, x) => a + (Number(x[k]) || 0), 0);
+  return { videos: v.length, views: sum('views'), likes: sum('likes'), comments: sum('comments'), top_views: v[0].views, top: v.slice(0, 8) };
+}
+const DEEP_OUTLET_KINDS = { news: 'general news', business: 'business and finance', tech: 'technology', trade: 'trade press', lifestyle: 'fashion and lifestyle', culture: 'culture and entertainment',
+  health: 'health and accessibility', research: 'science and research', government: 'government and law', company: 'company and brand', local: 'local news', community: 'blogs, forums and newsletters', other: 'other' };
+const DEEP_OUTLETS = {
+  news: 'nytimes.com washingtonpost.com theguardian.com bbc.com bbc.co.uk reuters.com apnews.com cnn.com nbcnews.com cbsnews.com abcnews.go.com npr.org usatoday.com axios.com theatlantic.com vox.com newsweek.com time.com independent.co.uk telegraph.co.uk aljazeera.com politico.com latimes.com nypost.com foxnews.com semafor.com dailymail.co.uk thetimes.co.uk',
+  business: 'wsj.com ft.com bloomberg.com cnbc.com forbes.com businessinsider.com fortune.com marketwatch.com economist.com barrons.com fastcompany.com inc.com qz.com investopedia.com seekingalpha.com fool.com finance.yahoo.com',
+  tech: 'theverge.com techcrunch.com wired.com engadget.com arstechnica.com gizmodo.com mashable.com cnet.com zdnet.com theregister.com 404media.co tomsguide.com tomshardware.com androidcentral.com androidauthority.com 9to5mac.com 9to5google.com macrumors.com pcmag.com digitaltrends.com uploadvr.com roadtovr.com venturebeat.com technologyreview.com theinformation.com xda-developers.com notebookcheck.net gsmarena.com slashgear.com bgr.com techradar.com futurism.com',
+  trade: 'adage.com adweek.com thedrum.com campaignlive.com marketingdive.com retaildive.com modernretail.co digiday.com businessoffashion.com wwd.com visionmonday.com thinkwithgoogle.com ppc.land emarketer.com retailtouchpoints.com chainstoreage.com supplychaindive.com fooddive.com beautyindependent.com glossy.co voguebusiness.com',
+  lifestyle: 'hypebeast.com highsnobiety.com vogue.com gq.com elle.com harpersbazaar.com esquire.com refinery29.com allure.com cosmopolitan.com nylon.com thecut.com',
+  culture: 'billboard.com variety.com hollywoodreporter.com rollingstone.com pitchfork.com complex.com vice.com polygon.com ign.com kotaku.com theringer.com nme.com',
+  health: 'healthline.com medicalnewstoday.com statnews.com webmd.com afb.org nfb.org rnib.org.uk perkins.org aao.org allaboutvision.com reviewofoptometry.com hearingtracker.com disabilityscoop.com',
+  research: 'nature.com science.org arxiv.org ncbi.nlm.nih.gov sciencedirect.com springer.com pewresearch.org mckinsey.com gartner.com idc.com counterpointresearch.com statista.com openalex.org semanticscholar.org doi.org researchgate.net frontiersin.org plos.org mdpi.com ieee.org acm.org wikipedia.org theconversation.com',
+  government: 'sec.gov ftc.gov fcc.gov europa.eu gov.uk whitehouse.gov congress.gov ico.org.uk',
+  company: 'meta.com about.fb.com apple.com blog.google snap.com microsoft.com amazon.com samsung.com essilorluxottica.com ray-ban.com businesswire.com prnewswire.com globenewswire.com',
+  community: 'substack.com medium.com news.ycombinator.com reddit.com quora.com patreon.com'
+};
+const DEEP_OUTLET_MAP = Object.fromEntries(Object.keys(DEEP_OUTLETS).flatMap(k => DEEP_OUTLETS[k].split(' ').map(d => [d, k])));
+/* PURE: an outlet's kind from the registry and plain rules (a government or academic suffix, a newsletter host), else null. */
+function deepOutletRule(host) {
+  const h = String(host || '').toLowerCase();
+  if (!h) return null;
+  const parts = h.split('.');
+  for (let i = 0; i < parts.length - 1; i++) { const d = parts.slice(i).join('.'); if (DEEP_OUTLET_MAP[d]) return DEEP_OUTLET_MAP[d]; }
+  if (/\.(gov|mil)$|\.gov\.[a-z]{2}$|\.gc\.ca$|\.gouv\.fr$/.test(h)) return 'government';
+  if (/\.edu$|\.ac\.[a-z]{2}$|\.edu\.[a-z]{2}$/.test(h)) return 'research';
+  if (/(^|\.)(substack|medium|blogspot|wordpress|ghost)\.(com|io)$/.test(h)) return 'community';
+  if (/(^|\.)patch\.com$/.test(h)) return 'local';
+  return null;
+}
+const DEEP_OUTLET_SYS = 'You sort news and web outlets by kind for a research team. You get one domain per line. Return one JSON object mapping each domain, exactly as given, to one kind: "news" (general news), "business" (business and finance), "tech" (technology), "trade" (trade press for one industry), "lifestyle" (fashion, beauty and lifestyle), "culture" (music, film, games, entertainment), "health" (health, medicine, disability and accessibility), "research" (science, academic, analysts, reference), "government" (government, regulators, law), "company" (a company or brand site, a press release wire), "local" (local or regional news), "community" (blogs, forums, newsletters) or "other". Nothing else. Never use the em dash character.';
+/* The kind of every outlet: the registry and plain rules first, then the house's learned map (one KV entry), then one Haiku call per
+ * CHUNK hosts no one knows yet (on the recon tier, tagged to this RECON). An outlet the model did not sort, or past MAX, is
+ * 'unclassified', never 'other': a guess would make a false silence. */
+async function deepOutletTypes(env, hosts, readId) {
+  const O = READ_DEEP.OUTLET, types = {}, unknown = [];
+  for (const h of hosts || []) { const t = deepOutletRule(h); if (t) types[h] = t; else unknown.push(h); }
+  let known = {};
+  if (unknown.length && env.RATE_LIMIT) { try { known = JSON.parse((await env.RATE_LIMIT.get('otypes:v1')) || '{}') || {}; } catch (e) { deepLog('otype_get')(e); known = {}; } }
+  const need = [];
+  for (const h of unknown.slice(0, O.MAX)) { if (known[h] && DEEP_OUTLET_KINDS[known[h]]) types[h] = known[h]; else need.push(h); }
+  let cost = 0, learned = 0;
+  for (let i = 0; i < need.length; i += O.CHUNK) {
+    const part = need.slice(i, i + O.CHUNK);
+    const r = await callClaude(env, 'recon', { model: O.MODEL, system: DEEP_OUTLET_SYS, prompt: part.join('\n'), max_tokens: O.MAX_TOKENS, temperature: 0, kind: 'recon_outlets', timeout_ms: 60000, meta: { recon_read_id: readId || null } });
+    cost += (r && r.cost_usd) || 0;
+    const j = r && r.ok ? (parseModelJson(r.text) || extractJson(r.text)) : null;
+    for (const h of part) { const t = j && typeof j[h] === 'string' && DEEP_OUTLET_KINDS[j[h]] ? j[h] : null; types[h] = t || 'unclassified'; if (t) { known[h] = t; learned++; } }
+  }
+  for (const h of unknown.slice(O.MAX)) types[h] = 'unclassified';
+  if (learned && env.RATE_LIMIT) await env.RATE_LIMIT.put('otypes:v1', JSON.stringify(known), { expirationTtl: O.TTL }).catch(deepLog('otype_put'));
+  return { types, cost };
+}
+/* PURE: the stories found inside the period, once each by page, for the evidence file before the compile: lake lines close in
+ * meaning or carrying the brief's words, gathered stories carrying the brief's words, every card that bore on the plan, and DAILY's
+ * own stories on the brief. Dated by the source (never the model). The reader's counts are made at the compile, from the pack. */
+function deepStoriesInPeriod(ev, win, match, sItems) {
+  const seen = new Set(), out = [];
+  for (const r of ev || []) {
+    const p = r.payload || {}, d = String(p.published_at || '').slice(0, 10), key = deepUrlKey(p.url);
+    if (!key || seen.has(key) || !/^\d{4}-\d{2}-\d{2}$/.test(d) || d < win.start || d > win.end) continue;
+    if (r.kind === 'lake' && p.edition_item_id) continue;   // DAILY's own story: counted below, as DAILY's
+    const words = String(p.title || '') + ' ' + String(p.summary || p.text || '');
+    if (r.kind === 'card' ? p.relevant === false : r.kind === 'lake' ? !(Number(p.sim) >= READ_DEEP.SEARCH.SIM || (match && match(words))) : !(match && match(words))) continue;
+    seen.add(key); out.push({ host: deepHost(p.url), url: p.url });
+  }
+  for (const it of sItems || []) { const key = deepUrlKey(it.source_url) || 'S' + it.id; if (seen.has(key)) continue; seen.add(key); out.push({ host: deepHost(it.source_url), url: it.source_url || null }); }
+  return out;
+}
+/* PURE: those stories counted by kind of outlet, every kind present so a kind at zero is a counted silence; a story whose outlet is
+ * not classified is counted apart (unclassified), and while any is, no zero is a silence. */
+function deepCountTypes(stories, types) {
+  const keys = Object.keys(DEEP_OUTLET_KINDS), by = Object.fromEntries(keys.map(k => [k, 0])), outlets = Object.fromEntries(keys.map(k => [k, new Set()])), un = new Set();
+  let unclassified = 0;
+  for (const s of stories || []) {
+    const t = (s.host && types && types[s.host]) || deepOutletRule(s.host);
+    if (!t || !DEEP_OUTLET_KINDS[t]) { unclassified++; un.add(s.host || '-'); continue; }
+    by[t]++; outlets[t].add(s.host);
+  }
+  return Object.assign({ stories: by, outlets: Object.fromEntries(keys.map(k => [k, outlets[k].size])) }, unclassified ? { unclassified, unclassified_outlets: un.size } : {});
+}
+/* PURE: DAILY's stories a deep RECON stands on: those carrying the brief's words, and those the meaning search found (by the signal
+ * DAILY published), each once. */
+function deepSItems(allItems, recon, lakeIds) {
+  return (allItems || []).filter(it => (recon && recon.match([it.headline, it.take, it.apply].join(' '))) || (it.signal_id && lakeIds && lakeIds.has(it.signal_id)));
+}
+/* PURE: the cards that count as stories of the period: dated inside it, and not a page DAILY's own story already counts. */
+function deepCInStories(cLines, items, win) {
+  const sKeys = new Set((items || []).map(it => deepUrlKey(it.source_url)).filter(Boolean));
+  return (cLines || []).filter(c => { const d = String((c && c.published_at) || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) && win && d >= win.start && d <= win.end && !sKeys.has(deepUrlKey(c.url)); });
+}
+
+/* ── The evidence store ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+async function deepEvidenceInsert(env, readId, kind, rows) {
+  let n = 0, part = [], size = 0;
+  const flush = async () => { if (!part.length) return; await sbRest(env, 'recon_evidence', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: part }); n += part.length; part = []; size = 0; };
+  for (const r of rows || []) {
+    const row = { read_id: readId, kind, ord: r.ord || 0, ref: r.ref == null ? null : deepSafeStr(String(r.ref).slice(0, 600)), payload: deepSafe(r.payload || {}) };   // text jsonb keeps
+    const len = JSON.stringify(row.payload).length;
+    if (part.length && (size + len > 700000 || part.length >= 200)) await flush();
+    part.push(row); size += len;
+  }
+  await flush();
+  return n;
+}
+async function deepEvidenceLoad(env, readId, kinds) {
+  const out = [];
+  for (let off = 0; off < 20000; off += 1000) {
+    const page = await sbRest(env, 'recon_evidence?read_id=eq.' + parseInt(readId, 10) + '&kind=in.(' + kinds.join(',') + ')&select=id,kind,ord,ref,payload&order=kind.asc,ord.asc,id.asc&limit=1000&offset=' + off) || [];
+    out.push(...page);
+    if (page.length < 1000) break;
+  }
+  return out;
+}
+async function deepEvidenceClear(env, readId, kinds) { await sbRest(env, 'recon_evidence?read_id=eq.' + parseInt(readId, 10) + '&kind=in.(' + kinds.join(',') + ')', { method: 'DELETE' }); }
+/* A stage that spans ticks writes its rows from its cursor on: a retried tick clears from there first, so nothing is counted twice. */
+async function deepEvidenceClearFrom(env, readId, kind, ord) { await sbRest(env, 'recon_evidence?read_id=eq.' + parseInt(readId, 10) + '&kind=eq.' + kind + '&ord=gte.' + (parseInt(ord, 10) || 0), { method: 'DELETE' }); }
+
+/* ── The stages. Each returns {next, patch, wait, yield, hold, error, idle, waiting}; deepAdvance writes the patch and the log. ── */
+/* PURE: a refusal by the Claude ledger (its monthly cap, the kill switch, no key, an unreadable ledger) is waited out, never counted
+ * as a failure: the stage stays and the next tick asks again. Anything else is the caller's to count. */
+function deepLedgerWait(r) {
+  const e = String((r && r.error) || '');
+  return /^claude_(?:cap|off|unconfigured|ledger_unreadable)$/.test(e) ? { wait: true, idle: true, waiting: 'ledger_' + e.slice(7) } : null;
+}
+/* What every Claude call this RECON made has cost, read back from its claude_jobs rows (tagged meta.recon_read_id): spent where a
+ * call was answered, reserved where a batch is still out. Idempotent, so a retried stage never counts a call twice. */
+async function deepJobsSpend(env, readId) {
+  const rows = await sbRest(env, 'claude_jobs?meta->>recon_read_id=eq.' + parseInt(readId, 10) + '&select=kind,status,cost_usd,est_usd&limit=5000') || [];
+  const by = { plan: 0, outlets: 0, cards: 0, labels: 0, analysis: 0, strategy: 0, write: 0, inflight: 0 },
+    key = { recon_plan: 'plan', recon_outlets: 'outlets', recon_card: 'cards', recon_labels: 'labels', recon_analysis: 'analysis', recon_strategy: 'strategy', recon_write: 'write' };   // SEAM:READ_THINK: the editor's pass lands as compile_v<n>
+  for (const j of rows) { if (j.status === 'submitted') by.inflight += Number(j.est_usd) || 0; else if (key[j.kind]) by[key[j.kind]] += Number(j.cost_usd) || 0; }
+  for (const k of Object.keys(by)) by[k] = Math.round(by[k] * 1e6) / 1e6;
+  return by;
+}
+/* PURE: what one evidence card costs at most, before its page is read: the plan in the cached system, a full page, a full answer. */
+function deepCardEst(plan) {
+  return claudeEstimate(claudeParams('recon', { model: READ_DEEP.CARD.MODEL, system: DEEP_CARD_SYS + '\n\nTHE PLAN\n' + deepPlanText(plan), cache: true, prompt: 'x'.repeat(READ_DEEP.READ.CHARS + 400), max_tokens: READ_DEEP.CARD.MAX_TOKENS }), true);
+}
+async function deepPlanStage(env, row, deep) {
+  const P = READ_DEEP.PLAN, recon = readReconOf(row);
+  const req = { model: P.MODEL, system: DEEP_PLAN_SYS, cache: true, prompt: deepPlanPrompt(recon, row), max_tokens: P.MAX_TOKENS, thinking: { type: 'adaptive' }, output_config: { effort: P.EFFORT }, kind: 'recon_plan', timeout_ms: P.TIMEOUT_MS, meta: { recon_read_id: row.id } };
+  if (!deepRoom(deep, claudeEstimate(claudeParams('recon', req), false))) return { hold: 'budget' };
+  const r = await callClaude(env, 'recon', req);
+  if (!r || !r.ok) return deepLedgerWait(r) || { error: 'plan_' + String((r && r.error) || 'failed').slice(0, 40) };
+  if (r.truncated) return { error: 'plan_truncated' };
+  const plan = deepPlanClean(parseModelJson(r.text) || extractJson(r.text), recon.decisions);
+  if (!plan) return { error: 'plan_unparsable' };
+  return { next: 'search', patch: { plan } };
+}
+async function deepSearchStage(env, row, deep) {
+  const S = READ_DEEP.SEARCH, recon = readReconOf(row), plan = deep.plan || {}, phrases = deepPhrases(plan);
+  if (!phrases.length) return { error: 'search_no_phrases' };
+  const vecs = await deepEmbed(env, phrases.map(p => p.text));
+  if (vecs.filter(Boolean).length < phrases.length / 2) return { error: 'search_embed_failed' };
+  const until = readIso(readAddDays(readDay(row.window_end), 1)), now = new Map(), before = new Map();
+  let asked = 0, failed = 0;
+  const ask = async (vec, since, upto, count, tier) => { asked++; try { return await sbRest(env, 'rpc/match_signals_span', { method: 'POST', body: { p_query: vec, p_count: count, p_since: since, p_until: upto, p_min_tier: tier, p_territory: null } }) || []; } catch (e) { failed++; deepLog('span')(e); return []; } };
+  for (let i = 0; i < phrases.length; i++) {
+    if (!vecs[i]) continue;
+    deepMerge(now, await ask(vecs[i], row.window_start, until, S.NOW, S.NOW_TIER), phrases[i].q);
+    deepMerge(before, await ask(vecs[i], null, row.window_start, S.BEFORE, S.BEFORE_TIER), phrases[i].q);
+  }
+  if (!asked || failed / asked > S.FAIL_MAX) return { error: 'search_failed_' + failed + '_of_' + asked };   // the archive did not answer: try again, never a thin plan
+  const lake = deepKeep(Array.from(now.values()), recon.frame, S.LAKE_MAX), record = deepKeep(Array.from(before.values()), recon.frame, S.RECORD_MAX);
+  await deepEvidenceClear(env, row.id, ['lake', 'record']);   // a retried stage starts clean
+  await deepEvidenceInsert(env, row.id, 'lake', lake.map((r, i) => ({ ord: i, ref: r.id, payload: r })));
+  await deepEvidenceInsert(env, row.id, 'record', record.map((r, i) => ({ ord: i, ref: r.id, payload: r })));
+  return { next: 'gather', patch: { counts: Object.assign({}, deep.counts, { phrases: phrases.length, embedded: vecs.filter(Boolean).length, searches_failed: failed, lake_found: lake.length, record_found: record.length }), queue: Object.assign({}, deep.queue, { gathers: deepGatherQueries(plan, recon.frame), done: 0 }) } };
+}
+/* The gathers, PER_TICK a tick, on the paid rails' RECON lanes. Each tick's stories are written from its cursor (a retried tick
+ * replaces them); the ceiling stops the pass between two gathers, and what was gathered before it is kept and counted. */
+async function deepGatherStage(env, row, deep) {
+  const G = READ_DEEP.GATHER, q = deep.queue || {}, list = q.gathers || [], from = q.done || 0;
+  if (from >= list.length) return { next: 'voices' };
+  const recon = readReconOf(row), terr = typeof excTerritoryOf === 'function' ? excTerritoryOf(recon.frame) : null, items = [], seen = new Set();
+  let spend = deep.spend || {}, captured = 0, done = from, held = false;
+  for (const g of list.slice(from, from + G.PER_TICK)) {
+    if (!deepRoom(Object.assign({}, deep, { spend }), 0.05)) { held = true; break; }
+    try {
+      const r = await gatherOpenSignals(env, g.text, { frame: recon.frame, skip: G.SKIP, lane: 'recon' });
+      if (r && r.ok) {
+        spend = deepAdd(spend, 'rails', deepRailCost(r.rails));
+        captured += await lakeCapture(env, r.items, { provenance: g.counter ? 'recon_counter' : 'recon_gather', query: g.text, territory: terr || undefined });
+        for (const it of r.items || []) { const k = deepUrlKey(it.url); if (!k || !it.title || seen.has(k)) continue; seen.add(k); items.push(deepWebItem(it, g)); }
+      }
+    } catch (e) { deepLog('gather')(e); }
+    done++;
+  }
+  const c0 = deep.counts || {}, base = from === 0 ? 0 : Number(c0.web) || 0;
+  await deepEvidenceClearFrom(env, row.id, 'web', base);
+  await deepEvidenceInsert(env, row.id, 'web', items.map((p, i) => ({ ord: base + i, ref: p.url, payload: p })));
+  const patch = { spend, queue: Object.assign({}, q, { gathers: list, done }), counts: Object.assign({}, c0, { searches: done, counter_searches: list.slice(0, done).filter(x => x.counter).length, web: base + items.length, captured: (from === 0 ? 0 : Number(c0.captured) || 0) + captured }) };
+  if (held) return { hold: 'budget', patch };
+  return done >= list.length ? { next: 'voices', patch } : { yield: true, patch };
+}
+/* The voice pass, step by step: every voice query asked of the period (videos published inside it, posts up to its end) and of the
+ * years before it, on YouTube's RECON allowance and on Mastodon. Each step's comments land in recon_evidence (kind voice) from the
+ * cursor on, so a tick that ends mid-pass resumes where it stopped; a spent YouTube allowance waits, whole step, for YouTube's next
+ * day. When every step has run, the comments are pooled (each text once, at most KEEP), banded against the period, and cut into
+ * chunks of CHUNK for the coding. */
+async function deepVoicesStage(env, row, deep) {
+  const V = READ_DEEP.VOICE, recon = readReconOf(row), win = { start: row.window_start, end: row.window_end }, q = deep.queue || {};
+  const steps = q.voices && Array.isArray(q.voices.steps) ? q.voices.steps
+    : deepVoiceQueries(deep.plan, recon.frame).flatMap(v => [{ text: v.text, q: v.q, band: 'now' }, { text: v.text, q: v.q, band: 'before' }]);
+  const from = (q.voices && q.voices.done) || 0, t0 = Date.now(), end1 = readIso(readAddDays(readDay(win.end), 1));
+  const yt = RAIL_BY_ID.youtube, ma = RAIL_BY_ID.mastodon, rows = [];
+  let done = from, capped = false;
+  while (done < steps.length && (done === from || Date.now() - t0 < V.STEP_MS)) {
+    const st = steps[done], now = st.band === 'now';
+    const ctx = { meta: {}, frame: recon.frame, ytLane: 'recon', voiceMax: V.MAX_PER_PASS, since: now ? win.start : undefined, before: now ? end1 : win.start };
+    const mctx = { meta: {}, frame: recon.frame, voiceMax: V.MAX_PER_PASS, before: now ? end1 : win.start, srcTag: st.band };
+    if (yt && RAIL_FNS.youtube) await RAIL_FNS.youtube(env, st.text, ctx, yt).catch(deepLog('voices_yt'));
+    if (ctx.meta.yt_capped) { capped = true; break; }   // YouTube's day is spent: the whole step waits for the next one
+    if (ma && RAIL_FNS.mastodon) await RAIL_FNS.mastodon(env, st.text, mctx, ma).catch(deepLog('voices_ma'));
+    const sources = [], items = [];
+    for (const v of [ctx.meta.voices, mctx.meta.voices]) {
+      if (!v) continue;
+      for (const s of v.sources || []) if (!sources.some(x => x.id === s.id)) sources.push({ id: s.id, source: s.source, title: deepStr(s.title, 140), url: s.url || null, published_at: s.published_at || null, n: s.n || 0, q: st.q, query: st.text });
+      for (const x of v.quotes || []) if (x && x.text) items.push({ src: x.src, text: x.text, likes: x.likes || 0, when: x.when || null, self: x.self || null, share: x.share || null });
+    }
+    rows.push({ ord: done, ref: st.band, payload: { step: st, sources, items } });
+    done++;
+  }
+  await deepEvidenceClearFrom(env, row.id, 'voice', from);   // a retried tick replaces what it wrote, never doubles it
+  await deepEvidenceInsert(env, row.id, 'voice', rows);
+  const queue = Object.assign({}, q, { voices: { steps, done } });
+  if (done < steps.length) return { yield: true, idle: done === from, waiting: capped ? 'youtube_allowance' : null, patch: { queue, counts: Object.assign({}, deep.counts, { voice_steps: done, voice_steps_all: steps.length }) } };
+  const all = await deepEvidenceLoad(env, row.id, ['voice']), seen = new Set(), sources = [], items = [];
+  for (const r of all) {
+    const p = r.payload || {}, st = p.step || {};
+    for (const s of p.sources || []) if (!sources.some(x => x.id === s.id)) sources.push(s);
+    for (const x of p.items || []) {
+      if (!x || !x.text || seen.has(x.text) || items.length >= V.KEEP) continue;
+      seen.add(x.text);
+      const src = sources.find(s => s.id === x.src);
+      items.push(Object.assign({}, x, { title: src ? src.title : null, url: src ? src.url : null, q: st.q || null, query: st.text || null, band: deepVoiceBand(x.when, win) }));
+    }
+  }
+  const chunks = [];
+  for (let i = 0; i < items.length; i += V.CHUNK) chunks.push(items.slice(i, i + V.CHUNK).map((it, k) => Object.assign({ i: k + 1 }, it)));
+  await deepEvidenceClear(env, row.id, ['comments', 'labels']);
+  await deepEvidenceInsert(env, row.id, 'comments', chunks.map((c, i) => ({ ord: i, ref: null, payload: { items: c } })));
+  return { next: 'read', patch: { queue, counts: Object.assign({}, deep.counts, { comments: items.length, comment_chunks: chunks.length, voice_queries: new Set(steps.map(s => s.text)).size, voice_steps: done, voice_sources: sources.length }),
+    voices: { queries: Array.from(new Set(steps.map(s => s.text))), sources: sources.slice(0, 200) } } };
+}
+/* The sources read in full and the comments coded, on the batch lane. Pages read on an earlier try are kept (a retry, or a release
+ * after a hold, never pays Tavily twice); batches already submitted for this RECON are adopted, never sent again; the cards go
+ * first, and a RECON never codes its comments without them; a ledger that refuses is waited out. The commission's ceiling is
+ * checked before a page is fetched (the pages' credits, a working set of cards, the compile and the desk) and again, item by item,
+ * before the batches go. No readable source is a failure until the last try, which goes on without cards (the evidence stage then
+ * holds for the desk). */
+async function deepReadStage(env, row, deep, ctl) {
+  const R = READ_DEEP.READ, plan = deep.plan || {}, recon = readReconOf(row), win = { start: row.window_start, end: row.window_end };
+  let d = deep;
+  const jobs = await sbRest(env, 'claude_jobs?meta->>recon_read_id=eq.' + parseInt(row.id, 10) + '&kind=in.(recon_card,recon_labels)&select=batch_id,kind,custom_id,status&limit=5000') || [];
+  const sent = { recon_card: new Set(), recon_labels: new Set() }, batches = (d.batches || []).slice();
+  for (const j of jobs) { if (sent[j.kind]) sent[j.kind].add(j.custom_id); if (j.batch_id && !batches.some(b => b.id === j.batch_id)) batches.push({ id: j.batch_id, kind: j.kind, adopted: true }); }
+  if (jobs.length) { try { d = Object.assign({}, d, { spend: Object.assign({}, d.spend || {}, await deepJobsSpend(env, row.id)) }); } catch (e) { deepLog('read_spend')(e); } }   // what earlier runs committed counts against the ceiling
+  let sources = (await deepEvidenceLoad(env, row.id, ['source'])).map(r => Object.assign({}, r.payload || {}, { ord: r.ord }));
+  if (!sources.length && !sent.recon_card.size) {
+    const picks = deepPickSources(await deepEvidenceLoad(env, row.id, ['lake', 'record', 'web']), plan, win, R.SOURCES);
+    const floor = Math.ceil(picks.length / 5) * R.CREDIT_USD + Math.min(picks.length, READ_DEEP.CARD.MIN_CARDS) * deepCardEst(plan) + READ_DEEP.COMPILE_RESERVE + READ_DEEP.DESK_USD;
+    if (!deepRoom(d, floor)) return { hold: 'budget' };   // before a page is fetched
+    const ex = await deepExtract(env, picks.map(p => p.url));
+    sources = picks.map(p => { const t = ex.texts.get(p.url); return t ? Object.assign({}, p, { text: t.text, via: t.via, published_at: p.published_at || t.page_date || null, page_dated: !p.published_at && !!t.page_date }) : null; })
+      .filter(s => s && s.text && s.text.length >= R.MIN_CHARS).map((s, i) => Object.assign(s, { ord: i }));
+    await deepEvidenceClear(env, row.id, ['source', 'card', 'labels']);
+    await deepEvidenceInsert(env, row.id, 'source', sources.map(s => ({ ord: s.ord, ref: s.url, payload: Object.assign({}, s, { chars: s.text.length }) })));
+    d = await ctl.save({ spend: deepAdd(d.spend, 'tavily', ex.stats.credits * R.CREDIT_USD), counts: Object.assign({}, d.counts, { picked: picks.length, read_full: sources.length, read_failed: picks.length - sources.length,
+      read_tavily: ex.stats.tavily, read_fetch: ex.stats.fetched, tavily_credits: ex.stats.credits }) });
+  }
+  if (!sources.length && !sent.recon_card.size && ((d.tries || {}).read || 1) < READ_DEEP.TRIES) return { error: 'read_none' };
+  const sys = DEEP_CARD_SYS + '\n\nTHE PLAN\n' + deepPlanText(plan), lsys = deepLabelSystem(plan, recon.frame);
+  let cards = sources.map(s => ({ custom_id: 'rc-' + row.id + '-' + s.ord, model: READ_DEEP.CARD.MODEL, system: sys, cache: true, prompt: deepCardPrompt(s), max_tokens: READ_DEEP.CARD.MAX_TOKENS, meta: { recon_read_id: row.id, ord: s.ord } }))
+    .filter(it => !sent.recon_card.has(it.custom_id));
+  let labels = (await deepEvidenceLoad(env, row.id, ['comments'])).map(c => { const its = ((c.payload && c.payload.items) || []).filter(x => !x.share);
+    return its.length ? { custom_id: 'rl-' + row.id + '-' + c.ord, model: READ_DEEP.LABEL.MODEL, system: lsys, cache: true, prompt: deepLabelPrompt(its), max_tokens: READ_DEEP.LABEL.MAX_TOKENS, meta: { recon_read_id: row.id, ord: c.ord } } : null; })
+    .filter(it => it && !sent.recon_labels.has(it.custom_id));
+  // The ceiling, worst case first, with room kept for the compile and the desk: the comment coding gives way before the cards.
+  const est = it => claudeEstimate(claudeParams('recon', it), true), cE = cards.map(est), lE = labels.map(est), sum = a => a.reduce((x, y) => x + y, 0);
+  let total = sum(cE) + sum(lE);
+  const fits = () => deepRoom(d, total + READ_DEEP.COMPILE_RESERVE + READ_DEEP.DESK_USD);
+  while (labels.length && !fits()) { labels.pop(); total -= lE.pop(); }
+  while (cards.length && !fits()) { cards.pop(); total -= cE.pop(); }
+  if (sources.length && !cards.length && !sent.recon_card.size) return { hold: 'budget' };   // the pages are kept; a release resumes here
+  const at = d.batched_at || new Date().toISOString();
+  for (const [kind, list] of [['recon_card', cards], ['recon_labels', labels]]) {
+    if (kind === 'recon_labels' && sources.length && !sent.recon_card.size && !batches.some(b => b.kind === 'recon_card')) break;   // never the coding without the cards
+    for (let i = 0; i < list.length; i += 100) {
+      const b = await claudeBatchSubmit(env, 'recon', kind, list.slice(i, i + 100));
+      if (!b || !b.ok) return deepLedgerWait(b) || { error: 'read_submit_' + String((b && b.error) || 'none').slice(0, 30) };
+      batches.push({ id: b.batch_id, kind, n: b.n, est: b.est_usd });
+      d = await ctl.save({ batches, batched_at: at });   // saved the moment it is sent: a tick that dies here never sends it again
+    }
+  }
+  return { next: 'wait', wait: true, patch: { batches, batched_at: at, counts: Object.assign({}, d.counts, { cards_asked: sent.recon_card.size + cards.length, label_chunks: sent.recon_labels.size + labels.length }) } };
+}
+/* The batches, read back when they have all ended (or STALE_MS has passed): one job per custom id (an answer over a failure), each
+ * card cleaned against its page, each chunk's labels against its comments. */
+async function deepWaitStage(env, row, deep) {
+  const jobs = await sbRest(env, 'claude_jobs?meta->>recon_read_id=eq.' + parseInt(row.id, 10) + '&kind=in.(recon_card,recon_labels)&select=id,custom_id,kind,status,result,meta&order=id.asc&limit=5000') || [];
+  if (!jobs.length) return { next: 'measure' };
+  const open = jobs.filter(j => j.status === 'submitted').length;
+  if (open && Date.now() - Date.parse(deep.batched_at || 0) < READ_DEEP.STALE_MS) return { wait: true, idle: true };
+  const one = new Map();
+  for (const j of jobs) { const had = one.get(j.custom_id); if (!had || (j.status === 'done' && had.status !== 'done') || (j.status === had.status && j.id > had.id)) one.set(j.custom_id, j); }
+  const plan = deep.plan || {};
+  const srcBy = new Map((await deepEvidenceLoad(env, row.id, ['source'])).map(s => [s.ord, s.payload]));
+  const chunkBy = new Map((await deepEvidenceLoad(env, row.id, ['comments'])).map(c => [c.ord, c.payload]));
+  let dropped = 0, cardFail = 0;
+  const cards = [], labels = [];
+  for (const j of one.values()) {
+    const ord = parseInt(j.meta && j.meta.ord, 10);
+    if (j.kind === 'recon_card') {
+      if (j.status !== 'done') { cardFail++; continue; }
+      const c = deepCardClean(parseModelJson(j.result) || extractJson(j.result), srcBy.get(ord), plan);
+      if (!c) { cardFail++; continue; }
+      dropped += c.dropped; cards.push({ ord, ref: c.url, payload: c });
+    } else if (j.kind === 'recon_labels') {
+      if (j.status !== 'done') continue;
+      const ch = chunkBy.get(ord), its = ((ch && ch.items) || []).filter(x => !x.share);
+      labels.push({ ord, ref: String(ord), payload: { labels: deepLabelsClean(parseModelJson(j.result) || extractJson(j.result), its, plan.themes) } });
+    }
+  }
+  cards.sort((a, b) => a.ord - b.ord); labels.sort((a, b) => a.ord - b.ord);
+  await deepEvidenceClear(env, row.id, ['card', 'labels']);
+  await deepEvidenceInsert(env, row.id, 'card', cards);
+  await deepEvidenceInsert(env, row.id, 'labels', labels);
+  const kept = cards.filter(c => c.payload.relevant).length;
+  return { next: 'measure', patch: { batches: [], counts: Object.assign({}, deep.counts, { cards: kept, cards_off: cards.length - kept, cards_failed: cardFail, quotes_dropped: dropped, labeled_chunks: labels.length, given_up: open }) } };
+}
+async function deepMeasureStage(env, row, deep) {
+  const plan = deep.plan || {}, recon = readReconOf(row), win = { start: row.window_start, end: row.window_end };
+  const cl = await deepEvidenceLoad(env, row.id, ['comments', 'labels']);
+  const comments = deepCountComments(cl.filter(r => r.kind === 'comments'), cl.filter(r => r.kind === 'labels'), plan.themes);
+  const vids = ((deep.voices && deep.voices.sources) || []).filter(s => /^yt:/.test(String(s.id))).map(s => String(s.id).slice(3));
+  const videos = await deepViews(env, vids).catch(deepLog('views'));
+  const ev = await deepEvidenceLoad(env, row.id, ['lake', 'web', 'card']);
+  const lakeIds = new Set(ev.filter(r => r.kind === 'lake').map(r => r.payload && r.payload.id).filter(Boolean));
+  const sItems = deepSItems(await readWindowItems(env, win.start, win.end), recon, lakeIds);
+  const stories = deepStoriesInPeriod(ev, win, recon.match, sItems);
+  // Every outlet the compile may count is sorted now: the period's lake and gathered stories, the cards, DAILY's stories.
+  const hosts = new Set(stories.map(s => s.host).concat(ev.map(r => deepHost(r.payload && r.payload.url)), sItems.map(it => deepHost(it.source_url))).filter(Boolean));
+  const typed = await deepOutletTypes(env, Array.from(hosts), row.id);
+  const attention = await readReconAttention(env, recon.frame, row.window_end).catch(deepLog('attention'));   // SEAM:READ_TIME: three years of readers, as the shallow RECON measured them
+  return { next: 'evidence', patch: { comments, videos: videos || null, outlet_types: Object.assign({ types: typed.types }, deepCountTypes(stories, typed.types)), attention: attention || null,
+    counts: Object.assign({}, deep.counts, { stories_typed: stories.length, outlets_typed: hosts.size }) } };
+}
+/* The evidence file, then the hold for the desk (the commission asked for it, or no source read in full bore on the question: a
+ * RECON never compiles without its cards unless the desk says so), else the compile. */
+async function deepEvidenceStage(env, row, deep) {
+  const cards = (await deepEvidenceLoad(env, row.id, ['card'])).map(r => r.payload).filter(c => c && c.relevant);
+  const file = deepFile(deep, cards), at = new Date().toISOString();
+  if (!cards.length) return { hold: 'no_cards', patch: { file, evidence_at: at } };
+  return deep.hold ? { hold: 'evidence', patch: { file, evidence_at: at } } : { next: 'compile', patch: { file, evidence_at: at } };
+}
+/* PURE: the evidence file the desk reads before the compile: each sub-question's cards, each hypothesis's claims for and against,
+ * the sources that cut against the plan, and the richest cards. */
+function deepFile(deep, cards) {
+  const plan = (deep && deep.plan) || {}, byQ = {}, byH = {};
+  for (const q of plan.sub_questions || []) byQ[q.id] = 0;
+  for (const h of plan.hypotheses || []) byH[h.id] = { supports: 0, breaks: 0, context: 0 };
+  for (const c of cards || []) { for (const q of c.q || []) if (q in byQ) byQ[q]++; for (const cl of c.claims || []) if (cl.h && byH[cl.h]) byH[cl.h][cl.stance] = (byH[cl.h][cl.stance] || 0) + 1; }
+  const brief = c => ({ title: c.title, outlet: c.outlet, url: c.url, date: c.published_at || null, q: c.q || [], claims: (c.claims || []).slice(0, 2), figures: (c.figures || []).slice(0, 2) });
+  const weight = c => (c.figures || []).length + (c.claims || []).length + (c.q || []).length;
+  const breaking = (cards || []).filter(c => (c.claims || []).some(cl => cl.stance === 'breaks'));
+  return { cards: (cards || []).length, figures: (cards || []).reduce((a, c) => a + (c.figures || []).length, 0), by_q: byQ, by_h: byH,
+    breaking: breaking.slice(0, 12).map(brief), top: (cards || []).slice().sort((a, b) => weight(b) - weight(a)).slice(0, 12).map(brief) };
+}
+const DEEP_STAGE = { plan: deepPlanStage, search: deepSearchStage, gather: deepGatherStage, voices: deepVoicesStage, read: deepReadStage, wait: deepWaitStage, measure: deepMeasureStage, evidence: deepEvidenceStage,
+  analysis: deepAnalysisStage, strategy: deepStrategyStage, write: deepWriteStage };   // SEAM:READ_THINK: the passes, after the compile sends the first
+const DEEP_SPENDS = { plan: 1, read: 1, wait: 1, measure: 1, analysis: 1, strategy: 1, write: 1 };   // the stages whose Claude calls the receipt reads back
+/* The row written only if no one has written it since this runner read it (updated_at is its version): two runners never both move
+ * a stage. False when someone else wrote first. */
+/* PURE: a row's stamp to the microsecond, however it is written ("...12.345678+00:00" from the database, "...12.345678Z" from us). */
+function deepStamp(t) { const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d+))?/.exec(String(t || '')); return m ? m[1] + 'T' + m[2] + '.' + (m[3] || '').padEnd(6, '0').slice(0, 6) : String(t || ''); }
+async function deepWrite(env, row, deep, extra) {
+  // The stamp is this write's own (microseconds drawn at random), so the row can say whose write stands.
+  const at = new Date().toISOString().replace(/Z$/, String(Math.floor(Math.random() * 1000)).padStart(3, '0') + 'Z'), meta = Object.assign({}, row.meta || {}, { deep: deepSafe(deep) });
+  const body = Object.assign({ meta, updated_at: at }, extra || {});
+  const back = await sbRest(env, 'house_reads?id=eq.' + parseInt(row.id, 10) + (row.updated_at ? '&updated_at=eq.' + encodeURIComponent(row.updated_at) : '') + '&select=id,updated_at',
+    { method: 'PATCH', headers: { Prefer: 'return=representation' }, body }) || [];
+  if (!back.length) {
+    // An empty answer can be a replay of our own write: the first attempt landed, its answer was lost, and the retry's filter found
+    // nothing. The row says whose write stands: our timestamp means ours did.
+    const now = await sbRest(env, 'house_reads?id=eq.' + parseInt(row.id, 10) + '&select=updated_at').catch(deepLog('write_check')) || [];
+    if (!now[0] || deepStamp(now[0].updated_at) !== deepStamp(at)) return false;
+  }
+  row.meta = meta; row.updated_at = (back[0] && back[0].updated_at) || at;
+  if (extra) Object.assign(row, extra);
+  return true;
+}
+/* The stage machine. A stage runs only under the row's lease (written first, only if no one else wrote the row; a lease younger than
+ * LEASE_MS is another runner at work, an older one a run that died). Its try is counted before it runs and cleared when it ends
+ * without an error, so a run that dies (the CPU limit, a deploy, a failed write) still counts, and TRIES of them in a row fail the
+ * RECON plainly (status failed, error deep_<stage>:<why>, failed_stage kept so the desk can release it). Stages run in order until one
+ * waits, yields, holds, errs, the tick's time is spent, or too little of the invocation is left to start one. A stage that only
+ * waited is idle, so the tick's one deep slot goes to a RECON with work to do. */
+async function deepAdvance(env, row, opts) {
+  const o = opts || {}, t0 = Date.now(), ms = Number.isFinite(o.ms) ? o.ms : READ_DEEP.TICK_MS, deadline = Number.isFinite(o.deadline) ? o.deadline : Infinity;
+  const out = { id: row.id, from: null, to: null, steps: [], idle: true };
+  let deep = deepOf(row);
+  if (!deep) return out;
+  out.from = deep.stage;
+  for (let guard = 0; guard < 10; guard++) {
+    if (guard > 0 && Date.now() - t0 >= ms) break;
+    if (Date.now() + READ_DEEP.STAGE_MS > deadline) { out.late = true; break; }
+    const stage = deep.stage, fn = DEEP_STAGE[stage];
+    if (!fn) break;
+    if (deep.lease && Date.now() - Date.parse(deep.lease.at || 0) < READ_DEEP.LEASE_MS) { out.busy = true; break; }
+    const tries = Object.assign({}, deep.tries || {});
+    if ((tries[stage] || 0) >= READ_DEEP.TRIES) {   // the runs before this one all failed or died
+      const why = 'deep_' + stage + ':' + String(deep.last_error || 'died');
+      deep = Object.assign({}, deep, { stage: 'failed', failed_stage: stage, lease: null });
+      await deepWrite(env, row, deep, { status: 'failed', error: why.slice(0, 200) });
+      out.steps.push(stage + '>failed'); out.idle = false; break;
+    }
+    tries[stage] = (tries[stage] || 0) + 1;
+    deep = Object.assign({}, deep, { tries, lease: { stage, at: new Date().toISOString() } });
+    if (!(await deepWrite(env, row, deep))) { out.busy = true; break; }   // someone else wrote the row first
+    const s0 = Date.now();
+    const ctl = { save: async patch => { deep = Object.assign({}, deep, patch || {}); if (!(await deepWrite(env, row, deep))) throw new Error('lost_lease'); return deep; } };
+    let r;
+    try { r = (await fn(env, row, deep, ctl)) || {}; } catch (e) { r = { error: 'threw_' + String((e && e.message) || e).slice(0, 60) }; deepLog('stage_' + stage)(e); }
+    if (r.error === 'threw_lost_lease') { out.busy = true; break; }
+    let js = null;
+    if (DEEP_SPENDS[stage]) { try { js = await deepJobsSpend(env, row.id); } catch (e) { deepLog('jobs_spend')(e); } }
+    const t2 = Object.assign({}, deep.tries || {});
+    if (!r.error) t2[stage] = 0;
+    const failed = !!r.error && (!!r.fatal || (t2[stage] || 0) >= READ_DEEP.TRIES), next = failed ? 'failed' : r.hold ? 'hold' : (r.next || stage);   // SEAM:READ_THINK: a pass sent all its times stops at once
+    const log = r.idle && next === stage ? (deep.log || []) : (deep.log || []).slice(-39).concat([{ stage, to: next, at: new Date().toISOString(), ms: Date.now() - s0, error: r.error || null, hold: r.hold || null, waiting: r.waiting || null }]);   // a poll that found nothing new adds no line
+    deep = Object.assign({}, deep, r.patch || {}, { stage: next, log, tries: t2, lease: null, last_error: r.error || deep.last_error || null, waiting: r.waiting || null, polled_at: new Date().toISOString() }, next !== stage ? { stage_at: new Date().toISOString() } : {},
+      r.hold ? { hold_reason: r.hold, held_from: stage } : {}, failed ? { failed_stage: stage } : {});
+    if (js) deep.spend = Object.assign({}, deep.spend || {}, js);   // the receipt's Claude lines, read back from the jobs themselves
+    if (r.meta && !failed) row.meta = Object.assign({}, row.meta || {}, r.meta);   // SEAM:READ_THINK: the editor's batch, as every compile's
+    if (!(await deepWrite(env, row, deep, failed ? { status: 'failed', error: ('deep_' + stage + ':' + r.error).slice(0, 200) } : (r.row || null)))) { out.busy = true; break; }
+    if (r.after && !failed) { try { await r.after(); } catch (e) { deepLog('after_' + stage)(e); } }   // the editor's pass, already back when adopted, lands now
+    out.steps.push(stage + '>' + deep.stage + (r.error ? ':' + r.error : ''));
+    if (!r.idle) out.idle = false;
+    if (r.error || r.wait || r.yield || r.hold || deep.stage === 'compile') break;
+  }
+  out.to = deep.stage;
+  logEvent(env, 'intelligence', 'reads', 'recon_deep', null, { id: row.id, from: out.from, to: out.to, steps: out.steps.length, idle: out.idle });
+  return out;
+}
+/* The compile of a deep RECON: the row claimed (compile to compiling, written only if no one else wrote it), then readSubmit writes the
+ * ground, checks the commission's ceiling on the worst case of all four passes and the copy desk, and sends the first pass, the
+ * analysis (SEAM:READ_THINK); the tick carries the rest. A refusal puts it back to compile for the next tick (the ledger at its cap
+ * waits; anything else counts a try, and TRIES of them fail the RECON plainly). */
+async function deepCompile(env, row) {
+  const d = deepOf(row);
+  if (!d || d.stage !== 'compile') return { ok: false, error: 'not_compile' };
+  if (((d.tries || {}).compile || 0) >= READ_DEEP.TRIES) {
+    row.meta = Object.assign({}, row.meta || {}, { deep: Object.assign({}, d, { stage: 'failed', failed_stage: 'compile' }) });
+    await readPatch(env, row.id, { meta: row.meta, status: 'failed', error: ('deep_compile:' + (d.last_error || 'died')).slice(0, 200) });
+    return { ok: false, error: 'failed' };
+  }
+  if (!deepRoom(d, READ_DEEP.COMPILE_RESERVE + READ_DEEP.DESK_USD)) {   // the floor, before a pack is built; readSubmit checks the real estimate
+    await deepWrite(env, row, Object.assign({}, d, { stage: 'hold', hold_reason: 'budget', held_from: 'compile' }));
+    return { ok: false, error: 'budget_hold' };
+  }
+  if (!(await deepWrite(env, row, Object.assign({}, d, { stage: 'compiling', compiling_at: new Date().toISOString() })))) return { ok: false, error: 'busy' };
+  // SEAM:READ_THINK: a first pass a run that died already sent (its ground was written first) is adopted, never sent again.
+  const ra = row.meta && row.meta.pack ? (await deepThinkJobs(env, row, 'analysis'))[0] : null;
+  if (ra && (ra.status === 'submitted' || ra.status === 'done')) {
+    const now = deepOf(row) || d, think = Object.assign({}, now.think || {}, { analysis: Object.assign({ sends: 1 }, (now.think || {}).analysis || {}, { batch_id: ra.batch_id, adopted: true }) });
+    row.meta = deepSafe(Object.assign({}, row.meta, { deep: Object.assign({}, now, { stage: 'analysis', think, stage_at: new Date().toISOString() }) }));
+    await readPatch(env, row.id, { status: 'queued', error: null, meta: row.meta });
+    return { ok: true, id: row.id, batch_id: ra.batch_id, adopted: true, pass: 'analysis' };
+  }
+  // A one-pass compile sent before the passes existed (EX17) is adopted, never sent again: still out, it lands when the drain collects
+  // it; already back, it lands now.
+  const cid = 'hr-' + parseInt(row.id, 10) + '-v' + parseInt(row.version, 10);
+  const sent = d.think ? [] : (await sbRest(env, 'claude_jobs?custom_id=eq.' + cid + '&kind=eq.house_' + row.kind + '&status=in.(submitted,done)&select=id,batch_id,status,result,cost_usd,stop_reason&order=id.desc&limit=1')) || [];
+  if (sent[0] && row.meta && row.meta.pack) {
+    const j = sent[0];
+    row.meta = deepSafe(Object.assign({}, row.meta, { batch_id: j.batch_id, deep: Object.assign({}, deepOf(row) || d, { stage: 'compiled', compiled_at: new Date().toISOString(), adopted: j.batch_id }) }));
+    await readPatch(env, row.id, { status: 'compiling', error: null, meta: row.meta });
+    if (j.status === 'done') await readLand(env, row.id, j.result, parseFloat(j.cost_usd) || 0, j.stop_reason, true);
+    return { ok: true, id: row.id, batch_id: j.batch_id, adopted: true };
+  }
+  let sub;
+  try { sub = await readSubmit(env, row); } catch (e) { sub = { ok: false, error: 'threw_' + String((e && e.message) || e).slice(0, 60) }; deepLog('compile')(e); }
+  if (sub.ok || sub.error === 'budget_hold') return sub;   // readSubmit wrote the stage (compiled, or the hold)
+  const now = deepOf(row) || d, tries = Object.assign({}, now.tries || {}), waited = deepLedgerWait(sub);
+  if (!waited) tries.compile = (tries.compile || 0) + 1;
+  const failed = sub.error === 'thin_slice' || (tries.compile || 0) >= READ_DEEP.TRIES;
+  row.meta = Object.assign({}, row.meta || {}, { deep: deepSafe(Object.assign({}, now, { stage: failed ? 'failed' : 'compile', failed_stage: failed ? 'compile' : null, tries, last_error: sub.error || null })) });
+  await readPatch(env, row.id, Object.assign({ meta: row.meta }, failed ? { status: 'failed', error: ('deep_compile:' + (sub.error || 'refused')).slice(0, 200) } : {}));
+  return sub;
+}
+
+/* ── The deep pack: what the compile reads ──────────────────────────────────────────────────────────────────────────────── */
+/* PURE: the plan for the writer. It rides the prompt beside the pack and is never ground: a number in a hypothesis is ours, not
+ * the evidence's, so it can never stand as a figure in the read. */
+function deepPlanBlock(plan) {
+  if (!plan || !Array.isArray(plan.sub_questions)) return '';
+  return 'THE RESEARCH PLAN (our structure for this RECON, never evidence; its ids, SQ<n> and HYP<n>, never appear in the read):\n' + (plan.question ? 'QUESTION: ' + plan.question + '\n' : '') +
+    plan.sub_questions.map(q => q.id + ': ' + q.ask + (q.measure ? ' (measured by: ' + q.measure + ')' : '')).join('\n') + '\n' +
+    (plan.hypotheses || []).map(h => h.id + (h.q ? ' (' + h.q + ')' : '') + ': ' + h.claim + ' | would prove it: ' + h.proves + ' | would break it: ' + h.breaks).join('\n') +
+    ((plan.segments || []).length ? '\nWHO THE BRIEF MIGHT MISS: ' + plan.segments.map(s => s.who + (s.why ? ' (' + s.why + ')' : '')).join('; ') : '') +
+    ((plan.decisions || []).length ? '\nDECISIONS: ' + plan.decisions.map(d => 'Decision ' + d.n + ': ' + d.decision + (d.q && d.q.length ? ' (decided by ' + d.q.join(', ') + ')' : '')).join(' ') : '');
+}
+/* PURE: one evidence card as a pack line: the source, the sub-questions it serves, its checked claims (with the hypothesis each
+ * supports or breaks) and its checked figures, each with the sentence it came from. Dated by the source, never the model. */
+function deepCardLine(n, c) {
+  const claims = (c.claims || []).map((x, i) => '(' + (i + 1) + ') ' + x.claim + (x.h ? ' [' + x.stance + ' ' + x.h + ']' : '') + ' "' + x.quote + '"').join(' ');
+  const figs = (c.figures || []).map(f => f.figure + (f.measures ? ' (' + f.measures + ')' : '') + ': "' + f.quote + '"').join(' ');
+  return 'C' + n + ' | ' + readReportDate(c.published_at) + ' | ' + readReportClean(c.outlet || 'source', 80) + ' | read in full | ' + (c.kind || 'other') + ' | ' + ((c.q || []).join(',') || 'background') +
+    ' | TITLE: ' + readReportClean(c.title, 200) + (claims ? ' | CLAIMS: ' + readReportClean(claims, 1800) : '') + (figs ? ' | FIGURES: ' + readReportClean(figs, 1400) : '');
+}
+/* PURE: the counts block. Every figure in it is a count the worker made, and STATS.recon carries the same figures. The kinds of outlet
+ * are counted over the read's own stories (STATS.recon.stories_all), so the two can never disagree; a zero is called a silence only
+ * when every outlet was sorted. */
+function deepCountsBlock(deep, outletTypes) {
+  const c = deep && deep.comments, n = x => Number(x || 0).toLocaleString('en-US'), lines = [], pl = (k, one, many) => n(k) + ' ' + (Number(k) === 1 ? one : many);
+  if (c && c.read) {
+    lines.push(pl(c.read, 'comment or post', 'comments and posts') + ' kept from ' + pl(c.sources, 'video or tag', 'videos and tags') + ' and read; ' + pl(c.shares, 'shared headline', 'shared headlines') + ' set aside; ' + n(c.coded) + ' coded; ' +
+      n(c.on_subject) + ' on the subject (' + n(c.on_now) + ' from the period, ' + n(c.on_then) + ' from before it' + (c.on_undated ? ', ' + n(c.on_undated) + ' undated' : '') + ')' +
+      (c.after ? '; ' + pl(c.after, 'comment', 'comments') + ' posted after the period, counted apart and nowhere else' : '') + '.');
+    const T = Object.keys(c.by_theme || {}).filter(t => c.by_theme[t] > 0).sort((a, b) => c.by_theme[b] - c.by_theme[a]);
+    if (T.length) lines.push('By theme, of the comments on the subject (a comment can raise two): ' + T.map(t => t + ' ' + n(c.by_theme[t]) + ' (' + c.by_theme_pct[t] + '%)').join('; ') + '.');
+    const st = Object.keys(c.by_stance || {}).filter(k => c.by_stance[k] > 0);
+    if (st.length) lines.push('By stance, of the comments on the subject: ' + st.map(k => k + ' ' + n(c.by_stance[k]) + ' (' + c.by_stance_pct[k] + '%)').join('; ') + '.');
+    if (c.by_theme_now_pct && c.by_theme_then_pct && T.length) lines.push('Then and now, the share of the comments on the subject raising each theme: ' + T.map(t => t + ' ' + c.by_theme_then_pct[t] + '% before the period, ' + c.by_theme_now_pct[t] + '% in it').join('; ') + '.');
+  }
+  const v = deep && deep.videos;
+  if (v && v.videos) lines.push('The videos the comments came from: ' + pl(v.videos, 'video', 'videos') + ', ' + n(v.views) + ' views between them, the most watched ' + n(v.top_views) + ' views.');
+  const o = outletTypes && outletTypes.stories;
+  if (o) lines.push('Stories on the question by kind of outlet' + (outletTypes.unclassified ? '' : ' (every outlet sorted, so a kind at zero is a silence)') + ': ' + Object.keys(o).map(k => (DEEP_OUTLET_KINDS[k] || k) + ' ' + n(o[k])).join('; ') +
+    (outletTypes.unclassified ? '; not yet sorted ' + n(outletTypes.unclassified) + ' (so no zero here is a silence)' : '') + '.');
+  return lines.length ? 'COUNTED BY US (exact counts; STATS.recon carries the same figures):\n' + lines.join('\n') : '';
+}
+/* PURE: the voices the writer gets: comments on the subject (all comments when coding failed), never a shared headline and never one
+ * posted after the period; most liked first, taken theme by theme so no one topic speaks for the rest; at most VOICE_PER_SOURCE per
+ * thread; THEN of them from before the period. Each keeps its code (themes and stance) for the line. */
+function deepPickVoices(chunkRows, labelRows, deep, win) {
+  const P = READ_DEEP.PACK, lab = new Map();
+  for (const r of labelRows || []) for (const l of ((r.payload && r.payload.labels) || [])) lab.set(String(r.ref) + ':' + l.i, l);
+  const all = [];
+  for (const ch of chunkRows || []) for (const it of ((ch.payload && ch.payload.items) || [])) {
+    if (it.share || it.band === 'after') continue;
+    const l = lab.get(String(ch.ord) + ':' + it.i);
+    if (lab.size && !(l && l.on)) continue;
+    all.push(Object.assign({}, it, { coded: l ? { themes: l.themes || [], stance: l.stance || 'none' } : null }));
+  }
+  const perSrc = {}, themeOf = q => (q.coded && q.coded.themes && q.coded.themes[0]) || 'other';
+  const take = (list, max) => {
+    const groups = {};
+    list.slice().sort((a, b) => (b.likes || 0) - (a.likes || 0)).forEach(q => { (groups[themeOf(q)] = groups[themeOf(q)] || []).push(q); });
+    const keys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length || (groups[b][0].likes || 0) - (groups[a][0].likes || 0) || a.localeCompare(b)), out = [];
+    let any = true;
+    while (out.length < max && any) {
+      any = false;
+      for (const k of keys) {
+        if (out.length >= max) break;
+        while (groups[k].length) { const q = groups[k].shift(), s = q.src || 'none'; if ((perSrc[s] || 0) >= READ_REPORT.VOICE_PER_SOURCE) continue; perSrc[s] = (perSrc[s] || 0) + 1; out.push(q); any = true; break; }
+      }
+    }
+    return out;
+  };
+  const isThen = q => q.band === 'before' || q.band === 'earlier';
+  const then = take(all.filter(isThen), P.THEN), now = take(all.filter(q => !isThen(q)), P.VOICES - then.length);
+  const quotes = now.concat(then).map(q => ({ src: q.src, source: /^yt:/.test(String(q.src)) ? 'YouTube' : /^mast:/.test(String(q.src)) ? 'Mastodon' : 'voice', title: q.title || null, url: q.url || null, query: q.query || null,
+    text: q.text, likes: q.likes || 0, when: q.when || null, self: q.self || null, share: null, band: q.band || readVoiceBand(q.when, win), coded: q.coded }));
+  const sources = ((deep && deep.voices && deep.voices.sources) || []).map(s => ({ id: s.id, source: s.source, title: s.title, url: s.url, published_at: s.published_at, n: s.n, query: s.query }));
+  return { sources, quotes, queries: (deep && deep.voices && deep.voices.queries) || [], dropped: all.length - quotes.length, history: 1 };
+}
+/* What the deep compile stands on, from the store: the lake by meaning and the stories gathered in the period (never a page a card
+ * already read), the record by meaning, the cards that bore on the plan, the coded voices, the plan, and the ids of every signal the
+ * meaning search found (DAILY's own among them become S lines, counted once). The counts are made with the pack (readReportPack). */
+async function deepPackInputs(env, row, deep) {
+  const recon = readReconOf(row), win = { start: row.window_start, end: row.window_end };
+  const ev = await deepEvidenceLoad(env, row.id, ['lake', 'record', 'web', 'card', 'comments', 'labels']), of = k => ev.filter(r => r.kind === k);
+  const cards = of('card').map(r => r.payload).filter(c => c && c.relevant).slice(0, READ_DEEP.PACK.CARDS);
+  const read = new Set(cards.map(c => deepUrlKey(c.url)));
+  const inWin = d => { const x = String(d || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(x) && x >= win.start && x <= win.end; };
+  const lake = of('lake').map(r => r.payload).filter(p => p && p.title && !read.has(deepUrlKey(p.url)))
+    .concat(of('web').map(r => r.payload).filter(p => p && p.title && inWin(p.published_at) && recon.match(p.title + ' ' + (p.text || '')) && !read.has(deepUrlKey(p.url)))
+      .map(p => ({ id: null, title: p.title, summary: p.text, source_name: p.source_name, source_tier: p.source_tier, territory: null, published_at: p.published_at, url: p.url, sim: 0, qs: p.q ? [p.q] : [] })));
+  const record = of('record').map(r => r.payload).filter(p => p && p.title && !read.has(deepUrlKey(p.url)));
+  return { lake, record, cards, voices: deepPickVoices(of('comments'), of('labels'), deep, win), plan: deepPlanBlock(deep.plan), meta: deep,
+    lake_ids: new Set(of('lake').map(r => r.payload && r.payload.id).filter(Boolean)) };
+}
+/* PURE: the deep counts in STATS.recon, so every figure the read quotes has ground and the page can draw them. One figure for the
+ * comments read: the ones we kept and coded (voices_read is the same number). The kinds of outlet are the pack's own stories. */
+function deepStatsOf(deep, pack) {
+  const d = deep || {}, c = d.counts || {}, C = (pack && pack.lines && pack.lines.C) || [], ot = pack && pack.outlet_types;
+  return Object.assign({ deep: true, read_full: c.read_full || C.length, cards: C.length, cards_breaking: C.filter(x => x.breaks).length, figures: C.reduce((a, x) => a + (x.figures || 0), 0),
+    lake_found: c.lake_found || 0, record_found: c.record_found || 0, searches: c.searches || 0, counter_searches: c.counter_searches || 0,
+    comments: d.comments || null, voices_read: d.comments ? d.comments.read || 0 : 0,
+    videos: d.videos ? { videos: d.videos.videos, views: d.videos.views, likes: d.videos.likes, comments: d.videos.comments, top_views: d.videos.top_views } : null,
+    outlet_types: ot ? ot.stories : null }, ot && ot.unclassified ? { outlet_types_unclassified: ot.unclassified } : {});
+}
+/* PURE: the lake lines a deep compile reads: the meaning search and the brief's own words together, once each by page (or title);
+ * lines that answer more sub-questions lead, then the strongest outlets, the closest and the newest. */
+function deepLakeMerge(anchorRows, deepRows, max) {
+  const by = new Map(), key = r => deepUrlKey(r.url) || ('t:' + String(r.title || '').toLowerCase().replace(/\s+/g, ' ').trim());
+  for (const r of (deepRows || []).concat(anchorRows || [])) {
+    if (!r || !r.title) continue;
+    const k = key(r), had = by.get(k);
+    if (had) { (r.qs || []).forEach(q => { if (!had.qs.includes(q)) had.qs.push(q); }); had.sim = Math.max(had.sim || 0, r.sim || 0); continue; }
+    by.set(k, Object.assign({}, r, { qs: (r.qs || []).slice(), sim: r.sim || 0 }));
+  }
+  const tier = r => r.source_tier == null ? 3 : r.source_tier;
+  return Array.from(by.values()).sort((a, b) => b.qs.length - a.qs.length || tier(a) - tier(b) || (b.sim || 0) - (a.sim || 0) || String(b.published_at || '').localeCompare(String(a.published_at || ''))).slice(0, max);
+}
+/* PURE: the deep pack fitted to its size without ever cutting the voices (the section a revision rewrites from its head on): lake
+ * lines give way first, down to LAKE_MIN, then cards to CARDS_MIN, then the record to RECORD_MIN, then whatever is left, each from
+ * its weakest end. fixed is every other section's length. */
+function deepFitPack(lake, cards, record, fixed, max) {
+  const P = READ_DEEP.PACK, L = lake.slice(), C = cards.slice(), R = record.slice();
+  const lenL = L.map((r, i) => readReportLakeLine(i + 1, r).length + 1), lenC = C.map((c, i) => deepCardLine(i + 1, c).length + 1), lenR = R.map((r, i) => readReportRecordLine(i + 1, r).length + 1);
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  let total = fixed + sum(lenL) + sum(lenC) + sum(lenR) + 600;
+  while (total > max) {
+    if (L.length > P.LAKE_MIN) { L.pop(); total -= lenL.pop(); }
+    else if (C.length > P.CARDS_MIN) { C.pop(); total -= lenC.pop(); }
+    else if (R.length > P.RECORD_MIN) { R.pop(); total -= lenR.pop(); }
+    else if (L.length) { L.pop(); total -= lenL.pop(); }
+    else if (R.length) { R.pop(); total -= lenR.pop(); }
+    else if (C.length) { C.pop(); total -= lenC.pop(); }
+    else break;
+  }
+  return { lake: L, cards: C, record: R };
+}
+const READ_DEEP_LAW = 'THE DEEP LAW: this RECON was researched to a plan. THE RESEARCH PLAN in the prompt lists the sub-questions (SQ<n>) we asked and the hypotheses (HYP<n>) we tested; it is our structure, never evidence, and its ids never appear in the read. Every hypothesis ends supported, broken or still open, and the read says which and on what evidence; a hypothesis is never written as a finding. ' +
+  'C<id> lines are sources we read in full: each carries the claims we drew from it and its figures, each with the exact sentence it came from. A figure from a C line is quoted as the source wrote it and cited to that C id. A claim marked breaks is evidence against a hypothesis, and every finding\'s counter-reading draws on those first. ' +
+  'COUNTED BY US and STATS.recon.comments count the comments and posts we kept from the voice pass: every one read by us (comments.read), coded by us wherever our coding came back (comments.coded; a shared headline is never coded: on the subject or not, by theme, by stance, from the period and from before it; one posted after the period is counted apart and never as the period\'s): cite them as counted by us and quote them exactly. STATS.recon.videos counts the views of the videos the comments came from. STATS.recon.outlet_types counts the read\'s own stories on the question (the stories STATS.recon.stories_all counts) by kind of outlet; only when STATS.recon.outlet_types_unclassified is absent is a kind at zero a silence the read may name. ' +
+  'The ground_line names the sources read in full (STATS.recon.read_full) and the comments read (STATS.recon.comments.read). When the brief lists DECISIONS, each one is answered in order, naming the decision in words (never opening a sentence on a numeral), with the evidence that decides it: in the decisions key when the contract asks for one, otherwise in where_to_enter. ' +
+  'by_the_numbers may also read recon.read_full, recon.cards, recon.lake_found, recon.searches, recon.comments.read, recon.comments.on_subject, recon.comments.by_theme_pct.<theme>, recon.comments.by_stance_pct.<stance>, recon.videos.views and recon.outlet_types.<kind>. Ids (for the arrays only) also include C<id>, a source we read in full.';
+/* ── EX18 THE THINK: four passes on the batch lane ────────────────────────────────────────────────────────────────────────── */
+/* SEAM:READ_THINK. A deep RECON is no longer written in one pass. Four Fable passes, each on the batch lane and each reading the same
+ * evidence the research filed: the analyst (what the evidence shows: every hypothesis tested, every decision weighed, the findings
+ * with their figures, the people the brief might miss, the market, the competitors, the tensions), the strategist (what the client
+ * does: the decisions answered, the competitive map, three futures, concept territories, product concepts, a 90-day plan), the writer
+ * (the RECON, from the evidence, the analysis and the strategy, under the house style and every law) and the editor (the draft and
+ * every note our laws found in it, fixed, cut and tightened). The editor's pass lands like any compile, the copy desk after it, and the
+ * concept territories are drawn. Each pass is a stage of the machine: sent when the one before it is back, adopted on a retry (the
+ * jobs table is the truth, so a pass is never paid for twice), sent again when it fails or comes back unusable (RESENDS times), and
+ * checked against the commission's ceiling with the worst case of every pass still to come and the copy desk after them. */
+const READ_THINK = {
+  ORDER: ['analysis', 'strategy', 'write', 'edit'],
+  PASS: {
+    analysis: { cid: 'ra', kind: 'recon_analysis', max_tokens: 64000, effort: 'high', out_chars: 140000 },
+    strategy: { cid: 'rs', kind: 'recon_strategy', max_tokens: 64000, effort: 'high', out_chars: 140000 },
+    write:    { cid: 'rw', kind: 'recon_write',    max_tokens: 120000, effort: 'high', out_chars: 260000 },
+    edit:     { cid: 'hr', kind: 'house_recon',    max_tokens: 120000, effort: 'high', out_chars: 260000 }   // lands through readLand, as every compile does
+  },
+  MODEL: 'claude-fable-5-1', RESENDS: 2, NOTES_MAX: 80, NOTE_CHARS: 220, RENDERS: 4, RENDER_CHARS: 900,
+  // The sections the contract always asks for: an editor that drops one gets the writer's back (the optional ones, such as the
+  // cross-currents or the record, it may cut).
+  KEEP: ['title', 'subtitle', 'ground_line', 'thesis', 'brief_answer', 'executive_summary', 'method', 'by_the_numbers', 'findings', 'for_the_brief', 'competitive_sets', 'consumer_voice',
+    'contradiction', 'whitespace', 'advertising_read', 'outlook', 'glossary', 'social', 'decisions', 'hypotheses', 'market_model', 'competitive_map', 'futures', 'concept_territories', 'product_concepts', 'plan_90']
+};
+const DEEP_THINK_KEY = 'THE EVIDENCE KEY. S<id> a story DAILY published; L<id> a story or post from the period; R<id> a record line from before the period; C<id> a source we read in full, with the claims we drew from it (each marked as supporting or breaking a hypothesis) and its figures, each with the exact sentence it came from; ' +
+  'V<id> a consumer voice, word for word and dated (a line that says then, not now is from before the period; a line marked as a shared story is an outlet\'s headline, not a voice); T, D and X our own earlier analysis. STATS is exact, computed by the database, and STATS.recon counts the brief\'s slice; COUNTED BY US gives exact counts of the comments we kept and coded (by theme, by stance, then and now), the views of their videos and the stories by kind of outlet. ' +
+  'THE RESEARCH PLAN is our structure (sub-questions SQ<n>, hypotheses HYP<n>), never evidence. Cite ids exactly as given, and only ids given.';
+const DEEP_ANALYST_SYS = 'You are the lead analyst at Unsurfaced, a cultural intelligence group. A client has commissioned a RECON: one brief, answered to depth. Our researchers gathered the evidence below to THE RESEARCH PLAN: stories from the period and the years before, sources read in full, consumer comments counted and coded, and measures of what people did. You analyze it; you do not write the report and you do not recommend. Output STRICT JSON only, no fences, no prose before or after. ' +
+  'Shape: {"answer": the position the evidence supports on the brief\'s question, 2 to 3 sentences, ' +
+  '"hypotheses": one object per hypothesis in THE RESEARCH PLAN, in its order {"id": "HYP<n>", "verdict": "supported", "broken" or "open", "why": 2 to 3 sentences naming the evidence for and against, "evidence": [ids]}, ' +
+  '"decisions": one object per decision the brief lists, in its order {"n": its number, "answer": the position the evidence supports, "why": 2 to 4 sentences on the evidence that decides it, "confidence": "high", "medium" or "low", "would_change": the evidence that would change the answer, "evidence": [ids]}, or [] when the brief lists none, ' +
+  '"findings": 5 to 8 objects {"claim": what people are doing and why, one sentence, "mechanism": why it happens, one to two sentences, "figures": [{"figure": exactly as STATS, COUNTED BY US or a line gives it, "means": what it measures, "from": the id it comes from or "STATS.<path>"}], "events": the dated events behind it, "history": what the record and the voices from before the period show, "against": the strongest evidence against it and why it holds or not, "evidence": [ids], "voices": [V ids that prove it in the speaker\'s words], "strength": "pattern" when two or more outlets carry it, else "signal"}, ' +
+  '"segments": 2 to 6 objects {"who": a group, "what_they_do": one sentence, "why_it_matters": one sentence, "evidence": [ids]}, the groups THE RESEARCH PLAN says the brief might miss among them when the evidence finds them, ' +
+  '"market": {"how_it_works": one paragraph on who buys, what drives it and what holds it back, "drivers": 3 to 6 objects {"name": 2 to 5 words, "figure": exactly as given, or "" when the evidence does not size it, "line": one sentence, "evidence": [ids]}, "unknowns": one paragraph on what the evidence cannot size}, ' +
+  '"competitors": objects {"name", "position": where they stand now, "moves": what they did in the period, with dates, "evidence": [ids]}, the brief\'s competitors first, ' +
+  '"tensions": 2 to 5 objects {"line": a contradiction in the evidence and what it means, "evidence": [ids]}, ' +
+  '"silences": one paragraph on what nobody in the evidence is doing or saying, with the counts that show it when COUNTED BY US gives them, ' +
+  '"gaps": one paragraph on what this evidence cannot show}. ' +
+  'Rules: every figure is copied exactly as given and says where it came from; never compute, convert or round a figure of your own. A hypothesis is broken when a claim marked breaks or a figure contradicts it and nothing stronger outweighs it, supported when at least two sources from different outlets carry it, and open otherwise. Weigh the counter-evidence the plan searched for before anything else. ' +
+  'In every sentence name a source by its outlet and date, never by its id: ids go only in the evidence, voices and from fields. Never use the em dash or the en dash character.';
+const DEEP_STRATEGIST_SYS = 'You are the strategy and creative director at Unsurfaced, a cultural intelligence group. You turn THE ANALYSIS (our analyst\'s, from the same evidence below) into what the client should do. Output STRICT JSON only, no fences, no prose before or after. ' +
+  'Shape: {"position": the stance the client takes, 2 sentences, ' +
+  '"decisions": one object per decision the brief lists, in its order {"n": its number, "recommendation": what to do, 1 to 2 sentences, "rationale": why, from the analysis and the evidence, "risk": what could go wrong and how to see it early, "evidence": [ids]}, or [] when the brief lists none, ' +
+  '"where_to_enter": {"format": one sentence, "audience": one sentence, "timing": one sentence, "channel": one sentence}, ' +
+  '"competitive_map": 2 to 6 objects {"name": a competitor or a kind of player, "position": where they stand now, "likely_move": what they most likely do when the client moves, "answer": how the client stays ahead, "evidence": [ids]}, the brief\'s competitors first, ' +
+  '"futures": exactly 3 objects {"name": 3 to 6 words, "kind": "expected", "faster" or "stalled", "story": one paragraph on how the next one to two years unfold in this future, time named in words, "signposts": 2 to 4 measurable signs that this future is arriving, "move": what the client does if it arrives, "evidence": [ids]}, ' +
+  '"concept_territories": 2 to 4 objects {"name": 2 to 5 words, "idea": one sentence, "why_now": one sentence on the evidence that makes it timely, "audience": who it is for, "tone": a few words, "image_prompt": one paragraph briefing an illustrator: the scene, the people as anonymous types, the light, the palette and the composition, with no text, no logos and no brand or product names, "evidence": [ids]}, ' +
+  '"product_concepts": 2 to 4 objects {"name": 2 to 5 words, "what": one sentence, "for_whom": one sentence, "job": the job it does for that person, "proof": the evidence it stands on, one sentence, "risk": the strongest reason it fails, "first_test": a test the client can run inside 90 days, "evidence": [ids]}, ' +
+  '"plan_90": {"line": what the 90 days are for, one sentence, "phases": exactly 3 objects {"window": "Days 1 to 30", "Days 31 to 60" or "Days 61 to 90", "moves": 2 to 4 actions, each naming the role that owns it, "measure": what success looks like at the end of the phase}}, ' +
+  '"moves": one object per finding of THE ANALYSIS {"finding": its claim, word for word, "creative": one sentence, "marketer": one sentence, "founder": one sentence, "exec": one sentence, "talent": one sentence}}. ' +
+  'Rules: every recommendation stands on the analysis and cites the evidence it rests on; where the analysis leaves a hypothesis open, the client tests it first rather than assuming it. The concepts serve the people the evidence shows, the groups the brief might miss among them. Never state a figure about the market the evidence does not give: targets and thresholds appear only in signposts, first_test and plan_90. ' +
+  'An image_prompt draws an invented scene: people as anonymous types, plain unmarked objects and surfaces, never a real place, a famous person, a screen, a sign, packaging or anything bearing words or a mark. In every sentence name a source by its outlet and date, never by its id. Never use the em dash or the en dash character.';
+const READ_THINK_CONTRACT = 'THE THINK CONTRACT: this RECON was thought through before it was written, so these keys join the report\'s keys, brief_answer and for_the_brief, and the object has exactly all of them (this widens the count of keys given above): ' +
+  '"decisions": one object per decision THE BRIEF lists, in its order {"n": its number, "decision": the decision as listed, "answer": the position we take, one or two sentences, "why": one paragraph on the evidence that decides it, "confidence": "high", "medium" or "low", "would_change": the measurable evidence that would change the answer, "evidence": [ids]}, or [] when the brief lists none; ' +
+  '"hypotheses": one object per hypothesis in THE RESEARCH PLAN, in its order {"claim": the hypothesis in plain words (never its id, and without a figure the evidence does not give), "verdict": "supported", "broken" or "open", "line": one or two sentences on what the evidence showed, "evidence": [ids]}; ' +
+  '"market_model": {"line": one paragraph on how the market the brief enters works: who buys, what drives it, what holds it back, "drivers": 3 to 6 objects {"name": 2 to 5 words, "figure": a figure exactly as STATS or a cited line gives it, or "" when the evidence does not size it, "line": one sentence on how it moves the market, "evidence": [ids]}, "unknowns": one paragraph naming what the evidence does not size}, never a figure of your own arithmetic; ' +
+  '"competitive_map": 2 to 6 objects {"name": a competitor or a kind of player, "position": one sentence on where they stand now, "likely_move": one sentence on what they most likely do when the client moves, "answer": one sentence on how the client stays ahead, "evidence": [ids]}, the brief\'s competitors first; ' +
+  '"futures": exactly 3 objects {"name": 3 to 6 words, "kind": "expected", "faster" or "stalled", "story": one paragraph on how the next one to two years unfold in this future, time named in words and never a year or a figure the evidence does not give, "signposts": 2 to 4 measurable signs that it is arriving, "move": one sentence on what the client does if it arrives, "evidence": [ids]}; ' +
+  '"concept_territories": 2 to 4 objects {"name": 2 to 5 words, "idea": one sentence, "why_now": one sentence on the evidence that makes it timely, "audience": who it is for, "tone": a few words, "image_prompt": one paragraph briefing an illustrator (the scene, the people as anonymous types, the light, the palette, the composition): plain unmarked objects and surfaces, with no text, no logos, no brand or product names, no real or famous people, no real place, and no screen, sign or packaging, "evidence": [ids]}; ' +
+  '"product_concepts": 2 to 4 objects {"name": 2 to 5 words, "what": one sentence, "for_whom": one sentence, "job": the job it does for that person, "proof": one sentence on the evidence it stands on, "risk": the strongest reason it fails, "first_test": one sentence on a test the client can run within 90 days, "evidence": [ids]}; ' +
+  '"plan_90": {"line": one sentence on what the 90 days are for, "phases": exactly 3 objects {"window": "Days 1 to 30", "Days 31 to 60" or "Days 61 to 90", "moves": 2 to 4 strings, each one action naming the role that owns it, "measure": one sentence on what success looks like at the end of the phase}}. ' +
+  'A number in a phase of plan_90 (its window, its moves, its measure), in a signpost, in would_change or in first_test is a target or a threshold, never a fact about the market; every other number in these keys, plan_90.line among them, comes from STATS, COUNTED BY US or a cited line. The page prints the data appendix from STATS itself; never write one. No em dash and no en dash: a range is written with "to".';
+const READ_WRITER_LAW = 'THE WRITER LAW: you write this RECON from the evidence, THE ANALYSIS and THE STRATEGY. The analysis and the strategy are our analyst\'s and strategist\'s thinking on this same evidence, never evidence themselves: a figure, a quote or a date you print comes from STATS, COUNTED BY US or a cited line, and an id you cite is one the evidence gives. Keep their positions where the evidence carries them; where they reach past it, follow the evidence. ' +
+  'The analysis\'s findings become the findings, each with its figures, events, history, voices and counter-reading, and the strategy\'s moves (each names the finding it serves) become that finding\'s moves; its verdicts become hypotheses; each decision joins the analysis\'s answer and the strategy\'s recommendation (the answer says what to do, the why gives the evidence, and the strategy\'s risk shapes would_change); its market becomes market_model; its competitors and the strategy\'s map become competitive_sets and competitive_map; its segments feed for_the_brief (who is in, who is absent); its tensions and silences feed contradiction and whitespace; its gaps feed method.limits; the futures, concept_territories, product_concepts and plan_90 are the strategy\'s, written for the client. ' +
+  'brief_answer states the position. for_the_brief.where_to_enter is one paragraph on the strategy\'s format, audience, timing and channel, and never repeats the decisions. Where the analysis or the strategy names a source by id inside a sentence, name it by outlet instead. Write every key the contract asks for, under the house style and every law above. No em dash and no en dash.';
+const READ_EDITOR_LAW = 'THE EDITOR LAW: you are the editor of this RECON. THE DRAFT is the RECON our writer wrote; THE LAWS\' NOTES list what our checks found in it, one per line, each naming the key it is in (number_not_in_evidence: the figure is in no line of the evidence; id_in_prose or plan_id_in_prose: an id inside a sentence; house_word or house_voice: a word for our machinery, or the words the house; register: a loaded label in our own words; voice_law and time_law: a voice used wrongly; style: the house style; repeat_quote: one quote in two places; finding_downgraded: a finding that stands on too few outlets, now an early signal; territory_unknown: a territory the counts do not have; finding_<n>: what that finding lacks (edge, trigger, against, reach_horizon, moves, outlets); voices: too few findings carry a consumer voice; think: a section the contract asks for, missing or short, or what an illustrator\'s brief must not hold: a brand, a real person or place, or a sign, screen, label or anything bearing words). ' +
+  'Fix every note: a figure not in the evidence is replaced by the figure its cited line gives, or the sentence is rewritten without it; an id or a plan id in prose becomes words; a house word becomes the reader\'s word; a voice quoted twice is quoted once; what a finding lacks is written from the evidence; a missing section is written from the evidence (its targets and thresholds, where the contract allows them, are ours); an illustrator\'s brief keeps only anonymous people, places described and never named, and plain unmarked things, every proper name in it lower case or gone. ' +
+  'Then read it as the client will: an event is told in full once, no section repeats another, every section answers the brief, every decision is answered. Keep every key the contract asks for, keep the ids in the arrays, keep what is right as it is, and never add a figure the evidence does not give. Return the whole edited object.';
+
+/* PURE: a pass's custom id (one per row and version, so a revision is its own), what it reads before it, and its system. */
+function deepThinkCid(row, pass) { return READ_THINK.PASS[pass].cid + '-' + parseInt(row.id, 10) + '-v' + parseInt(row.version, 10); }
+function deepThinkReads(pass) { return { analysis: [], strategy: ['analysis'], write: ['analysis', 'strategy'], edit: ['write'] }[pass] || []; }
+function deepThinkSystem(pass) {
+  if (pass === 'analysis') return DEEP_ANALYST_SYS + '\n\n' + DEEP_THINK_KEY;
+  if (pass === 'strategy') return DEEP_STRATEGIST_SYS + '\n\n' + DEEP_THINK_KEY;
+  return READ_METHOD + '\n\n' + READ_CONTRACT.recon + ' ' + READ_DEEP_LAW + ' ' + READ_THINK_CONTRACT + ' ' + (pass === 'edit' ? READ_EDITOR_LAW : READ_WRITER_LAW);
+}
+/* PURE: what the passes from `from` on can cost at most, given the evidence's length: each pass's worst case (its prompt uncached, its
+ * whole output budget), reading what is already written at its real length (have) and what is not at its assumed one. */
+function deepThinkChain(from, evChars, have) {
+  const T = READ_THINK, h = have || {}, i0 = Math.max(0, T.ORDER.indexOf(from));
+  let usd = 0;
+  for (const p of T.ORDER.slice(i0)) {
+    const reads = deepThinkReads(p).reduce((a, q) => a + (Number.isFinite(h[q]) ? h[q] : T.PASS[q].out_chars), 0) + (p === 'edit' ? T.NOTES_MAX * T.NOTE_CHARS : 0);
+    usd += claudeEstimate(claudeParams('recon', { model: T.MODEL, system: deepThinkSystem(p), cache: true, prompt: 'x'.repeat((Number(evChars) || 0) + reads + 600), max_tokens: T.PASS[p].max_tokens }), true);
+  }
+  return Math.round(usd * 1e6) / 1e6;
+}
+/* The evidence every pass reads, rebuilt from the ground the compile wrote (the brief, the desk's inputs as they stood at the compile,
+ * the plan, STATS, the brief's DAILY stories, the pack), so all four passes read the same evidence and the landing checks against it. */
+async function deepThinkEvidence(env, row) {
+  const pk = (row.meta && row.meta.pack) || {}, recon = readReconOf(row), K = HOUSE_READ.KINDS.recon;
+  const items = await readItemsByIds(env, row.pack_ids || []);
+  return 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' +
+    (pk.desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + pk.desk + '\n\n' : '') +
+    (pk.plan ? pk.plan + '\n\n' : '') +
+    'STATS (exact, computed by the database; STATS.recon counts the brief\'s slice):\n' + JSON.stringify(row.stats || {}) +
+    (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY, the brief\'s slice):\n' + items.map(it => readPackLine(it, K.take)).join('\n') : '') +
+    (pk.text ? '\n\n' + pk.text : '');
+}
+/* PURE: a pass's prompt: the evidence, then what the passes before it wrote, then the ask. */
+function deepThinkPrompt(pass, row, evidence, got) {
+  const g = got || {}, label = row.label + ' (' + row.window_start + ' to ' + row.window_end + ')', j = o => JSON.stringify(o);
+  const A = '\n\nTHE ANALYSIS (our analyst\'s, from this evidence; our thinking, never evidence):\n', S = '\n\nTHE STRATEGY (our strategist\'s, on the analysis; our thinking, never evidence):\n';
+  if (pass === 'analysis') return evidence + '\n\nWrite the analysis for ' + label + '. Return only the JSON object.';
+  if (pass === 'strategy') return evidence + A + j(g.analysis) + '\n\nWrite the strategy for ' + label + '. Return only the JSON object.';
+  if (pass === 'write') return evidence + A + j(g.analysis) + S + j(g.strategy) + '\n\nWrite the RECON ' + label + ', answering the brief. Return only the JSON object.';
+  const notes = g.notes || [];
+  return evidence + '\n\nTHE DRAFT (the RECON as our writer wrote it; the object you edit):\n' + j(g.write) +
+    '\n\nTHE LAWS\' NOTES (' + notes.length + ', what our checks found in the draft):\n' + (notes.length ? notes.join('\n') : '(none: read it as the client will, and tighten it)') +
+    '\n\nReturn the edited RECON ' + label + ', the whole object. Return only the JSON object.';
+}
+/* PURE: a pass's request on the recon tier. The editor's carries the read's id, so the drain lands it like any compile. */
+function deepThinkReq(pass, row, prompt, roomier) {
+  // An answer cut at its ceiling is asked again with room; a pass already near the model's ceiling (the writer) is asked to think
+  // less instead, since doubling it is not possible.
+  const P = READ_THINK.PASS[pass], room = roomier ? Math.min(CLAUDE.MAX_TOKENS, P.max_tokens * 2) : P.max_tokens, tight = roomier && P.max_tokens * 2 > CLAUDE.MAX_TOKENS;
+  return { custom_id: deepThinkCid(row, pass), model: READ_THINK.MODEL, system: deepThinkSystem(pass), cache: true, prompt, max_tokens: room,
+    thinking: { type: 'adaptive' }, output_config: { effort: tight ? 'medium' : P.effort },
+    meta: Object.assign({ recon_read_id: parseInt(row.id, 10), pass }, pass === 'edit' ? { house_read_id: parseInt(row.id, 10) } : {}) };
+}
+async function deepThinkJobs(env, row, pass) {
+  return await sbRest(env, 'claude_jobs?custom_id=eq.' + deepThinkCid(row, pass) + '&kind=eq.' + READ_THINK.PASS[pass].kind +
+    '&select=id,batch_id,status,result,cost_usd,stop_reason,created_at,ended_at&order=id.desc&limit=12') || [];
+}
+/* PURE: a pass's answer, when it is one: done, whole (never cut at its token ceiling), one JSON object, with what the next pass needs. */
+function deepThinkOut(pass, j) {
+  if (!j || j.status !== 'done' || j.stop_reason === 'max_tokens' || !j.result) return null;
+  return deepThinkUsable(pass, parseModelJson(j.result) || extractJson(j.result));
+}
+function deepThinkUsable(pass, o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  const has = k => Array.isArray(o[k]) && o[k].length > 0;
+  if (pass === 'analysis') return has('findings') ? o : null;
+  if (pass === 'strategy') return has('futures') || has('concept_territories') || has('decisions') ? o : null;
+  return typeof o.title === 'string' && o.title && typeof o.thesis === 'string' && o.thesis && has('findings') ? o : null;   // the writer's and the editor's: a read
+}
+/* PURE: the editor's read with every section the contract always asks for put back from the draft where the editor dropped it (a key
+ * missing, or an empty list, object or text where the draft had one), named for the desk. The editor tightens; it never loses a
+ * section the writer wrote. */
+function deepThinkRestore(edited, draft) {
+  const out = Object.assign({}, edited), back = [], full = v => Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v).length > 0 : typeof v === 'string' ? !!v.trim() : v != null;
+  for (const k of READ_THINK.KEEP) if (draft && full(draft[k]) && !full(out[k])) { out[k] = draft[k]; back.push(k); }
+  return { read: out, back };
+}
+/* What a pass reads: the newest usable answer of every pass before it (missing names the first that has none), and for the editor,
+ * the laws' notes on the draft. */
+async function deepThinkGot(env, row, pass) {
+  const got = {};
+  for (const q of deepThinkReads(pass)) {
+    const o = (await deepThinkJobs(env, row, q)).map(j => deepThinkOut(q, j)).find(Boolean);
+    if (!o) return { missing: q };
+    got[q] = o;
+  }
+  if (pass === 'edit') got.notes = await deepDraftNotes(env, row, got.write);
+  return got;
+}
+/* The laws' notes on a draft, for the editor, read exactly as the landing reads them (the same ground, the same pack, the same
+ * stories): every note the landing would make, what the sell law finds missing on a finding, and what the think contract finds missing. */
+async function deepDraftNotes(env, row, draft) {
+  return deepDraftNotesOf(row, await readWindowItems(env, row.window_start, row.window_end), draft);
+}
+function deepDraftNotesOf(row, items, draft) {   // PURE
+  const v = readValidate('recon', draft, readGroundOf(row, items), row.pack_ids || [], readReportExtraIds(row.meta && row.meta.pack));
+  if (!v.read) return ['unparsable'];
+  const laws = readReportLaws(v.read, row, items);
+  const sold = readSellable(Object.assign({}, row, { status: 'ready', read: laws.read, violations: [], meta: Object.assign({}, row.meta || {}, { proof: { lane: 'live' } }) }));
+  const out = [].concat(v.fatal, v.notes.filter(n => !/^(?:em_dashes_replaced|evidence_ids_dropped):/.test(n)), laws.notes, deepThinkLaws(laws.read, row),
+    sold.fails.filter(f => /^(?:finding_\d+|voices):/.test(f) || f === 'no_findings' || f === 'no_brief_answer'));
+  return Array.from(new Set(out.map(n => deepSafeStr(String(n)).slice(0, READ_THINK.NOTE_CHARS)))).slice(0, READ_THINK.NOTES_MAX);
+}
+/* PURE: the think contract, checked on a landed read: every decision the brief lists answered, every hypothesis given a verdict, three
+ * futures, a 90-day plan in three phases, every new section present, no concept's image brief naming the brief's own brands. Notes
+ * for the desk and the editor; the sell law refuses a RECON whose decisions, verdicts or plan are missing. */
+function deepThinkLaws(read, row) {
+  const x = read || {}, notes = [], d = deepOf(row) || {}, recon = readReconOf(row), arr = v => Array.isArray(v) ? v : [];
+  // Counted as the page prints them: each decision once by its own number (or its place), a verdict only with its claim, a phase only as an object.
+  const want = recon.decisions.length, nums = new Set();
+  arr(x.decisions).forEach((z, k) => { if (!z || typeof z.answer !== 'string' || !z.answer.trim()) return; const at = recon.decisions.indexOf(z.decision), n = at >= 0 ? at + 1 : parseInt(z.n, 10) || k + 1; if (n >= 1 && n <= want) nums.add(n); });
+  const answered = nums.size;
+  if (answered < want) notes.push('think:decisions:' + answered + '_of_' + want);
+  const hy = arr(d.plan && d.plan.hypotheses).length, hv = arr(x.hypotheses).filter(h => h && typeof h.claim === 'string' && h.claim.trim() && /^(?:supported|broken|open)$/.test(h.verdict)).length;
+  if (hv < hy) notes.push('think:hypotheses:' + hv + '_of_' + hy);
+  if (arr(x.futures).length !== 3) notes.push('think:futures:' + arr(x.futures).length + '_of_3');
+  for (const k of ['market_model', 'competitive_map', 'concept_territories', 'product_concepts', 'plan_90']) if (!x[k] || typeof x[k] !== 'object' || (Array.isArray(x[k]) && !x[k].length)) notes.push('think:missing:' + k);
+  const phases = x.plan_90 && typeof x.plan_90 === 'object' ? arr(x.plan_90.phases).filter(ph => ph && typeof ph === 'object' && !Array.isArray(ph)).length : 0;
+  if (x.plan_90 && typeof x.plan_90 === 'object' && phases !== 3) notes.push('think:plan_90_phases:' + phases + '_of_3');
+  const names = deepBrandNames(recon);
+  arr(x.concept_territories).forEach((t, i) => { const ip = String((t && t.image_prompt) || ''), hit = names.find(n => n.rx.test(ip)), rk = !hit && deepImageRisk(ip);
+    if (hit) notes.push('think:image_prompt_names:concept_territories[' + i + ']:' + hit.name); else if (rk) notes.push('think:image_prompt_' + rk.kind + ':concept_territories[' + i + ']:' + rk.what.slice(0, 40)); });   // such a territory is not drawn
+  return notes;
+}
+/* PURE: the brief's own brand names (its entity and competitors), matched whole. An all-capitals name is matched as written (FIELD, never
+ * "a field at dusk"); any other name in any case. words:true adds each competitor's own words of four letters or more ("Ray-Ban" and
+ * "Meta" from "Meta Ray-Ban"), for taking brands out of an illustrator's brief. */
+function deepBrandNames(recon, opts) {
+  // A name of several words is matched in any case ("meta ray-ban"); a single word only as a name is written, capitalized (FIELD or
+  // Field, Snap or SNAP), so "a field at dusk", "round spectacles" and "a soft glow" are ordinary words and stay.
+  const f = (recon && recon.frame) || {}, esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), seen = new Set(), out = [];
+  const cap = w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  const add = name => {
+    const k = name.toLowerCase(); if (name.length < 2 || seen.has(k)) return; seen.add(k);
+    const multi = /\s/.test(name), alts = multi ? [esc(name)] : Array.from(new Set([name, cap(name), name.toUpperCase()])).filter(w => /^\p{Lu}/u.test(w)).map(esc);
+    if (alts.length) out.push({ name, rx: new RegExp('(?<![\\p{L}\\p{N}])(?:' + alts.join('|') + ')(?![\\p{L}\\p{N}])', multi ? 'iu' : 'u') });
+  };
+  [f.entity].concat(f.competitors || []).map(s => String(s || '').trim()).filter(s => s.length > 1).forEach(add);
+  if (opts && opts.words) (f.competitors || []).forEach(c => String(c || '').split(/\s+/).filter(w => w.replace(/[^\p{L}\p{N}]/gu, '').length >= 4).forEach(add));
+  return out;
+}
+/* Sends one pass inside the commission's ceiling: its own estimate, the worst case of every pass after it, the copy desk last. The
+ * editor's pass makes the row compiling (the drain lands it); the others keep it queued for the tick. A pass whose input is gone goes
+ * back to the pass that writes it. Returns the stage's answer for deepAdvance (or readSubmit, for the first). */
+async function deepThinkSend(env, row, deep, pass, roomier) {
+  const T = READ_THINK, got = await deepThinkGot(env, row, pass);
+  if (got.missing) return { next: got.missing, patch: {} };
+  const evidence = await deepThinkEvidence(env, row);
+  const req = deepThinkReq(pass, row, deepThinkPrompt(pass, row, evidence, got), roomier);
+  const have = {}; for (const q of deepThinkReads(pass)) have[q] = JSON.stringify(got[q]).length;
+  const i = T.ORDER.indexOf(pass), est = claudeEstimate(claudeParams('recon', req), true), rest = i + 1 < T.ORDER.length ? deepThinkChain(T.ORDER[i + 1], evidence.length, have) : 0;
+  const need = Math.round((est + rest + READ_DEEP.DESK_USD) * 100) / 100;
+  // What the passes before cost, read back now (a pass just back is at its price, no longer at its reservation), then the room.
+  const js = await deepJobsSpend(env, row.id).catch(deepLog('think_spend'));
+  if (!deepRoom(js ? Object.assign({}, deep, { spend: Object.assign({}, deep.spend || {}, js) }) : deep, est + rest + READ_DEEP.DESK_USD)) return { hold: 'budget', patch: Object.assign({ think_need: need }, js ? { spend: Object.assign({}, deep.spend || {}, js) } : {}) };
+  const b = await claudeBatchSubmit(env, 'recon', T.PASS[pass].kind, [req]);
+  if (!b || !b.ok) return Object.assign(deepLedgerWait(b) || { error: pass + '_submit_' + String((b && b.error) || 'none').slice(0, 30) }, { submit: (b && b.error) || 'none' });
+  const think = Object.assign({}, deep.think || {}), was = think[pass] || {};
+  think[pass] = Object.assign({ sends: (was.sends || 0) + 1, batch_id: b.batch_id, sent_at: new Date().toISOString(), est: b.est_usd, chars: req.prompt.length }, pass === 'edit' ? { notes: got.notes.length } : {});
+  if (pass !== 'edit') return { next: pass, wait: true, waiting: 'pass_' + pass, patch: { think, think_need: null }, batch_id: b.batch_id };
+  return { next: 'compiled', wait: true, patch: { think, think_need: null, compiled_at: new Date().toISOString() }, row: { status: 'compiling', error: null }, meta: { batch_id: b.batch_id, est_usd: b.est_usd }, batch_id: b.batch_id };
+}
+/* A pass a run that died already sent: adopted, never sent again. The editor's, already back, lands now. */
+function deepThinkAdopt(env, row, deep, pass, j) {
+  const think = Object.assign({}, deep.think || {});
+  think[pass] = Object.assign({ sends: 1 }, think[pass] || {}, { batch_id: j.batch_id, adopted: true });
+  if (pass !== 'edit') return { next: pass, patch: { think } };
+  // Still out when adopted, it may end while this run writes the row: the drain then found the row queued and skipped it, so it is read
+  // again after the write and landed here when it is done and the row still waits.
+  const land = async () => {
+    const now = j.status === 'done' ? j : (await deepThinkJobs(env, row, 'edit')).find(x => x.id === j.id);
+    if (!now || now.status !== 'done') return;
+    if (j.status !== 'done') {
+      // The drain lands a job the moment it marks it done: if that was after this run made the row compiling, the drain is landing it.
+      const fresh = await readRow(env, row.id), wrote = Date.parse(row.updated_at || 0), ended = Date.parse(now.ended_at || 0);
+      if (!fresh || fresh.status !== 'compiling' || (ended && wrote && ended >= wrote)) return;
+    }
+    return readLand(env, row.id, now.result, parseFloat(now.cost_usd) || 0, now.stop_reason, true);
+  };
+  return { next: 'compiled', wait: true, patch: { think, compiled_at: new Date().toISOString() }, row: { status: 'compiling', error: null }, meta: { batch_id: j.batch_id }, after: land };
+}
+/* The pass stages: each waits on its own pass. Back and usable, the next pass goes at once; out, it waits (idle); never sent (a release),
+ * failed, expired or unusable, it is sent again, RESENDS times, and then the RECON stops plainly where the desk can release it. */
+async function deepPassStage(env, row, deep, pass) {
+  const T = READ_THINK, nx = T.ORDER[T.ORDER.indexOf(pass) + 1];
+  const ahead = (await deepThinkJobs(env, row, nx))[0];
+  if (ahead && (ahead.status === 'submitted' || ahead.status === 'done')) return deepThinkAdopt(env, row, deep, nx, ahead);
+  const j = (await deepThinkJobs(env, row, pass))[0];
+  if (j && j.status === 'submitted') return { wait: true, idle: true, waiting: 'pass_' + pass };
+  if (j && deepThinkOut(pass, j)) return deepThinkSend(env, row, deep, nx);
+  const sends = ((deep.think || {})[pass] || {}).sends || 0;
+  if (j && sends > T.RESENDS) return { error: pass + '_' + (j.status !== 'done' ? 'failed' : j.stop_reason === 'max_tokens' ? 'truncated' : 'unusable'), fatal: true };
+  return deepThinkSend(env, row, deep, pass, !!(j && j.status === 'done' && j.stop_reason === 'max_tokens'));
+}
+function deepAnalysisStage(env, row, deep) { return deepPassStage(env, row, deep, 'analysis'); }
+function deepStrategyStage(env, row, deep) { return deepPassStage(env, row, deep, 'strategy'); }
+function deepWriteStage(env, row, deep) { return deepPassStage(env, row, deep, 'write'); }
+/* PURE: the image brief a concept territory is drawn from: the strategist's words with the brief's own brand names taken out and the
+ * house rules added (no text, no logos, no real people). Empty when the territory has no brief. */
+/* PURE: what in an illustrator's brief an image model would draw as something real or written: a capitalized word that does not open a
+ * sentence (Swift, Paris, Nike: most likely a real person, place or brand), or a surface that carries words (a sign, a screen, a label).
+ * Such a territory is not drawn, and the desk and the editor are told why. */
+const DEEP_TEXT_SURFACES = /\b(?:billboards?|posters?|signage|signs?|neon|screens?|monitors?|phones?|smartphones?|laptops?|tablets?|labels?|packaging|packages?|logos?|menus?|newspapers?|magazines?|storefronts?|banners?|placards?|captions?|subtitles?|text|letters?|words?|writing|slogans?|t-shirts?|jerseys?)\b/i;
+function deepImageRisk(p) {
+  const t = String(p || '');
+  const opened = t.replace(/(?:^|[.!?:;]\s+)[("\u201c]?\p{Lu}/gu, x => x.toLowerCase());   // a sentence's first word is capitalized for the sentence, not for a name
+  const m = /(?<![\p{L}\p{N}'\u2019-])(\p{Lu}[\p{L}'\u2019-]*)/u.exec(opened.replace(/(?<![\p{L}\p{N}])I(?![\p{L}\p{N}])/gu, 'i'));
+  if (m) return { kind: 'proper_name', what: m[1] };
+  const sx = DEEP_TEXT_SURFACES.exec(t);
+  return sx ? { kind: 'text_surface', what: sx[0].toLowerCase() } : null;
+}
+function deepRenderPrompt(t, recon) {
+  let p = deepStr(t && t.image_prompt, READ_THINK.RENDER_CHARS);
+  if (!p) return '';
+  for (const n of deepBrandNames(recon, { words: true })) p = p.replace(new RegExp(n.rx.source, n.rx.flags + 'g'), '');   // taken out, never replaced by a word an image model would draw
+  p = p.replace(/(^|\s)-+(?=\p{L})/gu, '$1').replace(/\s+([,.;:])/g, '$1').replace(/\b(a|an|the)\s+(?=[,.;:]|\b(?:a|an|the)\b)/gi, '').replace(/\s{2,}/g, ' ').trim();
+  if (deepImageRisk(p)) return '';   // a real person, place or brand, or a surface that carries words, left in the brief: that territory is not drawn
+  return 'Editorial illustration for a cultural research report, an imagined scene: anonymous people, plain unmarked objects and blank surfaces, soft natural light. ' + p + ' Every surface is plain and unmarked; there is no writing, signage, screen, packaging, logo or brand mark anywhere, and no real or famous person or place.';
+}
+/* SEAM:READ_THINK: the concept territories, drawn by the image model PLAY uses, one image each (at most RENDERS), kept in R2 under a
+ * key no one can guess. A brief already drawn for this RECON is never drawn again (its hash is kept). Labeled imagined on the page. */
+async function deepRenders(env, row, read) {
+  // One place a territory, always: a drawing carried from an earlier version is kept only where its brief is the same (by hash), so a
+  // revision that rewrites or reorders the territories never shows an old drawing under a new idea.
+  const T = Array.isArray(read && read.concept_territories) ? read.concept_territories.slice(0, READ_THINK.RENDERS) : [];
+  const recon = readReconOf(row), had = ((row.meta && row.meta.renders && row.meta.renders.list) || []).filter(Boolean), list = [];
+  for (let i = 0; i < T.length; i++) {
+    const p = deepRenderPrompt(T[i], recon);
+    if (!p) { list.push(null); continue; }
+    const h = (await sha256hex(p)).slice(0, 16), old = had.find(x => x.h === h);
+    if (old) { list.push(Object.assign({}, old, { i })); continue; }
+    if (!env.AI || !env.MEDIA) { list.push(null); continue; }
+    try {
+      const out = await env.AI.run(CONFIG.IMAGE_MODEL, { prompt: p });
+      const b64 = out && (out.image || (out.images && out.images[0]));
+      if (!b64) { list.push(null); continue; }
+      const key = 'reads/renders/' + readHex(crypto.getRandomValues(new Uint8Array(16))) + '.jpg';
+      await env.MEDIA.put(key, Uint8Array.from(atob(b64), c => c.charCodeAt(0)), { httpMetadata: { contentType: 'image/jpeg' } });
+      list.push({ i, h, key });
+    } catch (e) { deepLog('render')(e); list.push(null); }
+  }
+  return { version: row.version, list, at: new Date().toISOString() };
 }
 /* PURE: the supports law and the momentum law, applied on landing. The outlet of an id: S and L and R carry their
  * source name; D, X and T are the house's own reads and count as one outlet, "house"; V is a voice, never a support.
  * A support is a line dated inside the window (S, L; D and X count as house); R is the record and never supports. */
-function readSupports(read, outletOf, datedIn, min, whereOf) {
+function readSupports(read, outletOf, datedIn, min, whereOf, keyOf) {
   const notes = [];
   if (!read || !Array.isArray(read.findings)) return { read, notes };
   const SUPPORTS_MIN = (min && min.supports) || READ_REPORT.SUPPORTS_MIN, OUTLETS_MIN = (min && min.outlets) || READ_REPORT.OUTLETS_MIN;
   read.findings.forEach((f, i) => {
     if (!f || typeof f !== 'object') return;
     const ev = Array.isArray(f.evidence) ? f.evidence : [];
-    const sup = ev.filter(id => /^[SLDX]\d+$/.test(String(id)) && datedIn(String(id)));
+    const sup0 = ev.filter(id => /^[SLDXVC]\d+$/.test(String(id)) && datedIn(String(id)));   // SEAM:READ_DEEP: a source read in full, dated inside the window, supports   // SEAM:VOICE_LAW: a V counts only as a shared story dated inside the window
+    const pages = new Set(), sup = typeof keyOf === 'function' ? sup0.filter(id => { const k = keyOf(String(id)) || String(id); if (pages.has(k)) return false; pages.add(k); return true; }) : sup0;   // SEAM:READ_DEEP: one page is one support, however many lines carry it
     const outlets = new Set(sup.map(id => outletOf(String(id))).filter(Boolean));
     // SEAM:READ_RECURRENCE: the house's measure of a pattern's strength, computed from the evidence the finding cites:
     // distinct outlets, distinct weeks spanned, distinct territories spanned. Printed on the finding; every figure is real.
@@ -8797,9 +10462,10 @@ function readValidate(kind, read, ground, packIds, extraIds) {
     .replace(/\d[\d,]*(?:\.\d+)?/g, m => { nums.add(m.replace(/,/g, '').replace(/^0+(?=\d)/, '')); return m; });
   let dashes = 0, dropped = 0;
   const walk = (v, path) => {
+    if (!Array.isArray(v) && v != null && /(?:evidence|quotes|voices)$|\.(?:then|now)$/.test(path)) { dropped += typeof v === 'string' ? 0 : 1; v = typeof v === 'string' ? [v] : []; }   // SEAM:READ_THINK: a lone id is a list of one, anything else no list (the page reads lists)
     if (Array.isArray(v)) {
-      if (/(?:evidence|quotes|voices)$/.test(path)) {
-        const keep = v.filter(x => ids.has(String(x)) && (!/voices$/.test(path) || /^V\d+$/.test(String(x))));   // a voices array holds consumer voices only
+      if (/(?:evidence|quotes|voices)$|\.(?:then|now)$/.test(path)) {   // SEAM:READ_TIME: then_and_now's sides are id arrays too
+        const keep = v.filter(x => ids.has(String(x)) && (!/(?:voices|\.then|\.now)$/.test(path) || /^V\d+$/.test(String(x))));   // a voices array holds consumer voices only
         dropped += v.length - keep.length;
         return keep;
       }
@@ -8815,10 +10481,14 @@ function readValidate(kind, read, ground, packIds, extraIds) {
       dropped++; return undefined;
     }
     if (typeof v !== 'string') return v;
-    let s = v.replace(/\s*\u2014\s*/g, () => { dashes++; return ': '; });
+    let s = v.replace(/\s*\u2014\s*/g, () => { dashes++; return ': '; })
+      .replace(/([\d%)]|\b[A-Z]\d)\s*\u2013\s*(?=[$\u20ac\u00a3(]?\d|[A-Z]\d)/g, (m, a) => { dashes++; return a + ' to '; })   // SEAM:READ_THINK: an en dash too: a range of figures reads "to" (15% to 20%, $10 to $20, Q1 to Q2)
+      .replace(/(\S)\u2013(?=\S)/g, (m, a) => { dashes++; return a + ' to '; }).replace(/\s*\u2013\s*/g, () => { dashes++; return ', '; });   // unspaced between words is a range too; a spaced one is a pause
     // Moves are recommendations, not data ("a 15-second cut"); a trigger is a threshold to watch for; a glossary defines
-    // terms ("born 1997 to 2012"). Every other field quotes the evidence.
-    if (!/\.moves\./.test(path) && !/\.stat$/.test(path) && !/\.trigger$/.test(path) && !/^glossary\[/.test(path)) {
+    // terms ("born 1997 to 2012"). SEAM:READ_THINK: so are the 90-day plan's phases ("Days 1 to 30"), a future's signposts, what would
+    // change a decision and a concept's first test (targets and thresholds), and an illustrator's brief. Every other field quotes the evidence.
+    if (!/\.moves\./.test(path) && !/\.stat$/.test(path) && !/\.trigger$/.test(path) && !/^glossary\[/.test(path) &&
+        !/^plan_90\.phases\[\d+\]\.(?:window|measure|moves\[\d+\])$/.test(path) && !/\.signposts\[\d+\]$/.test(path) && !/\.(?:would_change|first_test|image_prompt)$/.test(path)) {   // never plan_90.line: it may state a fact
       const scan = s.replace(/\bS\d+\b/g, ' ');
       const found = scan.match(/\d[\d,]*(?:\.\d+)?/g) || [];
       for (const f of found) {
@@ -8866,6 +10536,7 @@ async function readSubmit(env, row) {
   const K = HOUSE_READ.KINDS[row.kind];
   const report = readIsReport(row.kind);   // SEAM:READ_REPORT (SEAM:READ_RECON: a RECON rides the report's line)
   const recon = row.kind === 'recon' ? readReconOf(row) : null;
+  const deep = recon ? deepOf(row) : null;   // SEAM:READ_DEEP: a deep RECON compiles from its evidence file, on the recon ledger
   const t0 = Date.now(), stage = (name, extra) => console.log('read_submit_stage', JSON.stringify(Object.assign({ id: row.id, kind: row.kind, stage: name, ms: Date.now() - t0 }, extra || {})));
   let stats = await sbRest(env, 'rpc/' + (report ? 'house_report_stats' : 'house_read_stats'), { method: 'POST',
     body: { p_start: row.window_start, p_end: row.window_end } }) || {};
@@ -8873,7 +10544,9 @@ async function readSubmit(env, row) {
   else stats = readStatsWithCounts(stats);   // SEAM:READ_COUNTS: how many territories, formats, sources and threads, as figures
   stage('stats');
   const allItems = await readWindowItems(env, row.window_start, row.window_end);
-  const items = recon ? allItems.filter(it => recon.match([it.headline, it.take, it.apply].join(' '))) : allItems;   // SEAM:READ_RECON: the brief's stories
+  const dpi = deep ? await deepPackInputs(env, row, deep) : null;   // SEAM:READ_DEEP: the evidence file, from the store
+  const items = recon ? (dpi ? deepSItems(allItems, recon, dpi.lake_ids) : allItems.filter(it => recon.match([it.headline, it.take, it.apply].join(' ')))) : allItems;   // SEAM:READ_RECON: the brief's stories (SEAM:READ_DEEP: and DAILY's own the meaning search found)
+  if (dpi) dpi.items = items;
   stage('stories', { n: items.length, all: allItems.length });
   if (!items.length && !recon) {
     await readPatch(env, row.id, { status: 'failed', error: 'empty_window', stats });
@@ -8888,12 +10561,14 @@ async function readSubmit(env, row) {
     children = children.concat(kids.filter(k => !seen.has(k.label) && seen.add(k.label)));
   }
   stage('children', { n: children.length });
-  const pack2 = report ? await readReportPack(env, row, stats, recon) : null;   // SEAM:READ_REPORT (SEAM:READ_RECON: sliced to the brief)
+  const pack2 = report ? await readReportPack(env, row, stats, recon, dpi) : null;   // SEAM:READ_REPORT (SEAM:READ_RECON: sliced to the brief)
   if (pack2) stage('pack', pack2.counts);
   if (recon) {   // SEAM:READ_RECON: the slice is the ground; too thin a slice is said plainly instead of written around
-    stats.recon = readReconStats(recon, items, pack2);
-    if (stats.recon.signals + stats.recon.stories < READ_RECON.MIN_SLICE) {
-      await readPatch(env, row.id, { status: 'failed', error: 'thin_slice:' + stats.recon.signals + '+' + stats.recon.stories, stats });
+    stats.recon = Object.assign(readReconStats(recon, items, pack2, (row.meta && row.meta.gather && row.meta.gather.attention) || (deep && deep.attention) || null),   // SEAM:READ_TIME
+      deep ? deepStatsOf(deep, pack2) : {});   // SEAM:READ_DEEP: the cards, the comments counted, the views, the kinds of outlet
+    const sliceN = deep ? (stats.recon.stories_all || 0) : stats.recon.signals + stats.recon.stories;   // SEAM:READ_DEEP: a page read in full is part of the slice
+    if (sliceN < READ_RECON.MIN_SLICE) {
+      await readPatch(env, row.id, { status: 'failed', error: 'thin_slice:' + stats.recon.signals + '+' + stats.recon.stories + (deep ? '+' + (stats.recon.cards || 0) : ''), stats });
       return { ok: false, error: 'thin_slice', signals: stats.recon.signals, stories: stats.recon.stories };
     }
   }
@@ -8904,6 +10579,7 @@ async function readSubmit(env, row) {
   const desk = await readDeskInputs(env, row.kind);   // SEAM:READ_DESK: the editors' standing inputs ride every compile
   const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +   // SEAM:READ_RECON
     (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
+    (pack2 && pack2.plan ? pack2.plan + '\n\n' : '') +   // SEAM:READ_DEEP: the plan, beside the pack and never in the ground
     'STATS (exact, computed by the database' + (recon ? '; STATS.recon counts the brief\'s slice' : '') + '):\n' + JSON.stringify(stats) +
     (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + pack : '') +
     (pack2 && pack2.text ? '\n\n' + pack2.text : '') +
@@ -8912,19 +10588,50 @@ async function readSubmit(env, row) {
             : report ? '\n\nWrite the Cultural Intelligence Report for ' + label + ' (' + row.window_start + ' to ' + row.window_end + '). Return only the JSON object.'
             : '\n\nWrite the ' + row.kind + ' read for ' + label + '. Return only the JSON object.');
   stage('prompt', { chars: prompt.length });
-  const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
-    custom_id: 'hr-' + row.id + '-v' + row.version,
+  const req = { custom_id: 'hr-' + row.id + '-v' + row.version,
     system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
     prompt, max_tokens: K.max_tokens, thinking: { type: 'adaptive' }, output_config: { effort: K.effort },
-    meta: { house_read_id: row.id } }]);
+    meta: { house_read_id: row.id } };   // the one-pass compile (every kind but a deep RECON, which thinks in passes below)
+  if (deep) {   // SEAM:READ_DEEP: the commission's ceiling (SEAM:READ_THINK: on the worst case of all four passes over this evidence) and the copy desk after it
+    const est = deepThinkChain('analysis', prompt.length, {});
+    if (!deepRoom(deep, est + READ_DEEP.DESK_USD)) {
+      row.meta = Object.assign({}, row.meta || {}, { deep: Object.assign({}, deep, { stage: 'hold', hold_reason: 'budget', held_from: 'compile', compile_est: est }) });
+      await readPatch(env, row.id, { meta: row.meta, stats, label, error: null });
+      return { ok: false, error: 'budget_hold', est_usd: Math.round((est + READ_DEEP.DESK_USD) * 100) / 100 };   // with the desk, as the page says it
+    }
+  }
+  const packMeta = pack2 ? { pack: Object.assign({ ids: pack2.ids, lines: pack2.lines, voices: pack2.voices, counts: pack2.counts, text: pack2.text }, pack2.plan ? { plan: pack2.plan } : {}, pack2.win ? { win: pack2.win } : {}, pack2.outlet_types ? { outlet_types: pack2.outlet_types } : {},
+    deep && desk ? { desk } : {}) } : {};   // SEAM:READ_THINK: the desk's inputs as they stood, so every pass reads the same
+  if (deep) {   // SEAM:READ_DEEP: the ground is written before the compile is paid for, so a compile sent by a run that dies after it can be adopted (deepCompile), never sent twice
+    row.meta = deepSafe(Object.assign({}, row.meta || {}, { children: children.map(c => c.id), desk_chars: desk.length }, packMeta));
+    await readPatch(env, row.id, { stats, label, pack_ids: items.map(it => it.id), meta: row.meta });
+    // SEAM:READ_THINK: the first of four passes, the analysis, from the ground just written; the tick carries the rest.
+    Object.assign(row, { stats, label, pack_ids: items.map(it => it.id) });
+    const r = await deepThinkSend(env, row, deep, 'analysis');
+    if (r.hold) {
+      const need = Number(r.patch && r.patch.think_need) || 0;
+      row.meta = Object.assign({}, row.meta || {}, { deep: Object.assign({}, deep, r.patch || {}, { stage: 'hold', hold_reason: 'budget', held_from: 'compile', compile_est: Math.round((need - READ_DEEP.DESK_USD) * 100) / 100 }) });
+      await readPatch(env, row.id, { meta: deepSafe(row.meta), error: null });
+      return { ok: false, error: 'budget_hold', est_usd: r.patch && r.patch.think_need };
+    }
+    if (r.next !== 'analysis' || !r.batch_id) { stage('submitted', { ok: false, error: r.submit || r.error || r.waiting || 'refused' }); return { ok: false, error: r.submit || r.error || 'refused' }; }
+    const at = new Date().toISOString();
+    row.meta = deepSafe(Object.assign({}, row.meta || {}, { deep: Object.assign({}, deep, r.patch || {}, { stage: 'analysis', stage_at: at, waiting: r.waiting || null, tries: Object.assign({}, deep.tries || {}, { compile: 0 }),
+      log: (deep.log || []).slice(-39).concat([{ stage: 'compile', to: 'analysis', at, ms: Date.now() - t0, error: null, hold: null, waiting: null }]) }) }));
+    await readPatch(env, row.id, { status: 'queued', error: null, meta: row.meta });
+    stage('submitted', { ok: true, pass: 'analysis' });
+    logEvent(env, 'intelligence', 'reads', 'read_submit', null, { id: row.id, kind: row.kind, stories: items.length, children: 0, pack: pack2 ? pack2.counts : null, pass: 'analysis' });
+    return { ok: true, id: row.id, batch_id: r.batch_id, pass: 'analysis', stories: items.length, children: 0, pack: pack2 ? pack2.counts : null };
+  }
+  const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [req]);
   stage('submitted', { ok: sub.ok, error: sub.error || null });
   if (!sub.ok) {
     await readPatch(env, row.id, { status: 'queued', error: sub.error + (sub.detail ? ': ' + String(sub.detail).slice(0, 120) : ''), stats, label });
     return sub;
   }
+  const meta2 = Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id), desk_chars: desk.length }, packMeta);
   await readPatch(env, row.id, { status: 'compiling', error: null, stats, label,
-    pack_ids: items.map(it => it.id), meta: Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id), desk_chars: desk.length },
-      pack2 ? { pack: { ids: pack2.ids, lines: pack2.lines, voices: pack2.voices, counts: pack2.counts, text: pack2.text } } : {}) });
+    pack_ids: items.map(it => it.id), meta: recon ? deepSafe(meta2) : meta2 });   // SEAM:READ_DEEP: a half emoji in a voice title must never fail the row after the batch is paid
   stage('patched');
   logEvent(env, 'intelligence', 'reads', 'read_submit', null, { id: row.id, kind: row.kind, stories: items.length, children: children.length, pack: pack2 ? pack2.counts : null });
   return { ok: true, id: row.id, batch_id: sub.batch_id, stories: items.length, children: children.length, est_usd: sub.est_usd, pack: pack2 ? pack2.counts : null };
@@ -8934,7 +10641,7 @@ async function readSubmit(env, row) {
 async function readItemsByIds(env, ids) {
   const out = [], list = (ids || []).map(n => parseInt(n, 10)).filter(Number.isFinite);
   for (let i = 0; i < list.length; i += 40) {
-    const rows = await sbRest(env, 'edition_items?id=in.(' + list.slice(i, i + 40).join(',') + ')&select=id,edition_id,ord,kicker,headline,take,apply,territory,format,source_name&limit=200') || [];
+    const rows = await sbRest(env, 'edition_items?id=in.(' + list.slice(i, i + 40).join(',') + ')&select=id,edition_id,ord,kicker,headline,take,apply,territory,format,source_name,source_url,signal_id&limit=200') || [];
     out.push(...rows);
   }
   const eds = {}; const eids = [...new Set(out.map(r => r.edition_id))];
@@ -8950,28 +10657,41 @@ async function readSubmitRevision(env, row) {
   const prior = await readRow(env, row.meta && row.meta.revised_from);
   if (!prior || !prior.read) { await readPatch(env, row.id, { status: 'failed', error: 'no_prior_read' }); return { ok: false, error: 'no_prior_read' }; }
   const notes = readNotesOpen(row);
-  const stats = prior.stats || {};
+  const stats = Object.assign({}, prior.stats || {});
   const items = await readItemsByIds(env, prior.pack_ids || []);
-  const pk = (prior.meta && prior.meta.pack) || null;
+  const dEarly = row.kind === 'recon' ? (deepOf(row) || deepOf(prior)) : null;   // SEAM:READ_DEEP: one figure for the comments read, in the revision's ground too
+  const pk = readPackVoicesRefresh((prior.meta && prior.meta.pack) || null, { start: prior.window_start, end: prior.window_end }, dEarly && dEarly.comments ? dEarly.comments.read : null);   // SEAM:VOICE_LAW: the same ground, its voices read under the voice law (SEAM:READ_TIME: banded by date)
   const desk = await readDeskInputs(env, row.kind);
   const recon = row.kind === 'recon' ? readReconOf(row) : null;
+  const deep = recon ? deepOf(row) || deepOf(prior) : null;   // SEAM:READ_DEEP: a deep RECON's revision stands on the same evidence, on the same ledger, under the same law
+  if (deep && pk && !pk.win) pk.win = { start: prior.window_start, end: prior.window_end };
+  if (recon && pk) stats.recon = Object.assign({}, stats.recon || {}, readReconStats(recon, items, pk, (prior.meta && prior.meta.gather && prior.meta.gather.attention) || (deep && deep.attention) || null),   // SEAM:READ_NUMBERS: the reader's counts, from the same pack
+    deep ? deepStatsOf(deep, pk) : {});   // SEAM:READ_DEEP: the deep counts, as the first compile carried them
   const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +
     (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
+    (pk && pk.plan ? pk.plan + '\n\n' : '') +   // SEAM:READ_DEEP
     'STATS (exact, computed by the database):\n' + JSON.stringify(stats) +
     (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY):\n' + items.map(it => readPackLine(it, K.take)).join('\n') : '') +
     (pk && pk.text ? '\n\n' + pk.text : '') +
     '\n\nPRIOR READ (version ' + prior.version + ', the object you are revising):\n' + JSON.stringify(prior.read) +
     '\n\nDESK NOTES (' + notes.length + '):\n' + (notes.length ? readNotesText(notes) : '(none: apply the HOUSE DESK inputs and change nothing else)') +
     '\n\n' + READ_REVISION_LAW + '\n\nWrite version ' + row.version + ' of ' + row.label + '. Return only the JSON object.';
-  const sub = await claudeBatchSubmit(env, 'doc', 'house_' + row.kind, [{
-    custom_id: 'hr-' + row.id + '-v' + row.version,
-    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
+  const req = { custom_id: 'hr-' + row.id + '-v' + row.version,
+    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind] + (deep ? ' ' + READ_DEEP_LAW : '') + (deep && deep.think ? ' ' + READ_THINK_CONTRACT : ''), cache: true,   // SEAM:READ_THINK: a revision keeps every section the passes wrote
     prompt, max_tokens: K.max_tokens, thinking: { type: 'adaptive' }, output_config: { effort: K.effort },
-    meta: { house_read_id: row.id } }]);
+    meta: { house_read_id: row.id } };
+  if (deep) {   // SEAM:READ_DEEP: a revision is paid inside the commission's ceiling too (the research, every compile and desk before it)
+    const est = claudeEstimate(claudeParams('recon', req), true);
+    if (!deepRoom(deep, est + READ_DEEP.DESK_USD)) {
+      await readPatch(env, row.id, { status: 'failed', error: 'budget_too_low: $' + deepSpent(deep).toFixed(2) + ' spent of $' + (Number(deep.budget_usd) || READ_DEEP.BUDGET_USD) + ', this revision needs $' + (est + READ_DEEP.DESK_USD).toFixed(2) });
+      return { ok: false, error: 'budget_too_low', spent: deepSpent(deep), budget: Number(deep.budget_usd) || READ_DEEP.BUDGET_USD, est_usd: est };
+    }
+  }
+  const sub = await claudeBatchSubmit(env, deep ? 'recon' : 'doc', 'house_' + row.kind, [req]);
   if (!sub.ok) { await readPatch(env, row.id, { status: 'queued', error: sub.error + (sub.detail ? ': ' + String(sub.detail).slice(0, 120) : '') }); return sub; }
-  await readPatch(env, row.id, { status: 'compiling', error: null, stats, label: row.label, pack_ids: prior.pack_ids || [],
-    meta: Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: (prior.meta && prior.meta.children) || [], desk_chars: desk.length,
-      notes: ((row.meta && row.meta.notes) || []).map(n => Object.assign({}, n, { status: 'applied', applied_in: row.id })) }, pk ? { pack: pk } : {}) });   // the notes it applied stay as its record; new notes start open
+  const rmeta = Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: (prior.meta && prior.meta.children) || [], desk_chars: desk.length,
+      notes: ((row.meta && row.meta.notes) || []).map(n => Object.assign({}, n, { status: 'applied', applied_in: row.id })) }, pk ? { pack: pk } : {});   // the notes it applied stay as its record; new notes start open
+  await readPatch(env, row.id, { status: 'compiling', error: null, stats, label: row.label, pack_ids: prior.pack_ids || [], meta: deep ? deepSafe(rmeta) : rmeta });   // SEAM:READ_DEEP: text the row keeps
   logEvent(env, 'intelligence', 'reads', 'read_revise', null, { id: row.id, from: prior.id, kind: row.kind, notes: notes.length });
   return { ok: true, id: row.id, from: prior.id, batch_id: sub.batch_id, notes: notes.length, est_usd: sub.est_usd };
 }
@@ -8984,25 +10704,55 @@ async function readLand(env, id, text, cost, stopReason, force) {
   const ground = readGroundOf(row, items);
   const extra = readReportExtraIds(row.meta && row.meta.pack);   // SEAM:READ_REPORT
   const truncated = stopReason === 'max_tokens';
-  const parsed = truncated ? null : (parseModelJson(text) || extractJson(text));   // fences, curly quotes, trailing commas
+  let parsed = truncated ? null : (parseModelJson(text) || extractJson(text));   // fences, curly quotes, trailing commas
+  const dl = row.kind === 'recon' ? deepOf(row) : null, think = !!(dl && dl.think);   // SEAM:READ_THINK: a RECON written in passes
+  let fellBack = null, restored = [];
+  if (think && !(row.meta && row.meta.plan === 'revise')) {   // the editor's pass never loses the writer's draft: cut short, unreadable or no read at all, the draft lands; any section it dropped comes back
+    const draft = ((await deepThinkJobs(env, row, 'write').catch(deepLog('land_draft'))) || []).map(j => deepThinkOut('write', j)).find(Boolean);
+    if (draft && !deepThinkUsable('edit', parsed)) { fellBack = truncated ? 'truncated' : !parsed ? 'unparsable' : 'unusable'; parsed = draft; }
+    else if (draft) { const rb = deepThinkRestore(parsed, draft); parsed = rb.read; restored = rb.back; }
+  }
   const v = readValidate(row.kind, parsed, ground, row.pack_ids || [], extra);
+  if (fellBack) v.notes.push('think:edit_' + fellBack + ':the_draft_landed');
+  for (const k of restored) v.notes.push('think:edit_dropped:' + k + ':the_draft_kept');
   if (v.read && readIsReport(row.kind)) {   // SEAM:READ_REPORT: the supports law and the momentum law land before the copy desk (SEAM:READ_RECON too)
     const laws = readReportLaws(v.read, row, items);
-    v.read = laws.read; v.notes = v.notes.concat(laws.notes);
+    v.read = laws.read; v.notes = v.notes.concat(laws.notes, think ? deepThinkLaws(v.read, row) : []);   // SEAM:READ_THINK: the think contract, noted for the desk
   } else if (v.read) {   // SEAM:READ_SWEEP: every kind is checked for the reader law (ids or house words in prose are noted; the page numbers the sources)
-    v.notes = v.notes.concat(readReaderVoice(v.read).notes);
+    v.notes = v.notes.concat(readReaderVoice(v.read).notes, readStyle(v.read).notes);   // SEAM:READ_STYLE
   }
   // SEAM:READ_PROOF: the copy desk reads every landing. Spelling costs nothing; the editor rides the live tier; neither can block the landing.
   const pr = v.read ? await readProofRun(env, row.kind, v.read, ground, row.pack_ids || [], extra) : { read: null, notes: [], receipt: null };
   const status = pr.read && !v.fatal.length ? 'ready' : 'held';
+  // SEAM:READ_DEEP: the compile and the desk on the commission's receipt, by version (a re-land sets, never adds). SEAM:READ_THINK: the
+  // passes are read back from their jobs, so nothing stays reserved once the editor's pass has landed.
+  const js = think && !(row.meta && row.meta.plan === 'revise') ? await deepJobsSpend(env, row.id).catch(deepLog('land_spend')) : null;   // a revision's row has no passes of its own: it keeps the receipt it carried
+  const dspend = dl ? { deep: Object.assign({}, dl, { spend: Object.assign({}, dl.spend || {}, js || {}, { ['compile_v' + row.version]: Number(cost) || 0, ['desk_v' + row.version]: (pr.receipt && Number(pr.receipt.cost_usd)) || 0 }) }) } : {};
+  const metaW = Object.assign({}, row.meta || {}, pr.receipt ? { proof: pr.receipt } : {}, dspend, think ? { renders: null } : {});   // SEAM:READ_THINK: drawings are this version's, written next
   await readPatch(env, id, { status, read: pr.read, violations: v.fatal.concat(v.notes, pr.notes), cost_usd: cost,
-    meta: Object.assign({}, row.meta || {}, pr.receipt ? { proof: pr.receipt } : {}),
-    error: pr.read ? (v.fatal.length ? 'held_for_review' : null) : (truncated ? 'truncated_max_tokens' : 'unparsable') });
+    meta: metaW, error: pr.read ? (v.fatal.length ? 'held_for_review' : null) : (truncated ? 'truncated_max_tokens' : 'unparsable') });
   logEvent(env, 'intelligence', 'reads', 'read_' + status, null, { id, kind: row.kind, fatal: v.fatal.length });
+  if (think && pr.read) {   // SEAM:READ_THINK: the concept territories, drawn after the landing (a render that fails never holds the read)
+    const renders = await deepRenders(env, row, pr.read).catch(deepLog('renders'));
+    if (renders) await readPatch(env, id, { meta: Object.assign({}, metaW, { renders }) }).catch(deepLog('renders_patch'));
+  }
   return { id, status, fatal: v.fatal.length };
 }
 async function readFail(env, id, error) {
-  await readPatch(env, id, { status: 'failed', error: String(error || 'batch_failed').slice(0, 300) });
+  // SEAM:READ_DEEP: a deep RECON's compile that errored or expired is sent again from the same evidence (its research is never paid
+  // for twice), TRIES times; a revision of one is sent again the same way. SEAM:READ_THINK: a RECON written in passes sends its
+  // editor's pass again from the writer's stage (the analysis, the strategy and the draft are never paid for twice).
+  const row = await readRow(env, id).catch(deepLog('fail_row')) || await readRow(env, id).catch(deepLog('fail_row_2'));   // one more look before a failure is called plain
+  let d = row && row.kind === 'recon' ? deepOf(row) : null;
+  const revise = !!(row && row.meta && row.meta.plan === 'revise'), at = d && d.think ? 'write' : 'compile';
+  if (d && d.think && !revise) { const js = await deepJobsSpend(env, row.id).catch(deepLog('fail_spend')); if (js) d = Object.assign({}, d, { spend: Object.assign({}, d.spend || {}, js) }); }   // SEAM:READ_THINK: a failed pass is no longer reserved
+  if (d && (d.compile_fails || 0) + 1 < READ_DEEP.TRIES) {
+    const next = Object.assign({}, d, { stage: revise ? d.stage : at, compile_fails: (d.compile_fails || 0) + 1, last_error: String(error || 'batch_failed').slice(0, 120) });
+    await readPatch(env, id, { status: 'queued', error: ('compile_retry: ' + String(error || 'batch_failed')).slice(0, 300), meta: Object.assign({}, row.meta || {}, { deep: next }) });
+    return;
+  }
+  const first = d && !revise;   // a first compile can be released again from its evidence; a revision is asked for again
+  await readPatch(env, id, Object.assign({ status: 'failed', error: String(error || 'batch_failed').slice(0, 300) }, first ? { meta: Object.assign({}, row.meta || {}, { deep: Object.assign({}, d, { stage: 'failed', failed_stage: at }) }) } : {}));
 }
 
 /* SEAM:READ_PROOF: the copy desk. Every read is proofread before it is ready, and
@@ -9226,7 +10976,8 @@ function readGroundOf(row, items) {
 }
 /* SEAM:READ_REPORT: the report's own laws on a landed read: supports and momentum. Pure given the row and the stories. */
 function readReportLaws(read, row, items) {
-  const pk = (row.meta && row.meta.pack) || {}, ln = pk.lines || {};
+  const pk = (row.meta && row.meta.pack) || {}, ln = pk.lines || {}, vq = (pk.voices && pk.voices.quotes) || [];
+  const shareOf = n => { const q = vq[n - 1]; const sh = q ? voiceShareOf(q) : null; return sh && sh.headline ? Object.assign({ when: q.when || null }, sh) : null; };   // SEAM:VOICE_LAW: a shared story is its outlet's
   const s = row.window_start, e = row.window_end;
   const byS = {}; (items || []).forEach(it => { byS['S' + it.id] = it; });
   const inWin = d => { const x = d ? String(d).slice(0, 10) : ''; return x >= s && x <= e; };
@@ -9234,12 +10985,16 @@ function readReportLaws(read, row, items) {
     if (k === 'S') return byS[id] ? (byS[id].source_name || 'daily') : null;
     if (k === 'L') { const r = (ln.L || [])[n - 1]; return r ? (r.source_name || 'lake') : null; }
     if (k === 'D' || k === 'X') return 'house';
+    if (k === 'V') { const sh = shareOf(n); return sh ? sh.outlet : null; }
+    if (k === 'C') { const r = (ln.C || [])[n - 1]; return r ? (r.outlet || 'source') : null; }   // SEAM:READ_DEEP
     return null; };
   const datedIn = id => { const k = id[0], n = parseInt(id.slice(1), 10);
     if (k === 'S') return !!byS[id] && inWin(byS[id].date);
     if (k === 'L') { const r = (ln.L || [])[n - 1]; return !!r && inWin(r.published_at); }
     if (k === 'D') { const r = (ln.D || [])[n - 1]; return !!r && inWin(r.night); }
     if (k === 'X') { const r = (ln.X || [])[n - 1]; return !!r && inWin(r.created_at); }
+    if (k === 'V') { const sh = shareOf(n); return !!sh && inWin(sh.date || sh.when); }
+    if (k === 'C') { const r = (ln.C || [])[n - 1]; return !!r && inWin(r.published_at); }   // SEAM:READ_DEEP
     return false; };
   const weekOf = d => { const x = new Date(String(d || '').slice(0, 10) + 'T00:00:00Z'); if (isNaN(x)) return null; x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return x.toISOString().slice(0, 10); };   // the Monday
   const whereOf = id => { const k = id[0], n = parseInt(id.slice(1), 10); let d = null, t = null;
@@ -9247,36 +11002,173 @@ function readReportLaws(read, row, items) {
     else if (k === 'L') { const r = (ln.L || [])[n - 1]; if (r) { d = r.published_at; t = r.territory; } }
     else if (k === 'D') { const r = (ln.D || [])[n - 1]; if (r) d = r.night; }
     else if (k === 'X') { const r = (ln.X || [])[n - 1]; if (r) d = r.created_at; }
+    else if (k === 'V') { const sh = shareOf(n); if (sh) d = sh.date || sh.when; }
+    else if (k === 'C') { const r = (ln.C || [])[n - 1]; if (r) d = r.published_at; }   // SEAM:READ_DEEP
     return d ? { date: String(d).slice(0, 10), week: weekOf(d), territory: t || null } : null; };
-  const a = readSupports(read, outletOf, datedIn, null, whereOf), b = readMomentum(a.read, row.stats), c = readReaderVoice(b.read);
-  return { read: c.read, notes: a.notes.concat(b.notes, c.notes) };
+  const keyOf = id => { const k = id[0], n = parseInt(id.slice(1), 10);   // SEAM:READ_DEEP: the page a line stands on
+    if (k === 'S') return byS[id] && deepUrlKey(byS[id].source_url) ? deepUrlKey(byS[id].source_url) : id;
+    if (k === 'L') { const r = (ln.L || [])[n - 1]; return r && deepUrlKey(r.url) ? deepUrlKey(r.url) : id; }
+    if (k === 'C') { const r = (ln.C || [])[n - 1]; return r && deepUrlKey(r.url) ? deepUrlKey(r.url) : id; }
+    return id; };
+  const vl = readVoiceLaw(read, vq);   // SEAM:VOICE_LAW: first, so a shared story cited as a voice is counted as its outlet's evidence
+  const a = readSupports(vl.read, outletOf, datedIn, null, whereOf, keyOf), b = readMomentum(a.read, row.stats), c = readReaderVoice(b.read, { c: (ln.C || []).length > 0 }), rg = readRegister(c.read), sy = readStyle(c.read);
+  return { read: c.read, notes: vl.notes.concat(a.notes, b.notes, c.notes, rg.notes, sy.notes) };   // SEAM:READ_STYLE: the copy desk's mechanical checks ride the notes
+}
+/* SEAM:VOICE_LAW PURE: at landing the voice law is enforced, not hoped for. A finding's voices are consumer voices the pack holds: a
+ * shared story cited as a voice moves to the finding's evidence (it is the outlet's reporting); a bare link or an unknown id goes; a
+ * voice an earlier finding already quotes goes (each voice once), at most two each. consumer_voice keeps only consumer voices no
+ * finding quotes; its groups point only at consumer voices. SEAM:READ_TIME: a finding's voices from the period come before its
+ * older ones, and a finding that quotes only older voices is noted; then_and_now pairs voices from before the period with voices
+ * from it, each voice once, at most two a side and three pairs; a pair missing a side goes. */
+function readVoiceLaw(read, vq) {
+  if (!read || typeof read !== 'object') return { read, notes: [] };
+  const notes = [], used = new Set();
+  const quoteOf = id => { const m = /^V(\d+)$/.exec(String(id)); return m ? (vq || [])[parseInt(m[1], 10) - 1] || null : null; };
+  const kind = id => { const q = quoteOf(id); if (!q) return null; const sh = voiceShareOf(q); return sh ? (sh.headline ? 'share' : 'link') : 'voice'; };
+  const then = id => readIsThen(readBandOf(quoteOf(id)));
+  const out = Object.assign({}, read);
+  if (Array.isArray(read.findings)) out.findings = read.findings.map((f, i) => {
+    if (!f || typeof f !== 'object') return f;
+    if (!Array.isArray(f.voices)) f = Object.assign({}, f, { voices: [] });
+    const keep = [], ev = Array.isArray(f.evidence) ? f.evidence.slice() : [];
+    // A consumer voice is never a support: cited in the evidence, it moves to the finding's voices (or goes, noted) so it prints once, quoted.
+    const asked = f.voices.concat(ev.filter(id => kind(id) === 'voice' && !f.voices.includes(id)));
+    for (let j = ev.length - 1; j >= 0; j--) if (kind(ev[j]) === 'voice') { notes.push('voice_law:voice_out_of_evidence:findings[' + i + ']:' + ev[j]); ev.splice(j, 1); }
+    for (const id of asked) {
+      const k = kind(id);
+      if (k === 'share') { if (!ev.includes(id)) ev.push(id); notes.push('voice_law:share_to_evidence:findings[' + i + ']:' + id); }
+      else if (k !== 'voice') notes.push('voice_law:not_a_voice:findings[' + i + ']:' + id);
+      else if (used.has(id)) notes.push('voice_law:quoted_twice:findings[' + i + ']:' + id);
+      else if (keep.length < 2) { keep.push(id); used.add(id); }
+    }
+    keep.sort((a, b) => then(a) - then(b));   // SEAM:READ_TIME: the period speaks first
+    if (keep.length && keep.every(then)) notes.push('time_law:voices_only_then:findings[' + i + ']');
+    return Object.assign({}, f, { voices: keep, evidence: ev });
+  });
+  const cv = read.consumer_voice;
+  if (cv && typeof cv === 'object') {
+    const isVoice = id => kind(id) === 'voice';
+    const quotes = (Array.isArray(cv.quotes) ? cv.quotes : []).filter(id => {
+      if (!isVoice(id)) { notes.push('voice_law:not_a_voice:consumer_voice:' + id); return false; }
+      if (used.has(id)) { notes.push('voice_law:quoted_twice:consumer_voice:' + id); return false; }
+      used.add(id); return true; });
+    const groups = (Array.isArray(cv.groups) ? cv.groups : []).map(g => g && Array.isArray(g.quotes) ? Object.assign({}, g, { quotes: g.quotes.filter(isVoice) }) : g);
+    const pairs = [];
+    (Array.isArray(cv.then_and_now) ? cv.then_and_now : []).forEach((x, j) => {
+      if (!x || typeof x !== 'object' || pairs.length >= 3) return;
+      const side = (ids, old, name) => { const got = []; for (const id of (Array.isArray(ids) ? ids : [])) {
+        if (!isVoice(id)) notes.push('voice_law:not_a_voice:then_and_now[' + j + '].' + name + ':' + id);
+        else if (then(id) !== old || (!old && readBandOf(quoteOf(id)) !== 'now')) notes.push('time_law:wrong_side:then_and_now[' + j + '].' + name + ':' + id);
+        else if (used.has(id) || got.includes(id)) notes.push('voice_law:quoted_twice:then_and_now[' + j + '].' + name + ':' + id);
+        else if (got.length < 2) got.push(id); } return got; };
+      const a = side(x.then, true, 'then'), b = side(x.now, false, 'now');
+      if (!a.length || !b.length) { notes.push('time_law:one_sided:then_and_now[' + j + ']'); return; }
+      a.concat(b).forEach(id => used.add(id)); pairs.push(Object.assign({}, x, { then: a, now: b }));
+    });
+    if (cv.then_and_now != null && !Array.isArray(cv.then_and_now)) notes.push('time_law:then_and_now_not_a_list');
+    out.consumer_voice = Object.assign({}, cv, { quotes, groups }, cv.then_and_now != null ? { then_and_now: pairs } : {});   // never anything but a list
+  }
+  return { read: out, notes };
+}
+/* SEAM:VOICE_LAW PURE: the register law, checked. A slur or a loaded label in our own sentences (outside a double-quoted quote, so a
+ * label in single quotes is still ours) is noted by path, and a sold read may not carry one. A quoted passage of thirty characters or
+ * more that appears in two places is noted as a repeat. "the house" in prose is noted for the desk. */
+const READ_LOADED = /\b(?:pervs?|perverts?|perverted|perv glasses|pervert glasses|spy glasses|glassholes?|sickos?|degenerates?)\b/i;
+function readRegister(read) {
+  const notes = [], seen = {};
+  const walk = (v, path) => {
+    if (Array.isArray(v)) { if (!/(?:evidence|quotes|voices)$|\.(?:then|now)$/.test(path)) v.forEach((x, i) => walk(x, path + '[' + i + ']')); return; }
+    if (v && typeof v === 'object') { for (const k of Object.keys(v)) walk(v[k], path ? path + '.' + k : k); return; }
+    if (typeof v !== 'string' || /\.stat$|^cover_image$|lead_image$|\.(?:reach|horizon|confidence|strength)$/.test(path)) return;
+    const own = v.replace(/"[^"]*"|\u201c[^\u201d]*\u201d/g, ' ');
+    const m = own.match(READ_LOADED); if (m) notes.push('register:' + path + ':' + m[0].toLowerCase());
+    if (/\bthe house(?:'s)?\b/i.test(own)) notes.push('house_voice:' + path);
+    for (const q of v.match(/"[^"]{30,}"|\u201c[^\u201d]{30,}\u201d/g) || []) { const k = q.toLowerCase().replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ').trim(); (seen[k] = seen[k] || []).push(path); }
+  };
+  walk(read, '');
+  for (const k of Object.keys(seen)) if (seen[k].length > 1) notes.push('repeat_quote:' + seen[k].slice(0, 3).join(',') + ':' + k.slice(0, 60));
+  return { notes: notes.slice(0, 40) };
+}
+/* SEAM:READ_STYLE PURE: the house style's mechanical checks, run by the copy desk before the editor's last pass. Each is a note by
+ * path for the desk, never a hold: a banned word in our own sentences (hedges, agency-speak, "signal" except "early signal"), "X,
+ * not Y" in a headline line (the title, the subtitle, a finding's name or dek, the cover line, a frame's headline) or more than once
+ * in a section, a sentence that opens on "This means", "The lesson is" or a numeral, the "which means" hinge more than once in a
+ * section, an exclamation mark, a headline that asks a question. Words inside a quotation are the speaker's and are not checked. */
+const READ_STYLE = {
+  BANNED: /\b(?:might|could potentially|arguably|it remains to be seen|leverag(?:e|es|ed|ing)|synerg(?:y|ies)|ecosystem play|move the needle|double down|unlock(?:s|ed|ing)?|elevat(?:e|es|ed|ing)|resonat(?:e|es|ed|ing)|game[- ]changers?)\b|(?<!\bearly )\bsignals?\b/i,
+  MAY: /\bmay\b/,   // the hedge, lower case: the month is May
+  HEADLINE: /^(?:title|subtitle|findings\[\d+\]\.(?:name|dek)|social\.cover_line|social\.frames\[\d+\]\.headline)$/,
+  SKIP: /\.stat$|^cover_image$|lead_image$|\.(?:reach|horizon|confidence|strength|territory|category|verdict|kind|image_prompt|figure)$|^glossary\[\d+\]\.term$|^plan_90\.phases\[\d+\]\.window$|\.supports\./   // SEAM:READ_THINK: a label, a figure as its source gives it, an illustrator's brief, a window or our own counts (a finding's supports and their dates) is not prose
+};
+function readStyle(read) {
+  const notes = [], per = {};
+  const bump = (sec, k) => { const key = sec + '|' + k; per[key] = (per[key] || 0) + 1; return per[key]; };
+  const walk = (v, path) => {
+    if (Array.isArray(v)) { if (!/(?:evidence|quotes|voices)$|\.(?:then|now)$/.test(path)) v.forEach((x, i) => walk(x, path + '[' + i + ']')); return; }
+    if (v && typeof v === 'object') { for (const k of Object.keys(v)) walk(v[k], path ? path + '.' + k : k); return; }
+    if (typeof v !== 'string' || !v.trim() || READ_STYLE.SKIP.test(path)) return;
+    const own = v.replace(/"[^"]*"|\u201c[^\u201d]*\u201d/g, ' '), sec = (path.match(/^[a-z_]+(?:\[\d+\])?/) || [path])[0];   // a finding is its own section
+    const b = own.match(READ_STYLE.BANNED) || own.match(READ_STYLE.MAY); if (b) notes.push('style:banned:' + path + ':' + b[0].toLowerCase());
+    const xy = (own.match(/,\s+not\s+[a-z]/gi) || []).length;
+    if (xy && READ_STYLE.HEADLINE.test(path)) notes.push('style:x_not_y_headline:' + path);
+    else for (let i = 0; i < xy; i++) if (bump(sec, 'xy') === 2) notes.push('style:x_not_y_twice:' + sec);
+    const op = own.match(/(?:^|[.!?]\s+)(This means|The lesson is|\d)/); if (op) notes.push('style:opener:' + path + ':' + (/\d/.test(op[1]) ? 'numeral' : op[1].toLowerCase()));
+    for (let i = 0; i < (own.match(/\bwhich means\b/gi) || []).length; i++) if (bump(sec, 'wm') === 2) notes.push('style:which_means_twice:' + sec);
+    if (/!/.test(own)) notes.push('style:exclamation:' + path);
+    if (READ_STYLE.HEADLINE.test(path) && /\?\s*$/.test(own)) notes.push('style:question_headline:' + path);
+  };
+  walk(read, '');
+  return { notes: notes.slice(0, 40) };
 }
 /* SEAM:READ_REPORT PURE: the reader law, checked. House words and ids inside prose are noted by path (the copy desk
  * and the recut fix them); the page turns any id that survives in prose into a numbered source, so a reader never meets "L4". */
 const READ_HOUSE_WORDS = /\b(?:the lake|lake signals?|overnight (?:frame|read)|STATS|tier [0-4]|T[0-4]\b|the pack|house reads?|DAILY (?:issue|stor(?:y|ies)))\b/gi;
-function readReaderVoice(read) {
-  const notes = [];
+function readReaderVoice(read, opts) {
+  const notes = [], idRx = opts && opts.c ? /\b[SLRTDXVC]\d+\b/g : /\b[SLRTDXV]\d+\b/g;   // SEAM:READ_DEEP: a C id is an id only where the read has sources read in full ("C3 Presents" elsewhere is a name)
   const walk = (v, path) => {
-    if (Array.isArray(v)) return /(?:evidence|quotes|voices)$/.test(path) ? v : v.map((x, i) => walk(x, path + '[' + i + ']'));
+    if (Array.isArray(v)) return /(?:evidence|quotes|voices)$|\.(?:then|now)$/.test(path) ? v : v.map((x, i) => walk(x, path + '[' + i + ']'));
     if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) o[k] = walk(v[k], path ? path + '.' + k : k); return o; }
-    if (typeof v !== 'string' || /\.stat$|^cover_image$|lead_image$|\.(?:reach|horizon|confidence|strength)$/.test(path)) return v;
+    if (typeof v !== 'string' || /\.stat$|^cover_image$|lead_image$|\.(?:reach|horizon|confidence|strength|image_prompt)$/.test(path)) return v;   // SEAM:READ_THINK: an illustrator's brief is never printed
     const s = v;
     const words = s.match(READ_HOUSE_WORDS); if (words) notes.push('house_word:' + path + ':' + words[0]);
-    const ids = s.match(/\b[SLRTDXV]\d+\b/g); if (ids) notes.push('id_in_prose:' + path + ':' + ids[0]);
+    const ids = s.match(idRx); if (ids) notes.push('id_in_prose:' + path + ':' + ids[0]);
+    const plan = s.match(/\b(?:SQ|HYP)\d+\b/); if (plan) notes.push('plan_id_in_prose:' + path + ':' + plan[0]);   // SEAM:READ_DEEP: the research plan's ids never reach a reader
     return s;
   };
   return { read: walk(read, ''), notes: notes.slice(0, 40) };
 }
 
-async function readTick(env) {
+async function readTick(env, opts) {
+  const o = opts || {}, deadline = (Number.isFinite(o.t0) ? o.t0 : Date.now()) + READ_DEEP.WALL_MS;
   const q = await sbRest(env, 'house_reads?status=eq.queued&select=*&order=window_start.asc&limit=40') || [];
   const order = { weekly: 0, monthly: 1, record: 2, report: 3, recon: 4 };
   q.sort((a, b) => (order[a.kind] || 0) - (order[b.kind] || 0) || String(a.window_start).localeCompare(String(b.window_start)));
   const out = { queued: q.length, submitted: 0, waiting: 0, refused: 0 };
+  let deepRan = false;
   for (const row of q) {
     if (out.submitted >= HOUSE_READ.TICK_MAX) break;
     if (!(await readChildrenSettled(env, row))) { out.waiting++; continue; }
     if (row.meta && row.meta.plan === 'revise') { const rv = await readSubmitRevision(env, row); if (rv.ok) out.submitted++; else out.refused++; continue; }   // SEAM:READ_DESK: a revision rides the prior pack
+    let deep = row.kind === 'recon' ? deepOf(row) : null;
+    if (deep && o.deep && deep.stage === 'compiling' && Date.now() - Date.parse(deep.compiling_at || 0) > READ_DEEP.LEASE_MS) {   // a compile claimed by a run that died: counted, and taken again
+      await deepWrite(env, row, Object.assign({}, deep, { stage: 'compile', tries: Object.assign({}, deep.tries || {}, { compile: ((deep.tries || {}).compile || 0) + 1 }) }));
+      deep = deepOf(row);
+    }
+    if (deep) {   // SEAM:READ_DEEP: a deep RECON researches stage by stage and compiles only from its evidence file
+      // Only the half-hour tick and the admin's collect move one (never the daily cadence or the record, which may overlap them); one
+      // RECON with work to do a tick, while any number waiting on their batches or an allowance may look in.
+      if (!o.deep || ['hold', 'failed', 'compiled', 'compiling'].includes(deep.stage) || !(DEEP_STAGE[deep.stage] || deep.stage === 'compile')) { out.waiting++; continue; }
+      if (deep.stage !== 'compile') {
+        if (deepRan && deep.stage !== 'wait' && !READ_THINK.PASS[deep.stage]) { out.waiting++; continue; }   // SEAM:READ_THINK: a pass in the batch looks in like the cards
+        const a = await deepAdvance(env, row, { deadline });
+        (out.deep = out.deep || []).push(a);
+        if (!a.idle) deepRan = true;
+        if (!deepOf(row) || deepOf(row).stage !== 'compile') { out.waiting++; continue; }
+      }
+      const r = await deepCompile(env, row);   // claimed, inside the ceiling, on the recon tier
+      if (r.ok) out.submitted++; else if (r.error === 'budget_hold' || r.error === 'busy') out.waiting++; else out.refused++;
+      continue;
+    }
     if (row.kind === 'recon' && !(row.meta && row.meta.gather)) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); }   // SEAM:READ_RECON: gather before the compile
     const r = await readSubmit(env, row);
     if (r.ok) out.submitted++; else out.refused++;
@@ -9305,7 +11197,7 @@ function readSellable(row) {
   if (r.status !== 'ready' && r.status !== 'published') fails.push('not_ready:' + (r.status || 'none'));
   if (v.some(n => /^(?:number_not_in_evidence|missing_title_or_thesis|unparsable)/.test(String(n)))) fails.push('holds_remain');
   if (pr.lane !== 'live' || pr.reason) fails.push('desk_did_not_run' + (pr.reason ? ':' + String(pr.reason).slice(0, 40) : ''));
-  const leaks = v.filter(n => /^(?:house_word|id_in_prose):/.test(String(n)));
+  const leaks = v.filter(n => /^(?:house_word|id_in_prose|plan_id_in_prose|register):/.test(String(n)));   // SEAM:VOICE_LAW: the register law sells nothing it breaks (SEAM:READ_DEEP: nor a plan id)
   if (leaks.length) fails.push('reader_law:' + leaks.length);
   const lake = (r.stats && r.stats.lake) || {};
   if (readIsReport(r.kind) && (!lake.shape || typeof lake.prior_comparable !== 'boolean')) fails.push('no_shape');
@@ -9326,6 +11218,8 @@ function readSellable(row) {
     if (r.kind === 'report' && !meta.issue_no) fails.push('no_issue_no');
     if (r.kind === 'recon' && (!meta.recon_no || !meta.brief || !meta.brief.text)) fails.push('no_brief');
     if (r.kind === 'recon' && (!x.brief_answer || !x.for_the_brief || !x.for_the_brief.where_to_enter)) fails.push('no_brief_answer');
+    if (r.kind === 'recon' && meta.deep && meta.deep.think && x.title)   // SEAM:READ_THINK: a RECON thought through is sold only with every decision answered, every hypothesis judged and its plan
+      for (const n of deepThinkLaws(x, r)) if (/^think:(?:decisions|hypotheses|missing:plan_90|plan_90_phases):?/.test(n)) fails.push(n.slice(6));
   }
   if (!r.window_start || !r.window_end || !r.version) fails.push('no_period');
   return { ok: !fails.length, fails };
@@ -9470,10 +11364,10 @@ async function readQueue(env, kind, win, meta) {
  * headline, source, date and issue it stands on. The page prints them. */
 async function readReceipts(env, read, row) {
   const ids = new Set(), more = new Set();
-  const add = x => { const m = /^S(\d+)$/.exec(String(x)); if (m) ids.add(parseInt(m[1], 10)); else if (/^[LRTDXV]\d+$/.test(String(x))) more.add(String(x)); };
+  const add = x => { const m = /^S(\d+)$/.exec(String(x)); if (m) ids.add(parseInt(m[1], 10)); else if (/^[LRTDXVC]\d+$/.test(String(x))) more.add(String(x)); };
   const walk = (v, key) => {
     if (Array.isArray(v)) {
-      if (/(?:evidence|quotes)$/.test(key || '')) v.forEach(add);
+      if (/(?:evidence|quotes|voices)$|^(?:then|now)$/.test(key || '')) v.forEach(add);   // a finding's voices and then_and_now's sides resolve too
       else v.forEach(y => walk(y, ''));
     } else if (v && typeof v === 'object') Object.keys(v).forEach(k => /^(?:lead_image|cover_image)$/.test(k) ? add(v[k]) : walk(v[k], k));
   };
@@ -9487,7 +11381,10 @@ async function readReceipts(env, read, row) {
     else if (k === 'T') { const r = (ln.T || [])[n - 1]; if (r) out[id] = { kind: 'theme', headline: r.title, source_name: 'Unsurfaced Intelligence', territory: r.territory, n: r.n, has_image: false }; }
     else if (k === 'D') { const r = (ln.D || [])[n - 1]; if (r) out[id] = { kind: 'frame', headline: r.label + (r.claim ? ': ' + r.claim : ''), source_name: 'Unsurfaced Intelligence', date: r.night || null, has_image: false }; }
     else if (k === 'X') { const r = (ln.X || [])[n - 1]; if (r) out[id] = { kind: 'read', headline: 'Analysis: ' + r.query, source_name: 'Unsurfaced Intelligence', date: r.created_at ? String(r.created_at).slice(0, 10) : null, has_image: false }; }
-    else if (k === 'V') { const q = vq[n - 1]; if (q) out[id] = { kind: 'voice', headline: q.text, source_name: q.source, source_url: q.url, title: q.title, likes: q.likes, date: q.when || null, self: q.self || null, has_image: false }; }
+    else if (k === 'C') { const r = (ln.C || [])[n - 1]; if (r) out[id] = { kind: 'card', headline: r.title, source_name: r.outlet, source_url: r.url, tier: r.tier, date: r.published_at ? String(r.published_at).slice(0, 10) : null, has_image: false }; }   // SEAM:READ_DEEP: a source read in full
+    else if (k === 'V') { const q = vq[n - 1]; const sh = q ? voiceShareOf(q) : null;   // SEAM:VOICE_LAW
+      if (q && sh && sh.headline) out[id] = { kind: 'shared', headline: sh.headline, source_name: sh.outlet, byline: sh.byline || null, date: sh.date || q.when || null, has_image: false };
+      else if (q && !sh) out[id] = { kind: 'voice', headline: voiceDisplay(q.text), source_name: q.source, source_url: q.url, title: q.title, likes: q.likes, date: q.when || null, band: readBandOf(q), self: voiceSelf(q.text) || q.self || null, has_image: false }; }   // SEAM:READ_TIME: the page dates an older voice
   }
   for (let i = 0; i < list.length; i += 100) {
     const rows = await sbRest(env, 'edition_items?id=in.(' + list.slice(i, i + 100).join(',') + ')' +
@@ -9680,7 +11577,7 @@ async function readRoute(path, body, env, origin, user) {
   body = body || {};
   if (path === '/reads/list') {
     const k = HOUSE_READ.KINDS[body.kind] ? '&kind=eq.' + body.kind : '';
-    const rows = await sbRest(env, 'house_reads?select=id,kind,window_start,window_end,version,label,status,error,cost_usd,violations,created_at,updated_at' +
+    const rows = await sbRest(env, 'house_reads?select=id,kind,window_start,window_end,version,label,status,error,cost_usd,violations,created_at,updated_at,deep_stage:meta->deep->>stage,deep_hold:meta->deep->>hold_reason,deep_waiting:meta->deep->>waiting' +   // SEAM:READ_DEEP
       k + '&order=window_start.desc,version.desc&limit=100') || [];
     return json({ ok: true, reads: rows }, 200, origin, env);
   }
@@ -9749,8 +11646,8 @@ async function readRoute(path, body, env, origin, user) {
     return json(Object.assign({ ok: true }, r), 200, origin, env);
   }
   if (path === '/reads/collect') {
-    const drain = await claudeBatchDrain(env);
-    const tick = await readTick(env);
+    const t0 = Date.now(), drain = await claudeBatchDrain(env);
+    const tick = await readTick(env, { deep: true, t0 });   // SEAM:READ_DEEP: the admin's collect moves a deep RECON as the tick would
     return json({ ok: true, drain, tick }, 200, origin, env);
   }
   if (path === '/reads/publish') {
@@ -9988,7 +11885,13 @@ async function readRoute(path, body, env, origin, user) {
     const notes = readNotesOpen(row);
     const desk = await readDeskInputs(env, row.kind);
     if (!notes.length && !desk) return json({ ok: false, error: 'nothing_to_apply' }, 200, origin, env);
-    const carry = {}; for (const k of ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue']) if (row.meta && row.meta[k] != null) carry[k] = row.meta[k];
+    const dd = row.kind === 'recon' ? deepOf(row) : null;   // SEAM:READ_DEEP: a revision of a deep RECON is paid inside its ceiling; { budget } may raise it
+    const askedB = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
+    const ddBudget = dd ? (Number.isFinite(askedB) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, askedB)) : (Number(dd.budget_usd) || READ_DEEP.BUDGET_USD)) : null;
+    if (dd && !deepRoom(Object.assign({}, dd, { budget_usd: ddBudget }), READ_DEEP.REVISE_RESERVE + READ_DEEP.DESK_USD))   // a revision is one pass
+      return json({ ok: false, error: 'budget_too_low', spent: deepSpent(dd), budget: ddBudget }, 200, origin, env);
+    const carry = {}; for (const k of ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue', 'deep', 'renders']) if (row.meta && row.meta[k] != null) carry[k] = row.meta[k];   // SEAM:READ_DEEP: the revision stands on the same evidence (SEAM:READ_THINK: a concept drawn once is never drawn again)
+    if (dd) carry.deep = Object.assign({}, dd, { budget_usd: ddBudget, stage: 'revising', lease: null });   // a revision is never "compiled" until it lands
     const { row: next } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(carry, { plan: 'revise', revised_from: row.id, revised_from_version: row.version, revised_by: String(user.email || user.id).replace(/@.*$/, ''), notes: notes.map(n => Object.assign({}, n, { status: 'applying' })) }));
     if (!next) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
     const applied = ((row.meta && row.meta.notes) || []).map(n => notes.includes(n) ? Object.assign({}, n, { status: 'applied', applied_in: next.id }) : n);
@@ -10017,6 +11920,16 @@ async function readRoute(path, body, env, origin, user) {
     if (text.length < 12) return json({ ok: false, error: 'brief_too_short' }, 200, origin, env);
     const frame = await excFrameFor(env, text);
     if (!frame) return json({ ok: false, error: 'unframeable' }, 200, origin, env);
+    // SEAM:READ_DEEP: the client's decisions (up to five), the audience and the competitors as the client names them, the ceiling, the
+    // hold. Every RECON is deep unless the commission says deep:false (the shallow path: one gather, one compile).
+    const deep = body.deep !== false;
+    const words = (t, n) => { const x = String(t).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim(); if (x.length <= n) return x; const c = x.slice(0, n), sp = c.lastIndexOf(' '); return sp > n / 2 ? c.slice(0, sp) : c; };   // cut at a word, as the frame keeps it
+    const decisions = (Array.isArray(body.decisions) ? body.decisions : []).filter(d => typeof d === 'string').map(d => words(d, 240)).filter(d => d.length >= 6).slice(0, READ_DEEP.DECISIONS);   // the client's words only: they are ground
+    if (typeof body.audience === 'string' && body.audience.trim()) frame.audience = words(body.audience, 40) || frame.audience;
+    const named = (Array.isArray(body.competitors) ? body.competitors : []).filter(c => typeof c === 'string').map(c => words(c, 40)).filter(Boolean).slice(0, 5);
+    if (named.length) frame.competitors = named;
+    const asked = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
+    const budget = Number.isFinite(asked) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, asked)) : READ_DEEP.BUDGET_USD;
     const days = Math.max(14, Math.min(366, parseInt(body.days, 10) || READ_RECON.DAYS));
     const endD = readDay(body.end) || readAddDays(readDay(new Date().toISOString().slice(0, 10)), -1);
     const win = readReportWindow(readIso(readAddDays(endD, -(days - 1))), readIso(endD));
@@ -10024,12 +11937,49 @@ async function readRoute(path, body, env, origin, user) {
     const hash = (await sha256hex(text.toLowerCase())).slice(0, 16);
     const no = await readReconIssue(env, hash);
     win.label = readReconLabel(no, frame, win);
-    const { row, prev } = await readQueue(env, 'recon', win, { plan: 'recon', recon_no: no, brief: { text, hash, frame, days } });
+    const meta = { plan: 'recon', recon_no: no, brief: Object.assign({ text, hash, frame, days }, decisions.length ? { decisions } : {}) };
+    if (deep) meta.deep = { v: 1, stage: 'plan', budget_usd: budget, hold: body.hold === true, started_at: new Date().toISOString(), by: String(user.email || user.id).replace(/@.*$/, ''), spend: {}, counts: {}, log: [] };
+    const { row, prev } = await readQueue(env, 'recon', win, meta);
     if (!row) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
-    logEvent(env, 'intelligence', 'reads', 'recon_commissioned', null, { id: row.id, recon_no: no, days, by: user.id });
+    logEvent(env, 'intelligence', 'reads', 'recon_commissioned', null, { id: row.id, recon_no: no, days, deep, decisions: decisions.length, by: user.id });
     let sub = { ok: true, waiting: 'tick' };
-    if (body.now) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); sub = await readSubmit(env, row); sub.gather = { captured: g.captured, failed: g.failed.length }; }
-    return json(Object.assign({ id: row.id, kind: 'recon', recon_no: no, window: win, version: row.version, replaces: prev ? prev.id : null, frame }, sub), 200, origin, env);
+    if (body.now && deep) sub = Object.assign({ ok: true, waiting: 'tick' }, { advanced: await deepAdvance(env, row, { ms: 100000, deadline: Date.now() + 470000 }) });   // SEAM:READ_DEEP: the first stages now, the rest on the tick
+    else if (body.now) { const g = await readReconGather(env, row); row.meta = Object.assign({}, row.meta || {}, { gather: g }); sub = await readSubmit(env, row); sub.gather = { captured: g.captured, failed: g.failed.length }; }
+    return json(Object.assign({ id: row.id, kind: 'recon', recon_no: no, window: win, version: row.version, replaces: prev ? prev.id : null, frame }, deep ? { deep: { budget_usd: budget, hold: body.hold === true, decisions: decisions.length } } : {}, sub), 200, origin, env);
+  }
+  if (path === '/reads/release') {
+    // SEAM:READ_DEEP: release a deep RECON. { id, budget? } (admin). Held at its evidence file (or with no source read in full that bore
+    // on the question): it compiles now. Held at its ceiling: a larger budget resumes the stage it stopped at, on the next tick (the
+    // compile at once), and the client's own hold for the evidence file still stands. Failed at a stage: that stage runs again, its
+    // tries cleared. Whatever resumes must fit the ceiling: the compile with the copy desk after it, or a first step of the stage.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    let d = deepOf(row);
+    if (row.kind !== 'recon' || !d) return json({ ok: false, error: 'not_deep' }, 200, origin, env);
+    if (!(row.meta && row.meta.plan === 'revise')) {   // the receipt read back from the jobs first, so nothing that has ended is still counted as reserved
+      const js = await deepJobsSpend(env, row.id).catch(deepLog('release_spend'));
+      if (js) d = Object.assign({}, d, { spend: Object.assign({}, d.spend || {}, js) });
+    }
+    const failedAt = d.stage === 'failed' && row.status === 'failed' && (DEEP_STAGE[d.failed_stage] || d.failed_stage === 'compile') ? d.failed_stage
+      : row.status === 'failed' && d.stage === 'compiled' && !(row.meta && row.meta.plan === 'revise') ? (d.think ? 'write' : 'compile') : null;   // a compile that failed before its row could say so (SEAM:READ_THINK: the editor's pass, from the draft)
+    if (d.stage !== 'hold' && !failedAt) return json({ ok: false, error: 'not_held', stage: d.stage }, 200, origin, env);
+    const asked = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
+    const budget = Number.isFinite(asked) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, asked)) : (Number(d.budget_usd) || READ_DEEP.BUDGET_USD);
+    const review = d.hold_reason === 'evidence' || d.hold_reason === 'no_cards';
+    const resume = failedAt || (review || d.held_from === 'compile' ? 'compile' : (DEEP_STAGE[d.held_from] ? d.held_from : 'plan'));
+    // SEAM:READ_THINK: a pass resumes inside room for what it asked (its own worst case and every pass after it), or one pass and the desk.
+    const need = resume === 'compile' ? Math.max(READ_DEEP.COMPILE_RESERVE, Number(d.compile_est) || 0) + READ_DEEP.DESK_USD
+      : READ_THINK.PASS[resume] ? Math.max(Number(d.think_need) || 0, READ_DEEP.REVISE_RESERVE + READ_DEEP.DESK_USD) : 0.5;
+    if (!deepRoom(Object.assign({}, d, { budget_usd: budget }), need))
+      return json({ ok: false, error: 'budget_too_low', spent: deepSpent(d), budget, need: Math.round(need * 100) / 100 }, 200, origin, env);
+    const tries = failedAt ? Object.assign({}, d.tries || {}, { [failedAt]: 0 }) : d.tries;
+    const think = failedAt && d.think && d.think[failedAt] ? Object.assign({}, d.think, { [failedAt]: Object.assign({}, d.think[failedAt], { sends: 0 }) }) : d.think;   // a pass stopped after its resends is asked again
+    row.meta = Object.assign({}, row.meta || {}, { deep: Object.assign({}, d, { stage: resume, hold: review ? false : d.hold, hold_reason: null, held_from: null, failed_stage: null, lease: null, tries, compile_fails: failedAt ? 0 : d.compile_fails, think,
+      budget_usd: budget, released_at: new Date().toISOString(), released_by: String(user.email || user.id).replace(/@.*$/, '') }) });
+    await readPatch(env, row.id, Object.assign({ meta: row.meta, error: null }, failedAt ? { status: 'queued' } : {}));
+    logEvent(env, 'intelligence', 'reads', 'recon_released', null, { id: row.id, stage: resume, budget, by: user.id });
+    const sub = resume === 'compile' ? await deepCompile(env, await readRow(env, row.id)) : { ok: true, waiting: 'tick' };
+    return json(Object.assign({ id: row.id, stage: resume, budget }, sub), 200, origin, env);
   }
   // /reads/compile { kind: weekly | monthly | report, start?, end? (report: both required) }
   const kind = body.kind === 'monthly' ? 'monthly' : body.kind === 'report' ? 'report' : 'weekly';
@@ -10129,12 +12079,15 @@ async function railSpendLedger(env) {
   };
   const pplx = await read('pplxd:');
   const exa = await read('sigd:');
+  const pplx_recon = await read('pplxr:'), exa_recon = await read('sigr:');   // SEAM:READ_DEEP: the RECON lanes, on the same record
   const caps = {
     pplx: parseFloat(env.PPLX_DAILY_DOLLARS) || CONFIG.PPLX_DAILY_DOLLARS,
-    exa: parseFloat(env.SIGNAL_DAILY_DOLLARS) || CONFIG.SIGNAL_DAILY_DOLLARS
+    exa: parseFloat(env.SIGNAL_DAILY_DOLLARS) || CONFIG.SIGNAL_DAILY_DOLLARS,
+    pplx_recon: parseFloat(env.PPLX_RECON_DAILY_DOLLARS) || CONFIG.PPLX_RECON_DAILY_DOLLARS,
+    exa_recon: parseFloat(env.SIGNAL_RECON_DAILY_DOLLARS) || CONFIG.SIGNAL_RECON_DAILY_DOLLARS
   };
-  await logEvent(env, 'daily', null, 'rail_spend', null, { day, pplx, exa, caps });
-  return { day, pplx, exa };
+  await logEvent(env, 'daily', null, 'rail_spend', null, { day, pplx, exa, pplx_recon, exa_recon, caps });
+  return { day, pplx, exa, pplx_recon, exa_recon };
 }
 
 async function editionWatchdog(env) {

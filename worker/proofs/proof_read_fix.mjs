@@ -19,7 +19,7 @@ const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'calle
   sbRest, async () => ({ ok: true }), async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve());
 
 const K = R.HOUSE_READ.KINDS;
-ok(K.weekly.max_tokens === 20000 && K.monthly.max_tokens === 28000 && K.record.max_tokens === 32000, 'F1 room: 20k weekly, 28k monthly, 32k record');
+ok(K.weekly.max_tokens === 40000 && K.monthly.max_tokens === 56000 && K.record.max_tokens === 32000, 'F1 room: 40k weekly, 56k monthly (EX17: the Week of Sep 28 used 19,724 of 20,000), 32k record');
 ok(K.weekly.effort === 'medium' && K.monthly.effort === 'medium' && K.record.effort === 'high', 'F1b effort: medium weekly and monthly, high record');
 ok(/MAX_TOKENS: 128000,/.test(w), 'F2 lane ceiling admits the record and the report (Fable writes up to 128000)');
 

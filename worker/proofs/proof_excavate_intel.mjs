@@ -79,7 +79,7 @@ calls = []; L = mk([{ ok: true, text: 'LIVE' }], 5.9);
 r = await L.excCompile({}, { system: 'S', prompt: 'P', overnight: true });
 ok(r.lane === 'live' && calls.length === 1, 'L6 overnight work under the share rides the live lane');
 ok(L.excCacheKey('abc') === 'excr:i4:abc' && L.EXC_MODEL.CACHE_TTL === 86400, 'L7 a live read is kept a day under its query');
-ok(/live:   \{ model: 'claude-sonnet-5',  cap: 10, env: 'CLAUDE_LIVE_MONTHLY' \}/.test(w), 'L8 the live tier: Sonnet 5, $10 a month, CLAUDE_LIVE_MONTHLY to change');
+ok(/live:   \{ model: 'claude-sonnet-5',  cap: 30, env: 'CLAUDE_LIVE_MONTHLY' \}/.test(w), 'L8 the live tier: Sonnet 5, $30 a month since EX17 (October ran past $10), CLAUDE_LIVE_MONTHLY to change');
 
 // ── synthesize: cache, lane, dated findings ───────────────────────────────
 const synth = between('async function synthesize(', '// Robust JSON extraction');

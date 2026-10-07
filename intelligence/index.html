@@ -5610,14 +5610,15 @@ function _competitorRow(ms){
   return `<div class="rb-comps"><div class="rb-comp frame"><span class="rb-comp-k">this frame</span>${_sparklineMax(ms.series,120,30,max,'accent')}<span class="rb-comp-n">${n(ms.recent_7d)}<small> this wk</small></span></div>${comps.map(c=>`<div class="rb-comp"><span class="rb-comp-k">${n(c.name)}</span>${_sparklineMax(c.series,120,30,max,'quiet')}<span class="rb-comp-n">${n(c.recent_7d)}<small> this wk</small></span></div>`).join('')}<span class="rb-comp-cap">lake signals naming each, 12 weeks, one scale</span></div>`;
 }
 /* SEAM:EXC_VOICES: consumer reality, verbatim. The speaker's own words; beside them only what the speaker said about
-   themselves. No names, no handles, no link to the person, only to the video or the tag. */
+   themselves. No names, no handles, no link to the person, only to the video or the tag. A post that only passes on a headline
+   (q.share, marked by the rails) is the outlet's story and never shows as a consumer voice. */
 function _voiceSelfLine(q){ const s=q&&q.self; if(!s) return ''; const bits=[s.generation,s.gender,s.role,s.trait,s.place].filter(Boolean); return bits.length?`<span class="vq-self">self-described: ${bits.map(safe).join(' · ')}</span>`:''; }
 function _voiceSort(a,b){ return (b.likes||0)-(a.likes||0)||String(b.when||'').localeCompare(String(a.when||'')); }
 function _voicesPull(voices, k){
   if(!voices||!Array.isArray(voices.quotes)) return '';
   const srcBy=new Map((voices.sources||[]).map(s=>[s.id,s]));
   const seen=new Set();
-  const picks=voices.quotes.filter(q=>q&&q.on_frame!==false&&q.text&&q.text.length>=40).sort(_voiceSort).filter(q=>{ const key=q.text.toLowerCase().slice(0,60); if(seen.has(key)) return false; seen.add(key); return true; }).slice(0,k||3);
+  const picks=voices.quotes.filter(q=>q&&!q.share&&q.on_frame!==false&&q.text&&q.text.length>=40).sort(_voiceSort).filter(q=>{ const key=q.text.toLowerCase().slice(0,60); if(seen.has(key)) return false; seen.add(key); return true; }).slice(0,k||3);
   if(!picks.length) return '';
   return `<div class="rb-voices">${picks.map(q=>{ const s=srcBy.get(q.src)||{}; return `<blockquote class="rb-voice"><p>${safe(q.text)}</p><footer>${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+'</a>':''}</span></footer></blockquote>`; }).join('')}<div class="rb-voices-cap">What people say, in their words. Self-descriptions are theirs; nothing is inferred. <a href="#rail-voices">All voices ↓</a></div></div>`;
 }
@@ -5630,7 +5631,7 @@ function _renderVoices(meta){
   if(!host){ const vs=document.getElementById('voice-strip'); if(!vs) return; host=document.createElement('div'); host.id='rail-voices'; vs.insertAdjacentElement('afterend',host); }
   if(!v||!Array.isArray(v.quotes)||!v.quotes.length){ _renderRailVoices(items); return; }   // an older gather: the aggregate lines
   const srcBy=new Map((v.sources||[]).map(s=>[s.id,s]));
-  const all=v.quotes.filter(q=>q&&q.text), framed=all.some(q=>q.on_frame!==null&&q.on_frame!==undefined), on=framed?all.filter(q=>q.on_frame!==false):all, unread=framed?all.filter(q=>q.on_frame==null).length:0;
+  const all=v.quotes.filter(q=>q&&q.text&&!q.share), framed=all.some(q=>q.on_frame!==null&&q.on_frame!==undefined), on=framed?all.filter(q=>q.on_frame!==false):all, unread=framed?all.filter(q=>q.on_frame==null).length:0;
   const count=(pred)=>on.filter(pred).length;
   const markers=[['Gen Alpha',q=>q.self&&q.self.generation==='Gen Alpha'],['Gen Z',q=>q.self&&q.self.generation==='Gen Z'],['Millennial',q=>q.self&&q.self.generation==='Millennial'],['Gen X',q=>q.self&&q.self.generation==='Gen X'],['Boomer',q=>q.self&&q.self.generation==='Boomer'],['women',q=>q.self&&q.self.gender==='woman'],['men',q=>q.self&&q.self.gender==='man'],['parents',q=>q.self&&q.self.role==='parent'],['stylists',q=>q.self&&q.self.role==='stylist'],['practitioners',q=>q.self&&q.self.role==='practitioner'],['students',q=>q.self&&q.self.role==='student']].map(m=>({label:m[0],pred:m[1],n:count(m[1])})).filter(m=>m.n);
   const traits=[...new Set(on.map(q=>q.self&&q.self.trait).filter(Boolean))].slice(0,6).map(t=>({label:t,pred:q=>q.self&&q.self.trait===t,n:count(q=>q.self&&q.self.trait===t)}));

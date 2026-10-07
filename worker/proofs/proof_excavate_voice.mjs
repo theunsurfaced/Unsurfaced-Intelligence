@@ -29,17 +29,21 @@ ok(doorPhoto({ insights: [{ image: 'http://x/a.jpg', source: 'A' }, { image: 'ht
 ok(/question: \(rd && rd\.question\) \|\| f\.question \|\| null,/.test(w) && /photo: doorPhoto\(rd, r\.evidence\),/.test(w), 'T2 the tile carries the question (the read\'s, else the frame\'s) and the photograph');
 
 // ── X ─────────────────────────────────────────────────────────────────
-const extrasSrc = w.slice(w.indexOf('const DOOR_EXTRAS = {'), w.indexOf('async function doorPublish('));
+// SEAM:VOICE_LAW, SEAM:READ_TIME: the extras read voices through the voice helpers and the time bands
+const voiceSrc = w.slice(w.indexOf('const VOICES = {'), w.indexOf('function voiceOnFrame(')) + w.slice(w.indexOf('function stripHtml('), w.indexOf('function hintsOf('));
+const bandSrc = w.slice(w.indexOf('function readBandOf('), w.indexOf('/* PURE: the date on a voice line'));
+const extrasSrc = voiceSrc + bandSrc + w.slice(w.indexOf('const DOOR_EXTRAS = {'), w.indexOf('async function doorPublish('));
 let calls = [];
 const sbRest = async (env, path) => { calls.push(path);
-  if (path.startsWith('house_reads?kind=in.(report,recon)')) return [{ id: 14, kind: 'report', label: 'Issue 001', meta: { pack: { voices: { quotes: [{ text: 'quiet one', source: 'youtube', likes: 3 }, { text: 'loud one', source: 'mastodon', likes: 90, when: '2026-09-30T10:00:00Z', self: { generation: 'Gen Z' } }, { text: 'loud one', source: 'youtube', likes: 5 }] } } } }];
+  if (path.startsWith('house_reads?kind=in.(report,recon)')) return [{ id: 14, kind: 'report', label: 'Issue 001', meta: { pack: { voices: { quotes: [{ text: 'the quiet one says little', source: 'youtube', likes: 3 }, { text: 'the loud one says a lot', source: 'mastodon', likes: 90, when: '2026-09-30T10:00:00Z', self: { generation: 'Gen Z' } }, { text: 'the loud one says a lot', source: 'youtube', likes: 5 },
+    { text: 'an old voice from years before the period', source: 'youtube', likes: 4000, when: '2014-04-16', band: 'earlier' }, { text: 'The law will not save us | Jonathan Liew theguardian.com/commentisfree/2026/aug/31/x', source: 'mastodon', likes: 500 }] } } } }];
   if (path.startsWith('cluster_calls?')) return [{ cluster_id: 'c1', state: 'EMERGING', called_at: '2026-09-14T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'converted' }, { cluster_id: 'c2', state: 'EMERGING', called_at: '2026-09-07T00:00:00Z', resolved_at: '2026-09-28T00:00:00Z', outcome: 'faded' }, { cluster_id: 'c3', state: 'ACCELERATING', called_at: '2026-09-28T00:00:00Z', resolved_at: null, outcome: null }, { cluster_id: 'c9', state: 'EMERGING', called_at: '2026-09-20T00:00:00Z', resolved_at: null, outcome: null }];
   return []; };
 let kv = {}; const env = { RATE_LIMIT: { get: async k => kv[k] || null, put: async (k, v) => { kv[k] = v; } } };
 const X = new Function('sbRest', extrasSrc + '; return { doorExtras, DOOR_EXTRAS };')(sbRest);
 const ex = await X.doorExtras(env, [{ cluster_id: 'c1', title: 'Presales clear first' }, { cluster_id: 'c2', title: 'Ad fatigue cancels' }, { cluster_id: 'c3', title: 'Proximity pricing spreads' }]);
-ok(ex.voices.length === 2 && ex.voices[0].text === 'loud one' && ex.voices[0].likes === 90 && ex.voices[0].self.generation === 'Gen Z' && ex.voices[0].when === '2026-09-30' && !ex.voices.some(v => v.name || v.handle || v.url),
-  'X1 voices: the latest report\'s quotes, most liked first, deduplicated by text, carrying only likes, date, source and what the speaker said about themselves');
+ok(ex.voices.length === 2 && ex.voices[0].text === 'the loud one says a lot' && ex.voices[0].likes === 90 && ex.voices[0].self.generation === 'Gen Z' && ex.voices[0].when === '2026-09-30' && !ex.voices.some(v => v.name || v.handle || v.url),
+  'X1 voices: the latest report\'s quotes, most liked first, deduplicated by text, carrying only likes, date, source and what the speaker said about themselves; a shared headline and a voice from before the period never reach the arrival');
 ok(ex.record.counts.confirmed === 1 && ex.record.counts.missed === 1 && ex.record.counts.open === 2 && ex.record.confirmed[0].title === 'Presales clear first' && ex.record.missed[0].called === '2026-09-07' && ex.record.open.length === 1,
   'X2 record: calls over 90 days as confirmed, missed and open, named by the feed\'s theme titles; an unnamed call is counted, not shown');
 calls = []; const again = await X.doorExtras(env, []);
@@ -110,7 +114,7 @@ ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test
 ok(!/style="color:var\(--deep2\)">◆ Spaces/.test(page) && /#nav-spaces::first-letter\{color:var\(--room-red\)\}/.test(page), 'P10 the nav\'s diamond is the house red, not purple');
 
 // ── M ─────────────────────────────────────────────────────────────────
-ok(/^Version 3\.2\./m.test(method) && /12\. \*\*The question law\.\*\* Every read is the answer to a question a professional brought to culture, for the people they serve\./.test(method) && /the house does not sell reference\./.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)),
-  'M1 Method 3.2 carries the question law and the worker carries the exact text');
+ok(/^Version 4\.\d, the house style\./m.test(method) && /12\. \*\*The question law\.\*\* Every read is the answer to a question a professional brought to culture, for the people they serve\./.test(method) && /we do not sell reference\./.test(method) && !/the house does not/.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)),
+  'M1 Method 4 (the house style) carries the question law in our own voice, and the worker carries the exact text');
 
 console.log('\nproof_excavate_voice: ' + pass + ' checks PASS');

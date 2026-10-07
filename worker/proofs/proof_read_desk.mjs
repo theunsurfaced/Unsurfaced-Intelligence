@@ -70,7 +70,7 @@ const job = submitted[0];
 ok(job && /^HOUSE DESK \(standing inputs from the editors; apply them to this read\):\nThe implication for the advertising business comes first : always\.\nName the mechanism in every finding\.\n\n/.test(job.prompt) &&
   /STATS \(exact, computed by the database\):\n\{"stories":2\}/.test(job.prompt) && /STORIES \(2, published by DAILY\):\nS1 \| 2026-09-23 \| #044 \| music \| First story/.test(job.prompt) && /\nS2 \| 2026-09-23 \| #044 \| technology-innovation \| Second story 462 pairs/.test(job.prompt) &&
   /PRIOR READ \(version 2, the object you are revising\):\n\{"title":"t","thesis":"x"\}/.test(job.prompt) && /DESK NOTES \(1\):\n1\. \[findings\[2\]\] Finding three: the implication is soft; the thought-starter is that glasses are a status object\. \(fresco\)/.test(job.prompt) &&
-  job.prompt.includes(R.READ_REVISION_LAW) && /Write version 3 of Week of Sep 21\. Return only the JSON object\.$/.test(job.prompt) && job.custom_id === 'hr-8-v3' && job.max_tokens === 20000,
+  job.prompt.includes(R.READ_REVISION_LAW) && /Write version 3 of Week of Sep 21\. Return only the JSON object\.$/.test(job.prompt) && job.custom_id === 'hr-8-v3' && job.max_tokens === 40000,
   'V4 the revision prompt: standing inputs, the prior stats, the prior stories in pack order, the prior read, the numbered notes, the revision law, the version to write; the weekly\'s room');
 const cp = patches.find(p => p.status === 'compiling');
 ok(cp && cp.pack_ids.join(',') === '1,2' && cp.stats.stories === 2 && cp.meta.notes[0].status === 'applied' && cp.meta.notes[0].applied_in === 8 && cp.meta.desk_chars > 0 && cp.meta.batch_id === 'b9',

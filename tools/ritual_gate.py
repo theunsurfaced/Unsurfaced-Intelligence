@@ -213,8 +213,16 @@ SPENDERS = {
     'synthesize': 'underLimit (DAILY_LIMIT) on /excavate/*',
     'studioCaption': 'cron-bounded manifest + admin cut-story',
     'studioMemeLines': 'cron-bounded manifest + admin cut-story',
-    'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap); admin route or readTick only',
-    'readSubmitRevision': 'claudeGate via claudeBatchSubmit (doc tier cap) on the prior pack; /reads/revise (admin) or readTick on a queued revise row only (SEAM:READ_DESK)',
+    'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap; a deep RECON sends its first pass through deepThinkSend, on the recon tier, inside its commission ceiling on the worst case of all four passes, and only from deepCompile\'s claim); admin route or readTick only',
+    'deepThinkSend': 'claudeBatchSubmit on the recon tier (exact $150 cap) inside the commission ceiling on its own estimate, the worst case of every pass after it and the copy desk; called by readSubmit (from deepCompile\'s claim) and the pass stages under the row\'s lease; a pass already sent is adopted from claude_jobs, never sent twice; at most 1 + READ_THINK.RESENDS sends a pass (SEAM:READ_THINK)',
+    'deepRenders': 'Workers AI image model (flux-1-schnell) on a landed RECON written in passes only (readLand, from the drain or an adoption): at most READ_THINK.RENDERS images a landing, and a brief already drawn for the RECON is never drawn again (SEAM:READ_THINK)',
+    'readSubmitRevision': 'claudeGate via claudeBatchSubmit (doc tier cap; a deep RECON on the recon tier, inside its commission ceiling on the revision\'s own estimate) on the prior pack; /reads/revise (admin) or readTick on a queued revise row only (SEAM:READ_DESK)',
+    'deepEmbed': 'the deep RECON search stage only (readTick, /reads/commission and /reads/release, admin): Workers AI embeddings for at most 36 phrasings a RECON (SEAM:READ_DEEP)',
+    'deepPlanStage': 'claudeGate on the recon tier (exact $150 cap, never multiplied) + the commission ceiling (deepRoom on the worst-case estimate); one plan per RECON, at most READ_DEEP.TRIES tries (SEAM:READ_DEEP)',
+    'deepReadStage': 'claudeBatchSubmit on the recon tier; the commission ceiling is checked before a page is fetched and trims the batches before submit (the comment coding first, the cards last, room kept for the compile and the desk); batches already sent are adopted, never sent again; once per RECON under its lease (SEAM:READ_DEEP)',
+    'deepExtract': 'Tavily extract (FIELD_API_KEY credits, a credit for every five pages) on the deep read stage only, inside the commission ceiling checked before it runs; pages read are kept, so a retry never pays twice (SEAM:READ_DEEP)',
+    'fieldRail': 'excavateAuth + on request only (field: true); one Tavily search a call against FIELD_API_KEY\'s monthly credits (SEAM:EXCAVATE_WIRE)',
+    'deepOutletTypes': 'claudeGate on the recon tier; a Haiku call per READ_DEEP.OUTLET.CHUNK outlets neither the registry nor the learned map (one KV entry) knows, at most READ_DEEP.OUTLET.MAX a RECON (SEAM:READ_DEEP)',
     'readProofPart': 'claudeGate on the live tier per part; called by readProof only, which readLand (the batch drain) and the admin /reads/proof door call; READ_PROOF.PARALLEL parts at once',
     'callClaudeStream': 'claudeGate: tier dollar cap + KV kill switch, the same row in claude_jobs; called by excCompile only',
     'doorPass': 'claudeBatchSubmit on the live tier under the overnight share (OVERNIGHT_SHARE of the live cap), cron-bounded (06:10 chain) or the admin /excavate/desk door; stamp reuse asks the model only about frames whose evidence moved',
@@ -222,7 +230,7 @@ SPENDERS = {
     'excGapCheck': 'claudeGate on the frame tier (Haiku, its own cap) + a 4.5s deadline; one call per read, called by synthesize only (excavateAuth)',
     'excFrameFor': 'claudeGate on the frame tier (Haiku, its own $3 cap) + a week of KV cache per query + a 4.5s deadline; callers: synthesize and gather (excavateAuth) and excFrameTiles (the public feed, at most one set of 12 per edition, cached 6h)',
 }
-_SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|CLAUDE\.API \+")
+_SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")
 _SP_RESET = re.compile(r"^(?:const|let|var|export default)\b|^/\*")
 _SP_KW = {"if", "for", "while", "switch", "catch", "function", "return", "else", "do", "try", "with"}

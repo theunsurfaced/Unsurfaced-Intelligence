@@ -16,7 +16,7 @@ const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } p
 const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return src.slice(i, j); };
 
 // ── M ─────────────────────────────────────────────────────────────────
-ok(/^Version 3\.[1-9]\./m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.1 or later and takes the ids out of the prose');
+ok(/^Version (?:3\.[1-9]|4\.\d)/m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.1 or later and takes the ids out of the prose');
 ok(/\*\*The advantage law\.\*\*/.test(method) && /\*\*The reader law\.\*\*/.test(method) && /## The expert's voice/.test(method) && /Take a position\./.test(method) && /Name the mechanism\./.test(method) && /would a strategist pay for this sentence\?/.test(method),
   'M2 the advantage law, the reader law and the expert\'s voice are in the Method');
 ok(/## The nine questions/.test(method) && /\*\*Why does it work\?\*\*/.test(method) && /\*\*What is the edge\?\*\*/.test(method), 'M3 the nine questions ask why it works and what the edge is');
@@ -36,7 +36,7 @@ ok(/"advantage": one sentence naming the edge a reader could take from this find
 ok(!Object.values(C).join('').includes('—'), 'C5 no em dash in any contract');
 
 // ── L ─────────────────────────────────────────────────────────────────
-ok(/\} else if \(v\.read\) \{   \/\/ SEAM:READ_SWEEP: every kind is checked for the reader law/.test(w) && /v\.notes = v\.notes\.concat\(readReaderVoice\(v\.read\)\.notes\);/.test(w), 'L1 a weekly or monthly that leaves an id in prose is noted on landing, never held');
+ok(/\} else if \(v\.read\) \{   \/\/ SEAM:READ_SWEEP: every kind is checked for the reader law/.test(w) && /v\.notes = v\.notes\.concat\(readReaderVoice\(v\.read\)\.notes, readStyle\(v\.read\)\.notes\);/.test(w), 'L1 a weekly or monthly that leaves an id in prose, or breaks a mechanical rule of the house style, is noted on landing, never held');
 ok(/out\.report = await readQueueOnce\(env, 'report', num\.win, \{ plan: 'cadence', issue_no: num\.issue, month: m\.label \}\);/.test(w) && /row\.kind === 'record' \? \['report', 'monthly'\]/.test(w),
   'L2 the first of the month queues the report; the record builds on reports and monthlies');
 

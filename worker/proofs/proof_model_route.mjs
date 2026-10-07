@@ -97,7 +97,7 @@ ok(est >= L.claudeCost('claude-fable-5-1', { input_tokens: 100, output_tokens: 1
 ok((await L.claudeGate(envOf(mkKV()), 'nope', 0)).error === 'claude_bad_tier', 'G1 unknown tier refused');
 ok((await L.claudeGate(envOf(mkKV(), { ANTHROPIC_KEY: '' }), 'doc', 0)).error === 'claude_unconfigured', 'G2 no key refused');
 ok((await L.claudeGate(envOf(mkKV({ 'claude:kill': '1' })), 'doc', 0)).error === 'claude_off', 'G3 kill switch refuses');
-ok((await L.claudeGate(envOf(mkKV({ ['cl$:doc:' + month]: '14.99' })), 'doc', 0.02)).error === 'claude_cap', 'G4 $15 doc cap counts this call worst case');
+ok((await L.claudeGate(envOf(mkKV({ ['cl$:doc:' + month]: '49.99' })), 'doc', 0.02)).error === 'claude_cap', 'G4 $50 doc cap (EX17: reset from real use) counts this call worst case');
 ok((await L.claudeGate(envOf(mkKV({ ['cl$:doc:' + month]: '14.99' }), { CLAUDE_DOC_MONTHLY: '40' }), 'doc', 0.02)).ok, 'G5 env raises the cap without code');
 const brokenKV = { get: async () => { throw new Error('kv down'); } };
 ok((await L.claudeGate(envOf(brokenKV), 'doc', 0)).error === 'claude_ledger_unreadable', 'G6 unreadable ledger fails closed');
@@ -229,8 +229,13 @@ ok(slowKv.m.get('cl$:facts:2026-10') === '0.1', 'H3 ledger adds made side by sid
 // ── E: evolution mode ──────────────────────────────────────────────────
 const CapSrc = w.slice(w.indexOf('function evolutionMode(env)'), w.indexOf('function claudeRound('));
 const CAPS = new Function('CLAUDE', CapSrc + '; return { claudeCap, evolutionMode };')(L.CLAUDE);
-ok(CAPS.claudeCap({}, 'live') === 10 && CAPS.claudeCap({ EVOLUTION_MODE: '1' }, 'live') === 100 && CAPS.claudeCap({ EVOLUTION_MODE: '1', CLAUDE_LIVE_MONTHLY: '25' }, 'live') === 25 && CAPS.claudeCap({ EVOLUTION_MODE: '0' }, 'frame') === 3,
-  'E1 evolution mode runs every cap at ten times its written value; a cap set by its own secret is exactly what it says; off means the written value');
+ok(CAPS.claudeCap({}, 'live') === 30 && CAPS.claudeCap({ EVOLUTION_MODE: '1' }, 'live') === 300 && CAPS.claudeCap({ EVOLUTION_MODE: '1', CLAUDE_LIVE_MONTHLY: '25' }, 'live') === 25 && CAPS.claudeCap({ EVOLUTION_MODE: '0' }, 'frame') === 3 && CAPS.claudeCap({}, 'doc') === 50,
+  'E1 evolution mode runs every cap at ten times its written value (EX17: doc $50, live $30); a cap set by its own secret is exactly what it says; off means the written value');
+ok(CAPS.claudeCap({}, 'recon') === 150 && CAPS.claudeCap({ EVOLUTION_MODE: '1' }, 'recon') === 150 && CAPS.claudeCap({ EVOLUTION_MODE: '1', CLAUDE_RECON_MONTHLY: '400' }, 'recon') === 400,
+  'E1b SEAM:READ_DEEP the recon tier is exact: $150 a month, never multiplied by evolution mode; its own secret sets it');
+const pr = L.claudeParams('recon', { model: 'claude-sonnet-5-5', prompt: 'x' }), pf = L.claudeParams('recon', { model: 'claude-opus-9', prompt: 'x' }), pd = L.claudeParams('doc', { model: 'claude-haiku-4-5-20251001', prompt: 'x' });
+ok(pr.model === 'claude-sonnet-5-5' && pf.model === 'claude-fable-5-1' && pd.model === 'claude-fable-5-1' && L.CLAUDE.PRICE['claude-sonnet-5-5'].out === 10 && L.claudeCost('claude-sonnet-5-5', { input_tokens: 1e6, output_tokens: 1e6 }, true) === 6,
+  'E1c SEAM:READ_DEEP the recon tier may be asked for a model it lists (Sonnet 5.5 for the cards), never one it does not; every other tier keeps its own model; Sonnet 5.5 is priced like Sonnet 5');
 ok(/const EXC_ROOM = \{ report: 16000, plain: 8000, ceiling: 32000/.test(w) && /MAX_TOKENS: 9000, TTL: 72 \* 3600, SINCE_D: 60, EVERY_D: 2/.test(w) && /reserve: 't3', max_tokens: 8000 \}\);/.test(w), 'E2 the structured calls have room for the thinking Sonnet 5 does before it writes: the report 16000, the door 9000, the field 8000');
 ok(/blocks: \(j\.content \|\| \[\]\)\.map\(b => b && b\.type\)/.test(w) && /blocks: p\.blocks, out_tokens: p\.out_tokens/.test(w), 'E3 a live call reports its content blocks and output tokens, and the read\'s pass detail carries them');
 

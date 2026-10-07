@@ -118,7 +118,7 @@ fixtures = {};
 ok((await R.readRoute('/reads/list', {}, {}, '', { id: 'x' }))._status === 403, 'D1 non-admin refused');
 ok(/select=id,tier,kind,meta,custom_id/.test(w) && /readLand\(env, row\.meta\.house_read_id, patch\.result, patch\.cost_usd, patch\.stop_reason\)/.test(w), 'D2 the drain lands house_* jobs into house_reads');
 const sched = w.slice(w.indexOf('async scheduled('), w.indexOf('async fetch('));
-ok(/claudeBatchDrain\(env\)[\s\S]{0,400}readTick\(env\)/.test(sched), 'D3 the 30-minute cron ticks the queue after the drain');
+ok(/claudeBatchDrain\(env\)[\s\S]{0,400}readTick\(env, \{ deep: true, t0 \}\)/.test(sched), 'D3 the 30-minute cron ticks the queue after the drain (and moves the deep RECONs on its own clock)');
 ok(["'/reads/compile'", "'/reads/record'", "'/reads/collect'", "'/reads/publish'"].every(x => w.includes('case ' + x)), 'D4 admin doors routed');
 ok(R.READ_METHOD === fs.readFileSync('templates/CULTURAL_READ_METHOD.md', 'utf-8'), 'D5 READ_METHOD is byte-identical to the template');
 ok(!/—/.test(R.READ_METHOD) && !/—/.test(Object.values(R.READ_CONTRACT).join('')), 'D6 Method and contracts carry no em dash');
