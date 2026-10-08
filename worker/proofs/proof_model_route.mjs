@@ -35,9 +35,11 @@ const rA0 = w.indexOf('/* SEAM:READ_ENGINE'), rB0 = rA0 > 0 ? w.indexOf('/* SEAM
 const xA0 = w.indexOf('/* SEAM:EXC_INTEL: the compiler\'s lane'), xB0 = xA0 > 0 ? w.indexOf('/* SEAM:EXCAVATE_MEANING: the report contract.', xA0) : -1;
 // v3 (EX5): the door (SEAM:EXC_DOOR v2) submits its overnight reads to the batch lane under the overnight share; it sits behind claudeGate like the rest.
 const dA0 = w.indexOf('const DOOR = { WANT: 12'), dB0 = dA0 > 0 ? w.indexOf('async function excavateFeed(env, origin) {', dA0) : -1;
-const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '').replace(dA0 > 0 ? w.slice(dA0, dB0) : '\u0000', '');
+// v4 (EX25): PLAY's words (SEAM:PLAY_CLAUDE) and the brief reader (SEAM:PLAY_BRIEF) call Claude through callClaude on the live and frame tiers; behind claudeGate like the rest.
+const pA0 = w.indexOf('/* SEAM:PLAY_CLAUDE: PLAY\'s words'), pB0 = pA0 > 0 ? w.indexOf('/* SEAM:PLAY_RENDER \\u2014 fal.ai render rail.', pA0) : -1;
+const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '').replace(dA0 > 0 ? w.slice(dA0, dB0) : '\u0000', '').replace(pA0 > 0 ? w.slice(pA0, pB0) : '\u0000', '');
 ok(!/callClaude\(|claudeBatchSubmit\(/.test(outside.replace(/claudeRoute\(path[^\n]*/g, '')),
-  'L2 only the lane, SEAM:READ_ENGINE, the EXCAVATE lane (SEAM:EXC_INTEL) and the door (SEAM:EXC_DOOR v2) call Claude (DAILY and STUDIO untouched)');
+  'L2 only the lane, SEAM:READ_ENGINE, the EXCAVATE lane (SEAM:EXC_INTEL), the door (SEAM:EXC_DOOR v2) and PLAY (SEAM:PLAY_CLAUDE, EX25) call Claude (DAILY and STUDIO untouched)');
 ok(xA0 > 0 && /callClaude\(env, EXC_MODEL\.TIER, req\)/.test(w.slice(xA0, xB0)) && /callClaudeStream\(env, EXC_MODEL\.TIER, req, o\.onText\)/.test(w.slice(xA0, xB0)) && /live:   \{ model: 'claude-sonnet-5'/.test(lane), 'L2b the EXCAVATE lane calls the gate with its own tier, streamed or not (EX4)');
 ok(/callClaude\(env, 'frame', /.test(w.slice(xA0, xB0)) && /frame:  \{ model: 'claude-haiku-4-5-20251001'/.test(lane), 'L2c the query frame rides its own capped tier (Haiku) inside the lane block (EX4b)');
 ok(/case '\/claude\/ping':[\s\S]{0,200}return claudeRoute\(path, body, env, origin, user\);/.test(w), 'L3 admin doors routed');

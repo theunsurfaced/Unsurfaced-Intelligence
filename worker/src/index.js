@@ -39,6 +39,13 @@ const PLAY_SYSTEM = {
   headline: 'You write punchy brand headlines. Return 5 numbered options, nothing else.',
   concept:  'You develop campaign concepts. Give a concept name and a two-sentence pitch.',
   naming:   'You generate brand/product name candidates. Return 8 options with a one-line rationale each.',
+  /* SEAM:PLAY_DIRECTOR: the kinds the director pass and the console ask for. Every kind writes against THE BRIEF when one rides the
+   * system prompt (SEAM:PLAY_CLAUDE). Never an em dash. */
+  'engine-territories': 'You are the creative director of the PLAY engine for Unsurfaced. From the brief and the insight it stands on, write exactly three distinct creative territories a production team could take. Each one: a name (2 to 4 words), the idea (one sentence), the world it lives in (one sentence: place, people, light), the tone (3 to 5 words), why it wins (one sentence that names the insight or the audience truth it builds on), the risk (one sentence), and scores from 1 to 5 for true_to_insight, distinct and makeable. The three must differ in idea, not in wording. Declarative. No agency-speak. Never use the em dash character.',
+  campaign: 'You develop campaign concepts for a brand team. Give the concept name, the single idea in one sentence, the insight it stands on, three executions across channels (one line each), and the line the campaign would be remembered by. Declarative, specific, no agency-speak. Never use the em dash character.',
+  article:  'You write long-form brand journalism for a culture-literate reader: a working headline, a standfirst, and 600 to 900 words in short paragraphs with a clear argument, concrete scenes and at least two places where the piece names what the evidence actually shows. No bullet lists, no hype, no em dash character.',
+  copy:     'You write the copy package for one production unit: a caption under 150 characters, alt text under 125 characters that describes the image plainly, and three platform variants (feed, story, short video overlay) that keep the idea and change the length and address. Return STRICT JSON: {"caption":"","alt":"","variants":{"feed":"","story":"","video":""}}. Never use the em dash character.',
+  moodboard: 'You art-direct a moodboard. Return STRICT JSON: an array of exactly 4 objects {"title":"2 to 4 words","prompt":"one generation-ready prompt for a diffusion image model: subject, composition, light, palette, texture, in one flat sentence"}. The four frames read as one world and differ in subject. Never quality-bait words (8k, stunning, masterpiece). Never use the em dash character.',
   'engine-concept': 'You are the PLAY creative engine for Unsurfaced. Develop exactly the creative direction the brief asks for. Declarative and specific. No em dashes. No hedging. No agency-speak.',
   'engine-units':   'You are the PLAY creative engine for Unsurfaced. Break the approved creative direction into concrete production units exactly as instructed. Follow the requested JSON shape precisely. No commentary.',
   'engine-compile': 'You are the PLAY creative engine for Unsurfaced, acting as a senior art director writing generation-ready prompts: subject, composition, lens, light, palette, texture. Never use quality-bait words like 8k, stunning, masterpiece, or cinematic as an adjective. No em dashes. Follow the requested JSON shape precisely. The prompt field is always one single flat string, never a nested object.',
@@ -177,17 +184,20 @@ export default {
        * /play/render/:id GET polls and /play/upload-ref are KV/R2 reads that
        * fire dozens of times per render \u2014 metering them exhausted the daily
        * cap mid-session and 429'd the whole PLAY surface. */
-      const _aiPath = path === '/play/generate' || path === '/play/generate-image'
+      const _aiPath = path === '/play/generate' || path === '/play/generate-image' || path === '/play/interpret'   // SEAM:PLAY_BRIEF
         || path.startsWith('/excavate') || path === '/mine/synthesize' || path === '/mine/ask';
       if (_aiPath && !(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
 
       if (request.method === 'GET' && path.startsWith('/play/render/'))
         return playRenderStatus(decodeURIComponent(path.slice('/play/render/'.length)), env, origin, user);
       if (request.method === 'GET' && path === '/play/budget') return playBudget(env, origin, user);
+      if (request.method === 'GET' && path.startsWith('/play/handoff/')) return playHandoffGet(decodeURIComponent(path.slice('/play/handoff/'.length)), env, origin, user);   // SEAM:PLAY_HANDOFF
 
       const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return playGenerate(body, env, origin);
+        case '/play/interpret':      return playInterpret(body, env, origin, user);   // SEAM:PLAY_BRIEF
+        case '/play/handoff':        return playHandoff(body, env, origin, user);     // SEAM:PLAY_HANDOFF
         case '/play/generate-image': return playImage(body, env, origin, user);
         case '/play/render':         return playRender(body, env, origin, user);
         case '/play/assemble':       return playAssemble(body, env, origin, user);
@@ -292,13 +302,35 @@ async function underLimit(env, userId) {
 }
 
 /* ----------------------------- PLAY ----------------------------- */
+/* SEAM:PLAY_CLAUDE: PLAY's words come from Claude's live tier (Sonnet 5), the same tier that writes an EXCAVATE read, with the
+ * interpreted brief (SEAM:PLAY_BRIEF) riding the system prompt so every call holds to one brief. Workers AI stays as the reserve
+ * when the tier is capped, switched off, slow or fails, so PLAY never goes dark; the answer says which one wrote it (data.by).
+ * Rooms are per kind: a compiled prompt is short, an article is long. underLimit still meters every call. */
+const PLAY_CLAUDE = { TIMEOUT_MS: 40000, ROOM: 1000,
+  KINDS: { 'engine-territories': 1600, 'engine-concept': 900, 'engine-units': 1200, 'engine-compile': 500, 'engine-adjust': 400, campaign: 1100, article: 2600, copy: 600, moodboard: 900, concept: 500, headline: 300, naming: 600, default: 1000 } };
+function playTextOut(text, raw, wantJson, by, origin, env) {
+  if (wantJson) {
+    const parsed = (raw !== null && typeof raw === 'object') ? raw : extractJson(text);
+    if (!parsed) return json({ ok: false, error: 'bad_model_json', detail: String(text).slice(0, 200), by }, 502, origin, env);
+    return json({ ok: true, data: { json: parsed, text, by } }, 200, origin, env);
+  }
+  return json({ ok: true, data: { text, by } }, 200, origin, env);
+}
 async function playGenerate(body, env, origin) {
   const prompt = String(body.prompt || '').slice(0, 6000);
   if (!prompt) return json({ ok: false, error: 'prompt_required' }, 400, origin, env);
-  const engine = String(body.kind || '').indexOf('engine') === 0;
-  const wantJson = body.format === 'json';
-  const sys = (PLAY_SYSTEM[body.kind] || PLAY_SYSTEM.default)
+  const kind = String(body.kind || 'default').slice(0, 40);
+  const engine = kind.indexOf('engine') === 0;
+  const wantJson = body.format === 'json' || kind === 'copy' || kind === 'moodboard';
+  const brief = body.brief && typeof body.brief === 'object' ? playBriefClean(body.brief) : null;   // SEAM:PLAY_BRIEF: the brief rides every call
+  const sys = (PLAY_SYSTEM[kind] || PLAY_SYSTEM.default)
+    + (brief ? ' THE BRIEF, which every line holds to: ' + JSON.stringify(brief) + (brief.specs ? ' PLATFORM SPECS: ' + JSON.stringify(brief.specs) : '') : '')
     + (wantJson ? ' Output STRICT JSON only. No markdown fences, no prose outside the JSON.' : '');
+  if (!body.reserve) {
+    const r = await callClaude(env, 'live', { system: sys, prompt, max_tokens: PLAY_CLAUDE.KINDS[kind] || PLAY_CLAUDE.ROOM, kind: 'play_' + kind.replace(/[^a-z-]/g, ''), timeout_ms: PLAY_CLAUDE.TIMEOUT_MS, meta: { surface: 'play' } });
+    if (r && r.ok && String(r.text || '').trim()) return playTextOut(String(r.text).trim(), null, wantJson, 'claude', origin, env);
+    console.log('play_reserve', kind, String((r && r.error) || 'empty').slice(0, 60));
+  }
   const req = {
     messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }],
     max_tokens: engine ? 1800 : CONFIG.MAX_TOKENS
@@ -310,12 +342,121 @@ async function playGenerate(body, env, origin) {
   // live object be stringified into '[object Object]' on its way to the parser.
   const raw = out && out.response;
   const text = typeof raw === 'string' ? raw : (raw != null ? JSON.stringify(raw) : '');
-  if (wantJson) {
-    const parsed = (raw !== null && typeof raw === 'object') ? raw : extractJson(text);
-    if (!parsed) return json({ ok: false, error: 'bad_model_json', detail: String(text).slice(0, 200) }, 502, origin, env);
-    return json({ ok: true, data: { json: parsed, text } }, 200, origin, env);
+  return playTextOut(text, raw, wantJson, 'workers_ai', origin, env);
+}
+
+/* SEAM:PLAY_BRIEF: the creative ask, read into a brief before anything is made. The same pattern as the EXCAVATE frame
+ * (excFrameFor): one Haiku call on the frame tier, cached a week by the ask, a miss remembered fifteen minutes. The brief
+ * names the deliverable and the platform, and PLAY_SPECS turns the platform into the lane, the aspect, the scale and the
+ * safe zone, so the person never sets a dropdown the ask already answered. One question is allowed, and only when the
+ * deliverable or the platform cannot be told from the ask. */
+const PLAY_SPECS = {
+  tiktok:   { lane: 'social', aspect: '9:16', scale: '3',  seconds: 15, safe: 'keep type out of the bottom 20 percent and the right edge (caption and rail)' },
+  reels:    { lane: 'social', aspect: '9:16', scale: '3',  seconds: 15, safe: 'keep type out of the bottom 20 percent and the right edge' },
+  shorts:   { lane: 'film',   aspect: '9:16', scale: '20', seconds: 20, safe: 'keep type out of the bottom 20 percent' },
+  story:    { lane: 'social', aspect: '9:16', scale: '3',  seconds: 10, safe: 'keep type inside the middle 70 percent of the height' },
+  feed:     { lane: 'social', aspect: '4:5',  scale: '4',  seconds: 0,  safe: 'the first frame carries the idea alone' },
+  youtube:  { lane: 'film',   aspect: '16:9', scale: '30', seconds: 30, safe: 'the first three seconds carry the hook' },
+  film:     { lane: 'film',   aspect: '16:9', scale: '24', seconds: 24, safe: 'the first three seconds carry the hook' },
+  ooh:      { lane: 'still',  aspect: '16:9', scale: '2',  seconds: 0,  safe: 'one idea, one line, read in three seconds from a car' },
+  'key visual': { lane: 'still', aspect: '4:5', scale: '3', seconds: 0, safe: 'the subject holds the center; room for a line at the bottom' },
+  print:    { lane: 'still',  aspect: '4:5',  scale: '2',  seconds: 0,  safe: 'room for a headline and a logo' },
+  moodboard: { lane: 'still', aspect: '1:1',  scale: '4',  seconds: 0,  safe: 'four frames that read as one world' },
+  web:      { lane: 'still',  aspect: '16:9', scale: '3',  seconds: 0,  safe: 'the hero frame leaves the left third for type' }
+};
+const PLAY_BRIEF = { REV: 'p1', TTL: 604800, MISS_TTL: 900, TIMEOUT_MS: 7000, MAX_TOKENS: 900, MAX_ASK: 2400,
+  DELIVERABLES: ['film', 'still', 'social', 'copy', 'names', 'article', 'moodboard'], PLATFORMS: Object.keys(PLAY_SPECS) };
+const PLAY_BRIEF_SYS = 'You read a creative ask for a brand production engine and return STRICT JSON only, no fences. Shape: ' +
+  '{"deliverable":"one of film (moving image), still (key visuals or print), social (a set of feed or story assets), copy (words only), names (name candidates), article (long-form writing), moodboard (reference frames)",' +
+  '"platform":"one of tiktok, reels, shorts, story, feed, youtube, film, ooh, key visual, print, moodboard, web, or null when the ask does not say or imply one",' +
+  '"brand":"the brand or project named, or null","audience":"who it is for, 1 to 6 words","objective":"what it must do, one sentence",' +
+  '"tone":"3 to 5 words","must":["up to 6 things it must include or say"],"avoid":["up to 6 things it must not do"],' +
+  '"insight":"the one truth about the audience or the culture this should build on, one sentence, taken from the ask when it carries one",' +
+  '"count":"how many pieces, an integer, or null","seconds":"total duration in seconds for moving image, an integer, or null",' +
+  '"question":"ONE short question for the person, only when the deliverable or the platform cannot be told from the ask; otherwise null"} ' +
+  'Infer the platform from the words when they imply it (a vertical video is tiktok; a billboard is ooh; a hero image is key visual). Never use the em dash character.';
+function playBriefClean(b) {
+  if (!b || typeof b !== 'object') return null;
+  const str = (v, n) => { const t = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim(); return t && t.toLowerCase() !== 'null' ? t.slice(0, n) : null; };
+  const list = (v, n, m) => (Array.isArray(v) ? v : []).map(x => str(x, m)).filter(Boolean).slice(0, n);
+  const num = (v, lo, hi) => { const k = parseInt(v, 10); return Number.isFinite(k) && k >= lo && k <= hi ? k : null; };
+  const deliverable = PLAY_BRIEF.DELIVERABLES.includes(String(b.deliverable || '').toLowerCase()) ? String(b.deliverable).toLowerCase() : null;
+  const platform = PLAY_BRIEF.PLATFORMS.includes(String(b.platform || '').toLowerCase()) ? String(b.platform).toLowerCase() : null;
+  const out = { deliverable, platform, brand: str(b.brand, 80), audience: str(b.audience, 60), objective: str(b.objective, 200), tone: str(b.tone, 60),
+    must: list(b.must, 6, 80), avoid: list(b.avoid, 6, 80), insight: str(b.insight, 240), count: num(b.count, 1, 12), seconds: num(b.seconds, 2, 120),
+    question: (deliverable && platform) ? null : str(b.question, 160) };
+  out.specs = playSpecsFor(out);
+  return out;
+}
+/* The lane, aspect and scale the brief implies. The platform wins; a deliverable alone falls to its lane's defaults; the
+ * person's count and seconds override the platform's. */
+function playSpecsFor(b) {
+  const base = (b.platform && PLAY_SPECS[b.platform]) || (b.deliverable === 'film' ? PLAY_SPECS.film : b.deliverable === 'social' ? PLAY_SPECS.feed : b.deliverable === 'moodboard' ? PLAY_SPECS.moodboard : b.deliverable === 'still' ? PLAY_SPECS['key visual'] : null);
+  if (!base) return null;
+  const specs = Object.assign({ platform: b.platform || null }, base);
+  if (b.count && base.lane !== 'film') specs.scale = String(b.count);
+  if (b.seconds && base.lane === 'film') { specs.scale = String(b.seconds); specs.seconds = b.seconds; }
+  return specs;
+}
+function playBriefLabel(b) {
+  if (!b) return '';
+  return [b.deliverable, b.platform, b.brand ? 'for ' + b.brand : null, b.audience ? 'to ' + b.audience : null].filter(Boolean).join(' / ');
+}
+async function playInterpret(body, env, origin, user) {
+  const ask = String(body.ask || body.prompt || '').replace(/\s+/g, ' ').trim().slice(0, PLAY_BRIEF.MAX_ASK);
+  if (ask.length < 6) return json({ ok: false, error: 'ask_too_short' }, 200, origin, env);
+  const key = 'pbr:' + PLAY_BRIEF.REV + ':' + (await sha256hex(ask.toLowerCase()));
+  if (env.RATE_LIMIT) {
+    const hit = await env.RATE_LIMIT.get(key);
+    if (hit) { const j = JSON.parse(hit); if (j && j._miss) return json({ ok: false, error: 'unreadable', why: j.why, ask }, 200, origin, env); const b = playBriefClean(j); if (b) return json({ ok: true, ask, brief: b, label: playBriefLabel(b), cached: true }, 200, origin, env); }
   }
-  return json({ ok: true, data: { text } }, 200, origin, env);
+  const miss = async why => { console.log('play_brief_miss', why); if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify({ _miss: 1, why }), { expirationTtl: PLAY_BRIEF.MISS_TTL }); } catch (e) { console.log('play_brief_miss_cache', String(e && e.message).slice(0, 80)); } }
+    return json({ ok: false, error: 'unreadable', why, ask }, 200, origin, env); };
+  const r = await callClaude(env, 'frame', { system: PLAY_BRIEF_SYS, cache: true, prompt: 'Ask: "' + ask + '"' + (body.from ? ' (handed from ' + String(body.from).slice(0, 20) + ')' : ''),
+    max_tokens: PLAY_BRIEF.MAX_TOKENS, temperature: 0, kind: 'play_brief', timeout_ms: PLAY_BRIEF.TIMEOUT_MS, meta: { surface: 'play', user: user && user.id || null } });
+  if (!r || !r.ok) return miss(String((r && r.error) || 'none'));
+  const b = playBriefClean(extractJson(r.text || ''));
+  if (!b) return miss('unreadable');
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(key, JSON.stringify(b), { expirationTtl: PLAY_BRIEF.TTL });
+  return json({ ok: true, ask, brief: b, label: playBriefLabel(b), cached: false }, 200, origin, env);
+}
+
+/* SEAM:PLAY_HANDOFF: the insight package EXCAVATE hands PLAY. A move's "Picture this move", the read's "MAKE WITH PLAY" and the
+ * interpreter's "Make it in PLAY" used to open ../play/?brief=... that PLAY never read, so the insight died at the door. Now the
+ * page posts the package (the ask, the frame, the move, the findings, the evidence titles, the voices) and opens PLAY on its id;
+ * PLAY reads it back on load, interprets it and fills the brief. Owned by the person who posted it, 24 hours, 12k chars. */
+const PLAY_HANDOFF = { TTL: 86400, MAX: 12000, PREFIX: 'pho:' };
+function playHandoffClean(pkg) {
+  if (!pkg || typeof pkg !== 'object') return null;
+  const str = (v, n) => { const t = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(); return t ? t.slice(0, n) : null; };
+  const list = (v, n, m) => (Array.isArray(v) ? v : []).map(x => str(x, m)).filter(Boolean).slice(0, n);
+  const f = pkg.frame && typeof pkg.frame === 'object' ? pkg.frame : {};
+  const m = pkg.move && typeof pkg.move === 'object' ? pkg.move : null;
+  const out = { ask: str(pkg.ask, 2400), from: str(pkg.from, 20) || 'excavate', q: str(pkg.q, 200),
+    frame: { entity: str(f.entity, 80), category: str(f.category, 40), audience: str(f.audience, 40), market: str(f.market, 40), task: str(f.task, 12) },
+    move: m ? { headline: str(m.headline, 200), body: str(m.body, 600), because: str(m.because, 400), proof: str(m.proof, 400), type: str(m.type, 40) } : null,
+    title: str(pkg.title, 200), thesis: str(pkg.thesis, 400), findings: list(pkg.findings, 4, 300), evidence: list(pkg.evidence, 5, 160), voices: list(pkg.voices, 4, 280) };
+  if (!out.ask) return null;
+  return out;
+}
+async function playHandoff(body, env, origin, user) {
+  const pkg = playHandoffClean(body.pkg || body);
+  if (!pkg) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  const text = JSON.stringify(pkg);
+  if (text.length > PLAY_HANDOFF.MAX) return json({ ok: false, error: 'package_too_large', chars: text.length }, 400, origin, env);
+  if (!env.RATE_LIMIT) return json({ ok: false, error: 'handoff_unconfigured' }, 503, origin, env);
+  const id = (await sha256hex(user.id + '|' + Date.now() + '|' + text.slice(0, 80))).slice(0, 20);
+  await env.RATE_LIMIT.put(PLAY_HANDOFF.PREFIX + id, JSON.stringify({ owner: user.id, at: new Date().toISOString(), pkg }), { expirationTtl: PLAY_HANDOFF.TTL });
+  return json({ ok: true, id, url: '../play/#pkg=' + id }, 200, origin, env);
+}
+async function playHandoffGet(id, env, origin, user) {
+  if (!/^[a-f0-9]{20}$/.test(String(id || ''))) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  if (!env.RATE_LIMIT) return json({ ok: false, error: 'handoff_unconfigured' }, 503, origin, env);
+  const hit = await env.RATE_LIMIT.get(PLAY_HANDOFF.PREFIX + id);
+  if (!hit) return json({ ok: false, error: 'not_found' }, 404, origin, env);
+  const row = JSON.parse(hit);
+  if (!row || row.owner !== user.id) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  return json({ ok: true, id, at: row.at, pkg: row.pkg }, 200, origin, env);
 }
 
 

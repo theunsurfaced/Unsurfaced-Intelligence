@@ -100,6 +100,34 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
 .upick{position:relative;}
 .upick .uvid{position:absolute;bottom:2px;right:3px;font-family:'Space Mono',monospace;font-size:7px;letter-spacing:.1em;color:var(--deep2);background:rgba(10,10,15,.8);padding:1px 3px;}
 .exp{display:flex;gap:10px;flex-wrap:wrap;}
+/* SEAM:PLAY_BRIEF: the brief, read into chips; SEAM:PLAY_DIRECTOR: three territories */
+.from{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;border:1px solid var(--deep);background:var(--deep-glow);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);}
+.from b{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--deep2);}
+.from .fx{margin-left:auto;background:none;border:0;color:var(--text3);cursor:pointer;font-size:14px;}
+.bread{margin-top:12px;display:none;}
+.bread .bhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.bread .bhead b{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--deep2);}
+.bread .bhead small{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.chip{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--border2);background:var(--surface2);padding:5px 10px;font-size:12px;color:var(--text);cursor:pointer;max-width:100%;}
+.chip:hover{border-color:var(--deep2);}
+.chip i{font-style:normal;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);}
+.chip.add{color:var(--text3);border-style:dashed;}
+.chip.insight{border-color:var(--deep);width:100%;}
+.bq{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.bq label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);}
+.bq input{flex:1;min-width:220px;background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:9px 11px;font-family:'Syne',sans-serif;font-size:13px;outline:none;}
+.terrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px;}
+.terr{border:1px solid var(--border2);background:var(--surface2);padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:7px;}
+.terr:hover{border-color:var(--deep2);}
+.terr.on{border-color:var(--deep);background:var(--deep-glow);}
+.terr h5{font-weight:800;font-size:15px;}
+.terr p{font-size:12.5px;color:var(--text2);line-height:1.5;}
+.terr .tk{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);}
+.terr .sc{display:flex;gap:10px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--deep2);margin-top:auto;}
+.terr .why{color:var(--text);}
+.terr .risk{color:var(--text3);}
+.tbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
 </style>
 </head>
 <body>
@@ -121,6 +149,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
 
     <!-- SEAM:PLAY_BUDGET_UI \u2014 real seconds, live, before the 429 -->
     <div class="budget mono" id="budget"></div>
+    <div class="from" id="from" style="display:none"><b>From EXCAVATE</b><span id="from-q"></span><button class="fx" type="button" title="Start clean" onclick="dropPkg()">&times;</button></div><!-- SEAM:PLAY_HANDOFF -->
     <div class="lanes" id="lanes">
       <div class="lane on" data-lane="film" onclick="setLane('film')">FILM<small>brief &rarr; shots &rarr; motion</small></div>
       <div class="lane" data-lane="still" onclick="setLane('still')">STILL<small>brief &rarr; frames &rarr; keys</small></div>
@@ -135,7 +164,13 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
         <div><label class="f">Style lock (optional)</label><input type="text" id="b-style" placeholder="e.g. 35mm, hard flash, court-side documentary" onchange="save()"></div>
       </div>
       <label class="f">Brief</label>
-      <textarea id="b-brief" placeholder="What are we making, for whom, and what should it do" onchange="save()"></textarea>
+      <textarea id="b-brief" placeholder="Say it the way you would to a creative director: what we are making, for whom, where it runs, and what it has to do" onchange="save();briefChanged()"></textarea>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost sm" type="button" id="go-read" onclick="interpretBrief()">Read the brief</button><span class="busy" id="busyB" style="margin:0">READING&hellip;</span></div>
+      <div class="bread" id="bread"><!-- SEAM:PLAY_BRIEF: the interpretation, as chips the person can correct -->
+        <div class="bhead"><b>The brief, as read</b><small id="bread-by"></small></div>
+        <div class="chips" id="bchips"></div>
+        <div class="bq" id="bq" style="display:none"><label>One question</label><span id="bq-text" style="font-size:13px;color:var(--text)"></span><input type="text" id="bq-answer" placeholder="Answer it here"><button class="btn sm" type="button" onclick="answerQuestion()">Answer</button></div>
+      </div>
       <div class="row">
         <div><label class="f" id="b-scale-label">Total duration (seconds)</label><input type="text" id="b-scale" value="24" onchange="save()"></div>
         <div><label class="f">Aspect</label>
@@ -149,16 +184,18 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
       <label class="refbtn">Add references (photo / video)<input type="file" id="ref-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" multiple style="display:none" onchange="uploadRefs(this.files)"></label>
       <div class="refup" id="refup">UPLOADING&hellip;</div>
       <p class="note">Upload the actual product, talent, or location. Renders with a reference attached are conditioned on the photo instead of the model guessing from words. Photos guide the engine today; video references join a later cut.</p>
-      <div style="margin-top:18px"><button class="btn" id="go1" onclick="develop()">Develop direction &rarr;</button></div>
+      <div style="margin-top:18px"><button class="btn" id="go1" onclick="develop()">Develop three territories &rarr;</button> <button class="btn ghost" type="button" onclick="writeDirection()">Write one direction</button></div>
       <div class="busy" id="busy1">DEVELOPING&hellip;</div><div class="err" id="err1"></div>
     </div>
 
     <!-- II · DIRECTION -->
     <div class="stage locked" id="st2">
       <span class="snum">Stage II</span><div class="stitle">The direction</div>
+      <div class="terrs" id="terrs" style="display:none"></div><!-- SEAM:PLAY_DIRECTOR: three territories, scored against the brief -->
+      <div class="tbar" id="tbar" style="display:none"><span class="note" style="margin:0">Pick the territory. Pick two and blend them. The direction below is yours to edit.</span><button class="btn sm ghost" type="button" id="blend" style="display:none" onclick="blendTerritories()">Blend the two</button></div>
       <textarea id="d-text" style="min-height:150px" onchange="save()"></textarea>
       <div style="margin-top:14px"><button class="btn" onclick="breakUnits()">Approve &amp; break into units &rarr;</button>
-      <button class="btn ghost" onclick="develop()">Re-develop</button></div>
+      <button class="btn ghost" onclick="develop()">Three more territories</button></div>
       <div class="busy" id="busy2">BREAKING&hellip;</div><div class="err" id="err2"></div>
     </div>
 
@@ -232,7 +269,8 @@ var LANES = {
             unitNoun: 'asset', unitPlural: 'assets' }
 };
 var S = { lane: 'film', brand: '', style: '', brief: '', scale: '24', aspect: '16:9',
-          direction: '', units: [], takes: {}, refs: [] }; // takes[unitId]=[{id,asset,pool,status,sel}]; refs=[{url,name}]
+          direction: '', units: [], takes: {}, refs: [],
+          brief_i: null, pkg: null, territories: [], picked: [], specsSet: '' };   // SEAM:PLAY_BRIEF: the read brief, the handed package, the territories // takes[unitId]=[{id,asset,pool,status,sel}]; refs=[{url,name}]
 var _polls = {};
 
 function save() {
@@ -258,12 +296,205 @@ function setLane(l) {
 
 function laneBriefText() {
   var L = LANES[S.lane];
-  return 'Lane: ' + S.lane.toUpperCase()
+  return insightText() + 'Lane: ' + S.lane.toUpperCase()
     + '. Brand: ' + (S.brand || 'unnamed')
     + '. Brief: ' + S.brief
     + (S.style ? '. Locked style: ' + S.style : '')
     + '. Scale: ' + S.scale + ' ' + (S.lane === 'film' ? 'seconds total' : L.unitPlural)
-    + '. Aspect: ' + S.aspect + '.';
+    + '. Aspect: ' + S.aspect + '.' + specText();
+}
+
+/* SEAM:PLAY_BRIEF: the brief, read before anything is made --------------- */
+function briefChanged() { if (S.brief_i) { S.brief_i = null; S.territories = []; S.picked = []; renderBrief(); } }
+function composeAsk() {
+  var parts = [S.brief.trim()];
+  if (S.brand) parts.push('Brand or project: ' + S.brand + '.');
+  if (S.pkg) {
+    var k = S.pkg;
+    if (k.move) parts.push('The move this makes real: ' + (k.move.headline || '') + '. ' + (k.move.body || '') + (k.move.because ? ' Why now: ' + k.move.because : ''));
+    if (k.frame && (k.frame.audience || k.frame.market)) parts.push('Audience: ' + (k.frame.audience || '') + (k.frame.market ? ' in ' + k.frame.market : '') + '.');
+    if (k.thesis) parts.push('The read\'s thesis: ' + k.thesis);
+  }
+  return parts.join(' ');
+}
+function insightText() {
+  var k = S.pkg, b = S.brief_i, out = '';
+  if (b && b.insight) out += 'The insight every frame stands on: ' + b.insight + ' ';
+  if (b && b.objective) out += 'Objective: ' + b.objective + ' ';
+  if (b && b.tone) out += 'Tone: ' + b.tone + '. ';
+  if (b && b.must && b.must.length) out += 'Must: ' + b.must.join('; ') + '. ';
+  if (b && b.avoid && b.avoid.length) out += 'Avoid: ' + b.avoid.join('; ') + '. ';
+  if (k && k.findings && k.findings.length) out += 'What the read found: ' + k.findings.slice(0, 3).join(' | ') + ' ';
+  if (k && k.voices && k.voices.length) out += 'How people say it: "' + k.voices.slice(0, 2).join('" / "') + '" ';
+  return out;
+}
+function specText() {
+  var sp = S.brief_i && S.brief_i.specs;
+  if (!sp) return '';
+  return ' Platform: ' + (sp.platform || S.lane) + '. Safe zone: ' + sp.safe + '.';
+}
+async function interpretBrief() {
+  save(); clearFail(1);
+  if (!S.brief.trim()) { fail(1, 'Write the brief first.'); return null; }
+  show('busyB', true);
+  try {
+    var d = await api('play/interpret', { ask: composeAsk(), from: S.pkg ? 'excavate' : null });
+    if (!d.brief) throw new Error('unreadable');
+    S.brief_i = d.brief; S.territories = []; S.picked = [];
+    applySpecs(); save(); renderBrief();
+    var by = document.getElementById('bread-by'); if (by) by.textContent = (d.cached ? 'read before, from the cache' : 'read now') + (d.label ? ' / ' + d.label : '');
+  } catch (e) { fail(1, /unreadable|ask_too_short/.test(String(e && e.message)) ? 'The brief could not be read as a production ask. Say what we are making and where it runs.' : e); S.brief_i = null; renderBrief(); }
+  show('busyB', false);
+  return S.brief_i;
+}
+/* The platform sets the lane, the aspect and the scale, once per read brief; a person's later change stands. */
+function applySpecs() {
+  var sp = S.brief_i && S.brief_i.specs; if (!sp) return;
+  var sig = JSON.stringify(sp); if (S.specsSet === sig) return;
+  S.specsSet = sig; S.lane = sp.lane; setLaneUI();
+  S.aspect = sp.aspect; S.scale = sp.scale; put('b-aspect', S.aspect); put('b-scale', S.scale);
+  if (S.brief_i.brand && !S.brand) { S.brand = S.brief_i.brand; put('b-brand', S.brand); }
+}
+var _CHIP_KEYS = [['deliverable', 'Deliverable'], ['platform', 'Platform'], ['brand', 'Brand'], ['audience', 'Audience'], ['objective', 'Objective'], ['tone', 'Tone']];
+function renderBrief() {
+  var host = document.getElementById('bread'), chips = document.getElementById('bchips'), q = document.getElementById('bq');
+  if (!host || !chips) return;
+  var b = S.brief_i;
+  if (!b) { host.style.display = 'none'; return; }
+  host.style.display = 'block'; chips.innerHTML = '';
+  _CHIP_KEYS.forEach(function (k) { chips.appendChild(chip(k[1], b[k[0]] || (k[0] === 'platform' ? 'not said' : ''), function () { editChip(k[0], k[1]); })); });
+  ['must', 'avoid'].forEach(function (k) {
+    (b[k] || []).forEach(function (v, i) { chips.appendChild(chip(k, v, function () { if (confirm('Drop "' + v + '" from ' + k + '?')) { b[k].splice(i, 1); save(); renderBrief(); } })); });
+    var add = chip(k, '+', function () { var v = prompt('Add to ' + k + ':'); if (v && v.trim()) { b[k] = (b[k] || []).concat([v.trim().slice(0, 80)]); save(); renderBrief(); } }); add.classList.add('add'); chips.appendChild(add);
+  });
+  var ins = chip('Insight', b.insight || 'none read; add the truth this should build on', function () { editChip('insight', 'The insight'); }); ins.classList.add('insight'); chips.appendChild(ins);
+  if (q) { q.style.display = b.question ? 'flex' : 'none'; var qt = document.getElementById('bq-text'); if (qt) qt.textContent = b.question || ''; }
+}
+function chip(k, v, onclick) { var c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.innerHTML = '<i></i><span></span>'; c.querySelector('i').textContent = k; c.querySelector('span').textContent = v; c.onclick = onclick; return c; }
+function editChip(key, label) {
+  var b = S.brief_i; if (!b) return;
+  var v = prompt(label + ':', b[key] || ''); if (v === null) return;
+  v = v.trim().slice(0, 240);
+  if (key === 'deliverable' || key === 'platform') v = v.toLowerCase();
+  b[key] = v || null;
+  if (key === 'platform' || key === 'deliverable') { S.specsSet = ''; b.specs = localSpecs(b); if (b.deliverable && b.platform) b.question = null; applySpecs(); }
+  save(); renderBrief();
+}
+/* The worker's PLAY_SPECS, mirrored for a chip edit; the worker's table wins on the next read. */
+var _SPECS = { tiktok: ['social', '9:16', '3'], reels: ['social', '9:16', '3'], shorts: ['film', '9:16', '20'], story: ['social', '9:16', '3'], feed: ['social', '4:5', '4'], youtube: ['film', '16:9', '30'], film: ['film', '16:9', '24'], ooh: ['still', '16:9', '2'], 'key visual': ['still', '4:5', '3'], print: ['still', '4:5', '2'], moodboard: ['still', '1:1', '4'], web: ['still', '16:9', '3'] };
+function localSpecs(b) {
+  var row = b.platform && _SPECS[b.platform];
+  if (!row) row = b.deliverable === 'film' ? _SPECS.film : b.deliverable === 'social' ? _SPECS.feed : b.deliverable === 'moodboard' ? _SPECS.moodboard : b.deliverable === 'still' ? _SPECS['key visual'] : null;
+  if (!row) return b.specs || null;
+  return { platform: b.platform || null, lane: row[0], aspect: row[1], scale: row[2], safe: (b.specs && b.specs.safe) || 'keep the idea clear at a glance' };
+}
+async function answerQuestion() {
+  var a = (val('bq-answer') || '').trim(); if (!a || !S.brief_i) return;
+  S.brief = (S.brief + ' ' + a).trim(); put('b-brief', S.brief); put('bq-answer', '');
+  S.brief_i = null; save(); await interpretBrief();
+}
+
+/* SEAM:PLAY_HANDOFF: the package EXCAVATE handed over ------------------- */
+async function loadPkg() {
+  var m = /[#&]pkg=([a-f0-9]{20})/.exec(location.hash || '');
+  var legacy = null; try { legacy = new URLSearchParams(location.search).get('brief'); } catch (e) { legacy = null; }
+  if (!m && !legacy) return false;
+  try {
+    if (m) { var d = await apiGet('play/handoff/' + m[1]); S.pkg = d.pkg || null; }
+    else { S.pkg = { ask: String(legacy).slice(0, 2400), from: 'excavate', q: null, frame: {}, move: null, findings: [], evidence: [], voices: [] }; }
+  } catch (e) { fail(1, 'The handoff from EXCAVATE could not be read (' + (e.message || e) + '). Write the brief here.'); return false; }
+  if (!S.pkg) return false;
+  S.brief = S.pkg.ask || S.brief; S.brand = (S.pkg.frame && S.pkg.frame.entity) || S.brand;
+  S.brief_i = null; S.direction = ''; S.units = []; S.takes = {}; S.territories = []; S.picked = []; S.specsSet = '';
+  try { history.replaceState(null, '', location.pathname); } catch (e) { console.log('play_pkg_url', String(e && e.message)); }
+  save(); return true;
+}
+function paintPkg() {
+  var el = document.getElementById('from'), q = document.getElementById('from-q'); if (!el) return;
+  if (!S.pkg) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  if (q) q.textContent = (S.pkg.move ? 'the move "' + (S.pkg.move.headline || '') + '"' : 'the read') + (S.pkg.q ? ' on "' + S.pkg.q + '"' : '') + (S.pkg.evidence && S.pkg.evidence.length ? ' / ' + S.pkg.evidence.length + ' sources behind it' : '');
+}
+function dropPkg() { S.pkg = null; save(); paintPkg(); briefChanged(); }
+
+/* SEAM:PLAY_DIRECTOR: three territories, scored against the brief -------- */
+function territoryText(t) {
+  return t.name + '. ' + t.idea + ' ' + t.world + ' Tone: ' + t.tone + '. Why it wins: ' + t.why;
+}
+function renderTerritories() {
+  var host = document.getElementById('terrs'), bar = document.getElementById('tbar'), blend = document.getElementById('blend');
+  if (!host) return;
+  var T = S.territories || [];
+  host.style.display = T.length ? 'grid' : 'none'; if (bar) bar.style.display = T.length ? 'flex' : 'none';
+  host.innerHTML = '';
+  T.forEach(function (t, i) {
+    var d = document.createElement('div'); d.className = 'terr' + (S.picked.indexOf(i) >= 0 ? ' on' : '');
+    d.innerHTML = '<span class="tk">Territory ' + (i + 1) + '</span><h5></h5><p class="idea"></p><p class="world"></p><p class="why"></p><p class="risk"></p><div class="sc"></div>';
+    d.querySelector('h5').textContent = t.name; d.querySelector('.idea').textContent = t.idea; d.querySelector('.world').textContent = t.world + (t.tone ? ' Tone: ' + t.tone + '.' : '');
+    d.querySelector('.why').textContent = 'Why it wins: ' + t.why; d.querySelector('.risk').textContent = 'Risk: ' + t.risk;
+    var sc = t.score || {}; d.querySelector('.sc').textContent = 'TRUE ' + (sc.true_to_insight || '-') + '/5  DISTINCT ' + (sc.distinct || '-') + '/5  MAKEABLE ' + (sc.makeable || '-') + '/5';
+    d.onclick = function () { pickTerritory(i); };
+    host.appendChild(d);
+  });
+  if (blend) blend.style.display = S.picked.length === 2 ? '' : 'none';
+}
+function pickTerritory(i) {
+  var at = S.picked.indexOf(i);
+  if (at >= 0) S.picked.splice(at, 1); else { S.picked.push(i); if (S.picked.length > 2) S.picked.shift(); }
+  if (S.picked.length === 1) { S.direction = territoryText(S.territories[S.picked[0]]); put('d-text', S.direction); }
+  save(); renderTerritories();
+}
+function cleanTerritories(arr) {
+  if (!Array.isArray(arr)) return [];
+  var str = function (v, n) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n); };
+  var sc = function (v) { var k = parseInt(v, 10); return k >= 1 && k <= 5 ? k : null; };
+  return arr.slice(0, 3).map(function (t) { t = t || {}; var s = t.score || t.scores || {};
+    return { name: str(t.name, 60) || 'Territory', idea: str(t.idea, 300), world: str(t.world, 300), tone: str(t.tone, 80), why: str(t.why || t.why_it_wins, 300), risk: str(t.risk, 240),
+      score: { true_to_insight: sc(s.true_to_insight), distinct: sc(s.distinct), makeable: sc(s.makeable) } }; }).filter(function (t) { return t.idea; });
+}
+async function develop() {
+  save(); clearFail(1);
+  if (!S.brief.trim()) { fail(1, 'Write the brief first.'); return; }
+  if (!S.brief_i) { var b = await interpretBrief(); if (!b) return; }
+  if (S.brief_i.question && !confirm('The brief has an open question: ' + S.brief_i.question + '\nDevelop anyway?')) return;
+  show('busy1', true);
+  try {
+    var ask = laneBriefText() + ' Write exactly three territories as a JSON array shaped [{"name":"","idea":"","world":"","tone":"","why":"","risk":"","score":{"true_to_insight":1,"distinct":1,"makeable":1}}].';
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-territories', format: 'json', brief: S.brief_i });
+    var T = cleanTerritories(d.data && d.data.json);
+    if (T.length < 2) throw new Error('bad_territories');
+    S.territories = T; S.picked = []; save(); renderTerritories(); unlock('st2');
+    document.getElementById('st2').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { fail(1, e); }
+  show('busy1', false);
+}
+async function blendTerritories() {
+  if (S.picked.length !== 2) return;
+  show('busy2', true); clearFail(2);
+  try {
+    var a = S.territories[S.picked[0]], b = S.territories[S.picked[1]];
+    var ask = laneBriefText() + ' Blend these two territories into ONE creative direction in under 180 words: the single idea, the world it lives in, the tone, and what every ' + LANES[S.lane].unitNoun + ' must share. Keep what each does best; drop what fights. Territory A: ' + territoryText(a) + ' Territory B: ' + territoryText(b);
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-concept', brief: S.brief_i });
+    S.direction = (d.data && d.data.text || '').trim(); put('d-text', S.direction); save();
+  } catch (e) { fail(2, e); }
+  show('busy2', false);
+}
+/* The one-direction path, kept: no territories, the direction written straight from the brief. */
+async function writeDirection() {
+  save(); clearFail(1);
+  if (!S.brief.trim()) { fail(1, 'Write the brief first.'); return; }
+  if (!S.brief_i) { var b = await interpretBrief(); if (!b) return; }
+  show('busy1', true);
+  try {
+    var ask = laneBriefText() + ' Write the creative direction in under 180 words: the single idea, the world it lives in, the tone, and what every '
+      + LANES[S.lane].unitNoun + ' must share. Address it to a production team.';
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-concept', brief: S.brief_i });
+    S.direction = (d.data && d.data.text || '').trim(); put('d-text', S.direction);
+    S.territories = []; S.picked = []; renderTerritories();
+    save(); unlock('st2');
+    document.getElementById('st2').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { fail(1, e); }
+  show('busy1', false);
 }
 
 /* SEAM:PLAY_REF — reference uploads: raw-body POST, thumbnails, per-unit picks */
@@ -310,21 +541,6 @@ function paintRefs() {
   });
 }
 
-async function develop() {
-  save(); clearFail(1);
-  if (!S.brief.trim()) { fail(1, 'Write the brief first.'); return; }
-  show('busy1', true);
-  try {
-    var ask = laneBriefText() + ' Write the creative direction in under 180 words: the single idea, the world it lives in, the tone, and what every '
-      + LANES[S.lane].unitNoun + ' must share. Address it to a production team.';
-    var d = await api('play/generate', { prompt: ask, kind: 'engine-concept' });
-    put('d-text', (d.data && d.data.text || '').trim());
-    save(); unlock('st2');
-    document.getElementById('st2').scrollIntoView({ behavior: 'smooth' });
-  } catch (e) { fail(1, e); }
-  show('busy1', false);
-}
-
 async function breakUnits() {
   save(); clearFail(2); show('busy2', true);
   var L = LANES[S.lane];
@@ -338,7 +554,7 @@ async function breakUnits() {
       + ' Break this into exactly ' + count + ' ' + L.unitPlural
       + '. Return a JSON array shaped exactly like ' + shape
       + (S.lane === 'film' ? ' where seconds are integers 2 to 10 summing near ' + S.scale + '.' : '.');
-    var d = await api('play/generate', { prompt: ask, kind: 'engine-units', format: 'json' });
+    var d = await api('play/generate', { prompt: ask, kind: 'engine-units', format: 'json', brief: S.brief_i });   // SEAM:PLAY_BRIEF
     var arr = d.data && d.data.json;
     if (!Array.isArray(arr) || !arr.length) throw new Error('bad_units');
     S.units = arr.slice(0, 12).map(function (u, i) {
@@ -373,7 +589,7 @@ async function compileOne(u) {
     + '. The prompt is one flat string. Return exactly: {"id":"' + u.id + '","prompt":"..."}';
   for (var attempt = 0; attempt < 2; attempt++) {
     try {
-      var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json' });
+      var d = await api('play/generate', { prompt: ask, kind: 'engine-compile', format: 'json', brief: S.brief_i });   // SEAM:PLAY_BRIEF
       var jx = d.data && d.data.json;
       if (Array.isArray(jx)) jx = jx[0];
       if (jx) { var got = _flatPrompt(jx.prompt).trim(); if (got) return got; }
@@ -743,7 +959,7 @@ async function assembleFilm() {
 function resetProject() {
   if (!confirm('Start a new project? The current one clears.')) return;
   try { localStorage.removeItem('play_engine_v1'); } catch (e) {}
-  location.reload();
+  location.replace(location.pathname);   // SEAM:PLAY_HANDOFF: a new project drops the package in the hash too
 }
 
 /* Boot ------------------------------------------------------------------ */
@@ -758,14 +974,18 @@ function resetProject() {
       if (prev && typeof prev === 'object') { S = Object.assign(S, prev); }
     }
   } catch (e) {}
+  await loadPkg();   // SEAM:PLAY_HANDOFF
   setLaneUI();
   if (!Array.isArray(S.refs)) S.refs = [];
-  paintRefs();
+  paintRefs(); paintPkg();
   put('b-brand', S.brand); put('b-style', S.style); put('b-brief', S.brief);
   put('b-scale', S.scale); put('b-aspect', S.aspect); put('d-text', S.direction);
   if (S.direction) unlock('st2');
   if (S.units && S.units.length) { renderUnits(); unlock('st3'); unlock('st5'); }
   refreshBudget();
+  if (!Array.isArray(S.picked)) S.picked = []; if (!Array.isArray(S.territories)) S.territories = [];
+  renderBrief(); renderTerritories(); if (S.territories.length) unlock('st2');
+  if (S.pkg && !S.brief_i && S.brief) interpretBrief();   // SEAM:PLAY_BRIEF: a handed package is read on arrival
 })();
 function setLaneUI() {
   var tabs = document.querySelectorAll('.lane');

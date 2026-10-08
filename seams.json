@@ -1174,6 +1174,47 @@
   "SEAM:READ_SALVAGE": {
    "file": "worker/src/index.js",
    "purpose": "readLand: a house read's reply cut at its room or wrapped in prose keeps every whole section it finished (excSalvage; extractJson's bare array on a cut object is not taken as a read); a reply with no read in it is sent once more by itself (meta.resent, never twice; not for a RECON written in passes, never on a re-land) before the row is held; a hold names the reply's length, head and tail"
+  },
+  "SEAM:PLAY_BRIEF": {
+   "file": "worker/src/index.js",
+   "purpose": "EX25 PLAY BRIEF: the creative ask is read into a brief before anything is made. POST /play/interpret (signed in, underLimit): one Haiku call on the frame tier, cached a week by the ask (rev p1): deliverable, platform, brand, audience, objective, tone, must, avoid, the insight it builds on, count, seconds, and one question only when the deliverable or the platform cannot be told; PLAY_SPECS turns the platform into the lane, aspect, scale and safe zone (playSpecsFor); playBriefClean keeps only what the shape allows; the brief rides every playGenerate call as body.brief"
+  },
+  "SEAM:PLAY_BRIEF@play": {
+   "file": "play/index.html",
+   "tag": "SEAM:PLAY_BRIEF",
+   "purpose": "Read the brief lands the interpretation as chips under the brief field (deliverable, platform, brand, audience, objective, tone, must, avoid, insight), each one editable; the platform sets the lane, aspect and scale once per read (a later hand change stands); one question is shown and its answer is folded into the brief and re-read; the brief and the insight ride the territories, the direction, the units and every compile (laneBriefText, insightText, specText)"
+  },
+  "SEAM:PLAY_CLAUDE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX25: PLAY's words come from Claude's live tier (Sonnet 5) through callClaude with the brief on the system prompt and a room per kind (PLAY_CLAUDE.KINDS); Workers AI is the reserve when the tier is capped, off, slow or fails (or body.reserve asks for it), so PLAY never goes dark; data.by says which wrote the answer; underLimit meters every call as before"
+  },
+  "SEAM:PLAY_DIRECTOR": {
+   "file": "worker/src/index.js",
+   "purpose": "EX25: the prompt kinds the director pass and the console need: engine-territories (three distinct territories, each with the idea, the world, the tone, why it wins against the insight, the risk, and 1 to 5 scores for true_to_insight, distinct and makeable), campaign, article, copy (a JSON copy package) and moodboard (a JSON frame list of four for the image model)"
+  },
+  "SEAM:PLAY_DIRECTOR@play": {
+   "file": "play/index.html",
+   "tag": "SEAM:PLAY_DIRECTOR",
+   "purpose": "Develop writes three scored territories (cards with the scores); the person picks one (its text becomes the direction), picks two and blends them (engine-concept on both), or writes one direction straight from the brief (Write one direction, the old path); Three more territories asks again"
+  },
+  "SEAM:PLAY_DIRECTOR@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PLAY_DIRECTOR",
+   "purpose": "the PLAY console's chips mean what they say: Campaign concept and Long-form article write through their own kinds (on Claude); Moodboard asks for the frame list and renders four images; the answer says which model wrote it and opens the engine with the ask"
+  },
+  "SEAM:PLAY_HANDOFF": {
+   "file": "worker/src/index.js",
+   "purpose": "EX25: the insight package EXCAVATE hands PLAY. POST /play/handoff stores the package (ask, frame, move, title, thesis, findings, evidence titles, voices; playHandoffClean, at most 12k chars) in KV for 24 hours under the poster and returns the id and ../play/#pkg=id; GET /play/handoff/:id returns it to its owner only (403 to anyone else, 404 when gone)"
+  },
+  "SEAM:PLAY_HANDOFF@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PLAY_HANDOFF",
+   "purpose": "every door from a read into PLAY carries the insight: a move's Picture this move in PLAY (the move itself), the read's MAKE WITH PLAY (the two read lines) and the interpreter's Make it in PLAY (the question) build the package (_playPkg: the frame, the synthesis, the gathered titles, the voices), post it and open PLAY on the id; a door that cannot post still opens PLAY"
+  },
+  "SEAM:PLAY_HANDOFF@play": {
+   "file": "play/index.html",
+   "tag": "SEAM:PLAY_HANDOFF",
+   "purpose": "PLAY reads #pkg=<id> (or the old ?brief=) on boot, fills the brief and the brand from it, shows From EXCAVATE with the move and the source count, reads the brief at once and clears the id from the address; New project and the banner's close drop the package"
   }
  },
  "planned": [

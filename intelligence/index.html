@@ -4904,7 +4904,7 @@ function _inDoors(f) {
   const doors = [];
   if (f && f.task === 'brand' && f.entity) doors.push(`<button class="btn-new-search" type="button" onclick="navTo('brands');setTimeout(()=>{const i=document.getElementById('brand-find');if(i){i.value=${JSON.stringify(f.entity)};_brandFind();}},300)">Open the brand room: ${safe(f.entity)}</button>`);
   if (f && f.task === 'brief') doors.push(`<button class="btn-new-search" type="button" id="intent-brief" style="display:none" onclick="makeReconFromRead()">This is a brief: commission a RECON</button>`);
-  if (f && f.task === 'create') doors.push(`<a class="btn-new-search" href="../play/" target="_blank" rel="noopener">Make it in PLAY</a>`);
+  if (f && f.task === 'create') doors.push(`<a class="btn-new-search" href="../play/" onclick="return _playAsk()">Make it in PLAY</a>`);   // SEAM:PLAY_HANDOFF
   el.innerHTML = doors.join(''); el.style.display = doors.length ? '' : 'none';
   if (f && f.task === 'brief') _cmAdmin().then(a => { const b = document.getElementById('intent-brief'); if (b) b.style.display = a ? '' : 'none'; });
 }
@@ -5766,7 +5766,7 @@ function _moveCard(m, all){
     ${m.dated&&m.dated.newest?`<div class="move-when ${safe(m.dated.band||'')}">EVIDENCE · ${safe(m.dated.band||'')} · NEWEST ${safe(m.dated.newest)}</div>`:''}
     ${m.checks&&Array.isArray(m.checks.ungrounded)&&m.checks.ungrounded.length?`<div class="move-when" style="color:var(--accent)">UNVERIFIED FIGURE · ${m.checks.ungrounded.map(safe).join(', ')}</div>`:''}
     ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}
-    <a class="move-play" href="../play/?brief=${encodeURIComponent(String(m.headline||'')+'. '+String(m.body||''))}&from=excavate" target="_blank" rel="noopener" title="PLAY makes an imagined visual of this move. Imagined, never evidence.">Picture this move in PLAY →</a></div>`;
+    <a class="move-play" href="../play/" onclick="return _playMove(${(window._playMoves=window._playMoves||[]).push(m)-1})" title="PLAY makes an imagined visual of this move, on the read's insight. Imagined, never evidence.">Picture this move in PLAY →</a></div>`;   // SEAM:PLAY_HANDOFF
 }
 // EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
 // SEAM:EXC_ACCURACY: a number the evidence does not carry is said out loud on the card that states it.
@@ -6026,7 +6026,7 @@ function _renderReadBlock(q, data, mode){
       <button onclick="openSourcesModal()">EVERY SOURCE</button>
       <button onclick="downloadReport()">DOWNLOAD THE READ</button>
       <button onclick="trackThis(document.getElementById('search-input').value)">TRACK THIS</button>
-      <button onclick="window.open('../play/?brief='+encodeURIComponent([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' ')),'_blank')">MAKE WITH PLAY</button>
+      <button onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">MAKE WITH PLAY</button><!-- SEAM:PLAY_HANDOFF -->
     </div>`;
   el.querySelectorAll('.tl-g[data-url]').forEach(g=>{ g.style.cursor='pointer'; g.addEventListener('click',()=>window.open(g.getAttribute('data-url'),'_blank','noopener')); });
   el.style.display='block';
@@ -6758,7 +6758,29 @@ function _wireHubLogo(){
 // ── PLAY console (honest preview — no faked generation) ──────────────
 // ── PLAY console — genuine generation via the seam (text + image) ────
 let _playKind='content';
-const _PLAY_KINDS={'campaign concept':'campaign','long-form article':'article','key visual':'image','moodboard':'moodboard'};
+const _PLAY_KINDS={'campaign concept':'campaign','long-form article':'article','key visual':'image','moodboard':'moodboard'};   // SEAM:PLAY_DIRECTOR: campaign and article write on Claude; moodboard is four images
+/* SEAM:PLAY_HANDOFF: the package EXCAVATE hands PLAY. The ask, the frame, the move, the findings, the evidence titles and the
+ * voices go to /play/handoff; PLAY opens on the id and reads the brief from it. A door that cannot post still opens PLAY. */
+function _playPkg(ask, move){
+  const L=window._liveLast||{}, syn=L.synthesis||{}, gm=window._gatherMeta||{}, f=gm.frame||window._lastFrame||{}, items=window._gatherItems||[];
+  const v=(gm.meta&&gm.meta.voices&&Array.isArray(gm.meta.voices.quotes))?gm.meta.voices.quotes.filter(q=>q&&q.text&&!q.share&&q.on_frame!==false).slice(0,4).map(q=>q.text):[];
+  return { ask:String(ask||'').slice(0,2400), from:'excavate', q:L.q||null,
+    frame:{ entity:f.entity||null, category:f.category||null, audience:f.audience||null, market:f.market||null, task:f.task||null },
+    move: move?{ headline:move.headline||null, body:move.body||null, because:move.because||null, proof:move.proof||null, type:move.type||null }:null,
+    title:syn.title||null, thesis:syn.thesis||null,
+    findings:(Array.isArray(syn.insights)?syn.insights:[]).slice(0,4).map(i=>i&&(i.claim||i.headline||i.title)).filter(Boolean),
+    evidence:items.slice(0,5).map(i=>i&&i.title).filter(Boolean), voices:v };
+}
+async function _playOpen(pkg){
+  const w=window.open('about:blank','_blank');
+  let url='../play/';
+  try { const d=await api('play/handoff',{pkg}); if(d&&d.ok&&d.id) url='../play/#pkg='+d.id; else showToast('PLAY opens without the handoff: '+((d&&d.error)||'no id')); }
+  catch(e){ showToast('PLAY opens without the handoff: '+(e.message||e)); }
+  if(w) w.location=url; else window.open(url,'_blank');
+}
+function _playMove(i){ const m=(window._playMoves||[])[i]; if(!m) return true; _playOpen(_playPkg('Make this move real: '+String(m.headline||'')+'. '+String(m.body||''), m)); return false; }
+function _playRead(text){ const L=window._liveLast||{}; _playOpen(_playPkg('Make the read on "'+String(L.q||'')+'" into creative work. '+String(text||'').slice(0,1800), null)); }
+function _playAsk(){ const q=(document.getElementById('search-input')||{}).value||(window._liveLast||{}).q||''; if(!q) return true; _playOpen(_playPkg(q, null)); return false; }
 function playChip(el){
   const t=el.textContent.trim();
   _playKind=_PLAY_KINDS[t.toLowerCase()]||'content';
@@ -6775,15 +6797,24 @@ async function playGenerate(){
   out.style.display='block';
   out.innerHTML='<div class="play-loading">Creating…</div>';
   try {
+    const _full=u=>(u&&!/^https?:/.test(u))?(API_BASE.replace(/\/$/,'')+u):u;
     if(_playKind==='image'){
       const d=await api('play/generate-image',{prompt});
-      const u=(d&&d.data&&d.data.url)||d.image||''; const full=(u&&!/^https?:/.test(u))?(API_BASE.replace(/\/$/,'')+u):u;
-      out.innerHTML='<img class="play-img" alt="PLAY generated visual" src="'+safeAttr(full)+'">';
+      const u=(d&&d.data&&d.data.url)||d.image||'';
+      out.innerHTML='<img class="play-img" alt="PLAY generated visual" src="'+safeAttr(_full(u))+'">';
+    } else if(_playKind==='moodboard'){   // SEAM:PLAY_DIRECTOR: an art-directed frame list, then four images
+      const d=await api('play/generate',{prompt,kind:'moodboard',format:'json'});
+      const frames=(Array.isArray(d&&d.data&&d.data.json)?d.data.json:[]).slice(0,4).filter(f=>f&&f.prompt);
+      if(!frames.length) throw new Error('no_frames');
+      out.innerHTML='<div class="play-loading">Four frames, rendering…</div>';
+      const imgs=await Promise.all(frames.map(f=>api('play/generate-image',{prompt:String(f.prompt).slice(0,2000)}).then(r=>({t:f.title||'',u:(r&&r.data&&r.data.url)||''})).catch(()=>({t:f.title||'',u:''}))));
+      out.innerHTML='<div class="play-board" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'+imgs.map(x=>x.u?'<figure style="margin:0"><img class="play-img" alt="'+safeAttr(x.t||'moodboard frame')+'" src="'+safeAttr(_full(x.u))+'"><figcaption style="font-size:11px;color:var(--text3);margin-top:4px">'+safe(x.t)+'</figcaption></figure>':'').join('')+'</div>';
     } else {
       const d=await api('play/generate',{prompt,kind:_playKind});
       const div=document.createElement('div'); div.className='play-text';
       div.textContent=(((d&&d.data&&d.data.text)||d.text||'').trim())||'(PLAY returned nothing — try rephrasing.)';
       out.innerHTML=''; out.appendChild(div);
+      const by=d&&d.data&&d.data.by; if(by){ const b=document.createElement('div'); b.className='play-by'; b.style.cssText='font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-top:8px'; b.textContent=(by==='claude'?'Written on Claude':'Written on the reserve model')+' · '; const a=document.createElement('a'); a.href='../play/'; a.textContent='Take it into the engine →'; a.onclick=()=>{ _playOpen(_playPkg(prompt,null)); return false; }; b.appendChild(a); out.appendChild(b); }
     }
   } catch(e){
     out.innerHTML='<div class="play-err">PLAY couldn\'t generate that just now — the studio may be busy or the backend isn\'t connected yet. Try again in a moment.</div>';
