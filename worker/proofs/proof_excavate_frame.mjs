@@ -78,10 +78,10 @@ const mkGather = (railMs, opts) => {
   const fn = id => async (env, q, ctx, rail) => { calls.push({ id, q, at: Date.now() }); if (id === 'wikipedia') ctx.meta.wiki_title = 'Hair care';
     await new Promise(res => setTimeout(res, railMs[id] || 10)); if (id === 'wikimedia_pageviews') calls.push({ id: 'pv_saw_title', q: ctx.meta.wiki_title }); return [{ title: id + ' item', url: 'https://' + id + '.example/1', rail: id, source_tier: 3, kind: rail.kind }]; };
   const RAIL_FNS = Object.fromEntries(RAILS.map(r => [r.id, fn(r.id)]));
-  const G = new Function('RAILS', 'RAIL_BY_ID', 'RAIL_FNS', 'railAllowed', 'classifyQuery', 'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', 'excFrameClean', 'excFrameWhole', 'excRailQuery', 'GATHER', 'looksEnglish', 'gatherOrder', 'bumpYield', 'excQuiet', 'excStampTiers',
+  const G = new Function('RAILS', 'RAIL_BY_ID', 'RAIL_FNS', 'railAllowed', 'classifyQuery', 'excFrameFor', 'excTiersLoad', 'excFacts', 'excGapCheck', 'excGapRound', 'excObserved', 'excFrameClean', 'excFrameWhole', 'excRailQuery', 'GATHER', 'looksEnglish', 'gatherOrder', 'bumpYield', 'excQuiet', 'excStampTiers', 'excClassOfFrame',
     gatherSrc + '; return gatherOpenSignals;')(RAILS, Object.fromEntries(RAILS.map(r => [r.id, r])), RAIL_FNS, async () => true, () => 'behavior',
     async () => { await new Promise(res => setTimeout(res, (opts && opts.frameMs) || 20)); return (opts && opts.frame) ? H.excFrameClean(opts.frame) : null; }, async () => null, async () => ({ tabled: 0 }), async () => null, async () => [], () => [], H.excFrameClean, H.excFrameWhole, H.excRailQuery,
-    { PAR: 3, MAX_ITEMS: 60, BUDGET_MS: (opts && opts.budget) || 800, RAIL_MS: (opts && opts.railMs) || 400, KG_MS: 100, FRAME_WAIT_MS: 150 }, () => true, x => x, async () => {}, () => () => null, () => null);
+    { PAR: 3, MAX_ITEMS: 60, BUDGET_MS: (opts && opts.budget) || 800, RAIL_MS: (opts && opts.railMs) || 400, KG_MS: 100, FRAME_WAIT_MS: 150 }, () => true, x => x, async () => {}, () => () => null, () => null, () => null);   // SEAM:EXC_RAILS: the harness reads the class from the classifier alone
   return { G, calls };
 };
 let { G, calls } = mkGather({}, { frame: raw });

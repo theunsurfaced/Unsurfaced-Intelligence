@@ -450,6 +450,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .depth-switch button.on{color:var(--text);background:var(--surface3);}
 .depth-switch button:hover{color:var(--text);}
 .depth-note{font-size:12px;color:var(--text2);margin-top:6px;}
+.read-thin{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 10px;max-width:70ch;}   /* SEAM:EXC_THIN */
 .btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
 .btn-go-deeper:hover{background:#ff5555;}
 
@@ -3300,7 +3301,7 @@ function _liveBrief(q, items, connectors){
   if(byType.web)    parts.push(byType.web+' web results');
   if(byType.trend)  parts.push('a demand-trend reading');
   if(byType.news)   parts.push(byType.news+' news items');
-  return `Real-time scan of "${q}" across ${ok.length} live source${ok.length===1?'':'s'} (${ok.join(', ')||'none'}) surfaced ${parts.join(', ')||'limited signal'}. These are unranked raw signals straight from the open social and web layer — use them to see where the conversation is actually happening right now.`;
+  return `A live scan of "${q}"${ok.length?` across ${ok.join(', ')}`:''} surfaced ${parts.join(', ')||'limited signal'}. These are raw signals from the open social and web layer, unranked: they show where the conversation is happening right now.`;   // SEAM:EXC_THIN: plain words, no dash, no "0 live sources (none)"
 }
 
 // Render a /insights response: prefer the AI-synthesized fused read, fall back
@@ -3328,7 +3329,7 @@ function _renderLive(q, data){
       ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||'',from:Number.isInteger(d.from)?d.from:null,
           for:d.for||null, because:d.because||'', proof:d.proof||'', measure:d.measure||'', risk:d.risk||'', evidence:d.evidence||[], dated:d.dated||null, checks:d.checks||null}))   // SEAM:READ_QUALITY — a move keeps its finding
       : [];   // SEAM:ONE_RAIL — no move is invented; the compiler earns it or the section says so
-    brief = syn.brief || _liveBrief(q,items,data.connectors);
+    brief = syn.brief || 'The interpretation did not finish in this pass; the findings and the moves above stand on their own evidence.';   // SEAM:EXC_THIN: never the placeholder under a written read
     synthd=true;
   } else {
     insights=_liveToInsights(items);
@@ -3474,7 +3475,8 @@ async function runLiveSearch(q){
     } catch(e){ synthesis=null; }   // Worker down / 401 / unparsable → template read
     hideLoader();
     _inDoors(window._intent&&window._intent.frame);   // SEAM:EXC_INTENT: the task opens its door beside the read
-    { const gd=document.getElementById('intent-doors'); if(gd&&synthesis&&synthesis.depth==='quick'){ gd.insertAdjacentHTML('afterbegin','<button class="btn-go-deeper" type="button" onclick="goDeeper()">Go deeper: the full read</button>'); gd.style.display=''; } }   // SEAM:EXC_DEPTH
+    { const gd=document.getElementById('intent-doors'); if(gd&&synthesis&&synthesis.depth==='quick'){ gd.insertAdjacentHTML('afterbegin','<button class="btn-go-deeper" type="button" onclick="goDeeper()">Go deeper: the full read</button>'); gd.style.display=''; }
+      if(gd&&synthesis&&synthesis.thin){ gd.insertAdjacentHTML('afterbegin','<div class="read-thin">This read is building on '+safe(String(synthesis.thin))+' lines on the question. The findings are the few the evidence carries; '+(synthesis.depth==='quick'?'the full read widens the ground.':'a wider frame (the category, a competitor) would add to it.')+'</div>'); gd.style.display=''; } }   // SEAM:EXC_DEPTH; SEAM:EXC_THIN
     if(!synthesis) showToast('AI fusion unavailable — showing the structured signals');
     else if(synthesis.partial){ const _pn={ideas:'moves',brief:'brief',read:'two-line read'}; showToast('This read landed before its '+(synthesis.partial.missing||[]).map(m=>_pn[m]||m).join(' and ')+' finished. Run it again for the whole read.'); }   // SEAM:EXC_STALL
     _renderLive(q, { items:g.items, synthesis, sources:g.sources });
@@ -5998,7 +6000,7 @@ function _renderReadBlock(q, data, mode){
   if(att&&att.last_30d!=null) rows.push(['attention',`<b>${n(att.last_30d.toLocaleString())}</b> Wikipedia views in 30 days, ${n(att.prev_30d.toLocaleString())} the 30 before`]);
   if(vol&&vol.points) rows.push(['coverage',`GDELT series, ${n(vol.points)} points over 3 months`]);
   if(tm&&tm.total_ms){ const ev=((tm.frame_ms||0)+(tm.wire_ms||0)+(tm.pages_ms||0)+(tm.gap_ms||0)+(tm.facts_ms||0))/1000; const det=Array.isArray(tm.detail)?tm.detail:[];
-    const why=det.length>1?det.slice(0,-1).map((p,i)=>`pass ${i+1} on ${n(p.lane||'live')}: ${p.stop==='max_tokens'?'cut at the token limit':p.reason?n(p.reason):'did not parse'}${p.chars?`, ${n(Number(p.chars).toLocaleString())} chars`:''}${p.parsed?', '+n(p.parsed):''}`).join('; '):'';
+    const why=det.length>1?det.slice(0,-1).map((p,i)=>`the first pass ${p.stop==='max_tokens'?'ran out of room':p.reason?'stopped ('+n(p.reason)+')':'did not finish'}; a second pass completed the read`).slice(0,1).join(''):'';   // SEAM:EXC_THIN: the receipt in plain words
     rows.push(['time',`<b>${n((tm.total_ms/1000).toFixed(0))} s</b>, evidence ${n(ev.toFixed(0))} s, writing ${n(((tm.model_ms||0)/1000).toFixed(0))} s${tm.passes>1?`, ${n(tm.passes)} passes`:''}${why?`<br><em>${why}</em>`:''}`]); }
   if(mdl) rows.push(['compiled',`${n(mdl.model||'')}${mdl.lane==='reserve'?' (reserve model'+(mdl.reason?': '+n(mdl.reason):'')+')':''}${mdl.lane==='overnight'?' overnight':''}${mdl.cached?', served from today\'s read':''}${data.compiled_at?'<br>'+n(String(data.compiled_at).slice(0,16).replace('T',' '))+' UTC':''}`]);
   if(meta.cls) rows.push(['read as',n(meta.cls)]);

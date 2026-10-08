@@ -13,10 +13,10 @@ const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i 
 
 // ── A: the quick read in synthesize ────────────────────────────────────────────────────────────────────────────────
 const synth = between(w, 'async function synthesize(', '// Robust JSON extraction');
-ok(/const quick = body\.depth === 'quick';\n    if \(quick\) body = Object\.assign\(\{\}, body, \{ pages: false, gap: false, facts: false, framed: false \}\);/.test(synth),
-  'A1 depth quick turns off the slow middle: the pages read in full, the gap round, the fact table and the framed rerun');
-ok(/sha256hex\(query\.toLowerCase\(\)\.trim\(\) \+ '\|' \+ String\(body\.mode \|\| ''\) \+ \(quick \? '\|quick' : ''\)\)/.test(synth), 'A2 a quick read is cached under its own key, never served as a full read');
-ok(/const depthLaw = quick \? ' QUICK READ: give 4 to 5 insights and 3 moves/.test(synth) && /EXC_NUMBER_LAW \+ depthLaw, prompt: usr,\n      max_tokens: quick \? EXC_ROOM\.quick : \(isReport \? EXC_ROOM\.report : EXC_ROOM\.plain\)/.test(synth),
+ok(/const quick = body\.depth === 'quick';\n[\s\S]{0,400}?if \(quick\) body = Object\.assign\(\{\}, body, \{ pages: false, gap: false, facts: false \}\);/.test(synth),
+  'A1 depth quick turns off the slow middle: the pages read in full, the gap round and the fact table; the competitive set and the counter view keep their retry (SEAM:EXC_RAILS)');
+ok(/sha256hex\(query\.toLowerCase\(\)\.trim\(\) \+ '\|' \+ String\(body\.mode \|\| ''\) \+ \(quick \? '\|quick' : ''\) \+ '\|' \+ EXC_READ\.REV\)/.test(synth), 'A2 a quick read is cached under its own key, never served as a full read, and the key carries the read revision (SEAM:EXC_QUICK)');
+ok(/const depthLaw = quick \? ' QUICK READ: give 4 to 5 insights and 3 moves/.test(synth) && /EXC_NUMBER_LAW \+ depthLaw \+ thinLaw, prompt: usr,\n      max_tokens: quick \? EXC_ROOM\.quick : \(isReport \? EXC_ROOM\.report : EXC_ROOM\.plain\)/.test(synth),
   'A3 the quick writer is asked for 4 to 5 findings and 3 moves in its own room; every law still rides the system prompt');
 ok(/depth: quick \? 'quick' : 'full',   \/\/ SEAM:EXC_DEPTH/.test(synth), 'A4 the payload says its depth, so the page and the receipts can show it');
 const room = JSON.parse(between(w, 'const EXC_ROOM = ', ';').replace('const EXC_ROOM = ', '').replace(/(\w+):/g, '"$1":'));

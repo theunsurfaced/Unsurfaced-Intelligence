@@ -27,7 +27,7 @@ const CONFIG = {
   MAX_TOKENS:  800,
   DAILY_LIMIT: 300,   // AI inference calls per user per day (engine sessions are multi-stage; Workers AI text is cheap)
   RENDER_DAILY_SECONDS: 120, // SEAM:PLAY_RENDER \u2014 fal render seconds per user per day (an image counts as its pool's sec weight)
-  PPLX_DAILY_DOLLARS: 0.40,  // SEAM:PPLX_RAIL \u2014 house cap on Perplexity spend per day (about 50 fresh reads; cached reads are free)
+  PPLX_DAILY_DOLLARS: 1.50,  // SEAM:PPLX_RAIL \u2014 house cap on Perplexity spend per day (about 190 fresh reads; cached reads are free); EX27: raised from 0.40 for the live room
   SIGNAL_DAILY_DOLLARS: 1.5, // SEAM:SIGNAL_POOL \u2014 house cap on paid signal spend per day, tracked in REAL dollars from the provider's own costDollars
   PPLX_RECON_DAILY_DOLLARS: 0.5,   // SEAM:READ_DEEP: a RECON's gathers ask Perplexity on their own daily allowance (about three RECONs a day), never the house's
   SIGNAL_RECON_DAILY_DOLLARS: 1.0, // SEAM:READ_DEEP: and Exa on theirs, in the provider's real dollars
@@ -699,8 +699,10 @@ async function synthesize(body, env, origin, hooks) {
     // SEAM:EXC_DEPTH: quick is a real mode: the gather, the lake and the writer, 4 to 5 findings and 3 moves, none of the slow middle
     // (pages in full, the gap round, the fact table, the framed rerun). Cached apart from the full read, never served as one.
     const quick = body.depth === 'quick';
-    if (quick) body = Object.assign({}, body, { pages: false, gap: false, facts: false, framed: false });
-    const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || '') + (quick ? '|quick' : ''));
+    // SEAM:EXC_RAILS: framed stays on. body.framed governs the retry of the competitive set and the counter view (excFramedRerun, ten
+    // seconds), not a rerun of the writer; Quick turned it off on Oct 7 and lost the two rails the Jordan question needed.
+    if (quick) body = Object.assign({}, body, { pages: false, gap: false, facts: false });
+    const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || '') + (quick ? '|quick' : '') + '|' + EXC_READ.REV);   // SEAM:EXC_QUICK: a read cached before a deploy that changed the writer is compiled again once
     if (env.RATE_LIMIT) {
       try {
         const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
@@ -834,9 +836,13 @@ async function synthesize(body, env, origin, hooks) {
     const tight = ' ROOM LAW: keep every sentence under 25 words and every string under 220 characters. ' +
       'Close the JSON object completely. JSON only, no fences.';
     const depthLaw = quick ? ' QUICK READ: give 4 to 5 insights and 3 moves, the strongest the evidence carries; every sentence under 25 words. ' : '';   // SEAM:EXC_DEPTH
-    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw, prompt: usr,
+    // SEAM:EXC_THIN: a read on a few lines says so and stays small; it never writes eight findings from three lines.
+    const thin = merged.length < EXC_THIN.MIN;
+    const thinLaw = thin ? ' THIN GROUND: the evidence holds only ' + merged.length + ' lines on this question. Give at most 3 insights and 2 moves, each on a line that names the subject, and open the brief by saying the read is building on ' + merged.length + ' lines and what a wider read would add. ' : '';
+    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW + ' ' + EXC_HEADLINE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw + thinLaw, prompt: usr,
       max_tokens: quick ? EXC_ROOM.quick : (isReport ? EXC_ROOM.report : EXC_ROOM.plain), kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
-      onText: hooks.onText || null };   // SEAM:EXC_STREAM: the live draft
+      onText: hooks.onText || null,
+      thinking: quick ? { type: 'disabled' } : null, timeout_ms: quick ? EXC_READ.QUICK_MS : null };   // SEAM:EXC_STREAM: the live draft; SEAM:EXC_QUICK: no thinking and a 45 s deadline on a quick read
     const passes = [];
     const attempt = async (o, label) => {
       const c = await excCompile(env, o);
@@ -966,6 +972,7 @@ async function synthesize(body, env, origin, hooks) {
     } catch (e) {}
     const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL
       depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
+      thin: thin ? merged.length : null,   // SEAM:EXC_THIN: the page says the read is building
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
       relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, hits: gate.hits || null, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
@@ -1059,6 +1066,14 @@ function extractJson(s) {
 /* SEAM:EXC_PARSE: the room a read gets, and the harvest of what came back. A reply cut at its token limit is
  * not thrown away: every finding (and move) the model finished is kept, the open brackets are closed, and the
  * read is used when it carries at least EXC_ROOM.MIN_SALVAGE findings. Only text that never parses is a miss. */
+const EXC_READ = { REV: 'r2', QUICK_MS: 45000 };   // SEAM:EXC_QUICK: the read cache's revision and the quick writer's deadline
+const EXC_THIN = { MIN: 12 };   // SEAM:EXC_THIN: under this many lines on the frame, the read says it is building
+/* SEAM:EXC_HEADLINE: the Method's headline law, for the live writer. Oct 8: a quick read opened on a 40-word line with three claims, a
+ * parenthetical source, a semicolon and an off-market clause, and its move argued against its own findings. */
+const EXC_HEADLINE_LAW = 'HEADLINE LAW: the first line of "read" is the headline: 6 to 12 words, present tense, one claim about the people the question is about, ' +
+  'with a verb; never a figure, a percentage, a source name, a year, a semicolon, a colon or a list of brands. The second line is the dek: one sentence under 30 words that ' +
+  'carries the one figure that proves the headline and names its source in words. The move the dek implies follows the insights and the ideas; it never argues against them. ' +
+  'Every insight title is a claim with a verb, 4 to 9 words, no figure. Nothing in the read speaks of a market the frame did not name.';
 const EXC_ROOM = { report: 16000, plain: 8000, quick: 9000, ceiling: 32000, MIN_SALVAGE: 3 };   // SEAM:EXC_DEPTH: a quick read's room.   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
 const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4,   // SEAM:EXC_SPEED
   BEAT_MS: 15000, WRITE_MS: 165000, COMPLETE_MS: 60000, COMPLETE_TOKENS: 6000, PARTIAL_TTL: 900 };   // SEAM:EXC_STALL: the heartbeat, the writing's wall clock, the completion call, a partial read's short cache
@@ -1174,9 +1189,11 @@ async function excCompile(env, o) {
   if (o.reserveOnly) why = String(o.reserveOnly);   // SEAM:EXC_PARSE: the live lane answered twice and neither reply could be read
   if (!why) {
     const req = { system: String(o.system || ''), cache: true, prompt: String(o.prompt || ''), max_tokens, kind: o.kind || 'excavate', timeout_ms: o.timeout_ms || null };   // SEAM:EXC_STALL: the caller's deadline
+    if (o.thinking) req.thinking = o.thinking;   // SEAM:EXC_QUICK: a quick read writes without thinking
     // SEAM:EXC_STREAM: a caller with an ear (onText) hears the read as it is written; the ledger is the same.
     const ask = () => (o.onText ? callClaudeStream(env, EXC_MODEL.TIER, req, o.onText) : callClaude(env, EXC_MODEL.TIER, req));
     let r = await ask();
+    if (!r.ok && req.thinking && /^claude_400$/.test(String(r.error || ''))) { delete req.thinking; r = await ask(); }   // SEAM:EXC_QUICK: a model that refuses the thinking field writes as it always did
     if (!r.ok && /^claude_(?:network|stall|429|5\d\d)$/.test(String(r.error || ''))) {   // SEAM:EXC_STALL: a stall with nothing written is retried once
       await new Promise(res => setTimeout(res, EXC_MODEL.RETRY_MS));
       r = await ask();
@@ -1331,7 +1348,7 @@ function excReportPrompt(query, evidence) {
   return 'Topic: "' + query + '"\n\nEVIDENCE:\n' + evidence + '\n\n' +
     'Return JSON exactly shaped as:\n' +
     '{"frame":{"category":"the category this topic sits in, 1 to 3 words","audience":"the people that category serves here, 1 to 3 words"},' +
-    '"read":["line 1: one sharp sentence, at most 40 words, reframing what the evidence actually shows","line 2: one sentence, at most 30 words, naming the move it implies"],' +
+    '"read":["line 1, the headline: 6 to 12 words, present tense, one claim about the people in the question, no figure, no source name, no semicolon","line 2, the dek: one sentence under 30 words carrying the one figure that proves line 1 and naming its source in words"],' +   // SEAM:EXC_HEADLINE
     '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
     '"excerpt":"1-2 sentences: what happened, naming the concrete thing from the evidence",' +
     '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
@@ -6932,7 +6949,12 @@ function voiceOnFrame(text, frame) {
   const h = ' ' + norm(text) + ' ';
   const terms = [].concat(frame.anchors, frame.entity ? [frame.entity] : [], frame.competitors || []).map(a => norm(a).trim()).filter(Boolean);
   const nouns = String((frame.category || '')).toLowerCase().split(/[^a-z0-9&]+/).filter(w => w.length >= 4 && !EXC_GATE.STOP.has(w));
-  return terms.concat(nouns).some(t => h.includes(' ' + t + ' ') || h.includes(' ' + t + 's ') || (t.includes(' ') && t.split(' ').filter(w => w.length >= 3 && !EXC_GATE.STOP.has(w)).every(w => h.includes(' ' + w + ' ') || h.includes(' ' + w + 's '))));
+  const hit = t => h.includes(' ' + t + ' ') || h.includes(' ' + t + 's ') || (t.includes(' ') && t.split(' ').filter(w => w.length >= 3 && !EXC_GATE.STOP.has(w)).every(w => h.includes(' ' + w + ' ') || h.includes(' ' + w + 's ')));
+  // SEAM:EXC_RAILS: with a named entity, a voice is on the frame when it names the entity or a competitor, or carries two of the frame's
+  // other words; one category noun ("shoe") under a video about the brand is not a voice about the brand (Oct 8: 150 comments on socks).
+  const named = [].concat(frame.entity ? [frame.entity] : [], frame.competitors || []).map(a => norm(a).trim()).filter(Boolean);
+  if (named.length) { if (named.some(hit)) return true; const rest = Array.from(new Set(frame.anchors.map(a => norm(a).trim()).filter(Boolean).concat(nouns))).filter(t => !named.includes(t)); return rest.filter(hit).length >= 2; }
+  return terms.concat(nouns).some(hit);
 }
 function voiceAdd(ctx, source, entry) {
   if (!ctx || !ctx.meta) return;
@@ -7264,6 +7286,18 @@ const RAILS = [
 const RAIL_BY_ID = Object.fromEntries(RAILS.map(r => [r.id, r]));
 
 // PURE: the query class picks the rails. Knowledge Graph type wins when present.
+/* SEAM:EXC_RAILS: the class a frame implies. A named entity is a brand question whatever the words around it ("Jordan brand and young
+ * consumers" is Jordan Brand, read for an audience); a comparison is a brand question; an audience with no entity is behavior; a timeline
+ * or a plain read with a category and no entity is a category question. Null when the frame says nothing the classifier should not decide. */
+function excClassOfFrame(f) {
+  if (!f || typeof f !== 'object') return null;
+  if (f.entity) return 'brand';
+  const task = String(f.task || '');
+  if (task === 'compare') return 'brand';
+  if (task === 'audience') return 'behavior';
+  if ((task === 'timeline' || task === 'read' || task === 'brief') && f.category) return 'category';
+  return null;
+}
 function classifyQuery(q, kg) {
   const s = String(q || '').toLowerCase();
   const types = ((kg && kg.types) || []).join(' ');
@@ -7313,8 +7347,10 @@ async function gatherOpenSignals(env, q, opts) {
   if (await railAllowed(env, kgRail, day)) {
     try { kgItems = await Promise.race([RAIL_FNS.kg(env, query, ctx, kgRail), new Promise(res => setTimeout(() => res([]), GATHER.KG_MS))]) || []; } catch (e) { excQuiet('kg')(e); }
   }
-  const cls = opts.cls || classifyQuery(query, ctx.meta.kg);
-  const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id] && !(opts.skip || []).includes(r.id));   // SEAM:READ_DEEP: a RECON's gathers leave the voice rails to its own voice pass
+  // SEAM:EXC_RAILS: the frame's class first (an entity reads as brand), the classifier's when there is no frame; a frame with an entity never asks the research rails.
+  const fw = excFrameWhole(opts.frame);
+  const cls = opts.cls || excClassOfFrame(fw) || classifyQuery(query, ctx.meta.kg);
+  const chosen = RAILS.filter(r => r.id !== 'kg' && r.classes.includes(cls) && RAIL_FNS[r.id] && !(opts.skip || []).includes(r.id) && !(fw && fw.entity && (r.kind === 'research' || r.id === 'openlibrary')));   // SEAM:READ_DEEP: a RECON's gathers leave the voice rails to its own voice pass
   const stats = [{ id: 'kg', n: kgItems.length, ms: Date.now() - T0, ok: true }];
   let items = kgItems.slice();
   // A framed rail waits for the frame at most FRAME_WAIT_MS, then asks with the plain query.

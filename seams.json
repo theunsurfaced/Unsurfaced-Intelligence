@@ -1232,6 +1232,27 @@
   "SEAM:READ_LAYOUT": {
    "file": "intelligence/read/index.html",
    "purpose": "EX26 WRITE: three print faults from RECON 002 v2 fixed in the paper: the cover's figures no longer run into each other (gap, nowrap, 32px), the three futures stay on one page with their moves under their own column (break-inside avoid), the three \"for the\" columns stay with their headers"
+  },
+  "SEAM:EXC_RAILS": {
+   "file": "worker/src/index.js",
+   "purpose": "EX27 RUN: the rails follow the frame. excClassOfFrame reads the class off the frame (an entity is a brand question whatever the words around it; compare is brand; audience without an entity is behavior; a read, a brief or a timeline with a category is category), the classifier decides only without a frame; a frame with an entity never asks the research rails or Open Library; Quick keeps body.framed on, since that flag governs the retry of the competitive set and the counter view, not a rerun of the writer; a consumer voice under a named entity is on the frame by its own words (the entity, a competitor, or two of the frame's other words), never by its video alone"
+  },
+  "SEAM:EXC_QUICK": {
+   "file": "worker/src/index.js",
+   "purpose": "EX27 RUN: a quick read writes without thinking (thinking: disabled, retried once without the field on a 400) under a 45 s deadline (EXC_READ.QUICK_MS); the read cache key carries EXC_READ.REV so a read cached before a deploy that changed the writer is compiled again once"
+  },
+  "SEAM:EXC_HEADLINE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX27 RUN: the Method's headline law in the live writer (EXC_HEADLINE_LAW, report mode): line one of the read is 6 to 12 words, present tense, one claim about people, no figure, source, year, semicolon or brand list; line two carries the one figure that proves it and names its source in words; the move follows the findings; insight titles are claims with a verb; nothing speaks of a market the frame did not name"
+  },
+  "SEAM:EXC_THIN": {
+   "file": "worker/src/index.js",
+   "purpose": "EX27 RUN: the thin-ground law. Under EXC_THIN.MIN lines on the frame the writer gives at most 3 insights and 2 moves and opens the brief by saying the read is building on that many lines; the payload says thin: <lines>"
+  },
+  "SEAM:EXC_THIN@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_THIN",
+   "purpose": "the page says a read is building on N lines beside Go deeper; a written read never prints the placeholder interpretation (the placeholder itself loses its dash and its \"0 live sources (none)\"); the receipt describes a cut pass in plain words"
   }
  },
  "planned": [
