@@ -30,6 +30,16 @@ These are not style preferences. A read that breaks one is held, not published.
 16. **The numbers law.** The numbers prove the work and measure the question. They carry what we read (sources, stories and posts, comments, days) and the question's own counts (stories on it, outlets, voices, dated events), each in plain words. They never carry the machinery: search terms, anchors, the forecast ledger, a territory's share of the whole period, or a company's total mentions on topics the question is not about. A whole-period count enters a finding only when it measures the finding's subject, and it is stated once.
 17. **The time law.** The period leads: every section opens on what happened in it. What is older (a record line, a voice whose line says then, not now, a series that runs back years) is evidence of then, read by its date and set beside now to show what grew, what faded and what held. An older voice never speaks for the present: it carries its year, and it stands beside a voice from the period or in then and now. Growth is a comparison the evidence carries, the same months a year apart or the same question asked then and now, never a trend inferred from one point. Where nothing older bears on the question, say nothing about then.
 
+## The editing laws
+
+The laws above make a read true. These make it readable at the standard a client pays for, and the editor's pass holds the read to them.
+
+1. **Say it once.** A figure is stated once, in the section that proves its finding; every other section refers to it in words ("the comfort complaint that doubled") or leaves it out. A figure stated in four sections is padding wearing a number.
+2. **Confidence frames the claim.** A finding or a decision held at low confidence is written as the whitespace to test, with the pilot that settles it, never as a bet; nothing is built on it later without saying so.
+3. **Limits first.** What this evidence cannot show is said once, in one sentence, in the answer, before any finding. A limit the reader meets on the last page reads as a confession; on the first page it reads as rigor.
+4. **Every section earns its page.** A section that says nothing the read has not already said comes back empty. The page skips it.
+5. **Two readers, one document.** We read everything; a client reads the answer, the decisions, the findings, the competitive page, the concepts, the plan, the outlook and the sources. The client cut is a view of the same document, never a rewrite, so every section is written to stand in either.
+
 ## The expert's voice
 
 The difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.

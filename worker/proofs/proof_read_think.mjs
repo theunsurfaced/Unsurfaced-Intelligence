@@ -492,9 +492,9 @@ resetAll();
 }
 
 // ── Z: page, seams, gate ───────────────────────────────────────────────
-ok(/if \(decs\.length\) contents\.push\(\["The decisions"/.test(page) && /if \(hyps\.length\) contents\.push\(\["What we tested"/.test(page) && /if \(mm\) contents\.push\(\["The market"/.test(page) && /if \(cmap\.length\) contents\.push\(\["The response map"/.test(page) &&
+ok(/if \(decs\.length\) contents\.push\(\["The decisions"/.test(page) && /if \(hyps\.length\) contents\.push\(\["What we tested"/.test(page) && /if \(mm\) contents\.push\(\["The market"/.test(page) && /if \(cmap\.length\) contents\.push\(\[cut \? "The competitive page" : "The response map"/.test(page) &&
   /contents\.push\(\[futs\.length === 3 \? "Three futures" : "The futures"/.test(page) && /if \(terrs\.length\) contents\.push\(\["Concept territories"/.test(page) && /if \(prods\.length\) contents\.push\(\["Product concepts"/.test(page) && /if \(p90\) contents\.push\(\["The first 90 days"/.test(page) &&
-  /if \(appx\) contents\.push\(\["The data appendix"/.test(page),
+  /if \(appx && !cut\) contents\.push\(\["The data appendix"/.test(page),
   'Z1 the page lists every new section in its contents, each only when the read has it');
 ok(/<figcaption>Imagined · a concept drawing, not a photograph<\/figcaption>/.test(page) && /The drawings are imagined: no product, place or person in them is real\./.test(page) && /var rf = el\.closest\("\.rp-render-fig"\); if \(rf\) \{ rf\.remove\(\); return; \}/.test(page) &&
   /'<span class="fig none">Not measured<\/span>'/.test(page) && /nothing here is written by a model/.test(page) && /tbl\("What we read and counted"/.test(page) && /Sources read in full and carried into this read<\/div><table class="rp-appx">/.test(page) && /\["Comments and posts read", cmA\.read\], \["Shared headlines among them, set aside", cmA\.shares\], \["Coded by theme and stance", cmA\.coded\]/.test(page) &&

@@ -1215,6 +1215,23 @@
    "file": "play/index.html",
    "tag": "SEAM:PLAY_HANDOFF",
    "purpose": "PLAY reads #pkg=<id> (or the old ?brief=) on boot, fills the brief and the brand from it, shows From EXCAVATE with the move and the source count, reads the brief at once and clears the id from the address; New project and the banner's close drop the package"
+  },
+  "SEAM:READ_EDIT": {
+   "file": "worker/src/index.js",
+   "purpose": "EX26 WRITE: the editing laws, counted. readEditNotes reads a drafted or landed read as an editor does and notes a figure stated in more than three sections (repeat_figure), a name riding more than five (repeat_name; the brief's own names are exempt), a low-confidence decision written as a bet (confidence_bet), an answer that never says what the evidence cannot show (limits_first) and the \"X, not Y\" tic by section; the notes reach the RECON's editor pass (deepDraftNotesOf) and the desk on every landing (readLand); the editor law names them and the editing laws, and the editor may return a glossary, an advertising read or the competitive sets empty (READ_THINK.CUTTABLE); the Method gains The editing laws (templates/CULTURAL_READ_METHOD.md, synced)"
+  },
+  "SEAM:READ_CUT": {
+   "file": "worker/src/index.js",
+   "purpose": "EX26 WRITE: POST /reads/pdf {id, cut:\"client\"} renders the client cut of a read through the same ticket (cut=client on the page's address), keeps the file in its own slot (meta.pdf_client) under a stamp that carries the cut, and the running footer says CLIENT CUT"
+  },
+  "SEAM:READ_CUT@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_CUT",
+   "purpose": "the client cut is a view of the same document (readCut, pure): the four strongest findings (high before medium before low, then by sources, in the writer's order), the answer, the decisions, the competitive page (the response map renamed), the concepts, the 90 days, the outlook and the sources; the period in numbers, what we tested, the market, the territories, the sets, the voices page, the older reports, the cross-currents, the pushback, the advertising read, the futures, the drawn territories, the glossary, about and the appendix stay in the full read; the limits print on page two; a Client cut / Full read button switches the view (?cut=client) and Download PDF renders the view that is open, named -client-cut"
+  },
+  "SEAM:READ_LAYOUT": {
+   "file": "intelligence/read/index.html",
+   "purpose": "EX26 WRITE: three print faults from RECON 002 v2 fixed in the paper: the cover's figures no longer run into each other (gap, nowrap, 32px), the three futures stay on one page with their moves under their own column (break-inside avoid), the three \"for the\" columns stay with their headers"
   }
  },
  "planned": [

@@ -157,7 +157,7 @@ ok(JSON.stringify(vv.read.findings[0].voices) === JSON.stringify(['V1']) && vv.n
 ok(/function rpDots\(dates, win\)/.test(page) && /class="rp-recur">Recurrence/.test(page) && /WHAT CUTS AGAINST IT/.test(page) && /class="rp-pull"/.test(page) && /"The brief"/.test(page) && /class="rp-rec2"/.test(page)
   && /shown = ev\.slice\(0, 10\)/.test(page) && /seenImg\[u\] = 1/.test(page) && /CAP_NUM = function/.test(page) && /under 1%/.test(page) && !/\.rp-trig \{ font-family: var\(--mono\)/.test(page) && /\.cover-pick/.test(page) && /sellHtml\(\)/.test(page),
   'E6 the page prints the brief, the recurrence line, the dot strip, what cuts against, the pull quotes, ten sources then the rest at the back, distinct images, captions by number, under 1%, the trigger in body type, the cover pick and the sell verdict');
-ok(/displayHeaderFooter: true, headerTemplate: '<span><\/span>', footerTemplate: readPdfFooter\(row\)/.test(w) && /REV: 'p3'/.test(w) && /@page \{ size: letter; margin: 0 0 0\.42in 0; \}/.test(page) && /@page :first \{ margin: 0; \}/.test(page),
+ok(/displayHeaderFooter: true, headerTemplate: '<span><\/span>', footerTemplate: readPdfFooter\(row, client\)/.test(w) && /REV: 'p3'/.test(w) && /@page \{ size: letter; margin: 0 0 0\.42in 0; \}/.test(page) && /@page :first \{ margin: 0; \}/.test(page),
   'E7 the PDF carries a running footer on every page but the cover, and the print revision moved so kept PDFs render again');
 
 const lawsSrc = between(w, 'function readGroundOf(', 'async function readTick(');

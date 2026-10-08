@@ -74,7 +74,8 @@
   .cover .thesis { font-size: 17px; line-height: 1.5; color: var(--cream); max-width: 6.2in; }
   .cover .foot { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; border-top: 2px solid var(--red); padding-top: 12px; margin-top: 26px; }
   .nums { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 22px; }
-  .nums b { display: block; font-weight: 800; font-size: 36px; line-height: 1; }
+  .nums { gap: 10px; }   /* SEAM:READ_LAYOUT: the cover's figures never run into each other */
+  .nums b { display: block; font-weight: 800; font-size: 32px; line-height: 1; letter-spacing: -.5px; white-space: nowrap; }
   .nums span { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase; color: #B8B2A6; }
 
   /* How to read + contents */
@@ -204,6 +205,7 @@
   .rp-data { background: var(--cream); border-left: 4px solid var(--red); padding: 14px 16px; margin: 0 0 18px; font-size: 13.5px; line-height: 1.62; break-inside: avoid; }
   .rp-data .lbl { margin-bottom: 4px; }
   .rp-means { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 6px 0 16px; }
+  .rp-means { break-inside: avoid; }   /* SEAM:READ_LAYOUT: the three "for the" columns stay with their headers */
   .rp-means div { border-top: 1px solid var(--ink); padding-top: 6px; font-size: 12.5px; line-height: 1.5; }
   .rp-means b { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin-bottom: 3px; }
   .rp-sup { list-style: none; margin-top: 10px; }
@@ -305,7 +307,8 @@
   table.rp-map td:first-child { font-weight: 800; font-size: 13px; }
   .rp-map tr { break-inside: avoid; }
   .rp-futures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .rp-futures > div { border-top: 3px solid var(--ink); padding-top: 8px; font-size: 12px; line-height: 1.55; }   /* a tall card may break, so a band never sits alone on a page */
+  .rp-futures { break-inside: avoid; }   /* SEAM:READ_LAYOUT: the three futures stay on one page, their moves under their own column */
+  .rp-futures > div { border-top: 3px solid var(--ink); padding-top: 8px; font-size: 12px; line-height: 1.55; break-inside: avoid; }   /* a tall card may break, so a band never sits alone on a page */
   .rp-futures h3 { font-weight: 800; font-size: 16px; line-height: 1.2; margin: 8px 0 6px; }
   .rp-futures ul { margin: 4px 0 8px 14px; } .rp-futures li { margin-bottom: 3px; }
   .rp-concepts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
@@ -365,7 +368,7 @@
   /* SEAM:READ_PRINT render mode: Cloudflare's browser opens this page with a
    * one-time render ticket (?rt=). It reads through /reads/render, skips the
    * social frames, and raises data-print-ready once every photo has settled. */
-  var Q = new URLSearchParams(location.search), RT = Q.get("rt");
+  var Q = new URLSearchParams(location.search), RT = Q.get("rt"), CUT = Q.get("cut") === "client" ? "client" : null;   /* SEAM:READ_CUT: the view this page renders */
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function say(t) { app.innerHTML = '<div class="msg">' + esc(t) + "</div>"; }
   /* READ_PROOF: the fixes panel sits between the bar and the read. */
@@ -848,7 +851,25 @@
     var bits = [cmp(att.yoy_pct, "a year before"), cmp(att.two_year_pct, "two years before")].filter(Boolean);
     return span + ": " + rpNum(att.recent_3m) + " readers of \u201C" + (att.article || "") + "\u201D" + (bits.length ? ", " + bits.join(" and ") : "") + ".";
   }
+  /* SEAM:READ_CUT: the client cut of a document: the same read, trimmed to what a client reads. The strongest four findings stay
+     (high before medium before low, then the ones with more sources behind them); the sections the house reads to check its own work
+     are left to the full read. Nothing is rewritten. */
+  var READ_CUT = { FINDINGS: 4, RANK: { high: 0, medium: 1, low: 2 },
+    DROP: ["hypotheses", "market_model", "territories", "competitive_sets", "consumer_voice", "the_record", "cross_currents", "contradiction", "whitespace", "advertising_read", "futures", "concept_territories", "glossary"] };
+  function readCut(x) {
+    var out = {}; Object.keys(x || {}).forEach(function (k) { if (READ_CUT.DROP.indexOf(k) < 0) out[k] = x[k]; });
+    var fs = (Array.isArray(x.findings) ? x.findings : []).filter(function (f) { return f && f.name; }).map(function (f, i) { return { f: f, i: i }; });
+    fs.sort(function (a, b) {
+      var ra = READ_CUT.RANK[String(a.f.confidence || "").toLowerCase()], rb = READ_CUT.RANK[String(b.f.confidence || "").toLowerCase()];
+      ra = ra == null ? 1 : ra; rb = rb == null ? 1 : rb;
+      if (ra !== rb) return ra - rb;
+      var ea = (a.f.evidence || []).length, eb = (b.f.evidence || []).length;
+      return eb !== ea ? eb - ea : a.i - b.i; });
+    out.findings = fs.slice(0, READ_CUT.FINDINGS).sort(function (a, b) { return a.i - b.i; }).map(function (o) { return o.f; });   /* the four, in the writer's order */
+    return out;
+  }
   function reportDoc(x, st, rc, row, H) {
+    var cut = H.cut === "client";   /* SEAM:READ_CUT */
     var esc = H.esc, inner = H.inner, band = H.band, photo = H.photo, pickImage = H.pickImage, img = H.img, real = H.real, uniq = H.uniq, stat = H.stat, fmtDate = H.fmtDate, pad = H.pad, cited = H.cited, used = H.used;
     var lake = st.lake || {}, daily = st.daily || {}, frames = st.frames || {}, win = st.window || {};
     var findings = (x.findings || []).filter(function (f) { return f && f.name; });
@@ -906,10 +927,10 @@
     if (hyps.length) contents.push(["What we tested", rpPl(hyps.length, "expectation", "expectations") + ", supported, broken or still open"]);
     if (fb) contents.push(["For the brief", "Who is in, who is absent, where to enter"]);
     if (mm) contents.push(["The market", "How it works, and what the evidence sizes"]);
-    contents.push(["The period in numbers", recon ? "What we read, and the question's own counts" : "What moved, measured"]);   /* the answer and the findings come first */
+    if (!cut) contents.push(["The period in numbers", recon ? "What we read, and the question's own counts" : "What moved, measured"]);   /* the answer and the findings come first; SEAM:READ_CUT: the full read's page */
     if (terr.length) contents.push(["The territories", terr.length + " territories, measured"]);
     if (sets.length) contents.push(["The competitive sets", "Who plays where"]);
-    if (cmap.length) contents.push(["The response map", "What each competitor does when you move"]);
+    if (cmap.length) contents.push([cut ? "The competitive page" : "The response map", "What each competitor does when you move"]);   /* SEAM:READ_CUT */
     var fvSeen = {}; findings.forEach(function (f) { (f.voices || []).filter(function (v) { return real(v) && rc[v] && rc[v].kind === "voice" && !fvSeen[v]; }).slice(0, 2).forEach(function (v) { fvSeen[v] = 1; }); });
     cvQ.forEach(function (v) { fvSeen[v] = 1; });   /* a voice the quotes print is not printed again in then and now */
     var tnLive = voice && cvT.some(function (p) { var ok = function (v) { return real(v) && rc[v] && rc[v].kind === "voice" && !fvSeen[v]; }; return p && p.line && Array.isArray(p.then) && Array.isArray(p.now) && p.then.some(ok) && p.now.some(ok); });
@@ -924,8 +945,8 @@
     if (p90) contents.push(["The first 90 days", (p90ph.length === 3 ? "Three phases" : rpPl(p90ph.length, "phase", "phases")) + (p90ph.every(function (ph) { return txt(ph.measure); }) ? ", each with its measure" : "")]);
     if (next30.length || outlook.next_90) contents.push(["The outlook", "The next 30 and 90 days, with what to watch"]);
     if (gloss.length) contents.push(["Glossary", "The terms, defined"]);
-    contents.push(["About this report", "What was read, and its limits"]);
-    if (appx) contents.push(["The data appendix", "Every count behind the read"]);
+    if (!cut) contents.push(["About this report", "What was read, and its limits"]);   /* SEAM:READ_CUT: the cut says its limits on page two */
+    if (appx && !cut) contents.push(["The data appendix", "Every count behind the read"]);
     contents.push(["Sources", "Every source, numbered"]);
 
     /* Cover */
@@ -938,7 +959,7 @@
     var bigs = (deepC ? [[allS, "Stories"], [readFull, "Read in full"], [deepC.read, "Comments read"], [win.days, "Days"]] : recon ? [[allS, "Stories"], [cs.outlets, "Outlets"], [win.days, "Days"]] : [[lake.signals, "Stories and posts read"], [lake.outlets, "Outlets"], [daily.stories, "Stories published"], [win.days, "Days"]])
       .filter(function (n) { return typeof n[0] === "number"; }).map(function (n) { return "<div><b>" + rpNum(n[0]) + "</b><span>" + n[1] + "</span></div>"; }).join("");
     h += '<section class="page cover">' + (coverS ? '<div class="photo">' + photo(coverS, "cover", coverPool.slice(1)) + '</div><div class="shade"></div>' : "") +
-      '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + (recon ? esc("Unsurfaced " + (issue || "RECON")) : esc(KIND.report) + (issue ? " · " + esc(issue) : "")) + "</div>" +
+      '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + (recon ? esc("Unsurfaced " + (issue || "RECON")) : esc(KIND.report) + (issue ? " · " + esc(issue) : "")) + (cut ? " · Client cut" : "") + "</div>" +   /* SEAM:READ_CUT */
       (recon && recon.text ? '<div class="rp-sub" style="margin-bottom:10px">The brief: ' + esc(recon.text) + "</div>" : "") +
       "<h1>" + esc(x.title) + "</h1>" + (x.subtitle ? '<p class="rp-dek">' + esc(x.subtitle) + "</p>" : "") + '<p class="thesis">' + esc(x.thesis) + "</p>" +
       (x.ground_line ? '<div class="rp-sub">' + esc(x.ground_line) + "</div>" : "") + (bigs ? '<div class="nums">' + bigs + "</div>" : "") +
@@ -952,6 +973,7 @@
       "<div><b>CONFIDENCE</b><p>A pattern has at least two independent sources agreeing on dated events inside the period. An early signal has fewer. High, medium or low says how far we would lean on it.</p></div>" +
       "<div><b>THE MOVE</b><p>One action per role you could start this month, and the sign that would prove the finding right or wrong.</p></div>" +
       '</div><p class="intro">' + (decs.length || futs.length || prods.length || p90 ? "Every number in this report was counted from the sources we read or taken from a source we cite, except the targets and thresholds we set in the plans, the tests, the signposts and what would change an answer. Nothing else is estimated." : "Every number in this report was counted from the sources we read or taken from a source we cite. Nothing is estimated.") + '</p></div>' +
+      (cut && (m.limits || m.what_was_read) ? '<div class="kicker" style="margin-top:14px">What this read is and is not</div>' + (m.what_was_read ? '<p class="intro" style="margin-top:0">' + prose(m.what_was_read) + "</p>" : "") + (m.limits ? '<p class="intro" style="margin-top:6px">' + prose(m.limits) + "</p>" : "") : "") +   /* SEAM:READ_CUT: limits first */
       '<div><div class="kicker">In this report</div><div class="toc">' + contents.map(function (c, i) {
         return '<div><span class="n">' + pad(i + 1) + '</span><span class="t">' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></div>"; }).join("") + "</div></div></div>");
 
@@ -1063,6 +1085,7 @@
     /* The period in numbers. SEAM:READ_NUMBERS: after the answer, the findings and the brief, so nothing stands between the answer
        and the first finding. A RECON's page proves the work (what we read for the question) and measures the question (its stories,
        outlets, weeks, voices; SEAM:READ_TIME: three years of attention when gathered); the whole period's volume is stated once. */
+    if (!cut) {   /* SEAM:READ_CUT */
     sec++;
     var bn = (x.by_the_numbers || []).filter(function (b) { return b && rpStatOk(b.stat, !!recon) && stat(st, b.stat) !== null; });
     var bnHtml = bn.length ? '<div class="two" style="margin-bottom:22px">' + bn.slice(0, 10).map(function (b) { return '<div><div class="lbl">' + esc(rpStatFmt(b.stat, stat(st, b.stat))) + " · " + esc(rpStatLabel(b.stat, st)) + '</div><p class="body">' + prose(b.line) + "</p></div>"; }).join("") + "</div>" : "";
@@ -1105,6 +1128,7 @@
         '<div class="two"><div><div class="kicker">What we read, by territory</div>' + rpBars(lake.by_territory, 14, function (k) { return k.replace(/-/g, " "); }, esc, cmp ? lake.by_territory_prior : null) +
         '</div><div><div class="kicker">Outlets we read most</div>' + rpBars(src, 12, null, esc) + "</div></div>");
     }
+    }   /* SEAM:READ_CUT: the period in numbers */
 
     /* The territories */
     if (terr.length) {
@@ -1137,7 +1161,7 @@
     /* The response map (SEAM:READ_THINK) */
     if (cmap.length) {
       sec++;
-      h += inner(band(pad(sec), "The response map", "Where each competitor stands now, what it most likely does when you move, and how you stay ahead.") +
+      h += inner(band(pad(sec), cut ? "The competitive page" : "The response map", "Where each competitor stands now, what it most likely does when you move, and how you stay ahead.") +   /* SEAM:READ_CUT */
         '<div style="overflow-x:auto"><table class="rp-map"><thead><tr><th>Who</th><th>Where they stand</th><th>Their likely move</th><th>Your answer</th></tr></thead><tbody>' +
         cmap.map(function (c) { return "<tr><td>" + esc(txt(c.name)) + "</td><td>" + prose(txt(c.position)) + "</td><td>" + prose(txt(c.likely_move)) + "</td><td>" + prose(txt(c.answer)) + refs(c.evidence) + "</td></tr>"; }).join("") + "</tbody></table></div>");
     }
@@ -1244,6 +1268,7 @@
     }
 
     /* About this report: the method, at the back, in reader words */
+    if (!cut) {   /* SEAM:READ_CUT: the cut said its limits on page two */
     sec++;
     var tiers = lake.by_tier || {};
     var cmpA = rpComparable(lake);
@@ -1298,6 +1323,7 @@
         (cl.length ? '<div class="kicker" style="margin-top:16px">Sources read in full and carried into this read</div><table class="rp-appx"><thead><tr><th>No.</th><th>Source</th><th>Outlet</th><th class="n">Date</th><th class="n">Figures</th></tr></thead><tbody>' +
           cl.map(function (c, i) { var n = foot["C" + (i + 1)]; c = c || {}; return "<tr><td>" + (n ? n : "") + "</td><td>" + esc(c.title || "") + "</td><td>" + esc(c.outlet || "") + '</td><td class="n">' + esc(c.published_at ? fmtDate(String(c.published_at).slice(0, 10)) : "undated") + '</td><td class="n">' + n2(c.figures) + "</td></tr>"; }).join("") + "</tbody></table>" : ""));
     }
+    }   /* SEAM:READ_CUT: about and the appendix */
 
     /* Sources: in order of first mention */
     sec++;
@@ -1377,7 +1403,8 @@
       SELL = d.sell || null; RC_ALL = rc;   /* SEAM:SELL_LAW, the stand bar prints the verdict; the cover pick lists the photographs */
       document.title = "Unsurfaced DAILY · " + row.label;
       var btns = [];
-      if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF</button>');
+      if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF' + (CUT ? " (client cut)" : "") + '</button>');
+      if (x.title && (row.kind === "report" || row.kind === "recon")) btns.push('<button class="btn" id="cut">' + (CUT ? "Full read" : "Client cut") + '</button>');   /* SEAM:READ_CUT: the same document, as a client reads it */
       if (row.status === "ready") btns.push('<button class="btn" id="pub">Publish</button>');
       if (row.status === "held") btns.push('<button class="btn" id="reland">Re-land</button>');
       if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
@@ -1442,8 +1469,8 @@
 
       if (row.kind === "report" || row.kind === "recon") {   // SEAM:READ_REPORT: the research layout has its own builder, same helpers, same paper (SEAM:READ_RECON rides it)
         document.title = "Unsurfaced Intelligence · " + row.label;
-        var rp = reportDoc(x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq,
-          stat: stat, fmtDate: fmtDate, pad: pad, firstSentence: firstSentence, mark: mark, capHtml: capHtml, ROLES: ROLES, cited: cited, used: used });
+        var rp = reportDoc(CUT ? readCut(x) : x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq,
+          stat: stat, fmtDate: fmtDate, pad: pad, firstSentence: firstSentence, mark: mark, capHtml: capHtml, ROLES: ROLES, cited: cited, used: used, cut: CUT });   /* SEAM:READ_CUT: the view the address asks for */
         app.innerHTML = '<div class="doc">' + (row.status === "held" ? '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>" : (RT ? "" : deskNotesHtml(row))) + rp.html + "</div>";
         if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
         if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, rp.coverPool);
@@ -1638,20 +1665,23 @@
     var p = document.getElementById("pdf"); if (p) p.onclick = function () {
       if (p.disabled) return;
       p.disabled = true; p.textContent = "Rendering the PDF, about 30 seconds";
-      fetch(API + "/reads/pdf", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ id: row.id }) })
+      fetch(API + "/reads/pdf", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(CUT ? { id: row.id, cut: CUT } : { id: row.id }) })   /* SEAM:READ_CUT */
         .then(function (r) {
           if ((r.headers.get("content-type") || "").indexOf("application/pdf") === 0) return r.blob();
           return r.json().then(function (d) { throw new Error((d && d.error) || ("status " + r.status)); });
         })
         .then(function (b) {
           var a = document.createElement("a"), u = URL.createObjectURL(b);
-          a.href = u; a.download = (row.kind === "report" || row.kind === "recon" ? "Unsurfaced-Intelligence-" : "Unsurfaced-DAILY-") + String(row.label || row.id).replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".pdf";   /* a RECON or a report is Unsurfaced Intelligence's, not DAILY's */
+          a.href = u; a.download = (row.kind === "report" || row.kind === "recon" ? "Unsurfaced-Intelligence-" : "Unsurfaced-DAILY-") + String(row.label || row.id).replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") + (CUT ? "-client-cut" : "") + ".pdf";   /* SEAM:READ_CUT */   /* a RECON or a report is Unsurfaced Intelligence's, not DAILY's */
           document.body.appendChild(a); a.click(); a.remove();
           setTimeout(function () { URL.revokeObjectURL(u); }, 60000);
           p.disabled = false; p.textContent = "Download PDF";
         })
         .catch(function (e) { p.disabled = false; p.textContent = "PDF failed: " + String(e && e.message || e).slice(0, 60) + ". Try again"; });
     };
+    var cutb = document.getElementById("cut"); if (cutb) cutb.onclick = function () {   /* SEAM:READ_CUT: switch the view and render it again */
+      var q = new URLSearchParams(location.search); if (CUT) q.delete("cut"); else q.set("cut", "client");
+      history.replaceState(null, "", location.pathname + "?" + q.toString()); CUT = q.get("cut") === "client" ? "client" : null; openRead(row.id); };
     var pub = document.getElementById("pub"); if (pub) pub.onclick = function () {
       pub.disabled = true; call("/reads/publish", { id: row.id }).then(function (d) { pub.textContent = d && d.ok ? "Published" : "Publish failed"; }); };
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
