@@ -185,7 +185,7 @@ ok(/house_reads\?kind=eq\.report&status=in\.\(ready,published\)/.test(ex) && !/r
 ok(/const DOOR_EXTRAS = \{ KEY: 'door:extras:v[4-9]'/.test(w), 'V12 the extras move to a new key: the cached copy that held RECON quotes (v2) is never served again');
 
 // ── P: the page ───────────────────────────────────────────────────────────
-ok(/<button class="nlb" id="nav-library" onclick="navTo\('library'\)">Library<\/button>/.test(page) && !/id="nav-reports"|id="nav-deploy"|id="sec-reports"|id="sec-deploy"/.test(page) && /if \(section === 'reports' \|\| section === 'deploy'\) section = 'library';/.test(page) && /if \(section === 'library'\)   initLibraryPage\(\);/.test(page),
+ok(/<button class="nlb" id="nav-library" onclick="navTo\('library'\)">Library<small>/.test(page) && !/id="nav-reports"|id="nav-deploy"|id="sec-reports"|id="sec-deploy"/.test(page) && /if \(section === 'reports' \|\| section === 'deploy'\) section = 'library';/.test(page) && /if \(section === 'library'\)   initLibraryPage\(\);/.test(page),
   'P1 the nav carries Library; Reports and Deploy are gone and their old doors lead to the Library');
 ok(!/_depStore|generateReport|_fetchReportData|_completeReport|initDeployPage|downloadDeliverable|renderBrandFeed|_AUD_CATS|_AUD_MEDIA|_AUD_DRIVERS|brands-feed-section">|What is emerging on tracked brands/.test(page),
   'P2 the seeded deploy queue, the animated generator, the duplicate brand list and the invented audience percentages are gone');

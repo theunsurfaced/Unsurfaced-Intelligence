@@ -63,7 +63,7 @@ ok(band.length === X.DOOR_VOICES.BAND && band.slice(0, 5).map(v => v.on).join(',
 
 // ── P ─────────────────────────────────────────────────────────────────
 const arrival = page.slice(page.indexOf('<section class="hero">'), page.indexOf('<!-- RESULTS PANEL -->'));
-ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is the cultural intelligence engine behind Unsurfaced\./.test(arrival) && /placeholder="Search a brand, a category, a behavior"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
+ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is the cultural intelligence engine behind Unsurfaced\./.test(arrival) && /placeholder="Ask culture a question: a brand, a category, the people, or the question itself"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
   'P1 the arrival opens with the headline, the plain sub and the search under it');
 ok(/setSearch\('smart glasses, who buys and who refuses'\)/.test(arrival) && /setSearch\('luxury in Lagos'\)/.test(arrival) && !/Gen Z purchase behavior trends/.test(arrival), 'P2 the examples are questions a person would type');
 ok(/id="week-block"/.test(arrival) && /id="week-movers"/.test(arrival) && /id="board-block"/.test(arrival) && /id="voices-block"/.test(arrival) && /id="record-block"/.test(arrival) && /<section class="partners">/.test(arrival) && /id="featured-insights-grid"/.test(arrival) && /id="fi-state-strip"/.test(arrival),
@@ -120,7 +120,7 @@ const row = phelper('_doorMeasureRow', 'function _pulse(');
 ok(/stories this week/.test(row) && /on last week/.test(row) && /of \$\{safe\(String\(m\.weeks \|\| 12\)\)\} weeks/.test(row) && /stories since the last reading/.test(row) && !/this wk|wks|signals/.test(row), 'P7 the figures say their unit in words');
 const strip = phelper('_renderStateStrip', 'function _renderLakeCard(');
 ok(/if \(!n\) continue;/.test(strip) && /k\.charAt\(0\) \+ k\.slice\(1\)\.toLowerCase\(\)/.test(strip) && />All<span class="fi-chip-n">/.test(strip), 'P8 a filter with nothing in it is not shown; words in sentence case');
-ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test(page) && /#sec-explore h1\.hero-title\{font-family:'Syne'/.test(page) && /nav \.nav-links \.nlb\{font-family:'Space Mono'/.test(page) && /@media \(prefers-reduced-motion:reduce\)\{\.room-voices \.track\{animation:none\}/.test(page),
+ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test(page) && /#sec-explore h1\.hero-title\{font-family:'Syne'/.test(page) && /nav \.nav-menu \.nlb\{font-family:'Space Mono'/.test(page) && /@media \(prefers-reduced-motion:reduce\)\{\.room-voices \.track\{animation:none\}/.test(page),
   'P9 the room\'s styles: Syne for words, the grid paper gone, the nav in the house\'s type, reduced motion honored');
 ok(!/style="color:var\(--deep2\)">◆ Spaces/.test(page) && /#nav-spaces::first-letter\{color:var\(--room-red\)\}/.test(page), 'P10 the nav\'s diamond is the house red, not purple');
 

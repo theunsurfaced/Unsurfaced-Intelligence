@@ -33,10 +33,11 @@ const r1 = await R.readLand({}, 1, fenced, 0.3, 'end_turn');
 ok(r1.status === 'ready', 'F3 fenced JSON with a trailing comma lands ready (extractJson)');
 fx('compiling'); sb = [];
 const r2 = await R.readLand({}, 1, '{"title":"Proximity sells","thesis":"Tickets mo', 0.3, 'max_tokens');
-ok(r2.status === 'held' && patchOf().error === 'truncated_max_tokens', 'F4 a cut-off read is labeled truncated_max_tokens');
+ok(sb.some(x => x.opts && x.opts.method === 'PATCH' && /^resent_once/.test(String(x.opts.body.error))) && r2.status === 'held' && /^truncated_max_tokens: \d+ chars; head: /.test(patchOf().error),
+  'F4 a cut-off read with nothing whole in it is sent once more (here the fake window has no stories, so the resend cannot run) and the hold names its length, head and tail (SEAM:READ_SALVAGE)');
 fx('compiling'); sb = [];
 await R.readLand({}, 1, 'not json at all', 0.3, 'end_turn');
-ok(patchOf().error === 'unparsable', 'F5 real garbage is still unparsable');
+ok(/^unparsable: \d+ chars; head: not json at all/.test(patchOf().error), 'F5 real garbage is still unparsable, and the hold shows what came back');
 
 fx('held'); sb = [];
 fixtures['claude_jobs?kind=eq.house_weekly'] = () => [{ result: '{"title":"Proximity sells","thesis":"Tickets moved fast."}', cost_usd: '0.29', stop_reason: 'end_turn' }];

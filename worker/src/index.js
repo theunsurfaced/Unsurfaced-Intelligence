@@ -146,6 +146,8 @@ export default {
       if (path === '/excavate/voice' && request.method === 'POST') return excavateVoice(request, env, origin);
       if (path === '/excavate/anchors' && request.method === 'POST') return excavateAnchors(request, env, origin);
       if (path === '/excavate/gather' && request.method === 'POST') return excavateGather(request, env, origin, ctx);    // SEAM:GATHER_SERVER
+      if (path === '/excavate/interpret' && request.method === 'POST') return excavateInterpret(request, env, origin);   // SEAM:EXC_INTENT: the frame before the gather
+      if (path === '/excavate/suggest' && request.method === 'POST') return excavateSuggest(request, env, origin);       // SEAM:EXC_INTENT: suggestions as the person types
       if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
@@ -553,7 +555,11 @@ async function synthesize(body, env, origin, hooks) {
   if (Array.isArray(body.corpus)) {
     const query  = String(body.query || '').slice(0, 300);
     // SEAM:EXC_INTEL: a read compiled on the live lane today is served again as it was; nothing is spent twice.
-    const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || ''));
+    // SEAM:EXC_DEPTH: quick is a real mode: the gather, the lake and the writer, 4 to 5 findings and 3 moves, none of the slow middle
+    // (pages in full, the gap round, the fact table, the framed rerun). Cached apart from the full read, never served as one.
+    const quick = body.depth === 'quick';
+    if (quick) body = Object.assign({}, body, { pages: false, gap: false, facts: false, framed: false });
+    const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || '') + (quick ? '|quick' : ''));
     if (env.RATE_LIMIT) {
       try {
         const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
@@ -686,8 +692,9 @@ async function synthesize(body, env, origin, hooks) {
      * then the reserve model; and every miss is logged with its lane, stop reason and the tail of what came back. */
     const tight = ' ROOM LAW: keep every sentence under 25 words and every string under 220 characters. ' +
       'Close the JSON object completely. JSON only, no fences.';
-    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW, prompt: usr,
-      max_tokens: isReport ? EXC_ROOM.report : EXC_ROOM.plain, kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
+    const depthLaw = quick ? ' QUICK READ: give 4 to 5 insights and 3 moves, the strongest the evidence carries; every sentence under 25 words. ' : '';   // SEAM:EXC_DEPTH
+    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw, prompt: usr,
+      max_tokens: quick ? EXC_ROOM.quick : (isReport ? EXC_ROOM.report : EXC_ROOM.plain), kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
       onText: hooks.onText || null };   // SEAM:EXC_STREAM: the live draft
     const passes = [];
     const attempt = async (o, label) => {
@@ -817,6 +824,7 @@ async function synthesize(body, env, origin, hooks) {
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
     } catch (e) {}
     const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL
+      depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
       relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, hits: gate.hits || null, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
@@ -910,7 +918,7 @@ function extractJson(s) {
 /* SEAM:EXC_PARSE: the room a read gets, and the harvest of what came back. A reply cut at its token limit is
  * not thrown away: every finding (and move) the model finished is kept, the open brackets are closed, and the
  * read is used when it carries at least EXC_ROOM.MIN_SALVAGE findings. Only text that never parses is a miss. */
-const EXC_ROOM = { report: 16000, plain: 8000, ceiling: 32000, MIN_SALVAGE: 3 };   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
+const EXC_ROOM = { report: 16000, plain: 8000, quick: 9000, ceiling: 32000, MIN_SALVAGE: 3 };   // SEAM:EXC_DEPTH: a quick read's room.   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
 const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4,   // SEAM:EXC_SPEED
   BEAT_MS: 15000, WRITE_MS: 165000, COMPLETE_MS: 60000, COMPLETE_TOKENS: 6000, PARTIAL_TTL: 900 };   // SEAM:EXC_STALL: the heartbeat, the writing's wall clock, the completion call, a partial read's short cache
 // A quiet failure still leaves a line: what fell over, and where. Never an empty catch.
@@ -1306,7 +1314,7 @@ function excGround(text, evidence) {
  * phrases that mark an off-topic one, and a query phrased for each kind of rail. Cached a week per query.
  * A frame never blocks a read: no key, a cap, a slow answer or a bad reply all return null and the read
  * runs on the raw query exactly as before. */
-const EXC_FRAME = { TIMEOUT_MS: 4500, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 300, REV: 'f1', MAX_TOKENS: 700, DOOR_SHARE: 0.5 };
+const EXC_FRAME = { TIMEOUT_MS: 4500, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 300, REV: 'f2', MAX_TOKENS: 700, DOOR_SHARE: 0.5 };
 const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research engine. Output STRICT JSON only, no fences. ' +
   'Shape: {"entity":"the named brand, person, product or place, or null","category":"1 to 3 words","audience":"1 to 3 words",' +
   '"market":"the country or region the query is about; US when it names none","competitors":["up to 5 named players this entity or category competes with in that market"],' +
@@ -1314,7 +1322,12 @@ const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research en
   '"anchors":["8 to 16 lowercase words or short phrases; an on-topic item contains at least one. Use the entity, the category and its synonyms, product types, and specific behaviors. Never a single generic word that also names other categories"],' +
   '"exclude":["0 to 8 lowercase phrases that mark an off-topic item: homonyms and neighboring categories"],' +
   '"queries":{"news":"a news search for this frame","research":"an academic search phrasing","discourse":"how people say it on forums and video","web":"a web search for this frame"}} ' +
-  'Every query is under 8 words. Never use the em dash character.';
+  'Every query is under 8 words. Never use the em dash character. ' +
+  // SEAM:EXC_INTENT: what the person wants, and whether the query stacks subjects.
+  'Also: "task": one of read (what is happening with the subject), brand (a named brand or how it is doing), compare (two or more named things against each other), ' +
+  'audience (a group of people and what they value), timeline (how the subject changed over years), brief (how a brand or team can win, a decision to inform), create (ideas, a campaign, concepts, copy or assets to make). ' +
+  '"threads": when the query stacks two or three distinct subjects, one short question per subject (at most 3); otherwise an empty array. ' +
+  '"period": the years the query asks about as "YYYY to YYYY" when it names any, else null.';
 function excFrameClean(f) {
   if (!f || typeof f !== 'object') return null;
   // Model text never carries markup into a label: angle brackets, quotes and backticks are dropped at the door.
@@ -1325,9 +1338,15 @@ function excFrameClean(f) {
   const out = { entity: str(f.entity, 80), category: str(f.category, 40), audience: str(f.audience, 40), market: place(f.market) || 'US',
     competitors: (Array.isArray(f.competitors) ? f.competitors : []).map(x => str(x, 40)).filter(Boolean).slice(0, 5),
     question: str(f.question, 220), anchors: list(f.anchors, 16, 40), exclude: list(f.exclude, 8, 40),
+    // SEAM:EXC_INTENT: the task, the threads and the period; a value the model did not give is a plain read of one subject.
+    task: EXC_TASKS.includes(String(f.task || '').toLowerCase()) ? String(f.task).toLowerCase() : 'read',
+    threads: (Array.isArray(f.threads) ? f.threads : []).map(x => str(x, 120)).filter(Boolean).slice(0, 3),
+    period: (m => (m ? m[1] + ' to ' + m[2] : null))(/(\d{4})\s*(?:to|-|\u2013)\s*(\d{4})/.exec(String(f.period || ''))),
     queries: { news: str(q.news, 90), research: str(q.research, 90), discourse: str(q.discourse, 90), web: str(q.web, 90) } };
+  if (out.threads.length === 1) out.threads = [];   // one thread is no split
   return out.category || out.entity ? out : null;
 }
+const EXC_TASKS = ['read', 'brand', 'compare', 'audience', 'timeline', 'brief', 'create'];   // SEAM:EXC_INTENT
 function excFrameWhole(f) { const c = excFrameClean(f); return c && Array.isArray(c.anchors) && c.anchors.length ? c : null; }
 // Each rail asks in its own register; entity, reference and attention rails keep the plain query.
 function excRailQuery(rail, query, frame) {
@@ -1378,7 +1397,10 @@ function excFrameBlock(frame) {
   return 'FRAME: category ' + (frame.category || 'n/a') + '; audience ' + (frame.audience || 'n/a') + '; market ' + (frame.market || 'US') +
     (frame.entity ? '; entity ' + frame.entity : '') + (frame.competitors && frame.competitors.length ? '; competitive set ' + frame.competitors.join(', ') : '') +
     (frame.competitors_observed && frame.competitors_observed.length ? '; names the evidence itself puts beside the topic: ' + frame.competitors_observed.join(', ') : '') +
-    (frame.question ? '. The question: ' + frame.question : '') + '\n' +
+    (frame.question ? '. The question: ' + frame.question : '') +
+    (frame.task && frame.task !== 'read' ? '. The person is asking for a ' + ({ brand: 'brand read: how this brand stands and where it moves next', compare: 'comparison: where each named player wins and loses against the others', audience: 'read of these people: what they value, in their own words, and where their attention goes', timeline: 'read across time: what changed, when, and what it means now', brief: 'brief: how to win the decision named, with the moves to make', create: 'creative platform: the insight, the idea territories and the assets to make' }[frame.task] || frame.task) : '') +   // SEAM:EXC_INTENT
+    (frame.period ? '. The period asked about: ' + frame.period : '') + '\n' +
+    (frame.threads && frame.threads.length > 1 ? 'THREADS: the question stacks ' + frame.threads.length + ' subjects. Write one read with a section per thread, the findings labeled by thread, then what connects them. The threads: ' + frame.threads.map((t, i) => (i + 1) + '. ' + t).join(' ') + '\n' : '') +   // SEAM:EXC_INTENT: never squeezed into one frame
     'Answer the question for this market. Where the evidence carries the competitive set, measure the topic against it; never invent a comparison the evidence does not carry.\n\n';
 }
 /* SEAM:EXC_TIERS: the house's judgment of outlets, by domain. A registry row wins over the tier a rail or the
@@ -7217,6 +7239,50 @@ async function gatherOpenSignals(env, q, opts) {
   return { ok: true, query, cls, items, rails, meta: ctx.meta };
 }
 
+/* SEAM:EXC_INTENT: the frame before the gather. POST /excavate/interpret {query} (signed in): the framer's read of the query,
+ * with its task, threads and period, so the page shows it as editable chips before anything is gathered. The framer caches
+ * a week by query, so the gather that follows reuses this frame; a query under four characters is not framed. */
+async function excavateInterpret(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const q = String(body.query || body.q || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (q.length < 4) return json({ ok: false, error: 'query_too_short' }, 200, origin, env);
+  const frame = await excFrameFor(env, q);
+  if (!frame) return json({ ok: false, error: 'unframeable', query: q }, 200, origin, env);
+  return json({ ok: true, query: q, frame, label: excFrameLabel(frame) }, 200, origin, env);
+}
+/* SEAM:EXC_INTENT: suggestions as the person types. POST /excavate/suggest {q} (signed in): tracked brands, territories, the
+ * house's recent reads and its RECONs whose words start with what was typed. Database reads only; nothing is spent. */
+const EXC_SUGGEST = { MIN: 2, MAX: 8, READS: 60 };
+function excSuggestRank(q, pool) {
+  const t = String(q || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (t.length < EXC_SUGGEST.MIN) return [];
+  const seen = new Set(), out = [];
+  const score = x => { const l = String(x.text).toLowerCase(); if (l === t) return 0; if (l.startsWith(t)) return 1; if (new RegExp('(?:^|[^\\p{L}\\p{N}])' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u').test(l)) return 2; return l.includes(t) ? 3 : null; };
+  const rank = { brand: 0, recon: 1, territory: 2, read: 3 };
+  for (const x of pool) { if (!x || !x.text) continue; const sc = score(x); if (sc == null) continue; const k = String(x.text).toLowerCase(); if (seen.has(k)) continue; seen.add(k); out.push(Object.assign({}, x, { _s: sc * 10 + (rank[x.kind] == null ? 9 : rank[x.kind]) })); }
+  return out.sort((a, b) => a._s - b._s).slice(0, EXC_SUGGEST.MAX).map(x => ({ kind: x.kind, text: x.text, hint: x.hint || null, id: x.id || null }));
+}
+async function excavateSuggest(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const q = String(body.q || body.query || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  if (q.length < EXC_SUGGEST.MIN) return json({ ok: true, q, items: [] }, 200, origin, env);
+  const quiet = where => e => { console.log('exc_suggest', where, String(e && e.message).slice(0, 80)); return []; };
+  const [tracks, reads, recons] = await Promise.all([
+    loadTracks(env).catch(quiet('tracks')),
+    sbRest(env, 'reads?select=id,query,created_at&order=created_at.desc&limit=' + EXC_SUGGEST.READS).catch(quiet('reads')),
+    sbRest(env, 'house_reads?kind=eq.recon&status=in.(ready,published,held)&select=id,label,brief:meta->brief->>text&order=id.desc&limit=30').catch(quiet('recons'))]);
+  const pool = [].concat(
+    (tracks || []).map(t => ({ kind: 'brand', text: t.name, hint: t.sector || t.kind || 'tracked brand', id: t.id })),
+    TERRITORY_SLUGS.map(sl => ({ kind: 'territory', text: sl.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' and '), hint: 'territory', id: sl })),
+    (reads || []).map(r => ({ kind: 'read', text: r.query, hint: 'read ' + String(r.created_at || '').slice(0, 10), id: r.id })),
+    (recons || []).map(r => ({ kind: 'recon', text: r.brief || r.label, hint: r.label, id: r.id })));
+  return json({ ok: true, q, items: excSuggestRank(q, pool) }, 200, origin, env);
+}
+
 async function excavateGather(request, env, origin, wctx) {
   // SEAM:EXCAVATE_WIRE: signed in and under the daily limit. Gather spends Exa, Perplexity,
   // YouTube and Knowledge Graph quota and writes the lake; it was open to anyone.
@@ -11860,13 +11926,28 @@ async function readLand(env, id, text, cost, stopReason, force) {
   const ground = readGroundOf(row, items);
   const extra = readReportExtraIds(row.meta && row.meta.pack);   // SEAM:READ_REPORT
   const truncated = stopReason === 'max_tokens';
-  let parsed = truncated ? null : (parseModelJson(text) || extractJson(text));   // fences, curly quotes, trailing commas
+  // SEAM:READ_SALVAGE: a reply cut at its room, or wrapped in prose, keeps every whole section it finished (the EXCAVATE writer's own
+  // salvage); it was thrown away whole before, a held row with nothing in it. What the validator then finds missing is said on the hold.
+  const whole = parseModelJson(text) || extractJson(text);   // a cut object makes extractJson hand back its last whole array: not a read
+  let parsed = whole && typeof whole === 'object' && !Array.isArray(whole) ? whole : (excSalvage(text, 0) || null);
+  const salvaged = !!parsed && parsed !== whole;
   const dl = row.kind === 'recon' ? deepOf(row) : null, think = !!(dl && dl.think);   // SEAM:READ_THINK: a RECON written in passes
   let fellBack = null, restored = [];
   if (think && !(row.meta && row.meta.plan === 'revise')) {   // the editor's pass never loses the writer's draft: cut short, unreadable or no read at all, the draft lands; any section it dropped comes back
     const draft = ((await deepThinkJobs(env, row, 'write').catch(deepLog('land_draft'))) || []).map(j => deepThinkOut('write', j)).find(Boolean);
     if (draft && !deepThinkUsable('edit', parsed)) { fellBack = truncated ? 'truncated' : !parsed ? 'unparsable' : 'unusable'; parsed = draft; }
     else if (draft) { const rb = deepThinkRestore(parsed, draft); parsed = rb.read; restored = rb.back; }
+  }
+  // SEAM:READ_SALVAGE: nothing parsed at all (an empty or refused reply): the compile is sent once more by itself, with the JSON-only room
+  // law, before the row is held. Once, never twice; a RECON written in passes keeps its own fallback (the draft lands).
+  const think0 = row.kind === 'recon' && deepOf(row) && deepOf(row).think;
+  if (!parsed && !think0 && !force && !(row.meta && row.meta.resent)) {
+    console.log('read_land_resend', JSON.stringify({ id, kind: row.kind, chars: String(text || '').length, stop: stopReason || null }));
+    row.meta = Object.assign({}, row.meta || {}, { resent: { at: new Date().toISOString(), chars: String(text || '').length, stop: stopReason || null, head: String(text || '').slice(0, 160) } });
+    await readPatch(env, id, { status: 'queued', meta: row.meta, error: 'resent_once: the first reply had no read in it' });
+    const again = await readSubmit(env, Object.assign({}, row, { status: 'queued' })).catch(e => ({ ok: false, error: String(e && e.message).slice(0, 120) }));
+    if (again && again.ok) return { resent: true, batch_id: again.batch_id || null };
+    console.log('read_land_resend_failed', JSON.stringify({ id, error: (again && again.error) || 'unknown' }));   // the hold below says what came back
   }
   const v = readValidate(row.kind, parsed, ground, row.pack_ids || [], extra);
   if (fellBack) v.notes.push('think:edit_' + fellBack + ':the_draft_landed');
@@ -11886,7 +11967,8 @@ async function readLand(env, id, text, cost, stopReason, force) {
   const dspend = dl ? { deep: Object.assign({}, dl, { spend: Object.assign({}, dl.spend || {}, js || {}, { ['compile_v' + row.version]: Number(cost) || 0, ['desk_v' + row.version]: (pr.receipt && Number(pr.receipt.cost_usd)) || 0 }) }) } : {};
   const metaW = Object.assign({}, row.meta || {}, pr.receipt ? { proof: pr.receipt } : {}, dspend, think ? { renders: null } : {});   // SEAM:READ_THINK: drawings are this version's, written next
   await readPatch(env, id, { status, read: pr.read, violations: v.fatal.concat(v.notes, pr.notes), cost_usd: cost,
-    meta: metaW, error: pr.read ? (v.fatal.length ? 'held_for_review' : null) : (truncated ? 'truncated_max_tokens' : 'unparsable') });
+    meta: metaW, error: pr.read ? (v.fatal.length ? 'held_for_review' + (salvaged ? ' (salvaged from a ' + (truncated ? 'cut' : 'wrapped') + ' reply)' : '') : null)
+      : ((truncated ? 'truncated_max_tokens' : 'unparsable') + ': ' + String(text || '').length + ' chars; head: ' + String(text || '').slice(0, 120).replace(/\s+/g, ' ') + ' ... tail: ' + String(text || '').slice(-120).replace(/\s+/g, ' ')).slice(0, 600) });   // SEAM:READ_SALVAGE: a hold you can read
   logEvent(env, 'intelligence', 'reads', 'read_' + status, null, { id, kind: row.kind, fatal: v.fatal.length });
   if (think && pr.read) {   // SEAM:READ_THINK: the concept territories, drawn after the landing (a render that fails never holds the read)
     const renders = await deepRenders(env, row, pr.read).catch(deepLog('renders'));

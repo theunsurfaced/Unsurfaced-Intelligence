@@ -1148,6 +1148,32 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_FOLIO",
    "purpose": "Pin to folio on every house read: it brings the stories and lines its claims cite, and its words as a prior view"
+  },
+  "SEAM:EXC_INTENT": {
+   "file": "worker/src/index.js",
+   "purpose": "EX24 INTERPRET: the frame tier reads the intent beside the frame: task (read | brand | compare | audience | timeline | brief | create), threads (a stacked question split into at most three sub-questions) and period; excFrameClean keeps them (EXC_TASKS) and the cache revision is f2; POST /excavate/interpret answers the frame alone before the gather (signed in, one cached Haiku call); POST /excavate/suggest answers suggestions as the person types from tracked brands, territories, recent reads and RECONs (database reads only); excFrameBlock tells the writer the task and the threads, so a stacked question is one read with a section per thread and what connects them"
+  },
+  "SEAM:EXC_INTENT@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_INTENT",
+   "purpose": "the interpretation as editable chips under the bar (task, entity, category, audience, market, period, competitors, threads) before the gather; the gather and the read run on the frame the person confirmed (Read it this way); a stacked question is gathered one thread at a time in parallel and merged into one corpus; suggestions as the person types; the task opens its door beside the read (brand room, RECON commission, PLAY)"
+  },
+  "SEAM:EXC_DEPTH": {
+   "file": "worker/src/index.js",
+   "purpose": "EX24, part two: a quick read is a real mode of the EXCAVATE writer ({depth:\"quick\"}: the gather, the lake and the writer; pages, gap round, fact table and framed rerun off; 4 to 5 findings and 3 moves in EXC_ROOM.quick); cached under its own key, never served as a full read; the payload says its depth"
+  },
+  "SEAM:EXC_DEPTH@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_DEPTH",
+   "purpose": "the Quick / Full switch beside Search (Full by default, remembered in this browser); the read sends its depth; a quick read ends with Go deeper, the full read on the same frame; the depth note says when the interpreter's task deserves the full read"
+  },
+  "SEAM:EXC_NAV": {
+   "file": "intelligence/index.html",
+   "purpose": "EX24, part three: the nav row of tabs is one dropdown that names the section you are in and opens the rest (Explore, Brands, Audiences, Library, READ for admins, Spaces, Home); the section buttons keep their ids so navTo and every door that lights a tab work unchanged; closes on a choice, an outside click or Escape"
+  },
+  "SEAM:READ_SALVAGE": {
+   "file": "worker/src/index.js",
+   "purpose": "readLand: a house read's reply cut at its room or wrapped in prose keeps every whole section it finished (excSalvage; extractJson's bare array on a cut object is not taken as a read); a reply with no read in it is sent once more by itself (meta.resent, never twice; not for a RECON written in passes, never on a re-land) before the row is held; a hold names the reply's length, head and tail"
   }
  },
  "planned": [

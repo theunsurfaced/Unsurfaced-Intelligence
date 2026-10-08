@@ -68,6 +68,25 @@ nav{position:sticky;top:0;z-index:var(--z-nav);background:rgba(10,10,15,0.92);ba
 .btn-accent{background:var(--accent);border:none;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.08em;padding:8px 20px;cursor:pointer;transition:all 0.2s;}
 .btn-accent:hover{background:#ff5555;transform:translateY(-1px);}
 
+/* SEAM:EXC_NAV: one dropdown names where you are and opens the rest */
+.nav-menu{position:relative;display:flex;align-items:center;}
+.nav-menu-btn{display:inline-flex;align-items:center;gap:10px;background:none;border:1px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:9px 14px;cursor:pointer;}
+.nav-menu-btn:hover{border-color:var(--text3);}
+.nav-menu-btn .chev{font-size:9px;color:var(--text3);transition:transform .15s;}
+.nav-menu.open .nav-menu-btn .chev{transform:rotate(180deg);}
+.nav-menu-list{position:absolute;top:calc(100% + 8px);left:0;min-width:240px;background:var(--surface);border:1px solid var(--border2);z-index:var(--z-menu);display:none;padding:6px 0;list-style:none;margin:0;}
+.nav-menu.open .nav-menu-list{display:block;}
+.nav-menu-list li{display:block;}
+.nav-menu-list .nlb,.nav-menu-list a.nlb{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left;padding:10px 36px 10px 16px;font-size:11px;letter-spacing:.12em;color:var(--text2);text-decoration:none;box-sizing:border-box;}
+.nav-menu-list .nlb:hover{color:var(--text);background:var(--surface2);}
+.nav-menu-list .nlb.active{color:var(--text);}
+.nav-menu-list .nlb.active::after{content:'';position:absolute;right:16px;top:50%;margin-top:-3px;left:auto;bottom:auto;width:6px;height:6px;background:var(--accent);border-radius:50%;}
+.nav-menu-list .nlb small{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:none;color:var(--text3);line-height:1.4;}
+.nav-menu-list .sep{height:1px;background:var(--border);margin:6px 0;}
+.nav-menu-list .grp{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:8px 16px 4px;}
+nav .nav-menu #nav-spaces{display:flex;}
+@media (max-width:640px){.nav-menu-btn{padding:8px 10px;font-size:10px;}.nav-menu-list{left:auto;right:0;min-width:220px;max-width:calc(100vw - 28px);}}
+
 /* ── TICKER ── */
 .ticker-bar{position:relative;z-index:var(--z-page);background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;height:40px;display:flex;align-items:center;}
 .ticker-label{position:relative;flex-shrink:0;background:var(--accent);color:#fff;font-family:'Space Mono',monospace;font-weight:700;font-size:10px;letter-spacing:0.15em;padding:0 16px;height:100%;display:flex;align-items:center;z-index:var(--z-raise);}
@@ -403,6 +422,36 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .cm-trow a{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);text-decoration:none;white-space:nowrap;}
 .cm-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
 .cm-shelf-acts{display:flex;gap:8px;margin-top:10px;}
+
+/* SEAM:EXC_INTENT: the interpretation, as chips under the bar */
+.intent-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 0;min-height:0;}
+.intent-lead{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-right:4px;}
+.intent-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:12px;padding:5px 9px;cursor:text;}
+.intent-chip small{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
+.intent-chip input{background:transparent;border:0;outline:0;color:var(--text);font:inherit;min-width:40px;width:auto;padding:0;}
+.intent-chip.task{border-color:var(--accent);color:var(--accent);cursor:default;}
+.intent-chip.thread{border-style:dashed;}
+.intent-chip button{background:none;border:0;color:var(--text3);cursor:pointer;font-size:12px;padding:0;line-height:1;}
+.intent-chip button:hover{color:var(--accent);}
+.intent-add{background:transparent;border:1px dashed var(--border2);color:var(--text);font-size:12px;padding:5px 9px;width:130px;outline:0;font-family:'Syne',sans-serif;}
+.intent-go{background:none;border:1px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:6px 10px;cursor:pointer;text-transform:uppercase;}
+.intent-go:hover{border-color:var(--accent);color:var(--accent);}
+.intent-say{font-size:12px;color:var(--text2);margin-top:6px;}
+.suggest-box{position:absolute;left:0;right:0;top:100%;z-index:var(--z-menu);background:var(--surface);border:1px solid var(--border2);border-top:0;display:none;max-height:300px;overflow:auto;}
+.suggest-box.open{display:block;}
+.suggest-item{display:flex;justify-content:space-between;gap:12px;padding:10px 16px;cursor:pointer;font-size:13px;color:var(--text);}
+.suggest-item:hover,.suggest-item.on{background:var(--surface2);}
+.suggest-item small{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);white-space:nowrap;}
+.intent-doors{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+
+/* SEAM:EXC_DEPTH: Quick / Full */
+.depth-switch{display:inline-flex;border:1px solid var(--border2);background:var(--surface);}
+.depth-switch button{background:none;border:0;color:var(--text3);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:0 10px;height:36px;cursor:pointer;}
+.depth-switch button.on{color:var(--text);background:var(--surface3);}
+.depth-switch button:hover{color:var(--text);}
+.depth-note{font-size:12px;color:var(--text2);margin-top:6px;}
+.btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
+.btn-go-deeper:hover{background:#ff5555;}
 
 /* SEAM:READ_FOLIO: the folio tray */
 .folio-pill{position:fixed;left:20px;bottom:20px;z-index:var(--z-menu);background:var(--surface);border:1px solid var(--accent);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;padding:10px 14px;cursor:pointer;text-transform:uppercase;}
@@ -1661,12 +1710,12 @@ details.viz-table td,details.viz-table th{border-bottom:1px solid var(--room-rul
 .partners p{margin:0;max-width:60ch;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));line-height:1.55;color:var(--room-fg2)}
 .partners a{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(14px*var(--k));color:#0A0A0A;background:var(--room-ivory);padding:calc(13px*var(--k)) calc(20px*var(--k));text-decoration:none}
 /* the nav in the same language */
-nav .nav-links .nlb{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.08em;text-transform:uppercase}
+nav .nav-menu .nlb{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.08em;text-transform:uppercase}   /* SEAM:EXC_NAV */
 nav .btn-accent{background:transparent;color:var(--room-ivory);border:1px solid var(--room-rule);font-family:'Syne',sans-serif;font-weight:700;font-size:calc(12px*var(--k));letter-spacing:0;padding:calc(8px*var(--k)) calc(14px*var(--k))}
 nav .btn-accent:hover{background:var(--room-ivory);color:#0A0A0A;transform:none}
 .ticker-bar .ticker-label{background:transparent;color:var(--room-red);border-right:1px solid var(--room-rule)}
-nav .nav-links #nav-spaces{color:var(--room-fg2)!important;display:inline-block}
-nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
+nav .nav-menu #nav-spaces{color:var(--room-fg2)!important}
+nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 @media (max-width:900px){.ledger{grid-template-columns:1fr}.ledger .col{border-right:0;border-bottom:1px solid var(--room-rule);padding-left:0!important}.ledger .col:last-child{border-bottom:0}#sec-explore .hero{padding:40px 20px 32px}#main-dashboard{padding-left:20px;padding-right:20px}}
 @media (prefers-reduced-motion:reduce){.room-voices .track{animation:none}.pos,.row{transition:none}}
 </style>
@@ -2127,14 +2176,20 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
     <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.12em;margin:0 2px;line-height:1">by</span>
     <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIxNTUuMDAgMjY0LjM4IDQ2MC41MCA1OC4zOCIgYXJpYS1sYWJlbD0iVW5zdXJmYWNlZCI+CjxkZWZzPgo8Zz48ZyBpZD0idG0iPgo8cGF0aCBkPSJNIDAuNDUzMTI1IC0xOC40Mzc1IEwgMTAuNTMxMjUgLTE4LjQzNzUgTCAxMC41MzEyNSAtMTYgTCA2LjkzNzUgLTE2IEwgNi45Mzc1IC04LjE4NzUgTCAzLjk4NDM3NSAtOC4xODc1IEwgMy45ODQzNzUgLTE2IEwgMC40NTMxMjUgLTE2IFogTSAxMS43MDMxMjUgLTE4LjQzNzUgTCAxNi4xODc1IC0xOC40Mzc1IEwgMTcuNjA5Mzc1IC0xMi44NDM3NSBMIDE5LjEwOTM3NSAtMTguNDM3NSBMIDIzLjQ2ODc1IC0xOC40Mzc1IEwgMjMuNDY4NzUgLTguMTg3NSBMIDIwLjY4NzUgLTguMTg3NSBMIDIwLjY4NzUgLTE1LjQzNzUgTCAxOC43NjU2MjUgLTguMTg3NSBMIDE2LjQzNzUgLTguMTg3NSBMIDE0LjUzMTI1IC0xNS40Mzc1IEwgMTQuNTMxMjUgLTguMTg3NSBMIDExLjcwMzEyNSAtOC4xODc1IFogTSAxMS43MDMxMjUgLTE4LjQzNzUiLz4KPC9nPjwvZz4KPC9kZWZzPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSAxNzcuOTM3NSAzMTMuOTY0ODQ0IEMgMTczLjc4OTA2MiAzMTMuOTY0ODQ0IDE3MC40MDYyNSAzMTIuNTY2NDA2IDE2Ny43ODkwNjIgMzA5Ljc2OTUzMSBDIDE2NS4xNzE4NzUgMzA2Ljk3MjY1NiAxNjMuODYzMjgxIDMwMi45OTIxODggMTYzLjg2MzI4MSAyOTcuODIwMzEyIEwgMTYzLjg2MzI4MSAyNzUuMjY5NTMxIEwgMTcyLjk3NjU2MiAyNzUuMjY5NTMxIEwgMTcyLjcwNzAzMSAyOTcuMDk3NjU2IEMgMTcyLjc2NTYyNSAyOTkuODA0Njg4IDE3My40NTcwMzEgMzAxLjkxMDE1NiAxNzQuNzgxMjUgMzAzLjQxMDE1NiBDIDE3Ni4xMDE1NjIgMzA0LjkxNDA2MiAxNzguMTE3MTg4IDMwNS42Njc5NjkgMTgwLjgyNDIxOSAzMDUuNjY3OTY5IEMgMTgzLjgyODEyNSAzMDUuNjY3OTY5IDE4Ni4xOTE0MDYgMzA0Ljc5Njg3NSAxODcuOTA2MjUgMzAzLjA1MDc4MSBDIDE4OS42MTcxODggMzAxLjMwODU5NCAxOTAuNTM1MTU2IDI5OC45MDIzNDQgMTkwLjY1NjI1IDI5NS44MzIwMzEgTCAxOTAuNDc2NTYyIDI3NS4yNjk1MzEgTCAxOTkuNTg1OTM4IDI3NS4yNjk1MzEgTCAxOTkuNTg1OTM4IDMxMy4xNTIzNDQgTCAxOTAuMzgyODEyIDMxMy4xNTIzNDQgTCAxOTAuNzQ2MDk0IDMwNi4yMDcwMzEgQyAxODkuNDg0Mzc1IDMwOC42NzE4NzUgMTg3Ljc1MzkwNiAzMTAuNTgyMDMxIDE4NS41NTg1OTQgMzExLjkzNzUgQyAxODMuMzYzMjgxIDMxMy4yODkwNjIgMTgwLjgyNDIxOSAzMTMuOTY0ODQ0IDE3Ny45Mzc1IDMxMy45NjQ4NDQiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMjIxLjI0NjA5NCAyODguMDY2NDA2IEwgMjEyLjUgMjg4LjA2NjQwNiBDIDIxMi4xMDE1NjIgMjg4LjA2NjQwNiAyMTEuNzE0ODQ0IDI4OC4wNDI5NjkgMjExLjMzOTg0NCAyODguMDA3ODEyIEwgMjExLjMzOTg0NCAzMTMuMTUyMzQ0IEwgMjIwLjQ0OTIxOSAzMTMuMTUyMzQ0IEwgMjIwLjI2OTUzMSAyOTIuNTg1OTM4IEMgMjIwLjMzNTkzOCAyOTAuODgyODEyIDIyMC42Njc5NjkgMjg5LjM3ODkwNiAyMjEuMjQ2MDk0IDI4OC4wNjY0MDYiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMjM3LjcyNjU2MiAyODguMDY2NDA2IEMgMjM4LjAyNzM0NCAyODkuMDU0Njg4IDIzOC4yMjY1NjIgMjkwLjE2NDA2MiAyMzguMzA4NTk0IDI5MS40MTQwNjIgTCAyMzguMTI4OTA2IDMxMy4xNTIzNDQgTCAyNDcuMjM4MjgxIDMxMy4xNTIzNDQgTCAyNDcuMjM4MjgxIDI5MC42OTE0MDYgQyAyNDcuMjM4MjgxIDI4OS43NzM0MzggMjQ3LjE4MzU5NCAyODguOTEwMTU2IDI0Ny4wOTc2NTYgMjg4LjA2NjQwNiBaIE0gMjM3LjcyNjU2MiAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDI4Mi41OTc2NTYgMjkzLjc1NzgxMiBDIDI4MS4zNjcxODggMjkyLjg1NTQ2OSAyODAuMDQyOTY5IDI5Mi4xNjc5NjkgMjc4LjYyODkwNiAyOTEuNjgzNTk0IEMgMjc3LjIxNDg0NCAyOTEuMjAzMTI1IDI3NS43NTc4MTIgMjkwLjc4MTI1IDI3NC4yNTM5MDYgMjkwLjQyMTg3NSBDIDI3Mi42OTE0MDYgMjkwLjA2MjUgMjcxLjM5ODQzOCAyODkuNjk5MjE5IDI3MC4zNzUgMjg5LjMzOTg0NCBDIDI2OS4zNTE1NjIgMjg4Ljk3NjU2MiAyNjguNTM5MDYyIDI4OC42MTcxODggMjY3Ljk0MTQwNiAyODguMjU3ODEyIEMgMjY3LjgzOTg0NCAyODguMTk1MzEyIDI2Ny43NSAyODguMTI4OTA2IDI2Ny42NTYyNSAyODguMDY2NDA2IEwgMjU3Ljk2MDkzOCAyODguMDY2NDA2IEMgMjU4LjExNzE4OCAyODguOTE0MDYyIDI1OC4zNTkzNzUgMjg5LjY4NzUgMjU4LjY5NTMxMiAyOTAuMzc4OTA2IEMgMjU5LjMyNDIxOSAyOTEuNjcxODc1IDI2MC4xNjc5NjkgMjkyLjc2NTYyNSAyNjEuMjE4NzUgMjkzLjY2Nzk2OSBDIDI2Mi4yNzM0MzggMjk0LjU3MDMxMiAyNjMuNDcyNjU2IDI5NS4zMDg1OTQgMjY0LjgyODEyNSAyOTUuODc4OTA2IEMgMjY2LjE3OTY4OCAyOTYuNDUzMTI1IDI2Ny41NDY4NzUgMjk2LjkxNzk2OSAyNjguOTMzNTk0IDI5Ny4yNzczNDQgQyAyNzAuNTU0Njg4IDI5Ny41NzgxMjUgMjcxLjkzNzUgMjk3Ljg5NDUzMSAyNzMuMDgyMDMxIDI5OC4yMjI2NTYgQyAyNzQuMjIyNjU2IDI5OC41NTQ2ODggMjc1LjE3MTg3NSAyOTguOTMzNTk0IDI3NS45MjE4NzUgMjk5LjM1MTU2MiBDIDI3Ni42NzU3ODEgMjk5Ljc3MzQzOCAyNzcuMjE0ODQ0IDMwMC4yMjI2NTYgMjc3LjU0Njg3NSAzMDAuNzA3MDMxIEMgMjc3Ljg3NSAzMDEuMTg3NSAyNzguMDQyOTY5IDMwMS44MjAzMTIgMjc4LjA0Mjk2OSAzMDIuNTk3NjU2IEMgMjc4LjA0Mjk2OSAzMDMuODYzMjgxIDI3Ny41MTU2MjUgMzA0Ljg4NjcxOSAyNzYuNDY0ODQ0IDMwNS42Njc5NjkgQyAyNzUuNDEwMTU2IDMwNi40NDkyMTkgMjczLjc0MjE4OCAzMDYuODcxMDk0IDI3MS40NTcwMzEgMzA2LjkyOTY4OCBDIDI2OS4yOTI5NjkgMzA2LjkyOTY4OCAyNjcuMzU1NDY5IDMwNi40OTIxODggMjY1LjY0MDYyNSAzMDUuNjIxMDk0IEMgMjYzLjkyNTc4MSAzMDQuNzUgMjYyLjUyNzM0NCAzMDMuNDEwMTU2IDI2MS40NDUzMTIgMzAxLjYwNTQ2OSBMIDI1NS4wMzkwNjIgMzA2LjExNzE4OCBDIDI1Ni4zMDQ2ODggMzA4LjE2NDA2MiAyNTguMzYzMjgxIDMwOS45ODA0NjkgMjYxLjIxODc1IDMxMS41NzQyMTkgQyAyNjQuMDc0MjE5IDMxMy4xNjc5NjkgMjY3LjY2Nzk2OSAzMTMuOTY0ODQ0IDI3MiAzMTMuOTY0ODQ0IEMgMjc0LjcwNzAzMSAzMTMuOTY0ODQ0IDI3Ni45OTIxODggMzEzLjY0ODQzOCAyNzguODU1NDY5IDMxMy4wMTU2MjUgQyAyODAuNzE4NzUgMzEyLjM4NjcxOSAyODIuMjM4MjgxIDMxMS41NDY4NzUgMjgzLjQxMDE1NiAzMTAuNDkyMTg4IEMgMjg0LjU4MjAzMSAzMDkuNDQxNDA2IDI4NS40MjU3ODEgMzA4LjE5MTQwNiAyODUuOTM3NSAzMDYuNzUgQyAyODYuNDQ1MzEyIDMwNS4zMDQ2ODggMjg2LjcwMzEyNSAzMDMuNzczNDM4IDI4Ni43MDMxMjUgMzAyLjE0ODQzOCBDIDI4Ni43MDMxMjUgMzAwLjE2NDA2MiAyODYuMzI4MTI1IDI5OC40OTYwOTQgMjg1LjU3NDIxOSAyOTcuMTQwNjI1IEMgMjg0LjgyNDIxOSAyOTUuNzg5MDYyIDI4My44MjgxMjUgMjk0LjY2MDE1NiAyODIuNTk3NjU2IDI5My43NTc4MTIiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMzIyLjEwOTM3NSAyODguMDY2NDA2IEwgMzIyLjE3OTY4OCAyOTUuODMyMDMxIEMgMzIyLjA1ODU5NCAyOTguOTAyMzQ0IDMyMS4xNDA2MjUgMzAxLjMwODU5NCAzMTkuNDI5Njg4IDMwMy4wNTA3ODEgQyAzMTcuNzE0ODQ0IDMwNC43OTY4NzUgMzE1LjM1MTU2MiAzMDUuNjY3OTY5IDMxMi4zNDc2NTYgMzA1LjY2Nzk2OSBDIDMwOS42NDA2MjUgMzA1LjY2Nzk2OSAzMDcuNjI1IDMwNC45MTQwNjIgMzA2LjMwNDY4OCAzMDMuNDEwMTU2IEMgMzA0Ljk4MDQ2OSAzMDEuOTEwMTU2IDMwNC4yODkwNjIgMjk5LjgwNDY4OCAzMDQuMjMwNDY5IDI5Ny4wOTc2NTYgTCAzMDQuMzM5ODQ0IDI4OC4wNjY0MDYgTCAyOTUuMzkwNjI1IDI4OC4wNjY0MDYgTCAyOTUuMzkwNjI1IDI5Ny44MjAzMTIgQyAyOTUuMzkwNjI1IDMwMi45OTIxODggMjk2LjY5NTMxMiAzMDYuOTcyNjU2IDI5OS4zMTI1IDMwOS43Njk1MzEgQyAzMDEuOTI5Njg4IDMxMi41NjY0MDYgMzA1LjMxMjUgMzEzLjk2NDg0NCAzMDkuNDYwOTM4IDMxMy45NjQ4NDQgQyAzMTIuMzQ3NjU2IDMxMy45NjQ4NDQgMzE0Ljg4NjcxOSAzMTMuMjg5MDYyIDMxNy4wODIwMzEgMzExLjkzNzUgQyAzMTkuMjc3MzQ0IDMxMC41ODIwMzEgMzIxLjAwNzgxMiAzMDguNjc1NzgxIDMyMi4yNjk1MzEgMzA2LjIwNzAzMSBMIDMyMS45MTAxNTYgMzEzLjE1MjM0NCBMIDMzMS4xMDkzNzUgMzEzLjE1MjM0NCBMIDMzMS4xMDkzNzUgMjg4LjA2NjQwNiBaIE0gMzIyLjEwOTM3NSAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDM1Mi45ODgyODEgMjg4LjA2NjQwNiBMIDM0Mi44NjMyODEgMjg4LjA2NjQwNiBMIDM0Mi44NjMyODEgMzEzLjE1MjM0NCBMIDM1MS45NzI2NTYgMzEzLjE1MjM0NCBMIDM1MS42MTMyODEgMjk0Ljc1IEMgMzUxLjc2OTUzMSAyOTEuOTkyMTg4IDM1Mi4yMzA0NjkgMjg5Ljc2OTUzMSAzNTIuOTg4MjgxIDI4OC4wNjY0MDYiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMzgxLjMzMjAzMSAyODguMDY2NDA2IEwgMzgxLjMzMjAzMSAzMTMuMTUyMzQ0IEwgMzkwLjQ0NTMxMiAzMTMuMTUyMzQ0IEwgMzkwLjIxODc1IDI4OC4wNjY0MDYgWiBNIDM4MS4zMzIwMzEgMjg4LjA2NjQwNiIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA0MzEuMjIyNjU2IDI5OS44OTQ1MzEgQyA0MzEuMjIyNjU2IDMwMiA0MzAuMzc4OTA2IDMwMy42NTIzNDQgNDI4LjY5OTIxOSAzMDQuODU1NDY5IEMgNDI3LjAxMTcxOSAzMDYuMDU4NTk0IDQyNC44MjAzMTIgMzA2LjY2MDE1NiA0MjIuMTEzMjgxIDMwNi42NjAxNTYgQyA0MTcuMzAwNzgxIDMwNi42NjAxNTYgNDE0Ljg5ODQzOCAzMDUuMDAzOTA2IDQxNC44OTg0MzggMzAxLjY5OTIxOSBDIDQxNC44OTg0MzggMzAwLjAxNTYyNSA0MTUuNDk2MDk0IDI5OC43OTY4NzUgNDE2LjcwMzEyNSAyOTguMDQyOTY5IEMgNDE3LjkwMjM0NCAyOTcuMjkyOTY5IDQxOS40OTYwOTQgMjk2LjkxNzk2OSA0MjEuNDgwNDY5IDI5Ni45MTc5NjkgTCA0MzEuMjIyNjU2IDI5Ni45MTc5NjkgWiBNIDQzMSAyODguMDY2NDA2IEMgNDMxLjE0NDUzMSAyODguOTc2NTYyIDQzMS4yMjI2NTYgMjg5Ljk5NjA5NCA0MzEuMjIyNjU2IDI5MS4xNDQ1MzEgTCA0MjAuODUxNTYyIDI5MC42MDE1NjIgQyA0MTguNjg3NSAyOTAuNjAxNTYyIDQxNi43MDMxMjUgMjkwLjgyODEyNSA0MTQuODk4NDM4IDI5MS4yNzczNDQgQyA0MTMuMDkzNzUgMjkxLjczMDQ2OSA0MTEuNTI3MzQ0IDI5Mi40MjE4NzUgNDEwLjIwNzAzMSAyOTMuMzU1NDY5IEMgNDA4Ljg4MjgxMiAyOTQuMjg1MTU2IDQwNy44NDM3NSAyOTUuNDU3MDMxIDQwNy4wOTM3NSAyOTYuODcxMDk0IEMgNDA2LjMzOTg0NCAyOTguMjg1MTU2IDQwNS45NjQ4NDQgMjk5Ljk4NDM3NSA0MDUuOTY0ODQ0IDMwMS45Njg3NSBDIDQwNS45NjQ4NDQgMzA0LjA3NDIxOSA0MDYuMzI4MTI1IDMwNS44OTQ1MzEgNDA3LjA0Njg3NSAzMDcuNDI1NzgxIEMgNDA3Ljc2OTUzMSAzMDguOTU3MDMxIDQwOC43NDYwOTQgMzEwLjIwNzAzMSA0MDkuOTgwNDY5IDMxMS4xNjc5NjkgQyA0MTEuMjEwOTM4IDMxMi4xMzI4MTIgNDEyLjY1NjI1IDMxMi44MzU5MzggNDE0LjMxMjUgMzEzLjI4OTA2MiBDIDQxNS45NjQ4NDQgMzEzLjczODI4MSA0MTcuNzIyNjU2IDMxMy45NjQ4NDQgNDE5LjU4NTkzOCAzMTMuOTY0ODQ0IEMgNDIyLjQxNDA2MiAzMTMuOTY0ODQ0IDQyNC43NTc4MTIgMzEzLjQzNzUgNDI2LjYyNSAzMTIuMzg2NzE5IEMgNDI4LjQ4ODI4MSAzMTEuMzM1OTM4IDQzMC4wODIwMzEgMzA5Ljc4NTE1NiA0MzEuNDA2MjUgMzA3Ljc0MjE4OCBMIDQzMS4yMjI2NTYgMzEzLjE1MjM0NCBMIDQ0MC4zMzU5MzggMzEzLjE1MjM0NCBMIDQ0MC4zMzU5MzggMjkwLjc4MTI1IEMgNDQwLjMzNTkzOCAyODkuODMyMDMxIDQ0MC4yNjk1MzEgMjg4LjkzNzUgNDQwLjE3MTg3NSAyODguMDY2NDA2IFogTSA0MzEgMjg4LjA2NjQwNiIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA0NzUuNDI5Njg4IDMwNC43MTg3NSBDIDQ3My45ODgyODEgMzA1LjUzMTI1IDQ3Mi4xMjUgMzA1LjkzNzUgNDY5LjgzOTg0NCAzMDUuOTM3NSBDIDQ2Ni40MTAxNTYgMzA1LjkzNzUgNDYzLjc1IDMwNC44Mzk4NDQgNDYxLjg1NTQ2OSAzMDIuNjQ0NTMxIEMgNDU5Ljk2MDkzOCAzMDAuNDQ5MjE5IDQ1OS4wMTU2MjUgMjk3LjYzNjcxOSA0NTkuMDE1NjI1IDI5NC4yMTA5MzggQyA0NTkuMDE1NjI1IDI5MS44NzUgNDU5LjQ2NDg0NCAyODkuODMyMDMxIDQ2MC4zNDc2NTYgMjg4LjA2NjQwNiBMIDQ1MC41NDY4NzUgMjg4LjA2NjQwNiBDIDQ0OS45NDE0MDYgMjg5Ljk5MjE4OCA0NDkuNjMyODEyIDI5Mi4wMzkwNjIgNDQ5LjYzMjgxMiAyOTQuMjEwOTM4IEMgNDQ5LjYzMjgxMiAyOTcuMDM5MDYyIDQ1MC4xNDQ1MzEgMjk5LjY2Nzk2OSA0NTEuMTY3OTY5IDMwMi4xMDE1NjIgQyA0NTIuMTkxNDA2IDMwNC41MzkwNjIgNDUzLjYwMTU2MiAzMDYuNjI4OTA2IDQ1NS40MDYyNSAzMDguMzcxMDk0IEMgNDU3LjIxMDkzOCAzMTAuMTE3MTg4IDQ1OS4zNDM3NSAzMTEuNDg0Mzc1IDQ2MS44MTI1IDMxMi40NzY1NjIgQyA0NjQuMjc3MzQ0IDMxMy40Njg3NSA0NjYuOTUzMTI1IDMxMy45NjQ4NDQgNDY5LjgzOTg0NCAzMTMuOTY0ODQ0IEMgNDczLjUwNzgxMiAzMTMuOTY0ODQ0IDQ3Ni41NDI5NjkgMzEzLjM0NzY1NiA0NzguOTQ5MjE5IDMxMi4xMTcxODggQyA0ODEuMzU1NDY5IDMxMC44ODI4MTIgNDgzLjQ5MjE4OCAzMDkuMjE0ODQ0IDQ4NS4zNTU0NjkgMzA3LjEwOTM3NSBMIDQ3OS4xMjg5MDYgMzAyLjIzODI4MSBDIDQ3OC4xMDkzNzUgMzAzLjA4MjAzMSA0NzYuODc1IDMwMy45MDYyNSA0NzUuNDI5Njg4IDMwNC43MTg3NSIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA1MjkuMjY1NjI1IDI4OC4wNjY0MDYgTCA1MjAuMTk1MzEyIDI4OC4wNjY0MDYgQyA1MjAuNTYyNSAyODguOTY0ODQ0IDUyMC44NTkzNzUgMjg5LjkxNzk2OSA1MjEuMDI3MzQ0IDI5MC45NjQ4NDQgTCA0OTkuNDcyNjU2IDI5MS4xNDQ1MzEgQyA0OTkuNjkxNDA2IDI5MC4wMTU2MjUgNTAwLjAwNzgxMiAyODguOTkyMTg4IDUwMC40MTc5NjkgMjg4LjA2NjQwNiBMIDQ5MS4zOTA2MjUgMjg4LjA2NjQwNiBDIDQ5MC43Njk1MzEgMjg5Ljk5MjE4OCA0OTAuNDQ5MjE5IDI5Mi4wMzUxNTYgNDkwLjQ0OTIxOSAyOTQuMjEwOTM4IEMgNDkwLjQ0OTIxOSAyOTcuMDM5MDYyIDQ5MC45NjA5MzggMjk5LjY2Nzk2OSA0OTEuOTg0Mzc1IDMwMi4xMDU0NjkgQyA0OTMuMDA3ODEyIDMwNC41MzkwNjIgNDk0LjQzMzU5NCAzMDYuNjI4OTA2IDQ5Ni4yNjk1MzEgMzA4LjM3MTA5NCBDIDQ5OC4xMDE1NjIgMzEwLjExNzE4OCA1MDAuMzQzNzUgMzExLjQ4NDM3NSA1MDIuOTg4MjgxIDMxMi40NzY1NjIgQyA1MDUuNjMyODEyIDMxMy40Njg3NSA1MDguNTgyMDMxIDMxMy45NjQ4NDQgNTExLjgyODEyNSAzMTMuOTY0ODQ0IEMgNTE1LjYxNzE4OCAzMTMuOTY0ODQ0IDUxOC43ODkwNjIgMzEzLjM3ODkwNiA1MjEuMzQzNzUgMzEyLjIwNzAzMSBDIDUyMy44OTg0MzggMzExLjAzMTI1IDUyNi4xNDA2MjUgMzA5LjU3NDIxOSA1MjguMDY2NDA2IDMwNy44MzIwMzEgTCA1MjIuNzQyMTg4IDMwMi4yMzgyODEgQyA1MjEuNDgwNDY5IDMwMy4yNjE3MTkgNTE5Ljk2MDkzOCAzMDQuMTk1MzEyIDUxOC4xODc1IDMwNS4wMzUxNTYgQyA1MTYuNDE0MDYyIDMwNS44Nzg5MDYgNTE0LjI2NTYyNSAzMDYuMjk2ODc1IDUxMS43MzgyODEgMzA2LjI5Njg3NSBDIDUwOC4yNSAzMDYuMjk2ODc1IDUwNS41MTU2MjUgMzA1LjQ4NDM3NSA1MDMuNTI3MzQ0IDMwMy44NjMyODEgQyA1MDEuNTQ2ODc1IDMwMi4yMzgyODEgNTAwLjIyMjY1NiAyOTkuOTI1NzgxIDQ5OS41NTg1OTQgMjk2LjkxNzk2OSBMIDUzMC4yMzA0NjkgMjk2LjU1NDY4OCBDIDUzMC40MTAxNTYgMjkzLjczMDQ2OSA1MzAuMDkzNzUgMjkwLjkxNzk2OSA1MjkuMjgxMjUgMjg4LjEyMTA5NCBDIDUyOS4yNzczNDQgMjg4LjEwMTU2MiA1MjkuMjY5NTMxIDI4OC4wODU5MzggNTI5LjI2NTYyNSAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDU2Ny41OTM3NSAyODguMDY2NDA2IEMgNTY4LjUgMjg5Ljc5Mjk2OSA1NjguOTY0ODQ0IDI5MS44MDQ2ODggNTY4Ljk2NDg0NCAyOTQuMTIxMDk0IEMgNTY4Ljk2NDg0NCAyOTcuNzMwNDY5IDU2Ny45Njg3NSAzMDAuNjAxNTYyIDU2NS45ODgyODEgMzAyLjczNDM3NSBDIDU2NCAzMDQuODcxMDk0IDU2MS4zMjQyMTkgMzA1LjkzNzUgNTU3Ljk1NzAzMSAzMDUuOTM3NSBDIDU1NC42NTIzNDQgMzA1LjkzNzUgNTUyLjAzNTE1NiAzMDQuODcxMDk0IDU1MC4xMDkzNzUgMzAyLjczNDM3NSBDIDU0OC4xODM1OTQgMzAwLjYwMTU2MiA1NDcuMTY0MDYyIDI5Ny43MzA0NjkgNTQ3LjA0Mjk2OSAyOTQuMTIxMDk0IEMgNTQ3LjEyNSAyOTEuODA0Njg4IDU0Ny42Mjg5MDYgMjg5Ljc5Mjk2OSA1NDguNTMxMjUgMjg4LjA2NjQwNiBMIDUzOC42MTcxODggMjg4LjA2NjQwNiBDIDUzOC4wODU5MzggMjg5Ljk0OTIxOSA1MzcuNzk2ODc1IDI5MS45Njg3NSA1MzcuNzUzOTA2IDI5NC4xMjEwOTQgQyA1MzcuODEyNSAyOTcuMDA3ODEyIDUzOC4zMDg1OTQgMjk5LjY1MjM0NCA1MzkuMjQyMTg4IDMwMi4wNTg1OTQgQyA1NDAuMTcxODc1IDMwNC40NjQ4NDQgNTQxLjQzMzU5NCAzMDYuNTU0Njg4IDU0My4wMzEyNSAzMDguMzI4MTI1IEMgNTQ0LjYyMTA5NCAzMTAuMTAxNTYyIDU0Ni41MDM5MDYgMzExLjQ4NDM3NSA1NDguNjY3OTY5IDMxMi40NzY1NjIgQyA1NTAuODMyMDMxIDMxMy40Njg3NSA1NTMuMTQ4NDM4IDMxMy45NjQ4NDQgNTU1LjYxMzI4MSAzMTMuOTY0ODQ0IEMgNTU4LjgwMDc4MSAzMTMuOTY0ODQ0IDU2MS41MDM5MDYgMzEzLjI1NzgxMiA1NjMuNzMwNDY5IDMxMS44NDc2NTYgQyA1NjUuOTU3MDMxIDMxMC40MzM1OTQgNTY3LjY2Nzk2OSAzMDguNTgyMDMxIDU2OC44NzUgMzA2LjI5Njg3NSBMIDU2OC42MDE1NjIgMzEzLjE1MjM0NCBMIDU3Ny43MTA5MzggMzEzLjE1MjM0NCBMIDU3Ny43MTA5MzggMjg4LjA2NjQwNiBaIE0gNTY3LjU5Mzc1IDI4OC4wNjY0MDYiLz4KPGcgZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLW9wYWNpdHk9IjEiPgo8dXNlIHhsaW5rOmhyZWY9IiN0bSIgeD0iNTgzLjI5MTUiIHk9IjI5MS42Njc1Ii8+CjwvZz4KPC9zdmc+" alt="Unsurfaced™" style="height:16px;width:auto;display:block;filter:invert(1) brightness(2);opacity:0.9;">
   </div>
-  <ul class="nav-links">
-    <li><a class="nlb" href="../" style="text-decoration:none;display:inline-block">&#8592; Home</a></li>
-    <li><button class="nlb" id="nav-spaces" onclick="goHub()">◆ Spaces</button></li>
-    <li><button class="nlb active" id="nav-explore" onclick="navTo('explore')">Explore</button></li>
-    <li><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands</button></li>
-    <li><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences</button></li>
-    <li><button class="nlb" id="nav-library" onclick="navTo('library')">Library</button></li>
-  </ul>
+  <div class="nav-menu" id="nav-menu"><!-- SEAM:EXC_NAV: one dropdown, every door -->
+    <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="navMenuToggle(event)"><span id="nav-menu-cur">Explore</span><span class="chev">&#9660;</span></button>
+    <ul class="nav-menu-list" id="nav-menu-list">
+      <li class="grp">EXCAVATE</li>
+      <li><button class="nlb active" id="nav-explore" onclick="navTo('explore')">Explore<small>ask culture a question</small></button></li>
+      <li><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands<small>the brands we watch</small></button></li>
+      <li><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences<small>the people, by generation</small></button></li>
+      <li><button class="nlb" id="nav-library" onclick="navTo('library')">Library<small>reads, reports, RECONs</small></button></li>
+      <li id="nav-read-li" style="display:none"><a class="nlb" id="nav-read" href="read/">READ<small>the house reads, the desk, the stand</small></a></li>
+      <li class="sep"></li>
+      <li><button class="nlb" id="nav-spaces" onclick="goHub()">&#9670; Spaces<small>DAILY, EXCAVATE, MINE</small></button></li>
+      <li><a class="nlb" href="../">&#8592; Home</a></li>
+    </ul>
+  </div>
   <div class="nav-right">
     <a class="nlb nav-sign" id="nav-sign" href="#" onclick="_gateForDoor('excavate');return false">Sign in</a>
     <button class="btn-accent" id="nav-new-report" onclick="openModal('new-report')" style="display:none">New Report</button>
@@ -2156,12 +2211,17 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
 
   <div class="search-shell">
     <div class="search-wrapper">
-      <input type="text" class="search-bar" id="search-input" placeholder="Search a brand, a category, a behavior" oninput="toggleClearBtn()"/>
+      <input type="text" class="search-bar" id="search-input" placeholder="Ask culture a question: a brand, a category, the people, or the question itself" oninput="_sgInput(this.value)" onkeydown="_sgKey(event)" onblur="setTimeout(_sgClose,150)" autocomplete="off"/><!-- SEAM:EXC_INTENT -->
+      <div class="suggest-box" id="suggest-box"></div>
       <button class="search-clear" id="search-clear-btn" onclick="clearSearch()" title="Clear search">✕</button>
       <div class="search-actions">
+        <span class="depth-switch" id="depth-switch" title="How deep the read goes"><button type="button" data-depth="quick" onclick="setDepth('quick')">Quick</button><button type="button" data-depth="full" class="on" onclick="setDepth('full')">Full</button></span><!-- SEAM:EXC_DEPTH -->
         <button class="search-btn" id="search-btn" onclick="runSearch()">Search</button>
       </div>
     </div>
+    <!-- SEAM:EXC_INTENT: the interpretation, as chips the person can change -->
+    <div class="intent-row" id="intent-row"></div><div class="intent-say" id="intent-say"></div>
+    <div class="depth-note" id="depth-note"></div><!-- SEAM:EXC_DEPTH -->
     <!-- live source status chips -->
     <div class="source-row" id="source-status-row" style="display:none;">
       <span class="source-row-label">SOURCES:</span>
@@ -2305,6 +2365,8 @@ nav .nav-links #nav-spaces::first-letter{color:var(--room-red)}
         <button class="btn-export-pdf" onclick="exportToPDF()">↓ Download Report</button>
         <button class="btn-new-search" id="btn-make-recon" style="display:none" onclick="makeReconFromRead()">Make this a RECON</button><!-- SEAM:READ_COMMISSION -->
         <button class="btn-new-search" id="btn-pin-read" style="display:none" onclick="pinLiveRead()">Pin to folio</button><!-- SEAM:READ_FOLIO -->
+      </div>
+      <div class="intent-doors" id="intent-doors" style="display:none"></div><!-- SEAM:EXC_INTENT: the task's door -->
       </div>
     </div>
   </div>
@@ -3295,13 +3357,19 @@ function _lensSignal(cat){ return cat==='consumer'?'social':cat==='market'?'web'
 
 async function _excGather(q){
   const cats=['consumer','market','culture','brand'];
-  const _tf=(window._tileFrame&&window._tileFrame._q===q)?window._tileFrame.frame:null;   // SEAM:EXC_DOOR: a tile's frame rides in
+  const _tf0=(window._tileFrame&&window._tileFrame._q===q)?window._tileFrame.frame:null;   // SEAM:EXC_DOOR: a tile's frame rides in
+  const _if=_tf0?null:_inFrameOut(await _inInterpret(q));   // SEAM:EXC_INTENT: the frame the person confirmed, read before the gather
+  const _tf=_tf0||(_if&&(_if.anchors||[]).length?_if:null);
+  const _threads=(_if&&(_if.threads||[]).length>1)?_if.threads:null;
   window._gatherMeta=null; window._gatherItems=[]; window._tileFrame=null; window._voiceView={ filter:'frame', shown:12 };   // SEAM:EXC_FRAME: nothing from the last search leaks into this one
   // SEAM:EXC_SPEED: the browser lenses, the server gather and the lake used to run one after another. They start together;
   // the lake's answer is kept for synthesize (api() reads it instead of asking again).
   const _hdr=await _authHeader();
-  const gatherP=fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},_hdr),body:JSON.stringify(_tf?{query:q,frame:_tf}:{query:q})})
+  const _gatherOne=(qq)=>fetch(API_BASE.replace(/\/$/,'')+'/excavate/gather',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},_hdr),body:JSON.stringify(_tf?{query:qq,frame:_tf}:{query:qq})})
     .then(r=>r.ok?r.json():null).catch(()=>null);
+  // SEAM:EXC_INTENT: a stacked question is gathered one thread at a time, in parallel, on the shared frame; the corpus is one.
+  const gatherP=_threads?Promise.all(_threads.map(_gatherOne)).then(gs=>{ const ok=gs.filter(g=>g&&g.ok); if(!ok.length) return null; const seen=new Set(); const items=[]; ok.forEach((g,ti)=>(g.items||[]).forEach(it=>{ const k=it.url||it.title; if(k&&seen.has(k)) return; if(k) seen.add(k); items.push(Object.assign({},it,{thread:ti+1})); }));
+    return { ok:true, cls:ok[0].cls, items, rails:ok[0].rails||[], meta:Object.assign({},ok[0].meta||{},{frame:_tf||(ok[0].meta&&ok[0].meta.frame)||null,threads:_threads}) }; }):_gatherOne(q);
   window._lakePromise=fetch(API_BASE.replace(/\/$/,'')+'/excavate/lake',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},_hdr),body:JSON.stringify({q:String(q).slice(0,200),count:16})})
     .then(r=>r.ok?r.json():null).catch(()=>null);
   window._lakePromise._q=q;
@@ -3325,7 +3393,7 @@ async function _excGather(q){
   try{
     const g=await gatherP;   // EXCAVATE_WIRE: gather is signed-in now; SEAM:EXC_SPEED: it ran alongside the lenses
     if(g&&g.ok&&Array.isArray(g.items)){
-      window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{},frame:(g.meta&&g.meta.frame)||null};   // SEAM:EXC_FRAME
+      window._gatherMeta={cls:g.cls,rails:g.rails||[],meta:g.meta||{},frame:_if?Object.assign({},(g.meta&&g.meta.frame)||{},_if):((g.meta&&g.meta.frame)||null)};   // SEAM:EXC_FRAME; SEAM:EXC_INTENT: the person's chips win over the gather's frame
       window._gatherItems=g.items;
       const seen=new Set(corpus.map(c=>c.url).filter(Boolean));
       g.items.forEach(it=>{
@@ -3347,7 +3415,34 @@ async function _excGather(q){
   return { items, corpus:ordered.slice(0,48), sources };
 }
 
+
+/* SEAM:EXC_DEPTH: Quick / Full. Quick is the gather, the lake and the writer, 4 to 5 findings, under a minute; Full is everything.
+   Full by default; the choice is remembered in this browser. A quick read ends with Go deeper, which runs the full read on the same
+   gather. The interpreter's task says when a question deserves the full read; it never flips the switch itself. */
+const _DEPTH_DEEP_TASKS = { brief: 'A brief is worth the full read: the fact table and the sources read in full stand behind the moves.', compare: 'A comparison is worth the full read: the numbers that separate the players are checked against their sources.', timeline: 'A read across time is worth the full read: the record and the pages behind it carry the years.' };
+function _depthGet() { try { return localStorage.getItem('exc_depth') === 'quick' ? 'quick' : 'full'; } catch (e) { return 'full'; } }
+function setDepth(d) {
+  const v = d === 'quick' ? 'quick' : 'full';
+  try { localStorage.setItem('exc_depth', v); } catch (e) { /* remembered for this visit only */ }
+  window._depth = v; _depthRender();
+}
+function _depthRender() {
+  const v = window._depth || _depthGet(); window._depth = v;
+  document.querySelectorAll('.depth-switch button').forEach(b => b.classList.toggle('on', b.getAttribute('data-depth') === v));
+  const n = document.getElementById('depth-note'); if (!n) return;
+  const f = window._intent && window._intent.frame;
+  n.textContent = v === 'quick' ? ('Quick: the strongest 4 to 5 findings in under a minute.' + (f && _DEPTH_DEEP_TASKS[f.task] ? ' ' + _DEPTH_DEEP_TASKS[f.task] : '')) : 'Full: every source read, the fact table behind every number, 6 to 8 findings. A couple of minutes.';
+}
+/* PURE: what the switch and the read's own receipt say about depth. */
+function _depthLabel(d) { return d === 'quick' ? 'Quick read' : 'Full read'; }
+function goDeeper() {
+  const q = String((window._liveLast && window._liveLast.q) || '').trim(); if (!q) return;
+  setDepth('full');
+  const inp = document.getElementById('search-input'); if (inp) inp.value = q;
+  runSearch();   // the interpreter's frame is reused (I.q === q), so only the gather and the full read run
+}
 async function runLiveSearch(q){
+  _depthRender();   // SEAM:EXC_DEPTH
   showLoader(q,'live',[
     'Excavating open data — consumer, market, culture & brand',
     'Reading research, community, news & innovation signal',
@@ -3366,7 +3461,7 @@ async function runLiveSearch(q){
     let synthesis=null;
     try {
       const _gm=window._gatherMeta||{};
-      const _pl={ query:q, mode:'report', cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped&&!((r.id==='competitors'||r.id==='counter')&&!(r.n>0))).map(r=>r.id), corpus:g.corpus };   // SEAM:EXC_FRAME: the frame the gather used rides with the corpus; SEAM:EXC_SPEED: the rails it ran, so the wire is not asked twice
+      const _pl={ query:q, mode:'report', depth:(window._depth||_depthGet()), cls:_gm.cls||null, frame:_gm.frame||null, rails:(_gm.rails||[]).filter(r=>r&&r.ok&&!r.skipped&&!((r.id==='competitors'||r.id==='counter')&&!(r.n>0))).map(r=>r.id), corpus:g.corpus };   // SEAM:EXC_FRAME: the frame the gather used rides with the corpus; SEAM:EXC_SPEED: the rails it ran, so the wire is not asked twice
       let d=null; const _st={ heard:false };
       try { d = await _synthesizeStream(_pl, (ev, data) => { if (ev === 'stage') _loaderStage(data); else if (ev === 'draft') _loaderDraft(data); }, _st); }   // SEAM:EXC_STREAM
       catch (e) { d = await _synthesizePlainAfterCut(_pl, _st.heard); }   // SEAM:READ_QUALITY — THE READ compiles on every live search
@@ -3378,6 +3473,8 @@ async function runLiveSearch(q){
       }
     } catch(e){ synthesis=null; }   // Worker down / 401 / unparsable → template read
     hideLoader();
+    _inDoors(window._intent&&window._intent.frame);   // SEAM:EXC_INTENT: the task opens its door beside the read
+    { const gd=document.getElementById('intent-doors'); if(gd&&synthesis&&synthesis.depth==='quick'){ gd.insertAdjacentHTML('afterbegin','<button class="btn-go-deeper" type="button" onclick="goDeeper()">Go deeper: the full read</button>'); gd.style.display=''; } }   // SEAM:EXC_DEPTH
     if(!synthesis) showToast('AI fusion unavailable — showing the structured signals');
     else if(synthesis.partial){ const _pn={ideas:'moves',brief:'brief',read:'two-line read'}; showToast('This read landed before its '+(synthesis.partial.missing||[]).map(m=>_pn[m]||m).join(' and ')+' finished. Run it again for the whole read.'); }   // SEAM:EXC_STALL
     _renderLive(q, { items:g.items, synthesis, sources:g.sources });
@@ -4081,6 +4178,7 @@ function navTo(section) {
   if (sec) sec.classList.add('active');
   const btn = document.getElementById('nav-' + section);
   if (btn) btn.classList.add('active');
+  _navMenuName(section); navMenuClose();   // SEAM:EXC_NAV
   window.scrollTo({top: 0, behavior: 'smooth'});
   if (section === 'explore')   initFeaturedInsights();
   if (section === 'brands')    initBrandsPage();
@@ -4739,6 +4837,100 @@ function toggleFilter(btn){document.querySelectorAll('.filter-bar .tag').forEach
 function showError(msg){const b=document.getElementById('error-banner');b.textContent='⚠ '+msg;b.style.display='block';}
 function showModal(html){document.getElementById('modal-content').innerHTML=html;document.getElementById('modal-overlay').classList.add('open');}
 function closeModal(e){if(e.target===document.getElementById('modal-overlay'))closeModalDirect();}
+
+/* SEAM:EXC_INTENT: the interpretation before the gather. The framer reads the query (task, entity, category, audience, market,
+   competitors, period, threads) and the page shows it as chips the person can change; the gather and the read run on the frame
+   confirmed. A stacked question is gathered one thread at a time; the writer gets the threads. Suggestions as the person types. */
+const _IN_TASK = { read: 'Reading', brand: 'Brand read', compare: 'Comparison', audience: 'Audience read', timeline: 'Across time', brief: 'A brief', create: 'Creative' };
+const _IN_FIELDS = [['entity', 'Entity'], ['category', 'Category'], ['audience', 'Audience'], ['market', 'Market'], ['period', 'Period']];
+window._intent = { q: '', frame: null, edited: false, busy: false };
+async function _inApi(path, body) {
+  const h = await _authHeader(); if (!h || !h.Authorization) return null;
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + path, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify(body || {}) }); return r.ok ? r.json() : null; } catch (e) { return null; }
+}
+/* PURE: the sentence the chips say. */
+function _inSentence(f) {
+  if (!f) return '';
+  const who = f.entity || f.category || 'the subject';
+  const parts = [(_IN_TASK[f.task] || 'Reading') + ': ' + who + (f.entity && f.category ? ' in ' + f.category : '')];
+  if (f.audience) parts.push('for ' + f.audience);
+  if ((f.competitors || []).length) parts.push('against ' + f.competitors.join(', '));
+  if (f.market && f.market !== 'US') parts.push('in ' + f.market);
+  if (f.period) parts.push(f.period);
+  if ((f.threads || []).length > 1) parts.push(f.threads.length + ' threads, read together');
+  return parts.join(', ') + '.';
+}
+/* PURE: the frame the chips hold, cleaned the way the worker cleans it, with the person's edits. */
+function _inFrameOut(f) {
+  if (!f) return null;
+  const s = v => String(v == null ? '' : v).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim();
+  const out = Object.assign({}, f, { entity: s(f.entity) || null, category: s(f.category) || null, audience: s(f.audience) || null, market: s(f.market) || 'US', period: s(f.period) || null,
+    competitors: (f.competitors || []).map(s).filter(Boolean).slice(0, 5), threads: (f.threads || []).map(s).filter(Boolean).slice(0, 3) });
+  if (out.threads.length === 1) out.threads = [];
+  return out;
+}
+async function _inInterpret(q) {
+  const I = window._intent;
+  if (I.frame && I.q === q) return I.frame;   // the chips the person confirmed
+  I.busy = true; I.q = q; I.frame = null; I.edited = false; _inRender();
+  const d = await _inApi('/excavate/interpret', { query: q });
+  I.busy = false;
+  I.frame = d && d.ok && d.frame ? Object.assign({ competitors: [], threads: [] }, d.frame) : null;
+  _inRender();
+  return I.frame;
+}
+function _inRender() {
+  const row = document.getElementById('intent-row'), say = document.getElementById('intent-say'); if (!row) return;
+  if (typeof _depthRender === 'function') _depthRender();   // SEAM:EXC_DEPTH: the depth note reads the task
+  const I = window._intent, f = I.frame;
+  if (I.busy) { row.innerHTML = '<span class="intent-lead">Reading the question</span>'; if (say) say.textContent = ''; return; }
+  if (!f) { row.innerHTML = ''; if (say) say.textContent = ''; return; }
+  const chip = (k, label, v) => `<span class="intent-chip"><small>${label}</small><input value="${safeAttr(v || '')}" size="${Math.max(3, String(v || '').length)}" placeholder="none" onchange="_inEdit('${k}',this.value)"></span>`;
+  let html = `<span class="intent-lead">The read</span><span class="intent-chip task" title="What the question asks for">${safe(_IN_TASK[f.task] || 'Reading')}</span>`;
+  html += _IN_FIELDS.filter(([k]) => k !== 'period' || f.period).map(([k, label]) => chip(k, label, f[k])).join('');
+  html += (f.competitors || []).map((c, i) => `<span class="intent-chip"><small>vs</small>${safe(c)}<button type="button" aria-label="Remove" onclick="_inListDel('competitors',${i})">×</button></span>`).join('');
+  if ((f.competitors || []).length < 5) html += `<input class="intent-add" placeholder="Add a competitor" onkeydown="if(event.key==='Enter'){event.preventDefault();_inListAdd('competitors',this.value)}">`;
+  html += (f.threads || []).map((t, i) => `<span class="intent-chip thread"><small>thread ${i + 1}</small>${safe(t)}<button type="button" aria-label="Remove" onclick="_inListDel('threads',${i})">×</button></span>`).join('');
+  if (I.edited) html += `<button class="intent-go" type="button" onclick="runSearch()">Read it this way</button>`;
+  row.innerHTML = html;
+  if (say) say.textContent = _inSentence(f);
+}
+function _inEdit(k, v) { const f = window._intent.frame; if (!f) return; f[k] = String(v || '').trim() || null; window._intent.edited = true; _inRender(); }
+function _inListDel(k, i) { const f = window._intent.frame; if (!f) return; f[k] = (f[k] || []).filter((x, j) => j !== i); window._intent.edited = true; _inRender(); }
+function _inListAdd(k, v) { const f = window._intent.frame, t = String(v || '').trim().slice(0, 40); if (!f || !t) return; if ((f[k] || []).some(x => x.toLowerCase() === t.toLowerCase())) return; f[k] = (f[k] || []).concat([t]); window._intent.edited = true; _inRender(); }
+/* The doors the task opens beside the read. */
+function _inDoors(f) {
+  const el = document.getElementById('intent-doors'); if (!el) return;
+  const doors = [];
+  if (f && f.task === 'brand' && f.entity) doors.push(`<button class="btn-new-search" type="button" onclick="navTo('brands');setTimeout(()=>{const i=document.getElementById('brand-find');if(i){i.value=${JSON.stringify(f.entity)};_brandFind();}},300)">Open the brand room: ${safe(f.entity)}</button>`);
+  if (f && f.task === 'brief') doors.push(`<button class="btn-new-search" type="button" id="intent-brief" style="display:none" onclick="makeReconFromRead()">This is a brief: commission a RECON</button>`);
+  if (f && f.task === 'create') doors.push(`<a class="btn-new-search" href="../play/" target="_blank" rel="noopener">Make it in PLAY</a>`);
+  el.innerHTML = doors.join(''); el.style.display = doors.length ? '' : 'none';
+  if (f && f.task === 'brief') _cmAdmin().then(a => { const b = document.getElementById('intent-brief'); if (b) b.style.display = a ? '' : 'none'; });
+}
+/* Suggestions as the person types. */
+let _sgTimer = null, _sgOn = -1, _sgItems = [];
+function _sgInput(v) {
+  toggleClearBtn();
+  clearTimeout(_sgTimer); const box = document.getElementById('suggest-box'); if (!box) return;
+  if (String(v || '').trim().length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  _sgTimer = setTimeout(async () => {
+    const d = await _inApi('/excavate/suggest', { q: v });
+    const items = d && d.ok ? d.items : [];
+    _sgItems = items; _sgOn = -1;
+    if (!items.length) { box.classList.remove('open'); box.innerHTML = ''; return; }
+    box.innerHTML = items.map((it, i) => `<div class="suggest-item" data-i="${i}" onmousedown="_sgPick(${i})"><span>${safe(it.text)}</span><small>${safe(it.hint || it.kind)}</small></div>`).join('');
+    box.classList.add('open');
+  }, 180);
+}
+function _sgPick(i) { const it = _sgItems[i]; if (!it) return; const inp = document.getElementById('search-input'); if (inp) inp.value = it.text; _sgClose(); runSearch(); }
+function _sgClose() { const box = document.getElementById('suggest-box'); if (box) { box.classList.remove('open'); box.innerHTML = ''; } }
+function _sgKey(e) {
+  const box = document.getElementById('suggest-box'); if (!box || !box.classList.contains('open')) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); _sgOn = (_sgOn + (e.key === 'ArrowDown' ? 1 : -1) + _sgItems.length) % _sgItems.length; box.querySelectorAll('.suggest-item').forEach((el, i) => el.classList.toggle('on', i === _sgOn)); }
+  else if (e.key === 'Enter' && _sgOn >= 0) { e.preventDefault(); _sgPick(_sgOn); }
+  else if (e.key === 'Escape') _sgClose();
+}
 function closeModalDirect(){document.getElementById('modal-overlay').classList.remove('open');_cmBox(false);if(window._cmPoll){clearInterval(window._cmPoll);window._cmPoll=null;}}   // SEAM:READ_COMMISSION: the tracker stops polling when the modal closes
 
 /* SEAM:READ_COMMISSION: the RECON generator (admin). The frame is read back and confirmed before anything is spent; the
@@ -4968,6 +5160,7 @@ function clearSearch() {
   _dashShow(true);
   document.getElementById('error-banner').style.display = 'none';
   document.getElementById('source-status-row').style.display = 'none';
+  window._intent = { q: '', frame: null, edited: false, busy: false }; _inRender(); _inDoors(null); _sgClose();   // SEAM:EXC_INTENT: a new search starts clean
   const btn = document.getElementById('search-btn');
   if (btn) { btn.className = 'search-btn'; btn.textContent = 'Search'; }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -6334,7 +6527,16 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
   if (a) a.style.display = window._signedOut === false ? 'none' : '';
   if (b) b.style.display = window._signedOut === false ? '' : 'none';
   if (window._signedOut === false && !window._foBooted) { window._foBooted = true; _foBoot(); }   // SEAM:READ_FOLIO: the open folio's pill, for an admin
+  if (window._signedOut === false) _cmAdmin().then(a => { const li = document.getElementById('nav-read-li'); if (li) li.style.display = a ? '' : 'none'; });   // SEAM:EXC_NAV: READ for admins
 }
+
+/* SEAM:EXC_NAV: the dropdown. It names the section you are in, closes on a choice, outside click or Escape, and shows READ to admins. */
+const _NAV_NAMES = { explore: 'Explore', brands: 'Brands', audiences: 'Audiences', library: 'Library' };
+function navMenuToggle(e) { if (e) e.stopPropagation(); const m = document.getElementById('nav-menu'); if (!m) return; const open = !m.classList.contains('open'); m.classList.toggle('open', open); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+function navMenuClose() { const m = document.getElementById('nav-menu'); if (m && m.classList.contains('open')) { m.classList.remove('open'); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', 'false'); } }
+function _navMenuName(section) { const c = document.getElementById('nav-menu-cur'); if (c && _NAV_NAMES[section]) c.textContent = _NAV_NAMES[section]; }
+document.addEventListener('click', e => { const m = document.getElementById('nav-menu'); if (m && !m.contains(e.target)) navMenuClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') navMenuClose(); });
 
 /* SEAM:READ_FOLIO: the folio tray (admin). Pin reads, door frames and house reads; add the editor's framing; see the ground's
    real coverage; compile it as a RECON. The folio lives in the database; this browser only remembers which one is open. */
