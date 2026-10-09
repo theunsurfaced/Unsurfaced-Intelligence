@@ -1290,6 +1290,26 @@
   "SEAM:EXC_FALLBACK": {
    "file": "intelligence/index.html",
    "purpose": "EX28: the fallback obeys the laws. When the writer did not finish, the page prints no gathered signal as a finding, hides the lens tabs and panels, says the reading did not finish in the house's words, offers the full read and shows the voices and the blind-spots line. The templated lens moves are gone (_buildLensIdeas returns nothing). The download is built from the read the writer stood behind (_buildReadPDF) or refused; the lens-template report is never printed."
+  },
+  "SEAM:WATCH_LINE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX29 THE WATCH: the health line. watchHealth reads the ledgers the engine already keeps (last door pass and grade, the rails that stayed silent on the last reads from the gather's exc_rails events, this month's spend against every Claude cap, Perplexity's day, the writer's failures today, the last backup, the running version from CF_VERSION_METADATA) and names its trips; GET /watch/line (desk key, admin or editor) returns the line and the last twenty desk runs; watchTick runs it at the end of the 06:10 chain and on the half-hour drain. No model is asked."
+  },
+  "SEAM:WATCH_ALERT": {
+   "file": "worker/src/index.js",
+   "purpose": "EX29: one email when the line trips, each kind at most once in six hours, to ALERT_TO or every admin, through Resend like the house's other mail, logged whether or not it sent; watchNote counts a live read whose writer failed outright and pages the house on the third failure of the day (the page used to show the failure first); POST /watch/test sends a test."
+  },
+  "SEAM:BENCH": {
+   "file": "worker/src/index.js",
+   "purpose": "EX29: the writer's quality, measured. POST /bench/freeze (desk key) freezes a pack from a real gather without capturing; POST /bench/run (desk key or admin) writes a frozen pack with the live writer and nothing re-gathered, cached, landed in the ledger or captured to the lake (body.bench), then grades it: benchCodeChecks on the laws the code can see, benchGrade one Haiku rubric on the frame tier; score 0 to 100, kept in KV and logged. tools/bench/run.mjs writes tools/bench/last.json with the writer's hash; the ritual gate's step 12 fails a writer the bench has not seen or that fell below the floor of 70."
+  },
+  "SEAM:BACKUP": {
+   "file": "worker/src/index.js",
+   "purpose": "EX29: the house's own copy. backupNightly lands the record (door_reads, 120 nights), the house reads, the ledger (26 weeks), the calls and this month's claude_jobs in R2 under backups/<day>/ as JSON after memoryDaily each night; the last backup's sizes sit in KV for the health line; desk {run: backup}."
+  },
+  "SEAM:DESK_ROLES": {
+   "file": "worker/src/index.js",
+   "purpose": "EX29: who may run what on the desk. The desk key stands for the owner; an admin (app_user.role admin) runs everything; an editor (role editor) the free passes in DESK_ROLES.EDITOR_RUNS; every run is logged as desk_run with who ran it and their role."
   }
  },
  "planned": [

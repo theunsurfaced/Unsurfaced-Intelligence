@@ -1,0 +1,22 @@
+[
+  { "id": "q01", "query": "Jordan Brand and Gen Z" },
+  { "id": "q02", "query": "Nike in athletic footwear" },
+  { "id": "q03", "query": "New Balance and younger buyers" },
+  { "id": "q04", "query": "Gen Z and hair care" },
+  { "id": "q05", "query": "clean beauty for toddlers and young children" },
+  { "id": "q06", "query": "Stanley cups and the water bottle category" },
+  { "id": "q07", "query": "smart glasses, who buys and who refuses" },
+  { "id": "q08", "query": "luxury in Lagos" },
+  { "id": "q09", "query": "men's skincare in the US" },
+  { "id": "q10", "query": "Liquid Death and the energy drink shelf" },
+  { "id": "q11", "query": "Crocs and collaboration culture" },
+  { "id": "q12", "query": "Duolingo and brand voice on social" },
+  { "id": "q13", "query": "Formula 1 and American audiences" },
+  { "id": "q14", "query": "pickleball and the sporting goods category" },
+  { "id": "q15", "query": "Shein and fast fashion among teens" },
+  { "id": "q16", "query": "the resale market for sneakers" },
+  { "id": "q17", "query": "Erewhon and premium grocery" },
+  { "id": "q18", "query": "Spotify Wrapped and year-end rituals" },
+  { "id": "q19", "query": "women's basketball and its sponsors" },
+  { "id": "q20", "query": "AI companions and loneliness" }
+]

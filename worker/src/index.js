@@ -99,7 +99,13 @@ export default {
         .catch(e => console.log('people_ledger_error', String(e && e.message)))
         .then(() => memoryDaily(env))   // SEAM:MEMORY: every subject's week counted, history filled, what the reads said filed, calls graded
         .then(s => console.log('memory_daily', JSON.stringify(s)))
-        .catch(e => console.log('memory_daily_error', String(e && e.message))));
+        .catch(e => console.log('memory_daily_error', String(e && e.message)))
+        .then(() => backupNightly(env))   // SEAM:BACKUP: the house's own copy, in R2
+        .then(s => console.log('backup', JSON.stringify(s)))
+        .catch(e => console.log('backup_error', String(e && e.message)))
+        .then(() => watchTick(env))   // SEAM:WATCH_LINE: the line read and, if it trips, the house told
+        .then(s => console.log('watch_tick', JSON.stringify(s)))
+        .catch(e => console.log('watch_tick_error', String(e && e.message))));
     } else {
       // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
       // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
@@ -121,7 +127,10 @@ export default {
         .catch(e => console.log('claude_drain_error', String(e && e.message)))
         .then(() => readTick(env, { deep: true, t0 }))   // SEAM:READ_ENGINE: submit queued reads whose children have settled (SEAM:READ_DEEP: and move the deep RECONs, on this invocation's clock)
         .then(s => console.log('read_tick', JSON.stringify(s)))
-        .catch(e => console.log('read_tick_error', String(e && e.message))));
+        .catch(e => console.log('read_tick_error', String(e && e.message)))
+        .then(() => watchTick(env))   // SEAM:WATCH_LINE: the line on the half hour, so a failure is heard within thirty minutes
+        .then(s => console.log('watch_tick', JSON.stringify(s)))
+        .catch(e => console.log('watch_tick_error', String(e && e.message))));
     }
   },
   async fetch(request, env, ctx) {
@@ -162,6 +171,9 @@ export default {
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
       if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
+      if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
+      if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
+      if (path === '/bench/freeze' && request.method === 'POST') return benchFreeze(request, env, origin);   // SEAM:BENCH (desk key)
       if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
       if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
@@ -709,7 +721,7 @@ async function synthesize(body, env, origin, hooks) {
     // seconds), not a rerun of the writer; Quick turned it off on Oct 7 and lost the two rails the Jordan question needed.
     if (quick) body = Object.assign({}, body, { pages: false, gap: false, facts: false });
     const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || '') + (quick ? '|quick' : '') + '|' + EXC_READ.REV);   // SEAM:EXC_QUICK: a read cached before a deploy that changed the writer is compiled again once
-    if (env.RATE_LIMIT) {
+    if (env.RATE_LIMIT && !body.bench) {   // SEAM:BENCH: the bench never reads the cache
       try {
         const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
         if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights) && (!j.partial || body.cache_only)) { j.model = Object.assign({}, j.model, { cached: true }); return reply({ ok: true, data: j }, 200, origin, env); } }
@@ -727,7 +739,7 @@ async function synthesize(body, env, origin, hooks) {
     // SEAM:EXC_SPEED: when the gather already ran these rails (it calls GDELT, HN, Exa and more), they are not
     // called a second time; otherwise the free wire and the paid rail run together, each with a deadline.
     const ran = new Set(Array.isArray(body.rails) ? body.rails.map(x => String(x)) : []);
-    const gathered = body.corpus.some(c => c && c.rail === 'gather');
+    const gathered = !!body.bench || body.corpus.some(c => c && c.rail === 'gather');   // SEAM:BENCH: a frozen pack is already gathered
     const within = (p, ms) => Promise.race([p.catch(excQuiet('wire', [])), new Promise(res => setTimeout(() => res([]), ms))]);
     // The free wire runs unless the gather already asked GDELT and HN; the paid rail unless it already asked Exa.
     const needWire = !(gathered && ran.has('gdelt') && ran.has('hn')), needPaid = !(gathered && ran.has('exa'));
@@ -896,7 +908,8 @@ async function synthesize(body, env, origin, hooks) {
       got = await attempt(Object.assign({}, base, { prompt: usr + tight, reserveOnly: got.c.reason || 'parse_failed' }), 'reserve');
     const compiled = got.c;
     if (!got.p) {
-      // Soft-fail (HTTP 200, ok:false) so the client cleanly falls back to its template read; the passes say why.
+      // Soft-fail (HTTP 200, ok:false): the page says the reading did not finish (its fallback obeys the laws); the passes say why.
+      if (!body.bench && typeof watchNote === 'function') await watchNote(env, 'read_failed', { q: query.slice(0, 120), passes: passes.map(p => p.pass + ':' + (p.reason || p.stop || 'none')) }).catch(excQuiet('watch_read_failed'));   // SEAM:WATCH_ALERT
       return reply({ ok: false, error: 'synthesis_unparsable', passes }, 200, origin, env);
     }
     const parsed = got.p.read;
@@ -968,7 +981,7 @@ async function synthesize(body, env, origin, hooks) {
     const readChecks = excGround(read.concat([brief]).join(' '), merged.concat(measures ? [{ text: excMeasureLine(measures) }] : []));
     // SEAM:READ_LEDGER — persist the read, then let its live signals enter the lake at raw.
     let readId = null;
-    try {
+    if (!body.bench) try {   // SEAM:BENCH: a bench read lands nowhere: no ledger row, no lake capture
       readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
@@ -1000,7 +1013,7 @@ async function synthesize(body, env, origin, hooks) {
     data.score = excReadScore(data, merged, frame0, data.timing);   // SEAM:EXC_SCORE
     console.log('exc_read', JSON.stringify({ q: query.slice(0, 60), ev: merged.length, aside: gate.dropped.length, lane: compiled.lane, passes: passes.length, score: data.score.score, ms: data.timing, harvest: data.harvest }));
     if (env.RATE_LIMIT && compiled.lane === 'live') {
-      try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: partial ? EXC_SPEED.PARTIAL_TTL : EXC_MODEL.CACHE_TTL }); }   // SEAM:EXC_STALL: a partial read waits briefly for the page that lost its stream
+      if (!body.bench) try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: partial ? EXC_SPEED.PARTIAL_TTL : EXC_MODEL.CACHE_TTL }); }   // SEAM:EXC_STALL: a partial read waits briefly for the page that lost its stream
       catch (e) { console.log('exc_cache_write', String(e && e.message).slice(0, 80)); }
     }
     return reply({ ok: true, data }, 200, origin, env);
@@ -7488,6 +7501,11 @@ async function excavateGather(request, env, origin, wctx) {
     const write = lakeCapture(env, g.items, { provenance: 'live_gather', query: q, cls: g.cls }).catch(e => console.log('gather_capture', String(e && e.message).slice(0, 80)));
     if (wctx && wctx.waitUntil) wctx.waitUntil(write); else await write;
   }
+  if (g.ok && Array.isArray(g.rails)) {   // SEAM:WATCH_LINE: which rails were asked and answered nothing, for the health line
+    const asked = g.rails.filter(r => r && !r.skipped), silent = asked.filter(r => !(r.n > 0)).map(r => r.id);
+    const ev = logEvent(env, 'intelligence', 'watch', 'exc_rails', null, { q: q.slice(0, 80), cls: g.cls || null, asked: asked.length, silent });
+    if (wctx && wctx.waitUntil) wctx.waitUntil(ev);
+  }
   return json(g, 200, origin, env);
 }
 
@@ -7686,12 +7704,15 @@ async function deskRunGuarded(request, env, origin) {
   // SEAM:DESK_AUTH: a desk key of its own (DESK_API_KEY; the field key stands in until one is set), or a signed-in admin.
   const key = request.headers.get('x-desk-key') || request.headers.get('x-field-key') || '';
   const deskKey = env.DESK_API_KEY || env.FIELD_API_KEY || '';
-  let allowed = !!deskKey && key === deskKey;
-  if (!allowed) { const user = await authenticate(request, env).catch(excQuiet('desk_auth', null)); allowed = !!(user && await callerIsAdmin(env, user.id).catch(excQuiet('desk_admin', false))); }
-  if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  let allowed = !!deskKey && key === deskKey, who = allowed ? 'desk-key' : null, role = allowed ? 'owner' : null;
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  // SEAM:DESK_ROLES: an admin runs everything; an editor the free passes; every run is logged with who ran it
+  if (!allowed) { const user = await authenticate(request, env).catch(excQuiet('desk_auth', null)); const r = user ? await callerRole(env, user.id).catch(() => ({ role: null, email: null })) : { role: null, email: null };
+    role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
+  if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'health' ? await watchHealth(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -8830,6 +8851,207 @@ async function doorPublish(env) {
 async function doorSet(env) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(DOOR.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('door_set')(e); }
   return null;
+}
+/* ═══ SEAM:WATCH_LINE: the health line. What the house needs to know each morning and the moment something breaks: last night's
+ * pass (earned, written, failed, graded), the rails that answered on the last reads, today's spend against every cap, the writer's
+ * failures today, the last backup, the running version. Read from the ledgers the engine already keeps; no model is asked. ═══ */
+const WATCH = { KEY: 'watch:v1', TTL: 1800, ALERT_TTL: 6 * 3600, CRON_LATE_H: 30, RAIL_SILENT_MIN: 6, SPEND_WARN: 0.8, PPLX_WARN: 0.9, FAIL_BURST: 3, BACKUP_LATE_H: 48, FAIL_KEY: 'watch:fail:' };
+async function watchHealth(env) {
+  const now = Date.now(), today = new Date().toISOString().slice(0, 10), out = { at: new Date(now).toISOString(), version: null, cron: null, called: null, rails: null, spend: {}, pplx: null, writer: null, backup: null, trips: [] };
+  try { out.version = env.CF_VERSION_METADATA ? { id: String(env.CF_VERSION_METADATA.id || '').slice(0, 36), tag: env.CF_VERSION_METADATA.tag || null } : null; } catch (e) { out.version = null; }
+  const ev = async (event) => ((await sbRest(env, 'activity_events?event=eq.' + event + '&select=created_at,meta&order=created_at.desc&limit=1').catch(excQuiet('watch_ev', []))) || [])[0] || null;
+  const dp = await ev('door_pass');
+  if (dp) { const age = (now - Date.parse(dp.created_at)) / 36e5; out.cron = Object.assign({ at: dp.created_at, age_h: Math.round(age) }, dp.meta || {});
+    if (age > WATCH.CRON_LATE_H) out.trips.push({ kind: 'cron_late', say: 'the nightly pass last ran ' + Math.round(age) + ' hours ago' });
+    if ((dp.meta && dp.meta.earned) > 0 && !(dp.meta.queued > 0)) out.trips.push({ kind: 'door_failed', say: 'last night ' + dp.meta.earned + ' readings were earned and none was written (' + (dp.meta.failed || 0) + ' failed)' }); }
+  else out.trips.push({ kind: 'cron_missing', say: 'no nightly pass is on record' });
+  const dc = await ev('door_called'); if (dc) out.called = Object.assign({ at: dc.created_at }, dc.meta || {});
+  // the rails: the last reads' receipts name the rails that answered and the ones that stayed silent (exc_rails events, when logged)
+  try {
+    const rows = (await sbRest(env, 'activity_events?event=eq.exc_rails&select=created_at,meta&order=created_at.desc&limit=5').catch(excQuiet('watch_rails', []))) || [];
+    if (rows.length) { const silent = {}; for (const r of rows) for (const id of ((r.meta && r.meta.silent) || [])) silent[id] = (silent[id] || 0) + 1;
+      out.rails = { reads: rows.length, silent_every_time: Object.keys(silent).filter(k => silent[k] === rows.length) };
+      if (out.rails.silent_every_time.length >= WATCH.RAIL_SILENT_MIN) out.trips.push({ kind: 'rails_silent', say: out.rails.silent_every_time.length + ' rails answered nothing on the last ' + rows.length + ' reads: ' + out.rails.silent_every_time.join(', ') }); }
+  } catch (e) { excQuiet('watch_rails')(e); }
+  // spend against every cap
+  for (const t of Object.keys(CLAUDE.TIERS)) {
+    const spent = await claudeSpent(env, t).catch(excQuiet('watch_spent', null)), cap = claudeCap(env, t);
+    out.spend[t] = { spent, cap, pct: spent == null || !cap ? null : Math.round(100 * spent / cap) };
+    if (spent != null && cap && spent >= cap * WATCH.SPEND_WARN) out.trips.push({ kind: 'spend_' + t, say: 'the ' + t + ' tier is at $' + spent.toFixed(2) + ' of its $' + cap + ' cap' });
+  }
+  try { const pp = env.RATE_LIMIT ? parseFloat(await env.RATE_LIMIT.get('pplxd:' + today)) || 0 : 0; const cap = parseFloat(env.PPLX_DAILY_DOLLARS) || (CONFIG.PPLX_DAILY_DOLLARS * (evolutionMode(env) ? 5 : 1));
+    out.pplx = { spent: pp, cap }; if (cap && pp >= cap * WATCH.PPLX_WARN) out.trips.push({ kind: 'pplx_cap', say: 'Perplexity is at $' + pp.toFixed(2) + ' of its $' + cap.toFixed(2) + ' day' }); } catch (e) { excQuiet('watch_pplx')(e); }
+  // the writer today: live reads that failed outright, counted as they happen (watchNote), and the jobs ledger's errors
+  try {
+    const fails = env.RATE_LIMIT ? parseInt(await env.RATE_LIMIT.get(WATCH.FAIL_KEY + today), 10) || 0 : 0;
+    const jobs = (await sbRest(env, 'claude_jobs?created_at=gte.' + today + '&select=status,stop_reason,tier,kind&limit=2000').catch(excQuiet('watch_jobs', []))) || [];
+    const errors = jobs.filter(j => /error|fail|timeout/i.test(String(j.status || '') + ' ' + String(j.stop_reason || ''))).length;
+    out.writer = { calls_today: jobs.length, errors_today: errors, reads_failed_today: fails };
+    if (fails >= WATCH.FAIL_BURST) out.trips.push({ kind: 'writer_failing', say: fails + ' live reads failed outright today' });
+  } catch (e) { excQuiet('watch_writer')(e); }
+  try { const b = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get('backup:last')) || 'null') : null; out.backup = b;
+    const age = b && b.at ? (now - Date.parse(b.at)) / 36e5 : null;
+    if (age == null || age > WATCH.BACKUP_LATE_H) out.trips.push({ kind: 'backup_late', say: age == null ? 'no backup is on record' : 'the last backup is ' + Math.round(age) + ' hours old' }); } catch (e) { excQuiet('watch_backup')(e); }
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(WATCH.KEY, JSON.stringify(out), { expirationTtl: WATCH.TTL }); } catch (e) { excQuiet('watch_put')(e); } }
+  return out;
+}
+/* SEAM:WATCH_ALERT: one email when the line trips, each kind at most once in ALERT_TTL. To ALERT_TO, else every admin. Resend, like the
+ * house's other mail. The alert is logged whether or not it could send. */
+async function watchRecipients(env) {
+  if (env.ALERT_TO) return String(env.ALERT_TO).split(',').map(x => x.trim()).filter(Boolean).slice(0, 5);
+  const rows = (await sbRest(env, 'app_user?role=eq.admin&select=email&limit=5').catch(excQuiet('watch_admins', []))) || [];
+  return rows.map(r => r.email).filter(Boolean);
+}
+async function watchAlert(env, trips, line) {
+  const fresh = [];
+  for (const t of trips || []) {
+    const k = 'alert:' + t.kind;
+    try { if (env.RATE_LIMIT && await env.RATE_LIMIT.get(k)) continue; if (env.RATE_LIMIT) await env.RATE_LIMIT.put(k, '1', { expirationTtl: WATCH.ALERT_TTL }); } catch (e) { excQuiet('alert_kv')(e); }
+    fresh.push(t);
+  }
+  if (!fresh.length) return { sent: 0, trips: trips.length };
+  const to = await watchRecipients(env);
+  const html = '<div style="font-family:system-ui;max-width:560px"><p style="font-size:12px;letter-spacing:.1em;color:#888">EXCAVATE WATCH</p><h2 style="margin:0 0 12px">' + fresh.length + (fresh.length === 1 ? ' trip' : ' trips') + ' on the line</h2><ul>' +
+    fresh.map(t => '<li style="margin:0 0 8px">' + esc(t.say) + '</li>').join('') + '</ul>' +
+    (line && line.spend ? '<p style="color:#666;font-size:13px">Spend this month: ' + Object.keys(line.spend).map(k => k + ' $' + (line.spend[k].spent == null ? '?' : line.spend[k].spent.toFixed(2)) + ' of $' + line.spend[k].cap).join(', ') + '.</p>' : '') +
+    '<p style="color:#666;font-size:13px">The full line: GET /watch/line with the desk key.' + (line && line.version && line.version.id ? ' Version ' + esc(line.version.id.slice(0, 8)) + '.' : '') + '</p></div>';
+  let sent = 0;
+  for (const addr of to) { const r = await sendEmail(env, { to: addr, subject: 'EXCAVATE: ' + fresh.map(t => t.kind.replace(/_/g, ' ')).join(', '), html }).catch(excQuiet('alert_send', { ok: false })); if (r && r.ok) sent++; }
+  logEvent(env, 'intelligence', 'watch', 'watch_alert', null, { trips: fresh.map(t => t.kind), to: to.length, sent });
+  return { sent, to: to.length, trips: fresh.map(t => t.kind) };
+}
+async function watchTick(env) {
+  const line = await watchHealth(env);
+  const alert = line.trips.length ? await watchAlert(env, line.trips, line) : { sent: 0, trips: 0 };
+  return { trips: line.trips.map(t => t.kind), alert };
+}
+/* SEAM:WATCH_ALERT: a live read's writer failed outright. Counted on the day; the third failure pages the house (the first one is
+ * logged, and the half-hour tick will say so if it recurs). */
+async function watchNote(env, kind, meta) {
+  const today = new Date().toISOString().slice(0, 10);
+  let n = 1;
+  try { if (env.RATE_LIMIT) { n = (parseInt(await env.RATE_LIMIT.get(WATCH.FAIL_KEY + today), 10) || 0) + 1; await env.RATE_LIMIT.put(WATCH.FAIL_KEY + today, String(n), { expirationTtl: 36 * 3600 }); } } catch (e) { excQuiet('watch_note')(e); }
+  logEvent(env, 'intelligence', 'watch', kind, null, Object.assign({ n }, meta || {}));
+  if (n >= WATCH.FAIL_BURST) await watchAlert(env, [{ kind: 'writer_failing', say: n + ' live reads failed outright today; the last was "' + String((meta && meta.q) || '').slice(0, 80) + '"' }], null).catch(excQuiet('watch_note_alert'));
+  return n;
+}
+/* SEAM:DESK_ROLES: who may run what. An admin runs everything; an editor (app_user.role editor) the free passes that read or republish
+ * and never spend a model; the desk key stands for the owner. Every run is logged with who ran it. */
+const DESK_ROLES = { EDITOR_RUNS: ['record', 'called', 'door_publish', 'voices', 'score', 'backup', 'watch', 'health'] };
+async function callerRole(env, uid) {
+  try { const r = await sbRest(env, `app_user?id=eq.${uid}&select=role,email`); return r && r[0] ? { role: r[0].role || null, email: r[0].email || null } : { role: null, email: null }; }
+  catch (e) { return { role: null, email: null }; }
+}
+async function watchRoute(request, env, origin) {
+  const key = request.headers.get('x-desk-key') || request.headers.get('x-field-key') || '';
+  const deskKey = env.DESK_API_KEY || env.FIELD_API_KEY || '';
+  let allowed = !!deskKey && key === deskKey;
+  if (!allowed) { const user = await authenticate(request, env).catch(excQuiet('watch_auth', null)); const role = user ? await callerRole(env, user.id) : { role: null }; allowed = role.role === 'admin' || role.role === 'editor'; }
+  if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  const path = new URL(request.url).pathname;
+  if (path === '/watch/test' && request.method === 'POST') return json({ ok: true, alert: await watchAlert(env, [{ kind: 'test_' + Date.now().toString(36), say: 'a test of the watch, sent by hand' }], await watchHealth(env)) }, 200, origin, env);
+  const line = await watchHealth(env);
+  const runs = (await sbRest(env, 'activity_events?event=eq.desk_run&select=created_at,meta&order=created_at.desc&limit=20').catch(excQuiet('watch_runs', []))) || [];
+  return json({ ok: true, line, desk_runs: runs.map(r => Object.assign({ at: r.created_at }, r.meta || {})) }, 200, origin, env);
+}
+/* ═══ SEAM:BACKUP: the house's own copy. Each night the record (door_reads, 120 nights), the house reads, the ledger (subject_weeks, 26
+ * weeks), the calls and this month's claude_jobs land in R2 as JSON under backups/<day>/, independent of the database's plan. The
+ * last backup's sizes sit in KV for the health line. ═══ */
+const BACKUP = { PREFIX: 'backups/', DOOR_NIGHTS: 120, WEEKS: 26, MAX_ROWS: 20000 };
+async function backupNightly(env) {
+  if (!env.MEDIA) return { skipped: 'no_r2' };
+  const day = new Date().toISOString().slice(0, 10), out = { day, tables: {}, at: new Date().toISOString() };
+  const since = new Date(Date.now() - BACKUP.DOOR_NIGHTS * 864e5).toISOString().slice(0, 10);
+  const sets = [
+    ['door_reads', 'door_reads?night=gte.' + since + '&select=id,frame_key,night,status,frame,measures,read,meta,cost_usd,created_at,updated_at&order=night.asc,id.asc'],
+    ['house_reads', 'house_reads?select=id,kind,label,status,period_start,period_end,read,meta,created_at,updated_at&order=created_at.asc'],
+    ['subject_weeks', LEDGER.TABLE + '?week=gte.' + memoryAddWeeks(ledgerWeek(), -BACKUP.WEEKS) + '&select=*&order=week.asc,subject_key.asc'],
+    ['cluster_calls', 'cluster_calls?select=*&order=called_at.asc'],
+    ['claude_jobs', 'claude_jobs?created_at=gte.' + day.slice(0, 7) + '-01&select=*&order=created_at.asc']
+  ];
+  for (const [name, path] of sets) {
+    try {
+      const rows = await memoryAll(env, path, BACKUP.MAX_ROWS);
+      const body = JSON.stringify({ table: name, day, rows: rows.length, data: rows });
+      await env.MEDIA.put(BACKUP.PREFIX + day + '/' + name + '.json', body, { httpMetadata: { contentType: 'application/json' } });
+      out.tables[name] = { rows: rows.length, bytes: body.length };
+    } catch (e) { out.tables[name] = { error: String(e && e.message).slice(0, 120) }; }
+  }
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put('backup:last', JSON.stringify(out), { expirationTtl: 14 * 86400 }); } catch (e) { excQuiet('backup_kv')(e); } }
+  logEvent(env, 'intelligence', 'watch', 'backup', null, out);
+  return out;
+}
+/* ═══ SEAM:BENCH: the writer's quality, measured. A frozen pack (query, frame, evidence items the gather returned once) is written by the
+ * live writer with nothing re-gathered (rails marked as run, pages, gap, facts and the framed retry off) and nothing landed (no cache,
+ * no ledger row, no lake capture). The read is graded: deterministic checks on the laws the code can see (the headline's length and
+ * purity, the dek's figure, every number in its evidence, no dash, the moves count and their findings) and one Haiku rubric on the laws
+ * only a reader can judge (say it once, confidence frames the claim, limits first, nothing off the frame). Score 0 to 100. ═══ */
+const BENCH = { KEY: 'bench:last', GRADE_TOKENS: 700, GRADE_MS: 25000, WEIGHTS: { code: 60, reader: 40 } };
+const BENCH_RUBRIC = 'You grade a cultural-intelligence read against the house laws. Return JSON only: {"say_it_once":0-10 (no figure, name or claim repeated across findings and moves),' +
+  '"confidence_frames":0-10 (every finding is stated at the strength its evidence earns; a weak line is hedged in the sentence),"limits_first":0-10 (what the evidence cannot show is said before conclusions that need it),' +
+  '"on_frame":0-10 (nothing speaks of a market, brand or audience the frame did not name),"specific":0-10 (findings name concrete things from the evidence, not categories),"notes":["at most 4 short notes naming the worst breach each"]}';
+function benchCodeChecks(d) {
+  const read = Array.isArray(d.read) ? d.read : [], h = String(read[0] || ''), dek = String(read[1] || '');
+  const words = t => t.trim().split(/\s+/).filter(Boolean).length;
+  const checks = {
+    headline_length: h ? (words(h) >= 6 && words(h) <= 12) : false,
+    headline_pure: h ? !/[\d%;:]|\b(19|20)\d\d\b/.test(h) : false,
+    dek_figure: dek ? (words(dek) <= 30 && /\d/.test(dek)) : false,
+    numbers_in_evidence: !((d.read_checks && d.read_checks.ungrounded || []).length) && (d.insights || []).every(x => !(x.checks && x.checks.ungrounded || []).length) && (d.ideas || []).every(x => !(x.checks && x.checks.ungrounded || []).length),
+    no_dash: !/\u2014/.test(JSON.stringify([d.read, d.brief, (d.insights || []).map(x => [x.title, x.excerpt]), (d.ideas || []).map(x => [x.headline, x.body, x.because, x.proof])])),
+    moves_count: (d.ideas || []).length >= 2 && (d.ideas || []).length <= 6,
+    moves_follow: (d.ideas || []).every(x => Number.isInteger(x.from)),
+    findings_count: (d.insights || []).length >= 3 && (d.insights || []).length <= 8,
+    confidence_earned: (d.insights || []).some(x => x.confidence === 'High' || x.confidence === 'Medium'),
+    brief_present: !!(d.brief && String(d.brief).length > 80)
+  };
+  const keys = Object.keys(checks), passed = keys.filter(k => checks[k]).length;
+  return { checks, passed, of: keys.length, score: Math.round(100 * passed / keys.length) };
+}
+async function benchGrade(env, d, frame) {
+  const body = JSON.stringify({ frame: frame || null, read: d.read, brief: d.brief, findings: (d.insights || []).map(x => ({ title: x.title, excerpt: x.excerpt, confidence: x.confidence })), moves: (d.ideas || []).map(x => ({ headline: x.headline, body: x.body, proof: x.proof })) }).slice(0, 14000);
+  const r = await callClaude(env, 'frame', { system: BENCH_RUBRIC, prompt: body, max_tokens: BENCH.GRADE_TOKENS, temperature: 0, kind: 'bench_grade', timeout_ms: BENCH.GRADE_MS, meta: { surface: 'bench' } });
+  if (!r || !r.ok) return { ok: false, error: String((r && r.error) || 'none') };
+  const g = extractJson(r.text || '') || {};
+  const dims = ['say_it_once', 'confidence_frames', 'limits_first', 'on_frame', 'specific'].map(k => Math.max(0, Math.min(10, Number(g[k]) || 0)));
+  return { ok: true, dims: Object.fromEntries(['say_it_once', 'confidence_frames', 'limits_first', 'on_frame', 'specific'].map((k, i) => [k, dims[i]])), score: Math.round(100 * dims.reduce((a, b) => a + b, 0) / 50), notes: (Array.isArray(g.notes) ? g.notes : []).slice(0, 4).map(x => String(x).slice(0, 200)), cost_usd: r.cost_usd || null };
+}
+/* SEAM:BENCH: a pack is frozen once from a real gather (the frame made, the rails asked, nothing captured to the lake), then kept in the
+ * repo so every bench run writes from the same evidence. */
+async function benchFreeze(request, env, origin) {
+  const key = request.headers.get('x-desk-key') || request.headers.get('x-field-key') || '';
+  const deskKey = env.DESK_API_KEY || env.FIELD_API_KEY || '';
+  if (!(deskKey && key === deskKey)) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const q = String(body.query || '').slice(0, 200).trim();
+  if (!q) return json({ ok: false, error: 'missing_query' }, 200, origin, env);
+  const frame = excFrameClean(await excFrameFor(env, q));
+  const g = await gatherOpenSignals(env, q, { frame: frame || null });
+  if (!g || !g.ok) return json({ ok: false, error: 'gather_failed' }, 200, origin, env);
+  const items = (g.items || []).slice(0, 80).map(it => ({ lens: it.lens || 'market', source: it.source_name || it.source || '', title: it.title, text: String(it.text || it.snippet || '').slice(0, 700), url: it.url || '', published_at: it.published_at || null, kind: it.kind || null, tier: it.source_tier || it.tier || null, rail: it.rail || 'gather', entity: it.entity || null, stance: it.stance || null, image: it.image || null, country: it.country || null }));
+  return json({ ok: true, pack: { id: body.id || null, query: q, frame, frozen_at: new Date().toISOString(), cls: g.cls || null, rails: (g.rails || []).map(r => ({ id: r.id, n: r.n, ok: r.ok })), items } }, 200, origin, env);
+}
+async function benchRun(request, env, origin) {
+  const key = request.headers.get('x-desk-key') || request.headers.get('x-field-key') || '';
+  const deskKey = env.DESK_API_KEY || env.FIELD_API_KEY || '';
+  let allowed = !!deskKey && key === deskKey;
+  if (!allowed) { const user = await authenticate(request, env).catch(excQuiet('bench_auth', null)); allowed = !!(user && await callerIsAdmin(env, user.id).catch(excQuiet('bench_admin', false))); }
+  if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const pack = body.pack || {};
+  if (!pack.query || !Array.isArray(pack.items) || !pack.items.length) return json({ ok: false, error: 'bad_pack' }, 200, origin, env);
+  const t0 = Date.now();
+  const req = { query: String(pack.query).slice(0, 300), mode: 'report', depth: body.depth === 'quick' ? 'quick' : 'full', frame: pack.frame || null, corpus: pack.items.slice(0, 80),
+    rails: ['gdelt', 'hn', 'exa', 'pplx', 'competitors', 'counter'], pages: false, gap: false, facts: false, framed: false, bench: true };
+  const d = await synthesize(req, env, origin, { reply: x => x });
+  if (!d || !d.ok || !d.data) return json({ ok: false, error: (d && d.error) || 'no_read', passes: d && d.passes || null }, 200, origin, env);
+  const code = benchCodeChecks(d.data);
+  const reader = body.grade === false ? { ok: false, skipped: true } : await benchGrade(env, d.data, pack.frame || d.data.frame || null);
+  const score = reader.ok ? Math.round((code.score * BENCH.WEIGHTS.code + reader.score * BENCH.WEIGHTS.reader) / 100) : code.score;
+  const out = { ok: true, id: pack.id || null, query: req.query, depth: req.depth, ms: Date.now() - t0, score, code, reader, model: d.data.model || null, read: d.data.read || null, findings: (d.data.insights || []).length, moves: (d.data.ideas || []).length, cost_usd: (d.data.model && d.data.model.cost_usd) || null };
+  if (env.RATE_LIMIT) { try { const prev = JSON.parse((await env.RATE_LIMIT.get(BENCH.KEY)) || '{"runs":[]}'); prev.runs = [out].concat(prev.runs || []).slice(0, 60); prev.at = new Date().toISOString(); await env.RATE_LIMIT.put(BENCH.KEY, JSON.stringify(prev), { expirationTtl: 30 * 86400 }); } catch (e) { excQuiet('bench_kv')(e); } }
+  logEvent(env, 'intelligence', 'bench', 'bench_run', null, { id: out.id, query: out.query, score, code: code.score, reader: reader.ok ? reader.score : null, ms: out.ms });
+  return json(out, 200, origin, env);
 }
 /* SEAM:RECORD_WATCH: the nightly grade. Every ready read whose watch has come due and has no grade is measured by the database the
  * same way its read was (excMeasures on its frame) and marked held or missed on its row. A miss stays. No model is asked. */

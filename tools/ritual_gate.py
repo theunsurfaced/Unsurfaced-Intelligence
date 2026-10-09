@@ -247,6 +247,7 @@ SPENDERS = {
     'excFacts': 'claudeGate on the frame tier (Haiku, its own cap) + a 9s deadline per chunk; called by synthesize only (excavateAuth), at most 4 chunks of 11 lines per read',
     'excGapCheck': 'claudeGate on the frame tier (Haiku, its own cap) + a 4.5s deadline; one call per read, called by synthesize only (excavateAuth)',
     'excFrameFor': 'claudeGate on the frame tier (Haiku, its own $3 cap) + a week of KV cache per query + a 4.5s deadline; callers: synthesize and gather (excavateAuth) and excFrameTiles (the public feed, at most one set of 12 per edition, cached 6h)',
+    'benchGrade': 'claudeGate on the frame tier (Haiku); called by benchRun only, which the desk key or a signed-in admin opens (SEAM:BENCH); one call per pack, at most sixty kept',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")
@@ -292,6 +293,40 @@ for f in worker_js:
     elif json.loads(_pm.group(1)) != load(_mf):
         FAIL.append(f"[prompt] {f}: READ_METHOD differs from {_mf}; run tools/sync_method.py")
     print(f"  prompt  {f}: READ_METHOD {'in sync' if os.path.exists(_mf) and json.loads(_pm.group(1)) == load(_mf) else 'DRIFT'}")
+
+# ── 12. The bench (SEAM:BENCH) ───────────────────────────────────────────
+# The writer's slices (the laws, the prompts, the room) are hashed exactly as tools/bench/writer_hash.mjs hashes them. When the
+# hash differs from the one tools/bench/last.json was written against, the bench has not seen this writer: the gate fails. When
+# last.json is missing the step warns (the first bench has not run); below the floor it fails.
+_WRITER_SLICES = [('const EXC_HEADLINE_LAW = ', 'const EXC_ROOM = '), ('const EXC_MOVE_LAW = ', 'function excReportPrompt('), ('function excReportPrompt(', 'function excAnchors('),
+                  ('const EXC_NUMBER_LAW = ', None), ('const EXC_VOICE_SYS = ', None), ('const EXC_TIME_LAW = ', None), ('function excDoorPrompt(', '// The compiled text becomes'),
+                  ("    const tight = ' ROOM LAW", '    const passes = [];')]
+_DECL = re.compile(r"\n(?=(?:const |let |function |async function |/\*|// ))")
+def writer_hash(src):
+    parts = []
+    for a, b in _WRITER_SLICES:
+        i = src.find(a)
+        if i < 0: raise ValueError('writer slice missing: ' + a)
+        if b: j = src.find(b, i + 1)
+        else:
+            m = _DECL.search(src, i + len(a)); j = m.start() if m else len(src)
+        if j < 0: raise ValueError('writer slice end missing: ' + str(b))
+        parts.append(src[i:j])
+    return hashlib.sha256('\n'.join(parts).encode('utf-8')).hexdigest()
+for f in worker_js:
+    try: _wh = writer_hash(load(f))
+    except ValueError as e: FAIL.append(f"[bench] {f}: {e}"); continue
+    _bf = "tools/bench/last.json"
+    if not os.path.exists(_bf):
+        print(f"  bench   {f}: writer {_wh[:12]}; no bench on record yet (tools/bench/run.mjs)")
+        continue
+    try: _b = json.load(open(_bf))
+    except Exception as e: FAIL.append(f"[bench] {_bf} unreadable: {e}"); continue
+    if _b.get("writer_hash") != _wh:
+        FAIL.append(f"[bench] {f}: the writer changed since the bench last ran ({str(_b.get('writer_hash'))[:12]} -> {_wh[:12]}); run tools/bench/run.mjs against the uploaded version")
+    elif _b.get("mean") is not None and _b.get("mean") < _b.get("floor", 70):
+        FAIL.append(f"[bench] mean {_b.get('mean')} is below the floor {_b.get('floor', 70)}")
+    print(f"  bench   {f}: writer {_wh[:12]}, last run {str(_b.get('at'))[:10]} mean {_b.get('mean')} on {_b.get('ok')} of {_b.get('packs')} packs")
 
 # ── verdict ──────────────────────────────────────────────────────────────
 print()

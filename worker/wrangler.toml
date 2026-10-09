@@ -23,6 +23,12 @@ bucket_name = "unsurfaced-media"
 binding = "RATE_LIMIT"               # per-user AI limits + arcade replay guard (arc:*)
 id = "1641a0a61b554cc582cd79c7aed0aeb6"
 
+# SEAM:WATCH_LINE (EX29): the running version, for the health line; preview URLs so a version can be uploaded, benched and then promoted.
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
+preview_urls = true
+
 # ── Observability ───────────────────────────────────────────────────
 # `[observability] enabled = true` alone was present here and did NOT persist
 # console.log output - only Cloudflare's own invocation records. The nested
@@ -48,7 +54,7 @@ enabled = true
 #    SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
 #    STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY,
 #    ALLOWED_ORIGINS, EMAIL_FROM, APP_URL,
-#    LEADERBOARD_HMAC_SECRET  (add after this deploy)
+#    LEADERBOARD_HMAC_SECRET, DESK_API_KEY, ALERT_TO (SEAM:WATCH_ALERT: who the watch emails; every admin when unset)
 
 # ── Cron: DAILY pipeline (06:10 UTC daily, off the :00 drain minute) ──────────────────────────
 [triggers]
