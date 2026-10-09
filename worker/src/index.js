@@ -91,6 +91,9 @@ export default {
         .then(() => doorPass(env))   // SEAM:EXC_DOOR v2: the door compiles after the feed and the tracks are fresh
         .then(s => console.log('door_pass', JSON.stringify(s)))
         .catch(e => console.log('door_pass_error', String(e && e.message)))
+        .then(() => doorCalled(env))   // SEAM:RECORD_WATCH: the watches that came due, graded on the database's counts
+        .then(s => console.log('door_called', JSON.stringify(s)))
+        .catch(e => console.log('door_called_error', String(e && e.message)))
         .then(async () => peopleLedger(env, await doorSet(env)))   // SEAM:PEOPLE: who spoke to the board, once a day
         .then(n => console.log('people_ledger', n))
         .catch(e => console.log('people_ledger_error', String(e && e.message)))
@@ -158,6 +161,8 @@ export default {
       if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
+      if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
+      if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
       if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
       if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
@@ -171,6 +176,7 @@ export default {
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
       if (path.startsWith('/s/') && request.method === 'GET') return mineSharePage(path, env);
+      if (path.startsWith('/i/') && request.method === 'GET') return insightSharePage(path, env);   // SEAM:RECORD_ROUTE: an insight's permalink
       if (path === '/mine/respond' && request.method === 'POST') return mineGuestRespond(request, env, origin);
       if (path === '/beacon' && request.method === 'POST') return beaconTrack(request, env, origin);
       if (path === '/mine/t' && request.method === 'GET') return mineTokenStudy(url, env, origin);
@@ -825,7 +831,9 @@ async function synthesize(body, env, origin, hooks) {
       (isReport ? 'Never restate source counts or citation totals as findings: say what the evidence MEANS. ' +
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
-    const usr = excFrameBlock(frame0) + excMeasureLine(measures) + (isReport ? excReportPrompt(query, evidence) : usrPlain);   // SEAM:EXC_FRAME + SEAM:EXC_MEASURE
+    const house = typeof excHouseLines === 'function' ? await excHouseLines(env, frame0).catch(excQuiet('house_lines', [])) : [];   // SEAM:EXC_HOUSE
+    const houseBlock = house.length ? 'WHAT THE HOUSE DEPLOYED (our own dated insights on this subject; context for continuity, never evidence, never a source to cite; if the evidence now says otherwise, say so plainly):\n' + house.map(h => h.deployed + ': ' + h.claim + (h.called ? ' [' + h.called + ']' : '')).join('\n') + '\n\n' : '';
+    const usr = excFrameBlock(frame0) + excMeasureLine(measures) + houseBlock + (isReport ? excReportPrompt(query, evidence) : usrPlain);   // SEAM:EXC_FRAME + SEAM:EXC_MEASURE + SEAM:EXC_HOUSE
 
     // SEAM:ONE_RAIL, now SEAM:EXC_INTEL: THE READ compiles on the live lane (Sonnet 5) and never fails: the reserve model stands behind it.
     /* SEAM:EXC_PARSE: a read the model wrote is a read the client gets. The report used to have 3600 tokens of room
@@ -973,6 +981,8 @@ async function synthesize(body, env, origin, hooks) {
     const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL
       depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
       thin: thin ? merged.length : null,   // SEAM:EXC_THIN: the page says the read is building
+      blind: EXC_BLIND,   // SEAM:EXC_BLIND
+      house: house,   // SEAM:EXC_HOUSE: the house's own deployed insights on this frame, shown as context on the receipt
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
       relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, hits: gate.hits || null, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
@@ -1068,6 +1078,9 @@ function extractJson(s) {
  * read is used when it carries at least EXC_ROOM.MIN_SALVAGE findings. Only text that never parses is a miss. */
 const EXC_READ = { REV: 'r2', QUICK_MS: 45000 };   // SEAM:EXC_QUICK: the read cache's revision and the quick writer's deadline
 const EXC_THIN = { MIN: 12 };   // SEAM:EXC_THIN: under this many lines on the frame, the read says it is building
+/* SEAM:EXC_BLIND: what the engine does not see, said on every read. The house states its blind spots as a receipt; the line changes
+ * only when a rail is added (EX31 adds Bluesky, Reddit and Shorts). */
+const EXC_BLIND = 'This read does not see TikTok, Instagram or X. Its voices come from YouTube and Mastodon; its news from the open web and the lake.';
 /* SEAM:EXC_HEADLINE: the Method's headline law, for the live writer. Oct 8: a quick read opened on a 40-word line with three claims, a
  * parenthetical source, a semicolon and an off-market clause, and its move argued against its own findings. */
 const EXC_HEADLINE_LAW = 'HEADLINE LAW: the first line of "read" is the headline: 6 to 12 words, present tense, one claim about the people the question is about, ' +
@@ -7012,6 +7025,7 @@ function envelope(rail, o) {
     kind: o.kind || rail.kind,
     published_at: o.published_at || null,
     image: (o.image && /^https:\/\//.test(o.image)) ? String(o.image).slice(0, 600) : null,
+    country: env1(o.country).slice(0, 40) || null,   // SEAM:EXC_PLACE: where the outlet publishes from, when the rail says
     license: o.license || rail.license || null,
     entity_hints: o.entity_hints || hintsOf((o.title || '') + ' ' + (o.text || ''), ''),
     provenance: 'live',
@@ -7077,7 +7091,7 @@ const RAIL_FNS = {
   },
   async gdelt(env, q, ctx, rail) {
     const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&maxrecords=10&format=json&sort=hybridrel&timespan=1month&query=' + encodeURIComponent(q + ' sourcelang:english'));
-    return ((j && j.articles) || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.domain ? 'via ' + a.domain : '', image: a.socialimage, source_name: a.domain || 'GDELT',
+    return ((j && j.articles) || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.domain ? 'via ' + a.domain : '', image: a.socialimage, source_name: a.domain || 'GDELT', country: a.sourcecountry || null,   // SEAM:EXC_PLACE
       published_at: a.seendate ? a.seendate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z') : null }));
   },
   async gdelt_volume(env, q, ctx, rail) {
@@ -7677,7 +7691,7 @@ async function deskRunGuarded(request, env, origin) {
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   let body = {}; try { body = await request.json(); } catch (e) {}
   const which = String(body.run || 'score');
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -8499,7 +8513,48 @@ async function memoryRecord(env) {
  * Every read is kept in door_reads, so a tile says what changed since last
  * night. A visitor pays nothing: tiles come from KV, the read from the table.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const DOOR = { WANT: 12, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 9000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 2, VOICE: '3.2q' };   // Oct 3: 2600 was spent thinking, 11 of 12 reads landed empty; EVERY_D 2: a new batch every other night while the platform evolves
+const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 9000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.3r' };   // SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
+/* SEAM:RECORD_LAW: when a subject earns a read. New on the board: earned. Read before and the evidence changed: earned only when it
+ * moved past the threshold since that read (stories this week up or down by MIN_DELTA, or velocity past MIN_VEL percent, or MIN_OUTLETS
+ * new outlets); otherwise its last read stands (reused) and nothing is spent. At most CAP reads a night, the largest moves first; a
+ * subject past the cap keeps its last read, or waits if it has none. A night that earned nothing writes nothing. The watch a read
+ * carries is checked between WATCH_MIN_D and WATCH_MAX_D days out. */
+const DOOR_LAW = { CAP: 6, MIN_DELTA: 3, MIN_VEL: 40, MIN_OUTLETS: 2, WATCH_MIN_D: 14, WATCH_MAX_D: 45 };
+// PURE: how far a subject moved since its last read, as one number the cap can rank on; 0 is unmoved.
+function doorMoveSize(prev, since, measures) {
+  if (!prev || !prev.read) return Infinity;   // never read: always earned, ranked first
+  const d = Math.abs((since && since.recent_delta) || 0), o = (since && since.outlets_delta) || 0;
+  const v = measures && measures.velocity_pct != null ? Math.abs(Number(measures.velocity_pct)) : 0;
+  const earned = d >= DOOR_LAW.MIN_DELTA || v >= DOOR_LAW.MIN_VEL || o >= DOOR_LAW.MIN_OUTLETS;
+  return earned ? d * 10 + v + o * 5 : 0;
+}
+/* SEAM:RECORD_WATCH PURE: the watch a read carries, checked. measure is one the database counts (signals_7d, outlets, velocity_pct);
+ * op is gte or lte; value a finite number; by a date WATCH_MIN_D to WATCH_MAX_D days after the night. Anything else: no watch. */
+function doorWatchOf(w, nightIso) {
+  if (!w || typeof w !== 'object') return null;
+  const measure = ['signals_7d', 'outlets', 'velocity_pct'].includes(w.measure) ? w.measure : null;
+  const op = w.op === 'lte' ? 'lte' : w.op === 'gte' ? 'gte' : null;
+  const value = Number(w.value);
+  const by = /^\d{4}-\d{2}-\d{2}$/.test(String(w.by || '')) ? String(w.by) : null;
+  if (!measure || !op || !isFinite(value) || !by) return null;
+  const days = Math.round((Date.parse(by) - Date.parse(nightIso || new Date().toISOString().slice(0, 10))) / 864e5);
+  if (!(days >= DOOR_LAW.WATCH_MIN_D && days <= DOOR_LAW.WATCH_MAX_D)) return null;
+  return { measure, op, value, by, claim: String(w.claim || '').replace(/\s+/g, ' ').trim().slice(0, 200) || null };
+}
+// PURE: a watch graded against the measures the database counted on its day.
+function doorWatchGrade(watch, m) {
+  if (!watch || !m) return null;
+  const got = watch.measure === 'signals_7d' ? m.recent_7d : watch.measure === 'outlets' ? m.outlets : m.velocity_pct;
+  if (got == null || !isFinite(Number(got))) return null;
+  const ok = watch.op === 'gte' ? Number(got) >= watch.value : Number(got) <= watch.value;
+  return { verdict: ok ? 'held' : 'missed', measured: Number(got), measure: watch.measure, op: watch.op, value: watch.value, by: watch.by };
+}
+// PURE: where the evidence came from, counted by country code; the two most common ride the tile.
+function doorPlaceOf(evidence) {
+  const n = new Map();
+  for (const e of (evidence || [])) { const c = e && e.place ? String(e.place).trim() : ''; if (c) n.set(c, (n.get(c) || 0) + 1); }
+  return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([place, count]) => ({ place, count }));
+}
 function doorNight() { return new Date().toISOString().slice(0, 10); }
 /* SEAM:DOOR_CADENCE: how many nights apart the door compiles a new batch. DOOR.EVERY_D is the house setting (2 while the
  * platform evolves, 1 nightly); the DOOR_EVERY_D secret overrides it without a deploy. A night inside the gap publishes the
@@ -8537,7 +8592,7 @@ async function doorEvidence(env, cand, frame, tiers) {
     const ctx = { meta: {}, frame };
     const got = await Promise.race([RAIL_FNS.gdelt(env, excRailQuery(RAIL_BY_ID.gdelt, cand.query, frame), ctx, RAIL_BY_ID.gdelt), new Promise(res => setTimeout(() => res([]), 5000))]);
     const have = new Set(items.map(excKey));
-    for (const it of (got || []).slice(0, DOOR.TOPUP)) { const c = { lens: 'market', source: it.source_name || 'GDELT News', title: it.title, text: String(it.text || '').slice(0, 700), url: it.url || '', published_at: it.published_at || null, kind: 'news', tier: it.source_tier || 4, image: it.image || null, rail: 'gather' }; if (c.title && !have.has(excKey(c))) items.push(c); }
+    for (const it of (got || []).slice(0, DOOR.TOPUP)) { const c = { lens: 'market', source: it.source_name || 'GDELT News', title: it.title, text: String(it.text || '').slice(0, 700), url: it.url || '', published_at: it.published_at || null, kind: 'news', tier: it.source_tier || 4, image: it.image || null, rail: 'gather', country: it.country || null }; if (c.title && !have.has(excKey(c))) items.push(c); }   // SEAM:EXC_PLACE
   } catch (e) { excQuiet('door_topup')(e); }
   excStampTiers(items, tiers);
   const gate = excRelevance(items, frame);
@@ -8556,7 +8611,8 @@ function doorStamp(merged) {
   const newest = base.map(c => excWhen(c)).filter(Boolean).sort((a, b) => b - a)[0];
   return 'v' + DOOR.VOICE + '~' + keys.join('|') + '#' + (newest ? newest.toISOString().slice(0, 10) : 'undated');
 }
-function excDoorPrompt(frame, evidence, measures, memory) {
+function excDoorPrompt(frame, evidence, measures, memory, night) {
+  const n0 = Date.parse(night || new Date().toISOString().slice(0, 10)), day = d => new Date(n0 + d * 864e5).toISOString().slice(0, 10);
   return excFrameBlock(frame) + excMeasureLine(measures) +
     // SEAM:MEMORY: what we said before on this subject, with its exact weeks and how each call graded; never evidence
     (memory ? 'WHAT WE SAID BEFORE (our own earlier lines on this subject, its exact stories a week and how each call graded; build on what held; if the evidence now says otherwise, line 1 says so plainly; never cite it): ' + memory + '\n\n' : '') +
@@ -8569,11 +8625,13 @@ function excDoorPrompt(frame, evidence, measures, memory) {
     '"question":"the question this read answers for the professional it serves, one sentence, plain",' +
     '"insights":[3 to 4 of {"category":"consumer|market|culture|brand","title":"<=9-word claim","excerpt":"1-2 sentences naming the concrete thing from the evidence","evidence":[1-based numbers of the lines it stands on]}],' +
     '"ideas":[1 to 2 of {"type":"Positioning|Product|Campaign|Content|Partnership|Channel|Pricing","for":"brand|product|creative|media|retail|partnerships","headline":"verb-first action, at most 10 words","body":"1-2 sentences: exactly what to do, where, for whom","because":"1 sentence: the tension this move resolves","proof":"1 sentence naming the evidence it stands on","evidence":[1-based numbers],"from":<0-based index of the insight it comes from>}],' +
+    // SEAM:RECORD_WATCH: the one measurable thing this read bets on, so the record can grade it on the database's own counts
+    '"watch":{"claim":"one sentence, under 20 words: what the read expects the lake to show by the date","measure":"signals_7d|outlets|velocity_pct","op":"gte|lte","value":<a number the MEASURES line makes plausible>,"by":"a date between ' + day(DOOR_LAW.WATCH_MIN_D) + ' and ' + day(DOOR_LAW.WATCH_MAX_D) + '"},' +
     '"brief":"2 to 3 sentences a strategist would say out loud: where this frame is right now and the one thing to do first"}\n' +
-    'Lead with what changed in the freshest bands. Never restate source counts as findings. If lines disagree, one finding names it. JSON only.';
+    'Lead with what changed in the freshest bands. Never restate source counts as findings. If lines disagree, one finding names it. The watch is a bet the read is willing to lose in public. JSON only.';
 }
 // The compiled text becomes a read the page can render exactly as a live one.
-function doorCompileRead(parsed, merged, frame, measures) {
+function doorCompileRead(parsed, merged, frame, measures, night) {
   const now = Date.now();
   const cited = x => (Array.isArray(x.evidence) ? x.evidence : []).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= merged.length).filter((n, i, a) => a.indexOf(n) === i).slice(0, 8);
   const bandOf = n => excBand(excWhen(merged[n - 1]), now);
@@ -8591,7 +8649,8 @@ function doorCompileRead(parsed, merged, frame, measures) {
     because: String(x.because || '').slice(0, 280), proof: String(x.proof || '').slice(0, 280), from: Number.isInteger(x.from) && x.from >= 0 && x.from < 4 ? x.from : null, evidence: cited(x), dated: datedOf(cited(x)),
     checks: excGround([x.headline, x.body, x.proof].join(' '), (cited(x).length ? cited(x) : merged.map((c, i) => i + 1)).map(n => merged[n - 1]).concat(pool)) })).filter(x => x.headline);
   const brief = String(parsed.brief || '').slice(0, 900);
-  return { read: read.length === 2 ? read : null, question: parsed && typeof parsed.question === 'string' ? parsed.question.replace(/\s+/g, ' ').trim().slice(0, 220) || null : null, insights, ideas, brief, read_checks: excGround(read.concat([brief]).join(' '), merged.concat(pool)), window: excWindow(merged, now), evidence_n: merged.length };   // SEAM:EXC_DOOR_VOICE: the question rides with the read
+  const watch = doorWatchOf(parsed.watch, night);   // SEAM:RECORD_WATCH
+  return { read: read.length === 2 ? read : null, question: parsed && typeof parsed.question === 'string' ? parsed.question.replace(/\s+/g, ' ').trim().slice(0, 220) || null : null, insights, ideas, brief, watch, read_checks: excGround(read.concat([brief]).join(' '), merged.concat(pool)), window: excWindow(merged, now), evidence_n: merged.length };   // SEAM:EXC_DOOR_VOICE: the question rides with the read
 }
 async function doorPass(env, opts) {
   const night = doorNight(), out = { night, candidates: 0, kept: 0, reused: 0, queued: 0, thin: 0, failed: 0, usd: 0 };
@@ -8616,7 +8675,7 @@ async function doorPass(env, opts) {
   const tonightRows = (await sbRest(env, 'door_reads?night=eq.' + night + '&select=id,frame_key,status,stamp').catch(excQuiet('door_rows', []))) || [];
   const tonightBy = new Map(tonightRows.map(r => [r.frame_key, r]));
   const memo = typeof memoryDoorBriefs === 'function' ? await memoryDoorBriefs(env, cands.map(c => c.key), Object.fromEntries(cands.map(c => [c.key, c.title]))).catch(excQuiet('door_memory', new Map())) : new Map();   // SEAM:MEMORY
-  const jobs = [], rowsOut = [];
+  let jobs = []; const rowsOut = [];   // SEAM:RECORD_LAW: the jobs are ranked and capped after the loop
   for (const cand of cands) {
     try {
       const frame = excFrameClean(await excFrameFor(env, cand.query));
@@ -8626,7 +8685,7 @@ async function doorPass(env, opts) {
       const pm = prev && prev.measures && prev.measures.recent_7d != null && !!prev.measures.sweep === !!(measures && measures.sweep) ? prev.measures : null;   // "since" needs a measured last night, counted the same way (SEAM:SWEEP_MEASURE)
       // Every row carries the same keys: an upsert writes the whole row, so a key left out would be nulled on another row.
       const base = { frame_key: cand.key, night, frame: Object.assign({ title: cand.title, subtitle: cand.subtitle, kind: cand.kind, lens: cand.lens, query: cand.query }, frame ? { entity: frame.entity, category: frame.category, audience: frame.audience, market: frame.market, competitors: frame.competitors, question: frame.question, anchors: frame.anchors, exclude: frame.exclude, queries: frame.queries } : {}),
-        measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null })),   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
+        measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null, place: c.country || null })),   // SEAM:EXC_PLACE   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
         meta: { set_aside: ev.set_aside, prev_id: prev ? prev.id : null, prev_night: prev ? prev.night : null, since: pm ? { recent_delta: (measures ? measures.recent_7d : 0) - (pm.recent_7d || 0), outlets_delta: (measures ? measures.outlets : 0) - (pm.outlets || 0) } : null },
         status: 'queued', error: null, stamp: null, read: null, cost_usd: null };
       if (ev.merged.length < DOOR.MIN_EVIDENCE) { out.thin++; rowsOut.push(Object.assign(base, { status: 'failed', error: 'thin_evidence' })); continue; }
@@ -8637,11 +8696,20 @@ async function doorPass(env, opts) {
       voicesSpent += Date.now() - vt;
       Object.assign(base.meta, doorVoicesKeep(heard, prev && prev.meta)); out.voices = (out.voices || 0) + heard.length;
       if (prev && prev.stamp === stamp && prev.read) { out.reused++; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
+      // SEAM:RECORD_LAW: the evidence changed; the read is written only when the subject moved past the threshold since its last read
+      const voiceChanged = !!(prev && prev.stamp && !String(prev.stamp).startsWith('v' + DOOR.VOICE + '~'));   // a new voice is a new read (SEAM:EXC_DOOR_VOICE), whatever moved
+      const size = voiceChanged ? Infinity : doorMoveSize(prev, base.meta.since, measures);
+      if (prev && prev.read && size === 0) { out.reused++; out.unmoved = (out.unmoved || 0) + 1; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
       const now = Date.now();
       const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join('\n');
-      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '') });
+      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), prev, size, system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '', night) });
     } catch (e) { out.failed++; console.log('door_cand_error', cand.key, String(e && e.message).slice(0, 100)); }
   }
+  // SEAM:RECORD_LAW: the largest moves first, at most CAP a night; past the cap a subject keeps its last read or waits for a night with room.
+  jobs.sort((a, b) => (b.size === Infinity ? 1e9 : b.size) - (a.size === Infinity ? 1e9 : a.size));
+  for (const j of jobs.slice(DOOR_LAW.CAP)) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }
+  jobs = jobs.slice(0, DOOR_LAW.CAP);
+  out.earned = jobs.length; out.cap = DOOR_LAW.CAP;
   // Rows first (so a landing has somewhere to go), then one batch for every read that must be written.
   const inserted = (rowsOut.length || jobs.length) ? (await sbRest(env, 'door_reads?on_conflict=frame_key,night', { method: 'POST', headers: { Prefer: 'return=representation,resolution=merge-duplicates' }, body: rowsOut.concat(jobs.map(j => j.base)) }).catch(e => { console.log('door_insert_error', String(e && e.message).slice(0, 100)); return null; })) || [] : [];
   const idBy = new Map(inserted.map(r => [r.frame_key, r.id]));
@@ -8664,13 +8732,19 @@ async function doorPass(env, opts) {
 }
 /* Called by claudeBatchDrain when a door_read job lands. */
 async function doorLand(env, id, text, cost, stopReason) {
-  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame,measures,evidence,status').catch(excQuiet('door_rows', []))) || [];
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame,measures,evidence,status,night,meta').catch(excQuiet('door_rows', []))) || [];
   const row = rows[0]; if (!row) return { skipped: 'no_row' };
   const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));   // the image survives the round trip, so a cited insight carries its photograph
   const got = excReadOf(text || '');
   if (!got) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('door_land_patch')); return { id, status: 'failed' }; }
-  const read = doorCompileRead(got.read, merged, row.frame, row.measures);
+  const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'ready', read, cost_usd: cost, error: null, updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch'));
+  // SEAM:RECORD_LAW: a deployment develops the read before it; that read stays on the record, marked
+  const prevId = row.meta && row.meta.prev_id;
+  if (prevId && /^[0-9a-f-]{36}$/.test(String(prevId))) {
+    const pr = (await sbRest(env, 'door_reads?id=eq.' + prevId + '&select=id,meta').catch(excQuiet('door_rows', []))) || [];
+    if (pr[0]) await sbRest(env, 'door_reads?id=eq.' + prevId, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, pr[0].meta || {}, { developed_by: id, developed_night: row.night }) } }).catch(excQuiet('door_develop_patch'));
+  }
   await doorPublish(env);
   return { id, status: 'ready' };
 }
@@ -8688,6 +8762,9 @@ function doorTile(r) {
     photo: doorPhoto(rd, r.evidence),   // the sources' own photograph, credited; null when none of the lines carries one
     measures: { series: m.series || [], recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0, weeks_touched: m.weeks_touched || 0, weeks: m.weeks || 12, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, state: m.state || 'STEADY', shape: m.shape || null, newest: m.newest || null },
     evidence_n: (r.evidence || []).length, since: s, image: null,
+    // SEAM:RECORD_LAW / SEAM:RECORD_WATCH / SEAM:EXC_PLACE: the deployment's date, what it develops and what developed it, its watch and the grade, where its evidence came from
+    deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, developed_night: (r.meta && r.meta.developed_night) || null,
+    watch: (rd && rd.watch) || null, called: (r.meta && r.meta.called) || null, place: doorPlaceOf(r.evidence),
     voices: (r.meta && Array.isArray(r.meta.voices) ? r.meta.voices : []).slice(0, DOOR_VOICES.KEEP).map(doorVoicePublic) };   // SEAM:DOOR_VOICES: the pool never rides a tile
 }
 /* SEAM:EXC_DOOR_VOICE PURE: the photograph a tile shows is one the read's own sources carried: the first cited insight's image, else the
@@ -8754,6 +8831,85 @@ async function doorSet(env) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(DOOR.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('door_set')(e); }
   return null;
 }
+/* SEAM:RECORD_WATCH: the nightly grade. Every ready read whose watch has come due and has no grade is measured by the database the
+ * same way its read was (excMeasures on its frame) and marked held or missed on its row. A miss stays. No model is asked. */
+const RECORD = { KEY: 'record:v1', TTL: 600, LIMIT: 80, GRADE_LIMIT: 40, POSITION_MIN: 3, POSITION_HELD: 2 };
+async function doorCalled(env) {
+  const today = doorNight(), out = { checked: 0, held: 0, missed: 0, unmeasured: 0 };
+  const rows = (await sbRest(env, 'door_reads?status=eq.ready&read->watch=not.is.null&meta->called=is.null&select=id,frame,read,meta,night&order=night.asc&limit=' + RECORD.GRADE_LIMIT).catch(excQuiet('called_rows', []))) || [];
+  for (const r of rows) {
+    const w = r.read && r.read.watch; if (!w || !w.by || w.by > today) continue;
+    out.checked++;
+    let m = null; try { m = r.frame ? await excMeasures(env, r.frame) : null; } catch (e) { m = null; }
+    const g = doorWatchGrade(w, m);
+    const called = g ? Object.assign(g, { at: new Date().toISOString() }) : { verdict: 'unmeasured', by: w.by, at: new Date().toISOString() };
+    out[called.verdict === 'held' ? 'held' : called.verdict === 'missed' ? 'missed' : 'unmeasured']++;
+    await sbRest(env, 'door_reads?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, r.meta || {}, { called }) } }).catch(excQuiet('called_patch'));
+  }
+  if (out.checked && env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(RECORD.KEY); } catch (e) { excQuiet('record_bust')(e); } }
+  logEvent(env, 'intelligence', 'door', 'door_called', null, out);
+  return out;
+}
+/* SEAM:RECORD_ROUTE: the record. Every deployment (a read the engine wrote, never a reused row), newest first, as tiles with their
+ * dates, watches, grades and places; positions are subjects with POSITION_MIN deployments of which POSITION_HELD held. Public, like
+ * the feed: a tile carries no evidence lines. Cached ten minutes. */
+async function doorRecord(env) {
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(RECORD.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('record_get')(e); }
+  const SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta';
+  const rows = (await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&' + SEL + '&order=night.desc,created_at.desc&limit=' + RECORD.LIMIT).catch(excQuiet('record_rows', []))) || [];
+  const tiles = rows.map(doorTile);
+  const by = new Map();
+  for (const t of tiles) { const o = by.get(t.key) || { key: t.key, label: t.label, deployments: 0, held: 0, missed: 0, since: t.deployed }; o.deployments++; if (t.called && t.called.verdict === 'held') o.held++; if (t.called && t.called.verdict === 'missed') o.missed++; if (t.deployed < o.since) o.since = t.deployed; by.set(t.key, o); }
+  const positions = [...by.values()].filter(o => o.deployments >= RECORD.POSITION_MIN && o.held >= RECORD.POSITION_HELD).sort((a, b) => b.held - a.held || b.deployments - a.deployments);
+  const pos = new Set(positions.map(p => p.key));
+  for (const t of tiles) t.position = pos.has(t.key) ? by.get(t.key) : null;
+  const graded = tiles.filter(t => t.called && (t.called.verdict === 'held' || t.called.verdict === 'missed'));
+  const set = { built_at: new Date().toISOString(), tiles, positions, counts: { deployments: tiles.length, subjects: by.size, held: graded.filter(t => t.called.verdict === 'held').length, missed: graded.filter(t => t.called.verdict === 'missed').length, open: tiles.filter(t => t.watch && !t.called).length }, blind: EXC_BLIND };
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(RECORD.KEY, JSON.stringify(set), { expirationTtl: RECORD.TTL }); } catch (e) { excQuiet('record_put')(e); } }
+  return set;
+}
+async function doorRecordRoute(request, env, origin) {
+  const set = await doorRecord(env);
+  return json(Object.assign({ ok: true }, set), 200, origin, env);
+}
+/* SEAM:RECORD_ROUTE: one insight, public and light: the claim, the move, the question, the dates, the watch and its grade, the measures,
+ * the place. Never the evidence lines (those open with the read, signed in). */
+async function doorInsightPublic(env, id) {
+  if (!/^[0-9a-f-]{36}$/.test(String(id || ''))) return null;
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&status=in.(ready,reused)&select=id,frame_key,night,status,frame,measures,read,evidence,meta').catch(excQuiet('insight_rows', []))) || [];
+  if (!rows[0] || !rows[0].read) return null;
+  const t = doorTile(rows[0]);
+  delete t.voices;
+  return t;
+}
+async function doorInsightRoute(request, env, origin) {
+  const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
+  const t = await doorInsightPublic(env, id);
+  if (!t) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  return json({ ok: true, insight: t, blind: EXC_BLIND }, 200, origin, env);
+}
+/* SEAM:RECORD_ROUTE: the permalink. /i/<id> is a small page with share tags that opens the reading on the site; links must not rot. */
+async function insightSharePage(path, env) {
+  const id = decodeURIComponent(path.slice('/i/'.length)).slice(0, 40);
+  const t = await doorInsightPublic(env, id).catch(excQuiet('insight_page', null));
+  const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
+  const dest = base + '/intelligence/?insight=' + encodeURIComponent(t ? t.id : id);
+  const title = t ? esc(t.claim || t.title || 'An insight') + ' \u00b7 EXCAVATE by Unsurfaced' : 'EXCAVATE by Unsurfaced';
+  const desc = t ? esc([t.move ? 'The move: ' + t.move : '', 'Deployed ' + t.deployed + (t.called && t.called.verdict ? ', ' + t.called.verdict : '')].filter(Boolean).join(' \u00b7 ').slice(0, 200)) : 'The intelligence the engine deployed, dated and kept.';
+  const img = t && t.photo && t.photo.src ? esc(t.photo.src) : 'https://api.unsurfaced-intelligence.com/media/og/study-default.png';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="article"><meta property="og:image" content="${img}"><meta property="og:url" content="${esc(base + '/i/' + id)}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${esc(dest)}"><link rel="canonical" href="${esc(dest)}"></head><body style="font-family:system-ui;background:#0b0b0b;color:#eee;padding:40px"><p>${title}</p><p>${desc}</p><p><a style="color:#fff" href="${esc(dest)}">Open the reading</a></p></body></html>`;
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+}
+/* SEAM:EXC_HOUSE: the house's own deployed insights on a frame (the entity, else the category), last 120 nights, newest first, three at
+ * most. Context for a live read and a line on its receipt; never evidence. */
+async function excHouseLines(env, frame) {
+  const f = frame || {}; const key = f.entity ? 'entity' : f.category ? 'category' : null;
+  if (!key) return [];
+  const val = String(f[key] || '').trim(); if (val.length < 3) return [];
+  const since = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
+  const rows = (await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&night=gte.' + since + '&frame->>' + key + '=ilike.' + encodeURIComponent('*' + val.replace(/[%_*,()"]/g, ' ').trim() + '*') + '&select=id,night,read,meta&order=night.desc&limit=3').catch(excQuiet('house_rows', []))) || [];
+  return rows.filter(r => r.read && Array.isArray(r.read.read) && r.read.read[0]).map(r => ({ id: r.id, deployed: r.night, claim: String(r.read.read[0]).slice(0, 240), move: r.read.ideas && r.read.ideas[0] ? String(r.read.ideas[0].headline || '').slice(0, 120) : null, called: r.meta && r.meta.called ? r.meta.called.verdict : null }));
+}
 /* GET /excavate/door/read?id=  (signed in): the overnight read, shaped like a live one. */
 async function doorReadRoute(request, env, origin) {
   const user = await authenticate(request, env);   // signed in; a stored read spends none of the daily allowance
@@ -8766,7 +8922,9 @@ async function doorReadRoute(request, env, origin) {
   const f = r.frame || {}, rd = r.read;
   const data = Object.assign({}, rd, { frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null },
     measures: r.measures || null, model: { lane: 'overnight', model: CLAUDE.TIERS.live.model, reason: r.status === 'reused' ? 'reused: evidence unchanged' : null, cached: false }, compiled_at: r.updated_at || null,
-    overnight: { night: r.night, status: r.status, since: (r.meta && r.meta.since) || null, prev_night: (r.meta && r.meta.prev_night) || null }, query: f.query || f.title || '', title: f.title || null,
+    overnight: { night: r.night, status: r.status, since: (r.meta && r.meta.since) || null, prev_night: (r.meta && r.meta.prev_night) || null, deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, called: (r.meta && r.meta.called) || null, watch: rd.watch || null, place: doorPlaceOf(r.evidence) },   // SEAM:RECORD_LAW
+    blind: EXC_BLIND,   // SEAM:EXC_BLIND
+    query: f.query || f.title || '', title: f.title || null,
     relevance: { framed: !!f.anchors, kept: (r.evidence || []).length, set_aside: (r.meta && r.meta.set_aside) || 0, restored: 0 }, timing: null, signals: [], connectors: [] });
   return json({ ok: true, data }, 200, origin, env);
 }

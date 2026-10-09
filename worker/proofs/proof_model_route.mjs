@@ -34,7 +34,7 @@ const rA0 = w.indexOf('/* SEAM:READ_ENGINE'), rB0 = rA0 > 0 ? w.indexOf('/* SEAM
 // v2 (EX3a): the EXCAVATE lane (excCompile, SEAM:EXC_INTEL) may call Claude too; it sits behind claudeGate like the rest.
 const xA0 = w.indexOf('/* SEAM:EXC_INTEL: the compiler\'s lane'), xB0 = xA0 > 0 ? w.indexOf('/* SEAM:EXCAVATE_MEANING: the report contract.', xA0) : -1;
 // v3 (EX5): the door (SEAM:EXC_DOOR v2) submits its overnight reads to the batch lane under the overnight share; it sits behind claudeGate like the rest.
-const dA0 = w.indexOf('const DOOR = { WANT: 12'), dB0 = dA0 > 0 ? w.indexOf('async function excavateFeed(env, origin) {', dA0) : -1;
+const dA0 = w.indexOf('const DOOR = { WANT: 30'), dB0 = dA0 > 0 ? w.indexOf('async function excavateFeed(env, origin) {', dA0) : -1;
 // v4 (EX25): PLAY's words (SEAM:PLAY_CLAUDE) and the brief reader (SEAM:PLAY_BRIEF) call Claude through callClaude on the live and frame tiers; behind claudeGate like the rest.
 const pA0 = w.indexOf('/* SEAM:PLAY_CLAUDE: PLAY\'s words'), pB0 = pA0 > 0 ? w.indexOf('/* SEAM:PLAY_RENDER \\u2014 fal.ai render rail.', pA0) : -1;
 const outside = (w.slice(0, cA) + w.slice(cB)).replace(rA0 > 0 ? w.slice(rA0, rB0) : '\u0000', '').replace(xA0 > 0 ? w.slice(xA0, xB0) : '\u0000', '').replace(dA0 > 0 ? w.slice(dA0, dB0) : '\u0000', '').replace(pA0 > 0 ? w.slice(pA0, pB0) : '\u0000', '');
@@ -238,7 +238,7 @@ ok(CAPS.claudeCap({}, 'recon') === 150 && CAPS.claudeCap({ EVOLUTION_MODE: '1' }
 const pr = L.claudeParams('recon', { model: 'claude-sonnet-5-5', prompt: 'x' }), pf = L.claudeParams('recon', { model: 'claude-opus-9', prompt: 'x' }), pd = L.claudeParams('doc', { model: 'claude-haiku-4-5-20251001', prompt: 'x' });
 ok(pr.model === 'claude-sonnet-5-5' && pf.model === 'claude-fable-5-1' && pd.model === 'claude-fable-5-1' && L.CLAUDE.PRICE['claude-sonnet-5-5'].out === 10 && L.claudeCost('claude-sonnet-5-5', { input_tokens: 1e6, output_tokens: 1e6 }, true) === 6,
   'E1c SEAM:READ_DEEP the recon tier may be asked for a model it lists (Sonnet 5.5 for the cards), never one it does not; every other tier keeps its own model; Sonnet 5.5 is priced like Sonnet 5');
-ok(/const EXC_ROOM = \{ report: 16000, plain: 8000, quick: 9000, ceiling: 32000/.test(w) && /MAX_TOKENS: 9000, TTL: 72 \* 3600, SINCE_D: 60, EVERY_D: 2/.test(w) && /reserve: 't3', max_tokens: 8000 \}\);/.test(w), 'E2 the structured calls have room for the thinking Sonnet 5 does before it writes: the report 16000, the door 9000, the field 8000');
+ok(/const EXC_ROOM = \{ report: 16000, plain: 8000, quick: 9000, ceiling: 32000/.test(w) && /MAX_TOKENS: 9000, TTL: 72 \* 3600, SINCE_D: 60, EVERY_D: 1/.test(w) && /reserve: 't3', max_tokens: 8000 \}\);/.test(w), 'E2 the structured calls have room for the thinking Sonnet 5 does before it writes: the report 16000, the door 9000, the field 8000');
 ok(/blocks: \(j\.content \|\| \[\]\)\.map\(b => b && b\.type\)/.test(w) && /blocks: p\.blocks, out_tokens: p\.out_tokens/.test(w), 'E3 a live call reports its content blocks and output tokens, and the read\'s pass detail carries them');
 
 console.log(`\nproof_model_route: ${pass} checks PASS`);

@@ -450,6 +450,32 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .depth-switch button.on{color:var(--text);background:var(--surface3);}
 .depth-switch button:hover{color:var(--text);}
 .depth-note{font-size:12px;color:var(--text2);margin-top:6px;}
+.rec-lenses{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px}   /* SEAM:RECORD_SCROLL */
+.rec-lens{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;text-transform:none;background:transparent;color:var(--room-fg2,var(--text2));border:1px solid var(--room-rule,var(--border));padding:5px 10px;cursor:pointer}
+.rec-lens small{opacity:.6;margin-left:5px}
+.rec-lens.on{color:var(--room-fg,var(--text));border-color:var(--accent)}
+.rec-lens.room{border-style:dashed}
+.rec-lens-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--room-fg3,var(--text3));margin:0 2px 0 10px}
+.rec-counts{display:flex;flex-wrap:wrap;gap:18px;font-family:'Space Mono',monospace;font-size:11px;color:var(--room-fg2,var(--text2));margin:0 0 18px}
+.rec-counts b{color:var(--room-fg,var(--text));font-weight:600}
+.rec-counts .blind{flex-basis:100%;opacity:.7}
+.rec-dateline{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.03em;color:var(--room-fg2,var(--text2));margin-bottom:6px}
+.rec-dateline b{color:var(--room-fg,var(--text));font-weight:600}
+.rec-dateline a{color:inherit;text-decoration:underline dotted}
+.rec-pos{color:var(--accent)}
+.rec-watch{font-size:13px;margin:6px 0 2px;color:var(--room-fg2,var(--text2))}
+.rec-watch i{font-style:normal;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-right:8px;padding:2px 6px;border:1px solid var(--room-rule,var(--border))}
+.rec-watch.held i{border-color:#3a9a5c;color:#3a9a5c}
+.rec-watch.missed i{border-color:#c0392b;color:#c0392b}
+.rec-watch.open i{border-color:var(--accent);color:var(--accent)}
+.row.rec.developed{opacity:.72}
+.read-failed{border:1px solid var(--border);padding:22px 24px;margin:0 0 18px;max-width:78ch}   /* SEAM:EXC_FALLBACK */
+.read-failed .rf-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--accent);margin-bottom:8px}
+.read-failed h2{font-size:22px;margin:0 0 10px}
+.read-failed p{color:var(--text2);line-height:1.55;margin:0 0 14px}
+.read-failed .rf-acts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.voices-blind{margin:8px 0 0}
+.pdf-meas,.pdf-read1,.pdf-read2{margin:0 0 10px}.pdf-read1{font-weight:700;font-size:18px}.pdf-src{padding-left:20px;font-size:12px}.pdf-src li{margin:0 0 4px}
 .read-thin{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 10px;max-width:70ch;}   /* SEAM:EXC_THIN */
 .btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
 .btn-go-deeper:hover{background:#ff5555;}
@@ -2178,13 +2204,13 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIxNTUuMDAgMjY0LjM4IDQ2MC41MCA1OC4zOCIgYXJpYS1sYWJlbD0iVW5zdXJmYWNlZCI+CjxkZWZzPgo8Zz48ZyBpZD0idG0iPgo8cGF0aCBkPSJNIDAuNDUzMTI1IC0xOC40Mzc1IEwgMTAuNTMxMjUgLTE4LjQzNzUgTCAxMC41MzEyNSAtMTYgTCA2LjkzNzUgLTE2IEwgNi45Mzc1IC04LjE4NzUgTCAzLjk4NDM3NSAtOC4xODc1IEwgMy45ODQzNzUgLTE2IEwgMC40NTMxMjUgLTE2IFogTSAxMS43MDMxMjUgLTE4LjQzNzUgTCAxNi4xODc1IC0xOC40Mzc1IEwgMTcuNjA5Mzc1IC0xMi44NDM3NSBMIDE5LjEwOTM3NSAtMTguNDM3NSBMIDIzLjQ2ODc1IC0xOC40Mzc1IEwgMjMuNDY4NzUgLTguMTg3NSBMIDIwLjY4NzUgLTguMTg3NSBMIDIwLjY4NzUgLTE1LjQzNzUgTCAxOC43NjU2MjUgLTguMTg3NSBMIDE2LjQzNzUgLTguMTg3NSBMIDE0LjUzMTI1IC0xNS40Mzc1IEwgMTQuNTMxMjUgLTguMTg3NSBMIDExLjcwMzEyNSAtOC4xODc1IFogTSAxMS43MDMxMjUgLTE4LjQzNzUiLz4KPC9nPjwvZz4KPC9kZWZzPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSAxNzcuOTM3NSAzMTMuOTY0ODQ0IEMgMTczLjc4OTA2MiAzMTMuOTY0ODQ0IDE3MC40MDYyNSAzMTIuNTY2NDA2IDE2Ny43ODkwNjIgMzA5Ljc2OTUzMSBDIDE2NS4xNzE4NzUgMzA2Ljk3MjY1NiAxNjMuODYzMjgxIDMwMi45OTIxODggMTYzLjg2MzI4MSAyOTcuODIwMzEyIEwgMTYzLjg2MzI4MSAyNzUuMjY5NTMxIEwgMTcyLjk3NjU2MiAyNzUuMjY5NTMxIEwgMTcyLjcwNzAzMSAyOTcuMDk3NjU2IEMgMTcyLjc2NTYyNSAyOTkuODA0Njg4IDE3My40NTcwMzEgMzAxLjkxMDE1NiAxNzQuNzgxMjUgMzAzLjQxMDE1NiBDIDE3Ni4xMDE1NjIgMzA0LjkxNDA2MiAxNzguMTE3MTg4IDMwNS42Njc5NjkgMTgwLjgyNDIxOSAzMDUuNjY3OTY5IEMgMTgzLjgyODEyNSAzMDUuNjY3OTY5IDE4Ni4xOTE0MDYgMzA0Ljc5Njg3NSAxODcuOTA2MjUgMzAzLjA1MDc4MSBDIDE4OS42MTcxODggMzAxLjMwODU5NCAxOTAuNTM1MTU2IDI5OC45MDIzNDQgMTkwLjY1NjI1IDI5NS44MzIwMzEgTCAxOTAuNDc2NTYyIDI3NS4yNjk1MzEgTCAxOTkuNTg1OTM4IDI3NS4yNjk1MzEgTCAxOTkuNTg1OTM4IDMxMy4xNTIzNDQgTCAxOTAuMzgyODEyIDMxMy4xNTIzNDQgTCAxOTAuNzQ2MDk0IDMwNi4yMDcwMzEgQyAxODkuNDg0Mzc1IDMwOC42NzE4NzUgMTg3Ljc1MzkwNiAzMTAuNTgyMDMxIDE4NS41NTg1OTQgMzExLjkzNzUgQyAxODMuMzYzMjgxIDMxMy4yODkwNjIgMTgwLjgyNDIxOSAzMTMuOTY0ODQ0IDE3Ny45Mzc1IDMxMy45NjQ4NDQiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMjIxLjI0NjA5NCAyODguMDY2NDA2IEwgMjEyLjUgMjg4LjA2NjQwNiBDIDIxMi4xMDE1NjIgMjg4LjA2NjQwNiAyMTEuNzE0ODQ0IDI4OC4wNDI5NjkgMjExLjMzOTg0NCAyODguMDA3ODEyIEwgMjExLjMzOTg0NCAzMTMuMTUyMzQ0IEwgMjIwLjQ0OTIxOSAzMTMuMTUyMzQ0IEwgMjIwLjI2OTUzMSAyOTIuNTg1OTM4IEMgMjIwLjMzNTkzOCAyOTAuODgyODEyIDIyMC42Njc5NjkgMjg5LjM3ODkwNiAyMjEuMjQ2MDk0IDI4OC4wNjY0MDYiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMjM3LjcyNjU2MiAyODguMDY2NDA2IEMgMjM4LjAyNzM0NCAyODkuMDU0Njg4IDIzOC4yMjY1NjIgMjkwLjE2NDA2MiAyMzguMzA4NTk0IDI5MS40MTQwNjIgTCAyMzguMTI4OTA2IDMxMy4xNTIzNDQgTCAyNDcuMjM4MjgxIDMxMy4xNTIzNDQgTCAyNDcuMjM4MjgxIDI5MC42OTE0MDYgQyAyNDcuMjM4MjgxIDI4OS43NzM0MzggMjQ3LjE4MzU5NCAyODguOTEwMTU2IDI0Ny4wOTc2NTYgMjg4LjA2NjQwNiBaIE0gMjM3LjcyNjU2MiAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDI4Mi41OTc2NTYgMjkzLjc1NzgxMiBDIDI4MS4zNjcxODggMjkyLjg1NTQ2OSAyODAuMDQyOTY5IDI5Mi4xNjc5NjkgMjc4LjYyODkwNiAyOTEuNjgzNTk0IEMgMjc3LjIxNDg0NCAyOTEuMjAzMTI1IDI3NS43NTc4MTIgMjkwLjc4MTI1IDI3NC4yNTM5MDYgMjkwLjQyMTg3NSBDIDI3Mi42OTE0MDYgMjkwLjA2MjUgMjcxLjM5ODQzOCAyODkuNjk5MjE5IDI3MC4zNzUgMjg5LjMzOTg0NCBDIDI2OS4zNTE1NjIgMjg4Ljk3NjU2MiAyNjguNTM5MDYyIDI4OC42MTcxODggMjY3Ljk0MTQwNiAyODguMjU3ODEyIEMgMjY3LjgzOTg0NCAyODguMTk1MzEyIDI2Ny43NSAyODguMTI4OTA2IDI2Ny42NTYyNSAyODguMDY2NDA2IEwgMjU3Ljk2MDkzOCAyODguMDY2NDA2IEMgMjU4LjExNzE4OCAyODguOTE0MDYyIDI1OC4zNTkzNzUgMjg5LjY4NzUgMjU4LjY5NTMxMiAyOTAuMzc4OTA2IEMgMjU5LjMyNDIxOSAyOTEuNjcxODc1IDI2MC4xNjc5NjkgMjkyLjc2NTYyNSAyNjEuMjE4NzUgMjkzLjY2Nzk2OSBDIDI2Mi4yNzM0MzggMjk0LjU3MDMxMiAyNjMuNDcyNjU2IDI5NS4zMDg1OTQgMjY0LjgyODEyNSAyOTUuODc4OTA2IEMgMjY2LjE3OTY4OCAyOTYuNDUzMTI1IDI2Ny41NDY4NzUgMjk2LjkxNzk2OSAyNjguOTMzNTk0IDI5Ny4yNzczNDQgQyAyNzAuNTU0Njg4IDI5Ny41NzgxMjUgMjcxLjkzNzUgMjk3Ljg5NDUzMSAyNzMuMDgyMDMxIDI5OC4yMjI2NTYgQyAyNzQuMjIyNjU2IDI5OC41NTQ2ODggMjc1LjE3MTg3NSAyOTguOTMzNTk0IDI3NS45MjE4NzUgMjk5LjM1MTU2MiBDIDI3Ni42NzU3ODEgMjk5Ljc3MzQzOCAyNzcuMjE0ODQ0IDMwMC4yMjI2NTYgMjc3LjU0Njg3NSAzMDAuNzA3MDMxIEMgMjc3Ljg3NSAzMDEuMTg3NSAyNzguMDQyOTY5IDMwMS44MjAzMTIgMjc4LjA0Mjk2OSAzMDIuNTk3NjU2IEMgMjc4LjA0Mjk2OSAzMDMuODYzMjgxIDI3Ny41MTU2MjUgMzA0Ljg4NjcxOSAyNzYuNDY0ODQ0IDMwNS42Njc5NjkgQyAyNzUuNDEwMTU2IDMwNi40NDkyMTkgMjczLjc0MjE4OCAzMDYuODcxMDk0IDI3MS40NTcwMzEgMzA2LjkyOTY4OCBDIDI2OS4yOTI5NjkgMzA2LjkyOTY4OCAyNjcuMzU1NDY5IDMwNi40OTIxODggMjY1LjY0MDYyNSAzMDUuNjIxMDk0IEMgMjYzLjkyNTc4MSAzMDQuNzUgMjYyLjUyNzM0NCAzMDMuNDEwMTU2IDI2MS40NDUzMTIgMzAxLjYwNTQ2OSBMIDI1NS4wMzkwNjIgMzA2LjExNzE4OCBDIDI1Ni4zMDQ2ODggMzA4LjE2NDA2MiAyNTguMzYzMjgxIDMwOS45ODA0NjkgMjYxLjIxODc1IDMxMS41NzQyMTkgQyAyNjQuMDc0MjE5IDMxMy4xNjc5NjkgMjY3LjY2Nzk2OSAzMTMuOTY0ODQ0IDI3MiAzMTMuOTY0ODQ0IEMgMjc0LjcwNzAzMSAzMTMuOTY0ODQ0IDI3Ni45OTIxODggMzEzLjY0ODQzOCAyNzguODU1NDY5IDMxMy4wMTU2MjUgQyAyODAuNzE4NzUgMzEyLjM4NjcxOSAyODIuMjM4MjgxIDMxMS41NDY4NzUgMjgzLjQxMDE1NiAzMTAuNDkyMTg4IEMgMjg0LjU4MjAzMSAzMDkuNDQxNDA2IDI4NS40MjU3ODEgMzA4LjE5MTQwNiAyODUuOTM3NSAzMDYuNzUgQyAyODYuNDQ1MzEyIDMwNS4zMDQ2ODggMjg2LjcwMzEyNSAzMDMuNzczNDM4IDI4Ni43MDMxMjUgMzAyLjE0ODQzOCBDIDI4Ni43MDMxMjUgMzAwLjE2NDA2MiAyODYuMzI4MTI1IDI5OC40OTYwOTQgMjg1LjU3NDIxOSAyOTcuMTQwNjI1IEMgMjg0LjgyNDIxOSAyOTUuNzg5MDYyIDI4My44MjgxMjUgMjk0LjY2MDE1NiAyODIuNTk3NjU2IDI5My43NTc4MTIiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMzIyLjEwOTM3NSAyODguMDY2NDA2IEwgMzIyLjE3OTY4OCAyOTUuODMyMDMxIEMgMzIyLjA1ODU5NCAyOTguOTAyMzQ0IDMyMS4xNDA2MjUgMzAxLjMwODU5NCAzMTkuNDI5Njg4IDMwMy4wNTA3ODEgQyAzMTcuNzE0ODQ0IDMwNC43OTY4NzUgMzE1LjM1MTU2MiAzMDUuNjY3OTY5IDMxMi4zNDc2NTYgMzA1LjY2Nzk2OSBDIDMwOS42NDA2MjUgMzA1LjY2Nzk2OSAzMDcuNjI1IDMwNC45MTQwNjIgMzA2LjMwNDY4OCAzMDMuNDEwMTU2IEMgMzA0Ljk4MDQ2OSAzMDEuOTEwMTU2IDMwNC4yODkwNjIgMjk5LjgwNDY4OCAzMDQuMjMwNDY5IDI5Ny4wOTc2NTYgTCAzMDQuMzM5ODQ0IDI4OC4wNjY0MDYgTCAyOTUuMzkwNjI1IDI4OC4wNjY0MDYgTCAyOTUuMzkwNjI1IDI5Ny44MjAzMTIgQyAyOTUuMzkwNjI1IDMwMi45OTIxODggMjk2LjY5NTMxMiAzMDYuOTcyNjU2IDI5OS4zMTI1IDMwOS43Njk1MzEgQyAzMDEuOTI5Njg4IDMxMi41NjY0MDYgMzA1LjMxMjUgMzEzLjk2NDg0NCAzMDkuNDYwOTM4IDMxMy45NjQ4NDQgQyAzMTIuMzQ3NjU2IDMxMy45NjQ4NDQgMzE0Ljg4NjcxOSAzMTMuMjg5MDYyIDMxNy4wODIwMzEgMzExLjkzNzUgQyAzMTkuMjc3MzQ0IDMxMC41ODIwMzEgMzIxLjAwNzgxMiAzMDguNjc1NzgxIDMyMi4yNjk1MzEgMzA2LjIwNzAzMSBMIDMyMS45MTAxNTYgMzEzLjE1MjM0NCBMIDMzMS4xMDkzNzUgMzEzLjE1MjM0NCBMIDMzMS4xMDkzNzUgMjg4LjA2NjQwNiBaIE0gMzIyLjEwOTM3NSAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDM1Mi45ODgyODEgMjg4LjA2NjQwNiBMIDM0Mi44NjMyODEgMjg4LjA2NjQwNiBMIDM0Mi44NjMyODEgMzEzLjE1MjM0NCBMIDM1MS45NzI2NTYgMzEzLjE1MjM0NCBMIDM1MS42MTMyODEgMjk0Ljc1IEMgMzUxLjc2OTUzMSAyOTEuOTkyMTg4IDM1Mi4yMzA0NjkgMjg5Ljc2OTUzMSAzNTIuOTg4MjgxIDI4OC4wNjY0MDYiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMzgxLjMzMjAzMSAyODguMDY2NDA2IEwgMzgxLjMzMjAzMSAzMTMuMTUyMzQ0IEwgMzkwLjQ0NTMxMiAzMTMuMTUyMzQ0IEwgMzkwLjIxODc1IDI4OC4wNjY0MDYgWiBNIDM4MS4zMzIwMzEgMjg4LjA2NjQwNiIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA0MzEuMjIyNjU2IDI5OS44OTQ1MzEgQyA0MzEuMjIyNjU2IDMwMiA0MzAuMzc4OTA2IDMwMy42NTIzNDQgNDI4LjY5OTIxOSAzMDQuODU1NDY5IEMgNDI3LjAxMTcxOSAzMDYuMDU4NTk0IDQyNC44MjAzMTIgMzA2LjY2MDE1NiA0MjIuMTEzMjgxIDMwNi42NjAxNTYgQyA0MTcuMzAwNzgxIDMwNi42NjAxNTYgNDE0Ljg5ODQzOCAzMDUuMDAzOTA2IDQxNC44OTg0MzggMzAxLjY5OTIxOSBDIDQxNC44OTg0MzggMzAwLjAxNTYyNSA0MTUuNDk2MDk0IDI5OC43OTY4NzUgNDE2LjcwMzEyNSAyOTguMDQyOTY5IEMgNDE3LjkwMjM0NCAyOTcuMjkyOTY5IDQxOS40OTYwOTQgMjk2LjkxNzk2OSA0MjEuNDgwNDY5IDI5Ni45MTc5NjkgTCA0MzEuMjIyNjU2IDI5Ni45MTc5NjkgWiBNIDQzMSAyODguMDY2NDA2IEMgNDMxLjE0NDUzMSAyODguOTc2NTYyIDQzMS4yMjI2NTYgMjg5Ljk5NjA5NCA0MzEuMjIyNjU2IDI5MS4xNDQ1MzEgTCA0MjAuODUxNTYyIDI5MC42MDE1NjIgQyA0MTguNjg3NSAyOTAuNjAxNTYyIDQxNi43MDMxMjUgMjkwLjgyODEyNSA0MTQuODk4NDM4IDI5MS4yNzczNDQgQyA0MTMuMDkzNzUgMjkxLjczMDQ2OSA0MTEuNTI3MzQ0IDI5Mi40MjE4NzUgNDEwLjIwNzAzMSAyOTMuMzU1NDY5IEMgNDA4Ljg4MjgxMiAyOTQuMjg1MTU2IDQwNy44NDM3NSAyOTUuNDU3MDMxIDQwNy4wOTM3NSAyOTYuODcxMDk0IEMgNDA2LjMzOTg0NCAyOTguMjg1MTU2IDQwNS45NjQ4NDQgMjk5Ljk4NDM3NSA0MDUuOTY0ODQ0IDMwMS45Njg3NSBDIDQwNS45NjQ4NDQgMzA0LjA3NDIxOSA0MDYuMzI4MTI1IDMwNS44OTQ1MzEgNDA3LjA0Njg3NSAzMDcuNDI1NzgxIEMgNDA3Ljc2OTUzMSAzMDguOTU3MDMxIDQwOC43NDYwOTQgMzEwLjIwNzAzMSA0MDkuOTgwNDY5IDMxMS4xNjc5NjkgQyA0MTEuMjEwOTM4IDMxMi4xMzI4MTIgNDEyLjY1NjI1IDMxMi44MzU5MzggNDE0LjMxMjUgMzEzLjI4OTA2MiBDIDQxNS45NjQ4NDQgMzEzLjczODI4MSA0MTcuNzIyNjU2IDMxMy45NjQ4NDQgNDE5LjU4NTkzOCAzMTMuOTY0ODQ0IEMgNDIyLjQxNDA2MiAzMTMuOTY0ODQ0IDQyNC43NTc4MTIgMzEzLjQzNzUgNDI2LjYyNSAzMTIuMzg2NzE5IEMgNDI4LjQ4ODI4MSAzMTEuMzM1OTM4IDQzMC4wODIwMzEgMzA5Ljc4NTE1NiA0MzEuNDA2MjUgMzA3Ljc0MjE4OCBMIDQzMS4yMjI2NTYgMzEzLjE1MjM0NCBMIDQ0MC4zMzU5MzggMzEzLjE1MjM0NCBMIDQ0MC4zMzU5MzggMjkwLjc4MTI1IEMgNDQwLjMzNTkzOCAyODkuODMyMDMxIDQ0MC4yNjk1MzEgMjg4LjkzNzUgNDQwLjE3MTg3NSAyODguMDY2NDA2IFogTSA0MzEgMjg4LjA2NjQwNiIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA0NzUuNDI5Njg4IDMwNC43MTg3NSBDIDQ3My45ODgyODEgMzA1LjUzMTI1IDQ3Mi4xMjUgMzA1LjkzNzUgNDY5LjgzOTg0NCAzMDUuOTM3NSBDIDQ2Ni40MTAxNTYgMzA1LjkzNzUgNDYzLjc1IDMwNC44Mzk4NDQgNDYxLjg1NTQ2OSAzMDIuNjQ0NTMxIEMgNDU5Ljk2MDkzOCAzMDAuNDQ5MjE5IDQ1OS4wMTU2MjUgMjk3LjYzNjcxOSA0NTkuMDE1NjI1IDI5NC4yMTA5MzggQyA0NTkuMDE1NjI1IDI5MS44NzUgNDU5LjQ2NDg0NCAyODkuODMyMDMxIDQ2MC4zNDc2NTYgMjg4LjA2NjQwNiBMIDQ1MC41NDY4NzUgMjg4LjA2NjQwNiBDIDQ0OS45NDE0MDYgMjg5Ljk5MjE4OCA0NDkuNjMyODEyIDI5Mi4wMzkwNjIgNDQ5LjYzMjgxMiAyOTQuMjEwOTM4IEMgNDQ5LjYzMjgxMiAyOTcuMDM5MDYyIDQ1MC4xNDQ1MzEgMjk5LjY2Nzk2OSA0NTEuMTY3OTY5IDMwMi4xMDE1NjIgQyA0NTIuMTkxNDA2IDMwNC41MzkwNjIgNDUzLjYwMTU2MiAzMDYuNjI4OTA2IDQ1NS40MDYyNSAzMDguMzcxMDk0IEMgNDU3LjIxMDkzOCAzMTAuMTE3MTg4IDQ1OS4zNDM3NSAzMTEuNDg0Mzc1IDQ2MS44MTI1IDMxMi40NzY1NjIgQyA0NjQuMjc3MzQ0IDMxMy40Njg3NSA0NjYuOTUzMTI1IDMxMy45NjQ4NDQgNDY5LjgzOTg0NCAzMTMuOTY0ODQ0IEMgNDczLjUwNzgxMiAzMTMuOTY0ODQ0IDQ3Ni41NDI5NjkgMzEzLjM0NzY1NiA0NzguOTQ5MjE5IDMxMi4xMTcxODggQyA0ODEuMzU1NDY5IDMxMC44ODI4MTIgNDgzLjQ5MjE4OCAzMDkuMjE0ODQ0IDQ4NS4zNTU0NjkgMzA3LjEwOTM3NSBMIDQ3OS4xMjg5MDYgMzAyLjIzODI4MSBDIDQ3OC4xMDkzNzUgMzAzLjA4MjAzMSA0NzYuODc1IDMwMy45MDYyNSA0NzUuNDI5Njg4IDMwNC43MTg3NSIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA1MjkuMjY1NjI1IDI4OC4wNjY0MDYgTCA1MjAuMTk1MzEyIDI4OC4wNjY0MDYgQyA1MjAuNTYyNSAyODguOTY0ODQ0IDUyMC44NTkzNzUgMjg5LjkxNzk2OSA1MjEuMDI3MzQ0IDI5MC45NjQ4NDQgTCA0OTkuNDcyNjU2IDI5MS4xNDQ1MzEgQyA0OTkuNjkxNDA2IDI5MC4wMTU2MjUgNTAwLjAwNzgxMiAyODguOTkyMTg4IDUwMC40MTc5NjkgMjg4LjA2NjQwNiBMIDQ5MS4zOTA2MjUgMjg4LjA2NjQwNiBDIDQ5MC43Njk1MzEgMjg5Ljk5MjE4OCA0OTAuNDQ5MjE5IDI5Mi4wMzUxNTYgNDkwLjQ0OTIxOSAyOTQuMjEwOTM4IEMgNDkwLjQ0OTIxOSAyOTcuMDM5MDYyIDQ5MC45NjA5MzggMjk5LjY2Nzk2OSA0OTEuOTg0Mzc1IDMwMi4xMDU0NjkgQyA0OTMuMDA3ODEyIDMwNC41MzkwNjIgNDk0LjQzMzU5NCAzMDYuNjI4OTA2IDQ5Ni4yNjk1MzEgMzA4LjM3MTA5NCBDIDQ5OC4xMDE1NjIgMzEwLjExNzE4OCA1MDAuMzQzNzUgMzExLjQ4NDM3NSA1MDIuOTg4MjgxIDMxMi40NzY1NjIgQyA1MDUuNjMyODEyIDMxMy40Njg3NSA1MDguNTgyMDMxIDMxMy45NjQ4NDQgNTExLjgyODEyNSAzMTMuOTY0ODQ0IEMgNTE1LjYxNzE4OCAzMTMuOTY0ODQ0IDUxOC43ODkwNjIgMzEzLjM3ODkwNiA1MjEuMzQzNzUgMzEyLjIwNzAzMSBDIDUyMy44OTg0MzggMzExLjAzMTI1IDUyNi4xNDA2MjUgMzA5LjU3NDIxOSA1MjguMDY2NDA2IDMwNy44MzIwMzEgTCA1MjIuNzQyMTg4IDMwMi4yMzgyODEgQyA1MjEuNDgwNDY5IDMwMy4yNjE3MTkgNTE5Ljk2MDkzOCAzMDQuMTk1MzEyIDUxOC4xODc1IDMwNS4wMzUxNTYgQyA1MTYuNDE0MDYyIDMwNS44Nzg5MDYgNTE0LjI2NTYyNSAzMDYuMjk2ODc1IDUxMS43MzgyODEgMzA2LjI5Njg3NSBDIDUwOC4yNSAzMDYuMjk2ODc1IDUwNS41MTU2MjUgMzA1LjQ4NDM3NSA1MDMuNTI3MzQ0IDMwMy44NjMyODEgQyA1MDEuNTQ2ODc1IDMwMi4yMzgyODEgNTAwLjIyMjY1NiAyOTkuOTI1NzgxIDQ5OS41NTg1OTQgMjk2LjkxNzk2OSBMIDUzMC4yMzA0NjkgMjk2LjU1NDY4OCBDIDUzMC40MTAxNTYgMjkzLjczMDQ2OSA1MzAuMDkzNzUgMjkwLjkxNzk2OSA1MjkuMjgxMjUgMjg4LjEyMTA5NCBDIDUyOS4yNzczNDQgMjg4LjEwMTU2MiA1MjkuMjY5NTMxIDI4OC4wODU5MzggNTI5LjI2NTYyNSAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDU2Ny41OTM3NSAyODguMDY2NDA2IEMgNTY4LjUgMjg5Ljc5Mjk2OSA1NjguOTY0ODQ0IDI5MS44MDQ2ODggNTY4Ljk2NDg0NCAyOTQuMTIxMDk0IEMgNTY4Ljk2NDg0NCAyOTcuNzMwNDY5IDU2Ny45Njg3NSAzMDAuNjAxNTYyIDU2NS45ODgyODEgMzAyLjczNDM3NSBDIDU2NCAzMDQuODcxMDk0IDU2MS4zMjQyMTkgMzA1LjkzNzUgNTU3Ljk1NzAzMSAzMDUuOTM3NSBDIDU1NC42NTIzNDQgMzA1LjkzNzUgNTUyLjAzNTE1NiAzMDQuODcxMDk0IDU1MC4xMDkzNzUgMzAyLjczNDM3NSBDIDU0OC4xODM1OTQgMzAwLjYwMTU2MiA1NDcuMTY0MDYyIDI5Ny43MzA0NjkgNTQ3LjA0Mjk2OSAyOTQuMTIxMDk0IEMgNTQ3LjEyNSAyOTEuODA0Njg4IDU0Ny42Mjg5MDYgMjg5Ljc5Mjk2OSA1NDguNTMxMjUgMjg4LjA2NjQwNiBMIDUzOC42MTcxODggMjg4LjA2NjQwNiBDIDUzOC4wODU5MzggMjg5Ljk0OTIxOSA1MzcuNzk2ODc1IDI5MS45Njg3NSA1MzcuNzUzOTA2IDI5NC4xMjEwOTQgQyA1MzcuODEyNSAyOTcuMDA3ODEyIDUzOC4zMDg1OTQgMjk5LjY1MjM0NCA1MzkuMjQyMTg4IDMwMi4wNTg1OTQgQyA1NDAuMTcxODc1IDMwNC40NjQ4NDQgNTQxLjQzMzU5NCAzMDYuNTU0Njg4IDU0My4wMzEyNSAzMDguMzI4MTI1IEMgNTQ0LjYyMTA5NCAzMTAuMTAxNTYyIDU0Ni41MDM5MDYgMzExLjQ4NDM3NSA1NDguNjY3OTY5IDMxMi40NzY1NjIgQyA1NTAuODMyMDMxIDMxMy40Njg3NSA1NTMuMTQ4NDM4IDMxMy45NjQ4NDQgNTU1LjYxMzI4MSAzMTMuOTY0ODQ0IEMgNTU4LjgwMDc4MSAzMTMuOTY0ODQ0IDU2MS41MDM5MDYgMzEzLjI1NzgxMiA1NjMuNzMwNDY5IDMxMS44NDc2NTYgQyA1NjUuOTU3MDMxIDMxMC40MzM1OTQgNTY3LjY2Nzk2OSAzMDguNTgyMDMxIDU2OC44NzUgMzA2LjI5Njg3NSBMIDU2OC42MDE1NjIgMzEzLjE1MjM0NCBMIDU3Ny43MTA5MzggMzEzLjE1MjM0NCBMIDU3Ny43MTA5MzggMjg4LjA2NjQwNiBaIE0gNTY3LjU5Mzc1IDI4OC4wNjY0MDYiLz4KPGcgZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLW9wYWNpdHk9IjEiPgo8dXNlIHhsaW5rOmhyZWY9IiN0bSIgeD0iNTgzLjI5MTUiIHk9IjI5MS42Njc1Ii8+CjwvZz4KPC9zdmc+" alt="Unsurfaced™" style="height:16px;width:auto;display:block;filter:invert(1) brightness(2);opacity:0.9;">
   </div>
   <div class="nav-menu" id="nav-menu"><!-- SEAM:EXC_NAV: one dropdown, every door -->
-    <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="navMenuToggle(event)"><span id="nav-menu-cur">Explore</span><span class="chev">&#9660;</span></button>
+    <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="navMenuToggle(event)"><span id="nav-menu-cur">EXCAVATE</span><span class="chev">&#9660;</span></button>
     <ul class="nav-menu-list" id="nav-menu-list">
       <li class="grp">EXCAVATE</li>
-      <li><button class="nlb active" id="nav-explore" onclick="navTo('explore')">Explore<small>ask culture a question</small></button></li>
-      <li><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands<small>the brands we watch</small></button></li>
-      <li><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences<small>the people, by generation</small></button></li>
+      <li><button class="nlb active" id="nav-explore" onclick="navTo('explore')">EXCAVATE<small>ask culture a question; the record</small></button></li><!-- SEAM:EXC_NAV: Brands and Audiences are lenses and rooms under EXCAVATE, not doors -->
       <li><button class="nlb" id="nav-library" onclick="navTo('library')">Library<small>reads, reports, RECONs</small></button></li>
+      <li style="display:none"><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands</button></li>
+      <li style="display:none"><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences</button></li>
       <li id="nav-read-li" style="display:none"><a class="nlb" id="nav-read" href="read/">READ<small>the house reads, the desk, the stand</small></a></li>
       <li class="sep"></li>
       <li><button class="nlb" id="nav-spaces" onclick="goHub()">&#9670; Spaces<small>DAILY, EXCAVATE, MINE</small></button></li>
@@ -2292,9 +2318,11 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 
   <section class="hub-block room-sec" id="board-block">
     <div class="room-head">
-      <h2>On the board this week</h2>
-      <div class="sub" id="board-sub">Every subject tracked weekly. Each shows this week's reading, twelve weeks of history, and one recommended move.</div>
+      <h2 id="board-h2">The record</h2>
+      <div class="sub" id="board-sub">What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.</div>
     </div>
+    <div class="rec-lenses" id="rec-lenses" style="display:none"></div><!-- SEAM:RECORD_SCROLL: the lens row -->
+    <div class="rec-counts" id="rec-counts" style="display:none"></div>
     <div class="fi-state-strip" id="fi-state-strip" style="display:none"></div>
     <div class="insights-grid" id="featured-insights-grid">
       <div class="fi-skeleton"></div>
@@ -3332,10 +3360,13 @@ function _renderLive(q, data){
     brief = syn.brief || 'The interpretation did not finish in this pass; the findings and the moves above stand on their own evidence.';   // SEAM:EXC_THIN: never the placeholder under a written read
     synthd=true;
   } else {
-    insights=_liveToInsights(items);
+    // SEAM:EXC_FALLBACK: the writer did not finish. Nothing gathered is printed as a finding; the page says so and offers the full read.
+    insights=[];
     ideas=[];
-    brief=_liveBrief(q,items,data.connectors);
+    brief='';
+    window._readFailed={ q, items:(items||[]).length };
   }
+  if(synthd) window._readFailed=null;
   const sources=(data.sources&&data.sources.length)?data.sources:_liveSources(data.connectors,q);
   // SEAM:EXC_FRAME: the read's window, lane, frame, relevance and timing reach the page; they were compiled and then dropped here.
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
@@ -5729,7 +5760,7 @@ function _buildLensIdeas(q, cat) {
       {type:'Advertising Effectiveness',headline:'Invest in What Compounds, Not Just Converts',body:'Marketing effectiveness research shows brand-building spend has longer payback windows but substantially higher long-term ROI. 60:40 brand-to-performance is the evidence-based starting ratio.'},
     ],
   };
-  return (ideaMap[cat]||[]).map((o,i)=>({...o,num:'0'+(i+1)}));
+  return [];   // SEAM:EXC_FALLBACK: no move is invented from a lens name; ideaMap stays only as a record of what the house no longer prints
 }
 
 function _buildSignalTruth(q, lenses) {
@@ -5938,17 +5969,29 @@ function _renderVoices(meta){
   const shown=pool.slice(0,window._voiceView.shown);
   const srcLine=(v.sources||[]).map(s=>`<a href="${safeUrl(s.url||'#')}" target="_blank" rel="noopener">${safe(s.source||'')}: ${safe(String(s.title||'').slice(0,50))}</a>${s.n?' ('+safe(String(s.n))+')':''}`).join(' · ');
   host.innerHTML=`<section class="voices" aria-label="Consumer voice">
-    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comments and posts on ${safe(String((v.sources||[]).length))} sources${framed?', '+safe(String(on.length-unread))+' naming the frame'+(unread?' ('+safe(String(unread))+' not read through it; the frame arrived late)':''):', not read through a frame (it arrived late)'}. Verbatim; a speaker's own description beside the words; never a name.</span></div>
+    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comments and posts on ${safe(String((v.sources||[]).length))} sources${framed?', '+safe(String(on.length-unread))+' naming the frame'+(unread?' ('+safe(String(unread))+' not read through it; the frame arrived late)':''):', not read through a frame (it arrived late)'}. Verbatim; a speaker's own description beside the words; never a name.</span></div><div class="read-thin voices-blind">${safe((window._liveLast&&window._liveLast.synthesis&&window._liveLast.synthesis.blind)||EXC_BLIND_LINE)}</div><!-- SEAM:EXC_BLIND -->
     <div class="voices-chips" onclick="var b=event.target.closest('.voices-chip');if(b)_voiceFilterSet(b.getAttribute('data-key'))">${chips.map(c=>`<button class="voices-chip${c.key===chip.key?' on':''}" data-key="${safeAttr(c.key)}">${safe(c.label)} <b>${safe(String(c.n))}</b></button>`).join('')}</div>
     <div class="voices-list">${shown.map(q=>{ const s=srcBy.get(q.src)||{}; return `<div class="vq"><p class="vq-text">${safe(q.text)}</p><div class="vq-foot">${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${q.when?safe(q.when)+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+' ↗</a>':''}${q.on_frame===false?' · off the frame':''}</span></div></div>`; }).join('')||'<p class="voices-empty">None of the sampled voices names the frame. The conversation here is elsewhere, which is itself a finding.</p>'}</div>
     ${pool.length>shown.length?`<button class="voices-more" onclick="_voiceMore()">Show ${safe(String(Math.min(24,pool.length-shown.length)))} more of ${safe(String(pool.length))}</button>`:''}
     <div class="voices-src">${srcLine}</div>
   </section>`;
 }
+// SEAM:EXC_BLIND: what the engine does not see, said on every read (the worker sends the line; this is the page's copy of the same words)
+const EXC_BLIND_LINE='This read does not see TikTok, Instagram or X. Its voices come from YouTube and Mastodon; its news from the open web and the lake.';
+function _rfFull(){ if(window._readFailed&&window._readFailed.q){ window._liveLast=Object.assign({},window._liveLast||{},{q:window._readFailed.q}); } goDeeper(); }   // SEAM:EXC_FALLBACK: the full read on the same question (goDeeper sets the depth and reruns)
 function _renderReadBlock(q, data, mode){
   const el=document.getElementById('read-block'); if(!el) return;
   const lines=Array.isArray(data.read)?data.read.filter(Boolean):[];
-  if(mode!=='live'||(!lines.length&&!data.brief)){ el.style.display='none'; el.innerHTML=''; return; }
+  if(mode!=='live'){   // SEAM:EXC_FALLBACK: the read did not finish; say so in the house's words, offer the full read, hide the lens machinery
+    const n=(window._readFailed&&window._readFailed.items)||0;
+    el.innerHTML=`<section class="read-failed"><div class="rf-k">THE READ</div><h2>The reading did not finish in this pass.</h2><p>The engine gathered ${safe(String(n))} signals on "${safe(q)}" and the writer did not complete a read on them. Nothing gathered is shown as a finding: the house prints only what its writer stood behind. The voices below are verbatim and on the question.</p><div class="rf-acts"><button type="button" class="btn-go-deeper" onclick="_rfFull()">Run the full read</button><button type="button" class="btn-new-search" onclick="runSearch()">Try again</button></div><div class="read-thin">${safe(EXC_BLIND_LINE)}</div></section>`;
+    el.style.display='';
+    const bar=document.getElementById('results-lens-bar'); if(bar) bar.style.display='none';
+    document.querySelectorAll('.results-lens-panel').forEach(x=>{ x.style.display='none'; });
+    return;
+  }
+  { const bar=document.getElementById('results-lens-bar'); if(bar) bar.style.display=''; }
+  if(!lines.length&&!data.brief){ el.style.display='none'; el.innerHTML=''; return; }
   /* SEAM:READ_BRIEF: THE READ is a brief, not a post. The claim and the move lead; the frame is a plate; the measures are
      a strip of tiles beside their sparkline; the interpretation reads beside a rail of receipts (what the read stood on,
      what it set aside, what it cost in time); the wire is a quiet aside. One voice, one column of prose, no run-on meta. */
@@ -6324,7 +6367,14 @@ function exportToPDF() {
   if (dashOpen && _idbData && _idbConfig) {
     bodyHTML = _buildDashboardPDF(_idbConfig, _idbData, dateStr, timeStr);
     filename = 'Excavate_Dashboard_' + (_idbConfig.title||'Report').replace(/[^a-zA-Z0-9]/g,'_').slice(0,40) + '_' + now.toISOString().slice(0,10) + '.html';
+  } else if (window._liveLast && window._liveLast.synthesis && Array.isArray(window._liveLast.synthesis.insights) && window._liveLast.synthesis.insights.length) {   // SEAM:EXC_FALLBACK: the report is the read, never the lens template
+    bodyHTML = _buildReadPDF(window._liveLast.q, window._liveLast.synthesis, dateStr, timeStr);
+    const q = document.getElementById('results-query')?.textContent || window._liveLast.q || 'Search';
+    filename = 'Excavate_Read_' + q.replace(/[^a-zA-Z0-9]/g,'_').slice(0,40) + '_' + now.toISOString().slice(0,10) + '.html';
   } else if (window._lensResults && window._lensResults.consumer) {
+    showToast('The reading did not finish; there is nothing to download yet. Run the full read.');
+    return;
+  } else if (false) {   // SEAM:EXC_FALLBACK: the lens template is never printed again; the builder stays only until the lens pipeline retires
     bodyHTML = _buildResultsPDF(dateStr, timeStr);
     const q = document.getElementById('results-query')?.textContent || 'Search';
     filename = 'Excavate_Intelligence_' + q.replace(/[^a-zA-Z0-9]/g,'_').slice(0,40) + '_' + now.toISOString().slice(0,10) + '.html';
@@ -6400,6 +6450,26 @@ function _pdfFinding(ins){
 }
 function _pdfIdea(idea){
   return `<div class="pdf-idea"><div class="pdf-idea-type">${idea.type||''}</div><div class="pdf-idea-title">${idea.headline||''}</div><div class="pdf-idea-body">${idea.body||''}</div></div>`;
+}
+/* SEAM:EXC_FALLBACK: the downloadable read, built from the read the writer stood behind: the two lines, the interpretation, the findings
+   with their confidence and evidence dates, the moves with their proof, the measures line, the blind-spots line, the sources. No lens
+   template, no invented move, no dash. */
+function _buildReadPDF(q, syn, dateStr, timeStr){
+  const e=x=>safe(String(x==null?'':x));
+  const read=Array.isArray(syn.read)?syn.read.filter(Boolean):[];
+  const f=syn.frame||{}; const who=[f.entity||f.category,f.audience,f.market].filter(Boolean).map(e).join(' \u00b7 ');
+  const m=syn.measures||null;
+  const meas=m&&m.recent_7d!=null?`<p class="pdf-meas">Measured on the lake: ${e(m.recent_7d)} stories this week, ${e(m.prior_7d)} the week before${m.velocity_pct!=null?' ('+(m.velocity_pct>=0?'+':'')+e(m.velocity_pct)+'%)':''}; ${e(m.outlets)} outlets; ${e(m.weeks_touched)} of ${e(m.weeks||12)} weeks on record.</p>`:'';
+  const ins=(syn.insights||[]).slice(0,8).map(x=>`<div class="pdf-finding"><div class="pdf-finding-cat">${e(x.confidence||'')} confidence${x.dated&&x.dated.newest?' \u00b7 evidence to '+e(x.dated.newest):''}</div><div class="pdf-finding-title">${e(x.title)}</div><div class="pdf-finding-excerpt">${e(x.excerpt)}</div>${x.source?`<div class="pdf-finding-meta">${e(x.source)}</div>`:''}</div>`).join('');
+  const mv=(syn.ideas||[]).filter(x=>x&&x.headline).slice(0,6).map(x=>`<div class="pdf-idea"><div class="pdf-idea-type">${e(x.type||'Move')}${x.for?' \u00b7 for '+e(x.for):''}</div><div class="pdf-idea-title">${e(x.headline)}</div><div class="pdf-idea-body">${e(x.body)}${x.proof?' <i>Proof: '+e(x.proof)+'</i>':''}</div></div>`).join('');
+  const src=(syn.lines||[]).slice(0,40).map(l=>`<li>${e(l.source)}${l.date?' \u00b7 '+e(l.date):''}: ${l.url?`<a href="${safeAttr(l.url)}">${e(l.title)}</a>`:e(l.title)}</li>`).join('');
+  return `<div class="pdf-header"><div class="pdf-brand">EXCAVATE by Unsurfaced\u2122</div><div class="pdf-meta">THE READ \u00b7 ${e(dateStr)} at ${e(timeStr)}${syn.depth==='quick'?' \u00b7 quick read':''}</div><div class="pdf-title">${e(q)}</div>${who?`<div class="pdf-deck">${who}</div>`:''}</div>`+
+    (read.length?`<div class="pdf-section-head">The read</div><p class="pdf-read1">${e(read[0])}</p><p class="pdf-read2">${e(read[1]||'')}</p>`:'')+meas+
+    (syn.brief?`<div class="pdf-section-head">The interpretation</div><p>${e(syn.brief)}</p>`:'')+
+    (ins?`<div class="pdf-section-head">Findings</div>${ins}`:'')+(mv?`<div class="pdf-section-head">Moves</div>${mv}`:'')+
+    `<div class="pdf-section-head">What this read does not see</div><p>${e(syn.blind||EXC_BLIND_LINE)}</p>`+
+    (src?`<div class="pdf-section-head">What the read stood on</div><ol class="pdf-src">${src}</ol>`:'')+
+    `<div class="pdf-footer">EXCAVATE by Unsurfaced\u2122 \u00b7 Cultural intelligence \u00b7 ${e(dateStr)}<br>Every figure above was checked against the evidence it cites or the lake's own counts.</div>`;
 }
 function _buildResultsPDF(dateStr,timeStr){
   const q=document.getElementById('results-query')?.textContent||'Search Results';
@@ -6533,7 +6603,7 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
 }
 
 /* SEAM:EXC_NAV: the dropdown. It names the section you are in, closes on a choice, outside click or Escape, and shows READ to admins. */
-const _NAV_NAMES = { explore: 'Explore', brands: 'Brands', audiences: 'Audiences', library: 'Library' };
+const _NAV_NAMES = { explore: 'EXCAVATE', brands: 'Brands', audiences: 'Audiences', library: 'Library' };   // SEAM:EXC_NAV
 function navMenuToggle(e) { if (e) e.stopPropagation(); const m = document.getElementById('nav-menu'); if (!m) return; const open = !m.classList.contains('open'); m.classList.toggle('open', open); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
 function navMenuClose() { const m = document.getElementById('nav-menu'); if (m && m.classList.contains('open')) { m.classList.remove('open'); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', 'false'); } }
 function _navMenuName(section) { const c = document.getElementById('nav-menu-cur'); if (c && _NAV_NAMES[section]) c.textContent = _NAV_NAMES[section]; }
@@ -8719,6 +8789,7 @@ function _handleReturnFlags() {
     if (p.has('funded')) showToast(p.get('funded') === 'cancel' ? 'Checkout cancelled' : 'Payment received — funding your study…');
     else if (p.has('payout')) showToast(p.get('payout') === 'done' ? 'Payout setup complete' : 'Payout setup saved');
     if (p.has('studio')) { try { sessionStorage.setItem('uai_pending_studio', '1'); } catch (e3) {} p.delete('studio'); const q1 = p.toString(); history.replaceState({}, '', window.location.pathname + (q1 ? '?' + q1 : '')); }
+    if (p.has('insight')) { const _iid = String(p.get('insight') || '').slice(0, 40); if (/^[0-9a-f-]{36}$/.test(_iid)) setTimeout(() => { try { openFeaturedCard(_iid); } catch (e5) {} }, 1200); p.delete('insight'); const q2 = p.toString(); history.replaceState({}, '', window.location.pathname + (q2 ? '?' + q2 : '')); }   // SEAM:RECORD_SCROLL: a permalink
     if (p.has('study')) { const _gsid = p.get('study'); try { sessionStorage.setItem('mine_pending_study', _gsid); } catch (e2) {} setTimeout(() => { try { _guestMaybeOpen(_gsid); } catch (e4) {} }, 400); p.delete('study'); const q0 = p.toString(); history.replaceState({}, '', window.location.pathname + (q0 ? '?' + q0 : '')); }
     /* SEAM:FIELD_RAIL — an invited link. Unlike ?study= this fires signed in
        or out: the token is the credential, not the session. */
@@ -9812,6 +9883,12 @@ function _openFrameRead(card) {
   runSearch();
 }
 function openFeaturedCard(id) {
+  // SEAM:RECORD_SCROLL: a deployment on the record opens its stored read (any night, not only the standing tiles)
+  if (_FI_RECORD && Array.isArray(_FI_RECORD.tiles)) {
+    const rt = _FI_RECORD.tiles.find(t => t.id === id);
+    if (rt) { _openDoorRead(rt); return; }
+  }
+  if (/^[0-9a-f-]{36}$/.test(String(id || '')) && !(_FI_LAKE && _FI_LAKE.door && (_FI_LAKE.door.tiles || []).some(t => t.id === id)) && !(_FI_LAKE && (_FI_LAKE.proposed || []).some(c => c.id === id))) { _openDoorRead({ id, title: '', frame: null }); return; }   // SEAM:RECORD_SCROLL: a permalink's id
   // SEAM:EXC_DOOR v2: an overnight tile opens its stored read.
   if (_FI_LAKE && _FI_LAKE.door && Array.isArray(_FI_LAKE.door.tiles)) {
     const dt = _FI_LAKE.door.tiles.find(t => t.id === id);
@@ -10284,10 +10361,107 @@ function _goDeeperLive() {
   const d = window._doorOpen; if (!d) return;
   _openFrameRead({ query: d.query, title: d.query, frame: null });
 }
+/* SEAM:RECORD_SCROLL: the record rides the board. GET /excavate/record (public, cached) lists every deployment newest first; the page
+   renders them as the scroll, filtered by the lens row, with the lake's unread patterns beneath. When the record is still empty (the
+   first nights) the standing door tiles render as before. */
+let _FI_RECORD = null, _recLens = { kind: 'all', value: null };
+async function _recordLoad() {
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; return j; } } catch (e) {}
+  return null;
+}
+function _recLensRow(tiles) {
+  const el = document.getElementById('rec-lenses'); if (!el) return;
+  const count = (f) => { const n = new Map(); for (const t of tiles) { const v = f(t); for (const x of (Array.isArray(v) ? v : [v])) if (x) n.set(x, (n.get(x) || 0) + 1); } return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8); };
+  const groups = [['brand', count(t => t.frame && t.frame.entity)], ['category', count(t => t.frame && t.frame.category)], ['audience', count(t => t.frame && t.frame.audience)], ['place', count(t => (t.place || []).map(p => p.place))]];
+  const positions = (_FI_RECORD && _FI_RECORD.positions) || [];
+  const btn = (kind, value, label, n) => `<button type="button" class="rec-lens${_recLens.kind === kind && _recLens.value === value ? ' on' : ''}" onclick="_recLensSet('${safeAttr(kind)}',${value == null ? 'null' : JSON.stringify(String(value)).replace(/"/g, '&quot;')})">${safe(label)}${n != null ? `<small>${safe(String(n))}</small>` : ''}</button>`;
+  let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Where the house has a position', positions.length) : '');
+  for (const [kind, list] of groups) if (list.length) html += `<span class="rec-lens-k">${kind}</span>` + list.map(([v, n]) => btn(kind, v, v, n)).join('');
+  html += `<span class="rec-lens-k">rooms</span><button type="button" class="rec-lens room" onclick="navTo('brands')">Brand rooms</button><button type="button" class="rec-lens room" onclick="navTo('audiences')">Audiences</button>`;
+  el.innerHTML = html; el.style.display = '';
+}
+function _recLensSet(kind, value) { _recLens = { kind, value }; if (_FI_RECORD && _FI_LAKE) _renderScroll(_FI_RECORD, _FI_LAKE); }
+function _recFilter(tiles) {
+  const L = _recLens; if (!L || L.kind === 'all') return tiles;
+  if (L.kind === 'positions') return tiles.filter(t => t.position);
+  if (L.kind === 'place') return tiles.filter(t => (t.place || []).some(p => p.place === L.value));
+  const key = L.kind === 'brand' ? 'entity' : L.kind;
+  return tiles.filter(t => t.frame && t.frame[key] === L.value);
+}
+function _recDay(d) { const x = d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z') : null; return x && !isNaN(x) ? x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; }
+/* A deployment's dateline: when it was deployed, what it develops, what developed it, the watch and its grade, where the evidence came from. */
+function _recDateline(t) {
+  const bits = [`<b>Deployed ${safe(_recDay(t.deployed))}</b>`];
+  if (t.develops) bits.push(`<a href="#" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(t.develops)}');return false">develops an earlier reading</a>`);
+  if (t.developed_by) bits.push(`<a href="#" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(t.developed_by)}');return false">developed ${safe(_recDay(t.developed_night))}</a>`);
+  if (t.place && t.place.length) bits.push(`<span>from ${t.place.map(p => safe(p.place)).join(' and ')}</span>`);
+  if (t.position) bits.push(`<span class="rec-pos">a position since ${safe(_recDay(t.position.since))}: ${safe(String(t.position.held))} of ${safe(String(t.position.deployments))} held</span>`);
+  return `<div class="rec-dateline">${bits.join(' · ')}</div>`;
+}
+function _recWatch(t) {
+  const w = t.watch, c = t.called;
+  if (!w) return '';
+  const what = `${safe(w.claim || (w.measure.replace('_', ' ') + ' ' + (w.op === 'gte' ? 'at or above' : 'at or below') + ' ' + w.value))}`;
+  if (c && c.verdict === 'held') return `<div class="rec-watch held"><i>Held</i> ${what} (measured ${safe(String(c.measured))} on ${safe(_recDay(c.by))})</div>`;
+  if (c && c.verdict === 'missed') return `<div class="rec-watch missed"><i>Missed</i> ${what} (measured ${safe(String(c.measured))} on ${safe(_recDay(c.by))})</div>`;
+  if (c && c.verdict === 'unmeasured') return `<div class="rec-watch"><i>Not measured</i> ${what}</div>`;
+  return `<div class="rec-watch open"><i>Watching</i> ${what}, checked ${safe(_recDay(w.by))}</div>`;
+}
+function _recFoot(t) {
+  const q = String((t.frame && t.frame.query) || t.title || '');
+  const link = (API_BASE.replace(/\/$/, '')) + '/i/' + encodeURIComponent(t.id);
+  return `<span class="open">Open the reading</span>${_tlButton(t.key, t.label || t.title)}<button type="button" class="tl-open" onclick="event.stopPropagation();_playRecord('${safeAttr(t.id)}')">Play it</button><button type="button" class="tl-open" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${safeAttr(link)}').then(()=>showToast('Link copied'))">Copy link</button>`;
+}
+/* SEAM:RECORD_SCROLL: "play it" hands PLAY the deployed insight through the handoff (SEAM:PLAY_HANDOFF): the claim as the ask, the frame, the move. */
+function _playRecord(id) {
+  const t = ((_FI_RECORD && _FI_RECORD.tiles) || []).find(x => x.id === id); if (!t) return;
+  const f = t.frame || {};
+  const pkg = { ask: ('Make this insight real: ' + String(t.claim || t.title || '') + (t.move ? ' The move: ' + t.move : '')).slice(0, 2400), from: 'record', q: f.query || t.title || null,
+    frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, task: null },
+    move: t.move ? { headline: t.move, body: null, because: null, proof: null, type: null } : null, title: t.title || null, thesis: t.claim || null, findings: [], evidence: [], voices: (t.voices || []).slice(0, 4).map(v => v.text).filter(Boolean) };
+  _playOpen(pkg);
+}
+function _renderScrollRow(t) {
+  const m = t.measures || {}, f = t.frame || {};
+  const who = [f.entity || f.category, f.audience].filter(Boolean).map(safe).join(' · ') + (Array.isArray(f.competitors) && f.competitors.length ? ' · vs ' + f.competitors.slice(0, 3).map(safe).join(', ') : '');
+  const photo = t.photo && t.photo.src ? `<figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.className='photo empty';this.remove()"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : '<figure class="photo empty" aria-hidden="true"></figure>';
+  return `<article class="row rec${t.developed_by ? ' developed' : ''}" data-state="${safeAttr(m.state || 'STEADY')}" onclick="openFeaturedCard('${safeAttr(t.id)}')">${photo}
+    <div>${_recDateline(t)}<div class="who">${who}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.question ? `<p class="q"><i>Answers</i>${safe(t.question)}</p>` : ''}${_recWatch(t)}<div class="foot">${_recFoot(t)}</div></div>
+    <div class="mid">${_pulse(m.series)}${_doorMeasureRow(m, t.since)}</div>
+    ${t.move ? `<div class="move"><i>Recommended move</i><br>${safe(t.move)}</div>` : '<div></div>'}</article>`;
+}
+function _renderScroll(rec, data) {
+  const grid = document.getElementById('featured-insights-grid'), list = document.getElementById('board-list'); if (!grid) return;
+  const all = (rec.tiles || []).slice(), tiles = _recFilter(all);
+  _recLensRow(all);
+  const counts = document.getElementById('rec-counts'), c = rec.counts || {};
+  if (counts) { counts.innerHTML = `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}<span class="blind">${safe(rec.blind || '')}</span>`; counts.style.display = ''; }
+  const sub = document.getElementById('board-sub');
+  if (sub) sub.textContent = 'What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.';
+  const strip = document.getElementById('fi-state-strip'); if (strip) strip.style.display = 'none';
+  // the two newest deployments with a photograph lead; the rest scroll
+  const leads = tiles.filter(t => t.photo && t.photo.src && !t.developed_by).slice(0, _doorLeads());
+  const rest = tiles.filter(t => !leads.includes(t));
+  grid.innerHTML = leads.map((t, i) => _renderDoorCard(Object.assign({}, t, { claim: t.claim }), i)).join('');
+  if (list) {
+    const readKeys = new Set(all.map(t => t.key));
+    let lake = ((data && data.proposed) || []).filter(x => x && x.cluster_id && !readKeys.has('theme:' + x.cluster_id));
+    list.classList.toggle('nothumbs', false);
+    list.innerHTML = rest.map(_renderScrollRow).join('') +
+      (!tiles.length ? '<div class="fi-divider" style="padding:14px 0 4px">Nothing deployed under this lens yet</div>' : '') +
+      (lake.length && _recLens.kind === 'all' ? '<div class="fi-divider" style="padding:14px 0 4px">Also moving, not yet read</div>' + lake.slice(0, 12).map(x => _renderLakeRow(x)).join('') : '');
+  }
+  _drawPulses();
+  const more = document.getElementById('board-more');
+  if (more) { more.textContent = 'A reading is deployed when a subject is new on the board or moved past the threshold since its last reading, at most six a night, as few as none. Every reading carries one measurable watch; the record grades it on the database\'s own counts when its date comes, and a miss stays.'; more.style.display = 'block'; }
+}
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');
   if (!grid) return;
   _renderWeek(data); _renderDoorVoices(data.voices); _renderRecord(data.record);   // SEAM:EXC_DOOR_VOICE
+  // SEAM:RECORD_SCROLL: the record first; the standing door tiles when the record is still empty
+  if (_FI_RECORD && Array.isArray(_FI_RECORD.tiles) && _FI_RECORD.tiles.length >= 3) { _renderScroll(_FI_RECORD, data); return; }
+  if (!_FI_RECORD) { _recordLoad().then(rec => { if (rec && rec.tiles.length >= 3 && _FI_LAKE === data) _renderScroll(rec, data); }); }
   if (data && data.door && Array.isArray(data.door.tiles) && data.door.tiles.length >= 4) { _renderDoorGrid(data.door, data.proposed || []); return; }
   const rd = document.getElementById('fi-field-read'); if (rd) rd.style.display = 'none';   // the week block carries the read now
   _renderStateStrip((data.field && data.field.states) || {});

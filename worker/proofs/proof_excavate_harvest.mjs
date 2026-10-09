@@ -157,14 +157,14 @@ ok(sc.lines === 30 && sc.fresh === 20 && sc.fresh_share === 67 && sc.outlets ===
 ok(H.excReadScore({ insights: [] }, [], null, null).score < 15, 'M4 an empty read scores near zero');
 
 // ── D: the door ───────────────────────────────────────────────────────────
-const doorSrc = between(w, 'const DOOR = { WANT: 12', 'async function excavateFeed(env, origin) {');
+const doorSrc = between(w, 'const DOOR = { WANT: 30', 'async function excavateFeed(env, origin) {');   // SEAM:RECORD_LAW
 const kv = {}, table = [], patches = [], batch = [], upserts = [];
 let nextId = 1;
-const D = new Function('feedCacheKey', 'feedWarm', 'loadTracks', 'FEED', 'sbRest', 'ilikeOr', 'excStampTiers', 'excRelevance', 'excReadPages', 'excBudget', 'excKey', 'excWhen', 'excLine', 'excFrameBlock', 'excMeasureLine', 'excFrameClean', 'excFrameFor', 'excMeasures', 'excTiersLoad', 'excTier', 'excBand', 'excGround', 'excEarned', 'excClip', 'excShort', 'excWindow', 'excReadOf', 'excFrameLabel', 'claudeBatchSubmit', 'claudeSpent', 'claudeCap', 'EXC_MODEL', 'EXC_VOICE_SYS', 'EXC_MOVE_LAW', 'EXC_TIME_LAW', 'EXC_NUMBER_LAW', 'RAIL_FNS', 'RAIL_BY_ID', 'excRailQuery', 'excQuiet', 'logEvent', 'excavateAuth', 'json', 'CLAUDE',
+const D = new Function('EXC_HEADLINE_LAW', 'feedCacheKey', 'feedWarm', 'loadTracks', 'FEED', 'sbRest', 'ilikeOr', 'excStampTiers', 'excRelevance', 'excReadPages', 'excBudget', 'excKey', 'excWhen', 'excLine', 'excFrameBlock', 'excMeasureLine', 'excFrameClean', 'excFrameFor', 'excMeasures', 'excTiersLoad', 'excTier', 'excBand', 'excGround', 'excEarned', 'excClip', 'excShort', 'excWindow', 'excReadOf', 'excFrameLabel', 'claudeBatchSubmit', 'claudeSpent', 'claudeCap', 'EXC_MODEL', 'EXC_VOICE_SYS', 'EXC_MOVE_LAW', 'EXC_TIME_LAW', 'EXC_NUMBER_LAW', 'RAIL_FNS', 'RAIL_BY_ID', 'excRailQuery', 'excQuiet', 'logEvent', 'excavateAuth', 'json', 'CLAUDE',
   "const doorVoices = async (env, cand) => (!globalThis.__voiceNight && cand && cand.key === 'theme:th1' ? [{ text: 'night one voice', likes: 3, when: null, self: null }] : []); const DOOR_VOICES = { KEEP: 6, PASS_MS: 120000, FRESH_D: 90 }; const doorVoicePick = q => (q || []).slice(0, 6); const ledgerPut = async () => 0; const ledgerDoorRows = () => []; const peopleLedger = async () => 0;\n" +   // EX18b: the voices (gathered the first night only) and the ledger; both are proved in full in proof_sweep_ledger
   between(w, '// PURE: what a subject keeps:', '/* The voices alone') +
   doorSrc + '; return { doorCandidates, doorEvidence, doorStamp, doorPass, doorLand, doorPublish, doorTile, doorCompileRead, excDoorPrompt, DOOR, doorEvery };')(
-  () => 'prop', async () => ({ proposed: [{ cluster_id: 'th1', title: 'Texture-first shelves', subtitle: 'Who wins the curl aisle?', query: 'curl hair care shelf', lens: 'market', evidence: { recent_7d: 9, territories: ['fashion-beauty'] } }, { cluster_id: 'th2', title: 'Quiet theme', subtitle: '', lens: 'culture', evidence: { recent_7d: 1 } }] }),
+  'HEADLINE LAW', () => 'prop', async () => ({ proposed: [{ cluster_id: 'th1', title: 'Texture-first shelves', subtitle: 'Who wins the curl aisle?', query: 'curl hair care shelf', lens: 'market', evidence: { recent_7d: 9, territories: ['fashion-beauty'] } }, { cluster_id: 'th2', title: 'Quiet theme', subtitle: '', lens: 'culture', evidence: { recent_7d: 1 } }] }),
   async () => [{ id: 'tr1', name: 'Nike', aliases: ['NKE'], sector: 'Athletic footwear' }], { TRACKS_KEY: 'tracks:stats' },
   async (env, path, opts) => {
     if (/^signals\?/.test(path)) return Array.from({ length: 6 }, (_, i) => ({ id: 's' + i, title: (/theme_id\.eq\.th1/.test(path) ? 'Curl aisle story ' : /Nike/.test(path) ? 'Nike story ' : 'thin ') + i, url: 'https://lake.example/' + path.slice(8, 12) + i, summary: 'summary ' + i, source_name: 'outlet' + (i % 3), source_tier: 3, published_at: ago(i + 1), captured_at: ago(i + 1), image: /theme_id\.eq\.th1/.test(path) && i === 0 ? 'https://img.example/curl0.jpg' : /theme_id\.eq\.th1/.test(path) && i === 1 ? 'http://img.example/insecure.jpg' : null })).slice(0, /th2/.test(path) ? 2 : 6);
@@ -207,7 +207,7 @@ ok(table.filter(r => r.status === 'compiling').length === 2 && th2.status === 'f
   'D3 every row keeps its frame (whole), its measures, its evidence pack and the batch it waits on, and the pack includes the news top-up');
 ok(th1.evidence.filter(e => e.image).length === 1 && th1.evidence.find(e => e.image).image === 'https://img.example/curl0.jpg' && th1.evidence.every(e => 'image' in e),
   'D3b each stored line keeps its https image (an http one is dropped), so the photograph survives into the landing');
-ok(/^v3\.2q~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '3.2q',
+ok(/^v3\.3r~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '3.3r',
   'D3c the reuse stamp carries the door\'s voice version');
 const landedText = JSON.stringify({ read: ['Texture-first shelving now owns 30% of fashion beauty signals this week.', 'Put the curl line on the endcap.'], insights: [{ category: 'market', title: 'Shelves sort by curl', excerpt: 'Curl aisle story 0 says so.', evidence: [1] }, { category: 'consumer', title: 'Buyers read labels', excerpt: 'x', evidence: [2] }, { category: 'brand', title: 'Being leads', excerpt: 'x', evidence: [3] }], ideas: [{ type: 'Channel', for: 'retail', headline: 'Pitch the curl endcap to Target', body: 'b', because: 'c', proof: 'p', evidence: [1], from: 0 }], brief: 'Where it is.' });
 const q7 = quiet();
@@ -269,17 +269,17 @@ await new Promise(r => setTimeout(r, 5));
 const q9 = quiet();
 const skip = await D.doorPass(env);
 q9.done();
-ok(D.DOOR.EVERY_D === 2 && skip.skipped === 'cadence' && skip.every === 2 && skip.last_night === yday && skip.next_night === new Date(Date.parse(yday) + 2 * day).toISOString().slice(0, 10) && skip.candidates === 0 && batch.length === batchBefore && upserts.length === upBefore && JSON.parse(kv['door:v2']).built_at !== builtBefore && JSON.parse(kv['door:v2']).tiles.length === table.filter(r => r.status === 'ready' || r.status === 'reused').length,
-  'D9 one night after a door night, the pass skips on cadence: no candidates, no rows, no batch, the next night named, and the standing set republished so its KV copy stays fresh');
+ok(D.DOOR.EVERY_D === 1 && !skip.skipped && skip.candidates === 3 && skip.cap === 6 && typeof skip.earned === 'number' && JSON.parse(kv['door:v2']).built_at !== builtBefore,
+  'D9 the cadence retired (SEAM:RECORD_LAW): the door runs every night and the earned law decides what is written; the pass reports earned and the cap; the standing set is republished');
 const q9b = quiet();
 const forced = await D.doorPass(env, { force: true });
 q9b.done();
-ok(!forced.skipped && forced.candidates === 3 && upserts.length === upBefore + 1, 'D9b a desk run passes force and compiles inside the gap');
+ok(!forced.skipped && forced.candidates === 3 && upserts.length >= upBefore + 1, 'D9b a desk run passes force and compiles');
 table.forEach(r => { r.night = yday; });
 const q9c = quiet();
 const nightly = await D.doorPass({ RATE_LIMIT: env.RATE_LIMIT, DOOR_EVERY_D: '1' });
 q9c.done();
-ok(!nightly.skipped && nightly.candidates === 3 && D.doorEvery({ DOOR_EVERY_D: '3' }) === 3 && D.doorEvery({ DOOR_EVERY_D: 'x' }) === 2 && D.doorEvery({}) === 2, 'D9c DOOR_EVERY_D 1 runs nightly without a deploy; an unreadable value falls back to the house setting');
+ok(!nightly.skipped && nightly.candidates === 3 && D.doorEvery({ DOOR_EVERY_D: '3' }) === 3 && D.doorEvery({ DOOR_EVERY_D: 'x' }) === 1 && D.doorEvery({}) === 1, 'D9c DOOR_EVERY_D still reads; an unreadable value falls back to the house setting, nightly');
 table.forEach(r => { r.night = new Date(Date.now() - 2 * day).toISOString().slice(0, 10); });
 const q9d = quiet();
 const due = await D.doorPass(env);

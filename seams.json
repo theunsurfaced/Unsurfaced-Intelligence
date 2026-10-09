@@ -1253,6 +1253,43 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_THIN",
    "purpose": "the page says a read is building on N lines beside Go deeper; a written read never prints the placeholder interpretation (the placeholder itself loses its dash and its \"0 live sources (none)\"); the receipt describes a cut pass in plain words"
+  },
+  "SEAM:RECORD_LAW": {
+   "file": "worker/src/index.js",
+   "purpose": "EX28 THE RECORD: the earned law replaces the cadence. The door runs nightly over a candidate pool (DOOR.WANT 30) and writes a subject only when it earned a read: new on the board, or moved past the threshold since its last read (DOOR_LAW: stories up or down by MIN_DELTA, velocity past MIN_VEL, MIN_OUTLETS new outlets); otherwise its last read stands as reused and nothing is spent. At most CAP a night, largest moves first; past the cap a subject keeps its last read or waits. A read never overwrites: each night's row is a dated deployment and the row it develops is marked developed_by. The tile carries deployed, develops, developed_by, watch, called and place."
+  },
+  "SEAM:RECORD_WATCH": {
+   "file": "worker/src/index.js",
+   "purpose": "EX28: every door read carries one measurable watch (measure signals_7d, outlets or velocity_pct; op gte or lte; value; by, 14 to 45 days out; the claim in words) so the record can grade it; doorCalled runs nightly after the door pass and grades every watch that came due on excMeasures over the read's own frame: held, missed or unmeasured, on the row's meta.called. A miss stays. No model is asked."
+  },
+  "SEAM:RECORD_ROUTE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX28: GET /excavate/record (public, cached ten minutes): every deployment newest first as tiles with dates, watches, grades and places, the positions (subjects with POSITION_MIN deployments of which POSITION_HELD held) and the counts; GET /excavate/insight?id= one insight, light and public, no evidence lines; GET /i/<id> the permalink page with share tags that opens the reading on the site. Desk {run: called} and {run: record}."
+  },
+  "SEAM:EXC_BLIND": {
+   "file": "worker/src/index.js",
+   "purpose": "EX28: the blind-spots line. EXC_BLIND states what the engine does not see (TikTok, Instagram, X) and where its voices and news come from; it rides every live read (payload.blind) and every door read. The line changes only when a rail is added."
+  },
+  "SEAM:EXC_BLIND@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_BLIND",
+   "purpose": "the page's copy of the blind-spots line (EXC_BLIND_LINE) under the voices and on the fallback and the downloadable read"
+  },
+  "SEAM:EXC_HOUSE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX28: the engine cites itself. excHouseLines fetches the house's own deployed insights on a live read's frame (the entity, else the category; last 120 nights; three at most) and the writer is handed them as context for continuity, never as evidence or a source; payload.house carries them for the receipt."
+  },
+  "SEAM:EXC_PLACE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX28: place. The envelope carries country when a rail says (GDELT sourcecountry); a door read's stored evidence lines carry place; doorPlaceOf counts them and the two most common ride the tile and the door read. Free; GDELT already said it."
+  },
+  "SEAM:RECORD_SCROLL": {
+   "file": "intelligence/index.html",
+   "purpose": "EX28 THE RECORD (page): the board is the record. GET /excavate/record renders as the scroll (newest deployment first), each row with its dateline (deployed, develops, developed, place, position), the watch and its grade (held, missed, watching), open the reading, history, play it (through the PLAY handoff) and copy link (the /i/ permalink); the lens row filters by brand, category, audience, place and positions and links the brand and audience rooms; the lake's unread patterns ride beneath. The standing door tiles render while the record is empty. A permalink (?insight=<id>) opens the reading; openFeaturedCard finds a deployment on any night."
+  },
+  "SEAM:EXC_FALLBACK": {
+   "file": "intelligence/index.html",
+   "purpose": "EX28: the fallback obeys the laws. When the writer did not finish, the page prints no gathered signal as a finding, hides the lens tabs and panels, says the reading did not finish in the house's words, offers the full read and shows the voices and the blind-spots line. The templated lens moves are gone (_buildLensIdeas returns nothing). The download is built from the read the writer stood behind (_buildReadPDF) or refused; the lens-template report is never printed."
   }
  },
  "planned": [
