@@ -8732,7 +8732,7 @@ async function memoryRecord(env) {
  * Every read is kept in door_reads, so a tile says what changed since last
  * night. A visitor pays nothing: tiles come from KV, the read from the table.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 9000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.3r' };   // SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
+const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.3r' };   // SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
 /* SEAM:RECORD_LAW: when a subject earns a read. New on the board: earned. Read before and the evidence changed: earned only when it
  * moved past the threshold since that read (stories this week up or down by MIN_DELTA, or velocity past MIN_VEL percent, or MIN_OUTLETS
  * new outlets); otherwise its last read stands (reused) and nothing is spent. At most CAP reads a night, the largest moves first; a
