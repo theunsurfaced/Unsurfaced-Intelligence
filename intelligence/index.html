@@ -506,6 +506,20 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rec-cur .move{font-size:13px}.rec-cur .move i{font-style:normal;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 .rec-cur-subs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rec-cur-subs span{font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--room-rule,var(--border));padding:2px 6px;color:var(--room-fg2,var(--text2))}
 .rec-ahead{color:var(--room-fg2,var(--text2))}
+.rec-ask{margin:0 0 18px;border:1px solid var(--room-rule,var(--border));padding:14px 16px}   /* SEAM:ASK_RECORD */
+.rec-ask-row{display:flex;gap:8px}.rec-ask-row input{flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:9px 11px;font:inherit}
+.rec-ask-thread{max-height:360px;overflow:auto;margin-top:10px}
+.ask-turn{padding:10px 0;border-top:1px solid var(--room-rule,var(--border))}.ask-turn b{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:4px}
+.ask-turn p{margin:0;line-height:1.55;font-size:15px}.ask-turn.pending p{color:var(--text2)}
+.ask-cite{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
+.ask-cites{display:flex;flex-direction:column;gap:3px;margin-top:8px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text2)}
+.ask-foot{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3,var(--text2));margin-top:8px;opacity:.8}
+.rec-cal b{margin-right:6px}
+.reach-panel{border-top:1px solid var(--border);padding-top:12px;margin-top:12px}   /* SEAM:INSIGHT_PANEL */
+.reach-quote{margin:6px 0;padding-left:10px;border-left:2px solid var(--accent);font-size:14px;color:var(--text2)}
+.pm-ev{border-top:1px solid var(--border);padding-top:12px;margin:4px 0 14px}.pm-ev small{display:block;color:var(--text2);font-size:12px;margin:4px 0 8px}
+.pm-ev input,.pm-ev textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;font:inherit;margin:0 0 8px}
+.pm-file{cursor:pointer;display:inline-block}
 .read-thin{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 10px;max-width:70ch;}   /* SEAM:EXC_THIN */
 .btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
 .btn-go-deeper:hover{background:#ff5555;}
@@ -2351,6 +2365,11 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
       <h2 id="board-h2">The record</h2>
       <div class="sub" id="board-sub">What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.</div>
     </div>
+    <div class="rec-ask" id="rec-ask"><!-- SEAM:ASK_RECORD: a conversation over the record and the lake -->
+      <div class="reach-k">ASK THE RECORD</div>
+      <form class="rec-ask-row" onsubmit="return _askSubmit(event)"><input id="ask-q" maxlength="400" placeholder="What has the house seen on retro silhouettes since August, and did it hold?" autocomplete="off"><button type="submit" class="btn-go-deeper">Ask</button></form>
+      <div class="rec-ask-thread" id="ask-thread"></div>
+    </div>
     <div class="rec-lenses" id="rec-lenses" style="display:none"></div><!-- SEAM:RECORD_SCROLL: the lens row -->
     <div class="rec-counts" id="rec-counts" style="display:none"></div>
     <div class="fi-state-strip" id="fi-state-strip" style="display:none"></div>
@@ -3402,7 +3421,7 @@ function _renderLive(q, data){
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
-    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
+    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null, client_lines:syn&&syn.client_lines||0},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -6080,6 +6099,7 @@ function _renderReadBlock(q, data, mode){
   if(data.look&&Array.isArray(data.look.lines)&&data.look.lines.length) rows.push(['the look',data.look.lines.map(l=>n(l.line)).join(' ')]);   // SEAM:EXC_LOOK: what the evidence's images look like
   if(Array.isArray(data.ahead)&&data.ahead.length) rows.push(['ahead',data.ahead.map(n).join('; ')]);   // SEAM:EXC_AHEAD: the moments the frame is heading into
   if(meta.meta&&meta.meta.reddit_off) rows.push(['reddit','asked, not configured']);   // SEAM:RAIL_REDDIT
+  if(data.client_lines) rows.push(['your evidence',`<b>${n(String(data.client_lines))}</b> of your own lines, first-party`]);   // SEAM:CLIENT_EVIDENCE
   const _rcptHtml=rows.length?`<aside class="rb-receipts"><div class="rb-receipts-head">What this read stood on</div><dl>${rows.map(r=>`<div class="rb-row"><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl></aside>`:'';
   const _ovHtml=ov?`<p class="rb-foot">Overnight read for the night of ${n(ov.night)}${ov.status==='reused'?', evidence unchanged since the last read':''}${ov.prev_night?', previous read '+n(ov.prev_night):''}. <button class="rb-go-live" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
   el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>${_scoreHtml}</div>
@@ -10412,8 +10432,14 @@ async function _profileOpen() {
     <label>Slack webhook <small>${prof.slack_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; an incoming webhook URL'}</small><input id="pm-slack" placeholder="https://hooks.slack.com/services/..."></label>
     <label>Teams webhook <small>${prof.teams_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; a workflow webhook URL'}</small><input id="pm-teams" placeholder="https://....webhook.office.com/..."></label>
     <label>Brief day <small>a five-line brief over the week's readings on your frames opens that day's mail</small><select id="pm-day">${days}</select></label>
+    <div class="pm-ev"><div class="pm-k">YOUR EVIDENCE</div><small>A read on your frames takes your own lines in as first-party evidence and says how many it stood on.</small>
+      <div class="pm-follows" id="pm-evidence-list"></div>
+      <input id="pm-ev-title" placeholder="Title (your tracker, deck or report)"><input id="pm-ev-hint" placeholder="What it is about (a brand, a category), optional">
+      <textarea id="pm-ev-text" rows="4" placeholder="Paste the text here"></textarea>
+      <div class="pm-acts"><button type="button" class="btn-new-search" onclick="_evidencePaste()">Keep the text</button><label class="btn-new-search pm-file">Upload .txt .md .csv .json<input type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" onchange="_evidenceUpload(this)" style="display:none"></label></div></div><!-- SEAM:CLIENT_EVIDENCE -->
     <div class="pm-acts"><button type="button" class="btn-go-deeper" onclick="_profileSubmit()">Save</button><button type="button" class="btn-new-search" onclick="_profileClose()">Close</button></div></div>`;
   el.style.display = '';
+  _evidenceList();
 }
 function _profileClose() { const el = document.getElementById('profile-modal'); if (el) el.style.display = 'none'; }
 async function _profileSubmit() {
@@ -10444,9 +10470,11 @@ async function _reachBlock(id) {
   if (!el) { el = document.createElement('section'); el.id = 'reach-block'; el.className = 'reach'; rb.insertAdjacentElement('afterend', el); }
   el.innerHTML = `<div class="reach-k">FOR YOUR ROLE</div><div class="reach-imps" id="reach-imps"><span class="pm-none">Writing the implications for your role</span></div>
     <div class="reach-row"><span class="reach-k">THIS READING</span><div class="reach-marks" id="reach-marks"></div>
-    <button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_embedCopy('${safeAttr(id)}')">Embed</button></div>`;
+    <button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_embedCopy('${safeAttr(id)}')">Embed</button><button type="button" class="tl-open" onclick="_panelAsk('${safeAttr(id)}')">Ask the panel</button></div>
+    <div class="reach-panel" id="reach-panel" style="display:none"></div>`;
   el.style.display = '';
   _marksLoad(id);
+  _panelLoad(id);   // SEAM:INSIGHT_PANEL
   try {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/roles?id=' + encodeURIComponent(id), { headers: await _authHeader() });
     const j = r.ok ? await r.json() : null; const box = document.getElementById('reach-imps'); if (!box) return;
@@ -10454,6 +10482,44 @@ async function _reachBlock(id) {
     box.innerHTML = `<div class="reach-role">for ${safe(j.role)}</div>` + j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');
   } catch (e) { const box = document.getElementById('reach-imps'); if (box) box.innerHTML = '<span class="pm-none">The implications did not load.</span>'; }
 }
+/* SEAM:INSIGHT_PANEL: the panel on the claim. Ask the panel drafts a three-question MINE study from the reading (reviewed and launched in
+   MINE); once five people have answered, the answers show under the reading as first-party evidence with the sample size. */
+async function _panelLoad(id) {
+  const box = document.getElementById('reach-panel'); if (!box) return;
+  let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/panel?id=' + encodeURIComponent(id), { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const pnl = j && j.ok && j.panel; if (!pnl) { box.style.display = 'none'; return; }
+  const who = Object.keys(pnl.who || {}).map(k => `${safe(k)} ${safe(String(pnl.who[k]))}`).join(', ');
+  box.innerHTML = `<div class="reach-k">THE PANEL ON THIS READING</div>` + (pnl.thin
+    ? `<p class="pm-none">${safe(pnl.status === 'draft' ? 'Drafted in MINE, not yet launched. Open MINE to review the three questions and launch it.' : `${pnl.n} answered so far; the panel shows its numbers at ${pnl.min_n}.`)}</p>`
+    : `<p><b>${safe(String(pnl.n))}</b> people answered${pnl.scale ? `; <b>${safe(String(pnl.scale.agree_pct))}%</b> said it is true of them (5 or more on 7; mean ${safe(String(pnl.scale.mean))})` : ''}${who ? `; ${who}` : ''}.</p>` + (pnl.quotes || []).map(q => `<blockquote class="reach-quote">${safe(q)}</blockquote>`).join(''));
+  box.style.display = '';
+}
+async function _panelAsk(id) {
+  try { const d = await api('excavate/insight/panel', { id }); if (d && d.ok) { showToast(d.existed ? 'The panel already exists for this reading' : 'Panel drafted in MINE: review and launch it there'); _panelLoad(id); } else showToast(d && d.error === 'auth_required' ? 'Sign in to ask the panel' : 'Could not draft the panel' + (d && d.detail ? ': ' + d.detail : '')); }
+  catch (e) { showToast('Sign in to ask the panel'); }
+}
+/* SEAM:CLIENT_EVIDENCE: what you bring. Paste or upload text (txt, md, csv, json) in your profile; a read on your frames takes the
+   lines that name the frame as first-party evidence and says how many it stood on. */
+async function _evidenceList() {
+  const box = document.getElementById('pm-evidence-list'); if (!box) return;
+  let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/client/evidence', { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const items = (j && j.items) || [];
+  box.innerHTML = items.length ? items.map(it => `<span class="pm-chip">${safe(it.title)} <small>${safe(String(it.chunks))} parts</small><button type="button" aria-label="remove" onclick="_evidenceDelete(${parseInt(it.id, 10)})">&times;</button></span>`).join('') : '<span class="pm-none">Nothing yet. Paste text or upload a .txt, .md, .csv or .json file; a PDF or a deck is read best as its exported text.</span>';
+}
+async function _evidencePaste() {
+  const t = (document.getElementById('pm-ev-text') || {}).value || '', title = (document.getElementById('pm-ev-title') || {}).value || '', hint = (document.getElementById('pm-ev-hint') || {}).value || '';
+  if (t.trim().length < 40 || !title.trim()) { showToast('A title and at least a paragraph'); return; }
+  try { const d = await api('client/evidence', { title: title.trim(), text: t, hint: hint.trim() || null }); showToast(d && d.ok ? 'Kept: ' + d.item.chunks + ' parts' : 'Could not keep it' + (d && d.error ? ': ' + d.error : '')); if (d && d.ok) { document.getElementById('pm-ev-text').value = ''; _evidenceList(); } } catch (e) { showToast('Could not keep it'); }
+}
+async function _evidenceUpload(input) {
+  const f = input && input.files && input.files[0]; if (!f) return;
+  if (f.size > 400000) { showToast('Under 400 KB of text, please'); input.value = ''; return; }
+  const hint = (document.getElementById('pm-ev-hint') || {}).value || '';
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/client/evidence', { method: 'POST', headers: Object.assign({ 'Content-Type': f.type || 'text/plain', 'x-filename': f.name, 'x-hint': hint.trim() }, await _authHeader()), body: f }); const d = r.ok ? await r.json() : null;
+    showToast(d && d.ok ? 'Kept: ' + d.item.chunks + ' parts' : (d && d.say) || 'Could not keep it'); if (d && d.ok) _evidenceList(); } catch (e) { showToast('Could not keep it'); }
+  input.value = '';
+}
+async function _evidenceDelete(id) { try { await fetch(API_BASE.replace(/\/$/, '') + '/client/evidence?id=' + id, { method: 'DELETE', headers: await _authHeader() }); } catch (e) {} _evidenceList(); }
 async function _marksLoad(id) {
   const box = document.getElementById('reach-marks'); if (!box) return;
   let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/mark?id=' + encodeURIComponent(id), { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
@@ -10550,6 +10616,33 @@ function _renderScrollRow(t) {
     <div class="mid">${_pulse(m.series)}${_doorMeasureRow(m, t.since)}</div>
     ${t.move ? `<div class="move"><i>Recommended move</i><br>${safe(t.move)}</div>` : '<div></div>'}</article>`;
 }
+/* SEAM:ASK_RECORD: the question goes to the worker with the thread so far; the answer's markers become links: a deployed insight opens,
+   a lake line goes to its source. Nothing here is general knowledge; the record says when it is silent. */
+window._askHistory = [];
+async function _askSubmit(ev) {
+  if (ev) ev.preventDefault();
+  const inp = document.getElementById('ask-q'), thread = document.getElementById('ask-thread'); if (!inp || !thread) return false;
+  const q = String(inp.value || '').trim(); if (q.length < 4) return false;
+  inp.value = '';
+  thread.insertAdjacentHTML('beforeend', `<div class="ask-turn reader"><b>You</b><p>${safe(q)}</p></div><div class="ask-turn house pending" id="ask-pending"><b>The record</b><p>Reading what the house deployed and what the lake holds</p></div>`);
+  thread.scrollTop = thread.scrollHeight;
+  let d = null;
+  try { d = await api('ask', { q, history: window._askHistory.slice(-6) }); } catch (e) { d = { ok: false, error: String(e && e.message || e) }; }
+  const pend = document.getElementById('ask-pending'); if (pend) pend.remove();
+  if (!d || !d.ok) { thread.insertAdjacentHTML('beforeend', `<div class="ask-turn house"><b>The record</b><p>${safe(d && d.error === 'rate_limited' ? 'The daily allowance is spent; the record answers again tomorrow.' : d && d.error === 'unauthorized' ? 'Sign in to ask the record.' : 'The record could not answer just now.')}</p></div>`); return false; }
+  const cites = Array.isArray(d.cites) ? d.cites : [];
+  let html = safe(d.answer || '');
+  for (const c of cites) {
+    const mark = '[' + c.k + ']';
+    const link = c.k.startsWith('D') ? `<a href="#" class="ask-cite" title="${safeAttr((c.deployed ? 'Deployed ' + c.deployed + '. ' : '') + (c.claim || ''))}" onclick="openFeaturedCard('${safeAttr(c.id)}');return false">${safe(mark)}</a>` : (c.url ? `<a class="ask-cite" href="${safeAttr(c.url)}" target="_blank" rel="noopener" title="${safeAttr((c.source || '') + (c.date ? ' · ' + c.date : '') + (c.title ? ': ' + c.title : ''))}">${safe(mark)}</a>` : `<span class="ask-cite" title="${safeAttr(c.title || '')}">${safe(mark)}</span>`);
+    html = html.split(safe(mark)).join(link);
+  }
+  const used = cites.filter(c => (d.answer || '').includes('[' + c.k + ']'));
+  thread.insertAdjacentHTML('beforeend', `<div class="ask-turn house"><b>The record</b><p>${html}</p>${used.length ? `<div class="ask-cites">${used.map(c => c.k.startsWith('D') ? `<span>${safe(c.k)} deployed ${safe(c.deployed || '')}${c.called ? ', ' + safe(c.called) : ''}: ${safe(String(c.claim || '').slice(0, 90))}</span>` : `<span>${safe(c.k)} ${safe(c.source || '')}${c.date ? ' · ' + safe(c.date) : ''}: ${safe(String(c.title || '').slice(0, 90))}</span>`).join('')}</div>` : ''}${d.silent ? '' : `<div class="ask-foot">Answered from the record and the lake only. ${safe(EXC_BLIND_LINE)}</div>`}</div>`);
+  window._askHistory.push({ role: 'reader', text: q }, { role: 'house', text: String(d.answer || '').slice(0, 600) });
+  thread.scrollTop = thread.scrollHeight;
+  return false;
+}
 /* SEAM:CROSS_CURRENTS: the patterns running across the fortnight's deployments, named once a week; above the scroll. */
 function _renderCurrents(cur) {
   let el = document.getElementById('rec-currents');
@@ -10567,7 +10660,8 @@ function _renderScroll(rec, data) {
   const all = (rec.tiles || []).slice(), tiles = _recFilter(all);
   _recLensRow(all);
   const counts = document.getElementById('rec-counts'), c = rec.counts || {};
-  if (counts) { counts.innerHTML = `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}<span class="blind">${safe(rec.blind || '')}</span>`; counts.style.display = ''; }
+  const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
+  if (counts) { counts.innerHTML = (calLine ? `<span class="rec-cal"><b>Calibration</b> ${calLine}</span>` : '') + `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}<span class="blind">${safe(rec.blind || '')}</span>`; counts.style.display = ''; }
   _renderCurrents(rec.currents);   // SEAM:CROSS_CURRENTS
   const sub = document.getElementById('board-sub');
   if (sub) sub.textContent = 'What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.';

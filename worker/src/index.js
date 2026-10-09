@@ -183,6 +183,9 @@ export default {
       if (path === '/excavate/insight/roles' && request.method === 'GET') return roleImplicationsRoute(request, env, origin);   // SEAM:ROLE_IMPLICATIONS (signed in)
       if (path === '/excavate/insight/pack' && request.method === 'GET') return insightPackRoute(request, env, origin);   // SEAM:EVIDENCE_PACK (signed in)
       if (path === '/excavate/mark' && (request.method === 'GET' || request.method === 'POST')) return markRoute(request, env, origin);   // SEAM:READER_MARKS
+      if (path === '/excavate/insight/panel' && request.method === 'POST') return insightPanelCreate(request, env, origin);   // SEAM:INSIGHT_PANEL (signed in)
+      if (path === '/excavate/insight/panel' && request.method === 'GET') return insightPanelResults(request, env, origin);   // SEAM:INSIGHT_PANEL (signed in)
+      if (path === '/client/evidence' && ['GET', 'POST', 'DELETE'].includes(request.method)) return clientEvidenceRoute(request, env, origin);   // SEAM:CLIENT_EVIDENCE (signed in)
       if (path === '/bench/freeze' && request.method === 'POST') return benchFreeze(request, env, origin);   // SEAM:BENCH (desk key)
       if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
@@ -230,7 +233,8 @@ export default {
         case '/play/render':         return playRender(body, env, origin, user);
         case '/play/assemble':       return playAssemble(body, env, origin, user);
         case '/play/upload-ref':     return playUploadRef(request, env, origin, user);
-        case '/excavate/synthesize': return body && body.stream ? synthesizeStream(body, env, origin, ctx) : synthesize(body, env, origin);   // SEAM:EXC_STREAM
+        case '/excavate/synthesize': { const b2 = Object.assign({}, body || {}, { _uid: user && user.id || null }); return b2.stream ? synthesizeStream(b2, env, origin, ctx) : synthesize(b2, env, origin); }   // SEAM:EXC_STREAM; SEAM:CLIENT_EVIDENCE: the reader's id rides so their own lines can join
+        case '/ask':                 return askRecord(body, env, origin, user);   // SEAM:ASK_RECORD
         case '/mine/notify':        return mineNotify(body, env, origin, user);
         case '/mine/invites':       return mineInvites(body, env, origin, user);
         case '/mine/client-access': return mineClientAccess(body, env, origin, user);
@@ -766,6 +770,9 @@ async function synthesize(body, env, origin, hooks) {
     const gate = excRelevance(corpusIn.concat(addedAll), frame0);
     if (frame0) { const keep = new Set(gate.kept); corpusIn = corpusIn.filter(c => keep.has(c)); addedAll = addedAll.filter(a => keep.has(a)); }
     const unrank = list => { for (const c of list || []) { if (c) { delete c._s; delete c._a; } } };
+    // SEAM:CLIENT_EVIDENCE: the reader's own lines on the frame join past the gate; the reader chose them. Never on the bench.
+    const clientLines = (body._uid && !body.bench && typeof excClientLines === 'function') ? await excClientLines(env, body._uid, frame0, query).catch(excQuiet('client_lines', [])) : [];
+    if (clientLines.length) { excStampTiers(clientLines, tiers); corpusIn = corpusIn.concat(clientLines); }
     let plan = excBudget(corpusIn, addedAll);
     if (!plan.merged.length) return reply({ ok: false, error: 'no_corpus' }, 200, origin, env);
     // SEAM:EXC_PAGES + SEAM:EXC_GAP: the pages are read and the gap is named at the same time; then one round
@@ -876,7 +883,8 @@ async function synthesize(body, env, origin, hooks) {
     const disagreeLaw = hasConsensus ? ' ' + EXC_DISAGREE_LAW : '';
     const aheadLines = merged.filter(c => c && c.kind === 'ahead').length;
     const aheadLaw = aheadLines ? ' AHEAD: lines marked AHEAD are known moments coming inside sixty days; a move may anchor to one by name and date; never invent what the moment will bring. ' : '';   // SEAM:EXC_AHEAD
-    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW + ' ' + EXC_HEADLINE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw + thinLaw + disagreeLaw + aheadLaw, prompt: usr,
+    const clientLaw = merged.some(c => c && c.client) ? ' ' + EXC_CLIENT_LAW : '';   // SEAM:CLIENT_EVIDENCE
+    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW + ' ' + EXC_HEADLINE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw + thinLaw + disagreeLaw + aheadLaw + clientLaw, prompt: usr,
       max_tokens: quick ? EXC_ROOM.quick : (isReport ? EXC_ROOM.report : EXC_ROOM.plain), kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
       onText: hooks.onText || null,
       thinking: quick ? { type: 'disabled' } : null, timeout_ms: quick ? EXC_READ.QUICK_MS : null };   // SEAM:EXC_STREAM: the live draft; SEAM:EXC_QUICK: no thinking and a 45 s deadline on a quick read
@@ -1013,6 +1021,7 @@ async function synthesize(body, env, origin, hooks) {
       thin: thin ? merged.length : null,   // SEAM:EXC_THIN: the page says the read is building
       blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND: computed from what is configured
       look: look || null,   // SEAM:EXC_LOOK: what the evidence's images look like, one sentence each
+      client_lines: merged.filter(c => c && c.client).length,   // SEAM:CLIENT_EVIDENCE: how many of the reader's own lines the read stood on
       ahead: aheadLines ? merged.filter(c => c && c.kind === 'ahead').slice(0, 3).map(c => String(c.title || '').replace(/^AHEAD /, '')) : null,   // SEAM:EXC_AHEAD
       house: house,   // SEAM:EXC_HOUSE: the house's own deployed insights on this frame, shown as context on the receipt
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
@@ -9146,6 +9155,166 @@ async function watchRoute(request, env, origin) {
   const runs = (await sbRest(env, 'activity_events?event=eq.desk_run&select=created_at,meta&order=created_at.desc&limit=20').catch(excQuiet('watch_runs', []))) || [];
   return json({ ok: true, line, desk_runs: runs.map(r => Object.assign({ at: r.created_at }, r.meta || {})) }, 200, origin, env);
 }
+/* ═══ SEAM:ASK_RECORD: a conversation over the record and the lake. The question is answered from what the house deployed (the
+ * record's tiles, scored by the words they share with the question) and what the lake holds (the semantic search the page already
+ * uses), with citations: [D1] a deployed insight by date, [L1] a lake line by source and date. When neither says anything, the answer
+ * says the record is silent. Sonnet on the live tier; signed in and under the daily allowance; nothing is landed or cached. ═══ */
+const ASK = { DEPLOYMENTS: 6, LAKE: 8, HISTORY: 6, MAX_TOKENS: 900, TIMEOUT_MS: 40000, MIN_SCORE: 1 };
+const ASK_SYS = 'You are the house\'s own record speaking: a cultural-intelligence engine answering a professional from what it deployed and what its lake holds, never from general knowledge. ' +
+  'Cite every claim with the markers given: [D1], [D2] for deployed insights (say the date in words when it matters), [L1], [L2] for lake lines. Never invent a marker or a figure; a number appears only if a cited line carries it. ' +
+  'When the record and the lake say nothing on the question, say so in one sentence and name what a live read would gather. Plain prose, under 180 words, no headings, no bullet points, no em dash. ' +
+  'When a deployed insight has been graded, say whether it held. Answer the question asked, then one sentence on what to do with it.';
+function askTokens(t) { return new Set(String(t || '').toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length >= 3 && !['the', 'and', 'for', 'with', 'what', 'how', 'are', 'does', 'about', 'this', 'that', 'brand', 'people'].includes(x))); }
+// PURE: the deployments a question touches, by shared words across the claim, the frame and the question they answered.
+function askDeployments(tiles, q) {
+  const qt = askTokens(q); if (!qt.size) return [];
+  return (tiles || []).map(t => { const f = t.frame || {}; const hay = askTokens([t.claim, t.title, t.question, t.move, f.entity, f.category, f.audience, (f.competitors || []).join(' ')].join(' ')); let n = 0; for (const w of qt) if (hay.has(w)) n++; return { t, n }; })
+    .filter(x => x.n >= ASK.MIN_SCORE).sort((a, b) => b.n - a.n || String(b.t.deployed).localeCompare(String(a.t.deployed))).slice(0, ASK.DEPLOYMENTS).map(x => x.t);
+}
+async function askRecord(body, env, origin, user) {
+  if (!(await underLimit(env, user.id))) return json({ ok: false, error: 'rate_limited' }, 429, origin, env);
+  const q = String(body.q || '').replace(/\s+/g, ' ').trim().slice(0, 400);
+  if (q.length < 4) return json({ ok: false, error: 'q_required' }, 200, origin, env);
+  const history = (Array.isArray(body.history) ? body.history : []).slice(-ASK.HISTORY).map(h => ({ role: h && h.role === 'house' ? 'house' : 'reader', text: String((h && h.text) || '').slice(0, 600) })).filter(h => h.text);
+  const rec = await doorRecord(env).catch(excQuiet('ask_record', { tiles: [] }));
+  const deps = askDeployments(rec.tiles || [], q);
+  let lake = [];
+  try { const vec = await embedQuery(env, q); if (vec) lake = (await sbRest(env, 'rpc/match_signals_read', { method: 'POST', body: { p_query: vec, p_count: ASK.LAKE, p_territory: null, p_min_tier: 4, p_since: new Date(Date.now() - 180 * 864e5).toISOString() } })) || []; } catch (e) { lake = []; }
+  const dLines = deps.map((t, i) => '[D' + (i + 1) + '] deployed ' + t.deployed + (t.called && t.called.verdict ? ' (' + t.called.verdict + ')' : '') + ' on ' + [t.frame && (t.frame.entity || t.frame.category), t.frame && t.frame.audience].filter(Boolean).join(', ') + ': ' + String(t.claim || t.title || '') + (t.move ? ' The move: ' + t.move : ''));
+  const lLines = lake.map((r, i) => '[L' + (i + 1) + '] ' + String(r.published_at || r.captured_at || '').slice(0, 10) + ' ' + String(r.source_name || 'source') + ' (T' + (r.source_tier || '?') + '): ' + String(r.title || '') + (r.summary ? '. ' + String(r.summary).slice(0, 220) : ''));
+  if (!dLines.length && !lLines.length) return json({ ok: true, q, answer: 'The record and the lake hold nothing on this yet. A live read would gather the open web, the news and the voices on it and the engine would read them for you.', cites: [], silent: true }, 200, origin, env);
+  const prompt = (history.length ? 'EARLIER IN THIS CONVERSATION:\n' + history.map(h => (h.role === 'house' ? 'The record: ' : 'Reader: ') + h.text).join('\n') + '\n\n' : '') +
+    (dLines.length ? 'WHAT THE HOUSE DEPLOYED:\n' + dLines.join('\n') + '\n\n' : 'WHAT THE HOUSE DEPLOYED: nothing on this question.\n\n') +
+    (lLines.length ? 'WHAT THE LAKE HOLDS:\n' + lLines.join('\n') + '\n\n' : 'WHAT THE LAKE HOLDS: nothing near this question.\n\n') + 'QUESTION: ' + q;
+  const r = await callClaude(env, 'live', { system: ASK_SYS, prompt, max_tokens: ASK.MAX_TOKENS, kind: 'ask_record', timeout_ms: ASK.TIMEOUT_MS, meta: { surface: 'ask', user: user.id } });
+  if (!r || !r.ok) return json({ ok: false, error: String((r && r.error) || 'none') }, 200, origin, env);
+  const answer = String(r.text || '').replace(/\u2014/g, ',').trim().slice(0, 1600);
+  const cites = deps.map((t, i) => ({ k: 'D' + (i + 1), id: t.id, deployed: t.deployed, claim: t.claim || t.title, called: t.called && t.called.verdict || null, url: pushLink(env, t.id) }))
+    .concat(lake.map((x, i) => ({ k: 'L' + (i + 1), source: x.source_name || null, date: String(x.published_at || x.captured_at || '').slice(0, 10), title: x.title, url: /^https?:\/\//.test(String(x.url || '')) ? x.url : null })));
+  logEvent(env, 'intelligence', 'ask', 'ask_record', null, { q: q.slice(0, 120), deployments: deps.length, lake: lake.length, cost_usd: r.cost_usd || null, user: user.id });
+  return json({ ok: true, q, answer, cites: cites.filter(c => new RegExp('\\[' + c.k + '\\]').test(answer) || c.k.startsWith('D')), silent: false, cost_usd: r.cost_usd || null }, 200, origin, env);
+}
+/* ═══ SEAM:INSIGHT_PANEL: the panel on the claim. A MINE study drafted from a deployed insight under the reader's own partner id: how
+ * true the claim is of the respondent (a seven-point scale), what would make it more or less true (open), who they are (a
+ * generation). Drafted, never launched here: the reader reviews and launches it in MINE. The study id rides the insight's row
+ * (meta.panel); its answers come back under the insight as first-party evidence with the sample size. ═══ */
+const PANEL = { TARGET_N: 50, MIN_N: 5, QUOTES: 6 };
+function panelQuestions(claim) {
+  const c = String(claim || '').replace(/\s+/g, ' ').trim().slice(0, 220);
+  return [
+    { ord: 0, type: 'scale', prompt: 'How true is this of you: ' + c, options: ['1', '2', '3', '4', '5', '6', '7'] },
+    { ord: 1, type: 'open', prompt: 'What would make this more true, or less true, for you?', options: [] },
+    { ord: 2, type: 'single', prompt: 'Which describes you?', options: ['Gen Alpha', 'Gen Z', 'Millennial', 'Gen X', 'Boomer', 'Prefer not to say'] }
+  ];
+}
+async function insightPanelCreate(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const id = String(body.id || '').slice(0, 40);
+  const rows = /^[0-9a-f-]{36}$/.test(id) ? (await sbRest(env, 'door_reads?id=eq.' + id + '&status=in.(ready,reused)&select=id,frame,read,meta').catch(excQuiet('panel_rows', []))) || [] : [];
+  const row = rows[0]; if (!row || !row.read) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  if (row.meta && row.meta.panel && row.meta.panel.study_id) return json({ ok: true, id, study_id: row.meta.panel.study_id, existed: true }, 200, origin, env);
+  const claim = (row.read.read && row.read.read[0]) || (row.frame && row.frame.title) || 'this reading';
+  const study = { partner_id: user.id, title: ('Panel: ' + claim).slice(0, 120), goal: 'Does this reading hold with the people it is about? Three questions on one deployed insight.', type: 'survey', pay_cents: 0, target_n: PANEL.TARGET_N, audience: 'open', status: 'draft', public_listing: false };
+  let made = null;
+  try { made = ((await sbRest(env, 'study', { method: 'POST', headers: { Prefer: 'return=representation' }, body: study })) || [])[0] || null; } catch (e) { return json({ ok: false, error: 'study_insert_failed', detail: String(e && e.message).slice(0, 160) }, 200, origin, env); }
+  if (!made || !made.id) return json({ ok: false, error: 'study_insert_failed' }, 200, origin, env);
+  try { await sbRest(env, 'study_question', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: panelQuestions(claim).map(q => Object.assign({ study_id: made.id }, q)) }); } catch (e) { excQuiet('panel_questions')(e); }
+  await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, row.meta || {}, { panel: { study_id: made.id, by: user.id, at: new Date().toISOString() } }) } }).catch(excQuiet('panel_patch'));
+  logEvent(env, 'intelligence', 'record', 'insight_panel', null, { id, study_id: made.id, user: user.id });
+  return json({ ok: true, id, study_id: made.id, existed: false, status: 'draft' }, 200, origin, env);
+}
+// PURE: the panel's answers, aggregated: the scale's mean and the share at 5 or above, the open answers as quotes, who answered.
+function panelAggregate(questions, responses) {
+  const qs = (questions || []).slice().sort((a, b) => a.ord - b.ord), scaleQ = qs.find(q => q.type === 'scale'), openQ = qs.find(q => q.type === 'open'), whoQ = qs.find(q => q.type === 'single');
+  const val = (r, q) => { const a = r && r.answers && q ? r.answers[q.id] : null; return Array.isArray(a) ? a[0] : a; };
+  const rows = (responses || []).filter(r => r && r.answers && !/rejected|spam/i.test(String(r.quality_status || '')));
+  const nums = rows.map(r => parseInt(val(r, scaleQ), 10)).filter(n => n >= 1 && n <= 7);
+  const quotes = rows.map(r => String(val(r, openQ) || '').replace(/\s+/g, ' ').trim()).filter(t => t.length >= 12).slice(0, PANEL.QUOTES);
+  const who = {}; for (const r of rows) { const w = String(val(r, whoQ) || '').trim(); if (w) who[w] = (who[w] || 0) + 1; }
+  return { n: rows.length, scale: nums.length ? { n: nums.length, mean: Math.round(10 * nums.reduce((a, b) => a + b, 0) / nums.length) / 10, agree_pct: Math.round(100 * nums.filter(n => n >= 5).length / nums.length) } : null, quotes, who };
+}
+async function insightPanelResults(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
+  const rows = /^[0-9a-f-]{36}$/.test(id) ? (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,meta').catch(excQuiet('panel_rows', []))) || [] : [];
+  const sid = rows[0] && rows[0].meta && rows[0].meta.panel && rows[0].meta.panel.study_id;
+  if (!sid) return json({ ok: true, id, panel: null }, 200, origin, env);
+  const st = ((await sbRest(env, 'study?id=eq.' + sid + '&select=id,title,status,target_n').catch(excQuiet('panel_study', []))) || [])[0] || null;
+  const qs = (await sbRest(env, 'study_question?study_id=eq.' + sid + '&select=id,ord,type,prompt,options&order=ord').catch(excQuiet('panel_qs', []))) || [];
+  const rs = (await sbRest(env, 'response?study_id=eq.' + sid + '&select=answers,quality_status&limit=2000').catch(excQuiet('panel_rs', []))) || [];
+  const agg = panelAggregate(qs, rs);
+  return json({ ok: true, id, panel: { study_id: sid, status: st ? st.status : null, title: st ? st.title : null, thin: agg.n < PANEL.MIN_N, min_n: PANEL.MIN_N, n: agg.n, scale: agg.n >= PANEL.MIN_N ? agg.scale : null, quotes: agg.n >= PANEL.MIN_N ? agg.quotes : [], who: agg.n >= PANEL.MIN_N ? agg.who : {} } }, 200, origin, env);
+}
+/* ═══ SEAM:CLIENT_EVIDENCE: what a reader brings. Text pasted or uploaded (text, csv, markdown, json; never a binary), kept as titled
+ * chunks under the reader's id (client_evidence, migration 0043). A read on the reader's frames takes the chunks that name the frame as
+ * first-party lines (tier 1, source "Client evidence: <title>"), past the relevance gate because the reader chose them, under a law
+ * that says what they are. Never on a public read, never on the bench. ═══ */
+const CLIENT_EV = { MAX_BYTES: 400000, CHUNK: 700, MAX_CHUNKS: 400, MAX_LINES: 12, MAX_ITEMS: 40, KINDS: ['text', 'csv', 'md', 'json'] };
+const EXC_CLIENT_LAW = 'CLIENT EVIDENCE: lines whose source begins "Client evidence" were supplied by the reader (their own tracker, deck or report). Treat them as first-party and cite them like any line; when the open evidence disagrees with them, one finding says so plainly; never silently prefer either.';
+function clientChunks(text) {
+  const t = String(text || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
+  const out = []; let buf = '';
+  for (const para of t.split(/\n{2,}|\n(?=[A-Z0-9#*-])/)) { const pp = para.trim(); if (!pp) continue; if ((buf + ' ' + pp).length > CLIENT_EV.CHUNK && buf) { out.push(buf); buf = pp; } else buf = buf ? buf + ' ' + pp : pp; while (buf.length > CLIENT_EV.CHUNK * 1.6) { out.push(buf.slice(0, CLIENT_EV.CHUNK)); buf = buf.slice(CLIENT_EV.CHUNK); } }
+  if (buf) out.push(buf);
+  return out.slice(0, CLIENT_EV.MAX_CHUNKS).map((text, n) => ({ n: n + 1, text: text.slice(0, CLIENT_EV.CHUNK * 2) }));
+}
+async function clientEvidenceRoute(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  if (request.method === 'GET') {
+    const rows = (await sbRest(env, 'client_evidence?user_id=eq.' + user.id + '&select=id,title,kind,bytes,hint,created_at,chunks&order=created_at.desc&limit=' + CLIENT_EV.MAX_ITEMS).catch(excQuiet('cev_rows', []))) || [];
+    return json({ ok: true, items: rows.map(r => ({ id: r.id, title: r.title, kind: r.kind, bytes: r.bytes, hint: r.hint, chunks: Array.isArray(r.chunks) ? r.chunks.length : 0, created_at: r.created_at })) }, 200, origin, env);
+  }
+  if (request.method === 'DELETE') {
+    const id = parseInt(new URL(request.url).searchParams.get('id') || '', 10);
+    if (!(id > 0)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+    await sbRest(env, 'client_evidence?id=eq.' + id + '&user_id=eq.' + user.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('cev_delete'));
+    return json({ ok: true, id }, 200, origin, env);
+  }
+  const ctype = String(request.headers.get('content-type') || '');
+  let title = '', text = '', kind = 'text', hint = null;
+  if (/application\/json/.test(ctype)) { let b = {}; try { b = await request.json(); } catch (e) { b = {}; } title = String(b.title || '').slice(0, 120); text = String(b.text || ''); hint = b.hint ? String(b.hint).slice(0, 160) : null; kind = CLIENT_EV.KINDS.includes(b.kind) ? b.kind : 'text'; }
+  else { title = String(request.headers.get('x-filename') || 'evidence').replace(/[^\w .()-]/g, '_').slice(0, 120); const ext = (title.split('.').pop() || '').toLowerCase(); kind = ext === 'csv' ? 'csv' : ext === 'md' ? 'md' : ext === 'json' ? 'json' : 'text'; if (!/^text\/|application\/json|text\/csv|text\/markdown/.test(ctype) && !['csv', 'md', 'json', 'txt'].includes(ext)) return json({ ok: false, error: 'text_only', say: 'Paste the text, or upload a .txt, .md, .csv or .json file. A PDF or a deck is read best as its exported text.' }, 200, origin, env); text = await request.text(); hint = request.headers.get('x-hint') ? String(request.headers.get('x-hint')).slice(0, 160) : null; }
+  if (text.length > CLIENT_EV.MAX_BYTES) return json({ ok: false, error: 'too_large', max: CLIENT_EV.MAX_BYTES }, 200, origin, env);
+  const chunks = clientChunks(text);
+  if (!chunks.length || !title) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  const made = ((await sbRest(env, 'client_evidence', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { user_id: user.id, title, kind, bytes: text.length, chunks, hint } }).catch(excQuiet('cev_insert', []))) || [])[0] || null;
+  return json({ ok: !!made, item: made ? { id: made.id, title, kind, bytes: text.length, chunks: chunks.length, hint } : null }, 200, origin, env);
+}
+// The reader's lines that name the frame (its entity, category, audience or anchors), newest first, at most MAX_LINES; as evidence items.
+async function excClientLines(env, uid, frame, query) {
+  if (!uid) return [];
+  const rows = (await sbRest(env, 'client_evidence?user_id=eq.' + uid + '&select=id,title,kind,hint,chunks,created_at&order=created_at.desc&limit=' + CLIENT_EV.MAX_ITEMS).catch(excQuiet('cev_lines', []))) || [];
+  if (!rows.length) return [];
+  const f = frame || {}; const words = [].concat([f.entity, f.category, f.audience], f.anchors || [], (f.competitors || []), String(query || '').split(/\s+/)).filter(Boolean).map(x => String(x).toLowerCase()).filter(x => x.length >= 3);
+  const out = [];
+  for (const r of rows) {
+    const hintHit = r.hint && words.some(w => String(r.hint).toLowerCase().includes(w));
+    for (const c of (Array.isArray(r.chunks) ? r.chunks : [])) {
+      const low = String(c.text || '').toLowerCase();
+      if (hintHit || words.some(w => low.includes(w))) out.push({ lens: 'client', source: 'Client evidence: ' + r.title, title: r.title + ', part ' + c.n, text: String(c.text || '').slice(0, 700), url: '', published_at: r.created_at || null, kind: r.kind === 'csv' ? 'table' : 'document', tier: 1, rail: 'client', read: 'page', client: true });
+      if (out.length >= CLIENT_EV.MAX_LINES) return out;
+    }
+  }
+  return out;
+}
+/* ═══ SEAM:CALIBRATION PURE: the record grades its own confidence. Each graded reading is filed under the strongest confidence its
+ * findings carried; of those, how many held. Published with the record so a reader can see what High has meant. ═══ */
+function calibrationOf(rows) {
+  const out = { High: { n: 0, held: 0 }, Medium: { n: 0, held: 0 }, Low: { n: 0, held: 0 } };
+  const rank = { High: 3, Medium: 2, Low: 1 };
+  for (const r of rows || []) {
+    const v = r && r.meta && r.meta.called && r.meta.called.verdict; if (v !== 'held' && v !== 'missed') continue;
+    const confs = ((r.read && r.read.insights) || []).map(x => x && x.confidence).filter(c => rank[c]);
+    if (!confs.length) continue;
+    const top = confs.sort((a, b) => rank[b] - rank[a])[0];
+    out[top].n++; if (v === 'held') out[top].held++;
+  }
+  return out;
+}
 /* ═══ SEAM:CROSS_CURRENTS: the patterns running across categories. Once a week (Sunday, in the nightly chain) Fable reads the
  * fortnight's deployments (claims, moves, subjects, grades) and names three to five currents each running through two or more
  * subjects, with the move each implies; they ride the record above the scroll. About a dollar and a half a week; the cross_currents
@@ -9488,7 +9657,8 @@ async function doorRecord(env) {
   const graded = tiles.filter(t => t.called && (t.called.verdict === 'held' || t.called.verdict === 'missed'));
   for (const t of tiles) t.ahead = calendarAhead(t.frame, t.title, Date.now());   // SEAM:EXC_AHEAD: what is coming for each subject
   let currents = null; try { currents = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get(CURRENTS.KEY)) || 'null') : null; } catch (e) { currents = null; }   // SEAM:CROSS_CURRENTS
-  const set = { built_at: new Date().toISOString(), tiles, positions, currents, counts: { deployments: tiles.length, subjects: by.size, held: graded.filter(t => t.called.verdict === 'held').length, missed: graded.filter(t => t.called.verdict === 'missed').length, open: tiles.filter(t => t.watch && !t.called).length }, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND };
+  const calibration = calibrationOf(rows);   // SEAM:CALIBRATION
+  const set = { built_at: new Date().toISOString(), tiles, positions, currents, calibration, counts: { deployments: tiles.length, subjects: by.size, held: graded.filter(t => t.called.verdict === 'held').length, missed: graded.filter(t => t.called.verdict === 'missed').length, open: tiles.filter(t => t.watch && !t.called).length }, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(RECORD.KEY, JSON.stringify(set), { expirationTtl: RECORD.TTL }); } catch (e) { excQuiet('record_put')(e); } }
   return set;
 }

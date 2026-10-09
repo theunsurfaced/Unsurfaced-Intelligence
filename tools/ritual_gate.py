@@ -252,6 +252,7 @@ SPENDERS = {
     'pushBrief': 'claudeGate on the frame tier (Haiku); called by pushNightly only (cron-bounded, the 06:10 chain, or the admin desk {run: push}), once per reader on their digest day and only when their frames deployed (SEAM:REACH_PUSH)',
     'excLook': 'Workers AI vision over at most LOOK.MAX images inside LOOK.MS; called by synthesize only (excavateAuth), on a full read, never for quick reads or the bench (SEAM:EXC_LOOK)',
     'crossCurrentsPass': 'claudeGate on the doc tier (Fable); called by crossCurrentsWeekly (cron-bounded: Sundays in the 06:10 chain) or the admin desk {run: currents}; one call a week over at most 80 rows (SEAM:CROSS_CURRENTS)',
+    'askRecord': 'claudeGate on the live tier (Sonnet) + underLimit (the daily allowance) on a signed-in reader; one call a question, at most ASK.MAX_TOKENS; nothing landed or cached (SEAM:ASK_RECORD)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")

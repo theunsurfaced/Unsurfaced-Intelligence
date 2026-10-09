@@ -1402,6 +1402,42 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:CROSS_CURRENTS",
    "purpose": "the cross-currents above the record's scroll"
+  },
+  "SEAM:ASK_RECORD": {
+   "file": "worker/src/index.js",
+   "purpose": "EX32 THE BRAIN: a conversation over the record and the lake. POST /ask (signed in, under the daily allowance): the deployments the question touches (askDeployments, shared words across claim, frame and question) and the lake's nearest lines (match_signals_read) are handed to Sonnet on the live tier with ASK_SYS: answer from them only, cite [D1] and [L1], say when the record is silent; nothing landed or cached; the citations come back with ids, dates, grades and links."
+  },
+  "SEAM:ASK_RECORD@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ASK_RECORD",
+   "purpose": "Ask the record on the record: the thread, the markers as links (a deployment opens, a lake line goes to its source), the citations listed, the blind-spots line"
+  },
+  "SEAM:INSIGHT_PANEL": {
+   "file": "worker/src/index.js",
+   "purpose": "EX32: the panel on the claim. POST /excavate/insight/panel drafts a MINE study from a deployed insight under the reader's partner id (how true is this of you on 7, what would make it more or less true, who are you), status draft, the study id on the row's meta.panel; GET returns the answers aggregated (panelAggregate: n, the mean and the share at 5 or more, the quotes, who) once PANEL.MIN_N have answered."
+  },
+  "SEAM:INSIGHT_PANEL@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:INSIGHT_PANEL",
+   "purpose": "Ask the panel under a deployed reading; the panel's answers under it once five have come in"
+  },
+  "SEAM:CLIENT_EVIDENCE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX32: what a reader brings. /client/evidence (GET, POST json or text upload of txt, md, csv, json under 400 KB, DELETE) keeps titled chunks under the reader's id (client_evidence, migration 0043). The synthesize route hands the reader's id to the read (body._uid); excClientLines takes the chunks that name the frame as first-party lines (tier 1, source \"Client evidence: <title>\") past the relevance gate, under EXC_CLIENT_LAW; payload.client_lines says how many the read stood on. Never on the bench."
+  },
+  "SEAM:CLIENT_EVIDENCE@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:CLIENT_EVIDENCE",
+   "purpose": "Your evidence in the profile (paste, upload, list, remove); the receipt's \"your evidence\" row"
+  },
+  "SEAM:CALIBRATION": {
+   "file": "worker/src/index.js",
+   "purpose": "EX32: the record grades its own confidence. calibrationOf files each graded reading under the strongest confidence its findings carried and counts how many held; the record carries it (set.calibration) so a reader can see what High has meant."
+  },
+  "SEAM:CALIBRATION@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:CALIBRATION",
+   "purpose": "the calibration line in the record's counts"
   }
  },
  "planned": [

@@ -195,7 +195,7 @@ const drafts = events.filter(e => e.type === 'draft');
 ok(drafts.length >= 1 && drafts[0].data.insights.length === 3 && events[events.length - 1].type === 'final' && events[events.length - 1].data.ok === true && events[events.length - 1].data.data.insights.length === 1,
   'C4 drafts arrive as findings finish, and the final event is the plain door\'s own payload');
 const seen = w.slice(w.indexOf("case '/excavate/synthesize':"), w.indexOf("case '/excavate/synthesize':") + 160);
-ok(/body && body\.stream \? synthesizeStream\(body, env, origin, ctx\) : synthesize\(body, env, origin\)/.test(seen) && /async fetch\(request, env, ctx\)/.test(w) && /wctx\.waitUntil\(write\)/.test(w),
+ok(/b2\.stream \? synthesizeStream\(b2, env, origin, ctx\) : synthesize\(b2, env, origin\)/.test(w.slice(w.indexOf("case '/excavate/synthesize':"), w.indexOf("case '/excavate/synthesize':") + 260)) && /async fetch\(request, env, ctx\)/.test(w) && /wctx\.waitUntil\(write\)/.test(w),
   'C5 the door streams on request, the plain door is unchanged, and the gather\'s lake write rides waitUntil');
 ok(!/\u2014/.test(helpers + lane + streamSrc + ssSrc + gatherSrc) && !/\u2014/.test(synth.split('\n').filter(l => /EXC_(?:ACCURACY|FRAME|RELEVANCE|SPEED|STREAM)/.test(l)).join('\n')), 'C6 no em dash in the new code or its laws');
 console.log('\nproof_excavate_frame: ' + pass + ' checks PASS');

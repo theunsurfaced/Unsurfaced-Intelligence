@@ -1,7 +1,7 @@
 {
- "at": "2026-10-09T12:28:55.312Z",
- "base": "https://api.unsurfaced-intelligence.com",
- "writer_hash": "9472f41a73b9edba5b78d04a1592247c1bbaebeb11550281a17733d2aa5e31e3",
+ "at": "2026-10-09T13:00:06.483Z",
+ "base": "https://f0573f97-unsurfaced-api.office-173.workers.dev",
+ "writer_hash": "44de4d2ef7979b3419aa026c5c4f8a30b108279170168641839011eb5db5d7d8",
  "packs": 5,
  "ok": 5,
  "mean": 74,
@@ -12,16 +12,16 @@
    "id": "q01",
    "query": "Jordan Brand and Gen Z",
    "ok": true,
-   "score": 74,
+   "score": 70,
    "code": 100,
-   "reader": 36,
+   "reader": 24,
    "human": null,
    "failed_checks": [],
    "notes": [
-    "Finding 6 invents a sustainability claim ('may be seen as') with zero evidence; contradicts the frame's exclusion of nostalgia yet brief emphasizes 'heritage'",
-    "Move 1 proof cites only valuation ($100B), not evidence that limited drops drive Gen Z demand or that Gen Z values scarcity over other factors",
-    "Finding 2 states 82% repurchase likelihood as 'Low confidence' but treats it as fact in brief and moves; confidence rating does not match usage",
-    "Findings repeat 'limited drops/scarcity' across three separate entries (3, 1, move 1) without new evidence; celebrity collaboration appears twice (4, move 2)"
+    "Valuation surge ($100B) repeated across read, brief, and findings without evidence it reflects Gen Z behavior vs. financial markets or investor sentiment",
+    "Gen Z values (sustainability, self-expression, social responsibility) stated as fact in findings but sourced only to generic claim, never tied to Jordan Brand data or Gen Z purchasing acts",
+    "Confidence ratings contradict themselves: 'Medium' findings rest on single Networth News cite; 'Low' findings cite SGB Media and Statista but offer no actual data or percentages",
+    "Moves prescribe limited drops, collaborations, social media without evidence Jordan Brand isn't already doing these or that Gen Z respondents named them as decision drivers vs. post-hoc rationalizatio"
    ],
    "read": [
     "Gen Z consumers drive Jordan Brand's valuation surge",
@@ -29,82 +29,82 @@
    ],
    "findings": 6,
    "moves": 3,
-   "ms": 282485,
+   "ms": 279862,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   {
    "id": "q04",
    "query": "Gen Z and hair care",
    "ok": true,
-   "score": 76,
+   "score": 70,
    "code": 100,
-   "reader": 40,
+   "reader": 26,
    "human": null,
    "failed_checks": [],
    "notes": [
-    "Natural ingredients claim appears in title, excerpt, and move 1 without new evidence each time",
-    "Confidence ratings (Low, Medium) assigned without stating what evidence gap exists before conclusions drawn",
-    "No acknowledgment that 59% non-permanent color preference doesn't directly prove ingredient prioritization—the logical bridge is assumed",
-    "Move 3 recommends partnerships with named brands but read contains no evidence those brands resonate with Gen Z specifically, only that they exist"
+    "Natural ingredients claimed in brief and findings 1, 2, 6; sustainability in brief, findings 2, 6, moves 2; scalp health in brief and finding 5—repetition across all sections without new evidence laye",
+    "Confidence ratings contradict claims: five findings marked 'Low' yet brief treats them as actionable strategy; 59% figure on non-permanent color does not support natural-ingredient claims but is used ",
+    "No limits stated on what evidence cannot show: cannot distinguish Gen Z from Millennials (finding 2 conflates them); cannot show causation between values and purchase behavior; cannot verify La Pink/S",
+    "Brief and moves address 'brands' and 'marketing campaigns' outside the frame's stated audience focus; frame asks what resonates with Gen Z consumers, not what brands should do"
    ],
    "read": [
     "Gen Z consumers prioritize natural ingredients in hair care",
     "59% of Gen Z prefer non-permanent hair color options, per Technavio as reported by accio.com"
    ],
    "findings": 6,
-   "moves": 3,
-   "ms": 279103,
+   "moves": 2,
+   "ms": 279044,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   {
    "id": "q08",
    "query": "luxury in Lagos",
    "ok": true,
-   "score": 78,
+   "score": 80,
    "code": 100,
-   "reader": 44,
+   "reader": 50,
    "human": null,
    "failed_checks": [],
    "notes": [
-    "Luxury fashion dominance (64% clothing stores) is stated in read, brief, and finding 1—repetition across three levels without new evidence",
-    "Confidence labels (Medium, Low) contradict each other on identical claims: Polo Luxury appears as Medium confidence in read but Low in finding 4; no explanation for downgrade",
-    "Brief recommends 'opening boutiques' but evidence only shows existing stores (ASHLUXURY HQ, Royal Luxury Boutique, David Wej, Polo Luxury)—prescribes action without showing market gap or demand signal",
-    "Moves cite 64% statistic as proof for boutique strategy, but statistic describes current supply (what exists), not consumer preference or unmet demand—causal claim unsupported"
+    "Victoria Island cited twice (finding 2, move 1) without new evidence in second use",
+    "Harrods mentioned as proof of international brands but Harrods is UK-based; unclear if operating in Lagos or cited as aspirational model",
+    "'Medium' confidence assigned to store openings and consumer preferences without stating sample size, methodology, or recency of data",
+    "Brief claims 'growing market' and 'expansion' but read provides only snapshot counts (64% of stores are clothing); no growth trajectory shown"
    ],
    "read": [
     "High-net-worth individuals in Lagos prioritize luxury fashion brands",
     "64% of luxury brand stores in Lagos are clothing stores, according to Exa Places."
    ],
-   "findings": 6,
+   "findings": 4,
    "moves": 3,
-   "ms": 272228,
+   "ms": 285361,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   {
    "id": "q13",
    "query": "Formula 1 and American audiences",
    "ok": true,
-   "score": 70,
+   "score": 80,
    "code": 90,
-   "reader": 40,
+   "reader": 66,
    "human": null,
    "failed_checks": [
     "headline_pure"
    ],
    "notes": [
-    "Apple TV partnership repeated across all three findings and both moves; 'unique viewing experience' appears twice without definition",
-    "Medium/Low confidence labels assigned but findings treated as equally actionable; no hedging in brief or moves despite Low confidence on global availability and Multiview claims",
-    "Brief claims F1 'should promote Apple TV' and 'leverage partnership' without stating what evidence cannot show: whether free trials convert, whether Multiview drives retention, whether Americans prefe",
-    "Move 3 ('Partner with Apple TV') restates the fact (Apple replaced ESPN) as if it were a strategic recommendation F1 can execute; partnership already exists"
+    "Apple paywall finding repeated across findings 1, 2, and 6 without cumulative insight; consolidate into one statement of the shift's scope",
+    "Confidence tagged 'Low' on Dolby upgrade (finding 4) and Apple debut timing (finding 7) but both used to anchor moves; either raise evidence or demote moves",
+    "Brief claims 'nearly every piece of coverage gathered is a how-to-watch guide' but finding 6 shows only 4 outlets named; quantify or hedge to 'most outlets tracked'",
+    "Thread two (F1 vs NASCAR/IndyCar) correctly identified as unanswered, but move 4 asks F1 to fill it—assumes F1 has data and will share; state that assumption as a prerequisite"
    ],
    "read": [
-    "American viewers tune into Apple TV for Formula 1",
-    "Apple TV became the official U.S. home of Formula 1 in 2026, replacing ESPN, with a seven-day free trial available for new viewers, per documentarytube.com."
+    "American fans question following F1 behind Apple's paywall",
+    "Weekly coverage fell from 6 to 5 signals, a 17% drop, though the Apple TV shift held in 14 outlets across all 12 weeks tracked, as measured."
    ],
-   "findings": 6,
-   "moves": 3,
-   "ms": 272952,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+   "findings": 7,
+   "moves": 4,
+   "ms": 238168,
+   "model": "claude-sonnet-5"
   },
   {
    "id": "q17",
@@ -118,10 +118,10 @@
     "numbers_in_evidence"
    ],
    "notes": [
-    "Luxury lifestyle positioning stated in brief, finding 2, and move 2 without differentiation—what makes Erewhon's lifestyle claim distinct from Whole Foods' or Trader Joe's brand identity is never show",
-    "Confidence ratings contradict evidence weight: $80 spring water and $20 smoothies are marked 'Low' confidence but treated as proof; the Mercer partnership is 'Low' but anchors a strategic move",
-    "No evidence that premium pricing or exclusive products *drive growth* or *outperform competitors*—findings show Erewhon does these things, not that they work or why customers choose Erewhon over Whole",
-    "Apartment partnership move lacks proof of ROI or customer acquisition impact; Mercer deal is cited as evidence but no data shows it converted residents or expanded market share"
+    "The $80 spring water and $20 smoothies appear in read, brief, finding 1, finding 4, and move 1—five times across the document. This violates the core rule against repetition.",
+    "Low-confidence findings (1, 3, 4, 5) are presented as actionable moves without hedging language ('Erewhon has partnered,' 'Erewhon attracts') that matches their evidentiary weight.",
+    "No statement acknowledges what the evidence cannot show: whether luxury pricing drives growth, whether it sustains margins, whether affluent consumers actually prefer Erewhon over Whole Foods, or whet",
+    "Move 2 cites a Beyond Meat partnership as proof but the finding itself carries 'Low' confidence and no source verification is visible; the move treats weak evidence as settled fact."
    ],
    "read": [
     "Erewhon leads premium grocery with aspirational shopping experience",
@@ -129,7 +129,7 @@
    ],
    "findings": 6,
    "moves": 3,
-   "ms": 273868,
+   "ms": 273575,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   }
  ]
