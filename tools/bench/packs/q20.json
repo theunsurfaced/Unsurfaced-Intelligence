@@ -46,7 +46,7 @@
    "web": "best AI companions for lonely people"
   }
  },
- "frozen_at": "2026-10-09T02:56:45.959Z",
+ "frozen_at": "2026-10-09T03:20:55.982Z",
  "cls": "behavior",
  "rails": [
   {
@@ -72,7 +72,7 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "counter",
@@ -96,7 +96,7 @@
   },
   {
    "id": "semanticscholar",
-   "n": 4,
+   "n": 0,
    "ok": true
   },
   {
@@ -106,7 +106,7 @@
   },
   {
    "id": "pubmed",
-   "n": 4,
+   "n": 0,
    "ok": true
   },
   {
@@ -116,7 +116,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -141,126 +141,6 @@
   }
  ],
  "items": [
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Artificial intelligence chatbots as a source of virtual social support: Implications for loneliness and anxiety management",
-   "text": "Loneliness, social isolation, and anxiety affect millions of people across the world. Communication technologies, including artificial intelligence (AI) chatbots, can potentially offer support to those experiencing mental health challenges by providing companionship and support. Specifically, social AI can mimic human interaction, which may help alleviate loneliness and anxiety through person‐centered messaging. Despite growing AI usage, there is limited research on the effectiveness of specific message types in this context. Thus, this study employed a 2 (person‐centered message: high vs. low) × 2 (context: loneliness vs. anxiety) between‐subjects design to test how different supportive mes",
-   "url": "https://www.semanticscholar.org/paper/df71cde0ba65a75523ae673fbe91c7b6292b958f",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Influence of artificial intelligence on students' learning and psychological well-being: a systematic literature review",
-   "text": "The incorporation of artificial intelligence (AI) into higher education is a major advance capable of transforming learning methods and supporting students' psychological well-being. This systematic review examines the influence of AI on academic performance and student well-being, analysing 38 studies published between 2018 and 2024. education chatbots, adaptive learning platforms, and intelligent tutoring systems are all examples of AI technologies, improve the personalisation of learning, increasing understanding, engagement and academic outcomes, while reducing stress and anxiety. However, concerns remain about technological dependency, social isolation and ethical challenges. The result",
-   "url": "https://www.semanticscholar.org/paper/e273674afe20fee65834947f5a2807765144abfe",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Utilizing Conversational AI Technology for Social Connectedness Among Older Adults: A Systematic Review",
-   "text": "With the growing global older population and the impact of loneliness and social isolation in this group, it is imperative to study resources to improve social connectedness. Artificial Intelligence (AI)-powered platforms are an emerging technology being utilized for this purpose. This systematic review investigated the impact of AI interventions on loneliness and social isolation in older adults. Eighteen studies were included in this systematic review. Conversational AI technology played a role in improving numerous areas that are known to increase social connectedness. Those areas included self and shared identity, social integration, usability and usefulness, social support, self-efficac",
-   "url": "https://www.semanticscholar.org/paper/ddfcd16c0da5aca8b9ac285fd4dbc3c91e2e3f02",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Leveraging Artificial Intelligence–Powered Chatbots for Nonprofit Organizations: Examining the Antecedents and Outcomes of Chatbot Trust and Social Media Engagement",
-   "text": "With the growing utilization of artificial intelligence–powered chatbot services in the realm of nonprofit communication and the increasing significance of public engagement on social media platforms, researchers are facing a pivotal question: How can nonprofit organizations effectively harness chatbot technologies to influence the public's social media engagement and foster donation intention? In this study, we explore this question by integrating theoretical insights from social exchange theory, the service robot acceptance model, and pertinent prior literature. A survey involving 591 chatbot users located in the United States was conducted to explore the interplay between the functional a",
-   "url": "https://www.semanticscholar.org/paper/efefae95ba987d322403a9667fc82d1b69b8d1a4",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "PubMed",
-   "title": "Governing Generative AI for Healthy Ageing: A Normative Conceptual Framework for Societal Alignment, Epistemic Authority, and Value Convergence in Geriatric Care.",
-   "text": "Healthcare (Basel). 2026 Jun 11",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42354518/",
-   "published_at": "2026-06-11",
-   "kind": "research",
-   "tier": 1,
-   "rail": "pubmed",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "PubMed",
-   "title": "Between Hope and Skepticism: Parent and Provider Expectations of Artificial Intelligence as a Bridge to Human-Centered Care for Children With Chronic Illness.",
-   "text": "Health Expect. 2026 Jun",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42231841/",
-   "published_at": "2026-06-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "pubmed",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "PubMed",
-   "title": "Digital Media Use and Psychosocial Health among Adolescent Boys and Young Men.",
-   "text": "Curr Psychiatry Rep. 2026 May 14",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42128954/",
-   "published_at": "2026-05-14",
-   "kind": "research",
-   "tier": 1,
-   "rail": "pubmed",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "PubMed",
-   "title": "Inflammation as a mediating pathway between social defeat and mental health in humans: A systematic review.",
-   "text": "Transl Psychiatry. 2026 Apr 24",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42031703/",
-   "published_at": "2026-04-24",
-   "kind": "research",
-   "tier": 1,
-   "rail": "pubmed",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
   {
    "lens": "market",
    "source": "Wikipedia",
@@ -571,96 +451,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Can AI Companions Help Heal Loneliness? | Eugenia Kuyda | TED",
-   "text": "AI companions could either be the cure to our loneliness epidemic … or humanity's final downfall, says Eugenia Kuyda, creator of ... · TED",
-   "url": "https://www.youtube.com/watch?v=-w4JrIxFZRA",
-   "published_at": "2025-01-17T12:00:01Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/-w4JrIxFZRA/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Can AI companionship cure loneliness – or deepen it?",
-   "text": "For some, artificial intelligence tools answer questions and make life more efficient. But for others, AI has become a form of ... · PBS NewsHour",
-   "url": "https://www.youtube.com/watch?v=VTN1_0gwZSs",
-   "published_at": "2026-02-27T23:58:06Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/VTN1_0gwZSs/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Could AI be the cure to our loneliness epidemic? #TEDTalk",
-   "text": "AI companions could either be the cure to our loneliness epidemic … or humanity's final downfall, says Eugenia Kuyda, creator of ... · TED",
-   "url": "https://www.youtube.com/watch?v=l8QqI25FBrc",
-   "published_at": "2025-07-09T16:01:29Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/l8QqI25FBrc/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "AI Companion Helps Seniors Combat Loneliness",
-   "text": "We're breaking new ground in senior care with an innovative pilot program, Meela, designed to combat loneliness through ... · RiverSpring Living",
-   "url": "https://www.youtube.com/watch?v=XwEqmszGfsM",
-   "published_at": "2025-08-05T15:40:04Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/XwEqmszGfsM/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "AI Wants to Exploit Your LONELINESS - A Video Essay on Character AI",
-   "text": "astrei talks about the rise of ai girlfriends: character ai and it's chatbot's have shown us the potential solution for the loneliness ... · astrei",
-   "url": "https://www.youtube.com/watch?v=Ell3eiYES3c",
-   "published_at": "2024-12-20T05:53:45Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Ell3eiYES3c/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"does talking to AI help with loneliness\": 134 sampled",
-   "text": "Sample: I watched an episode of Black Mirror that started with a desire to bring back a loved one who has passed away... | According to me one of the hardest thing is English communication 😢😢 | Same things were said about spread of telephone using in UK one centruy ago. I think newer things make people stress abo",
-   "url": "https://www.youtube.com/results?search_query=does%20talking%20to%20AI%20help%20with%20loneliness",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

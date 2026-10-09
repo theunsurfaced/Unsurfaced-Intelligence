@@ -46,7 +46,7 @@
    "web": "smart glasses buyer profile early adopters"
   }
  },
- "frozen_at": "2026-10-09T02:53:46.982Z",
+ "frozen_at": "2026-10-09T03:18:52.125Z",
  "cls": "behavior",
  "rails": [
   {
@@ -72,12 +72,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "gdelt",
@@ -96,7 +96,7 @@
   },
   {
    "id": "semanticscholar",
-   "n": 4,
+   "n": 0,
    "ok": true
   },
   {
@@ -116,7 +116,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -173,66 +173,6 @@
   },
   {
    "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Strategic Readiness for AI and Smart Technology Adoption in Emerging Hospitality Markets: A Tri-Lens Assessment of Barriers, Benefits, and Segments in Albania",
-   "text": "The adoption of artificial intelligence (AI) and smart technologies is reshaping global hospitality. However, in emerging markets, uptake remains limited by financial, organizational, and infrastructural barriers. This study examines the digital readiness of 1821 licensed accommodation providers in Albania, a rapidly expanding tourism economy, using an integrated framework that combines the Technology Acceptance Model (TAM), technology–organization–environment (TOE) framework, and Diffusion of Innovations (DOI). Data were collected via a structured survey and analyzed using descriptive statistics, exploratory factor analysis, cluster analysis, and structural equation modeling. Exploratory fa",
-   "url": "https://www.semanticscholar.org/paper/85cf854b7bd6b32fa2611c9328054627de204ac1",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Electrifying The Road Ahead: Survey-Based Insights into Public Awareness, Policy Support, and Barriers to Ev Adoption in Smart Cities of Karnataka",
-   "text": "The global transition toward sustainable transportation has placed electric vehicles (EVs) at the forefront of policy and consumer discussions. This study investigates public awareness, perceptions, and barriers related to EV adoption in selected smart cities of Karnataka—Davangere, Shivamogga, and Hubballi-Dharwad. Using a structured questionnaire and responses from 384 participants, the research evaluates the levels of awareness regarding EV technology and government policies, public perceptions of policy effectiveness and incentives, and the infrastructural and psychological barriers hindering EV adoption. A combination of descriptive statistics, Likert-scale analysis, and hypothesis test",
-   "url": "https://www.semanticscholar.org/paper/617ea05c9c2cfd6d038482576ce2746272958434",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Consumer Perception, Innovativeness, and Readiness in Smart Home Technology Adoption: Evidence from Malaysia",
-   "text": "The rapid development of smart home technologies (SHTs) has generated significant global interest due to their potential to enhance efficiency, convenience, and security in residential living. However, the adoption of these technologies in developing countries remains relatively limited, often constrained by technological, financial, and socio-psychological barriers. This study seeks to examine the critical factors influencing the adoption of SHTs among residents of Melaka Tengah, Malaysia. Drawing upon the Technology Acceptance Model (TAM), the research focuses on four key constructs perceived cost, perceived ease of use, perceived usefulness, and consumer perceived innovativeness and their",
-   "url": "https://www.semanticscholar.org/paper/67ad8070dbc39591b2d79c6ec6832c51ef24b88d",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Adoption of Smart Technologies in MICE Tourism: Understanding Consumer Challenges and Experience in Delhi NCR",
-   "text": "This research paper, \"Adoption of Smart Technologies in MICE Tourism: Understanding Consumer Challenges and Experience in Delhi-NCR,\" throws light on the challenges involved in adopting smart technologies among consumers and the experience of them in the MICE (Meetings, Incentives, Conferences, and Exhibitions) segment in Delhi-NCR. The main research objectives were the identification of major challenges encountered by the consumers in using smart technologies during MICE events, and an evaluation of these experiences. For this research, a structured questionnaire was created and distributed using Google Forms to respondents who had been to MICE events within the region. A total of 220 valid",
-   "url": "https://www.semanticscholar.org/paper/9b6563cc27d5be8498c03b64d4437ca79462eaf2",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
    "source": "Wikipedia",
    "title": "Rock Paper Scissors (TV series)",
    "text": "Rock Paper Scissors is an American animated comedy television series created by Kyle Stegina and Josh Lehrman for Nickelodeon. The first original production to originate from the Nickelodeon Intergalactic Shorts Program, it revolves around three friends: aspiring fashion model Rock, inventor Paper, and desperate-to-be-cool Scissors, who go on all sorts of wild adventures together. The show was picked up for a full release in 2021; the first episodes were released on YouTube on August 19, 2023, and officially premiered on Nickelodeon on February 11, 2024, airing after the network's alternate broadcast of Super Bowl LVIII.",
@@ -249,10 +189,10 @@
   {
    "lens": "market",
    "source": "Wikipedia",
-   "title": "List of Friday Night Dinner episodes",
-   "text": "Friday Night Dinner is a British sitcom which aired on Channel 4 from 2011 to 2020. It is about the Goodmans, a secular middle-class Jewish family who live in suburban London and is centred on them gathering for Shabbat dinner. They are often interrupted by their neighbour.",
-   "url": "https://en.wikipedia.org/wiki/List_of_Friday_Night_Dinner_episodes",
-   "published_at": "2026-08-11T19:08:57Z",
+   "title": "The Kids from Room 402",
+   "text": "The Kids from Room 402 is an animated series produced by CinéGroupe and Saban Entertainment that premiered on October 9, 1999 on the Fox Family Channel in the United States, and on August 29, 2000 on Teletoon in Canada. It consists of 52 half-hour episodes, the last of which aired in 2000, with reruns airing until 2005. The series was also seen in Latin America and Europe on Fox Kids, with the latter region still airing the series after the Fox Kids channels were purchased by Disney and changed their name to Jetix; Remaining on their schedule until the Jetix channels were once again rebranded as Disney XD.",
+   "url": "https://en.wikipedia.org/wiki/The_Kids_from_Room_402",
+   "published_at": "2026-09-16T18:25:27Z",
    "kind": "reference",
    "tier": 2,
    "rail": "wikipedia",
@@ -556,96 +496,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "2. &quot;She Found the Camera Too Late — Smart Glasses in Exam Rooms Need to Go",
-   "text": "A patient walked into a routine appointment, had to undress for an exam, and then noticed her doctor was wearing smart glasses ... · Reddit Stories Daily",
-   "url": "https://www.youtube.com/watch?v=dua8xqpeYRk",
-   "published_at": "2026-08-11T07:10:19Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/dua8xqpeYRk/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Only Smart People Wear Glasses? 🤓 #shorts",
-   "text": "funny reddit story confession how someone, as a kid, pretended to have poor vision because glasses look cool reddit, reddit story, ... · purplesnaf",
-   "url": "https://www.youtube.com/watch?v=d1_3ew-72YI",
-   "published_at": "2025-11-25T10:01:10Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/d1_3ew-72YI/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Meta Smart Glasses Spark New Privacy Concerns",
-   "text": "Meta just dropped $299 smart glasses that can secretly record everyone around you. People are already talking about wearing ... · Top Stars",
-   "url": "https://www.youtube.com/watch?v=WP0y7lNItw4",
-   "published_at": "2026-05-20T13:55:01Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/WP0y7lNItw4/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Meta’s new creep glasses to record 24-7 without a light",
-   "text": "the continuing legacy of FaceMash ... · Pivot to AI",
-   "url": "https://www.youtube.com/watch?v=X8YxiCqUz98",
-   "published_at": "2026-07-09T20:29:10Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/X8YxiCqUz98/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "She Wore AI Glasses... Then Her Coworker Said THIS 😳 ⭐",
-   "text": "AITA reddit story. · Hi Hi",
-   "url": "https://www.youtube.com/watch?v=k4bKwxzdjTk",
-   "published_at": "2026-07-26T15:23:03Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/k4bKwxzdjTk/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"who actually wears smart glasses reddit\": 72 sampled",
-   "text": "Sample: What do you think about Woman Calls Out Doctor Wearing Smart Glasses During Consulta? Drop a comment below! 👇 | Wait why is the QR code shirt idea actually genius? Kinda crazy how we're already inventing ways to fight back against s | Jokes on you, if you ever thought you had any privacy..😅",
-   "url": "https://www.youtube.com/results?search_query=who%20actually%20wears%20smart%20glasses%20reddit",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

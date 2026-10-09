@@ -44,7 +44,7 @@
    "web": "how to sell sneakers online resale"
   }
  },
- "frozen_at": "2026-10-09T02:55:51.586Z",
+ "frozen_at": "2026-10-09T03:20:18.332Z",
  "cls": "category",
  "rails": [
   {
@@ -70,12 +70,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -119,7 +119,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -232,21 +232,6 @@
   {
    "lens": "market",
    "source": "Wikipedia",
-   "title": "Sneaker collecting",
-   "text": "Sneaker collecting is the acquisition and trading of sneakers as a hobby. It is often manifested by the use and collection of shoes made for particular sports, particularly basketball and skateboarding. A person involved in sneaker collecting is sometimes called a sneakerhead.",
-   "url": "https://en.wikipedia.org/wiki/Sneaker_collecting",
-   "published_at": "2026-04-17T14:26:06Z",
-   "kind": "reference",
-   "tier": 2,
-   "rail": "wikipedia",
-   "entity": null,
-   "stance": null,
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/CortesSneakers02.jpg/330px-CortesSneakers02.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Wikipedia",
    "title": "Ticket resale",
    "text": "Ticket resale, known in North American English as ticket scalping and in British English as ticket touting when done for profit, is the act of reselling tickets for admission to events. Tickets are bought from licensed sellers and then sold for a price determined by the individual or company in possession of the tickets. Tickets sold through secondary sources may be sold for less or more than their face value depending on demand, which tends to vary as the event date approaches. When the supply of tickets for a given event available through authorized ticket sellers is depleted, the event is considered \"sold out,\" generally increasing the market value for any tickets on offer through seconda",
    "url": "https://en.wikipedia.org/wiki/Ticket_resale",
@@ -257,6 +242,21 @@
    "entity": null,
    "stance": null,
    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/Dorgan_cartoon_about_Ticket_Scalping.jpg/330px-Dorgan_cartoon_about_Ticket_Scalping.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Sneaker collecting",
+   "text": "Sneaker collecting is the acquisition and trading of sneakers as a hobby. It is often manifested by the use and collection of shoes made for particular sports, particularly basketball and skateboarding. A person involved in sneaker collecting is sometimes called a sneakerhead.",
+   "url": "https://en.wikipedia.org/wiki/Sneaker_collecting",
+   "published_at": "2026-04-17T14:26:06Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/CortesSneakers02.jpg/330px-CortesSneakers02.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
    "country": null
   },
   {
@@ -524,96 +524,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "How I make Thousands Reselling Shoes as a teenager #money #finance #sneaker #reseller",
-   "text": "· DrakeDon",
-   "url": "https://www.youtube.com/watch?v=S1kt2tUT3o4",
-   "published_at": "2024-02-03T14:00:17Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/S1kt2tUT3o4/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "The best place to buy FAKE/REPLICA Jordans and Yeezys!!! ($25 UA Sneakers!!!)",
-   "text": "Make sure ya'll like, comment, and subscribe! If you guys have any questions drop them below in the comments! My Reselling ... · Stay Focused Frank",
-   "url": "https://www.youtube.com/watch?v=8uW1FehvNx4",
-   "published_at": "2022-05-06T21:01:05Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/8uW1FehvNx4/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "The Best Vendors For Reselling 💸 #reselling",
-   "text": "Want to know how resellers make $10K a month? In this short, I reveal how they snag brands like Denim Tears, Sp5der Hoodies, ... · Steaky Reviews",
-   "url": "https://www.youtube.com/watch?v=FtDNSzXaUdM",
-   "published_at": "2024-10-19T19:18:34Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/FtDNSzXaUdM/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Best Replica Websites 2025 | Top Fake Designer Sites for Clothes, Shoes &amp; More",
-   "text": "· replica closet",
-   "url": "https://www.youtube.com/watch?v=NgWL7XdEdgs",
-   "published_at": "2025-04-21T22:25:07Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/NgWL7XdEdgs/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "The rep resale market is really going crazy 🤣🤣🤣 #rickowens #archivefashion #depop",
-   "text": "The rep resale market is really going crazy #rickowens #archivefashion #depop. · 555kyreem",
-   "url": "https://www.youtube.com/watch?v=5-SiMmfu15Y",
-   "published_at": "2025-03-02T19:58:55Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/5-SiMmfu15Y/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"best sneaker resale platform reddit\": 139 sampled",
-   "text": "Sample: Fb marketplace is sketchy especially if you live in Atlanta 💀 | What are the names of the show u showed at the start | How do you get the used pairs from fb marketplace cleaned and authenticated by stock x or smth like you dont sell it as",
-   "url": "https://www.youtube.com/results?search_query=best%20sneaker%20resale%20platform%20reddit",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

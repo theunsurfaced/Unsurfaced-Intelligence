@@ -38,7 +38,7 @@
    "web": "luxury brands stores Lagos Nigeria"
   }
  },
- "frozen_at": "2026-10-09T02:53:58.606Z",
+ "frozen_at": "2026-10-09T03:19:00.667Z",
  "cls": "behavior",
  "rails": [
   {
@@ -74,7 +74,7 @@
   {
    "id": "gdelt",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "guardian",
@@ -108,7 +108,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -473,96 +473,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Millionaire Goes Wild &amp; Buys All of Fashion Avenue in Dubai Mall! 💸🛍️",
-   "text": "· Luiz Cabral",
-   "url": "https://www.youtube.com/watch?v=hx6746J0JzE",
-   "published_at": "2024-08-15T12:42:40Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/hx6746J0JzE/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "What you can buy with $1 in Lagos, Nigeria",
-   "text": "· Authentic Traveling",
-   "url": "https://www.youtube.com/watch?v=-M2Apn_2omc",
-   "published_at": "2023-10-31T01:11:55Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/-M2Apn_2omc/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Inside the Billionaire row of Lagos Nigeria 🇳🇬",
-   "text": "· Steven Ndukwu",
-   "url": "https://www.youtube.com/watch?v=kTS0d6Ch2Og",
-   "published_at": "2024-06-08T13:58:29Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/kTS0d6Ch2Og/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Rich people don’t drive luxury cars #luxury #luxurycars #money #entrepreneur #wealth #luxurylife",
-   "text": "· Nate Jones",
-   "url": "https://www.youtube.com/watch?v=H49gNuse7YY",
-   "published_at": "2024-03-08T00:03:00Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/H49gNuse7YY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Shopping at Apple be like… 😱",
-   "text": "· Olga Cozma",
-   "url": "https://www.youtube.com/watch?v=vFlgjQcsx28",
-   "published_at": "2025-09-11T14:42:11Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/vFlgjQcsx28/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"luxury shopping Lagos where rich people spend\": 229 sampled",
-   "text": "Sample: I feel bad for people who are together they didn't get anything | Did bro just respond to himself 😭😭 | Yes! He's Doing what Makes him HAPPY! Sharing Happiness a celebration to Women. That's What's UP! 😁😂🤣👌🤜🤛🍾📱",
-   "url": "https://www.youtube.com/results?search_query=luxury%20shopping%20Lagos%20where%20rich%20people%20spend",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

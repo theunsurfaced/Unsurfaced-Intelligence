@@ -43,7 +43,7 @@
    "web": "Stanley water bottles vs Hydro Flask YETI"
   }
  },
- "frozen_at": "2026-10-09T02:53:34.923Z",
+ "frozen_at": "2026-10-09T03:18:43.712Z",
  "cls": "brand",
  "rails": [
   {
@@ -69,12 +69,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -108,7 +108,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -383,96 +383,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "🔴 Unpopular Opinion: Stanley Cups Suck. VIRAL ISN’T BETTER: Owala Water Bottle Comparison",
-   "text": "Products Mentioned: - Owala FreeSip Insulated Stainless Steel Water Bottle: https://amzn.to/4fBGC7G - Stanley Quencher H2.0 ... · Cassandra Bankson",
-   "url": "https://www.youtube.com/watch?v=xDPqr1fV9tE",
-   "published_at": "2024-08-27T13:01:05Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/xDPqr1fV9tE/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Stanley just did something new with their Wellspring Bottle! #waterbottle #stanely #water",
-   "text": "Stanley just did something new with their Wellspring Bottle! #waterbottle #stanely #water #Ad. · Den ⚡️",
-   "url": "https://www.youtube.com/watch?v=Rt6w1I026Ys",
-   "published_at": "2026-09-04T20:55:19Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Rt6w1I026Ys/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Stanley Tumblers are PEAK Consumerism",
-   "text": "What was once a symbol of your eco-friendly lifestyle has now become a status symbol - with people owning whole walls of ... · Levi Hildebrand",
-   "url": "https://www.youtube.com/watch?v=7UpaKlGfwHU",
-   "published_at": "2024-01-24T16:00:08Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/7UpaKlGfwHU/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "🎀Stanley🎀 Cup 🥤 ✨REVIEW✨",
-   "text": "review #honestreview #cups #waterbottle #athlete #preppyaesthetic #shorts. · EllaGLife",
-   "url": "https://www.youtube.com/watch?v=7qEvy7JEo70",
-   "published_at": "2024-11-07T06:27:58Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/7qEvy7JEo70/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Should You Buy the Stanley Quick Flip Go 36 Oz Water Bottle?",
-   "text": "Buy This Product➡️: https://geni.us/90Rgt My Amazon Storefront: https://www.amazon.com/shop/adamtalkstech My Video ... · Adam's Faves",
-   "url": "https://www.youtube.com/watch?v=kIvriG3OGtY",
-   "published_at": "2024-07-29T11:20:37Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/kIvriG3OGtY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"stanley cups water bottles reddit tiktok reviews\": 203 sampled",
-   "text": "Sample: Products Mentioned: - Owala FreeSip Insulated Stainless Steel Water Bottle: - Stanley Quencher H2.0 FlowState Stainless | She didn't even need to say a word and yet she still spit facts | Bro I lost it when she started shaking them under her armpits 😭😭💀",
-   "url": "https://www.youtube.com/results?search_query=stanley%20cups%20water%20bottles%20reddit%20tiktok%20reviews",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

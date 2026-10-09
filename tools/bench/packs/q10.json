@@ -44,7 +44,7 @@
    "web": "Liquid Death energy drink shelf positioning strategy"
   }
  },
- "frozen_at": "2026-10-09T02:54:26.365Z",
+ "frozen_at": "2026-10-09T03:19:20.229Z",
  "cls": "brand",
  "rails": [
   {
@@ -75,7 +75,7 @@
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -109,7 +109,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -369,96 +369,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "How a Dumb Idea Turned Into a $700M Company",
-   "text": "Liquid Death is a masterclass in marketing. Get 25% off Blinkist premium and enjoy 2 memberships for the price of 1! Start your ... · Newsthink",
-   "url": "https://www.youtube.com/watch?v=r9k5W-ZpacY",
-   "published_at": "2023-03-15T13:02:20Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/r9k5W-ZpacY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "This Energy Drink MELTED a Millionaire’s Face #radioactive #science #physics",
-   "text": "In the 1920s, millionaire Eben Byers drank a \"miracle\" energy drink called Radithor—a radioactive tonic prescribed by his doctor ... · History Shortcuts",
-   "url": "https://www.youtube.com/watch?v=0kIKxJEDTco",
-   "published_at": "2025-03-24T14:01:09Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/0kIKxJEDTco/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "A Gamer Drank 12 Energy Drinks In 10 Minutes. This Is What Happened To His Organs.",
-   "text": "Mug is here ▻ https://crowdmade.com/collections/chubbyemu @HemeReview Weird Time When Energy Drinks Cured My ... · Chubbyemu",
-   "url": "https://www.youtube.com/watch?v=tAtaIZD0Ebs",
-   "published_at": "2021-09-13T19:00:02Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/tAtaIZD0Ebs/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Why you should NEVER GOON😱… #goon",
-   "text": "· Michael Kangethe",
-   "url": "https://www.youtube.com/watch?v=5fxaPh8T0ro",
-   "published_at": "2024-08-01T18:19:25Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/5fxaPh8T0ro/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Margot Robbie Conspiracy Theory!",
-   "text": "We asked the legendary Margot Robbie about the internet conspiracy theory that her and Emma Mackey are the same person ... · IGV Studios",
-   "url": "https://www.youtube.com/watch?v=GyZMe7CdqdU",
-   "published_at": "2022-10-03T16:00:09Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/GyZMe7CdqdU/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"liquid death vs monster energy reddit\": 223 sampled",
-   "text": "Sample: *What 'dumb' idea do you think has the potential to become the next big success?* Get 25% off Blinkist premium and enjoy | 1993: Snapple 2023: Liquid Death? A sucker born every minute. | Fooling millions of gullible people into buying things that's cheaply available, is called \"marketing\" now. What's wrong",
-   "url": "https://www.youtube.com/results?search_query=liquid%20death%20vs%20monster%20energy%20reddit",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

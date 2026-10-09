@@ -48,7 +48,7 @@
    "web": "Shein popularity among teenagers fast fashion"
   }
  },
- "frozen_at": "2026-10-09T02:55:37.513Z",
+ "frozen_at": "2026-10-09T03:20:08.065Z",
  "cls": "brand",
  "rails": [
   {
@@ -74,7 +74,7 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "counter",
@@ -113,7 +113,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -373,66 +373,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Shein Finds tiktok dailylifestylefashion19",
-   "text": "shorts #tiktok Shein Finds tiktok dailylifestylefashion19 Before removing the video, please contact us at: righttcopy@gmail.com so ... · RYMSS Journeys",
-   "url": "https://www.youtube.com/watch?v=ctSeHki01Vs",
-   "published_at": "2022-01-08T19:59:37Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/ctSeHki01Vs/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Shein Clothes Tiktok ffreebies",
-   "text": "shorts #tiktok Before removing the video, please contact us at: righttcopy@gmail.com so we can take down the video or solve any ... · RYMSS Journeys",
-   "url": "https://www.youtube.com/watch?v=rMAC1yi_FWg",
-   "published_at": "2022-09-26T20:03:01Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/rMAC1yi_FWg/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Case Study | How Shein Goes Crazy Worldwidely In Fast-fashion Market",
-   "text": "In this video, Timothy will introduce one of the world's largest fashion company Shein. From its background to advantages, you will ... · KakaClo",
-   "url": "https://www.youtube.com/watch?v=IYaO2q4-LH4",
-   "published_at": "2022-05-21T09:36:43Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/IYaO2q4-LH4/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"why do teens shop shein reddit tiktok\": 1 sampled",
-   "text": "Sample: Great work. Thank you.",
-   "url": "https://www.youtube.com/results?search_query=why%20do%20teens%20shop%20shein%20reddit%20tiktok",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

@@ -47,7 +47,7 @@
    "web": "New Balance marketing younger buyers strategy"
   }
  },
- "frozen_at": "2026-10-09T02:52:56.566Z",
+ "frozen_at": "2026-10-09T03:18:17.522Z",
  "cls": "brand",
  "rails": [
   {
@@ -73,12 +73,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -112,7 +112,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -387,96 +387,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Why You Should NEVER Wear A Dad Shoe... #shorts",
-   "text": "Join this channel to get access to perks: https://www.youtube.com/channel/UCXPXfAAo-yV6Y-0PZecwBLw/join Instagram: ... · Nico Leonard",
-   "url": "https://www.youtube.com/watch?v=E7MGfEg3kC0",
-   "published_at": "2023-04-14T11:00:09Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/E7MGfEg3kC0/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "New Balance&#39;s GENIUS Marketing Strategy",
-   "text": "Get my NEW book, Make Money Easy! https://lewishowes.com/moneyyou Subscribe for more great content: ... · Lewis Howes",
-   "url": "https://www.youtube.com/watch?v=zlp8MdYUn1M",
-   "published_at": "2025-06-12T19:01:02Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/zlp8MdYUn1M/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Team Ankle Socks or Team Crew Socks? #millennials are torn! #relatable #genz #fashion",
-   "text": "· MelissaKristinTV - DigitalMunchies",
-   "url": "https://www.youtube.com/watch?v=iIB21FACrE4",
-   "published_at": "2025-06-06T00:52:15Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/iIB21FACrE4/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "What Barefoot Shoes Do To Your Feet...5 Years Later",
-   "text": "Something really surprising happened to my feet since wearing barefoot shoes. I've worn minimalist and barefoot shoes for the ... · Balancing Laura",
-   "url": "https://www.youtube.com/watch?v=EOxOrxggBMI",
-   "published_at": "2022-10-16T14:04:57Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/EOxOrxggBMI/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Nike Zoom Vomero 5 or New Balance 9060?!",
-   "text": "Recent Uploads** : $500 Resale for Sneakers...\"Not too bad a price\"?! SINCE WHEN?!: https://youtu.be/E2my8GoEnQg Fear of ... · Talks With TJ",
-   "url": "https://www.youtube.com/watch?v=jdGCdCMteUg",
-   "published_at": "2024-11-03T16:00:38Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/jdGCdCMteUg/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"why gen z buying new balance sneakers reddit\": 241 sampled",
-   "text": "Sample: If I show up to a barbecue, and the guy on the grill is wearing one of those, I know it's going to be some good grilling | Flashback: Young Nico asking why his mum is going to tennis every night… hitting him right in the feels | Nico was the kid that had to wait in the car while... Well you know 😂",
-   "url": "https://www.youtube.com/results?search_query=why%20gen%20z%20buying%20new%20balance%20sneakers%20reddit",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

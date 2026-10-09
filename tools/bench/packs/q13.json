@@ -48,7 +48,7 @@
    "web": "Formula 1 US fans how to watch"
   }
  },
- "frozen_at": "2026-10-09T02:55:09.303Z",
+ "frozen_at": "2026-10-09T03:19:49.158Z",
  "cls": "brand",
  "rails": [
   {
@@ -74,7 +74,7 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
@@ -113,7 +113,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -358,96 +358,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "NASCAR Fan Learns about Formula 1 on Reddit",
-   "text": "This is a cool place! TIP JAR - - - - - SuperThanks Button :) This will help improve the channel greatly, New webcam for better ... · IWrocker",
-   "url": "https://www.youtube.com/watch?v=8W_Resx_zvE",
-   "published_at": "2022-12-18T05:29:35Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/8W_Resx_zvE/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "*Controversial* Reacting to Formula 1 Fans Most Unpopular Opinions",
-   "text": "I posted the question to Formula 1 Fans on Reddit asking for their most controversial opinions. We go through the fans answers ... · EricJay",
-   "url": "https://www.youtube.com/watch?v=XrmIGiUsqlc",
-   "published_at": "2022-08-10T04:39:50Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/XrmIGiUsqlc/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Difference between Nascar and Formula 1…🧐#cars #thegrandtour #topgear",
-   "text": "Difference between Nascar and Formula 1 #cars #thegrandtour #topgear. · The Auto Space",
-   "url": "https://www.youtube.com/watch?v=7nnz46G_yMs",
-   "published_at": "2025-06-04T17:36:00Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/7nnz46G_yMs/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Ricciardo&#39;s Done - According to Reddit",
-   "text": "F1 Reddit is a great place, for data, memes and sometimes, actual insights. So the guys have pulled together a load for me to go ... · Driver61",
-   "url": "https://www.youtube.com/watch?v=zdv9TGo5qk0",
-   "published_at": "2022-06-28T17:03:41Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/zdv9TGo5qk0/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "How F1 Exploded",
-   "text": "Get Nebula using my link for 40% off an annual subscription: https://go.nebula.tv/wendover Youtube: http://www. · Wendover Productions",
-   "url": "https://www.youtube.com/watch?v=CxfFKuSfQ8c",
-   "published_at": "2025-02-07T17:48:47Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/CxfFKuSfQ8c/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"why do americans watch formula 1 reddit\": 179 sampled",
-   "text": "Sample: I went to my first F1 race this year in Austin, it was incredible. Got the weekend pass and went Friday and Saturday to | The name B. McLaren in the part with the old McLaren's was the man Bruce McLaren himself so if it wasn't for him there w | Happy xmas I Wroker",
-   "url": "https://www.youtube.com/results?search_query=why%20do%20americans%20watch%20formula%201%20reddit",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

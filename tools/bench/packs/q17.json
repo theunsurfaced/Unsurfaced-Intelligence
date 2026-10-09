@@ -46,7 +46,7 @@
    "web": "Erewhon organic supermarket premium positioning"
   }
  },
- "frozen_at": "2026-10-09T02:56:05.938Z",
+ "frozen_at": "2026-10-09T03:20:28.060Z",
  "cls": "brand",
  "rails": [
   {
@@ -77,7 +77,7 @@
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -111,7 +111,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -386,96 +386,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Whole Foods vs Erewhon Taste Test | FOOD FEUDS",
-   "text": "Today, we're pinning two top shelf groceries stories against each other: Whole Foods vs Erewhon!! FOOD FEUDS!! GMM # 2424 ... · Good Mythical Morning",
-   "url": "https://www.youtube.com/watch?v=0Wo3WV1ueJY",
-   "published_at": "2023-07-17T10:00:02Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/0Wo3WV1ueJY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Erewhon vs Whole Foods",
-   "text": "· Plate it with Starr ⭐️",
-   "url": "https://www.youtube.com/watch?v=_zyjEdLscmY",
-   "published_at": "2026-02-21T04:19:00Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/_zyjEdLscmY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Walmart vs. Erewhon Taste Test",
-   "text": "Today, we're seeing if luxury supermarkets are REALLY worth it! GMM # 2339 Watch today's GMMORE: ... · Good Mythical Morning",
-   "url": "https://www.youtube.com/watch?v=bHocnamqOJI",
-   "published_at": "2023-03-01T11:00:34Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/bHocnamqOJI/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Is The Worlds Most Expensive Grocery Store Worth The Price?",
-   "text": "I visited Erewhon, the most expensive grocery store in the world thats also a... restaurant? · DanCookedIt",
-   "url": "https://www.youtube.com/watch?v=b4YEH2H1pKc",
-   "published_at": "2024-07-20T20:16:39Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/b4YEH2H1pKc/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "$100 at the Erewhon most expensive grocery store",
-   "text": "I took $100 to Erewhon — LA's most bougie grocery store — to see what I could actually get! From organic snacks to overpriced ... · Jimmy Visits World",
-   "url": "https://www.youtube.com/watch?v=R5LHQTeqVb8",
-   "published_at": "2025-06-09T16:30:08Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/R5LHQTeqVb8/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"erewhon vs whole foods premium groceries\": 200 sampled",
-   "text": "Sample: I still think that this segment would be funnier and more interesting if the boys didn't know where the food where from. | Rhett is shocked at $8.50 for a slice of cheesecake but I find $4.50 for one cookie appalling! | Erewhon is the type of store that I picture celebrities and stuck up influencers shop at and say its the best because ev",
-   "url": "https://www.youtube.com/results?search_query=erewhon%20vs%20whole%20foods%20premium%20groceries",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

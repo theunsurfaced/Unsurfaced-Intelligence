@@ -44,7 +44,7 @@
    "web": "women's basketball official sponsors brands"
   }
  },
- "frozen_at": "2026-10-09T02:56:33.382Z",
+ "frozen_at": "2026-10-09T03:20:47.324Z",
  "cls": "brand",
  "rails": [
   {
@@ -70,7 +70,7 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "counter",
@@ -109,7 +109,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -182,16 +182,16 @@
   {
    "lens": "market",
    "source": "Wikipedia",
-   "title": "NCAA Division I women's basketball tournament",
-   "text": "The NCAA Division I women's basketball tournament, sometimes referred to as Women's March Madness, is a single-elimination tournament played each spring in the United States, currently featuring 76 women's college basketball teams from the Division I level of the National Collegiate Athletic Association (NCAA), to determine the national championship.",
-   "url": "https://en.wikipedia.org/wiki/NCAA_Division_I_women's_basketball_tournament",
-   "published_at": "2026-09-07T07:47:07Z",
+   "title": "Women's National Basketball Association",
+   "text": "The Women's National Basketball Association (WNBA) is a women's professional basketball league in North America composed of 15 teams, scheduled to expand to 18 by 2030. The WNBA is one of the professional women's sports leagues in North America. The league is headquartered in New York City.",
+   "url": "https://en.wikipedia.org/wiki/Women's_National_Basketball_Association",
+   "published_at": "2026-10-08T06:33:26Z",
    "kind": "reference",
    "tier": 2,
    "rail": "wikipedia",
    "entity": null,
    "stance": null,
-   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/6/6c/Women%27s_March_Madness.svg/330px-Women%27s_March_Madness.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/9/97/WNBA_logo.svg/330px-WNBA_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
    "country": null
   },
   {
@@ -384,96 +384,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "TEAM USA WOMENS BASKETBALL FINAL ROSTER!",
-   "text": "We discuss the Women's Team USA Basketball Roster and each players role on the team. #davissportsreport #womensbasketball ... · Davis Sports Report",
-   "url": "https://www.youtube.com/watch?v=6Qph_wJCNMk",
-   "published_at": "2026-02-23T12:00:11Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/6Qph_wJCNMk/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "2026 Team USA Women’s World Cup Roster | Full USA Basketball Roster",
-   "text": "2026 USA Women's World Cup Roster is here! USA Women's Basketball Jersey: https://link.amazon/B0dYwXR3m In this video, ... · WaysToWatch",
-   "url": "https://www.youtube.com/watch?v=nd0P3RuJI_M",
-   "published_at": "2026-09-04T05:23:14Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/nd0P3RuJI_M/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Exclusive: Sue Bird Unveils 2026 FIBA Women’s World Cup Roster",
-   "text": "Sue Bird, five-time Olympic gold medalist and 4-time WNBA champion, joins TODAY to exclusively announce her hand-picked ... · TODAY",
-   "url": "https://www.youtube.com/watch?v=Q-ebNVU2D5I",
-   "published_at": "2026-08-06T16:03:16Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Q-ebNVU2D5I/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Team USA Women’s Basketball Is LOADED 🔥 2026 FIBA Women’s World Cup Squad",
-   "text": "Team USA Women's Basketball is assembled. USA Basketball shows off the squad together as the USABWNT prepares ... · Afro Dope",
-   "url": "https://www.youtube.com/watch?v=y5LZMmKItYk",
-   "published_at": "2026-09-02T09:45:52Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/y5LZMmKItYk/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "USA&#39;s STACKED Roster for FIBA World Cup is Here! 🇺🇸🏆FIBAWorldCup #TeamUSA #CaitlinClark #AngelReese",
-   "text": "Description:Team USA is bringing the firepower to Berlin! The official 12-player roster for the 2026 FIBA Women's Basketball ... · EntertainHub",
-   "url": "https://www.youtube.com/watch?v=Xj_-TcVG9as",
-   "published_at": "2026-08-31T21:00:08Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Xj_-TcVG9as/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"who sponsors women's basketball teams players\": 138 sampled",
-   "text": "Sample: Can't believe Kelsey Mitchell is left off from even being considered. | This is a great team. Strong in every area. | Love Citron! She doesn't get the limelight and is a quiet achiever.",
-   "url": "https://www.youtube.com/results?search_query=who%20sponsors%20women's%20basketball%20teams%20players",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

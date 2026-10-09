@@ -43,7 +43,7 @@
    "web": "Crocs collaboration culture brand strategy impact"
   }
  },
- "frozen_at": "2026-10-09T02:54:40.743Z",
+ "frozen_at": "2026-10-09T03:19:29.687Z",
  "cls": "brand",
  "rails": [
   {
@@ -69,12 +69,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -108,7 +108,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -181,21 +181,6 @@
   {
    "lens": "market",
    "source": "Wikipedia",
-   "title": "G Flip",
-   "text": "Georgia Claire Flipo, known professionally as G Flip, is an Australian singer, songwriter, multi-instrumentalist and producer from Melbourne, Victoria. Their debut studio album, About Us, was released on 30 August 2019. Its follow-up, Drummer, followed almost four years later on 11 August 2023.",
-   "url": "https://en.wikipedia.org/wiki/G_Flip",
-   "published_at": "2026-09-30T09:01:48Z",
-   "kind": "reference",
-   "tier": 2,
-   "rail": "wikipedia",
-   "entity": null,
-   "stance": null,
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/G_flip.jpg/330px-G_flip.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Wikipedia",
    "title": "Aespa",
    "text": "Aespa is a South Korean girl group formed by SM Entertainment. The group consists of four members: Karina, Giselle, Winter, and Ningning. The group is known for popularizing the metaverse concept and hyperpop music in K-pop. Aespa debuted on November 17, 2020, with the single \"Black Mamba\", which achieved the highest number of views in 24 hours for a K-pop group's debut video. Their third single, \"Next Level\", was released in May 2021 to widespread commercial and critical success, peaking at number two on the Circle Digital Chart and earning the daesang for Song of the Year at the 19th Korean Music Awards. In October of the same year, Aespa released their first extended play (EP) Savage, whi",
    "url": "https://en.wikipedia.org/wiki/Aespa",
@@ -206,6 +191,21 @@
    "entity": null,
    "stance": null,
    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Aespa_Love_Your_W_2025_1.jpg/330px-Aespa_Love_Your_W_2025_1.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "G Flip",
+   "text": "Georgia Claire Flipo, known professionally as G Flip, is an Australian singer, songwriter, multi-instrumentalist and producer from Melbourne, Victoria. Their debut studio album, About Us, was released on 30 August 2019. Its follow-up, Drummer, followed almost four years later on 11 August 2023.",
+   "url": "https://en.wikipedia.org/wiki/G_Flip",
+   "published_at": "2026-09-30T09:01:48Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/G_flip.jpg/330px-G_flip.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
    "country": null
   },
   {
@@ -383,96 +383,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Crocs x Salehe Bembury Juniper Review: Worth the Hype?",
-   "text": "Disclosure: As an Amazon Associate and Influencer I earn commissions, at no cost to you, made out of qualifying purchases. · Review Central",
-   "url": "https://www.youtube.com/watch?v=pRk3sIDtRMI",
-   "published_at": "2026-04-28T02:30:46Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/pRk3sIDtRMI/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "What’s Your Favorite Collab By @crocsinc 👟🐊 #shorts #crocs #collab #sneakerhead",
-   "text": "· Kickamatics",
-   "url": "https://www.youtube.com/watch?v=dVf19DEyCQQ",
-   "published_at": "2024-01-03T01:25:23Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/dVf19DEyCQQ/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Best croc collaborations",
-   "text": "· TheAubreyAvaLook",
-   "url": "https://www.youtube.com/watch?v=P8KuGU_y4EQ",
-   "published_at": "2023-10-01T12:22:49Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/P8KuGU_y4EQ/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "CRAZIEST CROC COLLABS 😱",
-   "text": "· Kickinit",
-   "url": "https://www.youtube.com/watch?v=KCgeVQvkWVM",
-   "published_at": "2024-07-13T19:33:44Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/KCgeVQvkWVM/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Unboxing The CRAZIEST Xbox Collab - Xbox x Crocs",
-   "text": "· Esportscenter",
-   "url": "https://www.youtube.com/watch?v=P34GSJbssYg",
-   "published_at": "2025-11-25T00:59:15Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/P34GSJbssYg/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"Crocs collabs drops designer partnerships hype\": 6 sampled",
-   "text": "Sample: SHREK 😩😩😩💚💚💚💚 | Those shrocks are good but if someone pullin up to a race with the lightning mcrocs you just know you losin",
-   "url": "https://www.youtube.com/results?search_query=Crocs%20collabs%20drops%20designer%20partnerships%20hype",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

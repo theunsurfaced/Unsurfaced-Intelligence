@@ -41,7 +41,7 @@
    "web": "gen z hair care brands sustainable natural"
   }
  },
- "frozen_at": "2026-10-09T02:53:08.633Z",
+ "frozen_at": "2026-10-09T03:18:25.921Z",
  "cls": "behavior",
  "rails": [
   {
@@ -77,7 +77,7 @@
   {
    "id": "gdelt",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "guardian",
@@ -91,7 +91,7 @@
   },
   {
    "id": "semanticscholar",
-   "n": 4,
+   "n": 0,
    "ok": true
   },
   {
@@ -111,7 +111,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -136,66 +136,6 @@
   }
  ],
  "items": [
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "ANALYSIS OF GENERATION Z CONSUMER PREFERENCES AT COFFEE SHOPS IN BANJARMASIN CITY",
-   "text": "Coffee is a widely consumed beverage across all demographic groups, and coffee shops represent a vital downstream component of the agribusiness subsystem, particularly in the marketing of plantation products in ready-to-serve or ready-to-eat formats within the food and beverage industry. This study aims to analyze the selection preferences of Generation Z consumers in choosing coffee shops in the city of Banjarmasin. Utilizing conjoint analysis, the research identifies the relative importance of various attributes influencing consumer decision-making. The most influential factor is Sales Product, with an interest level of 23.003, followed by price (21.839), facilities (20.774), building conc",
-   "url": "https://www.semanticscholar.org/paper/d07679622c8bca57db4ce4ddf2259c434ffe1fb0",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "HALAL CERTIFIED PRODUCTS PREFERENCES AMONG GENERATION Z IN MALAYSIA",
-   "text": "The halal industry has experienced significant growth globally, driven by increasing consumer awareness, lifestyle changes, and demand for ethical and quality-assured products. In Malaysia, Generation Z represents an emerging consumer segment whose preferences towards halal certified products remain underexplored, particularly beyond religious considerations. Despite the widespread availability of halal certified products, limited empirical evidence exists on the factors influencing Gen Z consumers’ preferences in the Malaysian context. This study aims to examine the influence of halal lifestyle and values, social circle influence, and perceived halal benefits of halal certified products on ",
-   "url": "https://www.semanticscholar.org/paper/4b1b1380ffbfad885df0ed7c1ac55a6b41ba2b8b",
-   "published_at": "2026-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Exploring the Green Purchase Intention of Generation Z personal care products: The Role of Environmental Consciousness, Consumer Attitudes, and Religiosity",
-   "text": "Venue: Jurnal Manajemen Motivasi",
-   "url": "https://www.semanticscholar.org/paper/14d78464675b9d278067c31b219f6033421e5cde",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Semantic Scholar",
-   "title": "Research on the impact of Generation Z consumer behavior characteristics on consumer financial product innovation",
-   "text": "With the changes of the times, the world is gradually dominated by a new generation of young people, and Generation Z has grown into the main driving force of the consumer market, accounting for about 40% of the overall consumer market in 2025. Unlike the older generation, they have unique values, diversified consumption habits, and unique preferences shaped by the digital age, globalization, and rapid social transformation. In order to cope with these changes, we actively explore the adaptability of existing consumer financial products to the ever-changing market and constantly adjust these products to better meet the unmet financial needs of Generation Z. Through these, consumer finance ca",
-   "url": "https://www.semanticscholar.org/paper/c04ad5e6705f8e740334cdccf787eb2fad86218d",
-   "published_at": "2025-01-01",
-   "kind": "research",
-   "tier": 1,
-   "rail": "semanticscholar",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
   {
    "lens": "market",
    "source": "PubMed",
@@ -259,16 +199,16 @@
   {
    "lens": "market",
    "source": "Wikipedia",
-   "title": "Generation X",
-   "text": "Generation X, often shortened to Gen X, is the demographic cohort following the baby boomers and preceding millennials. Researchers and popular media often use the mid-1960s as its starting birth years and the late 1970s to early 1980s as its ending birth years, with the generation generally defined as people born from 1965 to 1980. By this definition and U.S. census data, there are 65.2 million Gen Xers in the United States as of 2019. Most Gen Xers are the children of the Silent Generation and older baby boomers, and many are the parents of millennials, Generation Z and older Generation Alpha.",
-   "url": "https://en.wikipedia.org/wiki/Generation_X",
-   "published_at": "2026-10-05T13:08:09Z",
+   "title": "Demetria Obilor",
+   "text": "Demetria Obilor is a television personality and former local news anchor. She is currently a host at REVOLT.",
+   "url": "https://en.wikipedia.org/wiki/Demetria_Obilor",
+   "published_at": "2026-09-03T17:40:09Z",
    "kind": "reference",
    "tier": 2,
    "rail": "wikipedia",
    "entity": null,
    "stance": null,
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Generation_timeline_simple.svg/330px-Generation_timeline_simple.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "image": null,
    "country": null
   },
   {
@@ -536,96 +476,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "your hair looks very bouncy full vid #tiktok #cringe #trending #megacringe #shorts",
-   "text": "ignore the tags my hair it don't move,my hair it don't move dance,my hair it don't move remix,popular dance,my hair it don't move ... · Culture Clips Daily",
-   "url": "https://www.youtube.com/watch?v=DPIUzNiCRfs",
-   "published_at": "2021-08-10T12:00:05Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/DPIUzNiCRfs/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "OMG what this machine did to her hair will shock you #braids #short #hair @naima_da_silva",
-   "text": "· Telly_Ceo",
-   "url": "https://www.youtube.com/watch?v=Y3fWZVIPICU",
-   "published_at": "2024-09-06T21:24:13Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Y3fWZVIPICU/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "basically the 2 types of gen z",
-   "text": "Nebula: https://go.nebula.tv/mancarryingthing Letterboxd: https://letterboxd.com/ManCarrying/ Twitter: ... · Man Carrying Thing",
-   "url": "https://www.youtube.com/watch?v=DhWx5uRaoIY",
-   "published_at": "2025-04-19T20:56:02Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/DhWx5uRaoIY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "😭Night before the wedding👰‍♀️",
-   "text": "TikTok + IG @rachelheheh. · Rachel Kwon",
-   "url": "https://www.youtube.com/watch?v=qpx5ExL6f7I",
-   "published_at": "2022-09-17T00:48:17Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/qpx5ExL6f7I/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Hair Care Tips Tiktok t x d 3",
-   "text": "shorts #tiktok Before removing the video, please contact us at: righttcopy@gmail.com so we can take down the video or solve any ... · RYMSS Journeys",
-   "url": "https://www.youtube.com/watch?v=_W5dbtEJZPw",
-   "published_at": "2022-11-15T01:44:10Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/_W5dbtEJZPw/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"best hair products gen z reddit tiktok\": 300 sampled",
-   "text": "Sample: pls subscribe and check out my new videos! i appreciate all the love, thank you all ! | This is why aliens dont come to earth 😭 | Is it just me or did I hear it clap 🤨",
-   "url": "https://www.youtube.com/results?search_query=best%20hair%20products%20gen%20z%20reddit%20tiktok",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

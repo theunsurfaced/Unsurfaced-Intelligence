@@ -42,7 +42,7 @@
    "web": "Nike athletic footwear products performance"
   }
  },
- "frozen_at": "2026-10-09T02:52:42.858Z",
+ "frozen_at": "2026-10-09T03:18:08.271Z",
  "cls": "brand",
  "rails": [
   {
@@ -68,12 +68,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -107,7 +107,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -367,96 +367,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Honest Review of Every Nike Running Shoe (2025 Line Up)",
-   "text": "If you enjoyed the video, please like, comment and subscribe! Thank you for watching! Save 10% site wide on training plans, hats, ... · Ben Parkes",
-   "url": "https://www.youtube.com/watch?v=qO27nI7Cm-g",
-   "published_at": "2025-05-08T16:33:20Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/qO27nI7Cm-g/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Best Nike Running Shoes 2026 (Don&#39;t Buy the Wrong One)",
-   "text": "The best Nike running shoes in 2026 — all 6 explained, so you buy the RIGHT one and never overpay. We break down Nike's ... · RunnersVibe · Running Shoe Reviews",
-   "url": "https://www.youtube.com/watch?v=YnoiQ9jHpR4",
-   "published_at": "2026-07-04T17:00:19Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/YnoiQ9jHpR4/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "I BOUGHT NIKE’S BEST DAILY SHOE - Vomero Plus 100% honest review",
-   "text": "If you enjoyed the video, please like, comment and subscribe! Thank you for watching! Save 10% site wide on training plans, hats, ... · Ben Parkes",
-   "url": "https://www.youtube.com/watch?v=0K8AfACDByE",
-   "published_at": "2025-08-10T15:59:53Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/0K8AfACDByE/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Nike Pegasus 42 100% Honest Review (buy these instead)",
-   "text": "If you enjoyed the video, please like, comment and subscribe! Thank you for watching! Save 10% site wide on training plans, hats, ... · Ben Parkes - Road Running Reviews",
-   "url": "https://www.youtube.com/watch?v=ypjElZmr4CU",
-   "published_at": "2026-04-14T16:00:25Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/ypjElZmr4CU/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Nike Vomero PLUS vs Vomero 18: Nike&#39;s Most Comfortable",
-   "text": "Nike Vomero Plus Is now they're most comfortable max cushion sneaker, today i compare it to the Nike Vomero 18 & sneakers ... · Elliot Page",
-   "url": "https://www.youtube.com/watch?v=Djvic4ZR-34",
-   "published_at": "2025-07-24T16:42:47Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Djvic4ZR-34/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"best nike running shoes performance reviews\": 203 sampled",
-   "text": "Sample: Wear Alphafly 3 for my marathons—find they run small—recommend sizing up a 0.5 size to save your toenails! | Ran Manchester marathon in Zoom Fly 6s after seeing unanimously positive reviews. I did most of my long runs in them in | Would have liked to see some trail shoes included, the waterproof options are great for the rain",
-   "url": "https://www.youtube.com/results?search_query=best%20nike%20running%20shoes%20performance%20reviews",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

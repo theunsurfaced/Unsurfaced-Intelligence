@@ -44,7 +44,7 @@
    "web": "Spotify Wrapped annual tradition user behavior"
   }
  },
- "frozen_at": "2026-10-09T02:56:19.642Z",
+ "frozen_at": "2026-10-09T03:20:37.714Z",
  "cls": "brand",
  "rails": [
   {
@@ -70,12 +70,12 @@
   {
    "id": "competitors",
    "n": 0,
-   "ok": true
+   "ok": false
   },
   {
    "id": "counter",
    "n": 0,
-   "ok": false
+   "ok": true
   },
   {
    "id": "wikimedia_pageviews",
@@ -109,7 +109,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -384,96 +384,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Why Does Everyone Share Their Spotify Wrapped?",
-   "text": "Every year, Spotify Wrapped takes over social media with people proudly sharing their top artists, favorite songs, and total ... · MacroHype",
-   "url": "https://www.youtube.com/watch?v=n0NWwljW-rY",
-   "published_at": "2024-10-10T21:24:38Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/n0NWwljW-rY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "The Greatest Spotify Wrapped of All Time",
-   "text": "· What's The Buzz?",
-   "url": "https://www.youtube.com/watch?v=gpWd-w88fOE",
-   "published_at": "2024-12-04T15:46:25Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/gpWd-w88fOE/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Redshell finds a DIABOLICAL Spotify Wrapped ☠️",
-   "text": "redshell #funny Follow Me! SECONDARY VARIETY CHANNEL: https://www.youtube.com/@RedshellGaming1 ... · Redshell",
-   "url": "https://www.youtube.com/watch?v=sIaXQ4S9u2M",
-   "published_at": "2024-12-05T15:00:54Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/sIaXQ4S9u2M/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Uber Eats Wrapped - SNL",
-   "text": "A commercial advertises Uber Eats' version of Spotify Wrapped. Saturday Night Live. Stream now on Peacock: ... · Saturday Night Live",
-   "url": "https://www.youtube.com/watch?v=Hx7Vv5pqpHg",
-   "published_at": "2025-12-14T06:04:52Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Hx7Vv5pqpHg/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Spotify’s Wrapped Evil Genius",
-   "text": "Spotify Wrapped isn't a fun feature It's a retention WEAPON disguised as entertainment What Everyone Sees: Every ... · Steven Bell",
-   "url": "https://www.youtube.com/watch?v=m1YimT1VRfY",
-   "published_at": "2025-12-09T03:43:31Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/m1YimT1VRfY/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"spotify wrapped why people share it\": 200 sampled",
-   "text": "Sample: DAWG WTF WAS THE LAST ONE | \"big day for anoying people\".. why must you hurt me like this | My summer vibe was \"funeral queef\"",
-   "url": "https://www.youtube.com/results?search_query=spotify%20wrapped%20why%20people%20share%20it",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,

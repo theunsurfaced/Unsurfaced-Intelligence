@@ -48,7 +48,7 @@
    "web": "clean beauty toddlers young children safe"
   }
  },
- "frozen_at": "2026-10-09T02:53:21.467Z",
+ "frozen_at": "2026-10-09T03:18:34.420Z",
  "cls": "behavior",
  "rails": [
   {
@@ -118,7 +118,7 @@
   },
   {
    "id": "youtube",
-   "n": 6,
+   "n": 0,
    "ok": true
   },
   {
@@ -176,21 +176,6 @@
   {
    "lens": "market",
    "source": "Wikipedia",
-   "title": "Balenciaga",
-   "text": "Balenciaga SA is a Spanish luxury fashion house headquartered in Paris. It designs, manufactures and markets ready-to-wear footwear, handbags, and accessories, and licenses its name and branding to the European cosmetics company L'Oréal for its namesake fragrances.",
-   "url": "https://en.wikipedia.org/wiki/Balenciaga",
-   "published_at": "2026-09-18T07:49:40Z",
-   "kind": "reference",
-   "tier": 2,
-   "rail": "wikipedia",
-   "entity": null,
-   "stance": null,
-   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Balenciaga_%2854024638524%29.jpg/330px-Balenciaga_%2854024638524%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "Wikipedia",
    "title": "Kimberly-Clark",
    "text": "Kimberly-Clark Corporation is an American multinational consumer goods and personal care corporation that produces mostly paper-based consumer products. The company manufactures sanitary paper products and surgical & medical instruments. Kimberly-Clark brand name products include Kleenex facial tissue, Kotex feminine hygiene products, Cottonelle, Scott and Andrex toilet paper, Wypall utility wipes, KimWipes scientific cleaning wipes and Huggies disposable diapers and baby wipes.",
    "url": "https://en.wikipedia.org/wiki/Kimberly-Clark",
@@ -201,6 +186,21 @@
    "entity": null,
    "stance": null,
    "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Camelia_Popular_sanitary_napkins_from_stocks_of_the_Wehrmacht_Third_Reich_with_acceptance_stamping_-_Intim_hygiene_supply_nurses_around_1942_-_content_10_pieces_per_pack_-_D.R._WZ_No._378543_and_386768.jpg/330px-thumbnail.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Balenciaga",
+   "text": "Balenciaga SA is a Spanish luxury fashion house headquartered in Paris. It designs, manufactures and markets ready-to-wear footwear, handbags, and accessories, and licenses its name and branding to the European cosmetics company L'Oréal for its namesake fragrances.",
+   "url": "https://en.wikipedia.org/wiki/Balenciaga",
+   "published_at": "2026-09-18T07:49:40Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Balenciaga_%2854024638524%29.jpg/330px-Balenciaga_%2854024638524%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
    "country": null
   },
   {
@@ -453,96 +453,6 @@
    "kind": "web",
    "tier": 3,
    "rail": "pplx",
-   "entity": null,
-   "stance": null,
-   "image": null,
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Dermatologist votes yes or no to drugstore skincare for babies. 👶🏾",
-   "text": "YES: Aveeno Wash and Shampoo - Gentle and safe for baby's delicate skin. NO: Baby Powder - Risks associated with ... · Dr. Geeta Yadav",
-   "url": "https://www.youtube.com/watch?v=jWfqs54rD-8",
-   "published_at": "2024-03-12T16:00:24Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/jWfqs54rD-8/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Dermatologist&#39;s Best Baby Skincare Products: Tips for Cradle Cap, Diaper Rash, Bathing, &amp; More!",
-   "text": "Your baby doesn't need a 10-step skincare routine, but there are a few baby skincare essentials you should have on hand. In this ... · Dr. Sam Ellis",
-   "url": "https://www.youtube.com/watch?v=nM934bf_MII",
-   "published_at": "2023-03-01T14:00:38Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/nM934bf_MII/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Dermatologist-Approved Baby Care! 👶💦",
-   "text": "Dermatologist-Approved Baby Care! Safe, gentle & worry-free products for your little one's precious skin. · Dr. Priyanka Reddy",
-   "url": "https://www.youtube.com/watch?v=4-aHA_ZgZjQ",
-   "published_at": "2025-04-26T06:20:51Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/4-aHA_ZgZjQ/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "Rating Baby Skincare Products as a Dermatologist. #babyskincare #dermatologisttips",
-   "text": "In this video, I'm reviewing some of the most trending and popular baby skincare products that parents love. From baby lotions to ... · ZolieSkinClinic",
-   "url": "https://www.youtube.com/watch?v=Efp7goAU86o",
-   "published_at": "2025-06-23T12:29:55Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/Efp7goAU86o/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube",
-   "title": "You can use baby skin care products #dermatologist",
-   "text": "skincareproducts #skincaretips #skincareroutine #sensitiveskin. · Dr Dray",
-   "url": "https://www.youtube.com/watch?v=5D4Up_IomCU",
-   "published_at": "2023-02-18T00:00:02Z",
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
-   "entity": null,
-   "stance": null,
-   "image": "https://i.ytimg.com/vi/5D4Up_IomCU/hqdefault.jpg",
-   "country": null
-  },
-  {
-   "lens": "market",
-   "source": "YouTube comments",
-   "title": "YouTube comments on \"best clean beauty products babies toddlers\": 224 sampled",
-   "text": "Sample: Aveeno destroyed my newborns skin. Caused fine rash all over and severe dryness. I wish people would stop recommending t | Beautiful aur bhut h ache se btya apne tq❤ | Mam teenager kids k liye b suggest kare pls best skincare products",
-   "url": "https://www.youtube.com/results?search_query=best%20clean%20beauty%20products%20babies%20toddlers",
-   "published_at": null,
-   "kind": "discourse",
-   "tier": 3,
-   "rail": "youtube",
    "entity": null,
    "stance": null,
    "image": null,
