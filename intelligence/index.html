@@ -476,6 +476,28 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .read-failed .rf-acts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .voices-blind{margin:8px 0 0}
 .pdf-meas,.pdf-read1,.pdf-read2{margin:0 0 10px}.pdf-read1{font-weight:700;font-size:18px}.pdf-src{padding-left:20px;font-size:12px}.pdf-src li{margin:0 0 4px}
+.pm-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:var(--z-modal);padding:16px}   /* SEAM:CLIENT_PROFILE */
+.pm{background:var(--surface);border:1px solid var(--border);max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:22px 24px;color:var(--text)}
+.pm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.pm-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--accent)}
+.pm-x{background:none;border:0;color:var(--text2);font-size:22px;cursor:pointer}
+.pm label{display:block;margin:0 0 14px;font-size:14px}.pm label small{display:block;color:var(--text2);font-size:12px;margin:2px 0 6px}
+.pm input[type=text],.pm input:not([type]),.pm select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;font:inherit}
+.pm-row{display:flex;align-items:center;gap:8px}.pm-row input{margin:0}
+.pm-follows{margin:0 0 14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pm-chip{font-family:'Space Mono',monospace;font-size:11px;border:1px solid var(--border);padding:4px 8px;display:inline-flex;gap:6px;align-items:center}.pm-chip button{background:none;border:0;color:var(--text2);cursor:pointer;font-size:14px;line-height:1}
+.pm-none{color:var(--text2);font-size:13px}
+.pm-acts{display:flex;gap:10px;margin-top:6px}
+.rec-lens.follow{border-color:var(--accent);color:var(--accent)}
+.reach{border:1px solid var(--border);padding:16px 18px;margin:0 0 18px}   /* SEAM:ROLE_IMPLICATIONS */
+.reach-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--accent);margin:0 0 8px}
+.reach-role{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);margin-bottom:6px}
+.reach-imps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
+@media(max-width:860px){.reach-imps{grid-template-columns:1fr}}
+.reach-imp b{display:block;font-size:14px;margin-bottom:4px}.reach-imp p{margin:0;color:var(--text2);font-size:13px;line-height:1.5}
+.reach-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-top:1px solid var(--border);padding-top:12px}
+.reach-marks{display:flex;gap:6px}
+.reach-mark{font-family:'Space Mono',monospace;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--text2);padding:5px 10px;cursor:pointer}.reach-mark small{margin-left:6px;opacity:.7}.reach-mark.on{border-color:var(--accent);color:var(--text)}
 .read-thin{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 10px;max-width:70ch;}   /* SEAM:EXC_THIN */
 .btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
 .btn-go-deeper:hover{background:#ff5555;}
@@ -9606,7 +9628,7 @@ function _renderNavUser() {
       <div style="font-family:var(--mono,monospace);font-size:9px;color:var(--text3);margin-top:2px">${em}</div>
       <div style="font-family:var(--mono,monospace);font-size:9px;color:var(--text3);margin-top:1px">${co}${ro ? ' · ' + ro : ''}</div>
     </div>
-    <button class="nav-user-menu-item" onclick="showToast('Profile settings coming soon')">Profile Settings</button>
+    <button class="nav-user-menu-item" onclick="_profileOpen()">Your profile</button><!-- SEAM:CLIENT_PROFILE -->
     <button class="nav-user-menu-item" onclick="exportToPDF()">Download Report</button>
     <button class="nav-user-menu-item danger" onclick="lgSignOut()">Sign Out</button>
   </div>`;
@@ -10354,8 +10376,91 @@ async function _openDoorRead(t) {
     window._doorOpen = { id: t.id, query: q, frame: j.data.frame || null };
     _dashShow(false); document.getElementById('error-banner').style.display = 'none';
     _renderLive(q, { items: [], synthesis: j.data, sources: [] });
+    _reachBlock(t.id);   // SEAM:ROLE_IMPLICATIONS / SEAM:READER_MARKS / SEAM:EVIDENCE_PACK
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (e) { hideLoader(); showToast('Could not open that read'); }
+}
+/* SEAM:CLIENT_PROFILE: your profile. The role the implications are written for, the brands you track, the frames you follow, where the
+   push goes. Saved on the worker; nothing here is a password or a key. */
+async function _profileGet() { try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/client/profile', { headers: await _authHeader() }); const j = r.ok ? await r.json() : null; return j && j.ok ? j.profile : null; } catch (e) { return null; } }
+async function _profileSave(patch) { try { const d = await api('client/profile', patch); if (d && d.ok) { window._profile = d.profile; return d.profile; } } catch (e) {} return null; }
+async function _profileOpen() {
+  const prof = await _profileGet();
+  if (!prof) { showToast('Sign in to set your profile'); return; }
+  window._profile = prof;
+  let el = document.getElementById('profile-modal');
+  if (!el) { el = document.createElement('div'); el.id = 'profile-modal'; el.className = 'pm-wrap'; document.body.appendChild(el); }
+  const roles = (prof.roles || []).map(r => `<option value="${safeAttr(r)}"${r === prof.role_title ? ' selected' : ''}>${safe(r)}</option>`).join('');
+  const follows = (prof.follows || []).map((f, i) => `<span class="pm-chip">${safe(f.kind)}: ${safe(f.value)}<button type="button" aria-label="remove" onclick="_profileUnfollow(${i})">&times;</button></span>`).join('') || '<span class="pm-none">Nothing followed yet. Pick a lens on the record and press Follow.</span>';
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}"${i === (prof.digest_day == null ? 1 : prof.digest_day) ? ' selected' : ''}>${d}</option>`).join('');
+  el.innerHTML = `<div class="pm" role="dialog" aria-modal="true"><div class="pm-head"><div class="pm-k">YOUR PROFILE</div><button type="button" class="pm-x" onclick="_profileClose()" aria-label="close">&times;</button></div>
+    <label>Your role <small>the implications on every insight are written for it</small><select id="pm-role">${roles}</select></label>
+    <label>Brands you track <small>comma separated; a reading on one of them, or on its competitive set, reaches you</small><input id="pm-tracked" value="${safeAttr((prof.tracked_brands || []).join(', '))}" placeholder="Jordan Brand, New Balance"></label>
+    <div class="pm-follows"><div class="pm-k">Frames you follow</div>${follows}</div>
+    <label class="pm-row"><input type="checkbox" id="pm-email"${prof.push_email ? ' checked' : ''}> Email me when a reading deploys or a watch is graded on my frames</label>
+    <label>Slack webhook <small>${prof.slack_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; an incoming webhook URL'}</small><input id="pm-slack" placeholder="https://hooks.slack.com/services/..."></label>
+    <label>Teams webhook <small>${prof.teams_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; a workflow webhook URL'}</small><input id="pm-teams" placeholder="https://....webhook.office.com/..."></label>
+    <label>Brief day <small>a five-line brief over the week's readings on your frames opens that day's mail</small><select id="pm-day">${days}</select></label>
+    <div class="pm-acts"><button type="button" class="btn-go-deeper" onclick="_profileSubmit()">Save</button><button type="button" class="btn-new-search" onclick="_profileClose()">Close</button></div></div>`;
+  el.style.display = '';
+}
+function _profileClose() { const el = document.getElementById('profile-modal'); if (el) el.style.display = 'none'; }
+async function _profileSubmit() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const patch = { role_title: v('pm-role'), tracked_brands: v('pm-tracked').split(',').map(x => x.trim()).filter(Boolean), push_email: !!(document.getElementById('pm-email') || {}).checked, digest_day: parseInt(v('pm-day'), 10) };
+  if (v('pm-slack').trim()) patch.slack_webhook = v('pm-slack').trim();
+  if (v('pm-teams').trim()) patch.teams_webhook = v('pm-teams').trim();
+  const saved = await _profileSave(patch);
+  showToast(saved ? 'Profile saved' : 'Could not save the profile');
+  if (saved) _profileClose();
+}
+async function _profileUnfollow(i) { const prof = window._profile || await _profileGet(); if (!prof) return; const follows = (prof.follows || []).slice(); follows.splice(i, 1); const saved = await _profileSave({ follows }); if (saved) _profileOpen(); }
+/* SEAM:CLIENT_PROFILE: follow the lens on the record (a brand, a category, an audience) in one click. */
+async function _followLens() {
+  const L = _recLens; if (!L || !['brand', 'category', 'audience'].includes(L.kind) || !L.value) { showToast('Pick a brand, category or audience lens first'); return; }
+  const prof = window._profile || await _profileGet(); if (!prof) { showToast('Sign in to follow a frame'); return; }
+  const follows = (prof.follows || []).slice();
+  if (follows.some(f => f.kind === L.kind && f.value.toLowerCase() === String(L.value).toLowerCase())) { showToast('Already followed'); return; }
+  follows.push({ kind: L.kind, value: L.value });
+  const saved = await _profileSave({ follows });
+  showToast(saved ? 'Following ' + L.value + ': a reading on it reaches you' : 'Could not follow');
+  if (saved && _FI_RECORD && _FI_LAKE) _renderScroll(_FI_RECORD, _FI_LAKE);
+}
+/* SEAM:ROLE_IMPLICATIONS / SEAM:READER_MARKS / SEAM:EVIDENCE_PACK: the reach block under a deployed reading. */
+async function _reachBlock(id) {
+  const rb = document.getElementById('read-block'); if (!rb) return;
+  let el = document.getElementById('reach-block');
+  if (!el) { el = document.createElement('section'); el.id = 'reach-block'; el.className = 'reach'; rb.insertAdjacentElement('afterend', el); }
+  el.innerHTML = `<div class="reach-k">FOR YOUR ROLE</div><div class="reach-imps" id="reach-imps"><span class="pm-none">Writing the implications for your role</span></div>
+    <div class="reach-row"><span class="reach-k">THIS READING</span><div class="reach-marks" id="reach-marks"></div>
+    <button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_embedCopy('${safeAttr(id)}')">Embed</button></div>`;
+  el.style.display = '';
+  _marksLoad(id);
+  try {
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/roles?id=' + encodeURIComponent(id), { headers: await _authHeader() });
+    const j = r.ok ? await r.json() : null; const box = document.getElementById('reach-imps'); if (!box) return;
+    if (!j || !j.ok || !(j.implications || []).length) { box.innerHTML = '<span class="pm-none">' + (j && j.error === 'auth_required' ? 'Sign in and set your role to read the implications for it.' : 'No implications were written for this reading.') + '</span>'; return; }
+    box.innerHTML = `<div class="reach-role">for ${safe(j.role)}</div>` + j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');
+  } catch (e) { const box = document.getElementById('reach-imps'); if (box) box.innerHTML = '<span class="pm-none">The implications did not load.</span>'; }
+}
+async function _marksLoad(id) {
+  const box = document.getElementById('reach-marks'); if (!box) return;
+  let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/mark?id=' + encodeURIComponent(id), { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const c = (j && j.counts) || { held: 0, useful: 0, wrong: 0 }, mine = j && j.mine;
+  box.innerHTML = ['held', 'useful', 'wrong'].map(m => `<button type="button" class="reach-mark${mine === m ? ' on' : ''}" onclick="_markSet('${safeAttr(id)}','${m}')">${m}<small>${safe(String(c[m] || 0))}</small></button>`).join('');
+}
+async function _markSet(id, mark) { try { const d = await api('excavate/mark', { id, mark }); if (d && d.ok) { _marksLoad(id); showToast('Marked ' + mark); } else showToast(d && d.error === 'auth_required' ? 'Sign in to mark a reading' : 'Could not mark'); } catch (e) { showToast('Sign in to mark a reading'); } }
+async function _packOpen(id) {
+  const w = window.open('about:blank', '_blank');
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/pack?id=' + encodeURIComponent(id), { headers: await _authHeader() });
+    if (!r.ok || !/text\/html/.test(r.headers.get('content-type') || '')) { if (w) w.close(); showToast('Sign in to open the evidence pack'); return; }
+    const html = await r.text(); if (w) { w.document.open(); w.document.write(html); w.document.close(); } }
+  catch (e) { if (w) w.close(); showToast('The evidence pack did not load'); }
+}
+function _embedCopy(id) {
+  const src = API_BASE.replace(/\/$/, '') + '/i/' + encodeURIComponent(id) + '?embed=1';
+  const snip = `<iframe src="${src}" width="420" height="220" style="border:0;max-width:100%" loading="lazy" title="EXCAVATE insight"></iframe>`;
+  if (navigator.clipboard) navigator.clipboard.writeText(snip).then(() => showToast('Embed copied')); else showToast(snip);
 }
 function _goDeeperLive() {
   const d = window._doorOpen; if (!d) return;
@@ -10378,6 +10483,7 @@ function _recLensRow(tiles) {
   let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Where the house has a position', positions.length) : '');
   for (const [kind, list] of groups) if (list.length) html += `<span class="rec-lens-k">${kind}</span>` + list.map(([v, n]) => btn(kind, v, v, n)).join('');
   html += `<span class="rec-lens-k">rooms</span><button type="button" class="rec-lens room" onclick="navTo('brands')">Brand rooms</button><button type="button" class="rec-lens room" onclick="navTo('audiences')">Audiences</button>`;
+  if (['brand', 'category', 'audience'].includes(_recLens.kind) && _recLens.value) html += `<button type="button" class="rec-lens follow" onclick="_followLens()">Follow ${safe(_recLens.value)}</button>`;   // SEAM:CLIENT_PROFILE
   el.innerHTML = html; el.style.display = '';
 }
 function _recLensSet(kind, value) { _recLens = { kind, value }; if (_FI_RECORD && _FI_LAKE) _renderScroll(_FI_RECORD, _FI_LAKE); }

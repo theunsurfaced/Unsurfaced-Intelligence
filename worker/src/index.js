@@ -94,6 +94,9 @@ export default {
         .then(() => doorCalled(env))   // SEAM:RECORD_WATCH: the watches that came due, graded on the database's counts
         .then(s => console.log('door_called', JSON.stringify(s)))
         .catch(e => console.log('door_called_error', String(e && e.message)))
+        .then(() => pushNightly(env))   // SEAM:REACH_PUSH: every reader whose frames moved, told once, with permalinks
+        .then(s => console.log('push_nightly', JSON.stringify(s)))
+        .catch(e => console.log('push_nightly_error', String(e && e.message)))
         .then(async () => peopleLedger(env, await doorSet(env)))   // SEAM:PEOPLE: who spoke to the board, once a day
         .then(n => console.log('people_ledger', n))
         .catch(e => console.log('people_ledger_error', String(e && e.message)))
@@ -173,6 +176,10 @@ export default {
       if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
+      if (path === '/client/profile' && (request.method === 'GET' || request.method === 'POST')) return profileRoute(request, env, origin);   // SEAM:CLIENT_PROFILE (signed in)
+      if (path === '/excavate/insight/roles' && request.method === 'GET') return roleImplicationsRoute(request, env, origin);   // SEAM:ROLE_IMPLICATIONS (signed in)
+      if (path === '/excavate/insight/pack' && request.method === 'GET') return insightPackRoute(request, env, origin);   // SEAM:EVIDENCE_PACK (signed in)
+      if (path === '/excavate/mark' && (request.method === 'GET' || request.method === 'POST')) return markRoute(request, env, origin);   // SEAM:READER_MARKS
       if (path === '/bench/freeze' && request.method === 'POST') return benchFreeze(request, env, origin);   // SEAM:BENCH (desk key)
       if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
@@ -188,7 +195,7 @@ export default {
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
       if (path.startsWith('/s/') && request.method === 'GET') return mineSharePage(path, env);
-      if (path.startsWith('/i/') && request.method === 'GET') return insightSharePage(path, env);   // SEAM:RECORD_ROUTE: an insight's permalink
+      if (path.startsWith('/i/') && request.method === 'GET') return insightSharePage(path, env, new URL(request.url).searchParams.get('embed') === '1');   // SEAM:RECORD_ROUTE: an insight's permalink (SEAM:EVIDENCE_PACK: ?embed=1 the card)
       if (path === '/mine/respond' && request.method === 'POST') return mineGuestRespond(request, env, origin);
       if (path === '/beacon' && request.method === 'POST') return beaconTrack(request, env, origin);
       if (path === '/mine/t' && request.method === 'GET') return mineTokenStudy(url, env, origin);
@@ -7712,7 +7719,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'health' ? await watchHealth(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'health' ? await watchHealth(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -8954,6 +8961,191 @@ async function watchRoute(request, env, origin) {
   const runs = (await sbRest(env, 'activity_events?event=eq.desk_run&select=created_at,meta&order=created_at.desc&limit=20').catch(excQuiet('watch_runs', []))) || [];
   return json({ ok: true, line, desk_runs: runs.map(r => Object.assign({ at: r.created_at }, r.meta || {})) }, 200, origin, env);
 }
+/* ═══ SEAM:CLIENT_PROFILE: the reader's profile. The role their implications are written for, the brands they track, the frames they
+ * follow, where the push goes. One row per signed-in user, made on first read. ═══ */
+const PROFILE = { ROLES: ['brand', 'strategy', 'creative', 'media', 'product', 'insights', 'founder', 'other'], MAX_TRACKED: 12, MAX_FOLLOWS: 12, FOLLOW_KINDS: ['brand', 'category', 'audience'] };
+function profileWebhookOk(u) { return !u || /^https:\/\/(hooks\.slack\.com\/|[\w.-]+\.webhook\.office\.com\/|[\w.-]+\.logic\.azure\.com\/)/.test(String(u)); }
+function profileClean(b, prev) {
+  const out = {};
+  if (b.role_title != null) out.role_title = PROFILE.ROLES.includes(String(b.role_title)) ? String(b.role_title) : 'other';
+  if (Array.isArray(b.tracked_brands)) out.tracked_brands = [...new Set(b.tracked_brands.map(x => String(x || '').trim().slice(0, 60)).filter(x => x.length >= 2))].slice(0, PROFILE.MAX_TRACKED);
+  if (Array.isArray(b.follows)) out.follows = b.follows.filter(f => f && PROFILE.FOLLOW_KINDS.includes(f.kind) && String(f.value || '').trim().length >= 2).map(f => ({ kind: f.kind, value: String(f.value).trim().slice(0, 80) })).filter((f, i, a) => a.findIndex(g => g.kind === f.kind && g.value.toLowerCase() === f.value.toLowerCase()) === i).slice(0, PROFILE.MAX_FOLLOWS);
+  if (b.push_email != null) out.push_email = !!b.push_email;
+  if (b.slack_webhook !== undefined) out.slack_webhook = profileWebhookOk(b.slack_webhook) ? (String(b.slack_webhook || '').slice(0, 400) || null) : (prev ? prev.slack_webhook : null);
+  if (b.teams_webhook !== undefined) out.teams_webhook = profileWebhookOk(b.teams_webhook) ? (String(b.teams_webhook || '').slice(0, 400) || null) : (prev ? prev.teams_webhook : null);
+  if (b.digest_day != null) { const d = parseInt(b.digest_day, 10); out.digest_day = d >= 0 && d <= 6 ? d : 1; }
+  return out;
+}
+async function profileLoad(env, user) {
+  const rows = (await sbRest(env, 'client_profile?user_id=eq.' + user.id + '&select=*').catch(excQuiet('profile_rows', []))) || [];
+  if (rows[0]) return rows[0];
+  const made = { user_id: user.id, email: user.email || null, role_title: 'strategy', tracked_brands: [], follows: [], push_email: true };
+  await sbRest(env, 'client_profile', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: made }).catch(excQuiet('profile_make'));
+  return made;
+}
+function profilePublic(p) { return { role_title: p.role_title || 'strategy', tracked_brands: p.tracked_brands || [], follows: p.follows || [], push_email: p.push_email !== false, slack_webhook: p.slack_webhook ? 'set' : null, teams_webhook: p.teams_webhook ? 'set' : null, digest_day: p.digest_day == null ? 1 : p.digest_day, roles: PROFILE.ROLES }; }
+async function profileRoute(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  const prev = await profileLoad(env, user);
+  if (request.method === 'GET') return json({ ok: true, profile: profilePublic(prev) }, 200, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const patch = Object.assign(profileClean(body, prev), { email: user.email || prev.email || null, updated_at: new Date().toISOString() });
+  await sbRest(env, 'client_profile?user_id=eq.' + user.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch }).catch(excQuiet('profile_patch'));
+  return json({ ok: true, profile: profilePublic(Object.assign({}, prev, patch)) }, 200, origin, env);
+}
+/* ═══ SEAM:ROLE_IMPLICATIONS: what a deployed insight means for the reader's role. Three implications written by Haiku on the frame
+ * tier from the insight's claim, move, interpretation and frame; cached a day per insight and role, so a board of readers in one
+ * role costs one call. Never written without a signed-in reader. ═══ */
+const ROLE_IMP = { TTL: 86400, MAX_TOKENS: 600, TIMEOUT_MS: 20000, KEY: 'roleimp:v1:' };
+const ROLE_IMP_SYS = 'You write for one professional reading a cultural-intelligence insight. Return JSON only: {"implications":[3 of {"title":"a verb-first line under 10 words","body":"one or two sentences, under 45 words, naming what this reader should do, decide or watch this week, in their role; concrete, on the insight, no slogans, no new figures"}]}. No em dash.';
+const ROLE_WORDS = { brand: 'a brand manager who owns the brand plan and its budget', strategy: 'a strategist who writes the brief and frames the decision', creative: 'a creative director who makes the work', media: 'a media planner who decides where and when it runs', product: 'a product lead who decides what gets made', insights: 'an insights lead who owns the research and the evidence', founder: 'a founder who decides everything at once', other: 'a professional in marketing' };
+async function roleImplications(env, tile, role) {
+  const r0 = PROFILE.ROLES.includes(role) ? role : 'other', key = ROLE_IMP.KEY + tile.id + ':' + r0;
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(key) : null; if (hit) return Object.assign(JSON.parse(hit), { cached: true }); } catch (e) { excQuiet('roleimp_get')(e); }
+  const f = tile.frame || {};
+  const prompt = 'READER: ' + ROLE_WORDS[r0] + '.\nINSIGHT (deployed ' + (tile.deployed || '') + '): ' + String(tile.claim || tile.title || '') + '\nTHE MOVE: ' + String(tile.move || '') + '\nFRAME: ' + [f.entity, f.category, f.audience, f.market].filter(Boolean).join(' / ') + (Array.isArray(f.competitors) && f.competitors.length ? ' vs ' + f.competitors.slice(0, 4).join(', ') : '') + (tile.question ? '\nQUESTION IT ANSWERS: ' + tile.question : '') + (tile.brief ? '\nINTERPRETATION: ' + String(tile.brief).slice(0, 700) : '');
+  const r = await callClaude(env, 'frame', { system: ROLE_IMP_SYS, cache: true, prompt, max_tokens: ROLE_IMP.MAX_TOKENS, temperature: 0, kind: 'role_implications', timeout_ms: ROLE_IMP.TIMEOUT_MS, meta: { surface: 'record', role: r0 } });
+  if (!r || !r.ok) return { ok: false, error: String((r && r.error) || 'none'), role: r0 };
+  const j = extractJson(r.text || '') || {};
+  const imps = (Array.isArray(j.implications) ? j.implications : []).slice(0, 3).map(x => ({ title: String((x && x.title) || '').replace(/\u2014/g, ',').slice(0, 90), body: String((x && x.body) || '').replace(/\u2014/g, ',').slice(0, 320) })).filter(x => x.title && x.body);
+  const out = { ok: imps.length > 0, role: r0, implications: imps, at: new Date().toISOString() };
+  if (out.ok && env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify(out), { expirationTtl: ROLE_IMP.TTL }); } catch (e) { excQuiet('roleimp_put')(e); } }
+  return out;
+}
+async function roleImplicationsRoute(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&status=in.(ready,reused)&select=id,frame_key,night,status,frame,measures,read,evidence,meta').catch(excQuiet('roleimp_rows', []))) || [];
+  if (!/^[0-9a-f-]{36}$/.test(id) || !rows[0] || !rows[0].read) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const prof = await profileLoad(env, user);
+  const tile = Object.assign(doorTile(rows[0]), { brief: rows[0].read.brief || null });
+  return json(Object.assign({ id }, await roleImplications(env, tile, prof.role_title || 'strategy')), 200, origin, env);
+}
+/* ═══ SEAM:READER_MARKS: a reader marks a deployed insight held, useful or wrong. One mark per reader per insight; the counts are public
+ * with the insight; the marks feed the bench's human score and the record's own honesty. ═══ */
+const MARKS = ['held', 'useful', 'wrong'];
+async function markCounts(env, id) {
+  const rows = (await sbRest(env, 'insight_marks?insight_id=eq.' + id + '&select=mark,user_id').catch(excQuiet('marks_rows', []))) || [];
+  const counts = { held: 0, useful: 0, wrong: 0 }; for (const r of rows) if (counts[r.mark] != null) counts[r.mark]++;
+  return { counts, rows };
+}
+async function markRoute(request, env, origin) {
+  const url = new URL(request.url), id = String(url.searchParams.get('id') || '').slice(0, 40);
+  if (request.method === 'GET') {
+    if (!/^[0-9a-f-]{36}$/.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+    const user = await authenticate(request, env).catch(excQuiet('mark_auth', null));
+    const m = await markCounts(env, id);
+    return json({ ok: true, id, counts: m.counts, mine: user ? ((m.rows.find(r => r.user_id === user.id) || {}).mark || null) : null }, 200, origin, env);
+  }
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const iid = String(body.id || '').slice(0, 40), mark = String(body.mark || '');
+  if (!/^[0-9a-f-]{36}$/.test(iid) || !MARKS.includes(mark)) return json({ ok: false, error: 'bad_mark' }, 200, origin, env);
+  await sbRest(env, 'insight_marks?on_conflict=insight_id,user_id', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: { insight_id: iid, user_id: user.id, mark } }).catch(excQuiet('mark_put'));
+  const m = await markCounts(env, iid);
+  return json({ ok: true, id: iid, counts: m.counts, mine: mark }, 200, origin, env);
+}
+/* ═══ SEAM:REACH_PUSH: the push. Each night after the grade, every reader whose tracked brands or followed frames deployed an insight
+ * or had a watch graded gets one email and one webhook message with permalinks; an insight is never sent to the same reader twice
+ * (push_log). On the reader's digest day the Monday brief opens the mail: five lines by Haiku over the week's deployments on their
+ * frames, about a cent. Nothing is sent to a reader with nothing on their frames. ═══ */
+const PUSH = { MAX_ITEMS: 8, BRIEF_TOKENS: 500, BRIEF_MS: 20000, MAX_READERS: 200 };
+const PUSH_BRIEF_SYS = 'You write a Monday brief for one professional from the week\'s deployed cultural-intelligence insights on the frames they follow. Return JSON only: {"lines":[3 to 5 strings, each one sentence under 28 words, plain, naming the subject and what moved; the last line says what to do first this week]}. No new figures, no em dash.';
+function pushMatches(tile, prof) {
+  const f = tile.frame || {}, lc = x => String(x || '').toLowerCase().trim();
+  const tracked = (prof.tracked_brands || []).map(lc), follows = prof.follows || [];
+  if (f.entity && (tracked.includes(lc(f.entity)) || follows.some(x => x.kind === 'brand' && lc(x.value) === lc(f.entity)))) return 'brand';
+  if (f.category && follows.some(x => x.kind === 'category' && lc(x.value) === lc(f.category))) return 'category';
+  if (f.audience && follows.some(x => x.kind === 'audience' && lc(x.value) === lc(f.audience))) return 'audience';
+  if (Array.isArray(f.competitors) && f.competitors.some(c => tracked.includes(lc(c)))) return 'competitor';
+  return null;
+}
+async function pushBrief(env, prof, tiles) {
+  const prompt = 'READER: ' + (ROLE_WORDS[prof.role_title] || ROLE_WORDS.other) + '.\nTHE WEEK\'S DEPLOYMENTS ON THEIR FRAMES:\n' + tiles.slice(0, 10).map(t => '- ' + (t.deployed || '') + ': ' + String(t.claim || t.title || '') + (t.move ? ' The move: ' + t.move : '') + (t.called && t.called.verdict ? ' [' + t.called.verdict + ']' : '')).join('\n');
+  const r = await callClaude(env, 'frame', { system: PUSH_BRIEF_SYS, prompt, max_tokens: PUSH.BRIEF_TOKENS, temperature: 0, kind: 'push_brief', timeout_ms: PUSH.BRIEF_MS, meta: { surface: 'push' } });
+  if (!r || !r.ok) return [];
+  const j = extractJson(r.text || '') || {};
+  return (Array.isArray(j.lines) ? j.lines : []).slice(0, 5).map(x => String(x || '').replace(/\u2014/g, ',').slice(0, 240)).filter(Boolean);
+}
+function pushLink(env, id) { return (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '') + '/i/' + id; }
+function pushMailHtml(env, prof, items, brief) {
+  const row = it => '<li style="margin:0 0 12px"><div style="font-size:11px;letter-spacing:.08em;color:#888">' + esc(it.kind === 'called' ? (it.tile.called.verdict === 'held' ? 'HELD' : 'MISSED') + ' \u00b7 ' : 'DEPLOYED \u00b7 ') + esc(it.tile.deployed || '') + ' \u00b7 ' + esc(it.why) + '</div><div style="font-size:16px;line-height:1.35"><a style="color:#111;text-decoration:none" href="' + esc(pushLink(env, it.tile.id)) + '">' + esc(it.tile.claim || it.tile.title || '') + '</a></div>' + (it.tile.move ? '<div style="color:#444;font-size:13px">The move: ' + esc(it.tile.move) + '</div>' : '') + '</li>';
+  return '<div style="font-family:system-ui;max-width:600px"><p style="font-size:12px;letter-spacing:.1em;color:#888">EXCAVATE \u00b7 THE RECORD</p>' + (brief && brief.length ? '<h2 style="margin:0 0 8px">Your Monday brief</h2><ul style="padding-left:18px">' + brief.map(l => '<li style="margin:0 0 6px">' + esc(l) + '</li>').join('') + '</ul>' : '<h2 style="margin:0 0 8px">On your frames</h2>') + '<ul style="list-style:none;padding:0;margin:14px 0">' + items.map(row).join('') + '</ul><p style="color:#888;font-size:12px">' + esc(EXC_BLIND) + ' Change what you follow in your profile.</p></div>';
+}
+function pushText(env, items, brief) {
+  return (brief && brief.length ? 'Your Monday brief:\n' + brief.map(l => '\u2022 ' + l).join('\n') + '\n\n' : '') + items.map(it => (it.kind === 'called' ? (it.tile.called.verdict === 'held' ? 'HELD' : 'MISSED') : 'DEPLOYED') + ' ' + (it.tile.deployed || '') + ': ' + (it.tile.claim || it.tile.title || '') + (it.tile.move ? ' The move: ' + it.tile.move : '') + ' ' + pushLink(env, it.tile.id)).join('\n');
+}
+async function pushWebhook(url, text) {
+  try { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); return r.ok; } catch (e) { return false; }
+}
+async function pushNightly(env) {
+  const today = doorNight(), out = { readers: 0, matched: 0, sent: { email: 0, slack: 0, teams: 0 }, briefs: 0 };
+  const profs = (await sbRest(env, 'client_profile?select=*&limit=' + PUSH.MAX_READERS).catch(excQuiet('push_profiles', []))) || [];
+  const active = profs.filter(p => ((p.tracked_brands || []).length || (p.follows || []).length) && (p.push_email !== false || p.slack_webhook || p.teams_webhook));
+  if (!active.length) return out;
+  const SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta';
+  const deployed = ((await sbRest(env, 'door_reads?status=eq.ready&night=eq.' + today + '&' + SEL).catch(excQuiet('push_rows', []))) || []).map(doorTile);
+  const graded = ((await sbRest(env, 'door_reads?status=in.(ready,reused)&meta->called->>at=gte.' + today + '&' + SEL).catch(excQuiet('push_graded', []))) || []).map(doorTile).filter(t => t.called && (t.called.verdict === 'held' || t.called.verdict === 'missed'));
+  const weekday = new Date().getUTCDay();
+  for (const prof of active) {
+    out.readers++;
+    const items = [];
+    for (const t of deployed) { const why = pushMatches(t, prof); if (why) items.push({ kind: 'deployed', tile: t, why }); }
+    for (const t of graded) { const why = pushMatches(t, prof); if (why && !items.some(i => i.tile.id === t.id)) items.push({ kind: 'called', tile: t, why }); }
+    if (!items.length) continue;
+    const sentBefore = (await sbRest(env, 'push_log?user_id=eq.' + prof.user_id + '&select=insight_id,kind&order=created_at.desc&limit=400').catch(excQuiet('push_log_rows', []))) || [];
+    const seen = new Set(sentBefore.map(r => r.kind + ':' + r.insight_id));
+    const fresh = items.filter(i => !seen.has(i.kind + ':' + i.tile.id)).slice(0, PUSH.MAX_ITEMS);
+    if (!fresh.length) continue;
+    out.matched++;
+    let brief = [];
+    if (weekday === (prof.digest_day == null ? 1 : prof.digest_day)) {
+      const since = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+      const week = ((await sbRest(env, 'door_reads?status=eq.ready&night=gte.' + since + '&' + SEL + '&order=night.desc&limit=80').catch(excQuiet('push_week', []))) || []).map(doorTile).filter(t => pushMatches(t, prof));
+      if (week.length) { brief = await pushBrief(env, prof, week).catch(excQuiet('push_brief', [])); if (brief.length) out.briefs++; }
+    }
+    const log = [];
+    if (prof.push_email !== false && prof.email) { const r = await sendEmail(env, { to: prof.email, subject: (brief.length ? 'Your Monday brief: ' : 'On your frames: ') + fresh.length + (fresh.length === 1 ? ' reading' : ' readings'), html: pushMailHtml(env, prof, fresh, brief) }).catch(excQuiet('push_mail', { ok: false })); if (r && r.ok) { out.sent.email++; log.push('email'); } }
+    const text = pushText(env, fresh, brief);
+    if (prof.slack_webhook && await pushWebhook(prof.slack_webhook, text)) { out.sent.slack++; log.push('slack'); }
+    if (prof.teams_webhook && await pushWebhook(prof.teams_webhook, text)) { out.sent.teams++; log.push('teams'); }
+    if (log.length) await sbRest(env, 'push_log', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: [].concat(...fresh.map(i => log.map(ch => ({ user_id: prof.user_id, insight_id: i.tile.id, kind: i.kind, channel: ch })))).concat(brief.length ? log.map(ch => ({ user_id: prof.user_id, insight_id: null, kind: 'brief', channel: ch })) : []) }).catch(excQuiet('push_log_put'));
+  }
+  logEvent(env, 'intelligence', 'push', 'push_nightly', null, out);
+  return out;
+}
+/* ═══ SEAM:EVIDENCE_PACK: one insight as a document a client can paste into a deck or hand to a colleague: the claim, the move, the
+ * question, the interpretation, the findings, every evidence line with its date and source, the voices, the measures, the place, the
+ * watch and its grade, the blind-spots line. Signed in: the evidence is the paid part. Print-ready HTML. ═══ */
+function insightPackHtml(env, row) {
+  const t = doorTile(row), rd = row.read || {}, f = row.frame || {}, m = row.measures || {};
+  const e = esc, day = d => d ? String(d).slice(0, 10) : '';
+  const lines = (row.evidence || []).map((x, i) => '<li><span class="n">' + (i + 1) + '</span> <b>' + e(x.title) + '</b> <span class="src">' + e(String(x.source || '').replace(/^Unsurfaced Lake\s*\u00b7\s*/i, '')) + (x.published_at ? ' \u00b7 ' + e(day(x.published_at)) : '') + (x.place ? ' \u00b7 ' + e(x.place) : '') + '</span>' + (x.url ? ' <a href="' + e(x.url) + '">source</a>' : '') + '</li>').join('');
+  const ins = (rd.insights || []).map(x => '<div class="f"><div class="k">' + e(x.confidence || '') + ' confidence' + (x.dated && x.dated.newest ? ' \u00b7 evidence to ' + e(x.dated.newest) : '') + (Array.isArray(x.evidence) && x.evidence.length ? ' \u00b7 lines ' + x.evidence.join(', ') : '') + '</div><h3>' + e(x.title) + '</h3><p>' + e(x.excerpt) + '</p></div>').join('');
+  const moves = (rd.ideas || []).map(x => '<div class="f"><div class="k">' + e(x.type || 'Move') + (x.for ? ' \u00b7 for ' + e(x.for) : '') + '</div><h3>' + e(x.headline) + '</h3><p>' + e(x.body) + (x.because ? ' <i>Because: ' + e(x.because) + '</i>' : '') + (x.proof ? ' <i>Proof: ' + e(x.proof) + '</i>' : '') + '</p></div>').join('');
+  const voices = ((row.meta && row.meta.voices) || []).slice(0, 6).map(v => '<blockquote>\u201c' + e(v.text) + '\u201d<cite>' + e([v.self && v.self.generation, v.self && v.self.role, v.likes ? v.likes + ' likes' : null].filter(Boolean).join(', ') || 'Consumer') + (v.when ? ', ' + e(day(v.when)) : '') + '</cite></blockquote>').join('');
+  const watch = rd.watch ? '<p><b>The watch:</b> ' + e(rd.watch.claim || (rd.watch.measure + ' ' + rd.watch.op + ' ' + rd.watch.value)) + ', checked ' + e(rd.watch.by) + (t.called ? '. <b>' + e(String(t.called.verdict).toUpperCase()) + '</b>' + (t.called.measured != null ? ' (measured ' + e(t.called.measured) + ')' : '') : ' (open)') + '</p>' : '';
+  const meas = m.recent_7d != null ? '<p><b>Measured on the lake:</b> ' + e(m.recent_7d) + ' stories this week, ' + e(m.prior_7d) + ' the week before' + (m.velocity_pct != null ? ' (' + (m.velocity_pct >= 0 ? '+' : '') + e(m.velocity_pct) + '%)' : '') + '; ' + e(m.outlets) + ' outlets; ' + e(m.weeks_touched) + ' of ' + e(m.weeks || 12) + ' weeks on record' + (t.place && t.place.length ? '; evidence from ' + t.place.map(p => e(p.place)).join(' and ') : '') + '.</p>' : '';
+  const who = [f.entity || f.category, f.audience, f.market].filter(Boolean).map(e).join(' \u00b7 ') + (Array.isArray(f.competitors) && f.competitors.length ? ' \u00b7 vs ' + f.competitors.slice(0, 4).map(e).join(', ') : '');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + e(t.claim || t.title || 'An insight') + ' \u00b7 EXCAVATE</title><style>body{font-family:Georgia,serif;color:#111;max-width:760px;margin:0 auto;padding:48px 40px;line-height:1.55}.k,.src,cite,.top{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.06em;color:#777}h1{font-size:30px;line-height:1.15;margin:8px 0 6px}h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#a33;margin:30px 0 10px;border-bottom:1px solid #ddd;padding-bottom:4px}h3{font-size:17px;margin:4px 0}.f{margin:0 0 14px}ol{padding-left:0;list-style:none}li{margin:0 0 8px;font-size:13px}.n{display:inline-block;min-width:22px;color:#a33}blockquote{margin:0 0 12px;padding-left:12px;border-left:2px solid #a33;font-size:15px}cite{display:block;font-style:normal;margin-top:3px}.move{background:#f6f6f6;padding:12px 14px;margin:14px 0}@media print{body{padding:0}@page{margin:1.6cm}}</style></head><body>' +
+    '<div class="top">EXCAVATE BY UNSURFACED\u2122 \u00b7 EVIDENCE PACK \u00b7 DEPLOYED ' + e(t.deployed || '') + (t.develops ? ' \u00b7 DEVELOPS AN EARLIER READING' : '') + '</div><div class="k">' + who + '</div><h1>' + e(t.claim || t.title || '') + '</h1>' + (rd.read && rd.read[1] ? '<p>' + e(rd.read[1]) + '</p>' : '') + (t.question ? '<p class="k">Answers: ' + e(t.question) + '</p>' : '') +
+    (t.move ? '<div class="move"><div class="k">THE MOVE</div><b>' + e(t.move) + '</b></div>' : '') + meas + watch +
+    (rd.brief ? '<h2>The interpretation</h2><p>' + e(rd.brief) + '</p>' : '') + (ins ? '<h2>Findings</h2>' + ins : '') + (moves ? '<h2>Moves</h2>' + moves : '') + (voices ? '<h2>What people are saying</h2>' + voices : '') +
+    '<h2>What this reading does not see</h2><p>' + e(EXC_BLIND) + '</p>' + (lines ? '<h2>What it stood on</h2><ol>' + lines + '</ol>' : '') +
+    '<p class="k" style="margin-top:30px">' + e(pushLink(env, row.id)) + ' \u00b7 Every figure was checked against the line it cites or the lake\'s own counts. Voices are verbatim, credited by what the speaker said about themselves, never by name.</p></body></html>';
+}
+async function insightPackRoute(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
+  const rows = /^[0-9a-f-]{36}$/.test(id) ? (await sbRest(env, 'door_reads?id=eq.' + id + '&status=in.(ready,reused)&select=id,frame_key,night,status,frame,measures,read,evidence,meta').catch(excQuiet('pack_rows', []))) || [] : [];
+  if (!rows[0] || !rows[0].read) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  logEvent(env, 'intelligence', 'record', 'evidence_pack', null, { id, user: user.id });
+  return new Response(insightPackHtml(env, rows[0]), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } });
+}
 /* ═══ SEAM:BACKUP: the house's own copy. Each night the record (door_reads, 120 nights), the house reads, the ledger (subject_weeks, 26
  * weeks), the calls and this month's claude_jobs land in R2 as JSON under backups/<day>/, independent of the database's plan. The
  * last backup's sizes sit in KV for the health line. ═══ */
@@ -9111,10 +9303,15 @@ async function doorInsightRoute(request, env, origin) {
   return json({ ok: true, insight: t, blind: EXC_BLIND }, 200, origin, env);
 }
 /* SEAM:RECORD_ROUTE: the permalink. /i/<id> is a small page with share tags that opens the reading on the site; links must not rot. */
-async function insightSharePage(path, env) {
+async function insightSharePage(path, env, embed) {
   const id = decodeURIComponent(path.slice('/i/'.length)).slice(0, 40);
   const t = await doorInsightPublic(env, id).catch(excQuiet('insight_page', null));
   const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
+  if (embed) {   // SEAM:EVIDENCE_PACK: the embeddable card, for an intranet or a deck; it links back to the reading
+    const f = (t && t.frame) || {}, who = [f.entity || f.category, f.audience].filter(Boolean).map(esc).join(' \u00b7 ');
+    const card = t ? '<div class="k">EXCAVATE \u00b7 DEPLOYED ' + esc(t.deployed || '') + (t.called && t.called.verdict ? ' \u00b7 ' + esc(String(t.called.verdict).toUpperCase()) : '') + '</div><div class="k">' + who + '</div><h1>' + esc(t.claim || t.title || '') + '</h1>' + (t.move ? '<p><b>The move:</b> ' + esc(t.move) + '</p>' : '') + '<a href="' + esc(base + '/i/' + id) + '" target="_top">Open the reading</a>' : '<h1>EXCAVATE by Unsurfaced</h1>';
+    return new Response('<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font-family:system-ui;background:#0c0c0c;color:#eee;padding:18px 20px}.k{font-size:10px;letter-spacing:.1em;color:#999;margin-bottom:4px}h1{font-size:19px;line-height:1.25;margin:6px 0 10px}p{font-size:13px;color:#ccc;margin:0 0 10px}a{color:#fff;font-size:12px}</style></head><body>' + card + '</body></html>', { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+  }
   const dest = base + '/intelligence/?insight=' + encodeURIComponent(t ? t.id : id);
   const title = t ? esc(t.claim || t.title || 'An insight') + ' \u00b7 EXCAVATE by Unsurfaced' : 'EXCAVATE by Unsurfaced';
   const desc = t ? esc([t.move ? 'The move: ' + t.move : '', 'Deployed ' + t.deployed + (t.called && t.called.verdict ? ', ' + t.called.verdict : '')].filter(Boolean).join(' \u00b7 ').slice(0, 200)) : 'The intelligence the engine deployed, dated and kept.';

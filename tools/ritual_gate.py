@@ -248,6 +248,8 @@ SPENDERS = {
     'excGapCheck': 'claudeGate on the frame tier (Haiku, its own cap) + a 4.5s deadline; one call per read, called by synthesize only (excavateAuth)',
     'excFrameFor': 'claudeGate on the frame tier (Haiku, its own $3 cap) + a week of KV cache per query + a 4.5s deadline; callers: synthesize and gather (excavateAuth) and excFrameTiles (the public feed, at most one set of 12 per edition, cached 6h)',
     'benchGrade': 'claudeGate on the frame tier (Haiku); called by benchRun only, which the desk key or a signed-in admin opens (SEAM:BENCH); one call per pack, at most sixty kept',
+    'roleImplications': 'claudeGate on the frame tier (Haiku) + a day of KV cache per insight and role; called by roleImplicationsRoute only, signed in (SEAM:ROLE_IMPLICATIONS)',
+    'pushBrief': 'claudeGate on the frame tier (Haiku); called by pushNightly only (cron-bounded, the 06:10 chain, or the admin desk {run: push}), once per reader on their digest day and only when their frames deployed (SEAM:REACH_PUSH)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")

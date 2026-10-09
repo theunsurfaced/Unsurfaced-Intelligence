@@ -1310,6 +1310,46 @@
   "SEAM:DESK_ROLES": {
    "file": "worker/src/index.js",
    "purpose": "EX29: who may run what on the desk. The desk key stands for the owner; an admin (app_user.role admin) runs everything; an editor (role editor) the free passes in DESK_ROLES.EDITOR_RUNS; every run is logged as desk_run with who ran it and their role."
+  },
+  "SEAM:CLIENT_PROFILE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX30 THE REACH: the reader's profile (client_profile, migration 0042): the role their implications are written for, the brands they track, the frames they follow (brand, category, audience), email push, a Slack or Teams webhook (hosts checked), the digest day. GET/POST /client/profile, signed in; made on first read; webhooks never echoed back, only \"set\"."
+  },
+  "SEAM:CLIENT_PROFILE@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:CLIENT_PROFILE",
+   "purpose": "Your profile under the user menu (role, tracked brands, follows with remove, email push, webhooks, brief day); Follow <lens> on the record's lens row adds the selected brand, category or audience to the follows."
+  },
+  "SEAM:ROLE_IMPLICATIONS": {
+   "file": "worker/src/index.js",
+   "purpose": "EX30: what a deployed insight means for the reader's role. GET /excavate/insight/roles?id= (signed in) writes three implications with Haiku on the frame tier from the insight's claim, move, interpretation and frame, cached a day per insight and role (ROLE_IMP), so a board of readers in one role costs one call."
+  },
+  "SEAM:ROLE_IMPLICATIONS@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ROLE_IMPLICATIONS",
+   "purpose": "the reach block under a deployed reading: the implications for your role, the marks, the evidence pack and the embed snippet"
+  },
+  "SEAM:READER_MARKS": {
+   "file": "worker/src/index.js",
+   "purpose": "EX30: a reader marks a deployed insight held, useful or wrong (insight_marks, one per reader per insight; POST /excavate/mark, GET the counts and the reader's own); the counts are public with the insight and feed the bench's human score."
+  },
+  "SEAM:READER_MARKS@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:READER_MARKS",
+   "purpose": "the three marks with their counts under a deployed reading"
+  },
+  "SEAM:REACH_PUSH": {
+   "file": "worker/src/index.js",
+   "purpose": "EX30: the push. pushNightly runs after the grade each night: every reader whose tracked brands (or their competitive set) or followed frames deployed an insight or had a watch graded gets one email and one webhook message with permalinks, never the same insight twice (push_log); on the reader's digest day a Monday brief (pushBrief, Haiku, five lines over the week's deployments on their frames) opens it; nothing is sent to a reader with nothing on their frames. Desk {run: push}."
+  },
+  "SEAM:EVIDENCE_PACK": {
+   "file": "worker/src/index.js",
+   "purpose": "EX30: one insight as a document (GET /excavate/insight/pack?id=, signed in, print-ready HTML): the claim, the move, the question, the interpretation, the findings, every evidence line with date, source and place, the voices, the measures, the watch and its grade, the blind-spots line. The permalink page serves an embeddable card on ?embed=1 that links back to the reading."
+  },
+  "SEAM:EVIDENCE_PACK@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EVIDENCE_PACK",
+   "purpose": "Evidence pack opens the document in a new tab (fetched signed in); Embed copies the iframe snippet"
   }
  },
  "planned": [
