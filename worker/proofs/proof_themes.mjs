@@ -16,8 +16,8 @@ const R = new Function('RECUR', 'sbRest', src + '; return { recurrenceRollup, la
 const day = 864e5, now = Date.now(), iso = d => new Date(now - d * day).toISOString();
 const rows = [
   { id: 'a', cluster_id: 'c1', theme_id: 'T', title: 'Ray-Ban Meta audio glasses', source_name: 'The Verge', captured_at: iso(1), territory: 'technology-innovation' },
-  { id: 'b', cluster_id: 'c2', theme_id: 'T', title: 'Meta Connect unveils glasses', source_name: 'Engadget', captured_at: iso(2), territory: 'technology-innovation' },
-  { id: 'c', cluster_id: 'c3', theme_id: 'T', title: 'Meta x LISA smart glasses', source_name: 'Hypebeast', captured_at: iso(9), territory: 'fashion-beauty' },
+  { id: 'b', cluster_id: 'c2', theme_id: 'T', title: 'Meta Connect unveils glasses', source_name: 'Engadget', captured_at: new Date(now - day - 1000).toISOString(), territory: 'technology-innovation' },
+  { id: 'c', cluster_id: 'c3', theme_id: 'T', title: 'Meta x LISA smart glasses', source_name: 'Hypebeast', captured_at: iso(8), territory: 'fashion-beauty' },
   { id: 'd', cluster_id: 'c4', theme_id: null, title: 'Nike skate shoe', source_name: 'Highsnobiety', captured_at: iso(1) },
   { id: 'e', cluster_id: 'c4', theme_id: null, title: 'Nike skate shoe again', source_name: 'Highsnobiety', captured_at: iso(8) }];
 const out = R.recurrenceRollup(rows, 10, 2);
