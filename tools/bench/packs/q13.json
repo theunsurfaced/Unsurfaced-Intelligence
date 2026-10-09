@@ -1,0 +1,532 @@
+{
+ "id": "q13",
+ "query": "Formula 1 and American audiences",
+ "frame": {
+  "entity": "Formula 1",
+  "category": "motorsport racing",
+  "audience": "american viewers",
+  "market": "US",
+  "competitors": [
+   "NASCAR",
+   "IndyCar",
+   "MotoGP",
+   "IMSA"
+  ],
+  "question": "How can Formula 1 grow its fanbase and engagement among American audiences?",
+  "anchors": [
+   "formula 1",
+   "f1",
+   "grand prix",
+   "racing",
+   "american fans",
+   "us viewership",
+   "motorsport",
+   "drivers",
+   "teams",
+   "circuits",
+   "broadcast",
+   "streaming",
+   "engagement",
+   "growth"
+  ],
+  "exclude": [
+   "formula racing generic",
+   "car racing broadly",
+   "sports betting",
+   "automotive industry"
+  ],
+  "task": "audience",
+  "threads": [
+   "What are American viewers' attitudes toward Formula 1?",
+   "How does F1 viewership in the US compare to NASCAR and IndyCar?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Formula 1 American audience viewership growth",
+   "research": "Formula 1 fan demographics United States engagement",
+   "discourse": "why do americans watch formula 1 reddit",
+   "web": "Formula 1 US fans how to watch"
+  }
+ },
+ "frozen_at": "2026-10-09T02:55:09.303Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Formula One",
+   "text": "Formula One (F1) is the highest class of worldwide racing for open-wheel, single-seater formula racing cars run by the Formula One Group and sanctioned by the Fédération Internationale de l'Automobile (FIA). The FIA Formula One World Championship has been one of the world's premier forms of motorsport since its inaugural running in 1950 and is often considered to be the pinnacle of motorsport. The word formula in the name refers to the set of rules all participant cars must follow. A Formula One season consists of a series of races, known as Grands Prix. Grands Prix take place in multiple countries and continents on either purpose-built circuits or closed roads, as street circuits.",
+   "url": "https://en.wikipedia.org/wiki/Formula_One",
+   "published_at": "2026-10-02T09:45:39Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/2010_Malaysian_GP_opening_lap.jpg/330px-2010_Malaysian_GP_opening_lap.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "2025 Formula One World Championship",
+   "text": "The 2025 FIA Formula One World Championship was a motor racing championship for Formula One cars and the 76th running of the Formula One World Championship. It was recognised by the Fédération Internationale de l'Automobile (FIA), the governing body of international motorsport, as the highest class of competition for open-wheel racing cars. The championship was contested over 24 Grands Prix held around the world. It began in March and ended in December.",
+   "url": "https://en.wikipedia.org/wiki/2025_Formula_One_World_Championship",
+   "published_at": "2026-08-21T03:10:28Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/2024-08-25_Motorsport%2C_Formel_1%2C_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3968_by_Stepro_%28cropped%29.jpg/330px-2024-08-25_Motorsport%2C_Formel_1%2C_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3968_by_Stepro_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "List of Formula One broadcasters",
+   "text": "Formula One, the highest class of open-wheel, single-seater formula race cars sanctioned by the Fédération Internationale de l'Automobile (FIA), can be seen live or tape delayed on television in almost every country and territory around the world. Formula One attracts one of the largest global TV audiences after the FIFA World Cup and the Olympic Games, with a total global audience of about 352 million people for the 2017 season.",
+   "url": "https://en.wikipedia.org/wiki/List_of_Formula_One_broadcasters",
+   "published_at": "2026-10-07T15:17:24Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "formula1.com",
+   "title": "Stream Formula 1 live | F1 TV",
+   "text": "Stream Formula 1 live | F1 TV # WATCH F1 LIVE Watch every F1 race. Every F1 session. Live or on demand. Wherever. Whenever.​ #### F1® TV Premium Available with an Apple TV subscription ## Apple TV Apple TV is the new U.S. home of Formula 1®. With Apple TV, you also get hundreds of incredible Apple Original shows",
+   "url": "https://www.formula1.com/en-us/subscribe-to-f1-tv",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://media.formula1.com/image/upload/v1674480885/common/logos/f1-default-share.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "tv.apple.com",
+   "title": "Where to Watch Formula 1 - Apple TV",
+   "text": "# Where to Watch Formula 1 ® Apple TV is the U.S. home of Formula 1 ®. Watch complete coverage of every Grand Prix™ live — including practice, qualifying, and Sprints — all in one place with an Apple TV subscription. ... Formula 1 ®. Your way. ... Multiview ... to four live streams at the ... time with Apple TV's Mul",
+   "url": "https://tv.apple.com/us/info/watch-f1",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://tv.apple.com/mdsa/md-5cfaccf39e194f66b41ff5ae86d78a7d-m/mdsa/assets/storage/blobs/images/6a062df4fbb5399c6877292f/en-us-large@1x.jpeg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "formula1.com",
+   "title": "F1 Broadcast Information | Formula 1®",
+   "text": "broadcast Formula ... V sport 1 Vi ... | Papua New Guinea & Pacific Islands ... TVWAN Sports | | Philippines | beIN SPORTS | | Poland | Eleven Sports | | Portugal | DAZN | | Romania | Antena | | Serbia | Arena Sport | | Singapore | beIN SPORTS | | Slovenia | Kanal A VOYO | | South Korea | Coupang Play | | Spain and And",
+   "url": "https://www.formula1.com/en/information/f1-broadcast-information.45y3LNsT1D6VoK0ZmX8ciJ",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.formula1.com/etc/designs/fom-website/social/f1-default-share.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "formula1.com",
+   "title": "Apple reveal details of F1 integration",
+   "text": "# Apple reveal details of F1 integration on Apple TV, Apple Maps, Apple News and more Starting this weekend, Apple TV subscribers in the US can watch all practice, Qualifying, and Sprint sessions, along with races, as the 2026 Formula 1 season roars into gear. ... Apple TV subscribers in the US will be able to watch",
+   "url": "https://www.formula1.com/en/latest/article/apple-reveal-details-of-f1-integration-on-apple-tv-apple-maps-apple-news-and.4JJY1CUT4eobqZ78wTcO3L",
+   "published_at": "2026-03-05T14:50:15.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://media.formula1.com/image/upload/t_16by9Centre/c_lfill,w_2048/q_auto/v1740000001/fom-website/2026/Apple/Apple-TV-F1-availability-Multiview-02.webp",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "decider.com",
+   "title": "How To Watch And Stream 2026 F1 Races in the US",
+   "text": "How To Watch And Stream 2026 F1 Races in the US # How To Watch F1 in the ... in 2026: ... Streaming Every Formula 1 Race By Angela Tricarico Updated ... 6, 20 ... Photos: Getty Images ... Want to know how to watch the F1 season? We’ve compiled everything you need to know to stream F1. ## How to Watch F1 in 2026",
+   "url": "https://decider.com/article/how-to-watch-stream-f1-in-usa/",
+   "published_at": "2026-03-06T15:48:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://decider.com/wp-content/uploads/2026/03/HOW-TO-WATCH-F1-2026-.jpg?quality=75&strip=all&w=1200",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "documentarytube.com",
+   "title": "Apple F1 Streaming Deal: What Changed for U.S. Fans in 2026",
+   "text": "Apple TV became the official U.S. home of Formula 1 beginning with the 2026 season, replacing ESPN. ... For viewers in the United States, Apple TV carries the live Formula 1 championship package, including: - Practice sessions - Qualifying - Sprint sessions - All Grands Prix - Live and on-demand cov...",
+   "url": "https://www.documentarytube.com/blog/apples-f1-streaming-report-came-true-what-the-five-year-u-s-deal-means-for-fans/",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "gpfans.com",
+   "title": "F1 on TV: How US fans can watch the Azerbaijan Grand Prix ...",
+   "text": "US-based F1 fans will be able to watch the action unfold via Apple TV, and can even catch it for free via a seven-day free trial that the streaming platform are offering. ... US F1 fans can make use of a seven-day free trial with Apple TV and watch Azerbaijan Grand Prix weekend for no extra cost. .....",
+   "url": "https://www.gpfans.com/en/f1-news/1090638/f1-on-us-tv-how-to-watch-the-azerbaijan-grand-prix-this-weekend-live-free/",
+   "published_at": "2026-09-25",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "gmauthority.com",
+   "title": "Poll: Are You Watching F1 Now That It's Only On Apple TV?",
+   "text": "The brand-new Cadillac F1 team is officially on the grid, new regulations have shaken things up, and U.S. fans now have to tune into Apple TV to watch the action. ... Prior to the 2026 racing season, F1 fans could tune into ESPN, ESPN2, and ABC, with streaming available via the ESPN app to watch. .....",
+   "url": "https://gmauthority.com/blog/2026/09/poll-are-you-watching-f1-now-that-its-only-on-apple-tv/",
+   "published_at": "2026-09-14",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "formula1.com",
+   "title": "How to stream the Formula 1 2026 Bahrain Grand Prix in ...",
+   "text": "In the US, F1 TV is changing. Apple – Formula 1’s new Official US Broadcaster – will host F1 TV included for free within its Apple TV subscription, streamlining access for fans and enhancing the overall fan experience. ... Fans can also watch via F1 TV Premium, a premier service that invites the vie...",
+   "url": "https://www.formula1.com/en/latest/article/how-to-stream-the-formula-1-2026-bahrain-grand-prix-in-malaysia-on-f1-tv-premium.7EMjlFUOKGObNSbsefTYGN",
+   "published_at": "2026-09-30",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "formula1.com",
+   "title": "How to stream the 2026 Spanish Grand Prix on F1 TV ...",
+   "text": "F1 TV Pro can be streamed easily via Apple TV, Chromecast Generation 2 and above, Android TV, Google TV, Amazon Fire TV, and Roku. In the US, F1 TV is changing. Apple – Formula 1’s new Official U.S. Broadcaster – will host F1 TV included for free within its Apple TV subscription, streamlining access...",
+   "url": "https://www.formula1.com/en/latest/article/how-to-stream-the-2026-spanish-grand-prix-on-f1-tv-premium.yEPANqHhSmStqid12sI2c",
+   "published_at": "2026-09-09",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "esim.holafly.com",
+   "title": "Where to watch F1 Qatar 2026: Live stream, TV, and free options",
+   "text": "|Country|Primary TV broadcaster|Main streaming platform|Direct F1 streaming option| |--|--|--|--| |**United States**|Apple TV+|Apple TV App|F1 TV Pro (subject to regional rights availability)| ... **Live broadcasting rights for Formula 1 in the United States are held exclusively by Apple TV under a ...",
+   "url": "https://esim.holafly.com/travel-tips/where-to-watch-f1-qatar/",
+   "published_at": "2026-10-05",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "formula1.com",
+   "title": "How to stream the 2026 Singapore Grand Prix on F1 TV ...",
+   "text": "F1 TV Pro can be streamed easily via Apple TV, Chromecast Generation 2 and above, Android TV, Google TV, Amazon Fire TV, and Roku. In the US, F1 TV is changing. Apple – Formula 1’s new Official U.S. Broadcaster – will host F1 TV included for free within its Apple TV subscription, streamlining access...",
+   "url": "https://www.formula1.com/en/latest/article/how-to-stream-the-2026-singapore-grand-prix-on-f1-tv-premium.7FC0y5aXoCjuhoUWyDNfnw",
+   "published_at": "2026-10-07",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "NASCAR Fan Learns about Formula 1 on Reddit",
+   "text": "This is a cool place! TIP JAR - - - - - SuperThanks Button :) This will help improve the channel greatly, New webcam for better ... · IWrocker",
+   "url": "https://www.youtube.com/watch?v=8W_Resx_zvE",
+   "published_at": "2022-12-18T05:29:35Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/8W_Resx_zvE/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "*Controversial* Reacting to Formula 1 Fans Most Unpopular Opinions",
+   "text": "I posted the question to Formula 1 Fans on Reddit asking for their most controversial opinions. We go through the fans answers ... · EricJay",
+   "url": "https://www.youtube.com/watch?v=XrmIGiUsqlc",
+   "published_at": "2022-08-10T04:39:50Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/XrmIGiUsqlc/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Difference between Nascar and Formula 1…🧐#cars #thegrandtour #topgear",
+   "text": "Difference between Nascar and Formula 1 #cars #thegrandtour #topgear. · The Auto Space",
+   "url": "https://www.youtube.com/watch?v=7nnz46G_yMs",
+   "published_at": "2025-06-04T17:36:00Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/7nnz46G_yMs/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Ricciardo&#39;s Done - According to Reddit",
+   "text": "F1 Reddit is a great place, for data, memes and sometimes, actual insights. So the guys have pulled together a load for me to go ... · Driver61",
+   "url": "https://www.youtube.com/watch?v=zdv9TGo5qk0",
+   "published_at": "2022-06-28T17:03:41Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/zdv9TGo5qk0/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "How F1 Exploded",
+   "text": "Get Nebula using my link for 40% off an annual subscription: https://go.nebula.tv/wendover Youtube: http://www. · Wendover Productions",
+   "url": "https://www.youtube.com/watch?v=CxfFKuSfQ8c",
+   "published_at": "2025-02-07T17:48:47Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/CxfFKuSfQ8c/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"why do americans watch formula 1 reddit\": 179 sampled",
+   "text": "Sample: I went to my first F1 race this year in Austin, it was incredible. Got the weekend pass and went Friday and Saturday to | The name B. McLaren in the part with the old McLaren's was the man Bruce McLaren himself so if it wasn't for him there w | Happy xmas I Wroker",
+   "url": "https://www.youtube.com/results?search_query=why%20do%20americans%20watch%20formula%201%20reddit",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sports.yahoo.com",
+   "title": "How to watch F1 2026 in USA: Live streams, TV channels and full race calendar for the season - Yahoo Sports",
+   "text": "How to watch F1 2026 in USA: Live streams, TV channels and full race calendar for the season - Yahoo Sports ... How to watch F1 2026 in USA: Live streams, TV channels and full race calendar for the season originally appeared on The Sporting News. Add The Sporting News as a Preferred Source by clicking here. ... ## How",
+   "url": "https://sports.yahoo.com/articles/watch-f1-2026-usa-live-220001378.html",
+   "published_at": "2026-03-05T00:00:00.000Z",
+   "kind": "web",
+   "tier": 4,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://s.yimg.com/os/en/the_sporting_news_articles_584/94fba612138a6d291e630621745914db",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sports.yahoo.com",
+   "title": "Apple TV announces major F1 broadcast upgrade for United States Grand Prix",
+   "text": "Both audio formats will be available to viewers who have compatible Apple devices as well as Dolby-compatible TVs and supporting technology such as soundbars and home theatre systems that are set up with the Apple TV app. ... This is the first season with Apple as F1's US broadcaster, allowing Ameri...",
+   "url": "https://sports.yahoo.com/articles/apple-tv-announces-major-f1-233845493.html",
+   "published_at": "2026-10-07",
+   "kind": "web",
+   "tier": 4,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Strange Case of Dr Jekyll and Mr Hyde",
+   "text": "Novella by Robert Louis Stevenson. Strange Case of Dr Jekyll and Mr Hyde is an 1886 Gothic horror novella by Scottish author Robert Louis Stevenson. It follows Gabriel John Utterson, a London-based legal practitioner who investigates a series of strange occurrences between his old friend, Dr Henry Jekyll, and a murderous criminal nam",
+   "url": "https://en.wikipedia.org/wiki/Strange_Case_of_Dr_Jekyll_and_Mr_Hyde",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "American Museum of Natural History",
+   "text": "Natural history museum in New York. The American Museum of Natural History is a natural history museum on the Upper West Side of Manhattan in New York City. Located in Theodore Roosevelt Park, across the street from Central Park, the museum complex comprises 21 interconnected buildings housing 45 permanent exhibition halls, in additio",
+   "url": "https://en.wikipedia.org/wiki/American_Museum_of_Natural_History",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Hammer Film Productions",
+   "text": "Film production company. Hammer Film Productions Ltd. is a British film production company based in London. Founded in 1934, the company is best known for a series of Gothic horror and fantasy films made from the mid-1950s until the 1970s.",
+   "url": "https://en.wikipedia.org/wiki/Hammer_Film_Productions",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

@@ -1,0 +1,528 @@
+{
+ "id": "q19",
+ "query": "women's basketball and its sponsors",
+ "frame": {
+  "entity": null,
+  "category": "sports sponsorship",
+  "audience": "women's basketball fans",
+  "market": "US",
+  "competitors": [
+   "Nike",
+   "Gatorade",
+   "State Farm",
+   "Deloitte",
+   "Google"
+  ],
+  "question": "Which sponsors are investing in women's basketball and how are their partnerships evolving?",
+  "anchors": [
+   "women's basketball",
+   "sponsorship",
+   "sponsors",
+   "women's sports",
+   "basketball sponsorships",
+   "athlete endorsements",
+   "brand partnerships",
+   "sports marketing",
+   "wnba",
+   "college basketball"
+  ],
+  "exclude": [
+   "men's basketball",
+   "general sports marketing",
+   "apparel brands only"
+  ],
+  "task": "compare",
+  "threads": [
+   "Which brands sponsor women's basketball?",
+   "How are sponsorship deals changing?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "women's basketball sponsors partnerships deals",
+   "research": "female athlete sponsorship investment trends",
+   "discourse": "who sponsors women's basketball teams players",
+   "web": "women's basketball official sponsors brands"
+  }
+ },
+ "frozen_at": "2026-10-09T02:56:33.382Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "sgbonline.com",
+   "title": "Adidas, Unrivaled, Ink Multiyear Uniform, Performance Apparel Pact",
+   "text": "Adidas entered into a multi-year partnership with Unrivaled, becoming the official uniform and performance apparel partner of the women's 3-on-3 basketball league Adidas will outfit Unrivaled with on-court uniforms and performance gear, provide apparel for all off-court basketball programming, and i...",
+   "url": "https://sgbonline.com/adidas-unrivaled-ink-multiyear-uniform-performance-apparel-pact/",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 2,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Unrivaled (basketball)",
+   "text": "Unrivaled is a women's three-on-three basketball league in the United States. The league was founded in 2023 and played its inaugural season in 2025.",
+   "url": "https://en.wikipedia.org/wiki/Unrivaled_(basketball)",
+   "published_at": "2026-10-06T04:29:35Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/7/74/Unrivalled_%28basketball_league%29.svg/330px-Unrivalled_%28basketball_league%29.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Basketball at the 2024 Summer Olympics",
+   "text": "The basketball competitions at the 2024 Summer Olympics in Paris, France, were held from 27 July to 11 August 2024. Preliminary 5x5 basketball matches occurred at Stade Pierre-Mauroy in Lille, with the final phase staged at the Bercy Arena in Paris. Retaining its position in the program, the 3x3 competitions were played at Place de la Concorde.",
+   "url": "https://en.wikipedia.org/wiki/Basketball_at_the_2024_Summer_Olympics",
+   "published_at": "2026-09-23T11:04:10Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/a/a8/Basketball_%E2%80%93_Paris_2024.svg/330px-Basketball_%E2%80%93_Paris_2024.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "NCAA Division I women's basketball tournament",
+   "text": "The NCAA Division I women's basketball tournament, sometimes referred to as Women's March Madness, is a single-elimination tournament played each spring in the United States, currently featuring 76 women's college basketball teams from the Division I level of the National Collegiate Athletic Association (NCAA), to determine the national championship.",
+   "url": "https://en.wikipedia.org/wiki/NCAA_Division_I_women's_basketball_tournament",
+   "published_at": "2026-09-07T07:47:07Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/6/6c/Women%27s_March_Madness.svg/330px-Women%27s_March_Madness.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wnba.com",
+   "title": "WNBA Changemakers",
+   "text": "Ally, a leading brand in women’s sports, is now the official banking partner of the WNBA. As the league’s newest Changemaker, Ally is committed to working alongside the WNBA to enhance opportunities for fans to engage with the league and its stars, while championing financial health and wellness for all. Ally is dedica",
+   "url": "https://www.wnba.com/changemakers",
+   "published_at": "2023-05-15T12:45:28.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.wnba.com/images/WNBA_fallback.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sportsbusinessjournal.com",
+   "title": "WNBA sustains business momentum with 46 official sponsors",
+   "text": "WNBA sustains business momentum with 46 official sponsors ... The WNBA’s 30th season boasts a roster of 46 official sponsors. NBAE / Getty Images The WNBA’s 30th season boasts a roster of 46 official sponsors that matches last year’s Opening Week league record, and includes 11 brands that have signed in the past 12 m",
+   "url": "https://www.sportsbusinessjournal.com/Articles/2026/05/13/wnba-sustains-business-momentum-with-46-official-sponsors/",
+   "published_at": "2026-05-13T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://leadersgroup-sbj-prod.web.arc-cdn.net/resizer/v2/2BJLJY3QJJA4XGRNOQPJUPBCHE.ashx?smart=true&auth=65cf5b181b44316cb1978e46a75a6ff8bc3c2b1557e01c58ea29ca518d1900e8&width=1200&height=630",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "unrivaled.basketball",
+   "title": "Partners - Unrivaled",
+   "text": "Partners | Unrivaled ## Our Partners ... Official Soft Drink of the League ... Official Sports Nutrition Partner Official Salty Snack Partner ... Official Sports Betting Partner",
+   "url": "https://www.unrivaled.basketball/partners",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.unrivaled.basketball/images/icon-mask.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "liberty.wnba.com",
+   "title": "Corporate Partners - New York Liberty - WNBA",
+   "text": "## Jersey Partners ... ## Exclusive Partners ... Official Sunglass Partner ... ## Official Partners",
+   "url": "https://liberty.wnba.com/corporate-partners",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://liberty.wnba.com/images/WNBA_fallback.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "prnewswire.com",
+   "title": "DICK'S Sporting Goods and the WNBA Renew Multiyear Partnership",
+   "text": "PITTSBURGH, July 1, 2025 /PRNewswire/ -- Today, DICK'S Sporting Goods (NYSE: DKS) and the Women's National Basketball Association (WNBA) announced a multi-year extension of their partnership, which originally began in Fall 2021. Through this renewed agreement, DICK'S will continue as the Official Sporting Goods Retaile",
+   "url": "https://www.prnewswire.com/news-releases/dicks-sporting-goods-and-the-wnba-renew-multiyear-partnership-302494951.html",
+   "published_at": "2025-07-01T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://mma.prnewswire.com/media/2722153/DICKS_Sporting_Goods_x_WNBA_Logo.jpg?p=facebook",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "thegistsports.com",
+   "title": "WNBA enjoys record numbers of sponsors as new, old brands ...",
+   "text": "The 29th WNBA season tipped off last Friday with a record 45 official sponsors, including 10 brands that signed on during the past year, according to Sports Business Journal (SBJ). Let’s dive into why these old and new brands are recognizing the potential for brand amplification in the W. The GIST: The 29th WNBA seaso",
+   "url": "https://www.thegistsports.com/article/wnba-enjoys-record-numbers-of-sponsors-as-new-old-brands-join-the-league/",
+   "published_at": "2025-05-19T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.thegistsports.com/_gatsby/file/9f9470786c3291016c9d6289899f1a7a/coach%20wnba.png?u=https%3A%2F%2Fcdn.sanity.io%2Fimages%2Frdxk7lfa%2Fproduction%2Fbf6c0319e1104d2f4e6376efa5308d07bf704dea-512x316.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "news.adidas.com",
+   "title": "adidas Announces Multi-Year Partnership with Unrivaled, 3-on-3 Women’s Basketball League",
+   "text": "- adidas enters a new multi-year partnership with Unrivaled, becoming the official uniform and performance apparel partner of the fast-growing women's 3-on-3 basketball league - adidas will outfit Unrivaled with on-court uniforms and performance gear, provide apparel for all off-court basketball pro...",
+   "url": "https://news.adidas.com/basketball/adidas-announces-multi-year-partnership-with-unrivaled--3-on-3-women-s-basketball-league/s/c12c01fe-946d-4e10-9c6c-824216bd20a0",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "adcurrent.ai",
+   "title": "WNBA Sponsors 2026: All 24 Official League Partners - AdCurrent",
+   "text": "1. **1. Nike** Apparel & footwear On-court uniform and footwear partner of the WNBA. 2. **2. AT&T** Telecom Marquee league partner with naming rights attached to WNBA All-Star. 3. **3. Google** Technology League partner with designations across the Commissioner's Cup and league data products. 4. **4...",
+   "url": "https://adcurrent.ai/lists/wnba-sponsors",
+   "published_at": "2026-09-18",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "foxbusiness.com",
+   "title": "Adidas and Unrivaled league announce multi-year apparel ...",
+   "text": "# Adidas becomes Unrivaled's official uniform and performance apparel partner in multiyear partnership ## The multiyear deal with the growing 3-on-3 women's basketball league includes uniforms, merchandise and more starting in 2027 ... As the Unrivaled women’s basketball league continues to grow, Ad...",
+   "url": "https://www.foxbusiness.com/sports/adidas-becomes-unrivaleds-official-uniform-performance-apparel-partner-multi-year-partnership",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "complex.com",
+   "title": "Adidas and Unrivaled Connect for Women's 3-on- ...",
+   "text": "## Key Takeaways - Adidas and Unrivaled have signed a multi-year partnership making Adidas the official provider of uniforms, performance gear, and lifestyle apparel for the women's 3-on-3 basketball league. - Fans can buy licensed merchandise starting with the 2027 season, while Adidas will also ou...",
+   "url": "https://www.complex.com/style/a/jaelaniturnerwilliams/adidas-unrivaled-basketball-partnership",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sportcal.com",
+   "title": "Unrivaled nets multi-year Adidas partnership",
+   "text": "Adidas will supply the basketball competition with on-and-off court apparel. ... Adidas will launch an assortment of officially licensed merchandise, including jersey and lifestyle collections. ... Unrivaled, the professional women’s 3×3 basketball competition that launched last year, has secured a ...",
+   "url": "https://www.sportcal.com/news/unrivaled-nets-multi-year-adidas-partnership/",
+   "published_at": "2026-09-24",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "forbes.com",
+   "title": "Olivia Miles Wins WNBA Rookie Of The Year Award, Signs Adidas, Geico Deals",
+   "text": "New Jersey native Olivia Miles was named WNBA Rookie of the Year on Monday and has also signed sponsorship deals with Adidas and Geico. ... Miles also signed as an official brand ambassador with adidas. ... She became one of the first athletes to wear adidas Crazy Energy this season and will wear th...",
+   "url": "https://www.forbes.com/sites/adamzagoria/2026/09/29/olivia-miles-wins-wnba-rookie-of-the-year-award-signs-adidas-geico-deals/",
+   "published_at": "2026-09-29",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sportcal.com",
+   "title": "Unrivaled nets multi-year Adidas partnership - Sportcal",
+   "text": "Adidas will supply the basketball competition with on-and-off court apparel. ... Adidas will launch an assortment of officially licensed merchandise, including jersey and lifestyle collections. ... Unrivaled, the professional women’s 3×3 basketball competition that launched last year, has secured a ...",
+   "url": "https://www.sportcal.com/sponsorship/unrivaled-nets-multi-year-adidas-partnership/",
+   "published_at": "2026-09-24",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "TEAM USA WOMENS BASKETBALL FINAL ROSTER!",
+   "text": "We discuss the Women's Team USA Basketball Roster and each players role on the team. #davissportsreport #womensbasketball ... · Davis Sports Report",
+   "url": "https://www.youtube.com/watch?v=6Qph_wJCNMk",
+   "published_at": "2026-02-23T12:00:11Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/6Qph_wJCNMk/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "2026 Team USA Women’s World Cup Roster | Full USA Basketball Roster",
+   "text": "2026 USA Women's World Cup Roster is here! USA Women's Basketball Jersey: https://link.amazon/B0dYwXR3m In this video, ... · WaysToWatch",
+   "url": "https://www.youtube.com/watch?v=nd0P3RuJI_M",
+   "published_at": "2026-09-04T05:23:14Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/nd0P3RuJI_M/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Exclusive: Sue Bird Unveils 2026 FIBA Women’s World Cup Roster",
+   "text": "Sue Bird, five-time Olympic gold medalist and 4-time WNBA champion, joins TODAY to exclusively announce her hand-picked ... · TODAY",
+   "url": "https://www.youtube.com/watch?v=Q-ebNVU2D5I",
+   "published_at": "2026-08-06T16:03:16Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/Q-ebNVU2D5I/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Team USA Women’s Basketball Is LOADED 🔥 2026 FIBA Women’s World Cup Squad",
+   "text": "Team USA Women's Basketball is assembled. USA Basketball shows off the squad together as the USABWNT prepares ... · Afro Dope",
+   "url": "https://www.youtube.com/watch?v=y5LZMmKItYk",
+   "published_at": "2026-09-02T09:45:52Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/y5LZMmKItYk/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "USA&#39;s STACKED Roster for FIBA World Cup is Here! 🇺🇸🏆FIBAWorldCup #TeamUSA #CaitlinClark #AngelReese",
+   "text": "Description:Team USA is bringing the firepower to Berlin! The official 12-player roster for the 2026 FIBA Women's Basketball ... · EntertainHub",
+   "url": "https://www.youtube.com/watch?v=Xj_-TcVG9as",
+   "published_at": "2026-08-31T21:00:08Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/Xj_-TcVG9as/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"who sponsors women's basketball teams players\": 138 sampled",
+   "text": "Sample: Can't believe Kelsey Mitchell is left off from even being considered. | This is a great team. Strong in every area. | Love Citron! She doesn't get the limelight and is a quiet achiever.",
+   "url": "https://www.youtube.com/results?search_query=who%20sponsors%20women's%20basketball%20teams%20players",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Nike",
+   "text": "Footwear company. Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022.",
+   "url": "https://en.wikipedia.org/wiki/Nike,_Inc.",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "North Atlantic Conference",
+   "text": "Athletic conference. The North Atlantic Conference is an intercollegiate athletic conference which competes in the National Collegiate Athletic Association Division III.",
+   "url": "https://en.wikipedia.org/wiki/North_Atlantic_Conference",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "National Association of Intercollegiate Athletics",
+   "text": "Athletic association. The National Association of Intercollegiate Athletics established in 1940, is a college athletics association for colleges and universities in North America. Most colleges and universities in the NAIA offer athletic scholarships to their student athletes.",
+   "url": "https://en.wikipedia.org/wiki/National_Association_of_Intercollegiate_Athletics",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

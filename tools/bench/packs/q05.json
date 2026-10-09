@@ -1,0 +1,552 @@
+{
+ "id": "q05",
+ "query": "clean beauty for toddlers and young children",
+ "frame": {
+  "entity": null,
+  "category": "clean beauty products",
+  "audience": "parents of toddlers",
+  "market": "US",
+  "competitors": [
+   "Burt's Bees Baby",
+   "Honest Company",
+   "Babyganics",
+   "Seventh Generation Free",
+   "WaterWipes"
+  ],
+  "question": "What clean beauty products do parents trust most for toddlers and young children?",
+  "anchors": [
+   "clean beauty",
+   "natural ingredients",
+   "toddler skincare",
+   "baby bath products",
+   "non-toxic",
+   "hypoallergenic",
+   "parental concerns",
+   "safe for sensitive skin",
+   "organic baby care",
+   "chemical-free",
+   "dermatologist tested",
+   "gentle formulations"
+  ],
+  "exclude": [
+   "adult skincare",
+   "makeup",
+   "fragrance",
+   "cosmetics",
+   "wellness supplements"
+  ],
+  "task": "audience",
+  "threads": [
+   "What ingredients do parents prioritize in baby skincare?",
+   "Which clean beauty brands lead in the toddler segment?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "clean beauty brands toddler children market",
+   "research": "parental preferences natural skincare products infants",
+   "discourse": "best clean beauty products babies toddlers",
+   "web": "clean beauty toddlers young children safe"
+  }
+ },
+ "frozen_at": "2026-10-09T02:53:21.467Z",
+ "cls": "behavior",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "openalex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "semanticscholar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "arxiv",
+   "n": 4,
+   "ok": true
+  },
+  {
+   "id": "pubmed",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "openlibrary",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "census",
+   "n": 0,
+   "ok": true
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "bbc.co.uk",
+   "title": "Are beauty products dangerous for children's skin? - BBC",
+   "text": "She said \"It is really important to remember that your skin is an organ. It is a living breathing organ a bit like your heart and your lungs so anything that you put on it, you want to be careful isn't damaging it.\" ... Dr Emma says \"When you are young your skin is quite sensitive which means that i...",
+   "url": "https://www.bbc.co.uk/newsround/articles/cqlykxx8ke6yo",
+   "published_at": "2026-09-25",
+   "kind": "web",
+   "tier": 1,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Generation Z",
+   "text": "Generation Z, often shortened to Gen Z and informally known as Zoomers, is the demographic cohort succeeding Millennials and preceding Generation Alpha. Researchers and popular media use the mid-to-late 1990s as starting birth years and the early 2010s as ending birth years, with the generation typically being defined as people born from 1997 to 2012. Most members of Generation Z are the children of younger Baby Boomers, Generation X and older Millennials, and it is predicted that many will be the parents of members of younger Generation Alpha and Generation Beta.",
+   "url": "https://en.wikipedia.org/wiki/Generation_Z",
+   "published_at": "2026-10-08T19:42:59Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Generation_timeline_simple.svg/330px-Generation_timeline_simple.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Balenciaga",
+   "text": "Balenciaga SA is a Spanish luxury fashion house headquartered in Paris. It designs, manufactures and markets ready-to-wear footwear, handbags, and accessories, and licenses its name and branding to the European cosmetics company L'Oréal for its namesake fragrances.",
+   "url": "https://en.wikipedia.org/wiki/Balenciaga",
+   "published_at": "2026-09-18T07:49:40Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Balenciaga_%2854024638524%29.jpg/330px-Balenciaga_%2854024638524%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Kimberly-Clark",
+   "text": "Kimberly-Clark Corporation is an American multinational consumer goods and personal care corporation that produces mostly paper-based consumer products. The company manufactures sanitary paper products and surgical & medical instruments. Kimberly-Clark brand name products include Kleenex facial tissue, Kotex feminine hygiene products, Cottonelle, Scott and Andrex toilet paper, Wypall utility wipes, KimWipes scientific cleaning wipes and Huggies disposable diapers and baby wipes.",
+   "url": "https://en.wikipedia.org/wiki/Kimberly-Clark",
+   "published_at": "2026-09-25T17:51:03Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Camelia_Popular_sanitary_napkins_from_stocks_of_the_Wehrmacht_Third_Reich_with_acceptance_stamping_-_Intim_hygiene_supply_nurses_around_1942_-_content_10_pieces_per_pack_-_D.R._WZ_No._378543_and_386768.jpg/330px-thumbnail.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "arXiv",
+   "title": "Evaluating the Efficacy of Skincare Product: A Realistic Short-Term Facial Pore Simulation",
+   "text": "Simulating the effects of skincare products on face is a potential new way to communicate the efficacy of skincare products in skin diagnostics and product recommendations. Furthermore, such simulations enable one to anticipate his/her skin conditions and better manage skin health. However, there is a lack of effective simulations today. In this paper, we propose the first simulation model to reve",
+   "url": "http://arxiv.org/abs/2302.11950v1",
+   "published_at": "2023-02-23T12:00:15Z",
+   "kind": "research",
+   "tier": 2,
+   "rail": "arxiv",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "arXiv",
+   "title": "Constraint Preferences: Inattention and Aggregation",
+   "text": "We study robust decision problems when individuals have maxmin preferences whose belief sets are neighborhoods around reference models, commonly known as \"constraint preferences.\" We first show that a more disciplined form of rationally inattentive behavior is equivalent to the behavior implied by a subclass of constraint preferences. We then introduce an aggregation principle that requires collec",
+   "url": "http://arxiv.org/abs/2606.11600v2",
+   "published_at": "2026-06-10T02:56:16Z",
+   "kind": "research",
+   "tier": 2,
+   "rail": "arxiv",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "arXiv",
+   "title": "Challenges Encountered in Turkish Natural Language Processing Studies",
+   "text": "Natural language processing is a branch of computer science that combines artificial intelligence with linguistics. It aims to analyze a language element such as writing or speaking with software and convert it into information. Considering that each language has its own grammatical rules and vocabulary diversity, the complexity of the studies in this field is somewhat understandable. For instance",
+   "url": "http://arxiv.org/abs/2101.11436v1",
+   "published_at": "2021-01-21T08:30:33Z",
+   "kind": "research",
+   "tier": 2,
+   "rail": "arxiv",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "arXiv",
+   "title": "Contracting preference relations for database applications",
+   "text": "The binary relation framework has been shown to be applicable to many real-life preference handling scenarios. Here we study preference contraction: the problem of discarding selected preferences. We argue that the property of minimality and the preservation of strict partial orders are crucial for contractions. Contractions can be further constrained by specifying which preferences should be prot",
+   "url": "http://arxiv.org/abs/0903.1878v1",
+   "published_at": "2009-03-10T22:34:46Z",
+   "kind": "research",
+   "tier": 2,
+   "rail": "arxiv",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "safecosmetics.org",
+   "title": "Babies & Children Archives - Campaign for Safe Cosmetics",
+   "text": "From learning how to smile to taking their first steps, babies grow on a daily basis, and the first three years of life are the most critical for development. [1] During this vulnerable time, it is important to limit babies’ exposure to chemicals linked to adverse health effects so that every baby has the chance to dev",
+   "url": "https://www.safecosmetics.org/population/babies-children/",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.safecosmetics.org/wp-content/uploads/2021/09/Campaign-For-Safe-Cosmetics-Logo-Full-Color-RGB-500px@300ppi-copy-5.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "romper.com",
+   "title": "20 Kids' Beauty Products That Are Inexpensive & Safe - Romper",
+   "text": "Dr. Ife Rodney, dermatologist and founder of Eternal Dermatology says that kids should start using cleaners or facial washes “as early as possible,” typically around the ages of 8 or 9 years old. Rodney recommends a “gentle, fragrance-free cleaner” for kids and notes that other than this, “most kids should not use othe",
+   "url": "https://www.romper.com/parenting/kids-beauty-products",
+   "published_at": "2022-06-12T13:00:25.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://imgix.bustle.com/uploads/image/2022/5/24/6404daae-ee50-40df-8f1a-0fdd407e30e9-gettyimages-730140755.jpg?w=1200&h=630&fit=crop&crop=faces&fm=jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "caleycosmetics.com",
+   "title": "Kids Makeup Safety Guide - Picks by Age | Caley Cosmetics",
+   "text": "Children are born with an inherent desire to play with colors and sparkles. As a parent, your main objective is to give your child the chance to do so in a loving, gentle environment with safe makeup for kids. This curiosity is wonderful, but it also presents challenges, because children's skin is much more delicate th",
+   "url": "https://caleycosmetics.com/blogs/news/kids-makeup-safety-guide",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cdn.shopify.com/s/files/1/0055/7134/6547/articles/Tint-lipstick_d407f78a-863e-4bcf-baae-7517d92f0148.jpg?v=1782308740",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "jovyco.com",
+   "title": "Clean Kids Lip Gloss Collection | Jovy",
+   "text": ". The Clean Lip Gloss Collection for Kids is a curated range of individually sold, premium & certified-safe lip glosses made just for kids. Each lip gloss is formulated with nourishing ingredients and a lightweight, non-sticky texture that delivers just the right amount of shine to any adventure. ... Certified safe",
+   "url": "https://jovyco.com/products/clean-kids-lip-gloss",
+   "published_at": "2024-11-20T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "popsiclebeautyclub.com",
+   "title": "Clean Makeup for Kids: Safe Ages & Parent Guide",
+   "text": "Many parents eventually reach a stage where their child becomes curious about makeup, dress-up games, and imaginative beauty play. As interest in clean makeup for kids continues to grow, more families are looking for safer, age-appropriate products that allow children to explore creativity without harsh ingredients. Fo",
+   "url": "https://popsiclebeautyclub.com/a/blog/clean-makeup-for-kids",
+   "published_at": "2025-03-24T23:42:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://dropinblog.net/cdn-cgi/image/fit=scale-down,format=auto,width=1200/34262273/files/featured/clean-makeup-for-kids-with-safe-non-toxic-beauty-play.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "cleankidsbeauty.com",
+   "title": "Safe Kids Skincare: No Toxic Ingredients, Mom-Approved",
+   "text": "Safe Kids Skincare: No Toxic Ingredients, Mom-Approved ... Dr. Yaa Haber founded Three Sisters in 2022 after her young daughters insisted on wearing her lipsticks and lip glosses. After countless times of insisting they couldn’t wear her makeup, the girls persisted until she decided to go to the store and purchase lip",
+   "url": "https://cleankidsbeauty.com/",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cleankidsbeauty.com/wp-admin/admin-ajax.php?action=rank_math_overlay_thumb&id=4934&type=play&hash=cc8472ec45b59bda38d0d6cdd25d70ff",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "myhealthykid.net",
+   "title": "Choosing Skincare Tools That Are Kid-Safe — My Healthy Kid",
+   "text": "Harsh tools, like abrasive scrubbers or chemical-laden gadgets, can spark redness, rashes, or worse, long-term damage. ... Silicone cleansing brushes, with their squishy bristles, win big for ages 6 and up. ... For tots aged 1 to 5, stick to super-soft washcloths—organic cotton or bamboo ones are go...",
+   "url": "https://www.myhealthykid.net/article/choosing-skincare-tools-that-are-kid-safe-53146",
+   "published_at": "2026-09-28",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "thecuriousmillennial.com",
+   "title": "Best Face Wash for Toddlers: Gentle Options for Delicate Skin",
+   "text": "When choosing a face wash for toddlers, prioritize tear-free formulas, gentle cleansing, and skin-friendly pH. ... Look for tear-free formulas, mild surfactants, and a pH near the skin’s natural 5.5. ... Look for tear-free formulas, low pH close to 5.5, gentle surfactants, and ingredients that suppo...",
+   "url": "https://thecuriousmillennial.com/best-face-wash-for-toddlers/",
+   "published_at": "2026-09-15",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "prnewswire.com",
+   "title": "Skincare for Kids: What Is Age-Appropriate, and What Is Not",
+   "text": "A gentle cleanser, a moisturizer where needed, and sun protection guidance cover what dermatologists consistently recommend for children's skin. That's the full list. ... Marisa Garshick, MD, FAAD, a board-certified dermatologist in New York City, recommends that tweens and teens avoid products cont...",
+   "url": "https://www.prnewswire.com/news-releases/skincare-for-kids-what-is-age-appropriate-and-what-is-not-302876100.html",
+   "published_at": "2026-09-17",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "lauralovesbeautyblog.com",
+   "title": "Blog",
+   "text": "Look for explicit safety statements such as non-toxic, dermatologist-tested, and washable formulations. Paraben-free, fragrance-free, and limited active ingredients help reduce potential irritation for young skin. Confirm that products meet consumer safety standards and are designed for children’s u...",
+   "url": "https://lauralovesbeautyblog.com/best-cool-makeup-for-kids/",
+   "published_at": "2026-09-18",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nailprime.com",
+   "title": "What Age Can Kids Get Their Nails Done? A Safe Guide for Parents",
+   "text": "For **simple, low-risk nail care** like clear polish, a gentle manicure, or a basic pedicure, many children can enjoy the experience with a parent’s supervision. ... - **Toddlers and younger children**: best kept to short, simple, at-home polish or a very gentle kid-friendly salon service if the sal...",
+   "url": "https://nailprime.com/what-age-can-kids-get-their-nails-done/",
+   "published_at": "2026-09-19",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "myhealthykid.net",
+   "title": "What to look for in allergy-friendly personal care products — My Healthy Kid",
+   "text": "Look for stuff that’s gentle, non-irritating, and free of common culprits. ... - **Fragrances**: These are the sneakiest offenders. “Natural” or “synthetic,” they can spark rashes faster than you can say “lavender dreams.” Opt for fragrance-free. - **Parabens**: These preservatives keep products fre...",
+   "url": "https://www.myhealthykid.net/article/what-to-look-for-in-allergy-friendly-personal-care-products-51503",
+   "published_at": "2026-09-29",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "lauralovesbeautyblog.com",
+   "title": "lauralovesbeautyblog.com › best-organic-makeup-kitBest Organic Makeup Kit for Kids: Safe, Fun Sets for ...",
+   "text": "It’s designed for beginners and younger children who want a simple, all-in-one option that’s easy to clean up after playtime. ... Look for phrases like non-toxic, dye-free, fragrance-free, and ingredients meeting toy-safety standards. ... Choose kits with mineral pigments or water-based formulas. Av...",
+   "url": "https://lauralovesbeautyblog.com/best-organic-makeup-kit-for-kids/",
+   "published_at": "2026-09-17",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Dermatologist votes yes or no to drugstore skincare for babies. 👶🏾",
+   "text": "YES: Aveeno Wash and Shampoo - Gentle and safe for baby's delicate skin. NO: Baby Powder - Risks associated with ... · Dr. Geeta Yadav",
+   "url": "https://www.youtube.com/watch?v=jWfqs54rD-8",
+   "published_at": "2024-03-12T16:00:24Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/jWfqs54rD-8/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Dermatologist&#39;s Best Baby Skincare Products: Tips for Cradle Cap, Diaper Rash, Bathing, &amp; More!",
+   "text": "Your baby doesn't need a 10-step skincare routine, but there are a few baby skincare essentials you should have on hand. In this ... · Dr. Sam Ellis",
+   "url": "https://www.youtube.com/watch?v=nM934bf_MII",
+   "published_at": "2023-03-01T14:00:38Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/nM934bf_MII/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Dermatologist-Approved Baby Care! 👶💦",
+   "text": "Dermatologist-Approved Baby Care! Safe, gentle & worry-free products for your little one's precious skin. · Dr. Priyanka Reddy",
+   "url": "https://www.youtube.com/watch?v=4-aHA_ZgZjQ",
+   "published_at": "2025-04-26T06:20:51Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/4-aHA_ZgZjQ/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Rating Baby Skincare Products as a Dermatologist. #babyskincare #dermatologisttips",
+   "text": "In this video, I'm reviewing some of the most trending and popular baby skincare products that parents love. From baby lotions to ... · ZolieSkinClinic",
+   "url": "https://www.youtube.com/watch?v=Efp7goAU86o",
+   "published_at": "2025-06-23T12:29:55Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/Efp7goAU86o/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "You can use baby skin care products #dermatologist",
+   "text": "skincareproducts #skincaretips #skincareroutine #sensitiveskin. · Dr Dray",
+   "url": "https://www.youtube.com/watch?v=5D4Up_IomCU",
+   "published_at": "2023-02-18T00:00:02Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/5D4Up_IomCU/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"best clean beauty products babies toddlers\": 224 sampled",
+   "text": "Sample: Aveeno destroyed my newborns skin. Caused fine rash all over and severe dryness. I wish people would stop recommending t | Beautiful aur bhut h ache se btya apne tq❤ | Mam teenager kids k liye b suggest kare pls best skincare products",
+   "url": "https://www.youtube.com/results?search_query=best%20clean%20beauty%20products%20babies%20toddlers",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

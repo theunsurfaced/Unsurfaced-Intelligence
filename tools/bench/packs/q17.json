@@ -1,0 +1,485 @@
+{
+ "id": "q17",
+ "query": "Erewhon and premium grocery",
+ "frame": {
+  "entity": "Erewhon",
+  "category": "premium grocery retail",
+  "audience": "affluent health-conscious consumers",
+  "market": "US",
+  "competitors": [
+   "Whole Foods Market",
+   "Trader Joe's",
+   "Natural Grocers",
+   "Sprouts Farmers Market"
+  ],
+  "question": "How is Erewhon positioned against other premium grocers in the high-end organic market?",
+  "anchors": [
+   "erewhon",
+   "premium grocery",
+   "organic",
+   "natural foods",
+   "health-focused retail",
+   "luxury groceries",
+   "specialty foods",
+   "wellness products",
+   "high-end supermarket",
+   "affluent shoppers",
+   "clean eating",
+   "organic produce"
+  ],
+  "exclude": [
+   "discount grocers",
+   "convenience stores",
+   "farmers markets",
+   "meal delivery"
+  ],
+  "task": "compare",
+  "threads": [
+   "How does Erewhon differentiate from Whole Foods?",
+   "What premium grocery trends drive Erewhon growth?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Erewhon premium grocery market expansion",
+   "research": "luxury organic grocery retail positioning strategy",
+   "discourse": "erewhon vs whole foods premium groceries",
+   "web": "Erewhon organic supermarket premium positioning"
+  }
+ },
+ "frozen_at": "2026-10-09T02:56:05.938Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "vogue.com",
+   "title": "The business of Erewhon | Vogue",
+   "text": "LA’s trendiest grocery store has become a luxury brand in its own right, with fashion brands and celebrities drawn to its aura. ... Erewhon is more than just a grocery store — it’s a status symbol. Known for its $20 Hailey Bieber smoothie, $26 bottles of “hyper-oxygenated” water and a single strawberry from Japan selli",
+   "url": "https://www.vogue.com/article/the-business-of-erewhon",
+   "published_at": "2025-03-25T05:30:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://assets.vogue.com/photos/67daf85da8704bb4e0a0b1a3/16:9/w_1280,c_limit/-social-newsletter%20(5).jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Chips Ahoy!",
+   "text": "Chips Ahoy! is an American chocolate chip cookie brand, baked and marketed by Nabisco, a subsidiary of Mondelez International, that debuted in 1963. Chips Ahoy! cookies are available in different variations such as, original, reduced-fat, chunky, chewy, and candy-blasts; each can be identified by variations in the color of the package. For example, Chips Ahoy! original has blue color packaging, while Chips Ahoy chewy has a red packaging.",
+   "url": "https://en.wikipedia.org/wiki/Chips_Ahoy!",
+   "published_at": "2026-08-16T19:54:46Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/0/05/Chips_ahoy_brandlogo.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Post Holdings",
+   "text": "Post Holdings, Inc. is an American consumer packaged goods holding company headquartered in St. Louis, Missouri, with businesses operating in the center-of-the-store, refrigerated, foodservice, and food ingredient categories.",
+   "url": "https://en.wikipedia.org/wiki/Post_Holdings",
+   "published_at": "2026-10-08T17:53:10Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/Post_Holdings_logo.svg/330px-Post_Holdings_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Honeycomb (cereal)",
+   "text": "Honeycomb is a breakfast cereal first released in 1965, owned by Post Holdings. It consists of honey-flavored corn cereal bits in a honeycomb shape.",
+   "url": "https://en.wikipedia.org/wiki/Honeycomb_(cereal)",
+   "published_at": "2026-06-15T17:03:35Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Honeycomb_brand_logo.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "the-ops-engine.com",
+   "title": "Inside Erewhon: How a Grocer Turned Culture Into an Operating Model",
+   "text": "A $19 strawberry smoothie sells around 40,000 units a month at Erewhon, the premium grocer with 11 stores in Greater Los Angeles. That's roughly $760,000 in monthly revenue, around $9 million annualised, from a single SKU, sold at a single chain (Marketing Brew, Hollywood Reporter). ... In 2011, Tony and Josephine Anto",
+   "url": "https://the-ops-engine.com/the-engine-room/inside-erewhon-how-a-grocer-turned-culture-into-an-operating-model",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "42signals.com",
+   "title": "Erewhon - The Luxury Grocery Brand That Changed LA",
+   "text": "In the world of retail, few names evoke the same level of allure and exclusivity as Erewhon. This California-based premium grocery chain has become synonymous with luxury, wellness, and a curated lifestyle. ... Their meteoric rise in the premium grocery market offers valuable insights into the intersection of organic p",
+   "url": "https://www.42signals.com/blog/erewhon-rise-of-luxury-grocery-brand/",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "forbes.com",
+   "title": "Is Erewhon, With Its $22 Smoothies, Success Or Satire?",
+   "text": "In Erewhon, Samuel Butler’s 1872 novel, illness is punished like a crime. In Erewhon, the luxury Los Angeles grocery store, health is wealth—its price tag ostensibly the measure of its virtue. The novel was a satire. The store, with its $22 smoothies and individually wrapped $19 strawberries, is something else entirely",
+   "url": "https://www.forbes.com/sites/lelalondon/2025/05/06/is-erewhon-with-its-22-smoothies-success-or-satire/",
+   "published_at": "2025-05-06T11:36:19.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://imageio.forbes.com/specials-images/imageserve/6819f1e29245099ed0a5c0ea/0x0.jpg?format=jpg&crop=862,485,x0,y252,safe&height=900&width=1600&fit=bounds",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "highsnobiety.com",
+   "title": "How Erewhon Went From a Food Brand to a Lifestyle Brand",
+   "text": "“Orange cauliflower that’s more photogenic than you” is how Tinx, an influencer, describes one of the more popular products in Erewhon, a luxury grocer. Erewhon certainly knows how to use its $26 hyper oxygenated water to participate in cultural conversations: Erwehon smoothies are a coveted social media content fodder",
+   "url": "https://www.highsnobiety.com/p/luxury-grocers-a-case-study/",
+   "published_at": "2024-08-06T16:42:52.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.highsnobiety.com/static-assets/dato/1722962306-erewhon-case-study.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "dmsretail.com",
+   "title": "Let them eat $20 smoothies: How Erewhon is reinventing luxury groceries - Retail News & More",
+   "text": "You don’t need to live in Los Angeles to know about Erewhon. Despite having just 10 locations – all in LA County – the upscale grocery chain has become a household name, thanks to the popularity among celebrities and influencers of its $20 smoothies and other high-priced food items. Erewhon was founded in 1966 by mac",
+   "url": "https://dmsretail.com/RetailNews/let-them-eat-20-smoothies-how-erewhon-is-reinventing-luxury-groceries/",
+   "published_at": "2024-06-05T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://dmsretail.com/RetailNews/wp-content/uploads/2022/05/SuperBundle728px.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "osinsights.org",
+   "title": "The Attitude of Entrepreneurship Behind Erewhon’s Success ...",
+   "text": "Known for its organic products, celebrity smoothies, and premium wellness branding, Erewhon pushes pricing far beyond traditional grocery norms, including examples like a 24-pack of spring water selling for around $80. ... Erewhon did not try to compete with traditional supermarkets. Instead, it foc...",
+   "url": "https://osinsights.org/2026/10/03/the-attitude-of-entrepreneurship-behind-erewhons-success-what-entrepreneurs-can-learn-from-erewhons-luxury-grocery-strategy/",
+   "published_at": "2026-10-03",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "vegconomist.com",
+   "title": "Erewhon Becomes Fourth US Grocer to Stock Beyond Steak Filet - vegconomist - the vegan business magazine",
+   "text": "Beyond Meat has placed its mycelium-based Beyond Steak Filet in Erewhon stores across Southern California, adding a premium organic grocer to a retail roster that until now consisted of conventional regional supermarket chains. ... Erewhon is a family-owned, Certified B Corp and Certified Organic re...",
+   "url": "https://vegconomist.com/retail-e-commerce/erewhon-becomes-fourth-us-grocer-stock-beyond-steak-filet/",
+   "published_at": "2026-09-16",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "mdi.us.com",
+   "title": "Why Erewhon Finally Left Los Angeles And What It Means For G — Mdi",
+   "text": "For years, the ultra-expensive organic grocer stayed firmly inside the comfort bubble of Los Angeles County, treating its outposts like exclusive fashion boutiques. ... CEO Tony Antoci and his team finally took the plunge into Ventura County, proving that high-end, status-driven grocery shopping isn...",
+   "url": "https://mdi.us.com/erewhon-finally-left-los-angeles-means-grocery-retail",
+   "published_at": "2026-09-09",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "rameshkrishna.com",
+   "title": "Erewhon and its Smoothies: the Luxury Playbook Behind a ...",
+   "text": "Erewhon has become internet shorthand for \"the place where a smoothie costs more than your dinner,\" and it's arguably the single clearest example of luxury food retail operating in America today. Between a $19 single strawberry imported from Japan, a $26 bottle of \"hyper-oxygenated\" water, and a $56...",
+   "url": "https://www.rameshkrishna.com/insights/erewhon-luxury-playbook-2026",
+   "published_at": "2026-09-09",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "cstore.news",
+   "title": "BHU Foods Relaunches With Organic Protein Bars at Sprouts, Erewhon",
+   "text": "BHU Foods is resetting its retail strategy with a 2026 relaunch that swaps its original keto-bar identity for a broader protein- and fiber-forward platform — and is backing the pivot with new placement at Sprouts Farmers Market, Erewhon, and Mom's Organic Market. ... The new lineup pivots to an all-...",
+   "url": "https://cstore.news/article/bhu-foods-relaunches-with-organic-protein-bars-at-sprouts-erewhon",
+   "published_at": "2026-09-14",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "hyperallergic.com",
+   "title": "LACMA's Alexander Calder Erewhon Smoothie Is What the Art World Deserves",
+   "text": "Today, the health-conscious 'premium' grocery chain has become synonymous with a particular status-centric idea of LA, offering adaptogenic cocktails, celebrity-collaboration smoothies, and absurd oddities like a $12 cup of 'Sacred Water.'",
+   "url": "https://hyperallergic.com/lacmas-alexander-calder-erewhon-smoothie-is-what-the-art-world-deserves/",
+   "published_at": "2026-10-07",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "neverlater.substack.com",
+   "title": "How Erewhon Made Grocery Aspirational - NeverLater",
+   "text": "> From our perspective, **Erewhon is not just: Grocery. ** It is closer to: **Grocery + F&B + curation + discovery + media + community. ** And those pieces reinforce each other. ... But Erewhon’s proposition feels different. The implicit message is not: **We have everything. ** It is closer to: **We...",
+   "url": "https://neverlater.substack.com/p/how-erewhon-made-grocery-aspirational",
+   "published_at": "2026-09-20",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "inc.com",
+   "title": "The New Must-Have Perk for Luxury Apartments? An Erewhon Membership.",
+   "text": "The cult Southern California grocery chain has partnered with the Mercer, a new apartment building in West Hollywood, to give its tenants free memberships. The chain has become a coveted launchpad for upstart better-for-you brands like Leisure Hydration and Better Sour, as well as celebrity-backed C...",
+   "url": "https://www.inc.com/ali-donaldson/the-new-must-have-perk-for-luxury-apartments-an-erewhon-membership/91416261",
+   "published_at": "2026-10-07",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Whole Foods vs Erewhon Taste Test | FOOD FEUDS",
+   "text": "Today, we're pinning two top shelf groceries stories against each other: Whole Foods vs Erewhon!! FOOD FEUDS!! GMM # 2424 ... · Good Mythical Morning",
+   "url": "https://www.youtube.com/watch?v=0Wo3WV1ueJY",
+   "published_at": "2023-07-17T10:00:02Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/0Wo3WV1ueJY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Erewhon vs Whole Foods",
+   "text": "· Plate it with Starr ⭐️",
+   "url": "https://www.youtube.com/watch?v=_zyjEdLscmY",
+   "published_at": "2026-02-21T04:19:00Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/_zyjEdLscmY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Walmart vs. Erewhon Taste Test",
+   "text": "Today, we're seeing if luxury supermarkets are REALLY worth it! GMM # 2339 Watch today's GMMORE: ... · Good Mythical Morning",
+   "url": "https://www.youtube.com/watch?v=bHocnamqOJI",
+   "published_at": "2023-03-01T11:00:34Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/bHocnamqOJI/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Is The Worlds Most Expensive Grocery Store Worth The Price?",
+   "text": "I visited Erewhon, the most expensive grocery store in the world thats also a... restaurant? · DanCookedIt",
+   "url": "https://www.youtube.com/watch?v=b4YEH2H1pKc",
+   "published_at": "2024-07-20T20:16:39Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/b4YEH2H1pKc/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "$100 at the Erewhon most expensive grocery store",
+   "text": "I took $100 to Erewhon — LA's most bougie grocery store — to see what I could actually get! From organic snacks to overpriced ... · Jimmy Visits World",
+   "url": "https://www.youtube.com/watch?v=R5LHQTeqVb8",
+   "published_at": "2025-06-09T16:30:08Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/R5LHQTeqVb8/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"erewhon vs whole foods premium groceries\": 200 sampled",
+   "text": "Sample: I still think that this segment would be funnier and more interesting if the boys didn't know where the food where from. | Rhett is shocked at $8.50 for a slice of cheesecake but I find $4.50 for one cookie appalling! | Erewhon is the type of store that I picture celebrities and stuck up influencers shop at and say its the best because ev",
+   "url": "https://www.youtube.com/results?search_query=erewhon%20vs%20whole%20foods%20premium%20groceries",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

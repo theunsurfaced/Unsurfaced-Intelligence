@@ -1,0 +1,442 @@
+{
+ "id": "q15",
+ "query": "Shein and fast fashion among teens",
+ "frame": {
+  "entity": "Shein",
+  "category": "fast fashion retail",
+  "audience": "teenagers",
+  "market": "US",
+  "competitors": [
+   "Zara",
+   "H&M",
+   "Forever 21",
+   "ASOS",
+   "Uniqlo"
+  ],
+  "question": "How does Shein's brand perception and purchase behavior compare among US teens versus other fast fashion competitors?",
+  "anchors": [
+   "shein",
+   "fast fashion",
+   "teens",
+   "teenagers",
+   "youth shopping",
+   "affordable clothing",
+   "trend-driven fashion",
+   "social media influence",
+   "gen z retail",
+   "online fashion",
+   "budget apparel",
+   "viral trends"
+  ],
+  "exclude": [
+   "luxury fashion",
+   "sustainable clothing",
+   "vintage resale",
+   "high-end brands",
+   "designer labels"
+  ],
+  "task": "compare",
+  "threads": [
+   "What drives teen adoption of Shein versus competitors?",
+   "How do teens perceive Shein's brand and values?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Shein fast fashion teens US 2024",
+   "research": "adolescent consumer behavior fast fashion retail platforms",
+   "discourse": "why do teens shop shein reddit tiktok",
+   "web": "Shein popularity among teenagers fast fashion"
+  }
+ },
+ "frozen_at": "2026-10-09T02:55:37.513Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "bbc.com",
+   "title": "Shein: The rise and rise of a fashion giant",
+   "text": "The biggest order 17-year-old Michaela says she ever made on Shein was for £150, when she bought \"16 plus items\". Like millions of others, she's a huge fan of the ultra-fast fashion giant, mostly because of how affordable it is. ... Over the last decade, Shein has gone from a little-known brand among older shoppers to",
+   "url": "https://bbc.com/news/articles/cp991n2v0m2o",
+   "published_at": "2024-06-07T21:34:53.000Z",
+   "kind": "web",
+   "tier": 1,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://ichef.bbci.co.uk/news/1024/branded_news/a2ef/live/b451d6f0-24a9-11ef-8fcf-bdfddcab4264.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "www-s4.npr.org",
+   "title": "Shein is tailored for America's love of fast fashion : NPR",
+   "text": "Shein is tailored for America's love of fast fashion With clothes cheaper than a latte, built for today's microtrends, Shein courts the same young women who launched the renaissance of thrifting and resale. Legal complaints about the company are many. ... Keeping up appearances on a teenage budget used to mean a trip t",
+   "url": "https://www-s4.npr.org/2023/10/13/1204983212/shein-america-fast-fashion-legal-issues",
+   "published_at": "2023-10-13T09:16:45.000Z",
+   "kind": "web",
+   "tier": 1,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://media.npr.org/assets/img/2023/10/11/gettyimages-1233442352_wide-99ae7d1da86f343a719f21116223ac1022ddaded.jpg?s=1400&c=85&f=jpeg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "bbc.co.uk",
+   "title": "Shein: The secretive Chinese brand dressing Gen Z - BBC News",
+   "text": "It's a familiar sight scrolling through YouTube, TikTok and Instagram: A teenager dumps a \"haul\" of clothing from Shein on her bed, trying on each outfit in turn for likes and followers. The popularity of the Chinese fast fashion firm has exploded during the pandemic. But if you're over 30? Odds are you haven't heard",
+   "url": "https://www.bbc.co.uk/news/business-59163278",
+   "published_at": "2021-11-09T23:58:01.000Z",
+   "kind": "web",
+   "tier": 1,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://ichef.bbci.co.uk/ace/branded_news/1200/cpsprodpb/1536/production/_121503450_gettyimages-1315930455-1.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "statista.com",
+   "title": "SHEIN brand profile among Gen Z in the U.S. 2025| Statista",
+   "text": "## SHEIN brand awareness, usage, popularity, loyalty, and buzz among Gen Z fashion online shop users in the United States in 2025 ... 64 years ... - Brand popularity: When it comes to fashion online shops, which of the following brands do you like? - Brand usage: When it comes to fashion online shops, which of the foll",
+   "url": "https://www.statista.com/forecasts/1659903/gen-z-shein-brand-profile-in-the-us/?__sso_cookie_checker=failed",
+   "published_at": "2025-09-02T12:00:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cdn.statcdn.com/Statistic/1655000/1659903-blank-355.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "businessinsider.com",
+   "title": "Teens are obsessed with Shein, a Chinese fast-fashion retailer ...",
+   "text": "Shein, Chinese Fast-Fashion Site, Growing Popular With American Teens - Business Insider # Teens are obsessed with Shein, a Chinese fast-fashion retailer that has more than 13 million Instagram followers and no store footprint By Madeline Stone Toggle image caption Guests attend Shein Summer Pop Up Preview E",
+   "url": "https://www.businessinsider.com/shein-chinese-fast-fashion-growing-popular-american-teens-2020-10",
+   "published_at": "2020-10-07T18:48:37.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.insider.com/5f7dea9a282c500018c791eb?width=831&format=jpeg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "statista.com",
+   "title": "U.S. Gen Z awareness, consideration, and purchase intent of Shein 2024| Statista",
+   "text": "As of 2024, nearly ** percent of Gen Z shoppers in the United States were aware of the brand Shein. In comparison, approximately ** percent of shoppers reported to wanting to purchase apparel from the brand. ... as of October ... 18 years and older ... - Top fashion online stores worldwide in 2024, by net sales - Top f",
+   "url": "https://www.statista.com/statistics/1607609/us-gen-z-awareness-consideration-purchase-intent-shein/?__sso_cookie_checker=failed",
+   "published_at": "2024-11-10T12:00:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cdn.statcdn.com/Statistic/1605000/1607609-blank-355.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Shein",
+   "text": "Shein is a global e-commerce platform specializing in fast fashion. While the company primarily focuses on women's clothing, it also offers men's apparel, children's wear, accessories, cosmetics, shoes, bags, and other fashion items. Shein mainly focuses on Europe, Americas, Australia, and the Middle East along with other consumer markets worldwide.",
+   "url": "https://en.wikipedia.org/wiki/Shein",
+   "published_at": "2026-10-06T08:06:50Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "2020s in fashion",
+   "text": "The fashion of the 2020s represents a style defined by short-lived social-media trends and nostalgia for older aesthetics. It has been largely inspired by styles of the late 1970s to late 1980s, the late 1990s to mid-2000s, and elements of Modern Medieval fashion, boho-chic, Indie sleaze and mid-century fashions from the 1940s, 1950s and 1960s. The early and mid 2020s were driven by microtrends, social media influencers, and niche online communities that transformed internet aesthetics into the dominant tastemakers for fashion. Early in the decade, several publications noted the shortening trend cycles, niche revivals, and nostalgia cycles in 2020s fashion. The COVID-19 pandemic also had a m",
+   "url": "https://en.wikipedia.org/wiki/2020s_in_fashion",
+   "published_at": "2026-10-08T05:10:15Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Fashion in the United States",
+   "text": "Fashion in the United States is eclectic and predominantly casual; emblematic garments include cowboy hats, boots, jeans, casual tailoring, and leather motorcycle jackets. New York City is among the world's fashion capitals, along with Paris, Milan, and London. Proximity to Manhattan's Garment District is important to participate in the American fashion ecosystem. Los Angeles too is central to America's fashion industry.",
+   "url": "https://en.wikipedia.org/wiki/Fashion_in_the_United_States",
+   "published_at": "2026-08-19T16:25:38Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "paradigmshift.com.pk",
+   "title": "SHEIN: The Hidden Cost of Ultra-Fast Fashion - Paradigm Shift",
+   "text": "Shein has captured immense popularity among younger consumers through an ultra-fast fashion model driven by real-time data, rapid trend testing, and very low prices. ... Shein has emerged as one of the names in online style and fashion, especially amongst younger (Gen Z) shoppers. ... Just because p...",
+   "url": "https://www.paradigmshift.com.pk/shein-fast-fashion/",
+   "published_at": "2026-09-30",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "alledaags.nl",
+   "title": "Shein's Fast Fashion Domination Comes at a High Cost ◆ Quantaweave Collective",
+   "text": "It’s a social media strategy that has been wildly successful for the company, pushing Shein to the top of the fashion ladder—and making it the world’s most popular fashion brand in 2022. According to a report compiled by Money.co.uk, Shein has taken over giants like Nike and Adidas as the most-Googl...",
+   "url": "https://www.alledaags.nl/shein-s-fast-fashion-domination-comes-at-a-high-cost-k62n24z/",
+   "published_at": "2026-10-01",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "consumeredge.com",
+   "title": "Shein Shoppers Are Shifting Apparel Spend Toward Resale | Consumer Edge",
+   "text": "SHEIN reported its first results as a public company this week, with profitability under pressure and sales declining in both the U.S. and Europe. ... Shein became a leader in U.S. fast fashion and one of the largest individual players in the broader apparel market. But its market position has now d...",
+   "url": "https://www.consumeredge.com/resources/insight-flash/shein-shoppers-shifting-apparel-spend-toward-resale/",
+   "published_at": "2026-10-01",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "edgechat.ai",
+   "title": "Fast fashion",
+   "text": "Leading practitioners include Zara, H&M, Primark and Shein, all of which built large multinational businesses on the rapid turnover of cheap seasonal clothing.^1^ ... |Key fact|Detail| |--|--| |Consumer reach|In 2023, 40% of US and 26% of UK consumers shopped at Shein or Temu^4^| ... Retailers such ...",
+   "url": "https://www.edgechat.ai/fast-fashion",
+   "published_at": "2026-09-17",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "bluesky-thinking.com",
+   "title": "Are We Witnessing The Downfall Of Shein?",
+   "text": "Economists are saying that backlash over its poor sustainability and labour practices, combined with ultra-low prices for its retail goods becoming harder to sustain, contributed to recent underperformance… despite strong sales, SHEIN’s long-anticipated trading debut on the Hong Kong stock exchange ...",
+   "url": "https://bluesky-thinking.com/are-we-witnessing-the-downfall-of-shein/",
+   "published_at": "2026-09-09",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "searchengineland.com",
+   "title": "Shein Revenue and Usage Stats for 2026",
+   "text": "Known for its relatively low-priced apparel and wide variety, Shein became one of the most popular shopping destinations among Gen Z and millennial consumers across the world. ... In the US, **24%** of respondents claim to have shopped at Shein in the past 12 months, making it one of the most popula...",
+   "url": "https://searchengineland.com/guide/shein-stats",
+   "published_at": "2026-09-14",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "slate.com",
+   "title": "It Was the World's Largest Online Fashion Retailer. What's Happening With Its Stock Says It All.",
+   "text": "The fast-fashion giant hit our feeds and completely altered how a generation of young people quickly consumed clothes. When a skirt is $5, why not buy it, wear it once, and then move on? ... But it didn't take off. The IPO was kind of a massive flop, losing $5 billion in market value; as of Monday, ...",
+   "url": "https://slate.com/technology/2026/09/shein-stock-fast-fashion-trends-tiktok.html",
+   "published_at": "2026-09-16",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Shein Finds tiktok dailylifestylefashion19",
+   "text": "shorts #tiktok Shein Finds tiktok dailylifestylefashion19 Before removing the video, please contact us at: righttcopy@gmail.com so ... · RYMSS Journeys",
+   "url": "https://www.youtube.com/watch?v=ctSeHki01Vs",
+   "published_at": "2022-01-08T19:59:37Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/ctSeHki01Vs/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Shein Clothes Tiktok ffreebies",
+   "text": "shorts #tiktok Before removing the video, please contact us at: righttcopy@gmail.com so we can take down the video or solve any ... · RYMSS Journeys",
+   "url": "https://www.youtube.com/watch?v=rMAC1yi_FWg",
+   "published_at": "2022-09-26T20:03:01Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/rMAC1yi_FWg/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Case Study | How Shein Goes Crazy Worldwidely In Fast-fashion Market",
+   "text": "In this video, Timothy will introduce one of the world's largest fashion company Shein. From its background to advantages, you will ... · KakaClo",
+   "url": "https://www.youtube.com/watch?v=IYaO2q4-LH4",
+   "published_at": "2022-05-21T09:36:43Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/IYaO2q4-LH4/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"why do teens shop shein reddit tiktok\": 1 sampled",
+   "text": "Sample: Great work. Thank you.",
+   "url": "https://www.youtube.com/results?search_query=why%20do%20teens%20shop%20shein%20reddit%20tiktok",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

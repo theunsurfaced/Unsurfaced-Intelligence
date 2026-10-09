@@ -1,0 +1,497 @@
+{
+ "id": "q11",
+ "query": "Crocs and collaboration culture",
+ "frame": {
+  "entity": "Crocs",
+  "category": "footwear brand",
+  "audience": "brand strategists",
+  "market": "US",
+  "competitors": [
+   "Nike",
+   "Adidas",
+   "Vans",
+   "Birkenstock"
+  ],
+  "question": "How does Crocs use designer and brand collaborations to drive cultural relevance and sales?",
+  "anchors": [
+   "crocs",
+   "collaboration",
+   "designer partnerships",
+   "limited editions",
+   "brand culture",
+   "co-branded releases",
+   "cultural relevance",
+   "footwear collaborations",
+   "licensing strategy",
+   "celebrity partnerships"
+  ],
+  "exclude": [
+   "corporate culture",
+   "workplace collaboration",
+   "team dynamics"
+  ],
+  "task": "brand",
+  "threads": [
+   "What collaborations has Crocs launched and with whom?",
+   "How do these partnerships affect brand perception and sales?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Crocs brand collaborations partnerships releases",
+   "research": "Crocs collaborative design strategy consumer perception",
+   "discourse": "Crocs collabs drops designer partnerships hype",
+   "web": "Crocs collaboration culture brand strategy impact"
+  }
+ },
+ "frozen_at": "2026-10-09T02:54:40.743Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 1,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "paul.adweek.com",
+   "title": "How Crocs Turned 'Ugly' Into Cultural Cool ft. Chief Brand Officer Terence Reilly",
+   "text": "Terence was Chief Marketing Officer at Crocs, then served as President of Stanley 1913. Following Stanley, he was HeyDude president and took on the title of Chief Brand Officer at Crocs, Inc. a year ago. He reveals how he transformed a meme product into a global phenomenon, why embracing risk and “failing fast” is esse",
+   "url": "https://paul.adweek.com/brand-marketing/how-crocs-turned-ugly-into-cultural-cool-ft-chief-brand-officer-terence-reilly/",
+   "published_at": "2026-05-28T14:32:56.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://paul.adweek.com/wp-content/uploads/2026/05/MarketingVangaurd_Podcast_TerenceReilly-_Featuredimage_v1.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "adweek.com",
+   "title": "How Crocs Became One of TikTok Shop's Top Sellers",
+   "text": "## Crocs chief brand officer Terence Reilly demonstrated the brand's 'audacious' social strategy live at Brandweek ... The platform crowned Crocs its Seller of the Year in May, an accolade the brand earned through a test-and-learn approach to social designed to engage Gen Z and Gen Alpha, long before they hit the Buy b",
+   "url": "https://www.adweek.com/brand-marketing/how-crocs-became-one-of-tiktok-shops-top-sellers/",
+   "published_at": "2026-09-16T14:13:10.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://static-www.adweek.com/wp-content/uploads/2026/09/lilly-im8-7.png?w=600&h=315&crop=1",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Crocs",
+   "text": "Crocs, Inc. is an American footwear company based in Broomfield, Colorado, which manufactures and markets the Crocs brand of foam footwear. Crocs, Inc. terms these \"clogs\", but they do not contain wood like traditional clogs. In 2021, they acquired the Italian footwear brand HEYDUDE for $2.5 billion. In 2025, Crocs revenue stood at $3.3 billion, an increase of 1.5% from the previous year.",
+   "url": "https://en.wikipedia.org/wiki/Crocs",
+   "published_at": "2026-10-07T04:52:05Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "G Flip",
+   "text": "Georgia Claire Flipo, known professionally as G Flip, is an Australian singer, songwriter, multi-instrumentalist and producer from Melbourne, Victoria. Their debut studio album, About Us, was released on 30 August 2019. Its follow-up, Drummer, followed almost four years later on 11 August 2023.",
+   "url": "https://en.wikipedia.org/wiki/G_Flip",
+   "published_at": "2026-09-30T09:01:48Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/G_flip.jpg/330px-G_flip.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Aespa",
+   "text": "Aespa is a South Korean girl group formed by SM Entertainment. The group consists of four members: Karina, Giselle, Winter, and Ningning. The group is known for popularizing the metaverse concept and hyperpop music in K-pop. Aespa debuted on November 17, 2020, with the single \"Black Mamba\", which achieved the highest number of views in 24 hours for a K-pop group's debut video. Their third single, \"Next Level\", was released in May 2021 to widespread commercial and critical success, peaking at number two on the Circle Digital Chart and earning the daesang for Song of the Year at the 19th Korean Music Awards. In October of the same year, Aespa released their first extended play (EP) Savage, whi",
+   "url": "https://en.wikipedia.org/wiki/Aespa",
+   "published_at": "2026-09-18T15:14:08Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Aespa_Love_Your_W_2025_1.jpg/330px-Aespa_Love_Your_W_2025_1.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "thedrum.com",
+   "title": "Crocs marketer Yann Le Bozec on the clog’s journey from meme to fashion staple | The Drum",
+   "text": "The brand’s international marketer tells Tim Healey how Crocs moved from meme to must-have by embracing self-expression, cultural collaboration and a fan-first strategy. ... My focus is to continue to build on our consumer loyalty, but also adjust our strategy to meet the needs of all the different consumers around the",
+   "url": "https://www.thedrum.com/news/crocs-marketer-yann-le-bozec-on-the-clog-s-journey-from-meme-to-fashion-staple",
+   "published_at": "2026-01-20T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://thedrum-media.imgix.net/thedrum-user-assets-prod/s3/images/original/interview-wyw-crocs-2.png?w=1280&ar=default&fit=crop&crop=faces&auto=format",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "retailgazette.co.uk",
+   "title": "Crocs’ Adrian Holloway on why physical retail is vital to its strategy - Retail Gazette",
+   "text": "That idea is the core theme in Crocs’ renewed retail strategy. The brand has never lacked recognisability. Its Classic Clog has moved from practical footwear to cult object, fashion statement and collaboration canvas. But translating that energy into a physical store requires more than shelves of brightly coloured shoe",
+   "url": "https://www.retailgazette.co.uk/blog/2026/05/crocs-adrian-holloway-on-why-physical-retail-is-vital-to-its-strategy/",
+   "published_at": "2026-05-11T10:13:30.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.retailgazette.co.uk/wp-content/uploads/2026/04/5a6cac3a-be7e-48a0-b075-30fc34980779.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "whataboutmkt.com",
+   "title": "How Crocs Made Ugly the Most Powerful Word in Its Brand Strategy | What About Mkt",
+   "text": "Crocs became one of the most culturally successful footwear brands in the world by doing the opposite of what brand management theory prescribes — and its chief brand officer has a playbook worth studying. ## By ## Giovana B. ... When Terence Reilly was appointed chief brand officer of Crocs, Inc., the first thin",
+   "url": "https://whataboutmkt.com/how-crocs-made-ugly-the-most-powerful-word-in-its-brand-strategy/",
+   "published_at": "2026-06-02T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://whataboutmkt.com/wp-content/uploads/2026/06/386.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "investors.crocs.com",
+   "title": "Crocs Unveils \"Wonderfully Unordinary,\" a New Global Brand ...",
+   "text": "The first new global narrative in nearly 10 years, this multi-year brand platform unlocks a new chapter for the brand, rooted in authenticity, creativity, and experiencing the world differently in Crocs shoes BROOMFIELD, Colo., Jan. 28, 2026 /PRNewswire/ -- Crocs (NASDAQ: CROX), a world leader in innovative casual foo",
+   "url": "https://investors.crocs.com/news-and-events/press-releases/press-release-details/2026/Crocs-Unveils-Wonderfully-Unordinary-a-New-Global-Brand-Narrative-Ushering-in-the-Next-Era-of-Self-Expression/default.aspx",
+   "published_at": "2026-01-28T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://mma.prnewswire.com/media/2871131/Crocs_Wonderfully_Unordinary_1.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "gloomba.com",
+   "title": "Why Did Crocs Lose Popularity? Examining the Rise, Fall, and ...",
+   "text": "**High-Profile Collaborations:** A pivotal strategy for Crocs’ comeback has been high-profile collaborations with designers and celebrities who resonate with contemporary culture. Partnering with figures like Christopher Kane, Balenciaga, Post Malone, and Bad Bunny brought Crocs into high-fashion an...",
+   "url": "https://www.gloomba.com/en/why-did-crocs-lose-popularity/",
+   "published_at": "2026-09-22",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sent.news",
+   "title": "Crocs Shows How to Make One Product Lead to More Sales",
+   "text": "Crocs turned a divisive classic clog into a $2.3 billion business by focusing on personalization, collaborations, and a recognizable identity. ... When Crocs acquired Jibbitz in 2006, customers gained a way to cover their shoes with small charms that represented their interests and personalities. .....",
+   "url": "https://sent.news/p/crocs-shows-how-to-make-one-product-lead-to-more-sales",
+   "published_at": "2026-09-27",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "viralnation.com",
+   "title": "Crocs Marketing Strategy: Creators, Jibbitz and Commerce",
+   "text": "Crocs’ comeback rests on a simple idea: let other people help decide what the shoe can be. Designers and creators reshaped the product, customers personalized it, and Crocs built e-commerce and social commerce around the activity that followed. ... These collaborations illustrate a useful brand adva...",
+   "url": "https://www.viralnation.com/blog/decoded-crocs?hs_amp=true",
+   "published_at": "2026-09-29",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "old.autarch.co",
+   "title": "Crocs Net Worth 2021: How the Clog Giant Defied Odds & Built a Billion-Dollar Empire — Autarch Networth",
+   "text": "The turning point came in 2017, when Crocs pivoted its strategy. The company introduced **new colors, collaborations with brands like Converse and Vans**, and a marketing push targeting Gen Z and millennials. This shift paid off when, in 2020, Crocs became a pandemic staple—comfortable, easy to clea...",
+   "url": "https://old.autarch.co/article/crocs-net-worth-2021-how-the-clog-giant-defied-odds-built-a-billion-dollar-empire",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "vault.pharmaccess.org",
+   "title": "The Crocs Justin Bieber Effect: How Pop’s Icon Turned a Niche Shoe Into a Cultural Phenomenon — Pharm Access Networth",
+   "text": "Justin Bieber’s relationship with Crocs is more than a footwear preference—it’s a case study in how celebrity endorsement can warp consumer behavior, meme economics, and even corporate valuation. ... Crocs began collaborating with meme pages, releasing limited-edition \"Bieber-esque\" designs, and eve...",
+   "url": "https://vault.pharmaccess.org/article/the-crocs-justin-bieber-effect-how-pop-s-icon-turned-a-niche-shoe-into-a-cultural-phenomenon",
+   "published_at": "2026-09-25",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "old.autarch.co",
+   "title": "How the Net Worth of Crocs Skyrocketed—From Niche Footwear to Billion-Dollar Empire — Autarch Networth",
+   "text": "Unlike traditional footwear brands, Crocs didn’t rely on heritage or luxury; it weaponized memes, celebrity endorsements, and a relentless focus on comfort to redefine what \"wearable\" means. ... While competitors like Deckers Outdoor (parent of Hoka and Teva) struggled with supply chain disruptions,...",
+   "url": "https://old.autarch.co/article/how-the-net-worth-of-crocs-skyrocketed-from-niche-footwear-to-billion-dollar-empire",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "q.pfl.com",
+   "title": "The Crocs Founder: How a Florida Startup Became a Billion-Dollar Footwear Empire — PFL Zone",
+   "text": "The brand’s rise wasn’t just a business triumph; it was a cultural reset, proving that consumers would embrace something truly different if it solved a problem better than anything else on the market. ... The brand’s later collaborations with designers like Alexander Wang and Dolce & Gabbana proved ...",
+   "url": "https://q.pfl.com/article/the-crocs-founder-how-a-florida-startup-became-a-billion-dollar-footwear-empire",
+   "published_at": "2026-09-20",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "linkedin.com",
+   "title": "Crocs' $50M+ TikTok Shop Strategy",
+   "text": "Crocs became TikTok Shop’s top footwear seller by combining fast experimentation, livestream shopping and Gen Z-focused collaborations. ... Chief Brand Officer Terence Reilly credits the growth to a test-and-learn strategy that allows teams to experiment, fail quickly, and scale successful ideas. .....",
+   "url": "https://www.linkedin.com/pulse/crocs-50m-tiktok-shop-strategy-charm-io-ttkic",
+   "published_at": "2026-09-17",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Crocs x Salehe Bembury Juniper Review: Worth the Hype?",
+   "text": "Disclosure: As an Amazon Associate and Influencer I earn commissions, at no cost to you, made out of qualifying purchases. · Review Central",
+   "url": "https://www.youtube.com/watch?v=pRk3sIDtRMI",
+   "published_at": "2026-04-28T02:30:46Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/pRk3sIDtRMI/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "What’s Your Favorite Collab By @crocsinc 👟🐊 #shorts #crocs #collab #sneakerhead",
+   "text": "· Kickamatics",
+   "url": "https://www.youtube.com/watch?v=dVf19DEyCQQ",
+   "published_at": "2024-01-03T01:25:23Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/dVf19DEyCQQ/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Best croc collaborations",
+   "text": "· TheAubreyAvaLook",
+   "url": "https://www.youtube.com/watch?v=P8KuGU_y4EQ",
+   "published_at": "2023-10-01T12:22:49Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/P8KuGU_y4EQ/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "CRAZIEST CROC COLLABS 😱",
+   "text": "· Kickinit",
+   "url": "https://www.youtube.com/watch?v=KCgeVQvkWVM",
+   "published_at": "2024-07-13T19:33:44Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/KCgeVQvkWVM/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Unboxing The CRAZIEST Xbox Collab - Xbox x Crocs",
+   "text": "· Esportscenter",
+   "url": "https://www.youtube.com/watch?v=P34GSJbssYg",
+   "published_at": "2025-11-25T00:59:15Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/P34GSJbssYg/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"Crocs collabs drops designer partnerships hype\": 6 sampled",
+   "text": "Sample: SHREK 😩😩😩💚💚💚💚 | Those shrocks are good but if someone pullin up to a race with the lightning mcrocs you just know you losin",
+   "url": "https://www.youtube.com/results?search_query=Crocs%20collabs%20drops%20designer%20partnerships%20hype",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "The Hound of the Baskervilles",
+   "text": "Novel by Sir Arthur Conan Doyle. The Hound of the Baskervilles is the third of the four crime novels by British writer Arthur Conan Doyle featuring the detective Sherlock Holmes.",
+   "url": "https://en.wikipedia.org/wiki/The_Hound_of_the_Baskervilles",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

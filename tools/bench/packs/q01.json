@@ -1,0 +1,486 @@
+{
+ "id": "q01",
+ "query": "Jordan Brand and Gen Z",
+ "frame": {
+  "entity": "Jordan Brand",
+  "category": "athletic footwear",
+  "audience": "Gen Z consumers",
+  "market": "US",
+  "competitors": [
+   "Nike",
+   "Adidas",
+   "New Balance",
+   "Puma",
+   "Converse"
+  ],
+  "question": "How does Jordan Brand resonate with Gen Z values and purchasing behavior compared to competitors?",
+  "anchors": [
+   "jordan brand",
+   "gen z",
+   "sneakers",
+   "basketball shoes",
+   "streetwear",
+   "youth culture",
+   "sneaker collecting",
+   "social media influence",
+   "sustainability concerns",
+   "brand loyalty",
+   "limited editions",
+   "resale market"
+  ],
+  "exclude": [
+   "michael jordan legacy",
+   "nba basketball",
+   "retro nostalgia",
+   "1980s history"
+  ],
+  "task": "brand",
+  "threads": [
+   "How is Jordan Brand performing with Gen Z consumers?",
+   "What Gen Z values drive sneaker and streetwear choices?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Jordan Brand Gen Z marketing strategy 2024",
+   "research": "Gen Z consumer preferences athletic footwear brands",
+   "discourse": "do gen z like jordan brand reddit tiktok",
+   "web": "Jordan Brand Gen Z appeal youth market"
+  }
+ },
+ "frozen_at": "2026-10-09T02:52:29.268Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "statista.com",
+   "title": "Jordan brand profile in the U.S. 2026 | Statista",
+   "text": "# Jordan brand profile in the U.S. Jordan has 87% brand awareness among U.S. consumers, while 41% say they like the brand and 31% report owning its sneakers. Among Jordan owners, 82% are likely to buy the brand again. Its popularity and ownership are strongest among Gen Z, whereas Millennials register the highest bu",
+   "url": "https://www.statista.com/insights/consumer/brand-profiles/3/8/jordan/united-states/",
+   "published_at": null,
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cdn.statcdn.com/static/img/openGraph/statista.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "adweek.com",
+   "title": "Inside Jordan Brand's Jump Shot to Court a New Generation",
+   "text": "Jordan Brand is one of the most recognizable brands in the world, thanks to Nike and basketball G.O.A.T. Michael Jordan, with fans ranging from NBA pros to high school athletes to casual sneaker heads. But the brand is reaching middle age, recently celebrating its 40th anniversary with a year-long marketing campaign f",
+   "url": "https://www.adweek.com/brand-marketing/inside-jordan-brands-jump-shot-to-court-a-new-generation/",
+   "published_at": null,
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://static-www.adweek.com/wp-content/uploads/2025/08/adspeak-from-adweek-2025.jpg?w=600&h=315&crop=1",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sgbonline.com",
+   "title": "Survey Sees Nike, Jordan, Lululemon Winning Popularity Contest with Gen Y + Z | SGB Media Online",
+   "text": "October 19, 2023 SGB Executive by Thomas J. Ryan While upstarts such as Hoka and On are making noise, Cowen’s sixth annual Gen Z and Millennial survey found Nike, Air Jordan and Lululemon hit new all-time highs in brand preference and showed material growth year-over-year in both 18-to-24 and 25-to-34-year-old coho",
+   "url": "https://sgbonline.com/cowen-survey-nike-jordan-lululemon-winning-popularity-contest-with-younger-adults/",
+   "published_at": "2023-10-19T00:00:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Generation Z in the United States",
+   "text": "Generation Z, colloquially known as Zoomers, is the demographic cohort succeeding Millennials and preceding Generation Alpha.",
+   "url": "https://en.wikipedia.org/wiki/Generation_Z_in_the_United_States",
+   "published_at": "2026-10-05T19:49:49Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Generation_timeline_simple.svg/330px-Generation_timeline_simple.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Generation Z",
+   "text": "Generation Z, often shortened to Gen Z and informally known as Zoomers, is the demographic cohort succeeding Millennials and preceding Generation Alpha. Researchers and popular media use the mid-to-late 1990s as starting birth years and the early 2010s as ending birth years, with the generation typically being defined as people born from 1997 to 2012. Most members of Generation Z are the children of younger Baby Boomers, Generation X and older Millennials, and it is predicted that many will be the parents of members of younger Generation Alpha and Generation Beta.",
+   "url": "https://en.wikipedia.org/wiki/Generation_Z",
+   "published_at": "2026-10-08T19:42:59Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Generation_timeline_simple.svg/330px-Generation_timeline_simple.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Glossary of 2020s slang",
+   "text": "English-language slang used or popularized in the 2020s, usually by Generation Z or by Generation Alpha, differs from that of earlier generations. Ease of communication via social media and other internet outlets has facilitated its rapid proliferation, creating \"an unprecedented variety of linguistic variation\", according to Danielle Abril of The Washington Post. Self-deprecating irony is often a prevalent factor in its use.",
+   "url": "https://en.wikipedia.org/wiki/Glossary_of_2020s_slang",
+   "published_at": "2026-10-08T17:59:14Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/Hilt_Boling_and_Family_Tour_NASA%27s_Kennedy_Space_Center_%28NHQ20260403_admin_0004%29.jpg/330px-Hilt_Boling_and_Family_Tour_NASA%27s_Kennedy_Space_Center_%28NHQ20260403_admin_0004%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "marketingmagazine.com.my",
+   "title": "40 Years On, Jordan Brand Still Makes Greatness Look ‘Too Easy’ | MARKETING Magazine Asia",
+   "text": "It’s fun. It’s bold. It’s Gen Z gold. And at the heart of it is the Air Jordan 40. A silhouette that fuses heritage with next-gen performance. A shoe designed for youth athletes, but steeped in legend. ... **Building the Next Generation** The brand isn’t just banking on NBA stars anymore. It’s betting big on rising tal",
+   "url": "https://marketingmagazine.com.my/40-years-on-jordan-brand-still-makes-greatness-look-too-easy/",
+   "published_at": "2025-07-24T08:37:53.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://marketingmagazine.com.my/wp-content/uploads/2025/07/Screenshot_9-2.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "aws2.campaignasia.com",
+   "title": "Jordan at 40: Can the Jumpman bounce back in a crowded sneaker market? | Analysis | Campaign Asia",
+   "text": "\"For older sneakerheads, the brand carries deep nostalgia and historical weight, as many grew up watching Jordan play. But for younger consumers in APAC, that legacy doesn’t resonate in the same way,\" says Owen Leach, senior design director at INVNT. \"Brands like Hoka, Anta, and Ugg are tapping into new lifestyle and p",
+   "url": "https://aws2.campaignasia.com/article/jordan-at-40-can-the-jumpman-bounce-back-in-a-crowded-sneaker-market/504402",
+   "published_at": "2025-09-25T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cdn.i.haymarketmedia.asia/?n=campaign-asia%2fcontent%2f20250826020234_New+Project+(95).png&h=630&w=1200&q=75&v=20250320&c=1",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "admin.siriz.nl",
+   "title": "The Hidden Power of Michael Jordan Net: Beyond the Brand — Siriz Net Worth",
+   "text": "The Jordan Brand alone generates billions, yet its true value lies in its ability to monetize nostalgia, youth culture, and even digital engagement decades after Air Jordan’s debut. ... The result? A brand that doesn’t just survive generational shifts but *accelerates* through them. For millennials,...",
+   "url": "https://admin.siriz.nl/article/the-hidden-power-of-michael-jordan-net-beyond-the-brand",
+   "published_at": "2026-09-22",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "q.pfl.com",
+   "title": "The Rise of b jordan: How a Cultural Icon Redefined Influence — PFL Zone",
+   "text": "The name b jordan now encompasses a brand, a lifestyle, and even a psychological trigger—think of the way a child’s eyes light up at the mention of \"Air Jordans\" or how collectors pay six figures for a pair of 1985 Pros. ... What’s fascinating is how b jordan has adapted to generational shifts. Mill...",
+   "url": "https://q.pfl.com/article/the-rise-of-b-jordan-how-a-cultural-icon-redefined-influence",
+   "published_at": "2026-09-20",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "education.physiotec.ca",
+   "title": "How the Jordan Brand Net Worth 2024 Surpassed $100 Billion—and What It Means for Sneaker Culture — Networth News",
+   "text": "This isn’t hyperbole; it’s the result of a meticulously engineered ecosystem where basketball heritage, celebrity endorsements, and digital-native demand collide. The brand’s valuation isn’t static; it’s a living organism, expanding through limited drops, resale arbitrage, and an unmatched global fa...",
+   "url": "https://education.physiotec.ca/article/how-the-jordan-brand-net-worth-2024-surpassed-100-billion-and-what-it-means-for-sneaker-culture",
+   "published_at": "2026-09-13",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "lxp.clixie.ai",
+   "title": "How Jordan Brand Valuation Soared Beyond Sneakers — Networth Area",
+   "text": "Analysts attribute this to three key factors: **scarcity engineering** (dropping shoes at 12 AM to exploit FOMO), **celebrity cross-pollination** (Drake, Travis Scott, and even Kanye West wearing Jordans in public), and **generational loyalty** (millennials and Gen Z see them as status symbols, not ...",
+   "url": "https://lxp.clixie.ai/article/how-jordan-brand-valuation-soared-beyond-sneakers",
+   "published_at": "2026-09-11",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "old.autarch.co",
+   "title": "How Nike’s Jordan Brand Value Reshaped Global Culture and Commerce — Autarch Networth",
+   "text": "The first time a pair of black-and-red basketball shoes became a status symbol wasn’t in a gym—it was on the streets of Chicago, where kids mimicked their heroes by lacing up fakes before the real thing even hit shelves. That moment, in the early ’90s, marked the birth of what would become one of th...",
+   "url": "https://old.autarch.co/article/how-nike-s-jordan-brand-value-reshaped-global-culture-and-commerce",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "education.physiotec.ca",
+   "title": "How Nike and Michael Jordan Built a $50B Empire: The True Nike Jordan Net Worth Story — Networth News",
+   "text": "The question isn’t *why* it’s worth so much, but *how much longer* it can sustain its dominance in an era of AI-generated designs and Gen Z’s shifting tastes. ... The brand’s ability to stay relevant across generations—from Baby Boomers who grew up with MJ to Gen Z collectors chasing retro releases—...",
+   "url": "https://education.physiotec.ca/article/how-nike-and-michael-jordan-built-a-50b-empire-the-true-nike-jordan-net-worth-story",
+   "published_at": "2026-09-13",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "campanhas.apadariaportuguesa.pt",
+   "title": "The Hidden Value: How Much Is the Jordan Brand Worth in 2024? — Apadaria Networth Web",
+   "text": "It fluctuates with each limited-edition drop, each viral social media moment, and each time a new generation discovers the lore of Air Jordans. ... The brand’s worth is also tied to its ability to innovate without diluting its core appeal. Recent ventures—like the Jordan x Travis Scott collaboration...",
+   "url": "https://campanhas.apadariaportuguesa.pt/article/the-hidden-value-how-much-is-the-jordan-brand-worth-in-2024",
+   "published_at": "2026-09-24",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "n8n.soundshockaudio.com",
+   "title": "How Jordan’s 2021 Wealth Redefined Global Branding — Shocking Net Worth",
+   "text": "Then came the 2011 \"Last Dance\" campaign, a masterclass in nostalgia marketing that reignited global interest in Jordan’s legacy. Suddenly, the brand wasn’t just for kids or basketball fans. It was for collectors, for fashion-forward millennials, for anyone who saw sneakers as an investment. ... The...",
+   "url": "https://n8n.soundshockaudio.com/article/how-jordan-s-2021-wealth-redefined-global-branding",
+   "published_at": "2026-09-21",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Gen Z aren&#39;t deep",
+   "text": "Patreon Link: https://www.patreon.com/jordanshanks Come see my brand new live show EVERY MONDAY ... · Jordan Shanks",
+   "url": "https://www.youtube.com/watch?v=2douOzF1TF4",
+   "published_at": "2023-08-18T06:34:56Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/2douOzF1TF4/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "MY BEANIES MAKE YOU THICC! NO WORKOUT NEEDED 😍🌴Corifinds on IG #fashion#shorts#comedy",
+   "text": "· CoriFinds",
+   "url": "https://www.youtube.com/watch?v=fQq9F-De6Xk",
+   "published_at": "2023-03-29T22:37:14Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/fQq9F-De6Xk/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Jubilee Reaction, Reddit AITA, &amp; IT’S MY BIRTHDAY!!",
+   "text": "Subscribe to my weekly email update! https://www.prageru.com/series/unapologetic What's up guys! Today's my birthday and to ... · Amala Ekpunobi",
+   "url": "https://www.youtube.com/watch?v=ms3pv-cozR0",
+   "published_at": "2023-06-16T23:41:01Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/ms3pv-cozR0/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "How to walk without creasing your Jordan’s 101 #memes #funny #shorts",
+   "text": "How to walk without creasing your Jordan's 101 Air Force 1 #shorts #memes #memesdaily #funny #viral memes, memes i found ... · DaniHVAC",
+   "url": "https://www.youtube.com/watch?v=0lnWa5L3h80",
+   "published_at": "2023-01-26T13:44:04Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/0lnWa5L3h80/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Is Jordan Peterson okay?",
+   "text": "Socials Below ) Thanks for watching visit us again for more commentary, reaction videos, deep dives, political analysis, ... · Shark3ozero",
+   "url": "https://www.youtube.com/watch?v=3g7JtmyNTRk",
+   "published_at": "2023-03-13T03:10:37Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/3g7JtmyNTRk/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"do gen z like jordan brand reddit tiktok\": 161 sampled",
+   "text": "Sample: bros entire existence is dictated by people on phones and he hates it so much lmao | Completely agree. What you said about the Simpsons really hits different. As an early zoomer, I can attest to how I've b | I'm gen z, what you got for me champ?",
+   "url": "https://www.youtube.com/results?search_query=do%20gen%20z%20like%20jordan%20brand%20reddit%20tiktok",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sports.yahoo.com",
+   "title": "How Jordan Brand Is Marking ‘40 Years of Greatness' While Ushering in a Bold New Era - Yahoo Sports",
+   "text": ", Jordan Brand is ... its 4 ... th anniversary with a year-long marketing campaign loaded with ... The AJ40 launch marks the \"culminating moment\" for the brand's \"40 Years of Greatness\" campaign, said Sargent. \"The strategy on this one was making sure that we're positioning the shoe for the next generation,\" she said.",
+   "url": "https://sports.yahoo.com/article/jordan-brand-marking-40-years-134430965.html",
+   "published_at": "2025-07-23T00:00:00.000Z",
+   "kind": "web",
+   "tier": 4,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://s.yimg.com/lo/mysterio/api/6c73fbe91d84f247753ea3d8be3986e493b7746b83635f545f27d140cf7bc08a/lightyear_networkapi/resizefill_w600_h315;quality_80;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fadweek_334%2Ff5e0e47ae72ce0eac18be2919893e22c",
+   "country": null
+  }
+ ]
+}

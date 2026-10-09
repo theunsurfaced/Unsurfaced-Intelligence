@@ -1,0 +1,468 @@
+{
+ "id": "q10",
+ "query": "Liquid Death and the energy drink shelf",
+ "frame": {
+  "entity": "Liquid Death",
+  "category": "energy drinks",
+  "audience": "young adults",
+  "market": "US",
+  "competitors": [
+   "Red Bull",
+   "Monster Energy",
+   "Bang Energy",
+   "Prime Energy"
+  ],
+  "question": "How is Liquid Death positioning itself against established energy drink brands?",
+  "anchors": [
+   "liquid death",
+   "energy drink",
+   "shelf space",
+   "energy beverage",
+   "canned energy",
+   "brand positioning",
+   "market share",
+   "retail placement",
+   "alternative energy",
+   "edgy branding"
+  ],
+  "exclude": [
+   "sports drinks",
+   "soft drinks",
+   "coffee energy",
+   "supplements"
+  ],
+  "task": "compare",
+  "threads": [
+   "How is Liquid Death gaining shelf space against incumbents?",
+   "What resonates with consumers about Liquid Death's brand?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Liquid Death energy drink market share growth",
+   "research": "alternative energy drink brands consumer perception",
+   "discourse": "liquid death vs monster energy reddit",
+   "web": "Liquid Death energy drink shelf positioning strategy"
+  }
+ },
+ "frozen_at": "2026-10-09T02:54:26.365Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "marketingweek.com",
+   "title": "The 10 tricks Liquid Death used to beat the odds and stay alive",
+   "text": "To get around that, Cessario started by going direct-to-consumer. It made no financial sense, but it proved there was demand even at $20 per 12 pack. That created interest from retailers such as Whole Foods and 7-11, which then began stocking Liquid Death. Perhaps the smartest move was using on-trade distributors servi",
+   "url": "https://www.marketingweek.com/10-tricks-liquid-death-success/",
+   "published_at": "2024-03-15T10:48:05.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://marketingweek.imgix.net/uploads/2024/02/19155639/Liquid-Death_Press_Landscape_1920x1080-1.jpg?auto=compress,format&crop=faces,entropy,edges&fit=crop&q=60&w=1200&h=700",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Water",
+   "text": "Water is an inorganic compound with the chemical formula H2O. It is a transparent, tasteless, odorless, and nearly colorless chemical substance. It is the main constituent of Earth's streams, lakes, and oceans. Water is also the fluid of all known living organisms, in which it acts as a solvent. Water, being a polar molecule, undergoes strong intermolecular hydrogen bonding which is a large contributor to its physical and chemical properties. It is vital for all known forms of life, despite not providing food energy or being an organic micronutrient. Due to its presence in all organisms, its chemical stability, its worldwide abundance, and its strong polarity relative to its small molecular ",
+   "url": "https://en.wikipedia.org/wiki/Water",
+   "published_at": "2026-10-07T16:50:09Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/H2O_2D_labelled.svg/330px-H2O_2D_labelled.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Alcoholic beverage",
+   "text": "An alcoholic beverage is any drink that contains alcohol. Alcoholic beverages are typically divided into three classes: beers, wines, and spirits; with alcohol content typically between 3% and 50%. The exact amount on which a beverage is considered alcoholic differs by country, with some considering drinks containing less than 0.5% to be non-alcoholic. These beverages are primarily consumed for the psychoactive effects that they produce.",
+   "url": "https://en.wikipedia.org/wiki/Alcoholic_beverage",
+   "published_at": "2026-09-21T11:09:03Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Common_alcoholic_beverages.jpg/330px-Common_alcoholic_beverages.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Expiration date",
+   "text": "An expiration date or expiry date is a previously determined date after which something should no longer be used, either by operation of law or by exceeding the anticipated shelf life for perishable goods. Expiration dates are applied to some food products and other products like infant car seats where the age of the product may affect its safe use.",
+   "url": "https://en.wikipedia.org/wiki/Expiration_date",
+   "published_at": "2026-08-10T12:34:33Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Expiration.jpg/330px-Expiration.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "distribution-agents.com",
+   "title": "How Liquid Death Mountain Water, Inc. built its distribution engine | Distribution Agents",
+   "text": "- Made flagship retail bets (Target, 7-Eleven national rollout, Walmart) with shelf placement next to beer and energy drinks, not in the bottled-water aisle. Positioning the product in a different category at retail differentiated it physically as well as visually. ... -IP-as-distribution: The ... - Anti-marketing posi",
+   "url": "https://www.distribution-agents.com/research/liquid-death",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "foodnavigator.com",
+   "title": "Liquid Death's marketing and brand building strategy",
+   "text": "## Liquid Death has turned the bottled water category on its head: with its energy-drink-esque branding and novel approach to marketing ('Murder your thirst!' declares the brand's tagline). Mike Cessario, founder and CEO, sits down with BeverageDaily and explains how he's built his beverage brand. ... 'to make ... MC:",
+   "url": "https://www.foodnavigator.com/Article/2024/06/19/Liquid-Death-s-marketing-and-brand-building-strategy/",
+   "published_at": "2024-06-19T13:24:16.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.foodnavigator.com/resizer/v2/WATBMSJYSZIU7HXCFSF256OZLQ.jpg?auth=1a84eb5e2a4f8fcd91950eeb8f6ba11937d2917d5460d82cd1a6959bd6b02ea5&width=1200&height=630&smart=true",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "retailwire.com",
+   "title": "Can Liquid Death Shoulder Its Way Into a Crowded 'Healthy Soda' Market via Edgy Marketing and Brand Awareness?",
+   "text": "Over the course of the past few years, Liquid Death has set its sights on expanding its product offerings to include iced tea and healthy soda. In an extensive interview with Modern Retail, Marisa Bertha, chief strategy officer at Liquid Death, spoke to the company’s aspirations as it appears set to compete with much l",
+   "url": "https://retailwire.com/discussion/can-liquid-death-compete-healthy-soda-market/",
+   "published_at": "2025-03-28T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://retailwire.com/wp-content/uploads/Liquid-Death-Depositphotos_644385268_XL-1024x768.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "insideretail.us",
+   "title": "“We are still in the early innings”: Liquid Death’s SVP of strategy - Inside Retail US",
+   "text": "are still in ... By Nicole Kirichanskaya May 15, 2024 Liquid Death is not a standard name for a beverage brand, especially for a drink as healthy and innocuous as water. However, as unique as the brand name is, the company has taken an even more “metal” approach to marketing. From collaborations with beauty brands t",
+   "url": "https://insideretail.us/we-are-still-in-the-early-innings-liquid-deaths-svp-of-strategy/",
+   "published_at": "2024-05-15T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://insideretail.us/wp-content/uploads/2024/05/liquid-death.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "the-aisle.co",
+   "title": "Liquid Death · shelf presence & positioning · The Aisle Company",
+   "text": "Liquid Death is a beverage brand known for its unique approach to hydration, offering a range of products including sparkling water, iced tea, and energy drinks. The brand emphasizes a 'better-for-you' philosophy with products that contain less sugar and fewer calories than traditional options. Liquid Death's offerings",
+   "url": "https://the-aisle.co/brand/liquid-death",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "cpgguys.com",
+   "title": "Liquid Death's Benoit Vatere - Brand Disruption in the Agentic A…",
+   "text": "And as a digital native brand, the retail media makes a lot of sense. ... And so for us, as we're trying to grab consideration from the big awareness that we have, retail media is the go-to. ... Well, you need to do the theater outside of that platform. So in the moment that they need it, dispense w...",
+   "url": "https://www.cpgguys.com/vatere/",
+   "published_at": "2026-10-07",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "youtube.com",
+   "title": "Liquid Death: The Business Model Nobody Saw Coming",
+   "text": "What started as a joke idea from marketing executive Mike Cessario turned into a billion dollar beverage brand built entirely on branding, humor, and viral marketing instead of the product itself. ... We cover the company's asset-light strategy, its unconventional retail approach, its surprisingly p...",
+   "url": "https://www.youtube.com/watch?v=BeLLOiCDkmI",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "education.physiotec.ca",
+   "title": "How Liquid Death's 2024 Valuation Exposes the Future of ...",
+   "text": "This isn’t just another craft soda story; it’s a case study in how a brand weaponizes nostalgia, sustainability, and aggressive digital storytelling to command premium pricing in a crowded market. ... While giants like Coca-Cola and PepsiCo dominate shelves with decades-old formulas, Liquid Death ha...",
+   "url": "https://education.physiotec.ca/article/how-liquid-death-s-2024-valuation-exposes-the-future-of-beverage-tech",
+   "published_at": "2026-09-13",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "everything-pr.com",
+   "title": "12 Grocery and CPG Marketing Campaigns Worth Studying",
+   "text": "**3. Liquid Death's punk-rock canned water positioning, 2019-present.** A brand built entirely on tone, selling plain canned water with heavy-metal branding and a \"Murder Your Thirst\" tagline, functioning as satire of the energy-drink category rather than a traditional hydration pitch. Liquid Death ...",
+   "url": "https://everything-pr.com/12-grocery-cpg-marketing-campaigns",
+   "published_at": "2026-10-03",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "accio.com",
+   "title": "Liquid Death Vending Machine Trends 2026 - Accio Work",
+   "text": "Liquid Death's existing brand identity—leveraging \"tallboy\" aluminum cans and edgy marketing—aligns with the \"moment-driven\" sales trend, where vending solves specific needs like commute gaps or concert hydration. ... Liquid Death wins through brand \"cool factor\" and 200-300% price premiums. ... Liq...",
+   "url": "https://www.accio.com/business/liquid-death-vending-machine",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "farabiulder.com",
+   "title": "Liquid Death Marketing Strategy: 7 Plays DTC Brands Can Copy",
+   "text": "Liquid Death’s marketing strategy is to run the company like an entertainment brand that happens to sell water, not a beverage brand that happens to make ads. It works because content built to be *shared*—dark humor, heavy-metal aesthetics, and stunts like skateboards painted in Tony Hawk’s real blo...",
+   "url": "https://farabiulder.com/blog/liquid-death-marketing-strategy",
+   "published_at": "2026-09-11",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "sent.news",
+   "title": "Liquid Death Shows How Branding Turned Water Into a $1.4 ...",
+   "text": "Liquid Death did that through three connected strategies. It created marketing people wanted to watch, turned its product into a cultural object, and then used the audience it built to expand far beyond plain water. ... Its skull logo and black aluminum can looked completely different from the bottl...",
+   "url": "https://sent.news/p/liquid-death-shows-how-branding-turned-water-into-a-1-4-billion-business",
+   "published_at": "2026-09-21",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "How a Dumb Idea Turned Into a $700M Company",
+   "text": "Liquid Death is a masterclass in marketing. Get 25% off Blinkist premium and enjoy 2 memberships for the price of 1! Start your ... · Newsthink",
+   "url": "https://www.youtube.com/watch?v=r9k5W-ZpacY",
+   "published_at": "2023-03-15T13:02:20Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/r9k5W-ZpacY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "This Energy Drink MELTED a Millionaire’s Face #radioactive #science #physics",
+   "text": "In the 1920s, millionaire Eben Byers drank a \"miracle\" energy drink called Radithor—a radioactive tonic prescribed by his doctor ... · History Shortcuts",
+   "url": "https://www.youtube.com/watch?v=0kIKxJEDTco",
+   "published_at": "2025-03-24T14:01:09Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/0kIKxJEDTco/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "A Gamer Drank 12 Energy Drinks In 10 Minutes. This Is What Happened To His Organs.",
+   "text": "Mug is here ▻ https://crowdmade.com/collections/chubbyemu @HemeReview Weird Time When Energy Drinks Cured My ... · Chubbyemu",
+   "url": "https://www.youtube.com/watch?v=tAtaIZD0Ebs",
+   "published_at": "2021-09-13T19:00:02Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/tAtaIZD0Ebs/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Why you should NEVER GOON😱… #goon",
+   "text": "· Michael Kangethe",
+   "url": "https://www.youtube.com/watch?v=5fxaPh8T0ro",
+   "published_at": "2024-08-01T18:19:25Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/5fxaPh8T0ro/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Margot Robbie Conspiracy Theory!",
+   "text": "We asked the legendary Margot Robbie about the internet conspiracy theory that her and Emma Mackey are the same person ... · IGV Studios",
+   "url": "https://www.youtube.com/watch?v=GyZMe7CdqdU",
+   "published_at": "2022-10-03T16:00:09Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/GyZMe7CdqdU/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"liquid death vs monster energy reddit\": 223 sampled",
+   "text": "Sample: *What 'dumb' idea do you think has the potential to become the next big success?* Get 25% off Blinkist premium and enjoy | 1993: Snapple 2023: Liquid Death? A sucker born every minute. | Fooling millions of gullible people into buying things that's cheaply available, is called \"marketing\" now. What's wrong",
+   "url": "https://www.youtube.com/results?search_query=liquid%20death%20vs%20monster%20energy%20reddit",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

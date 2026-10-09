@@ -1,0 +1,501 @@
+{
+ "id": "q03",
+ "query": "New Balance and younger buyers",
+ "frame": {
+  "entity": "New Balance",
+  "category": "athletic footwear",
+  "audience": "younger buyers",
+  "market": "US",
+  "competitors": [
+   "Nike",
+   "Adidas",
+   "Puma",
+   "Saucony",
+   "ASICS"
+  ],
+  "question": "How can New Balance increase appeal and market share among younger consumers?",
+  "anchors": [
+   "new balance",
+   "younger buyers",
+   "gen z",
+   "millennial",
+   "athletic shoes",
+   "sneakers",
+   "youth market",
+   "brand perception",
+   "footwear",
+   "age demographic",
+   "purchase intent",
+   "style preferences"
+  ],
+  "exclude": [
+   "older consumers",
+   "running performance only",
+   "heritage brands",
+   "luxury footwear"
+  ],
+  "task": "brand",
+  "threads": [
+   "What is New Balance's current perception among Gen Z and millennial consumers?",
+   "Which competitors are winning younger buyer share and how?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "New Balance younger consumers Gen Z appeal",
+   "research": "youth market segmentation athletic footwear brand preference",
+   "discourse": "why gen z buying new balance sneakers reddit",
+   "web": "New Balance marketing younger buyers strategy"
+  }
+ },
+ "frozen_at": "2026-10-09T02:52:56.566Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 1,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "adage.com",
+   "title": "New Balance CMO on reinventing heritage products for Gen Z - Ad Age",
+   "text": "New Balance CMO on reinventing heritage products for Gen Z - Ad Age # Reinventing heritage products to appeal to Gen Z with New Balance CMO ... In business more than a century, New Balance still tries to operate like a challenger brand. (newbalance.com) By Adrianne Pasquarelli January 28, 2026 05:00 AM EST",
+   "url": "https://adage.com/ad-age-video-podcast/marketers-brief/aa-reinventing-heritage-products-gen-z-new-balance-cmo/",
+   "published_at": "2026-01-28T00:00:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.adage.com/resizer/v2/RIXPIKA2QRCR5LW74V2ZXXWK6M.jpg?auth=f91ae26b3d4b4b7b061621ee23792ef63038adedeab2c789a399ca6595fc0f52&width=1200#.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "businessoffashion.com",
+   "title": "Inside New Balance’s Plan to Become a $10 Billion Sportswear Giant | BoF",
+   "text": "Today, New Balance is driving brand heat through collaborations with a handful of key partners like Aimé Leon Dore’s Teddy Santis, Joe Freshgoods and Kith’s Ronnie Fieg; and expanding into sports beyond running by working with some of the world’s most in-demand young athletes, like US tennis champion Coco Gauff, Englis",
+   "url": "https://www.businessoffashion.com/articles/sports/inside-new-balances-plan-to-become-a-10-billion-sportswear-giant/",
+   "published_at": "2024-07-30T04:29:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://img.businessoffashion.com/resizer/v2/ZZDQSIACZBEO5M4RPKDRT3X5JE.jpg?smart=true&auth=c66aec527a6a8ac12fddd1ccb80b97ee4f8b1eb9e1dc58f83a40376b1a0396d6&width=1200&height=630",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Peter Parker (Marvel Cinematic Universe)",
+   "text": "Peter Benjamin Parker also known by his alias, Spider-Man, is a fictional character portrayed by Tom Holland in the Marvel Cinematic Universe (MCU) media franchise, based on the Marvel Comics superhero of the same name. Peter is initially depicted as a student at the Midtown School of Science and Technology who received spider-like and superhuman abilities after being bitten by a radioactive spider.",
+   "url": "https://en.wikipedia.org/wiki/Peter_Parker_(Marvel_Cinematic_Universe)",
+   "published_at": "2026-10-06T01:40:34Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/en/0/0f/Tom_Holland_as_Spider-Man.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Toyota bB",
+   "text": "The Toyota bB is a mini MPV produced by the Japanese car company Toyota. The first generation launched in 2000, and the second generation was jointly developed with Daihatsu from 2005.",
+   "url": "https://en.wikipedia.org/wiki/Toyota_bB",
+   "published_at": "2026-08-22T09:31:27Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/2008_Toyota_bB_01.jpg/330px-2008_Toyota_bB_01.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Lord of War",
+   "text": "Lord of War is a 2005 crime drama film written, produced and directed by Andrew Niccol. It stars Nicolas Cage, Jared Leto, Bridget Moynahan, Ethan Hawke, and Eamonn Walker in primary roles. The plot follows an unscrupulous Ukrainian-American man named Yuri Orlov as he participates in the global arms trafficking industry in the years preceding and succeeding the dissolution of the Soviet Union.",
+   "url": "https://en.wikipedia.org/wiki/Lord_of_War",
+   "published_at": "2026-09-18T22:48:16Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/en/9/92/Lordofwar.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "forbes.com",
+   "title": "How New Balance Went From ‘Dad Shoe’ To Scoring The No. 1 NBA Draft Prospect",
+   "text": "was successful, ... in August. ... such a rigorous chase for ... for the ... In fact, ... Now, as the sneaker landscape has changed, so has that mentality. In a bid to redefine its place in the sports hierarchy and reach the next generation of consumers, New Balance has spent the last 15 years reshaping its marketing s",
+   "url": "https://www.forbes.com/sites/justinbirnbaum/2025/06/24/how-new-balance-went-from-dad-shoe-to-scoring-the-no-1-nba-draft-prospect/",
+   "published_at": "2025-06-24T10:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nobledigital.com",
+   "title": "New Balance case study - Noble Digital",
+   "text": "New Balance case study: how Noble used audience data and the brand's deep history to find a fresh position for PF Flyers and tap into the next generation of footwear culture. ... The number they answered for A new position for a legacy line, with younger audiences Noble's role Data analysis, strategic territories, cam",
+   "url": "https://nobledigital.com/case-studies/new-balance/",
+   "published_at": "2026-05-16T19:21:35.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://nobledigital.com/wp-content/uploads/Pf_header2.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "theharrispoll.com",
+   "title": "How New Balance Won over Gen Z - The Harris Poll",
+   "text": "New data reveals how New Balance turned dad shoes into a Gen Z favorite, building real momentum with younger consumers. By Claire Feichtmeier February 27, 2025 ... Using data from QuestBrand by The Harris Poll, Ad Age released their quarterly Gen Z Brand Tracker in February. This tracker ranks the top 20 brands with",
+   "url": "https://theharrispoll.com/articles/dad-shoes-are-cool-again-how-new-balance-successfully-won-over-gen-z/",
+   "published_at": "2025-02-27T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://theharrispoll.com/wp-content/uploads/2025/02/AdobeStock_889295275_Editorial_Use_Only.jpeg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "thefreetoaster.com",
+   "title": "How New Balance's CMO Turned Around A 15-Year Decline",
+   "text": "TL;DR - For 15 years, New Balance watched its revenues decline. Consumers saw its sneakers as “dad shoes”—safe, comfortable, but uncool. Traditional direct-response marketing wasn’t reversing the trend. In April 2020, a new CMO, Chris Davis, arrived with a bold idea: flip the marketing mix from a 70% reliance on direct",
+   "url": "https://www.thefreetoaster.com/p/how-new-balance-s-cmo-turned-around-a-15-year-decline",
+   "published_at": "2024-12-05T14:38:54.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://substackcdn.com/image/fetch/$s_!rj2J!,w_1200,h_675,c_fill,f_jpg,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd861b191-5dd2-4324-a016-1ac48f5daf33_1875x1053.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "bostonglobe.com",
+   "title": "New Balance was founded here more than century ago. It’s finally showing its Boston roots. - The Boston Globe",
+   "text": "To attract Gen Z, the company’s fastest-growing customer base, the brand needs to project “authenticity.” ... And more broadly, the company has emphasized authenticity as part of its philosophy over the past several years. ... First was a partnership with marketing firm VML to create a new slogan in...",
+   "url": "https://www.bostonglobe.com/2026/09/25/business/new-balance-ad-campaign-ayo-edebiri-brattle-book-shop/",
+   "published_at": "2026-09-25",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "rock929rocks.com",
+   "title": "New Balance Taps Dorchester Native Ayo Edebiri, Brattle Book Shop for Marketing Push",
+   "text": "*The Boston Globe* reported that the Brattle Book Shop is anchoring New Balance's Made in USA campaign, featuring its owners, Ken Gloss and Joyce Kosofsky, in photos and video and positioning the bookstore on a global stage. According to the *Globe, * the** ** Made in USA campaign features multiple ...",
+   "url": "https://rock929rocks.com/2026/09/29/new-balance-taps-dorchester-native-ayo-edebiri-brattle-book-shop-for-marketing-push/",
+   "published_at": "2026-09-29",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wisevoter.com",
+   "title": "New Balance Launched Campaign Featuring Brattle Book ...",
+   "text": "New Balance has launched a new global marketing campaign centered on the Boston-based Brattle Book Shop. The initiative features photographs and video of the bookstore owners wearing the brand's products to celebrate hometown connections. ... The company aims to project a sense of authenticity to at...",
+   "url": "https://wisevoter.com/world/us/ma/boston/2026/09/25/new-balance-launches-brattle-book-shop-campaign",
+   "published_at": "2026-09-25",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "openthemagazine.com",
+   "title": "Old Soles, New Rules: Nike & the Battle to Stay Desirable",
+   "text": "A business old enough to have watched several generations discover youth culture is still expanding at a pace many younger brands would happily borrow. Its June 2026 collaboration with Miu Miu and Coco Gauff offers a useful glimpse of how. The collection brought together a current tennis star, a lux...",
+   "url": "https://openthemagazine.com/business/old-soles-new-rules-nike-the-battle-to-stay-desirable",
+   "published_at": "2026-10-05",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "bostonfed.org",
+   "title": "How New Balance found its stride without forgetting its roots",
+   "text": "We realized the brand needed to get younger. In the U.S., our loyal consumers from the 1990s and 2000s stayed with us, but we weren’t attracting enough new ones. ... But we didn’t just want to win over the athletes. In 2019, we began focusing on the 18-to 24-year-old global consumer from both a perf...",
+   "url": "https://www.bostonfed.org/news-and-events/news/2026/10/joe-preston-new-balance-interview-growth-purpose-in-conversation.aspx",
+   "published_at": "2026-10-06",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "vmsd.com",
+   "title": "New Balance Continues Upping Its Game",
+   "text": "New Balance has been opening new stores across the U.S. and internationally with a focus on the customer experience. ... “We recognize that retail serves as more than just a point of sale,” says Tracy Knauer, SVP, North America, “it’s a premium brand-building platform. Our stores are physical manife...",
+   "url": "https://vmsd.com/new-balance-continues-upping-its-game/",
+   "published_at": "2026-10-06",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "accio.com",
+   "title": "Trending New Balance 550 Colorways in 2026 - accio.com",
+   "text": "Its resurgence is attributed to its retro aesthetic, aligning with \"Normcore\" and \"Gorpcore\" trends, and its appeal to a younger, diverse audience 1. ... - **Collaboration-driven success**: New Balance has leveraged collaborations with tastemakers like Teddy Santis (Aimé Leon Dore), Joe Freshgoods, ...",
+   "url": "https://www.accio.com/business/which-new-balance-550-colorways-are-trending-this-year-2026",
+   "published_at": "2026-09-15",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "q.pfl.com",
+   "title": "The New Balance Owner: Power, Strategy, and the Brand’s Next Chapter — PFL Zone",
+   "text": "The **new balance owner** has aggressively shifted toward direct-to-consumer sales, which now account for over 40% of revenue. The Factory 55 stores—designed as high-margin, experience-driven hubs—are a cornerstone of this strategy. ... This growth hasn’t come from mass advertising but from niche ma...",
+   "url": "https://q.pfl.com/article/the-new-balance-owner-power-strategy-and-the-brand-s-next-chapter",
+   "published_at": "2026-09-20",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Why You Should NEVER Wear A Dad Shoe... #shorts",
+   "text": "Join this channel to get access to perks: https://www.youtube.com/channel/UCXPXfAAo-yV6Y-0PZecwBLw/join Instagram: ... · Nico Leonard",
+   "url": "https://www.youtube.com/watch?v=E7MGfEg3kC0",
+   "published_at": "2023-04-14T11:00:09Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/E7MGfEg3kC0/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "New Balance&#39;s GENIUS Marketing Strategy",
+   "text": "Get my NEW book, Make Money Easy! https://lewishowes.com/moneyyou Subscribe for more great content: ... · Lewis Howes",
+   "url": "https://www.youtube.com/watch?v=zlp8MdYUn1M",
+   "published_at": "2025-06-12T19:01:02Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/zlp8MdYUn1M/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Team Ankle Socks or Team Crew Socks? #millennials are torn! #relatable #genz #fashion",
+   "text": "· MelissaKristinTV - DigitalMunchies",
+   "url": "https://www.youtube.com/watch?v=iIB21FACrE4",
+   "published_at": "2025-06-06T00:52:15Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/iIB21FACrE4/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "What Barefoot Shoes Do To Your Feet...5 Years Later",
+   "text": "Something really surprising happened to my feet since wearing barefoot shoes. I've worn minimalist and barefoot shoes for the ... · Balancing Laura",
+   "url": "https://www.youtube.com/watch?v=EOxOrxggBMI",
+   "published_at": "2022-10-16T14:04:57Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/EOxOrxggBMI/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Nike Zoom Vomero 5 or New Balance 9060?!",
+   "text": "Recent Uploads** : $500 Resale for Sneakers...\"Not too bad a price\"?! SINCE WHEN?!: https://youtu.be/E2my8GoEnQg Fear of ... · Talks With TJ",
+   "url": "https://www.youtube.com/watch?v=jdGCdCMteUg",
+   "published_at": "2024-11-03T16:00:38Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/jdGCdCMteUg/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"why gen z buying new balance sneakers reddit\": 241 sampled",
+   "text": "Sample: If I show up to a barbecue, and the guy on the grill is wearing one of those, I know it's going to be some good grilling | Flashback: Young Nico asking why his mum is going to tennis every night… hitting him right in the feels | Nico was the kid that had to wait in the car while... Well you know 😂",
+   "url": "https://www.youtube.com/results?search_query=why%20gen%20z%20buying%20new%20balance%20sneakers%20reddit",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Alice's Adventures in Wonderland and Through the Looking-Glass",
+   "text": "",
+   "url": "https://www.google.com/search?kgmid=%2Fg%2F11b5m1qm0k",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

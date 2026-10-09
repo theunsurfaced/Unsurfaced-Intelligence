@@ -1,0 +1,483 @@
+{
+ "id": "q18",
+ "query": "Spotify Wrapped and year-end rituals",
+ "frame": {
+  "entity": "Spotify",
+  "category": "music streaming",
+  "audience": "music listeners",
+  "market": "US",
+  "competitors": [
+   "Apple Music",
+   "Amazon Music",
+   "YouTube Music",
+   "Tidal"
+  ],
+  "question": "How do year-end music rituals like Spotify Wrapped drive engagement and brand loyalty?",
+  "anchors": [
+   "spotify wrapped",
+   "year-end music ritual",
+   "streaming recap",
+   "annual music summary",
+   "listening habits",
+   "social sharing music",
+   "personalized music data",
+   "end of year tradition",
+   "music discovery moment",
+   "user engagement peak"
+  ],
+  "exclude": [
+   "gift guides",
+   "holiday shopping",
+   "year-end sales",
+   "new year resolutions"
+  ],
+  "task": "brand",
+  "threads": [
+   "What drives Spotify Wrapped's viral social sharing?",
+   "How does the annual recap influence subscription retention?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Spotify Wrapped 2024 engagement impact",
+   "research": "year-end music consumption rituals streaming platforms",
+   "discourse": "spotify wrapped why people share it",
+   "web": "Spotify Wrapped annual tradition user behavior"
+  }
+ },
+ "frozen_at": "2026-10-09T02:56:19.642Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "businessinsider.com",
+   "title": "How Does Spotify Wrapped Get Made? Inside the Yearlong Process - Business Insider",
+   "text": "Spotify Wrapped, an annual walk down memory lane available to the streaming platform's more than 713 million users, is now a hallmark for the company, flooding social feeds for one day every year and spawning copycats. ... the December launch date ... The annual wrap-up has also evolved over the years, assessing new me",
+   "url": "https://www.businessinsider.com/inside-spotify-wrapped-team-creation-process-2025-12",
+   "published_at": "2025-12-03T00:00:00.000Z",
+   "kind": "web",
+   "tier": 2,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.insider.com/692f52e504d0f0a114f14766?width=1200&format=jpeg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "KPop Demon Hunters",
+   "text": "KPop Demon Hunters is a 2025 American animated musical urban fantasy film co-written and directed by Maggie Kang and Chris Appelhans. Produced by Sony Pictures Animation for Netflix, the film stars the voices of Arden Cho, Ahn Hyo-seop, May Hong, Ji-young Yoo, Yunjin Kim, Daniel Dae Kim, Ken Jeong, and Lee Byung-hun. The story follows a K-pop girl group, Huntrix, who lead double lives as demon hunters. They face off against a rival boy band, the Saja Boys, whose members are secretly demons.",
+   "url": "https://en.wikipedia.org/wiki/KPop_Demon_Hunters",
+   "published_at": "2026-10-02T03:56:47Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/en/9/93/KPDHposter.jpeg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Abracadabra (Lady Gaga song)",
+   "text": "\"Abracadabra\" is a song recorded by American singer-songwriter Lady Gaga for her studio album, Mayhem (2025). It was written and produced by Gaga, Andrew Watt, and Cirkut, with additional songwriting credits to members of Siouxsie and the Banshees, as it incorporates elements from their 1981 single \"Spellbound\". Musically, it is a dance, dance-pop, electropop, synth-pop, and acid techno track with electronic, industrial, house, and psychedelic influences. The song's lyrics, according to Gaga, reflect on facing life's challenges and finding a sense of magic in them. \"Abracadabra\" was released through Interscope Records on February 3, 2025, as the album's second single.",
+   "url": "https://en.wikipedia.org/wiki/Abracadabra_(Lady_Gaga_song)",
+   "published_at": "2026-10-05T09:49:50Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/en/0/04/Lady_Gaga_-_Abracadabra.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Dhurandhar",
+   "text": "Dhurandhar is a 2025 Indian Hindi-language spy action thriller film written and directed by Aditya Dhar. It is produced by Aditya Dhar, Lokesh Dhar and Jyoti Deshpande under Jio Studios and B62 Studios. The film features an ensemble cast consisting of Ranveer Singh, Akshaye Khanna, Sanjay Dutt, Arjun Rampal, R. Madhavan, Sara Arjun, Rakesh Bedi, Gaurav Gera, and Danish Pandor alongside several supporting actors. The first instalment of a duology, it centres on a high-stakes covert counter-terrorism operation. The film follows an undercover Indian intelligence agent who infiltrates Karachi's criminal syndicates and political power structures in Pakistan in an effort to dismantle a terror netw",
+   "url": "https://en.wikipedia.org/wiki/Dhurandhar",
+   "published_at": "2026-10-05T16:44:09Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://upload.wikimedia.org/wikipedia/en/c/ce/Dhurandhar_poster.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "thedrum.com",
+   "title": "Spotify Wrapped at 10: ‘It is its own cultural moment now’ | The Drum",
+   "text": "‘Spotify Wrapped’ is a year-long project for the music streaming platform’s in-house team, eagerly anticipated by millions. This year, however, the event carries extra significance as it marks its 10th anniversary, adding a layer of pressure for the team to deliver it in an interesting and significant way. Going into",
+   "url": "https://www.thedrum.com/news/spotify-wrapped-10-it-its-own-cultural-moment-now",
+   "published_at": "2024-12-04T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://thedrum-media.imgix.net/thedrum-prod/s3/charlixcx_pendry_ooh.png?w=1280&ar=default&fit=crop&crop=faces&auto=format",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "newsroom.spotify.com",
+   "title": "Surprised by Your 2025 Wrapped? Here’s a Look at How the Data Comes to Life — Spotify",
+   "text": "Every year, Spotify Wrapped offers a personalized look back at the audio that defined your year. It’s a snapshot of your listening habits, designed to tell the story of your year in sound. And sometimes, that story can hold a few surprises. There are many valid ways to rank listening habits, and at Spotify, our data s",
+   "url": "https://newsroom.spotify.com/2025-12-05/wrapped-methodology-explained/",
+   "published_at": "2025-12-05T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://storage.googleapis.com/pr-newsroom-wp/1/2025/12/25_1128_Wrapped-Header_Horizontal-Dark_10-e1764947921109.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "newsroom.spotify.com",
+   "title": "How Our 2025 Wrapped Campaign Turns Your Year in Listening Into a Global Celebration — Spotify",
+   "text": "Spotify Wrapped celebrates the audio that defined our year, and the annual global marketing campaign that accompanies it has become a cultural moment in its own right. For 2025, the campaign is a bold, dynamic experience that brings the story of your year in listening into the real world. “2025 Wrapped is our most act",
+   "url": "https://newsroom.spotify.com/2025-12-03/wrapped-marketing-campaign/",
+   "published_at": "2025-12-03T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://storage.googleapis.com/pr-newsroom-wp/1/2025/12/25_1128_Wrapped-Header_Horizontal-Dark_7-1024x583.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "newsroom.spotify.com",
+   "title": "The Simple Truth About How Your Wrapped Comes to Life — Spotify",
+   "text": "Every year, Wrapped gives you a chance to look back on your year in sound. It’s like a mirror showing the moments, moods, and memories that made your listening uniquely yours. Behind every colorful card and stat is data that’s as personal as your playlists, shaped to tell the real story of your year of listening. This",
+   "url": "https://newsroom.spotify.com/2025-12-03/how-your-wrapped-is-made/",
+   "published_at": "2025-12-03T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://storage.googleapis.com/pr-newsroom-wp/1/2025/12/Transparency9752789-1024x583.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wjournalpr.com",
+   "title": "Why Is Everything ‘Wrapped’? You Can Blame Spotify. | Entertainment | wjournalpr.com",
+   "text": "As far as holiday traditions go, it may not reach as far back as Yule logs and wassail, but over the past decade, Spotify Wrapped, the streaming platform’s annual summation of users’ listening habits, has cemented its position as a digital cultural custom. Some users spend all year anticipating their results, thinking",
+   "url": "https://www.wjournalpr.com/lifestyle/entertainment/why-is-everything-wrapped-you-can-blame-spotify/article_9129ec59-f79b-4832-ae68-b3e17033a2ed.html",
+   "published_at": "2025-12-04T16:30:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://bloximages.newyork1.vip.townnews.com/wjournalpr.com/content/tncms/assets/v3/editorial/d/b3/db321fec-145f-4632-8fe4-184d17be7bc4/6931abb3758b9.image.jpg?crop=1763%2C926%2C0%2C124&resize=1200%2C630&order=crop%2Cresize",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "futurowise.com",
+   "title": "The Psychology of Being “Wrapped”",
+   "text": "Wrapped has become an annual digital ritual for Gen Z, rather than another Spotify feature. Spotify has launched Wrapped as an annual campaign that gives the listeners a personalized summary of their listening year. Rather than simply notifying the listeners of what they listened to, Spotify has wra...",
+   "url": "https://www.futurowise.com/post/the-psychology-of-being-wrapped",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wingify.com",
+   "title": "C. Content Marketing",
+   "text": "In the ever-evolving world of digital music streaming, Spotify orchestrated a brilliant strategy known as “Spotify Wrapped” back in 2016 that has become music to its users’ ears. This annual campaign is a testament to the power of personalized engagement. ... Spotify Wrapped offers users a delightfu...",
+   "url": "https://wingify.com/customer-engagement-guide/digital-customer-engagement/",
+   "published_at": "2026-09-14",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "edgechat.ai",
+   "title": "Spotify Wrapped",
+   "text": "**Spotify Wrapped** is an annual viral marketing campaign by the music streaming service Spotify, released every early December since 2016. It presents each user with a compilation of data about their activity on the platform over the past year, formatted as a sequence of shareable screens, and invi...",
+   "url": "https://www.edgechat.ai/spotify-wrapped",
+   "published_at": "2026-09-17",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "instinctmagazine.com",
+   "title": "Spotify Wrapped Is Coming. You Still Have Time to Fix It. | Instinct Magazine",
+   "text": "Searches for “when does Spotify stop tracking for Wrapped” have reportedly jumped more than 5,000% in the past week, which means the annual ritual of comparing music tastes, judging friends and quietly wondering *Why on earth was that my No. 4 artist?* is approaching fast. ... Spotify has confirmed ...",
+   "url": "https://instinctmagazine.com/spotify-wrapped-time-to-fix/",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "frisco.sportsacademy.us",
+   "title": "The Alchemy of Music Soulmate Spotify — Academy Networth",
+   "text": "The moment **music soulmate Spotify** became a cultural phenomenon was December 2016, when Spotify rolled out Spotify Wrapped. It wasn’t just a recap of your year in music. It was a yearbook of your soul, distilled into a three-minute video. ... Spotify turned listening history into a story. *\"You l...",
+   "url": "https://frisco.sportsacademy.us/article/the-alchemy-of-music-soulmate-spotify",
+   "published_at": "2026-09-27",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "netinfluencer.com",
+   "title": "Spotify's Open Secret: Fandom Is Built Through Brand Relevance, Not Audience Targeting",
+   "text": "The illustration Woo uses for the audience-state argument is Wrapped, Spotify’s annual personalized listening recap, which generated more than 620 million shares in 2025, according to the company. ... “If a social media app told you that you’d spent thousands of minutes scrolling this year, you’d fe...",
+   "url": "https://www.netinfluencer.com/spotify-open-secret-fandom-is-built-through-brand-relevance-not-audience-targeting/",
+   "published_at": "2026-10-05",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "db21.floworder.se",
+   "title": "The Hidden Alchemy of Spotify Dateabilitiy — Flow Order Net Worth",
+   "text": "A 2023 study by the *Journal of Consumer Psychology* found that couples who discussed their Spotify Wrapped statistics reported a 30% higher likelihood of long-term relationship satisfaction—though correlation doesn’t prove causation. ... ### 3. Wrapped is the ultimate relationship diagnostic Spotif...",
+   "url": "https://db21.floworder.se/article/the-hidden-alchemy-of-spotify-dateabilitiy",
+   "published_at": "2026-09-20",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "old.autarch.co",
+   "title": "How Spotify Dateabilitiy Is Redefining Modern Romance — Autarch Networth",
+   "text": "Unlike traditional dating apps that prioritize photos or bios, Spotify leverages *behavioral data*—what users listen to, when, and how often—to infer personality traits, emotional states, and even relationship potential. ... The turning point came in 2018, when Spotify introduced \"Spotify Wrapped,\" ...",
+   "url": "https://old.autarch.co/article/how-spotify-dateabilitiy-is-redefining-modern-romance",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Why Does Everyone Share Their Spotify Wrapped?",
+   "text": "Every year, Spotify Wrapped takes over social media with people proudly sharing their top artists, favorite songs, and total ... · MacroHype",
+   "url": "https://www.youtube.com/watch?v=n0NWwljW-rY",
+   "published_at": "2024-10-10T21:24:38Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/n0NWwljW-rY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "The Greatest Spotify Wrapped of All Time",
+   "text": "· What's The Buzz?",
+   "url": "https://www.youtube.com/watch?v=gpWd-w88fOE",
+   "published_at": "2024-12-04T15:46:25Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/gpWd-w88fOE/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Redshell finds a DIABOLICAL Spotify Wrapped ☠️",
+   "text": "redshell #funny Follow Me! SECONDARY VARIETY CHANNEL: https://www.youtube.com/@RedshellGaming1 ... · Redshell",
+   "url": "https://www.youtube.com/watch?v=sIaXQ4S9u2M",
+   "published_at": "2024-12-05T15:00:54Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/sIaXQ4S9u2M/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Uber Eats Wrapped - SNL",
+   "text": "A commercial advertises Uber Eats' version of Spotify Wrapped. Saturday Night Live. Stream now on Peacock: ... · Saturday Night Live",
+   "url": "https://www.youtube.com/watch?v=Hx7Vv5pqpHg",
+   "published_at": "2025-12-14T06:04:52Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/Hx7Vv5pqpHg/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Spotify’s Wrapped Evil Genius",
+   "text": "Spotify Wrapped isn't a fun feature It's a retention WEAPON disguised as entertainment What Everyone Sees: Every ... · Steven Bell",
+   "url": "https://www.youtube.com/watch?v=m1YimT1VRfY",
+   "published_at": "2025-12-09T03:43:31Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/m1YimT1VRfY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"spotify wrapped why people share it\": 200 sampled",
+   "text": "Sample: DAWG WTF WAS THE LAST ONE | \"big day for anoying people\".. why must you hurt me like this | My summer vibe was \"funeral queef\"",
+   "url": "https://www.youtube.com/results?search_query=spotify%20wrapped%20why%20people%20share%20it",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

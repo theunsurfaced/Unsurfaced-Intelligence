@@ -1,0 +1,511 @@
+{
+ "id": "q02",
+ "query": "Nike in athletic footwear",
+ "frame": {
+  "entity": "Nike",
+  "category": "athletic footwear",
+  "audience": "active consumers",
+  "market": "US",
+  "competitors": [
+   "Adidas",
+   "Puma",
+   "New Balance",
+   "Asics",
+   "Brooks"
+  ],
+  "question": "How is Nike performing in the athletic footwear market against key competitors?",
+  "anchors": [
+   "nike",
+   "athletic footwear",
+   "running shoes",
+   "performance sneakers",
+   "sports shoes",
+   "footwear brand",
+   "athletic shoes",
+   "shoe market",
+   "sneaker performance",
+   "brand leadership"
+  ],
+  "exclude": [
+   "casual footwear",
+   "fashion sneakers",
+   "luxury shoes",
+   "sandals"
+  ],
+  "task": "brand",
+  "threads": [],
+  "period": null,
+  "queries": {
+   "news": "Nike athletic footwear market share 2024",
+   "research": "Nike competitive positioning athletic shoe category",
+   "discourse": "best nike running shoes performance reviews",
+   "web": "Nike athletic footwear products performance"
+  }
+ },
+ "frozen_at": "2026-10-09T02:52:42.858Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "sgbonline.com",
+   "title": "EXEC: UBS Issues ‘Bullish' Note on Running Footwear Despite Nike's Woes",
+   "text": "UBS in a report said it remains 'bullish' on the running footwear category despite investor concerns over a pullback in athletic footwear largely traced to weakness at Nike. ... The analyst believes Nike's challenges are 'company-specific,' with the brand having overly focusing on lifestyle products...",
+   "url": "https://sgbonline.com/exec-ubs-issues-bullish-note-on-running-footwear-despite-nikes-woes/",
+   "published_at": "2026-09-08",
+   "kind": "web",
+   "tier": 2,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Sneakers",
+   "text": "Sneakers (US) or trainers (UK), also known by a wide variety of other names, are shoes primarily designed for sports or other forms of physical exercise, but are also widely used for everyday casual wear.",
+   "url": "https://en.wikipedia.org/wiki/Sneakers",
+   "published_at": "2026-10-04T03:11:59Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Air_Jordan_1_Banned.jpg/330px-Air_Jordan_1_Banned.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Nike, Inc.",
+   "text": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022.",
+   "url": "https://en.wikipedia.org/wiki/Nike%2C_Inc.",
+   "published_at": "2026-10-06T00:33:44Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d3/Nike_Campus%2C_Beaverton_-_DPLA_-_ffa63f1bbaf5cd21aeada3d3978db2b0.jpg/330px-Nike_Campus%2C_Beaverton_-_DPLA_-_ffa63f1bbaf5cd21aeada3d3978db2b0.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Onitsuka Tiger",
+   "text": "Onitsuka Tiger is a Japanese fashion brand owned by Asics. It traces its origins to Onitsuka Co., Ltd., a sports-shoe manufacturer founded in Kobe in 1949 by Kihachiro Onitsuka. The company produced athletic footwear under the Tiger name before merging with two other Japanese sporting-goods companies to form Asics in 1977. Following a hiatus, Asics revived Onitsuka Tiger in Europe in 2002 as a fashion brand.",
+   "url": "https://en.wikipedia.org/wiki/Onitsuka_Tiger",
+   "published_at": "2026-07-30T02:15:09Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/8/87/Onitsuka_Tiger_Logo.svg/330px-Onitsuka_Tiger_Logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Performance Shoes. Nike.com",
+   "text": "Performance Shoes. Nike.com 1. Performance 2. / 3. Shoes ... Nike Sportswear ... Nike Motiva Nike Juniper Trail Nike Ultrafly Nike Zegama ... Nike Streakfly Nike Vomero ... V2K ... Nike Alphafly Nike Vaporfly Nike Zoom Fly ... Sports ( 1) Lifestyle Performance Running Training & Gym + More ... Skateboard",
+   "url": "https://www.nike.com/w/performance-shoes-3k7dgzy7ok",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.nike.com/android-icon-192x192.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Nike Performance Shoes",
+   "text": "Nike Performance Shoes. Nike.com ... 4. / 5. ... Nike Sportswear ... Nike Juniper Trail Nike Ultrafly Nike Streakfly Nike Vomero ... Nike Alphafly Nike Vaporfly Nike Zoom Fly ... Special Field Boot ... Nike Kiger Nike Zoom Rival ... Training & Gym ... Skateboarding ... Track & Field ... High-Intensity Interval Tr",
+   "url": "https://www.nike.com/w/nike-performance-shoes-3k7dgz5clidz7yfbzy7ok",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.nike.com/android-icon-192x192.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "about.nike.com",
+   "title": "Introducing Nike Hybrid, a New Nike Training Performance ...",
+   "text": "Introducing Nike Hybrid, a New Nike Training Performance Footwear System Built from the Ground Up — NIKE, Inc. ... What is Nike Hybrid? Nike Hybrid is a new Nike Training footwear system built for the unique demands of hybrid training and racing. Featuring the Nike Hybrid Fly and Nike Hybrid RN, it helps athletes move",
+   "url": "https://about.nike.com/en/newsroom/releases/introducing-nike-hybrid-a-new-nike-training-performance-footwear-system-built-from-the-ground-up",
+   "published_at": "2026-08-03T14:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://nmp.about.nike.com/about/prod/a0dd09af-e18b-42f6-880a-32db3651b4ed/nike-hybrid-hero.jpg?m=eyJlZGl0cyI6eyJqcGVnIjp7InF1YWxpdHkiOjEwMH0sIndlYnAiOnsicXVhbGl0eSI6MTAwfSwiZXh0cmFjdCI6eyJsZWZ0IjowLCJ0b3AiOjAsIndpZHRoIjoyMTA5LCJoZWlnaHQiOjE0MDZ9LCJyZXNpemUiOnsid2lkdGgiOjkwMH19fQ%3D%3D&s=3c844b1dd23364b839856f60a8e66aa714a3f405bdbf9cda44d65861ac9759af",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Nike Alphafly 4 Men's Road Racing Shoes. Nike.com",
+   "text": "Nike Alphafly 4 Men's Road Racing Shoes. Nike.com ## Men's Road Racing Shoes ... Nike Alphafly 4 ... Our legendary racer delivers more energy with less weight. Our iconic racing shoe is back and lighter than ever. We've updated the Air Zoom unit for the first time in the Alphafly's history, making it softer and quiet",
+   "url": "https://www.nike.com/t/alphafly-4-mens-road-racing-shoes-lw5UiD4C",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/ec516cad-daba-4939-8e19-a3ce165b3def/AIR+ZM+ALPHAFLY+NEXT%25+4.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Nike Vaporfly 4 Men's Road Racing Shoes. Nike.com",
+   "text": "Nike Vaporfly 4 Men's Road Racing Shoes. Nike.com ## Men's Road Racing Shoes ... Nike Vaporfly 4 ... A light, efficient design feels propulsive for all 26.2. The Vaporfly 4 is a lean, mean, mile-eating machine. We trimmed weight in the midsole, outsole and upper from the Vaporfly 3 without sacrificing performance. Th",
+   "url": "https://www.nike.com/t/vaporfly-4-mens-road-racing-shoes-HK05JWOf/HF6414-300",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/5099975e-9d67-42dd-bfe3-1a18f13d1e95/ZOOMX+VAPORFLY+NEXT%25+4.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Performance. Nike.com",
+   "text": "Nike Free Metcon 7 Women's Training Shoes ... Nike Vomero Premium Women's Road Running Shoes",
+   "url": "https://www.nike.com/w/performance-3k7dgz47w4rza6d74",
+   "published_at": "2026-09-29",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Performance Shoes. Nike.com",
+   "text": "Nike Pegasus Plus 2 Just In Nike Pegasus Plus 2 Women's Road Running Shoes ... Nike Free Metcon 7 Women's Training Shoes ... Nike Free RN 2018 Women's Running Shoes ... Nike React HyperSet Volleyball Shoes ... Nike Revolution 8 Recycled Materials Nike Revolution 8 Women's Road Running Shoes ... Recy...",
+   "url": "https://www.nike.com/w/performance-shoes-3k7dgzy7okzyt35",
+   "published_at": "2026-10-07",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "telectronichub.com",
+   "title": "Size 14 Nike: Technical Specifications, Production Process, and Applications",
+   "text": "Engineered for endurance and speed, size 14 Nike running shoes deliver optimal cushioning, breathability, and lightweight performance. Featuring advanced midsole technologies like Zoom Air, React foam, or Lunarlon, these shoes absorb impact efficiently while promoting a smooth stride. ... - Superior...",
+   "url": "https://telectronichub.com/fashion/size-14-nike",
+   "published_at": "2026-09-18",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Performance Shoes. Nike.com",
+   "text": "Men's Road Running Shoes ... Recycled Materials Nike Run Swift 3 Men's Road Running Shoes (Extra Wide) ... Men's Training Shoes ... Women's Road Running Shoes ... Men's Workout Shoes ... Recycled Materials Nike Free Run 5.0 Men's Road Running Shoes ... Men's Workout Shoes ... Nike Free RN 2018 Women...",
+   "url": "https://www.nike.com/w/performance-shoes-3k7dgzy7ok?msockid=17127922655b60e929136ec5641961a7",
+   "published_at": "2026-10-03",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "about.nike.com",
+   "title": "about.nike.com · en · newsroomNike Debuts a Race-Day System of Speed Designed for Every ...",
+   "text": "Nike’s race-day system of speed is a footwear lineup that gives runners a clear way to choose the footwear that best matches their goals, distance and experience. ... Nike’s race-day system of speed includes Nike Apex, Alphafly 4 and Swooshfly. Each shoe serves a distinct purpose, creating a lineup ...",
+   "url": "https://about.nike.com/en/newsroom/releases/nike-debuts-a-race-day-system-of-speed-designed-for-every-runner",
+   "published_at": "2026-09-30",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "nike.com",
+   "title": "Performance Shoes",
+   "text": "Nike Jr Mercurial Superfly 11 Academy 'Kylian Mbappé' Older Kids' Multi-Ground High-Top Football Boot",
+   "url": "https://www.nike.com/gb/w/performance-shoes-3k7dgz3yaepz5ipxqzy7ok",
+   "published_at": "2026-09-29",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "about.nike.com",
+   "title": "Nike Swooshfly Makes Race Day Feel More Possible",
+   "text": "Nike Swooshfly is a new super shoe designed to deliver the lightweight feel and energy return runners want on race day, with the comfort, stability and confidence that make stepping into a super shoe feel more approachable. ... ** The shoe features Nike SkyX supercritical foam, a tailored carbon fib...",
+   "url": "https://about.nike.com/en/newsroom/releases/nike-swooshfly-makes-race-day-feel-more-possible",
+   "published_at": "2026-09-30",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Honest Review of Every Nike Running Shoe (2025 Line Up)",
+   "text": "If you enjoyed the video, please like, comment and subscribe! Thank you for watching! Save 10% site wide on training plans, hats, ... · Ben Parkes",
+   "url": "https://www.youtube.com/watch?v=qO27nI7Cm-g",
+   "published_at": "2025-05-08T16:33:20Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/qO27nI7Cm-g/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Best Nike Running Shoes 2026 (Don&#39;t Buy the Wrong One)",
+   "text": "The best Nike running shoes in 2026 — all 6 explained, so you buy the RIGHT one and never overpay. We break down Nike's ... · RunnersVibe · Running Shoe Reviews",
+   "url": "https://www.youtube.com/watch?v=YnoiQ9jHpR4",
+   "published_at": "2026-07-04T17:00:19Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/YnoiQ9jHpR4/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "I BOUGHT NIKE’S BEST DAILY SHOE - Vomero Plus 100% honest review",
+   "text": "If you enjoyed the video, please like, comment and subscribe! Thank you for watching! Save 10% site wide on training plans, hats, ... · Ben Parkes",
+   "url": "https://www.youtube.com/watch?v=0K8AfACDByE",
+   "published_at": "2025-08-10T15:59:53Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/0K8AfACDByE/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Nike Pegasus 42 100% Honest Review (buy these instead)",
+   "text": "If you enjoyed the video, please like, comment and subscribe! Thank you for watching! Save 10% site wide on training plans, hats, ... · Ben Parkes - Road Running Reviews",
+   "url": "https://www.youtube.com/watch?v=ypjElZmr4CU",
+   "published_at": "2026-04-14T16:00:25Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/ypjElZmr4CU/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Nike Vomero PLUS vs Vomero 18: Nike&#39;s Most Comfortable",
+   "text": "Nike Vomero Plus Is now they're most comfortable max cushion sneaker, today i compare it to the Nike Vomero 18 & sneakers ... · Elliot Page",
+   "url": "https://www.youtube.com/watch?v=Djvic4ZR-34",
+   "published_at": "2025-07-24T16:42:47Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/Djvic4ZR-34/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"best nike running shoes performance reviews\": 203 sampled",
+   "text": "Sample: Wear Alphafly 3 for my marathons—find they run small—recommend sizing up a 0.5 size to save your toenails! | Ran Manchester marathon in Zoom Fly 6s after seeing unanimously positive reviews. I did most of my long runs in them in | Would have liked to see some trail shoes included, the waterproof options are great for the rain",
+   "url": "https://www.youtube.com/results?search_query=best%20nike%20running%20shoes%20performance%20reviews",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Nike",
+   "text": "Footwear company. Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022.",
+   "url": "https://en.wikipedia.org/wiki/Nike,_Inc.",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Famous Footwear",
+   "text": "Retail-store company. Famous Footwear is a nationwide chain of retail stores in the United States dealing in branded footwear, generally at prices discounted from manufacturer's suggested prices. The chain is a division of the St. Louis–based Caleres and had more than 1,125 stores in 2010.",
+   "url": "https://en.wikipedia.org/wiki/Famous_Footwear",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Google Knowledge Graph",
+   "title": "Brooks Sports",
+   "text": "Sports equipment company. Brooks Sports, Inc., also known as Brooks Running, is an American sports equipment company that designs and markets high-performance men's and women's sneakers, clothing, and accessories.",
+   "url": "https://en.wikipedia.org/wiki/Brooks_Sports",
+   "published_at": null,
+   "kind": "entity",
+   "tier": 2,
+   "rail": "kg",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}

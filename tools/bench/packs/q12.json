@@ -1,0 +1,486 @@
+{
+ "id": "q12",
+ "query": "Duolingo and brand voice on social",
+ "frame": {
+  "entity": "Duolingo",
+  "category": "language learning app",
+  "audience": "social media users",
+  "market": "US",
+  "competitors": [
+   "Babbel",
+   "Rosetta Stone",
+   "Memrise",
+   "Busuu"
+  ],
+  "question": "How does Duolingo's distinctive brand voice on social media drive engagement and differentiate it from competitors?",
+  "anchors": [
+   "duolingo",
+   "brand voice",
+   "social media",
+   "language learning",
+   "tone",
+   "personality",
+   "engagement",
+   "memes",
+   "humor",
+   "marketing",
+   "app",
+   "content strategy",
+   "audience connection"
+  ],
+  "exclude": [
+   "linguistics",
+   "grammar instruction",
+   "language proficiency",
+   "translation services"
+  ],
+  "task": "brand",
+  "threads": [
+   "What is Duolingo's brand voice and how does it differ on different platforms?",
+   "How does this voice impact user engagement and brand loyalty compared to competitors?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Duolingo brand voice social media strategy",
+   "research": "brand personality social media engagement language apps",
+   "discourse": "why is duolingo so funny on twitter",
+   "web": "Duolingo social media marketing tone voice"
+  }
+ },
+ "frozen_at": "2026-10-09T02:54:54.909Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Duolingo",
+   "text": "Duolingo, Inc. is an American educational technology company that produces learning apps and provides language certification. Duolingo offers courses on 42 languages, ranging from English, French, and Spanish to less commonly studied languages such as Hawaiian, Māori, and Navajo, and even constructed languages such as Esperanto and Klingon. It also offers courses on music, math, and chess. The learning method incorporates gamification to motivate users with points, rewards and interactive lessons featuring spaced repetition. The app promotes short, daily lessons for consistent, phased practice.",
+   "url": "https://en.wikipedia.org/wiki/Duolingo",
+   "published_at": "2026-10-07T13:56:47Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/5/59/Duolingo_home_page.png/330px-Duolingo_home_page.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Amazon Polly",
+   "text": "Amazon Polly is a cloud service by Amazon Web Services, a subsidiary of Amazon.com, that converts text into spoken audio. It allows developers to create speech-enabled applications and products. It was launched in November 2016 and includes 100+ voices across 41 language variants, some of which are Neural Text-to-Speech voices of higher quality. Users include Duolingo, a language education platform.",
+   "url": "https://en.wikipedia.org/wiki/Amazon_Polly",
+   "published_at": "2026-01-14T13:11:33Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "The Gregory Brothers",
+   "text": "The Gregory Brothers are an American musical quartet, specializing in comedy music and auto-tuning recorded speech through their YouTube channel Schmoyoho. After the success of their songs \"Chrissy Wake Up\" and \"It's Corn\" in the summer of 2022, NPR reported that they \"are responsible for some of the biggest viral songs of the past decade.\"",
+   "url": "https://en.wikipedia.org/wiki/The_Gregory_Brothers",
+   "published_at": "2026-10-05T00:03:30Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Gregories.jpg/330px-Gregories.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "technical.ly",
+   "title": "How Duolingo’s social media team built a viral marketing strategy",
+   "text": "A company’s social media marketing team doesn’t need a large staff ... does need support from ... ’s according to ... She’s credited with popularizing Duolingo’s mascot, Duo the owl, on social media — and Parvez relied on Michaela Kron-Hags, Duolingo’s global marketing campaign director, for that success. Kron-Hags was",
+   "url": "https://technical.ly/company-culture/duolingo-viral-marketing-strategy-lessons/",
+   "published_at": "2025-03-25T10:30:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://technical.ly/wp-content/uploads/2025/03/Duolingo-1-scaled.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "contagious.com",
+   "title": "How a 23-year-old graduate helped transform Duolingo’s social media marketing",
+   "text": "In Contagious’ most recent Brand Spotlight on language learning app Duolingo, we tell the story of how the brand’s social-first marketing strategy has transformed its advertising since 2021. The instigator behind this new direction wasn’t an executive boardroom meeting, a synergy workshop or a trend forecasting report",
+   "url": "https://www.contagious.com/en/article/news-and-viewsduolingo-social-media-marketing-f897bbd0d4ca4d10aa4d424228e99e62",
+   "published_at": "2023-11-23T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://cdn.builder.io/api/v1/image/assets%2F1e8574dde0344e78be7badd3d8cbc1bb%2F17db90cecfdc402c9d694f386dca5ff7",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "kuipra.ca",
+   "title": "Teardown: Duolingo's Unhinged Social Voice — and When You Should (and Shouldn't) Copy It | Kuipra Journal",
+   "text": "Duolingo is not a Kuipra client — this is an outside teardown based entirely on public information about one of the most imitated brand voices on the internet. And “imitated” is the operative word. Since Duolingo’s giant green owl started posting chaos on TikTok, roughly half the brands on social media have tried some",
+   "url": "https://www.kuipra.ca/blog/duolingo-social-media-teardown/",
+   "published_at": "2026-07-29T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.kuipra.ca/blog-images/duolingo-social-media-teardown.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "midlandmarketing.co.uk",
+   "title": "Duolingo Brand Voice: What UK Brands Can Learn | Midland",
+   "text": "But underneath the randomness sits a consistent character. Duo the owl is dramatic, a bit unhinged, and weirdly self-aware about it. ... Ask someone to describe Duolingo’s tone and they’ll probably manage it in a sentence. Chaotic. Funny. A bit menacing. ... Start by naming the traits the brand shou...",
+   "url": "https://midlandmarketing.co.uk/blog/social-media/how-duolingo-brand-voice-took-over-uk-social-feeds/",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "contentengine.pro",
+   "title": "contentengine.pro › resource-hub › reactiveReactive Marketing Works Best When Brands Keep Their Voice ...",
+   "text": "Duolingo maintained its distinct playful persona by rejecting Samsung's attempt to ally, creating a dynamic, character-driven interaction rather than a traditional corporate partnership. ... Duolingo's response worked because it was consistent with everything the account had done before. The tone, t...",
+   "url": "https://contentengine.pro/resource-hub/reactive-marketing-brand-voice-duolingo-samsung-apple/",
+   "published_at": "2026-09-11",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "markhub24.com",
+   "title": "Why Brands Are Moving From Campaigns to Conversations",
+   "text": "Rather than launching a defined, time-bound advertising campaign, Duolingo's marketing organization pursued an ongoing content and community strategy centered on its owl mascot, Duo. The objective, as later described by company marketing personnel in trade press interviews, was not to \"sell\" the app...",
+   "url": "https://www.markhub24.com/post/why-brands-are-moving-from-campaigns-to-conversations",
+   "published_at": "2026-09-16",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "creatordb.app",
+   "title": "Duolingo Stats: Education Audience & Rate Card",
+   "text": "Duolingo is the Pittsburgh-based language-learning platform that effectively reinvented itself as a social-first media brand around 2021, when its social team — with then-coordinator Zaria Parvez playing a central role — leaned into a deliberately chaotic mascot persona built around the green owl ch...",
+   "url": "https://creatordb.app/creatorstats/duolingo/",
+   "published_at": "2026-09-30",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "superleap.com",
+   "title": "Brand Voice: Types, Examples, and How to Create One",
+   "text": "Brand voice is the consistent personality and point of view a company expresses through its communication. ... **Brand voice is constant.** It is the underlying personality - the character the brand always expresses regardless of what it is communicating or who it is communicating to. If a brand's v...",
+   "url": "https://www.superleap.com/blog/marketing/brand-voice",
+   "published_at": "2026-09-21",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "brandmodality.com",
+   "title": "Brand Voice Examples: Distinct Voices That Work",
+   "text": "Duolingo has a comical and whimsical sense of social media engaging with their owl character that publicly mocks those who have not progressed with their language practice. The Duolingo voice is casual and humorous, yet irreverent and highly enthusiastic.",
+   "url": "https://brandmodality.com/brand-voice-examples/",
+   "published_at": "2026-09-21",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "dumblittleman.com",
+   "title": "Social Media Impact Winners: Meet the 2026 ... - Dumb Little Man",
+   "text": "There are brand social media accounts, and then there is Duolingo — a category of one in the way it has built a fully realized brand persona that operates with the coherence and creative ambition of a long-running character rather than a marketing department’s best guess at relevance. The brand’s Ti...",
+   "url": "https://www.dumblittleman.com/dlm-awards-2026-social-media-impact-winners/",
+   "published_at": "2026-09-11",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "ziprecruiter.com",
+   "title": "Duolingo Senior Creative, Social Job in New York, NY",
+   "text": "- Help steward and evolve Duolingo's distinctive voice, visual language, characters and sense of humor across TikTok, Instagram, YouTube, X and emerging platforms - Work closely with social, brand marketing, design, production, PR, partnerships and legal to determine what we can make and how quickly...",
+   "url": "https://www.ziprecruiter.com/c/duolingo/Job/Senior-Creative,-Social/-in-New-York,NY?jid=b5484491ecfd1d34",
+   "published_at": "2026-09-24",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "DUO LINGO: Chucklebone",
+   "text": "The duo lingo animation that set off some real kooki stuff #Animation #duolingo. · Chucklebone",
+   "url": "https://www.youtube.com/watch?v=yLuUXLWR9Yc",
+   "published_at": "2024-06-06T16:57:51Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/yLuUXLWR9Yc/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "What Happened to Duolingo",
+   "text": "Duolingo used to be one of the biggest brands on social media. But when the Duolingo AI update was released, Duolingo drama ... · NoGood",
+   "url": "https://www.youtube.com/watch?v=GpLIijyi7SQ",
+   "published_at": "2025-07-17T19:39:11Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/GpLIijyi7SQ/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "This app doesn’t stop roasting DUOLINGO 😭😭 #japaneselanguage #duolingo",
+   "text": "languagelearning #studyjapanese. · Minnie",
+   "url": "https://www.youtube.com/watch?v=vfRuaikkJbY",
+   "published_at": "2026-03-09T16:10:59Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/vfRuaikkJbY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "too preppy ugh #duolingo #funny #memes",
+   "text": "· Duolingo",
+   "url": "https://www.youtube.com/watch?v=lC6qVWT8DvQ",
+   "published_at": "2024-12-22T03:10:21Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/lC6qVWT8DvQ/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Terrifying Duolingo Memes",
+   "text": "Terrifying Duolingo Memes ------------------------------------------------------ Check these out or i will cry • Twitter ... · VaazkL",
+   "url": "https://www.youtube.com/watch?v=RRd7d2wMmYg",
+   "published_at": "2023-12-19T21:30:02Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/RRd7d2wMmYg/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"why is duolingo so funny on twitter\": 300 sampled",
+   "text": "Sample: It took me an uncomfortable amount of time to realize this wasn't an official ad. | the fact that the two girls in this are cannonically besties makes this better | My favorite part is Duo's \"OoH VeEEeRey goOD\"",
+   "url": "https://www.youtube.com/results?search_query=why%20is%20duolingo%20so%20funny%20on%20twitter",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "medium.com",
+   "title": "Everyone can Duolingo: Best Practices Guide for Twitter (X)",
+   "text": "Our mission at Duolingo is to develop the best language learning education in the world and make it universally available through our free app. Our brand tagline is ‘Everyone can Duolingo.’ This encompasses our mission and goal, which is to make learning languages more accessible and easier to achieve for everyone and",
+   "url": "https://medium.com/@harriskaylaa/everyone-can-duolingo-best-practices-guide-for-twitter-x-1c6b1e9accd1",
+   "published_at": "2025-06-14T18:55:32.000Z",
+   "kind": "web",
+   "tier": 4,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://miro.medium.com/v2/resize:fit:640/1*lnsR0A596Ak65AjqmSjlOw.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "medium.com",
+   "title": "Duolingo (US) Best Practice Guide for X",
+   "text": "ingo, we ... when you Duol ... language belongs to everyone. We are ... learning languages and better ... everyone can Du ... ingo for free. We ... s favorite way ... language, and learning ... language connects people ... ## Voice and Tone Our voice is distinctive and unique — that’s what makes us stand out as Duolin",
+   "url": "https://medium.com/@rachaelkelley_0927/duolingo-us-best-practice-guide-for-x-b57443ddf96d",
+   "published_at": "2025-02-23T17:29:43.000Z",
+   "kind": "web",
+   "tier": 4,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://miro.medium.com/v2/resize:fit:1200/1*klA9FJ8o6I49yAxDOyJ8Ag.png",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "medium.com",
+   "title": "Best Practices for Duolingo",
+   "text": "At Duolingo, we take pride in being the “free, fun, and effective way to learn a language” (Duolingo)! In this brand advisory you’ll find everything you need to stay within our brand guidelines when creating content for each of our social media platforms. Duolingo’s Brand Tone and Voice What makes Duolingo so incredi",
+   "url": "https://medium.com/@mojicacamila/best-practices-for-duolingo-666db1e302e7",
+   "published_at": "2024-02-15T19:28:57.000Z",
+   "kind": "web",
+   "tier": 4,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://miro.medium.com/v2/resize:fit:1096/1*1QDWUQa9hrGAEBJtSapLxg.png",
+   "country": null
+  }
+ ]
+}

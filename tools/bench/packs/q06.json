@@ -1,0 +1,482 @@
+{
+ "id": "q06",
+ "query": "Stanley cups and the water bottle category",
+ "frame": {
+  "entity": "Stanley",
+  "category": "water bottles",
+  "audience": "consumers",
+  "market": "US",
+  "competitors": [
+   "Hydro Flask",
+   "YETI",
+   "Owala",
+   "Contigo"
+  ],
+  "question": "How is Stanley performing in the water bottle category against established competitors?",
+  "anchors": [
+   "stanley cups",
+   "water bottles",
+   "insulated drinkware",
+   "hydration bottles",
+   "tumbler market",
+   "stanley brand",
+   "bottle category",
+   "consumer preference",
+   "market share",
+   "thermal bottles"
+  ],
+  "exclude": [
+   "stanley cup hockey",
+   "stanley tools",
+   "stanley furniture"
+  ],
+  "task": "compare",
+  "threads": [
+   "How is Stanley's water bottle line performing?",
+   "How does Stanley compare to category leaders?"
+  ],
+  "period": null,
+  "queries": {
+   "news": "Stanley water bottles market growth competitors",
+   "research": "Stanley brand positioning insulated beverage container category",
+   "discourse": "stanley cups water bottles reddit tiktok reviews",
+   "web": "Stanley water bottles vs Hydro Flask YETI"
+  }
+ },
+ "frozen_at": "2026-10-09T02:53:34.923Z",
+ "cls": "brand",
+ "rails": [
+  {
+   "id": "kg",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikipedia",
+   "n": 3,
+   "ok": true
+  },
+  {
+   "id": "exa",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "pplx",
+   "n": 8,
+   "ok": true
+  },
+  {
+   "id": "competitors",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "counter",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "wikimedia_pageviews",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "wikidata",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt",
+   "n": 0,
+   "ok": false
+  },
+  {
+   "id": "guardian",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "hn",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "mastodon",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "youtube",
+   "n": 6,
+   "ok": true
+  },
+  {
+   "id": "sec_edgar",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "factcheck",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "podcastindex",
+   "n": 0,
+   "ok": true
+  },
+  {
+   "id": "gdelt_volume",
+   "n": 0,
+   "ok": false
+  }
+ ],
+ "items": [
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Stanley (drinkware company)",
+   "text": "Stanley is an American brand of reusable food and beverage containers named after William Stanley Jr. who invented the first all-steel insulated vacuum bottle in 1913. Stanley was established in 1915.",
+   "url": "https://en.wikipedia.org/wiki/Stanley_(drinkware_company)",
+   "published_at": "2026-09-19T09:55:41Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/en/thumb/b/b4/Stanley_PMI_logo.svg/330px-Stanley_PMI_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "List of bottle types, brands and companies",
+   "text": "This is a list of bottle types, brands and companies. A bottle is a rigid container with a neck that is narrower than the body, and a \"mouth\". Bottles are often made of glass, clay, plastic, aluminum or other impervious materials, and are typically used to store liquids. The bottle has developed over millennia of use, with some of the earliest examples appearing in China, Phoenicia, Rome and Crete. Bottles are often recycled according to the SPI recycling code for the material. Some regions have a container deposit which is refunded after returning the bottle to the retailer.",
+   "url": "https://en.wikipedia.org/wiki/List_of_bottle_types%2C_brands_and_companies",
+   "published_at": "2026-05-27T14:58:40Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Milk_Bottles_of_the_Late_19th_century.jpg/330px-Milk_Bottles_of_the_Late_19th_century.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "Wikipedia",
+   "title": "Water",
+   "text": "Water is an inorganic compound with the chemical formula H2O. It is a transparent, tasteless, odorless, and nearly colorless chemical substance. It is the main constituent of Earth's streams, lakes, and oceans. Water is also the fluid of all known living organisms, in which it acts as a solvent. Water, being a polar molecule, undergoes strong intermolecular hydrogen bonding which is a large contributor to its physical and chemical properties. It is vital for all known forms of life, despite not providing food energy or being an organic micronutrient. Due to its presence in all organisms, its chemical stability, its worldwide abundance, and its strong polarity relative to its small molecular ",
+   "url": "https://en.wikipedia.org/wiki/Water",
+   "published_at": "2026-10-07T16:50:09Z",
+   "kind": "reference",
+   "tier": 2,
+   "rail": "wikipedia",
+   "entity": null,
+   "stance": null,
+   "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/H2O_2D_labelled.svg/330px-H2O_2D_labelled.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "north40.com",
+   "title": "Yeti, Hydro Flask, and Stanley at North 40",
+   "text": "Head to head: Yeti, Hydro Flask, and Stanley at North 40 ... Notice: This blog has been updated to compare three of our most popular tumblers - the 40 oz Stanley Flowstate Quencher H2.0, the 42 oz Yeti Rambler, and the 40 oz Outdoor Revival Insulated Tumbler. ... The market is saturated with all sorts of different styl",
+   "url": "https://north40.com/blog/thermos-test-yeti-rambler-bottle-versus-hydro-flask-versus-stanley-master-series",
+   "published_at": "2024-03-05T00:00:00.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://north40.com/media/magefan_blog/StanleyYetiOR_600x400.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wcpo.com",
+   "title": "Stanley vs Yeti vs Hydro Flask vs $15 Walmart cup - WCPO",
+   "text": "Stanley vs Yeti vs Hydro Flask vs $15 Walmart cup: which tumbler is best? # Stanley vs ... The Stanley tumbler is the hottest insulated cup right now. But is it really worth $50? We test it against the competition, including a $15 cup from Walmart. By: John Matarese Posted and last updated Over the past ye",
+   "url": "https://www.wcpo.com/money/consumer/dont-waste-your-money/stanley-vs-yeti-vs-hydro-flask-vs-15-walmart-cup-which-tumbler-is-best",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://ewscripps.brightspotcdn.com/dims4/default/9467001/2147483647/strip/true/crop/1280x672+0+25/resize/1200x630!/quality/90/?url=https%3A%2F%2Fwww.simplemost.com%2Fwp-content%2Fuploads%2F2024%2F02%2F61TuChkOydL._AC_SL1500_-e1706824815862.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "today.com",
+   "title": "Stanley vs. Hydro Flask: Which is right for you?",
+   "text": "Stanley vs. Hydro Flask: Which is right for you? # Hydro Flask Vs. Stanley: Which Water Bottle Is Right For You? We tested them both to find the good, the bad and the ugly. Updated July 30, 2025, 1:54 PM EDT ... What are the markers of a good water bottle? Is it something you can easily stow and take on-the-go? Or",
+   "url": "https://www.today.com/shop/stanley-vs-hydro-flask-rcna183680",
+   "published_at": "2025-07-30T17:54:46.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://media-cldnry.s-nbcnews.com/image/upload/t_social_share_1200x630_center,f_auto,q_auto:best/rockcms/2024-12/241211-stanley-vs-hydroflask-oo-main-8934f9.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "tasteofhome.com",
+   "title": "Hydro Flask vs. Stanley: We Tested Both Brands—Which Is Best?",
+   "text": "Of all the coffee tumblers on the market, there are two brands that consistently come up as the best: Hydro Flask and Stanley. Both boast great reputations and similar price points. But the Hydro Flask vs. Stanley debate goes quite a bit deeper than that. To determine the winner, we tapped our expert Product Testing Te",
+   "url": "https://www.tasteofhome.com/article/hydro-flask-vs-stanley/",
+   "published_at": "2024-08-24T19:37:23.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://www.tasteofhome.com/wp-content/uploads/2024/08/Hydro-Flask-vs.-Stanley-Which-Coffee-Tumbler-Brand-Is-Better_TOH_PTT_Tumblers_062624_EF_HydroFlask_TOH_PTT_Tumblers_062624_EF_Stanley_FT-SQ.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "youtube.com",
+   "title": "We Tested Yeti, Stanley, and Hydro Flask after 200 Uses-A ...",
+   "text": "cold. That's second to last. CNN Underscored ran their own tests in 2026 and said Hydro Flask couldn't keep pace, then added that it did poorly in their drop test, too. So, you're paying $44.95 for a 32 oz bottle that loses to bottles costing half as much. And when that famous paint job chips, which it will, go read th",
+   "url": "https://www.youtube.com/watch?v=RhJcoFwPiLQ",
+   "published_at": null,
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/RhJcoFwPiLQ/sddefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "womenshealthmag.com",
+   "title": "Hydroflask Vs. Stanley: Which Tumbler Is Better? My Honest Review",
+   "text": "Enter: The Stanley Quencher H2.0 FlowState™ Tumbler (40 oz) and the Hydro Flask 40 oz Travel Tumbler. These two are the veritable \"It Girls\" of water bottle culture, so of course, I had to know if they lived up to the hype. I've spent several weeks putting both water bottles to test, assessing everything from insulatio",
+   "url": "https://www.womenshealthmag.com/life/a63149138/hydroflask-vs-stanley/",
+   "published_at": "2024-12-30T12:00:06.000Z",
+   "kind": "web",
+   "tier": 3,
+   "rail": "exa",
+   "entity": null,
+   "stance": null,
+   "image": "https://hips.hearstapps.com/hmg-prod/images/waterbottle-comparison-67659f1e22948.jpg?crop=1xw:1xh;center,top&resize=1200:*",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wu-ftpd.org",
+   "title": "10 Best Insulated Water Bottles (September 2026) Tested & Reviewed",
+   "text": "Hydro Flask’s lifetime warranty means if your insulation ever fails, they’ll replace the bottle. ... Insulation matches the spec sheet: cold drinks stay cold for a full day, hot drinks hold temperature for around 12 hours. ... Insulation is impressive: 20 hours of cold retention for regular drinks, ...",
+   "url": "https://www.wu-ftpd.org/best-insulated-water-bottles/",
+   "published_at": "2026-09-26",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "puravidabybrandt.com",
+   "title": "10 Best Large Water Bottles (October 2026) Honest Reviews",
+   "text": "First, competitors like Owala, Stanley, and YETI introduced patented lid designs (FreeSip spout, Quencher H2.0 tumbler form factor, MagCap) that Hydro Flask did not match quickly.",
+   "url": "https://www.puravidabybrandt.com/best-large-water-bottles/",
+   "published_at": "2026-09-21",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "wpa-pool.com",
+   "title": "8 Best Stanley-Style Tumblers for Commuters (September 2026)",
+   "text": "- Keeps drinks cold 24+ hours with ice still intact - FlowState lid offers straw - sip - and full-cover positions - Comfortable ergonomic handle for daily carry - Fits standard car cup holders - Lifetime warranty from Stanley - Dishwasher safe for easy cleanup ... The drink opening and full-cover po...",
+   "url": "https://www.wpa-pool.com/best-stanley-style-tumblers-for-commuters/",
+   "published_at": "2026-09-24",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "museituppublishing.com",
+   "title": "8 Best Insulated Jugs (September 2026) Tested & Ranked",
+   "text": "YETI outperforms Hydro Flask in cold-retention tests, typically keeping ice for 24+ hours versus 12-18 hours for Hydro Flask. YETI also has a thicker stainless steel build. Hydro Flask offers a wider color selection and lighter weight. For pure insulation performance, YETI wins. For style and lighte...",
+   "url": "https://www.museituppublishing.com/best-insulated-jugs/",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "exquisiteclock.org",
+   "title": "10 Best Water Bottles for the Gym (October 2026) Tested Picks",
+   "text": "Our top pick overall is the **STANLEY IceFlow 2.0 Flip Straw Tumbler**, a 30 oz double-wall vacuum bottle that kept ice frozen for our entire 90-minute test session and offered a quiet, leak-resistant flip straw you can open one-handed. For anyone chasing pure build quality, the **YETI Rambler 26 oz...",
+   "url": "https://www.exquisiteclock.org/best-water-bottles-for-the-gym/",
+   "published_at": "2026-09-21",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "caribreeze.com",
+   "title": "10 Best Coldest Water Bottles (October 2026) Honest Reviews",
+   "text": "24 oz capacity 24h cold TempShield insulation Flex Straw Cap Pro-grade stainless Lifetime warranty ... I tested it alongside the Owala and Stanley, and the Hydro Flask matched or beat both on pure ice retention. ... The main downside is the price. The Hydro Flask costs more than the Owala or Stanley...",
+   "url": "https://www.caribreeze.com/best-coldest-water-bottles/",
+   "published_at": "2026-09-25",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "old.autarch.co",
+   "title": "How the Hydro Flask Company Built a Billion-Dollar Empire on Smart Design and Culture — Autarch Networth",
+   "text": "For example, a Hydro Flask bottle can keep ice water at 34°F (1°C) for 24 hours, while competitors often fail after 12. ... - **Unmatched Temperature Retention**: While most bottles claim 12-hour cold retention, Hydro Flask’s vacuum insulation delivers 24+ hours—critical for outdoor enthusiasts or l...",
+   "url": "https://old.autarch.co/article/how-the-hydro-flask-company-built-a-billion-dollar-empire-on-smart-design-and-culture",
+   "published_at": "2026-09-10",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "orchyd.com",
+   "title": "10 Best Insulated Water Bottles For Daily Use (October 2026) Top Tested",
+   "text": "|Product|Specifications|Action| |--|--|--| |Hydro Flask 24 oz Insulated Stainless Steel|- 24-hour cold - Lifetime warranty - Cupholder-friendly|Check Latest Price| | … | … | … | |Stanley Quencher H2.0 30 oz|- 30oz with handle - 3-position lid - 90% recycled|Check Latest Price| |YETI Rambler 20 oz Tu...",
+   "url": "https://www.orchyd.com/best-insulated-water-bottles-for-daily-use/",
+   "published_at": "2026-09-23",
+   "kind": "web",
+   "tier": 3,
+   "rail": "pplx",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "🔴 Unpopular Opinion: Stanley Cups Suck. VIRAL ISN’T BETTER: Owala Water Bottle Comparison",
+   "text": "Products Mentioned: - Owala FreeSip Insulated Stainless Steel Water Bottle: https://amzn.to/4fBGC7G - Stanley Quencher H2.0 ... · Cassandra Bankson",
+   "url": "https://www.youtube.com/watch?v=xDPqr1fV9tE",
+   "published_at": "2024-08-27T13:01:05Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/xDPqr1fV9tE/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Stanley just did something new with their Wellspring Bottle! #waterbottle #stanely #water",
+   "text": "Stanley just did something new with their Wellspring Bottle! #waterbottle #stanely #water #Ad. · Den ⚡️",
+   "url": "https://www.youtube.com/watch?v=Rt6w1I026Ys",
+   "published_at": "2026-09-04T20:55:19Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/Rt6w1I026Ys/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Stanley Tumblers are PEAK Consumerism",
+   "text": "What was once a symbol of your eco-friendly lifestyle has now become a status symbol - with people owning whole walls of ... · Levi Hildebrand",
+   "url": "https://www.youtube.com/watch?v=7UpaKlGfwHU",
+   "published_at": "2024-01-24T16:00:08Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/7UpaKlGfwHU/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "🎀Stanley🎀 Cup 🥤 ✨REVIEW✨",
+   "text": "review #honestreview #cups #waterbottle #athlete #preppyaesthetic #shorts. · EllaGLife",
+   "url": "https://www.youtube.com/watch?v=7qEvy7JEo70",
+   "published_at": "2024-11-07T06:27:58Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/7qEvy7JEo70/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube",
+   "title": "Should You Buy the Stanley Quick Flip Go 36 Oz Water Bottle?",
+   "text": "Buy This Product➡️: https://geni.us/90Rgt My Amazon Storefront: https://www.amazon.com/shop/adamtalkstech My Video ... · Adam's Faves",
+   "url": "https://www.youtube.com/watch?v=kIvriG3OGtY",
+   "published_at": "2024-07-29T11:20:37Z",
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": "https://i.ytimg.com/vi/kIvriG3OGtY/hqdefault.jpg",
+   "country": null
+  },
+  {
+   "lens": "market",
+   "source": "YouTube comments",
+   "title": "YouTube comments on \"stanley cups water bottles reddit tiktok reviews\": 203 sampled",
+   "text": "Sample: Products Mentioned: - Owala FreeSip Insulated Stainless Steel Water Bottle: - Stanley Quencher H2.0 FlowState Stainless | She didn't even need to say a word and yet she still spit facts | Bro I lost it when she started shaking them under her armpits 😭😭💀",
+   "url": "https://www.youtube.com/results?search_query=stanley%20cups%20water%20bottles%20reddit%20tiktok%20reviews",
+   "published_at": null,
+   "kind": "discourse",
+   "tier": 3,
+   "rail": "youtube",
+   "entity": null,
+   "stance": null,
+   "image": null,
+   "country": null
+  }
+ ]
+}
