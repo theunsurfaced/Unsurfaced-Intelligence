@@ -90,10 +90,13 @@ export default {
         .catch(e => console.log('hub_refresh_error', String(e && e.message)))
         .then(() => doorPass(env))   // SEAM:EXC_DOOR v2: the door compiles after the feed and the tracks are fresh
         .then(s => console.log('door_pass', JSON.stringify(s)))
-        .catch(e => console.log('door_pass_error', String(e && e.message)))
+        .catch(e => { console.log('door_pass_error', String(e && e.message)); return logEvent(env, 'intelligence', 'door', 'door_pass', null, { error: 'door_pass_error: ' + String(e && e.message).slice(0, 160) }); })
         .then(() => doorCalled(env))   // SEAM:RECORD_WATCH: the watches that came due, graded on the database's counts
         .then(s => console.log('door_called', JSON.stringify(s)))
         .catch(e => console.log('door_called_error', String(e && e.message)))
+        .then(() => crossCurrentsWeekly(env))   // SEAM:CROSS_CURRENTS: on Sundays, the patterns across the fortnight's deployments
+        .then(s => console.log('cross_currents', JSON.stringify(s)))
+        .catch(e => console.log('cross_currents_error', String(e && e.message)))
         .then(() => pushNightly(env))   // SEAM:REACH_PUSH: every reader whose frames moved, told once, with permalinks
         .then(s => console.log('push_nightly', JSON.stringify(s)))
         .catch(e => console.log('push_nightly_error', String(e && e.message)))
@@ -753,7 +756,8 @@ async function synthesize(body, env, origin, hooks) {
     const addedRaw = [].concat(...(await Promise.all([needWire ? within(gatherServerSignals(query), EXC_SPEED.WIRE_MS) : Promise.resolve([]),
       needPaid ? within(gatherPaidSignals(query, env), EXC_SPEED.WIRE_MS) : Promise.resolve([])])));
     T.wire_ms = Date.now() - T.start - T.frame_ms;
-    let addedAll = addedRaw.filter(a => a && a.title && looksEnglish(a.title + ' ' + (a.snippet || '')));
+    const langOk = t => (frame0 && frame0.language && frame0.language !== 'en') ? true : looksEnglish(t);   // SEAM:EXC_LANGUAGE: a read in another language keeps its lines
+    let addedAll = addedRaw.filter(a => a && a.title && langOk(a.title + ' ' + (a.snippet || '')));
     // SEAM:EXC_TIERS: the registry's tier on every line before anything is weighed.
     const tiers = await excTiersLoad(env);
     excStampTiers(body.corpus, tiers); excStampTiers(addedAll, tiers);
@@ -786,7 +790,7 @@ async function synthesize(body, env, origin, hooks) {
     let framedAdded = 0;
     if (framedExtra && framedExtra.length) {
       excStampTiers(framedExtra, tiers);
-      const g3 = excRelevance(framedExtra.filter(c => c && c.title && looksEnglish(c.title + ' ' + (c.text || ''))), frame0, 0);   // the gate still reads them: an excluded neighbor stays out
+      const g3 = excRelevance(framedExtra.filter(c => c && c.title && langOk(c.title + ' ' + (c.text || ''))), frame0, 0);   // the gate still reads them: an excluded neighbor stays out
       const have = new Set(corpusIn.concat(addedAll).map(excKey));
       const fresh = g3.kept.filter(c => !have.has(excKey(c)));
       framedAdded = fresh.length;
@@ -795,7 +799,7 @@ async function synthesize(body, env, origin, hooks) {
     let gapAdded = 0;
     if (gap && gap.queries && gap.queries.length) {
       const extra = (extraRaw || [])
-        .filter(it => it && it.title && looksEnglish(it.title + ' ' + (it.text || '')))
+        .filter(it => it && it.title && langOk(it.title + ' ' + (it.text || '')))
         .map(it => ({ lens: it.kind === 'research' ? 'consumer' : (it.kind === 'discourse' ? 'culture' : 'market'), source: it.source_name || 'gap', title: it.title, text: String(it.text || '').slice(0, 700), url: it.url || '',
           published_at: it.published_at || null, kind: it.kind || null, tier: it.source_tier || null, rail: 'gap', gap_q: it.gap_q || null }));
       excStampTiers(extra, tiers);
@@ -813,9 +817,10 @@ async function synthesize(body, env, origin, hooks) {
     // SEAM:EXC_FACTS + SEAM:EXC_MEASURE: the table is written and the lake is counted at the same time.
     stage({ stage: 'tabling', note: 'Writing the fact table from ' + merged.length + ' lines and counting the lake' });
     const T3 = Date.now();
-    const [facts, measures] = await Promise.all([
+    const [facts, measures, look] = await Promise.all([
       body.facts === false ? Promise.resolve(null) : excFacts(env, merged, query).catch(excQuiet('facts', null)),
-      frame0 ? excMeasures(env, frame0).catch(excQuiet('measures', null)) : Promise.resolve(null)]);
+      frame0 ? excMeasures(env, frame0).catch(excQuiet('measures', null)) : Promise.resolve(null),
+      (quick || body.bench || body.look === false || typeof excLook !== 'function') ? Promise.resolve(null) : excLook(env, merged, frame0).catch(excQuiet('look', null))]);   // SEAM:EXC_LOOK: on a full read, beside the facts and the measures
     T.facts_ms = Date.now() - T3;
     const observed = excObserved(merged, frame0);
     if (frame0 && observed.length) frame0.competitors_observed = observed;
@@ -866,7 +871,12 @@ async function synthesize(body, env, origin, hooks) {
     // SEAM:EXC_THIN: a read on a few lines says so and stays small; it never writes eight findings from three lines.
     const thin = merged.length < EXC_THIN.MIN;
     const thinLaw = thin ? ' THIN GROUND: the evidence holds only ' + merged.length + ' lines on this question. Give at most 3 insights and 2 moves, each on a line that names the subject, and open the brief by saying the read is building on ' + merged.length + ' lines and what a wider read would add. ' : '';
-    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW + ' ' + EXC_HEADLINE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw + thinLaw, prompt: usr,
+    // SEAM:EXC_DISAGREE: lines marked CONSENSUS are what published trend reports claim; the house reads against them, never from them.
+    const hasConsensus = merged.some(c => c && c.stance === 'consensus');
+    const disagreeLaw = hasConsensus ? ' ' + EXC_DISAGREE_LAW : '';
+    const aheadLines = merged.filter(c => c && c.kind === 'ahead').length;
+    const aheadLaw = aheadLines ? ' AHEAD: lines marked AHEAD are known moments coming inside sixty days; a move may anchor to one by name and date; never invent what the moment will bring. ' : '';   // SEAM:EXC_AHEAD
+    const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW + ' ' + EXC_HEADLINE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw + thinLaw + disagreeLaw + aheadLaw, prompt: usr,
       max_tokens: quick ? EXC_ROOM.quick : (isReport ? EXC_ROOM.report : EXC_ROOM.plain), kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
       onText: hooks.onText || null,
       thinking: quick ? { type: 'disabled' } : null, timeout_ms: quick ? EXC_READ.QUICK_MS : null };   // SEAM:EXC_STREAM: the live draft; SEAM:EXC_QUICK: no thinking and a 45 s deadline on a quick read
@@ -1001,7 +1011,9 @@ async function synthesize(body, env, origin, hooks) {
     const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL
       depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
       thin: thin ? merged.length : null,   // SEAM:EXC_THIN: the page says the read is building
-      blind: EXC_BLIND,   // SEAM:EXC_BLIND
+      blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND: computed from what is configured
+      look: look || null,   // SEAM:EXC_LOOK: what the evidence's images look like, one sentence each
+      ahead: aheadLines ? merged.filter(c => c && c.kind === 'ahead').slice(0, 3).map(c => String(c.title || '').replace(/^AHEAD /, '')) : null,   // SEAM:EXC_AHEAD
       house: house,   // SEAM:EXC_HOUSE: the house's own deployed insights on this frame, shown as context on the receipt
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
@@ -1107,6 +1119,8 @@ const EXC_HEADLINE_LAW = 'HEADLINE LAW: the first line of "read" is the headline
   'with a verb; never a figure, a percentage, a source name, a year, a semicolon, a colon or a list of brands. The second line is the dek: one sentence under 30 words that ' +
   'carries the one figure that proves the headline and names its source in words. The move the dek implies follows the insights and the ideas; it never argues against them. ' +
   'Every insight title is a claim with a verb, 4 to 9 words, no figure. Nothing in the read speaks of a market the frame did not name.';
+/* SEAM:EXC_DISAGREE: the law the writer reads when consensus lines are in the evidence. */
+const EXC_DISAGREE_LAW = 'WHERE THE HOUSE DISAGREES: lines whose title begins CONSENSUS are what published trend reports and outlooks claim, never evidence of what people do. When the dated evidence contradicts a consensus claim, one insight titled "Where the house disagrees: <the claim in five words>" names the claim, the lines that contradict it and the stronger reading, at the confidence those lines earn. When nothing contradicts it, write nothing about it. Never adopt a consensus claim as a finding and never cite a CONSENSUS line as evidence for a figure.';
 const EXC_ROOM = { report: 16000, plain: 8000, quick: 9000, ceiling: 32000, MIN_SALVAGE: 3 };   // SEAM:EXC_DEPTH: a quick read's room.   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
 const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4,   // SEAM:EXC_SPEED
   BEAT_MS: 15000, WRITE_MS: 165000, COMPLETE_MS: 60000, COMPLETE_TOKENS: 6000, PARTIAL_TTL: 900 };   // SEAM:EXC_STALL: the heartbeat, the writing's wall clock, the completion call, a partial read's short cache
@@ -1510,6 +1524,7 @@ const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research en
   'Shape: {"entity":"the named brand, person, product or place, or null","category":"1 to 3 words","audience":"1 to 3 words",' +
   '"market":"the country or region the query is about; US when it names none","competitors":["up to 5 named players this entity or category competes with in that market"],' +
   '"question":"the one decision question a brand team is asking, one sentence",' +
+  '"language":"the two-letter language the question\'s people speak and read in: en unless the query names a Spanish-speaking (es), French (fr), Portuguese (pt) or other audience or market",' +   // SEAM:EXC_LANGUAGE
   '"anchors":["8 to 16 lowercase words or short phrases; an on-topic item contains at least one. Use the entity, the category and its synonyms, product types, and specific behaviors. Never a single generic word that also names other categories"],' +
   '"exclude":["0 to 8 lowercase phrases that mark an off-topic item: homonyms and neighboring categories"],' +
   '"queries":{"news":"a news search for this frame","research":"an academic search phrasing","discourse":"how people say it on forums and video","web":"a web search for this frame"}} ' +
@@ -1526,7 +1541,7 @@ function excFrameClean(f) {
   const place = v => { const t = str(v, 40); return t && /^\p{L}[\p{L}\p{N} .,'&()/-]{0,39}$/u.test(t) ? t : null; };
   const list = (v, n, m) => (Array.isArray(v) ? v : []).map(x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim()).filter(x => x && x.length <= m).slice(0, n);
   const q = (f.queries && typeof f.queries === 'object') ? f.queries : {};
-  const out = { entity: str(f.entity, 80), category: str(f.category, 40), audience: str(f.audience, 40), market: place(f.market) || 'US',
+  const out = { entity: str(f.entity, 80), category: str(f.category, 40), audience: str(f.audience, 40), market: place(f.market) || 'US', language: /^[a-z]{2}$/.test(String(f.language || '')) ? String(f.language) : 'en',   // SEAM:EXC_LANGUAGE
     competitors: (Array.isArray(f.competitors) ? f.competitors : []).map(x => str(x, 40)).filter(Boolean).slice(0, 5),
     question: str(f.question, 220), anchors: list(f.anchors, 16, 40), exclude: list(f.exclude, 8, 40),
     // SEAM:EXC_INTENT: the task, the threads and the period; a value the model did not give is a plain read of one subject.
@@ -7035,6 +7050,96 @@ function hintsOf(text, q) {
   return out;
 }
 function railSince(days) { return new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); }   // SEAM:EXC_INTEL
+/* SEAM:EXC_LANGUAGE: the language a read's people speak, from the frame (en when it says nothing). The rails ask in it; the English
+ * filter stands down for a read in another language. */
+function excLang(ctx) { const l = ctx && ctx.frame && ctx.frame.language; return /^[a-z]{2}$/.test(String(l || '')) ? l : 'en'; }
+const GDELT_LANGS = { en: 'english', es: 'spanish', fr: 'french', pt: 'portuguese', de: 'german', it: 'italian', ja: 'japanese', ko: 'korean', zh: 'chinese', ar: 'arabic', hi: 'hindi' };
+function excGdeltLang(ctx) { return GDELT_LANGS[excLang(ctx)] || 'english'; }
+/* SEAM:EXC_AHEAD: the house's cultural calendar. Recurring moments by month and day with the tags they touch; a frame meets a moment
+ * when a tag is among its anchors, its category or its audience words. Kept small and plain; grows by hand. */
+const CULTURAL_CALENDAR = [
+  { md: '01-01', name: 'New Year', tags: ['resolutions', 'fitness', 'wellness', 'dry january', 'alcohol', 'gym'] },
+  { md: '01-20', name: 'Sundance Film Festival', tags: ['film', 'cinema', 'indie', 'streaming'] },
+  { md: '02-02', name: 'Super Bowl Sunday', tags: ['football', 'nfl', 'advertising', 'commercials', 'snacks', 'beer', 'sports'] },
+  { md: '02-14', name: 'Valentine\'s Day', tags: ['dating', 'romance', 'gifting', 'chocolate', 'jewelry', 'fragrance', 'flowers'] },
+  { md: '02-16', name: 'NBA All-Star Weekend', tags: ['basketball', 'nba', 'sneakers', 'footwear', 'jordan', 'nike', 'streetwear'] },
+  { md: '03-02', name: 'The Oscars', tags: ['film', 'cinema', 'red carpet', 'fashion', 'luxury', 'beauty'] },
+  { md: '03-08', name: 'International Women\'s Day', tags: ['women', 'beauty', 'wellness', 'equity'] },
+  { md: '03-14', name: 'SXSW', tags: ['music', 'tech', 'startups', 'creators', 'film'] },
+  { md: '03-17', name: 'March Madness begins', tags: ['basketball', 'college', 'sports', 'betting', 'sneakers'] },
+  { md: '04-11', name: 'Coachella (first weekend)', tags: ['music', 'festival', 'fashion', 'beauty', 'gen z', 'creators'] },
+  { md: '04-22', name: 'Earth Day', tags: ['sustainability', 'climate', 'clean beauty', 'resale', 'thrift'] },
+  { md: '05-04', name: 'The Met Gala', tags: ['fashion', 'luxury', 'beauty', 'red carpet', 'celebrity'] },
+  { md: '05-10', name: 'Mother\'s Day', tags: ['gifting', 'beauty', 'skincare', 'flowers', 'jewelry', 'parents'] },
+  { md: '05-25', name: 'Memorial Day weekend', tags: ['travel', 'grilling', 'beer', 'retail', 'outdoor'] },
+  { md: '06-01', name: 'Pride Month begins', tags: ['lgbtq', 'pride', 'fashion', 'beauty', 'inclusion'] },
+  { md: '06-15', name: 'Cannes Lions', tags: ['advertising', 'agencies', 'creative', 'marketing'] },
+  { md: '06-19', name: 'Juneteenth', tags: ['black culture', 'heritage', 'community', 'music'] },
+  { md: '06-21', name: 'Father\'s Day', tags: ['gifting', 'men', 'grooming', 'skincare', 'watches', 'tools'] },
+  { md: '07-04', name: 'Fourth of July', tags: ['grilling', 'beer', 'travel', 'fireworks', 'retail'] },
+  { md: '07-14', name: 'Amazon Prime Day', tags: ['retail', 'ecommerce', 'deals', 'electronics', 'beauty'] },
+  { md: '08-01', name: 'Back to school', tags: ['school', 'parents', 'teens', 'sneakers', 'backpacks', 'laptops', 'gen z', 'gen alpha'] },
+  { md: '08-30', name: 'US Open tennis', tags: ['tennis', 'sports', 'luxury', 'athleisure'] },
+  { md: '09-04', name: 'NFL season opens', tags: ['football', 'nfl', 'sports', 'beer', 'snacks', 'betting'] },
+  { md: '09-10', name: 'New York Fashion Week', tags: ['fashion', 'luxury', 'streetwear', 'beauty', 'runway'] },
+  { md: '09-15', name: 'Hispanic Heritage Month begins', tags: ['latino', 'hispanic', 'music', 'food', 'beauty', 'spanish'] },
+  { md: '10-01', name: 'Breast Cancer Awareness Month', tags: ['pink', 'health', 'women', 'cause marketing'] },
+  { md: '10-21', name: 'NBA season opens', tags: ['basketball', 'nba', 'sneakers', 'footwear', 'jordan', 'nike', 'streetwear'] },
+  { md: '10-31', name: 'Halloween', tags: ['candy', 'costumes', 'horror', 'beauty', 'makeup', 'parties'] },
+  { md: '11-01', name: 'Día de los Muertos', tags: ['latino', 'hispanic', 'heritage', 'beauty', 'food'] },
+  { md: '11-11', name: 'Singles\' Day', tags: ['ecommerce', 'china', 'retail', 'deals', 'beauty'] },
+  { md: '11-27', name: 'Thanksgiving', tags: ['food', 'family', 'travel', 'football', 'retail'] },
+  { md: '11-28', name: 'Black Friday', tags: ['retail', 'deals', 'ecommerce', 'electronics', 'sneakers', 'beauty', 'fashion'] },
+  { md: '12-01', name: 'Cyber Monday', tags: ['ecommerce', 'deals', 'electronics', 'retail'] },
+  { md: '12-03', name: 'Spotify Wrapped', tags: ['music', 'streaming', 'spotify', 'gen z', 'identity', 'sharing'] },
+  { md: '12-05', name: 'Art Basel Miami', tags: ['art', 'luxury', 'fashion', 'sneakers', 'collaboration', 'culture'] },
+  { md: '12-25', name: 'Christmas', tags: ['gifting', 'retail', 'family', 'toys', 'beauty', 'fashion', 'food'] },
+  { md: '12-31', name: 'New Year\'s Eve', tags: ['parties', 'alcohol', 'fashion', 'beauty', 'travel'] }
+];
+const AHEAD = { DAYS: 60, MAX: 3 };
+// PURE: the moments ahead that touch a frame (or a bare query), soonest first, at most AHEAD.MAX.
+function calendarAhead(frame, q, nowMs) {
+  const words = new Set([].concat((frame && frame.anchors) || [], [frame && frame.category, frame && frame.audience, frame && frame.entity, q].filter(Boolean).map(x => String(x).toLowerCase())).join(' ').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3));
+  const text = [].concat((frame && frame.anchors) || [], [frame && frame.category, frame && frame.audience, frame && frame.entity, q].filter(Boolean)).join(' ').toLowerCase();
+  const now = new Date(nowMs || Date.now()), y = now.getUTCFullYear(), out = [];
+  for (const m of CULTURAL_CALENDAR) {
+    const hit = m.tags.filter(t => text.includes(t) || words.has(t));
+    if (!hit.length) continue;
+    for (const yy of [y, y + 1]) {
+      const d = new Date(Date.UTC(yy, parseInt(m.md.slice(0, 2), 10) - 1, parseInt(m.md.slice(3), 10)));
+      const days = Math.round((d - now) / 864e5);
+      if (days >= 0 && days <= AHEAD.DAYS) { out.push({ name: m.name, date: d.toISOString().slice(0, 10), days, tags: hit }); break; }
+    }
+  }
+  return out.sort((a, b) => a.days - b.days).slice(0, AHEAD.MAX);
+}
+/* SEAM:EXC_BLIND: the line is computed from what is configured, so it tells the truth as rails are added. */
+function excBlindLine(env) {
+  const voices = ['YouTube', 'Mastodon', 'Bluesky'].concat(env && env.REDDIT_CLIENT_ID && env.REDDIT_CLIENT_SECRET ? ['Reddit'] : []);
+  return 'This read does not see TikTok, Instagram or X. Its voices come from ' + voices.slice(0, -1).join(', ') + ' and ' + voices[voices.length - 1] + '; its news from the open web and the lake.';
+}
+/* SEAM:EXC_LOOK: what a category looks like right now. Workers AI vision over up to LOOK.MAX of the evidence's own images (the sources'
+ * photographs and stills), one sentence each on palette, type, casting and setting; on a full read only; a six second deadline for the
+ * whole; never a finding, a line on the receipt and a feed for PLAY's moodboard. */
+const LOOK = { MAX: 3, MS: 6000, BYTES: 1500000, MODEL: '@cf/llava-hf/llava-1.5-7b-hf', PROMPT: 'In one sentence under 30 words, describe this image as an art director would: palette, typography if any, casting, setting, mood. No brand names you cannot see.' };
+async function excLook(env, merged, frame) {
+  if (!env || !env.AI) return null;
+  const urls = [...new Set((merged || []).map(c => c && c.image).filter(u => /^https:\/\//.test(String(u || ''))))].slice(0, LOOK.MAX);
+  if (!urls.length) return null;
+  const one = async (u) => {
+    try {
+      const r = await fetch(u, { headers: { Accept: 'image/*' } }); if (!r.ok) return null;
+      const len = parseInt(r.headers.get('content-length') || '0', 10); if (len > LOOK.BYTES) return null;
+      const buf = await r.arrayBuffer(); if (buf.byteLength > LOOK.BYTES) return null;
+      const out = await env.AI.run(LOOK.MODEL, { image: Array.from(new Uint8Array(buf)), prompt: LOOK.PROMPT, max_tokens: 60 });
+      const t = String((out && (out.description || out.response)) || '').replace(/\s+/g, ' ').replace(/\u2014/g, ',').trim();
+      return t ? { url: u, line: t.slice(0, 220) } : null;
+    } catch (e) { return null; }
+  };
+  const lines = await Promise.race([Promise.all(urls.map(one)), new Promise(res => setTimeout(() => res([]), LOOK.MS))]);
+  const got = (lines || []).filter(Boolean);
+  return got.length ? { lines: got, model: LOOK.MODEL } : null;
+}
 function envelope(rail, o) {
   return {
     url: env1(o.url).slice(0, 600) || null,
@@ -7110,13 +7215,13 @@ const RAIL_FNS = {
     return ((j && j.hits) || []).map(h => envelope(rail, { url: h.url || ('https://news.ycombinator.com/item?id=' + h.objectID), title: h.title, text: (h.points || 0) + ' points, ' + (h.num_comments || 0) + ' comments', published_at: h.created_at, kind: 'discourse' }));
   },
   async gdelt(env, q, ctx, rail) {
-    const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&maxrecords=10&format=json&sort=hybridrel&timespan=1month&query=' + encodeURIComponent(q + ' sourcelang:english'));
+    const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=artlist&maxrecords=10&format=json&sort=hybridrel&timespan=1month&query=' + encodeURIComponent(q + ' sourcelang:' + (typeof excGdeltLang === 'function' ? excGdeltLang(ctx) : 'english')));   // SEAM:EXC_LANGUAGE
     return ((j && j.articles) || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.domain ? 'via ' + a.domain : '', image: a.socialimage, source_name: a.domain || 'GDELT', country: a.sourcecountry || null,   // SEAM:EXC_PLACE
       published_at: a.seendate ? a.seendate.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, '$1-$2-$3T$4:$5:$6Z') : null }));
   },
   async gdelt_volume(env, q, ctx, rail) {
     // No items: the article-volume series for the last 3 months feeds the velocity component and Trajectory.
-    const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=timelinevol&format=json&timespan=3months&query=' + encodeURIComponent(q + ' sourcelang:english'));
+    const j = await railFetch('https://api.gdeltproject.org/api/v2/doc/doc?mode=timelinevol&format=json&timespan=3months&query=' + encodeURIComponent(q + ' sourcelang:' + (typeof excGdeltLang === 'function' ? excGdeltLang(ctx) : 'english')));   // SEAM:EXC_LANGUAGE
     const tl = j && j.timeline && j.timeline[0] && j.timeline[0].data;
     if (Array.isArray(tl) && tl.length) ctx.meta.volume = { source: 'GDELT DOC timelinevol', points: tl.length, series: tl.slice(-90).map(p => ({ d: String(p.date).slice(0, 8), v: p.value })) };
     return [];
@@ -7187,7 +7292,7 @@ const RAIL_FNS = {
     const iso = x => /^\d{4}-\d{2}-\d{2}$/.test(String(x || ''));
     const since = ctx && iso(ctx.since) ? '&publishedAfter=' + encodeURIComponent(ctx.since + 'T00:00:00Z') : '';   // SEAM:VOICE_LAW: a report asks for the period's videos, whose comments are the period's
     const before = ctx && iso(ctx.before) ? '&publishedBefore=' + encodeURIComponent(ctx.before + 'T00:00:00Z') : '';   // SEAM:READ_TIME: and the years before it, to show what changed
-    const s = await railFetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&order=relevance&relevanceLanguage=en' + since + before + '&q=' + encodeURIComponent(q) + '&key=' + key);
+    const s = await railFetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&order=relevance&relevanceLanguage=' + (typeof excLang === 'function' ? excLang(ctx) : 'en') + (ctx && ctx.shorts ? '&videoDuration=short' : '') + since + before + '&q=' + encodeURIComponent(q) + '&key=' + key);
     if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ck, String(used + 1), { expirationTtl: 90000 }).catch(() => {});
     const vids = ((s && s.items) || []).filter(v => v.id && v.id.videoId);
     const out = vids.map(v => envelope(rail, { url: 'https://www.youtube.com/watch?v=' + v.id.videoId, title: v.snippet.title, text: stripHtml(v.snippet.description).slice(0, 300) + ' · ' + (v.snippet.channelTitle || ''), image: v.snippet.thumbnails && (v.snippet.thumbnails.high || v.snippet.thumbnails.medium || {}).url, published_at: v.snippet.publishedAt, source_name: 'YouTube' }));
@@ -7255,7 +7360,80 @@ const RAIL_FNS = {
     const got = await gatherPaidSignals(q, env, ctx && ctx.lane === 'recon' ? 'recon' : null);   // SEAM:READ_DEEP
     return (got || []).map(a => envelope(rail, { url: a.url, title: a.title, text: a.snippet || a.text || '', published_at: a.published_at || a.date || null, source_name: a.source || 'Exa', image: a.image }));
   },
-  async reddit(env, q, ctx, rail) { return []; },   // flag: off until credentials exist (Responsible Builder approval)
+  /* SEAM:RAIL_BLUESKY: Bluesky's public search, no key. Posts in the window as one discourse line; each post's words into the voices
+   * under the voice laws (verbatim, no handle, on the frame by its own words, a shared headline marked). */
+  async bluesky(env, q, ctx, rail) {
+    const j = await railFetch('https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?limit=25&sort=latest&q=' + encodeURIComponent(String(q).slice(0, 120)));
+    const posts = (j && Array.isArray(j.posts)) ? j.posts.filter(p => p && p.record && typeof p.record.text === 'string' && p.record.text.length >= 20) : [];
+    if (!posts.length) return [];
+    const frame = ctx && ctx.frame, lang = typeof excLang === 'function' ? excLang(ctx) : 'en';
+    if (ctx && ctx.meta) {
+      const src = { id: 'bsky:' + String(q).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40), source: 'Bluesky', title: String(q).slice(0, 80), url: 'https://bsky.app/search?q=' + encodeURIComponent(String(q).slice(0, 120)), published_at: posts[0].record.createdAt || null, n: posts.length };
+      const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); voiceAdd(ctx, 'Bluesky', src);
+      for (const p of posts) {
+        const clean = voiceClean(p.record.text); if (!clean) continue;
+        const share = voiceShare(voiceFlat(p.record.text)); const text = share ? share.headline : clean;
+        if (!text || (lang === 'en' && !looksEnglish(text)) || vv.quotes.length >= ((ctx && ctx.voiceMax) || VOICES.MAX)) continue;
+        vv.quotes.push({ src: src.id, text, likes: parseInt(p.likeCount, 10) || 0, when: p.record.createdAt ? String(p.record.createdAt).slice(0, 10) : null, self: share ? null : voiceSelf(text), on_frame: voiceOnFrame(text, frame), share: share || null });
+      }
+    }
+    const ex = posts.slice(0, 3).map(p => String(p.record.text).replace(/\s+/g, ' ').slice(0, 140));
+    const newest = posts[0].record.createdAt, oldest = posts[posts.length - 1].record.createdAt;
+    return [envelope(rail, { url: 'https://bsky.app/search?q=' + encodeURIComponent(String(q).slice(0, 120)), title: String(q).slice(0, 80) + ' on Bluesky: ' + posts.length + ' posts in window', kind: 'discourse',
+      text: 'Aggregate of ' + posts.length + ' public posts between ' + String(oldest || '').slice(0, 10) + ' and ' + String(newest || '').slice(0, 10) + '. Sample: ' + ex.join(' | '), published_at: newest || null })];
+  },
+  /* SEAM:RAIL_REDDIT: Reddit on its official OAuth API. Client credentials (REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET) for an app token
+   * kept fifty minutes in KV; the User-Agent Reddit requires (REDDIT_USER_AGENT, platform:app:version by /u/name); under sixty calls a
+   * minute. Without the keys the rail is silent and the receipt says so (meta.reddit_off). Posts in the month as one discourse line;
+   * their titles and text into the voices under the voice laws. The commercial agreement governs use beyond development. */
+  async reddit(env, q, ctx, rail) {
+    if (!env.REDDIT_CLIENT_ID || !env.REDDIT_CLIENT_SECRET) { if (ctx && ctx.meta) ctx.meta.reddit_off = true; return []; }
+    const ua = env.REDDIT_USER_AGENT || 'web:unsurfaced-intelligence:v1 (by /u/unsurfaced)';
+    let token = null;
+    try { token = env.RATE_LIMIT ? await env.RATE_LIMIT.get('reddit:token') : null; } catch (e) { token = null; }
+    if (!token) {
+      const r = await fetch('https://www.reddit.com/api/v1/access_token', { method: 'POST', headers: { Authorization: 'Basic ' + btoa(env.REDDIT_CLIENT_ID + ':' + env.REDDIT_CLIENT_SECRET), 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': ua }, body: 'grant_type=client_credentials' }).catch(excQuiet('reddit_token', null));
+      const j = r && r.ok ? await r.json().catch(excQuiet('reddit_token_json', null)) : null;
+      token = j && j.access_token ? String(j.access_token) : null;
+      if (!token) { if (ctx && ctx.meta) ctx.meta.reddit_off = 'token'; return []; }
+      if (env.RATE_LIMIT) await env.RATE_LIMIT.put('reddit:token', token, { expirationTtl: 3000 }).catch(excQuiet('reddit_token_put'));
+    }
+    const r2 = await fetch('https://oauth.reddit.com/search?limit=25&sort=relevance&t=month&type=link&q=' + encodeURIComponent(String(q).slice(0, 120)), { headers: { Authorization: 'Bearer ' + token, 'User-Agent': ua } }).catch(excQuiet('reddit_search', null));
+    const j2 = r2 && r2.ok ? await r2.json().catch(excQuiet('reddit_search_json', null)) : null;
+    const posts = ((j2 && j2.data && j2.data.children) || []).map(c => c && c.data).filter(d => d && d.title && !d.over_18);
+    if (!posts.length) return [];
+    const frame = ctx && ctx.frame, lang = typeof excLang === 'function' ? excLang(ctx) : 'en';
+    if (ctx && ctx.meta) {
+      const src = { id: 'rd:' + String(q).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40), source: 'Reddit', title: String(q).slice(0, 80), url: 'https://www.reddit.com/search/?q=' + encodeURIComponent(String(q).slice(0, 120)), published_at: posts[0].created_utc ? new Date(posts[0].created_utc * 1000).toISOString() : null, n: posts.length };
+      const vv = ctx.meta.voices || (ctx.meta.voices = { sources: [], quotes: [] }); voiceAdd(ctx, 'Reddit', src);
+      for (const d of posts) {
+        const raw = [d.title, d.selftext].filter(Boolean).join('. ').slice(0, 600); const clean = voiceClean(raw); if (!clean) continue;
+        const share = voiceShare(voiceFlat(raw)); const text = share ? share.headline : clean;
+        if (!text || (lang === 'en' && !looksEnglish(text)) || vv.quotes.length >= ((ctx && ctx.voiceMax) || VOICES.MAX)) continue;
+        vv.quotes.push({ src: src.id, text, likes: parseInt(d.score, 10) || 0, when: d.created_utc ? new Date(d.created_utc * 1000).toISOString().slice(0, 10) : null, self: share ? null : voiceSelf(text), on_frame: voiceOnFrame(text, frame), share: share || null });
+      }
+    }
+    const ex = posts.slice(0, 3).map(d => String(d.title).slice(0, 120) + (d.subreddit ? ' (r/' + d.subreddit + ')' : ''));
+    const newest = posts[0].created_utc ? new Date(posts[0].created_utc * 1000).toISOString() : null;
+    return [envelope(rail, { url: 'https://www.reddit.com/search/?q=' + encodeURIComponent(String(q).slice(0, 120)), title: String(q).slice(0, 80) + ' on Reddit: ' + posts.length + ' posts this month', kind: 'discourse',
+      text: 'Aggregate of ' + posts.length + ' posts across ' + new Set(posts.map(d => d.subreddit)).size + ' subreddits. Sample: ' + ex.join(' | '), published_at: newest })];
+  },
+  /* SEAM:RAIL_SHORTS: YouTube Shorts as its own rail: the same search on the same quota, short videos only, their comments into the voices. */
+  async youtube_shorts(env, q, ctx, rail) { return RAIL_FNS.youtube(env, q, Object.assign({}, ctx || {}, { shorts: true }), rail); },
+  /* SEAM:EXC_DISAGREE: what published trend reports claim about the frame, so the read can say where the house disagrees. One Exa search
+   * phrased for reports; every line is marked CONSENSUS and the writer is told what that means. */
+  async consensus(env, q, ctx, rail) {
+    const f = ctx && ctx.frame, subject = (f && (f.entity || f.category)) || q;
+    if (!subject) return [];
+    const got = await RAIL_FNS.exa(env, String(subject).slice(0, 80) + ' trend report ' + new Date().getUTCFullYear() + ' consumer outlook', ctx, rail);
+    return (got || []).slice(0, 5).map(it => Object.assign(it, { title: 'CONSENSUS: ' + String(it.title || '').slice(0, 140), stance: 'consensus', kind: 'consensus' }));
+  },
+  /* SEAM:EXC_AHEAD: the cultural calendar, a rail. Known moments (the house's list, recurring by month and day, tagged) inside the next
+   * sixty days whose tags touch the frame ride the evidence as AHEAD lines, so a read can anchor to what is coming. Free. */
+  async calendar(env, q, ctx, rail) {
+    const f = ctx && ctx.frame; const ahead = calendarAhead(f, q, Date.now());
+    return ahead.map(m => envelope(rail, { url: 'https://unsurfaced-intelligence.com/intelligence/#ahead', title: 'AHEAD ' + m.date + ': ' + m.name, kind: 'ahead', text: m.name + ' on ' + m.date + ', in ' + m.days + ' days. Touches: ' + m.tags.join(', ') + '. A moment the frame\'s people will meet; the read may anchor a move to it, never invent what it will bring.', published_at: new Date().toISOString(), source_name: 'Cultural calendar' }));
+  },
   /* SEAM:EXC_COMPETE: one news search for the frame's whole competitive set, so "against whom" stands on
    * evidence. GDELT is asked once (the names joined by OR); an article counts only when its title names a
    * competitor, and it is filed under that name, at most three each. Keyless. */
@@ -7313,7 +7491,11 @@ const RAILS = [
   { id: 'factcheck',     name: 'Fact Check Tools',       tier: 1, kind: 'truth',     classes: ['brand','event','category','behavior'], cap: 800 },
   { id: 'exa',           name: 'Exa Web',                tier: 3, kind: 'web',       classes: ['brand','category','behavior','territory','event','talent'], cap: 400 },
   { id: 'pplx',          name: 'Perplexity Sonar',       tier: 3, kind: 'web',       classes: ['brand','category','behavior','territory','event','talent'], cap: 200 },
-  { id: 'reddit',        name: 'Reddit',                 tier: 3, kind: 'discourse', classes: [], cap: 0 },
+  { id: 'reddit',        name: 'Reddit',                 tier: 3, kind: 'discourse', classes: ['brand','talent','category','behavior'], cap: 300 },   // SEAM:RAIL_REDDIT
+  { id: 'bluesky',       name: 'Bluesky',                tier: 3, kind: 'discourse', classes: ['brand','talent','category','behavior','territory','event'], cap: 1500 },   // SEAM:RAIL_BLUESKY
+  { id: 'youtube_shorts', name: 'YouTube Shorts',        tier: 3, kind: 'discourse', classes: ['brand','talent','category','behavior'], cap: 150 },   // SEAM:RAIL_SHORTS
+  { id: 'consensus',     name: 'Trend reports (consensus)', tier: 3, kind: 'consensus', classes: ['brand','category','behavior'], cap: 300 },   // SEAM:EXC_DISAGREE
+  { id: 'calendar',      name: 'Cultural calendar',      tier: 2, kind: 'ahead',     classes: ['brand','category','behavior','event','territory'], cap: 5000 },   // SEAM:EXC_AHEAD
   { id: 'competitors',   name: 'Competitive set',        tier: 4, kind: 'news',      classes: ['brand','category','behavior','territory','event','talent'], cap: 1200 },   // SEAM:EXC_COMPETE
   { id: 'counter',       name: 'Counter view',           tier: 4, kind: 'news',      classes: ['brand','category','behavior','territory','event','talent'], cap: 1200 }    // SEAM:EXC_COUNTER
 ];
@@ -7719,7 +7901,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'health' ? await watchHealth(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -8688,7 +8870,8 @@ async function doorPass(env, opts) {
     const age = last && last.night ? Math.round((Date.parse(night) - Date.parse(last.night)) / 864e5) : null;
     if (age != null && age < every) {
       out.skipped = 'cadence'; out.every = every; out.last_night = last.night; out.next_night = new Date(Date.parse(last.night) + every * 864e5).toISOString().slice(0, 10);
-      await doorPublish(env);   // the standing set, republished so its KV copy never lapses inside the gap
+      await doorPublish(env).catch(excQuiet('door_publish'));   // the standing set, republished so its KV copy never lapses inside the gap
+      await logEvent(env, 'intelligence', 'door', 'door_pass', null, out);   // SEAM:WATCH_LINE: a skipped night is still a night on record
       return out;
     }
   }
@@ -8754,8 +8937,8 @@ async function doorPass(env, opts) {
     }
     if (sub && sub.ok) { out.queued = items.length; out.usd = sub.est_usd || 0; } else if (items.length) { out.failed += items.length; console.log('door_batch_error', String((sub && sub.error) || '')); }
   }
-  await doorPublish(env);
-  logEvent(env, 'intelligence', 'door', 'door_pass', null, out);
+  try { await doorPublish(env); } catch (e) { out.publish_error = String(e && e.message).slice(0, 120); excQuiet('door_publish')(e); }
+  await logEvent(env, 'intelligence', 'door', 'door_pass', null, out);   // awaited: the record must land before the route answers or the chain closes
   return out;
 }
 /* Called by claudeBatchDrain when a door_read job lands. */
@@ -8870,7 +9053,9 @@ async function watchHealth(env) {
   const dp = await ev('door_pass');
   if (dp) { const age = (now - Date.parse(dp.created_at)) / 36e5; out.cron = Object.assign({ at: dp.created_at, age_h: Math.round(age) }, dp.meta || {});
     if (age > WATCH.CRON_LATE_H) out.trips.push({ kind: 'cron_late', say: 'the nightly pass last ran ' + Math.round(age) + ' hours ago' });
-    if ((dp.meta && dp.meta.earned) > 0 && !(dp.meta.queued > 0)) out.trips.push({ kind: 'door_failed', say: 'last night ' + dp.meta.earned + ' readings were earned and none was written (' + (dp.meta.failed || 0) + ' failed)' }); }
+    if (dp.meta && dp.meta.error) out.trips.push({ kind: 'door_error', say: 'the nightly pass stopped early: ' + String(dp.meta.error).slice(0, 120) });
+    else if (dp.meta && dp.meta.publish_error) out.trips.push({ kind: 'door_publish', say: 'the pass wrote its rows but the door did not republish: ' + String(dp.meta.publish_error).slice(0, 100) });
+    else if (!(dp.meta && dp.meta.skipped) && (dp.meta && dp.meta.earned) > 0 && !(dp.meta.queued > 0)) out.trips.push({ kind: 'door_failed', say: 'last night ' + dp.meta.earned + ' readings were earned and none was written (' + (dp.meta.failed || 0) + ' failed)' }); }
   else out.trips.push({ kind: 'cron_missing', say: 'no nightly pass is on record' });
   const dc = await ev('door_called'); if (dc) out.called = Object.assign({ at: dc.created_at }, dc.meta || {});
   // the rails: the last reads' receipts name the rails that answered and the ones that stayed silent (exc_rails events, when logged)
@@ -8944,7 +9129,7 @@ async function watchNote(env, kind, meta) {
 }
 /* SEAM:DESK_ROLES: who may run what. An admin runs everything; an editor (app_user.role editor) the free passes that read or republish
  * and never spend a model; the desk key stands for the owner. Every run is logged with who ran it. */
-const DESK_ROLES = { EDITOR_RUNS: ['record', 'called', 'door_publish', 'voices', 'score', 'backup', 'watch', 'health'] };
+const DESK_ROLES = { EDITOR_RUNS: ['record', 'called', 'door_publish', 'voices', 'score', 'backup', 'watch', 'health'] };   // SEAM:CROSS_CURRENTS: currents spends Fable; admin only
 async function callerRole(env, uid) {
   try { const r = await sbRest(env, `app_user?id=eq.${uid}&select=role,email`); return r && r[0] ? { role: r[0].role || null, email: r[0].email || null } : { role: null, email: null }; }
   catch (e) { return { role: null, email: null }; }
@@ -8961,6 +9146,29 @@ async function watchRoute(request, env, origin) {
   const runs = (await sbRest(env, 'activity_events?event=eq.desk_run&select=created_at,meta&order=created_at.desc&limit=20').catch(excQuiet('watch_runs', []))) || [];
   return json({ ok: true, line, desk_runs: runs.map(r => Object.assign({ at: r.created_at }, r.meta || {})) }, 200, origin, env);
 }
+/* ═══ SEAM:CROSS_CURRENTS: the patterns running across categories. Once a week (Sunday, in the nightly chain) Fable reads the
+ * fortnight's deployments (claims, moves, subjects, grades) and names three to five currents each running through two or more
+ * subjects, with the move each implies; they ride the record above the scroll. About a dollar and a half a week; the cross_currents
+ * section of the monthly report, alive on the board. ═══ */
+const CURRENTS = { KEY: 'currents:v1', TTL: 10 * 86400, NIGHTS: 14, MAX_TOKENS: 2500, TIMEOUT_MS: 90000, WEEKDAY: 0 };
+const CURRENTS_SYS = 'You are the editor of a cultural-intelligence house reading a fortnight of its own deployed insights. Return JSON only: {"currents":[3 to 5 of {"title":"a present-tense claim under 10 words naming the pattern","body":"two or three sentences under 70 words: the pattern, the subjects it runs through by name, what it means","subjects":["the labels of the subjects it runs through, two or more, copied exactly"],"move":"one sentence, verb first, the move the pattern implies for a brand team"}]}. A current must run through two or more subjects; never restate one insight. No new figures. No em dash.';
+async function crossCurrentsPass(env, opts) {
+  const since = new Date(Date.now() - CURRENTS.NIGHTS * 864e5).toISOString().slice(0, 10);
+  const rows = (await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&night=gte.' + since + '&select=id,frame_key,night,frame,read,meta&order=night.desc&limit=80').catch(excQuiet('currents_rows', []))) || [];
+  if (rows.length < 4) return { skipped: 'thin', rows: rows.length };
+  const label = r => excFrameLabel(r.frame || {}) || (r.frame && r.frame.title) || r.frame_key;
+  const lines = rows.map(r => '- ' + r.night + ' [' + String(label(r)).slice(0, 60) + ']: ' + String((r.read.read && r.read.read[0]) || '').slice(0, 220) + (r.read.ideas && r.read.ideas[0] ? ' The move: ' + String(r.read.ideas[0].headline || '').slice(0, 100) : '') + (r.meta && r.meta.called && r.meta.called.verdict ? ' [' + r.meta.called.verdict + ']' : ''));
+  const r = await callClaude(env, 'doc', { system: CURRENTS_SYS, prompt: 'THE FORTNIGHT\'S DEPLOYMENTS (' + rows.length + '):\n' + lines.join('\n'), max_tokens: CURRENTS.MAX_TOKENS, kind: 'cross_currents', timeout_ms: CURRENTS.TIMEOUT_MS, meta: { surface: 'record' } });
+  if (!r || !r.ok) return { ok: false, error: String((r && r.error) || 'none') };
+  const j = extractJson(r.text || '') || {};
+  const labels = new Set(rows.map(label));
+  const currents = (Array.isArray(j.currents) ? j.currents : []).slice(0, 5).map(c => ({ title: String((c && c.title) || '').replace(/\u2014/g, ',').slice(0, 90), body: String((c && c.body) || '').replace(/\u2014/g, ',').slice(0, 480), subjects: (Array.isArray(c && c.subjects) ? c.subjects : []).map(x => String(x).slice(0, 60)).filter(x => labels.has(x)).slice(0, 6), move: String((c && c.move) || '').replace(/\u2014/g, ',').slice(0, 200) })).filter(c => c.title && c.body && c.subjects.length >= 2);
+  const out = { at: new Date().toISOString(), since, rows: rows.length, currents, cost_usd: r.cost_usd || null };
+  if (currents.length && env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(CURRENTS.KEY, JSON.stringify(out), { expirationTtl: CURRENTS.TTL }); await env.RATE_LIMIT.delete(RECORD.KEY); } catch (e) { excQuiet('currents_put')(e); } }
+  logEvent(env, 'intelligence', 'record', 'cross_currents', null, { rows: rows.length, currents: currents.length, cost_usd: out.cost_usd });
+  return out;
+}
+async function crossCurrentsWeekly(env) { return new Date().getUTCDay() === CURRENTS.WEEKDAY ? crossCurrentsPass(env) : { skipped: 'not_the_day' }; }
 /* ═══ SEAM:CLIENT_PROFILE: the reader's profile. The role their implications are written for, the brands they track, the frames they
  * follow, where the push goes. One row per signed-in user, made on first read. ═══ */
 const PROFILE = { ROLES: ['brand', 'strategy', 'creative', 'media', 'product', 'insights', 'founder', 'other'], MAX_TRACKED: 12, MAX_FOLLOWS: 12, FOLLOW_KINDS: ['brand', 'category', 'audience'] };
@@ -9073,7 +9281,7 @@ async function pushBrief(env, prof, tiles) {
 function pushLink(env, id) { return (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '') + '/i/' + id; }
 function pushMailHtml(env, prof, items, brief) {
   const row = it => '<li style="margin:0 0 12px"><div style="font-size:11px;letter-spacing:.08em;color:#888">' + esc(it.kind === 'called' ? (it.tile.called.verdict === 'held' ? 'HELD' : 'MISSED') + ' \u00b7 ' : 'DEPLOYED \u00b7 ') + esc(it.tile.deployed || '') + ' \u00b7 ' + esc(it.why) + '</div><div style="font-size:16px;line-height:1.35"><a style="color:#111;text-decoration:none" href="' + esc(pushLink(env, it.tile.id)) + '">' + esc(it.tile.claim || it.tile.title || '') + '</a></div>' + (it.tile.move ? '<div style="color:#444;font-size:13px">The move: ' + esc(it.tile.move) + '</div>' : '') + '</li>';
-  return '<div style="font-family:system-ui;max-width:600px"><p style="font-size:12px;letter-spacing:.1em;color:#888">EXCAVATE \u00b7 THE RECORD</p>' + (brief && brief.length ? '<h2 style="margin:0 0 8px">Your Monday brief</h2><ul style="padding-left:18px">' + brief.map(l => '<li style="margin:0 0 6px">' + esc(l) + '</li>').join('') + '</ul>' : '<h2 style="margin:0 0 8px">On your frames</h2>') + '<ul style="list-style:none;padding:0;margin:14px 0">' + items.map(row).join('') + '</ul><p style="color:#888;font-size:12px">' + esc(EXC_BLIND) + ' Change what you follow in your profile.</p></div>';
+  return '<div style="font-family:system-ui;max-width:600px"><p style="font-size:12px;letter-spacing:.1em;color:#888">EXCAVATE \u00b7 THE RECORD</p>' + (brief && brief.length ? '<h2 style="margin:0 0 8px">Your Monday brief</h2><ul style="padding-left:18px">' + brief.map(l => '<li style="margin:0 0 6px">' + esc(l) + '</li>').join('') + '</ul>' : '<h2 style="margin:0 0 8px">On your frames</h2>') + '<ul style="list-style:none;padding:0;margin:14px 0">' + items.map(row).join('') + '</ul><p style="color:#888;font-size:12px">' + esc(typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND) + ' Change what you follow in your profile.</p></div>';
 }
 function pushText(env, items, brief) {
   return (brief && brief.length ? 'Your Monday brief:\n' + brief.map(l => '\u2022 ' + l).join('\n') + '\n\n' : '') + items.map(it => (it.kind === 'called' ? (it.tile.called.verdict === 'held' ? 'HELD' : 'MISSED') : 'DEPLOYED') + ' ' + (it.tile.deployed || '') + ': ' + (it.tile.claim || it.tile.title || '') + (it.tile.move ? ' The move: ' + it.tile.move : '') + ' ' + pushLink(env, it.tile.id)).join('\n');
@@ -9134,7 +9342,7 @@ function insightPackHtml(env, row) {
     '<div class="top">EXCAVATE BY UNSURFACED\u2122 \u00b7 EVIDENCE PACK \u00b7 DEPLOYED ' + e(t.deployed || '') + (t.develops ? ' \u00b7 DEVELOPS AN EARLIER READING' : '') + '</div><div class="k">' + who + '</div><h1>' + e(t.claim || t.title || '') + '</h1>' + (rd.read && rd.read[1] ? '<p>' + e(rd.read[1]) + '</p>' : '') + (t.question ? '<p class="k">Answers: ' + e(t.question) + '</p>' : '') +
     (t.move ? '<div class="move"><div class="k">THE MOVE</div><b>' + e(t.move) + '</b></div>' : '') + meas + watch +
     (rd.brief ? '<h2>The interpretation</h2><p>' + e(rd.brief) + '</p>' : '') + (ins ? '<h2>Findings</h2>' + ins : '') + (moves ? '<h2>Moves</h2>' + moves : '') + (voices ? '<h2>What people are saying</h2>' + voices : '') +
-    '<h2>What this reading does not see</h2><p>' + e(EXC_BLIND) + '</p>' + (lines ? '<h2>What it stood on</h2><ol>' + lines + '</ol>' : '') +
+    '<h2>What this reading does not see</h2><p>' + e(typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND) + '</p>' + (lines ? '<h2>What it stood on</h2><ol>' + lines + '</ol>' : '') +
     '<p class="k" style="margin-top:30px">' + e(pushLink(env, row.id)) + ' \u00b7 Every figure was checked against the line it cites or the lake\'s own counts. Voices are verbatim, credited by what the speaker said about themselves, never by name.</p></body></html>';
 }
 async function insightPackRoute(request, env, origin) {
@@ -9156,7 +9364,7 @@ async function backupNightly(env) {
   const since = new Date(Date.now() - BACKUP.DOOR_NIGHTS * 864e5).toISOString().slice(0, 10);
   const sets = [
     ['door_reads', 'door_reads?night=gte.' + since + '&select=id,frame_key,night,status,frame,measures,read,meta,cost_usd,created_at,updated_at&order=night.asc,id.asc'],
-    ['house_reads', 'house_reads?select=id,kind,label,status,period_start,period_end,read,meta,created_at,updated_at&order=created_at.asc'],
+    ['house_reads', 'house_reads?select=id,kind,label,status,window_start,window_end,version,stats,read,violations,error,cost_usd,meta,created_at,updated_at&order=created_at.asc'],
     ['subject_weeks', LEDGER.TABLE + '?week=gte.' + memoryAddWeeks(ledgerWeek(), -BACKUP.WEEKS) + '&select=*&order=week.asc,subject_key.asc'],
     ['cluster_calls', 'cluster_calls?select=*&order=called_at.asc'],
     ['claude_jobs', 'claude_jobs?created_at=gte.' + day.slice(0, 7) + '-01&select=*&order=created_at.asc']
@@ -9170,7 +9378,7 @@ async function backupNightly(env) {
     } catch (e) { out.tables[name] = { error: String(e && e.message).slice(0, 120) }; }
   }
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put('backup:last', JSON.stringify(out), { expirationTtl: 14 * 86400 }); } catch (e) { excQuiet('backup_kv')(e); } }
-  logEvent(env, 'intelligence', 'watch', 'backup', null, out);
+  await logEvent(env, 'intelligence', 'watch', 'backup', null, out);
   return out;
 }
 /* ═══ SEAM:BENCH: the writer's quality, measured. A frozen pack (query, frame, evidence items the gather returned once) is written by the
@@ -9278,7 +9486,9 @@ async function doorRecord(env) {
   const pos = new Set(positions.map(p => p.key));
   for (const t of tiles) t.position = pos.has(t.key) ? by.get(t.key) : null;
   const graded = tiles.filter(t => t.called && (t.called.verdict === 'held' || t.called.verdict === 'missed'));
-  const set = { built_at: new Date().toISOString(), tiles, positions, counts: { deployments: tiles.length, subjects: by.size, held: graded.filter(t => t.called.verdict === 'held').length, missed: graded.filter(t => t.called.verdict === 'missed').length, open: tiles.filter(t => t.watch && !t.called).length }, blind: EXC_BLIND };
+  for (const t of tiles) t.ahead = calendarAhead(t.frame, t.title, Date.now());   // SEAM:EXC_AHEAD: what is coming for each subject
+  let currents = null; try { currents = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get(CURRENTS.KEY)) || 'null') : null; } catch (e) { currents = null; }   // SEAM:CROSS_CURRENTS
+  const set = { built_at: new Date().toISOString(), tiles, positions, currents, counts: { deployments: tiles.length, subjects: by.size, held: graded.filter(t => t.called.verdict === 'held').length, missed: graded.filter(t => t.called.verdict === 'missed').length, open: tiles.filter(t => t.watch && !t.called).length }, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(RECORD.KEY, JSON.stringify(set), { expirationTtl: RECORD.TTL }); } catch (e) { excQuiet('record_put')(e); } }
   return set;
 }
@@ -9300,7 +9510,7 @@ async function doorInsightRoute(request, env, origin) {
   const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
   const t = await doorInsightPublic(env, id);
   if (!t) return json({ ok: false, error: 'not_found' }, 200, origin, env);
-  return json({ ok: true, insight: t, blind: EXC_BLIND }, 200, origin, env);
+  return json({ ok: true, insight: t, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND }, 200, origin, env);
 }
 /* SEAM:RECORD_ROUTE: the permalink. /i/<id> is a small page with share tags that opens the reading on the site; links must not rot. */
 async function insightSharePage(path, env, embed) {
@@ -9342,7 +9552,7 @@ async function doorReadRoute(request, env, origin) {
   const data = Object.assign({}, rd, { frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null },
     measures: r.measures || null, model: { lane: 'overnight', model: CLAUDE.TIERS.live.model, reason: r.status === 'reused' ? 'reused: evidence unchanged' : null, cached: false }, compiled_at: r.updated_at || null,
     overnight: { night: r.night, status: r.status, since: (r.meta && r.meta.since) || null, prev_night: (r.meta && r.meta.prev_night) || null, deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, called: (r.meta && r.meta.called) || null, watch: rd.watch || null, place: doorPlaceOf(r.evidence) },   // SEAM:RECORD_LAW
-    blind: EXC_BLIND,   // SEAM:EXC_BLIND
+    blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND
     query: f.query || f.title || '', title: f.title || null,
     relevance: { framed: !!f.anchors, kept: (r.evidence || []).length, set_aside: (r.meta && r.meta.set_aside) || 0, restored: 0 }, timing: null, signals: [], connectors: [] });
   return json({ ok: true, data }, 200, origin, env);

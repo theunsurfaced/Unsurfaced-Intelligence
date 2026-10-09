@@ -250,6 +250,8 @@ SPENDERS = {
     'benchGrade': 'claudeGate on the frame tier (Haiku); called by benchRun only, which the desk key or a signed-in admin opens (SEAM:BENCH); one call per pack, at most sixty kept',
     'roleImplications': 'claudeGate on the frame tier (Haiku) + a day of KV cache per insight and role; called by roleImplicationsRoute only, signed in (SEAM:ROLE_IMPLICATIONS)',
     'pushBrief': 'claudeGate on the frame tier (Haiku); called by pushNightly only (cron-bounded, the 06:10 chain, or the admin desk {run: push}), once per reader on their digest day and only when their frames deployed (SEAM:REACH_PUSH)',
+    'excLook': 'Workers AI vision over at most LOOK.MAX images inside LOOK.MS; called by synthesize only (excavateAuth), on a full read, never for quick reads or the bench (SEAM:EXC_LOOK)',
+    'crossCurrentsPass': 'claudeGate on the doc tier (Fable); called by crossCurrentsWeekly (cron-bounded: Sundays in the 06:10 chain) or the admin desk {run: currents}; one call a week over at most 80 rows (SEAM:CROSS_CURRENTS)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")

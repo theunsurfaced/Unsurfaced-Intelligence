@@ -1,144 +1,16 @@
 {
- "at": "2026-10-09T11:45:02.764Z",
+ "at": "2026-10-09T12:28:55.312Z",
  "base": "https://api.unsurfaced-intelligence.com",
- "writer_hash": "6355da4980431b781c8cf5c253d3641919ecf56cf1a8962957cee859dbc8eae9",
- "packs": 10,
- "ok": 10,
+ "writer_hash": "9472f41a73b9edba5b78d04a1592247c1bbaebeb11550281a17733d2aa5e31e3",
+ "packs": 5,
+ "ok": 5,
  "mean": 74,
  "human_mean": null,
  "floor": 70,
  "runs": [
   {
-   "id": "q11",
-   "query": "Crocs and collaboration culture",
-   "ok": true,
-   "score": 70,
-   "code": 90,
-   "reader": 40,
-   "human": null,
-   "failed_checks": [
-    "dek_figure"
-   ],
-   "notes": [
-    "Finding 1 names designers (Kane, Balenciaga, Post Malone, Bad Bunny) but Finding 5 repeats the transformation narrative without new evidence; Finding 3 restates Finding 5's 'meme to must-have' claim.",
-    "Findings 2, 3, 5 claim causation ('turned into $2.3B', 'moved from meme') with 'Low' confidence but are stated as fact; Finding 6 contradicts the frame's premise but is buried as 'Low' confidence rath",
-    "No finding acknowledges what the evidence cannot show: actual sales attribution to specific collaborations, ROI per partnership, or whether collaborations drove growth or followed it. The $2.3B figure",
-    "Move 1 cites TikTok Seller of Year as proof of Gen Z designer partnerships, but the evidence does not name which designers or confirm they were Gen Z-focused; Move 2 uses $2.3B as proof of limited edi"
-   ],
-   "read": [
-    "Crocs partners with designers to drive cultural relevance",
-    "Crocs earned TikTok Shop's Seller of the Year, per adweek.com."
-   ],
-   "findings": 6,
-   "moves": 3,
-   "ms": 276604,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q12",
-   "query": "Duolingo and brand voice on social",
-   "ok": true,
-   "score": 67,
-   "code": 90,
-   "reader": 32,
-   "human": null,
-   "failed_checks": [
-    "numbers_in_evidence"
-   ],
-   "notes": [
-    "The '84% more engagement' claim appears without source verification; creatordb.app is cited but not validated as reliable for this metric",
-    "Six findings repeat 'brand voice' and 'chaotic/humorous' across different phrasings without new evidence; the read conflates voice distinctiveness with engagement causation",
-    "All three moves recommend actions ('create more,' 'utilize TikTok,' 'partner with influencers') but proof statements say Duolingo 'has built' or 'has seen success'—past tense claims don't support futu",
-    "No evidence addresses *why* competitors' 'traditional voices' underperform or whether Duolingo's humor drives engagement vs. other factors (novelty, app quality, pricing); frame excludes proficiency b"
-   ],
-   "read": [
-    "Duolingo's social media voice drives high engagement",
-    "Duolingo's chaotic mascot persona yields 84% more engagement, per creatordb.app."
-   ],
-   "findings": 6,
-   "moves": 3,
-   "ms": 275382,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q13",
-   "query": "Formula 1 and American audiences",
-   "ok": true,
-   "score": 84,
-   "code": 90,
-   "reader": 76,
-   "human": null,
-   "failed_checks": [
-    "headline_pure"
-   ],
-   "notes": [
-    "Finding 5 (multi-device compatibility) states confidence 'Low' but the proof cites formula1.com's own device list as fact—either the list is real (Medium) or the claim that it 'becomes the platform pi",
-    "Move 4 asks for a study F1 'should' commission but the brief already flags that 'evidence has nothing to say about NASCAR or IndyCar'—this move steps outside the frame's evidentiary boundary and shoul",
-    "Finding 3 conflates two separate claims: Apple's seven-day trial (Medium confidence, named source) and F1 TV bundling language (Low confidence, vague 'repeatedly notes')—split these or weight the bund",
-    "Brief repeats 'access story' and 'subscription puzzle' across three sentences without new evidence between them—consolidate or add distinct proof lines for each restatement"
-   ],
-   "read": [
-    "American viewers face a steeper toll to watch Formula 1",
-    "Apple TV, F1's new exclusive US home, offers just a seven-day free trial to replace the free ESPN, ESPN2 and ABC broadcast, per gpfans.com and gmauthority.com."
-   ],
-   "findings": 7,
-   "moves": 4,
-   "ms": 120024,
-   "model": "claude-sonnet-5"
-  },
-  {
-   "id": "q14",
-   "query": "pickleball and the sporting goods category",
-   "ok": true,
-   "score": 72,
-   "code": 100,
-   "reader": 30,
-   "human": null,
-   "failed_checks": [],
-   "notes": [
-    "Finding 1 and Finding 6 both claim market size growth (24.3M participants vs. $1.98B→$5.8B apparel/equipment); these are different metrics but presented as separate findings without clarifying what ea",
-    "Confidence ratings contradict evidence strength: 'Low' confidence assigned to 24.3M participation figure (from globenewswire, cited as source) and Wilson/Head 10-15% allocation (specific brand action)",
-    "Moves cite evidence that doesn't support them: 'Partner with pickleball-focused retailers' proof is Amazon's $43.5M paddle sales, which shows Amazon as a general marketplace, not a pickleball-focused ",
-    "No acknowledgment that participation growth (479% since 2020) and equipment market CAGR (6-15% depending on source) move at different rates, or what this gap means for retail strategy; limits of extra"
-   ],
-   "read": [
-    "Pickleball drives explosive growth in US sporting goods",
-    "Pickleball participation reaches 24.3 million Americans in 2025, up 479% from 2020, per globenewswire.com."
-   ],
-   "findings": 6,
-   "moves": 3,
-   "ms": 285333,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q15",
-   "query": "Shein and fast fashion among teens",
-   "ok": true,
-   "score": 70,
-   "code": 90,
-   "reader": 40,
-   "human": null,
-   "failed_checks": [
-    "moves_count"
-   ],
-   "notes": [
-    "Finding 1 repeats 'popularity' and 'ultra-fast fashion model' across excerpt and title; Finding 4 restates affordability/trends without new evidence",
-    "Confidence labels ('Medium,' 'Low') lack justification; 24% figure earns no strength statement; 'backlash' and 'underperformance' stated as fact despite Low confidence",
-    "No statement of what the 24% figure cannot show (brand preference vs. trial, repeat purchase, satisfaction); sustainability concerns cited but evidence source (bluesky-thinking.com) unvetted",
-    "Move recommends 'communicate sustainability efforts' but frame asks about purchase behavior and brand perception vs. competitors—sustainability sits outside stated anchors and threads"
-   ],
-   "read": [
-    "US teens drive Shein's fast fashion dominance",
-    "24% of US respondents shopped at Shein in the past 12 months, making it one of the most popular shopping destinations among Gen Z and millennial consumers, per searchengineland.com."
-   ],
-   "findings": 4,
-   "moves": 1,
-   "ms": 270138,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q16",
-   "query": "the resale market for sneakers",
+   "id": "q01",
+   "query": "Jordan Brand and Gen Z",
    "ok": true,
    "score": 74,
    "code": 100,
@@ -146,119 +18,118 @@
    "human": null,
    "failed_checks": [],
    "notes": [
-    "Multi-platform listing stated in brief, finding 1, and move 1—repetition across all three sections",
-    "Authenticity concern repeated in brief, finding 2, and move 2 without new evidence distinguishing platform roles",
-    "Confidence labels (Medium, Low) lack justification; no explanation why multi-platform claim earns Medium vs. Low",
-    "Brief claims data-driven pricing helps resellers succeed, but findings show only that resellers use it—no evidence it improves outcomes"
+    "Finding 6 invents a sustainability claim ('may be seen as') with zero evidence; contradicts the frame's exclusion of nostalgia yet brief emphasizes 'heritage'",
+    "Move 1 proof cites only valuation ($100B), not evidence that limited drops drive Gen Z demand or that Gen Z values scarcity over other factors",
+    "Finding 2 states 82% repurchase likelihood as 'Low confidence' but treats it as fact in brief and moves; confidence rating does not match usage",
+    "Findings repeat 'limited drops/scarcity' across three separate entries (3, 1, move 1) without new evidence; celebrity collaboration appears twice (4, move 2)"
    ],
    "read": [
-    "Collectors resell sneakers on multiple platforms simultaneously",
-    "According to a recent article on Flow Order Net Worth, resellers list on multiple platforms like eBay, Facebook Marketplace, and Depop. (source:db21.floworder.se|url:https://db21.floworder.se/article/where-to-sell-shoes-for-cash-near-me-the-smart-moves)"
+    "Gen Z consumers drive Jordan Brand's valuation surge",
+    "The brand's valuation surpassed $100 billion, per Networth News."
    ],
-   "findings": 4,
+   "findings": 6,
    "moves": 3,
-   "ms": 273882,
+   "ms": 282485,
+   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+  },
+  {
+   "id": "q04",
+   "query": "Gen Z and hair care",
+   "ok": true,
+   "score": 76,
+   "code": 100,
+   "reader": 40,
+   "human": null,
+   "failed_checks": [],
+   "notes": [
+    "Natural ingredients claim appears in title, excerpt, and move 1 without new evidence each time",
+    "Confidence ratings (Low, Medium) assigned without stating what evidence gap exists before conclusions drawn",
+    "No acknowledgment that 59% non-permanent color preference doesn't directly prove ingredient prioritization—the logical bridge is assumed",
+    "Move 3 recommends partnerships with named brands but read contains no evidence those brands resonate with Gen Z specifically, only that they exist"
+   ],
+   "read": [
+    "Gen Z consumers prioritize natural ingredients in hair care",
+    "59% of Gen Z prefer non-permanent hair color options, per Technavio as reported by accio.com"
+   ],
+   "findings": 6,
+   "moves": 3,
+   "ms": 279103,
+   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+  },
+  {
+   "id": "q08",
+   "query": "luxury in Lagos",
+   "ok": true,
+   "score": 78,
+   "code": 100,
+   "reader": 44,
+   "human": null,
+   "failed_checks": [],
+   "notes": [
+    "Luxury fashion dominance (64% clothing stores) is stated in read, brief, and finding 1—repetition across three levels without new evidence",
+    "Confidence labels (Medium, Low) contradict each other on identical claims: Polo Luxury appears as Medium confidence in read but Low in finding 4; no explanation for downgrade",
+    "Brief recommends 'opening boutiques' but evidence only shows existing stores (ASHLUXURY HQ, Royal Luxury Boutique, David Wej, Polo Luxury)—prescribes action without showing market gap or demand signal",
+    "Moves cite 64% statistic as proof for boutique strategy, but statistic describes current supply (what exists), not consumer preference or unmet demand—causal claim unsupported"
+   ],
+   "read": [
+    "High-net-worth individuals in Lagos prioritize luxury fashion brands",
+    "64% of luxury brand stores in Lagos are clothing stores, according to Exa Places."
+   ],
+   "findings": 6,
+   "moves": 3,
+   "ms": 272228,
+   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+  },
+  {
+   "id": "q13",
+   "query": "Formula 1 and American audiences",
+   "ok": true,
+   "score": 70,
+   "code": 90,
+   "reader": 40,
+   "human": null,
+   "failed_checks": [
+    "headline_pure"
+   ],
+   "notes": [
+    "Apple TV partnership repeated across all three findings and both moves; 'unique viewing experience' appears twice without definition",
+    "Medium/Low confidence labels assigned but findings treated as equally actionable; no hedging in brief or moves despite Low confidence on global availability and Multiview claims",
+    "Brief claims F1 'should promote Apple TV' and 'leverage partnership' without stating what evidence cannot show: whether free trials convert, whether Multiview drives retention, whether Americans prefe",
+    "Move 3 ('Partner with Apple TV') restates the fact (Apple replaced ESPN) as if it were a strategic recommendation F1 can execute; partnership already exists"
+   ],
+   "read": [
+    "American viewers tune into Apple TV for Formula 1",
+    "Apple TV became the official U.S. home of Formula 1 in 2026, replacing ESPN, with a seven-day free trial available for new viewers, per documentarytube.com."
+   ],
+   "findings": 6,
+   "moves": 3,
+   "ms": 272952,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   {
    "id": "q17",
    "query": "Erewhon and premium grocery",
    "ok": true,
-   "score": 87,
-   "code": 100,
-   "reader": 68,
-   "human": null,
-   "failed_checks": [],
-   "notes": [
-    "Finding 3 ('Evidence never names Whole Foods directly') repeats the absence claim twice in one sentence; move 1 reintroduces the Mercer deal already named in finding 5.",
-    "Findings 1, 2, and 5 all cite 'Low' confidence but treat pricing and membership bundling as strategic facts; the brief acknowledges pricing alone is insufficient, but findings don't hedge that tension",
-    "No finding states what the evidence cannot show: whether Erewhon's museum collabs and apartment bundles drive sales, retention, or margin vs. pure brand lift; moves assume causation.",
-    "Move 2 ('Lock first regional rights') names Sprouts as a competitor but the read shows BHU Foods already placed at both chains the same month—evidence of parity, not Erewhon advantage to lock."
-   ],
-   "read": [
-    "Affluent shoppers treat Erewhon as a status brand, not a supermarket",
-    "A 24-pack of spring water sells for around $80 at Erewhon, per OS Insights, pricing far beyond traditional grocery norms."
-   ],
-   "findings": 7,
-   "moves": 4,
-   "ms": 250437,
-   "model": "claude-sonnet-5"
-  },
-  {
-   "id": "q18",
-   "query": "Spotify Wrapped and year-end rituals",
-   "ok": true,
-   "score": 69,
+   "score": 72,
    "code": 90,
-   "reader": 38,
+   "reader": 44,
    "human": null,
    "failed_checks": [
-    "moves_count"
+    "numbers_in_evidence"
    ],
    "notes": [
-    "620M shares figure stated twice (read + brief); 'social sharing' repeated across all findings without differentiation",
-    "Medium confidence claimed for social sharing and loyalty but evidence only shows sharing happened, not why or loyalty effect; Low confidence on rivals unsupported by any evidence presented",
-    "Brief proposes free-plan expansion and interactive content without evidence these would work; no data on retention impact, subscription conversion, or churn prevention",
-    "Finding 4 ('rivals lack similar engagement') invokes competitors named in frame but provides zero comparative data—pure assertion against frame's competitive scope"
+    "Luxury lifestyle positioning stated in brief, finding 2, and move 2 without differentiation—what makes Erewhon's lifestyle claim distinct from Whole Foods' or Trader Joe's brand identity is never show",
+    "Confidence ratings contradict evidence weight: $80 spring water and $20 smoothies are marked 'Low' confidence but treated as proof; the Mercer partnership is 'Low' but anchors a strategic move",
+    "No evidence that premium pricing or exclusive products *drive growth* or *outperform competitors*—findings show Erewhon does these things, not that they work or why customers choose Erewhon over Whole",
+    "Apartment partnership move lacks proof of ROI or customer acquisition impact; Mercer deal is cited as evidence but no data shows it converted residents or expanded market share"
    ],
    "read": [
-    "Listeners eagerly share Spotify Wrapped on social media",
-    "Spotify Wrapped generated 620 million shares in 2025, according to the company, making it a viral sensation."
-   ],
-   "findings": 4,
-   "moves": 0,
-   "ms": 266211,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q19",
-   "query": "women's basketball and its sponsors",
-   "ok": true,
-   "score": 79,
-   "code": 100,
-   "reader": 48,
-   "human": null,
-   "failed_checks": [],
-   "notes": [
-    "Finding 1 and Finding 6 both claim Google partnership; Finding 5 contradicts Finding 1 on sponsor count (45 vs 46)",
-    "Confidence labels ('Medium', 'Low') lack justification—no explanation of what evidence gap separates them or why Nike partnership rates 'Low' when it's a named official role",
-    "Brief recommends partnership strategy without stating it cannot show: ROI, fan engagement lift, whether new sponsors gained traction, or if 46 sponsors indicates market saturation vs. growth",
-    "Move 1 cites only Adidas as proof; does not acknowledge Adidas is a competitor named in frame, creating potential conflict-of-interest blind spot"
-   ],
-   "read": [
-    "Brands invest heavily in women's basketball sponsorships",
-    "The WNBA has 46 official sponsors, matching last year's record, Sports Business Journal reports."
+    "Erewhon leads premium grocery with aspirational shopping experience",
+    "Erewhon's $80 spring water and $20 smoothies drive its luxury status, per osinsights.org."
    ],
    "findings": 6,
-   "moves": 2,
-   "ms": 278290,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q20",
-   "query": "AI companions and loneliness",
-   "ok": true,
-   "score": 63,
-   "code": 80,
-   "reader": 38,
-   "human": null,
-   "failed_checks": [
-    "numbers_in_evidence",
-    "moves_count"
-   ],
-   "notes": [
-    "The 61% figure from 'Chat Data' study is cited without source verification, study design, sample size, or methodology—confidence stated as medium despite unsubstantiated claim",
-    "'Meaningful reductions in loneliness' and 'clinical evidence' are asserted without naming studies, effect sizes, duration of effects, or comparison groups",
-    "Brief recommends 'emotionally intelligent content' and 'mental health partnerships' but frame excludes mental health therapy—recommendation speaks outside stated boundaries",
-    "'Short-term drops' acknowledged but no evidence presented on duration, relapse rates, or whether reductions persist after use stops; limits not stated before conclusion"
-   ],
-   "read": [
-    "Lonely adults find emotional support in AI companions",
-    "61% of lonely individuals experience reduced loneliness through AI companions, according to a study by Chat Data."
-   ],
-   "findings": 4,
-   "moves": 0,
-   "ms": 269045,
+   "moves": 3,
+   "ms": 273868,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   }
  ]

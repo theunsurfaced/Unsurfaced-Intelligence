@@ -498,6 +498,14 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .reach-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-top:1px solid var(--border);padding-top:12px}
 .reach-marks{display:flex;gap:6px}
 .reach-mark{font-family:'Space Mono',monospace;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--text2);padding:5px 10px;cursor:pointer}.reach-mark small{margin-left:6px;opacity:.7}.reach-mark.on{border-color:var(--accent);color:var(--text)}
+.rec-currents{margin:0 0 22px;border:1px solid var(--room-rule,var(--border));padding:16px 18px}   /* SEAM:CROSS_CURRENTS */
+.rec-cur-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.rec-cur-when{font-family:'Space Mono',monospace;font-size:11px;color:var(--room-fg3,var(--text3))}
+.rec-cur-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.rec-cur h3{font-size:17px;line-height:1.3;margin:0 0 6px}.rec-cur p{margin:0 0 8px;color:var(--room-fg2,var(--text2));font-size:14px;line-height:1.5}
+.rec-cur .move{font-size:13px}.rec-cur .move i{font-style:normal;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.rec-cur-subs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rec-cur-subs span{font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--room-rule,var(--border));padding:2px 6px;color:var(--room-fg2,var(--text2))}
+.rec-ahead{color:var(--room-fg2,var(--text2))}
 .read-thin{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 10px;max-width:70ch;}   /* SEAM:EXC_THIN */
 .btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
 .btn-go-deeper:hover{background:#ff5555;}
@@ -3394,7 +3402,7 @@ function _renderLive(q, data){
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
-    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null},synthd?'live':'basic');   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
+    measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
     if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
@@ -6069,6 +6077,9 @@ function _renderReadBlock(q, data, mode){
     rows.push(['time',`<b>${n((tm.total_ms/1000).toFixed(0))} s</b>, evidence ${n(ev.toFixed(0))} s, writing ${n(((tm.model_ms||0)/1000).toFixed(0))} s${tm.passes>1?`, ${n(tm.passes)} passes`:''}${why?`<br><em>${why}</em>`:''}`]); }
   if(mdl) rows.push(['compiled',`${n(mdl.model||'')}${mdl.lane==='reserve'?' (reserve model'+(mdl.reason?': '+n(mdl.reason):'')+')':''}${mdl.lane==='overnight'?' overnight':''}${mdl.cached?', served from today\'s read':''}${data.compiled_at?'<br>'+n(String(data.compiled_at).slice(0,16).replace('T',' '))+' UTC':''}`]);
   if(meta.cls) rows.push(['read as',n(meta.cls)]);
+  if(data.look&&Array.isArray(data.look.lines)&&data.look.lines.length) rows.push(['the look',data.look.lines.map(l=>n(l.line)).join(' ')]);   // SEAM:EXC_LOOK: what the evidence's images look like
+  if(Array.isArray(data.ahead)&&data.ahead.length) rows.push(['ahead',data.ahead.map(n).join('; ')]);   // SEAM:EXC_AHEAD: the moments the frame is heading into
+  if(meta.meta&&meta.meta.reddit_off) rows.push(['reddit','asked, not configured']);   // SEAM:RAIL_REDDIT
   const _rcptHtml=rows.length?`<aside class="rb-receipts"><div class="rb-receipts-head">What this read stood on</div><dl>${rows.map(r=>`<div class="rb-row"><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl></aside>`:'';
   const _ovHtml=ov?`<p class="rb-foot">Overnight read for the night of ${n(ov.night)}${ov.status==='reused'?', evidence unchanged since the last read':''}${ov.prev_night?', previous read '+n(ov.prev_night):''}. <button class="rb-go-live" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
   el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>${_scoreHtml}</div>
@@ -10480,7 +10491,8 @@ function _recLensRow(tiles) {
   const groups = [['brand', count(t => t.frame && t.frame.entity)], ['category', count(t => t.frame && t.frame.category)], ['audience', count(t => t.frame && t.frame.audience)], ['place', count(t => (t.place || []).map(p => p.place))]];
   const positions = (_FI_RECORD && _FI_RECORD.positions) || [];
   const btn = (kind, value, label, n) => `<button type="button" class="rec-lens${_recLens.kind === kind && _recLens.value === value ? ' on' : ''}" onclick="_recLensSet('${safeAttr(kind)}',${value == null ? 'null' : JSON.stringify(String(value)).replace(/"/g, '&quot;')})">${safe(label)}${n != null ? `<small>${safe(String(n))}</small>` : ''}</button>`;
-  let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Where the house has a position', positions.length) : '');
+  const aheadN = tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length).length;
+  let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Where the house has a position', positions.length) : '') + (aheadN ? btn('ahead', null, 'Ahead', aheadN) : '');   // SEAM:EXC_AHEAD
   for (const [kind, list] of groups) if (list.length) html += `<span class="rec-lens-k">${kind}</span>` + list.map(([v, n]) => btn(kind, v, v, n)).join('');
   html += `<span class="rec-lens-k">rooms</span><button type="button" class="rec-lens room" onclick="navTo('brands')">Brand rooms</button><button type="button" class="rec-lens room" onclick="navTo('audiences')">Audiences</button>`;
   if (['brand', 'category', 'audience'].includes(_recLens.kind) && _recLens.value) html += `<button type="button" class="rec-lens follow" onclick="_followLens()">Follow ${safe(_recLens.value)}</button>`;   // SEAM:CLIENT_PROFILE
@@ -10490,6 +10502,7 @@ function _recLensSet(kind, value) { _recLens = { kind, value }; if (_FI_RECORD &
 function _recFilter(tiles) {
   const L = _recLens; if (!L || L.kind === 'all') return tiles;
   if (L.kind === 'positions') return tiles.filter(t => t.position);
+  if (L.kind === 'ahead') return tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length);   // SEAM:EXC_AHEAD
   if (L.kind === 'place') return tiles.filter(t => (t.place || []).some(p => p.place === L.value));
   const key = L.kind === 'brand' ? 'entity' : L.kind;
   return tiles.filter(t => t.frame && t.frame[key] === L.value);
@@ -10502,6 +10515,7 @@ function _recDateline(t) {
   if (t.developed_by) bits.push(`<a href="#" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(t.developed_by)}');return false">developed ${safe(_recDay(t.developed_night))}</a>`);
   if (t.place && t.place.length) bits.push(`<span>from ${t.place.map(p => safe(p.place)).join(' and ')}</span>`);
   if (t.position) bits.push(`<span class="rec-pos">a position since ${safe(_recDay(t.position.since))}: ${safe(String(t.position.held))} of ${safe(String(t.position.deployments))} held</span>`);
+  if (Array.isArray(t.ahead) && t.ahead.length) bits.push(`<span class="rec-ahead">ahead: ${safe(t.ahead[0].name)} in ${safe(String(t.ahead[0].days))} days</span>`);   // SEAM:EXC_AHEAD
   return `<div class="rec-dateline">${bits.join(' · ')}</div>`;
 }
 function _recWatch(t) {
@@ -10536,12 +10550,25 @@ function _renderScrollRow(t) {
     <div class="mid">${_pulse(m.series)}${_doorMeasureRow(m, t.since)}</div>
     ${t.move ? `<div class="move"><i>Recommended move</i><br>${safe(t.move)}</div>` : '<div></div>'}</article>`;
 }
+/* SEAM:CROSS_CURRENTS: the patterns running across the fortnight's deployments, named once a week; above the scroll. */
+function _renderCurrents(cur) {
+  let el = document.getElementById('rec-currents');
+  const host = document.getElementById('rec-counts');
+  if (!el && host) { el = document.createElement('div'); el.id = 'rec-currents'; el.className = 'rec-currents'; host.insertAdjacentElement('afterend', el); }
+  if (!el) return;
+  const list = cur && Array.isArray(cur.currents) ? cur.currents : [];
+  if (!list.length) { el.style.display = 'none'; return; }
+  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))} over ${safe(String(cur.rows || ''))} readings</span></div><div class="rec-cur-grid">` +
+    list.map(c => `<article class="rec-cur"><h3>${safe(c.title)}</h3><p>${safe(c.body)}</p>${c.move ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : ''}<div class="rec-cur-subs">${(c.subjects || []).map(x => `<span>${safe(x)}</span>`).join('')}</div></article>`).join('') + '</div>';
+  el.style.display = '';
+}
 function _renderScroll(rec, data) {
   const grid = document.getElementById('featured-insights-grid'), list = document.getElementById('board-list'); if (!grid) return;
   const all = (rec.tiles || []).slice(), tiles = _recFilter(all);
   _recLensRow(all);
   const counts = document.getElementById('rec-counts'), c = rec.counts || {};
   if (counts) { counts.innerHTML = `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}<span class="blind">${safe(rec.blind || '')}</span>`; counts.style.display = ''; }
+  _renderCurrents(rec.currents);   // SEAM:CROSS_CURRENTS
   const sub = document.getElementById('board-sub');
   if (sub) sub.textContent = 'What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.';
   const strip = document.getElementById('fi-state-strip'); if (strip) strip.style.display = 'none';

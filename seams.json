@@ -1350,6 +1350,58 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EVIDENCE_PACK",
    "purpose": "Evidence pack opens the document in a new tab (fetched signed in); Embed copies the iframe snippet"
+  },
+  "SEAM:RAIL_BLUESKY": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31 THE EARS: Bluesky's public search (public.api.bsky.app, no key) as a discourse rail: the posts in the window as one line, each post's words into the voices under the voice laws (verbatim, no handle, on the frame by its own words, a shared headline marked)."
+  },
+  "SEAM:RAIL_REDDIT": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: Reddit on its official OAuth API: client credentials (REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET) for an app token kept fifty minutes in KV, the required User-Agent (REDDIT_USER_AGENT), one search a call; posts in the month as one line, their titles and text into the voices; silent without the keys and the receipt says so (meta.reddit_off). The commercial agreement governs use beyond development."
+  },
+  "SEAM:RAIL_REDDIT@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:RAIL_REDDIT",
+   "purpose": "the receipt says when Reddit was asked and not configured"
+  },
+  "SEAM:RAIL_SHORTS": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: YouTube Shorts as its own rail: the YouTube rail with videoDuration short, on the same quota and lanes, its comments into the voices."
+  },
+  "SEAM:EXC_LANGUAGE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: the frame carries a language (the framer names it; en when the query names none; excFrameClean keeps a two-letter code). GDELT asks in it (sourcelang), YouTube ranks in it (relevanceLanguage), Bluesky and Reddit keep non-English words for a read in it, and the English filter stands down in synthesize for a read whose frame is not English."
+  },
+  "SEAM:EXC_AHEAD": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: the cultural calendar as a rail. CULTURAL_CALENDAR (recurring moments by month and day with tags) and calendarAhead: the moments inside sixty days whose tags touch the frame ride the evidence as AHEAD lines (kind ahead) with a law that a move may anchor to one by name and date and never invent what it brings; the record's tiles carry what is ahead; the payload names it."
+  },
+  "SEAM:EXC_AHEAD@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_AHEAD",
+   "purpose": "the receipt's ahead row; the Ahead lens on the record; a tile's dateline names the moment it is heading into"
+  },
+  "SEAM:EXC_DISAGREE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: where the house disagrees. The consensus rail (one Exa search phrased for trend reports and outlooks) returns lines titled CONSENSUS with stance consensus; when any ride the evidence the writer reads EXC_DISAGREE_LAW: a consensus line is never evidence or a finding, and when the dated evidence contradicts one, one insight titled \"Where the house disagrees: ...\" names the claim, the lines and the stronger reading."
+  },
+  "SEAM:EXC_LOOK": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: the look line. excLook runs Workers AI vision (LOOK.MODEL) over up to three of the evidence's own https images on a full read, one sentence each on palette, type, casting, setting and mood, inside a six second deadline; never a finding; payload.look for the receipt and PLAY's moodboard. Off for quick reads and the bench."
+  },
+  "SEAM:EXC_LOOK@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_LOOK",
+   "purpose": "the receipt's \"the look\" row"
+  },
+  "SEAM:CROSS_CURRENTS": {
+   "file": "worker/src/index.js",
+   "purpose": "EX31: the patterns running across categories. crossCurrentsPass reads the fortnight's deployments (claims, moves, subjects, grades) with Fable on the doc tier and names three to five currents each through two or more subjects with the move each implies; kept in KV ten days and carried by the record; crossCurrentsWeekly runs it on Sundays in the nightly chain; desk {run: currents} (admin only)."
+  },
+  "SEAM:CROSS_CURRENTS@excavate": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:CROSS_CURRENTS",
+   "purpose": "the cross-currents above the record's scroll"
   }
  },
  "planned": [
