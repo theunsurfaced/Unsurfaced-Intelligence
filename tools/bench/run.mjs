@@ -36,6 +36,7 @@ const okRuns = runs.filter(r => r.ok);
 const mean = okRuns.length ? Math.round(okRuns.reduce((a, r) => a + r.score, 0) / okRuns.length) : null;
 const humanScores = okRuns.map(r => r.human).filter(x => typeof x === 'number');
 const out = { at: new Date().toISOString(), base, writer_hash: writerHash(fs.readFileSync('worker/src/index.js', 'utf-8')), packs: packs.length, ok: okRuns.length, mean, human_mean: humanScores.length ? Math.round(humanScores.reduce((a, b) => a + b, 0) / humanScores.length) : null, floor: 70, runs };
+if (!okRuns.length) { console.error('\nbench: no pack was written (' + runs.map(r => r.id + ' ' + r.error).join('; ') + '); tools/bench/last.json left as it was'); process.exit(3); }
 fs.writeFileSync(path.join(here, 'last.json'), JSON.stringify(out, null, 1) + '\n');
 console.log('\nbench: ' + okRuns.length + ' of ' + packs.length + ' written, mean ' + mean + (out.human_mean != null ? ', human ' + out.human_mean : '') + '; writer ' + out.writer_hash.slice(0, 12) + ' -> tools/bench/last.json');
 if (mean != null && mean < out.floor) { console.error('bench below the floor (' + out.floor + '): the writer change should not ship'); process.exit(2); }

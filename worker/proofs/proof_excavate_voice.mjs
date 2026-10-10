@@ -14,7 +14,7 @@ const phelper = (name, next) => page.slice(page.indexOf('function ' + name + '('
 
 // ── L ─────────────────────────────────────────────────────────────────
 const doorPrompt = helper('excDoorPrompt', '// The compiled text becomes a read');
-ok(/one plain sentence, at most 30 words, stating what people are doing/.test(doorPrompt) && /never a count of coverage as the finding/.test(doorPrompt) && /no slogan, no X-not-Y/.test(doorPrompt) && /"question":"the question this read answers for the professional it serves/.test(doorPrompt),
+ok(/line 1, the headline: a sentence about people \(buyers, viewers, listeners, users: the audience named in the frame\) under the HEADLINE LAW/.test(doorPrompt) && /never the signal, the count or the coverage as its subject/.test(doorPrompt) && /no slogan, no X-not-Y/.test(doorPrompt) && /"question":"the question this read answers for the professional it serves/.test(doorPrompt),
   'L1 the door prompt writes line 1 under the headline law and returns the question the reading answers');
 ok(/this week\\'s read: exactly 2 sentences, under 44 words total\. The first is a plain statement about people/.test(w) && /never a count of coverage; /.test(w) && /no slogan, no X-not-Y, no colon openers, no em dashes/.test(w),
   'L2 the week\'s read is written under the same law');
@@ -26,6 +26,7 @@ const doorPhoto = new Function(photoSrc + '; return doorPhoto;')();
 ok(doorPhoto({ insights: [{ image: 'https://z/d.jpg', source: 'Unsurfaced Lake · Highsnobiety (T2)' }] }, []).credit === 'Highsnobiety' && doorPhoto({ insights: [] }, [{ image: 'https://z/e.jpg', source: 'Unsurfaced Lake · signal (T?)' }]).credit === 'signal', 'T1b a photograph is credited to the outlet by name; the lake label and the tier never reach a reader');
 ok(doorPhoto({ insights: [{ image: 'http://x/a.jpg', source: 'A' }, { image: 'https://x/b.jpg', source: 'Hypebeast' }] }, []).src === 'https://x/b.jpg' && doorPhoto({ insights: [] }, [{ image: 'https://y/c.jpg', source_name: 'Vogue' }]).credit === 'Vogue' && doorPhoto({ insights: [{ image: 'data:image/png;base64,xx' }] }, []) === null && doorPhoto(null, null) === null,
   'T1 the tile\'s photograph is the first https image a cited insight or an evidence line carries, credited to its outlet; http, data and nothing else');
+ok(doorPhoto({ insights: [{ image: 'https://x/brand-logo.png', source: 'A' }, { image: 'https://x/photo.jpg', source: 'B' }] }, []).src === 'https://x/photo.jpg' && doorPhoto({ insights: [{ image: 'https://x/favicon.ico', source: 'A' }] }, []) === null, 'T1c a logo, an icon or an avatar is never the photograph');
 ok(/question: \(rd && rd\.question\) \|\| f\.question \|\| null,/.test(w) && /photo: doorPhoto\(rd, r\.evidence\),/.test(w), 'T2 the tile carries the question (the read\'s, else the frame\'s) and the photograph');
 
 // ── X ─────────────────────────────────────────────────────────────────

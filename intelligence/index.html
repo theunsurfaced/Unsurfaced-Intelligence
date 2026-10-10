@@ -85,6 +85,13 @@ nav{position:sticky;top:0;z-index:var(--z-nav);background:rgba(10,10,15,0.92);ba
 .nav-menu-list .sep{height:1px;background:var(--border);margin:6px 0;}
 .nav-menu-list .grp{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:8px 16px 4px;}
 nav .nav-menu #nav-spaces{display:flex;}
+.nav-list{display:flex;align-items:center;gap:4px;list-style:none;margin:0 0 0 28px;padding:0;}
+.nav-list .nl{background:none;border:0;color:var(--text2);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:9px 12px;cursor:pointer;position:relative;}
+.nav-list .nl:hover{color:var(--text);}
+.nav-list .nl.active{color:var(--text);}
+.nav-list .nl.active::after{content:'';position:absolute;left:12px;right:12px;bottom:2px;height:2px;background:var(--accent);}
+@media (min-width:761px){nav .nav-menu{display:none;}}
+@media (max-width:760px){.nav-list{display:none;}}
 @media (max-width:640px){.nav-menu-btn{padding:8px 10px;font-size:10px;}.nav-menu-list{left:auto;right:0;min-width:220px;max-width:calc(100vw - 28px);}}
 
 /* ── TICKER ── */
@@ -658,6 +665,28 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .read-line.two{color:var(--text2);font-size:20px;}
 .read-interp{font-size:14px;line-height:1.65;color:var(--text2);margin:14px 0 0;max-width:880px;}
 .read-interp strong{color:var(--text);}
+/* EX33c: the answer's bet and measure line; the action rail; the receipts drawer; the jump rail; the type floor */
+.rb-bet{font-size:14px;line-height:1.5;color:var(--text);margin:14px 0 0;display:flex;gap:10px;align-items:baseline;max-width:60ch}
+.rb-bet i{flex:none;font-style:normal;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:2px 6px;white-space:nowrap}
+.rb-measure-line{font-family:'Space Mono',monospace;font-size:12px;color:var(--text2);margin:12px 0 0;line-height:1.6}
+.rb-measure-line b{color:var(--text);font-weight:700}.rb-measure-line .up{color:var(--accent)}
+.read-after{margin-top:8px}
+.read-acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.read-act{background:none;border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:9px 14px;cursor:pointer}
+.read-act:hover{border-color:var(--accent)}
+.rb-drawer{margin-top:18px;border-top:1px solid var(--border);padding-top:12px}
+.rb-drawer summary{cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);list-style:none}
+.rb-drawer summary::before{content:'+ ';color:var(--accent)}.rb-drawer[open] summary::before{content:'\2212 '}
+.rb-drawer summary::-webkit-details-marker{display:none}
+.rb-sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px 28px;margin-top:14px}
+.rb-src-k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin:0 0 8px}.rb-src-k span{opacity:.6}
+.rb-sources ol{padding-left:18px;margin:0;font-size:12.5px;line-height:1.55;color:var(--text2)}.rb-sources li{margin:0 0 5px}.rb-sources a{color:var(--text);text-decoration:underline dotted}
+.read-jump{position:sticky;top:60px;z-index:var(--z-sticky);display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:rgba(10,10,15,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);margin:0 0 8px;padding:4px 0}
+.read-jump button{background:none;border:0;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.read-jump button:hover{color:var(--text)}
+.rlb.empty{display:none}
+.rb-tile-k,.rb-spark-cap,.rb-comp-cap,.rb-tl-head span,.rb-row dt,.rb-pics-cap,.card-img-src,.lens-idea-type{font-size:11px!important}
+@media(max-width:760px){.results-header{flex-direction:column;align-items:stretch}.results-header>div[style]{align-items:flex-start!important}.rb-voices,.rb-quotes{grid-template-columns:1fr!important}.read-acts{flex-direction:column;align-items:stretch}.read-acts button{width:100%}.rb-plate{grid-template-columns:1fr!important}.rb-tiles{grid-template-columns:1fr 1fr!important}.read-block,.read-after{padding:18px 16px}.read-line{font-size:21px}}
 .read-deeper{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}
 .read-deeper button{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:8px 12px;cursor:pointer;}
 .read-deeper button:hover{border-color:var(--accent);}
@@ -874,6 +903,9 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .pdf-truth-finding{font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:4px;line-height:1.4;}
 .pdf-truth-stat{font-family:'Courier New',monospace;font-size:10px;color:#FF3B3B;font-weight:700;}
 .pdf-footer{border-top:1px solid #ebebeb;margin-top:40px;padding-top:16px;font-family:'Courier New',monospace;font-size:9px;color:#bbb;text-align:center;letter-spacing:.1em;}
+.pdf-bet{font-size:13px;color:#1a1a1a;margin:0 0 10px;padding:10px 14px;border:1px solid #e5e5e5;border-left:3px solid #FF3B3B;}
+.pdf-deck a{color:#444;}
+.rb-sources .rb-src-group{margin:0 0 14px;}.rb-sources .rb-src-k{font-family:'Courier New',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#888;margin:0 0 6px;}.rb-sources .rb-src-k span{color:#bbb;}.rb-sources ol{padding-left:20px;font-size:12px;}.rb-sources li{margin:0 0 4px;}
 .pdf-overlay-actions{position:fixed;bottom:24px;right:24px;display:flex;gap:10px;z-index:var(--z-reader-actions);}
 .pdf-print-btn{background:#FF3B3B;border:none;color:#fff;font-family:'Courier New',monospace;font-weight:700;font-size:12px;letter-spacing:.1em;padding:14px 24px;cursor:pointer;box-shadow:0 4px 20px rgba(255,59,59,.3);}
 .pdf-close-btn{background:#fff;border:2px solid #e5e5e5;color:#444;font-family:'Courier New',monospace;font-size:12px;letter-spacing:.1em;padding:14px 20px;cursor:pointer;}
@@ -1531,7 +1563,7 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 .room-more{margin-top:calc(18px*var(--k));font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.5;color:var(--room-fg3);max-width:70ch}
 #board-list{border-top:1px solid var(--room-rule);margin-top:calc(18px*var(--k))}
 #board-list:empty{display:none}
-.row{display:grid;grid-template-columns:calc(120px*var(--k)) minmax(0,1.2fr) calc(360px*var(--k)) minmax(0,1fr);gap:calc(24px*var(--k));padding:calc(20px*var(--k)) 0;border-bottom:1px solid var(--room-rule);align-items:start;cursor:pointer;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+.row{display:grid;grid-template-columns:calc(96px*var(--k)) minmax(0,1.5fr) calc(300px*var(--k)) minmax(0,1fr);gap:calc(24px*var(--k));padding:calc(20px*var(--k)) 0;border-bottom:1px solid var(--room-rule);align-items:start;cursor:pointer;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
 .row:hover .foot span.open{border-bottom-width:2px}
 .row:hover .photo.empty{border-color:#3A3A3A}
 .row .photo{margin:0}
@@ -1539,7 +1571,13 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 .row .photo.empty{aspect-ratio:1/1;background:var(--room-card);border:1px solid var(--room-rule)}
 .row .photo figcaption{font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));color:var(--room-fg3);margin-top:calc(6px*var(--k))}
 .row .who{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));line-height:1.45;color:var(--room-fg3);margin-bottom:calc(6px*var(--k))}
-.row h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(19px*var(--k));line-height:1.2;letter-spacing:-.02em;color:var(--room-ivory);margin:0 0 calc(8px*var(--k));max-width:34ch}
+.row h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(20px*var(--k));line-height:1.2;letter-spacing:-.02em;color:var(--room-ivory);margin:0 0 calc(6px*var(--k));max-width:38ch}
+.row .dek{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);margin:0 0 calc(8px*var(--k));max-width:48ch}
+.row .q{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:52ch}
+.row.nophoto{grid-template-columns:minmax(0,1.5fr) calc(300px*var(--k)) minmax(0,1fr)}
+.row .measure{font-family:'Space Mono',monospace;font-size:calc(12px*var(--k));color:var(--room-fg2);line-height:1.6}
+.row .measure b{color:var(--room-ivory);font-weight:700}.row .measure .up{color:var(--room-red)}
+.row .pulse.flat{display:flex;align-items:center;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);border-bottom:1px solid var(--room-rule)}
 .row .foot{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));margin-top:calc(8px*var(--k))}
 .row .foot span.open{color:var(--room-ivory);border-bottom:1px solid var(--room-red)}
 .row .mid{display:flex;flex-direction:column;gap:calc(8px*var(--k))}
@@ -1548,7 +1586,7 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 .row .pulse .pf{fill:var(--room-pulse);stroke:none}
 .row .pulse .pl{fill:none;stroke:var(--room-red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .row .pulse circle{fill:var(--room-red)}
-.row .move{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.45;color:var(--room-ivory);border-left:2px solid var(--room-red);padding-left:calc(12px*var(--k));max-width:40ch}
+.row .move{font-family:'Syne',sans-serif;font-weight:600;font-size:calc(16px*var(--k));line-height:1.4;color:var(--room-ivory);border-left:2px solid var(--room-red);padding-left:calc(12px*var(--k));max-width:36ch}
 .row .move i{font-style:normal;color:var(--room-fg3)}
 #board-list.nothumbs .row{grid-template-columns:minmax(0,1.2fr) calc(360px*var(--k)) minmax(0,1fr)}
 #board-list.nothumbs .row .photo.empty{display:none}
@@ -1558,6 +1596,16 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 .row.quiet span.open::before{content:none}
 .row.quiet .open{color:var(--room-ivory);border-bottom:1px solid var(--room-red);font-size:calc(13px*var(--k))}
 .row.quiet:hover .open{border-bottom-width:2px}
+/* EX33b: the lens row on one line; a kind opens its chips beneath */
+.rec-lenses{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.rec-sep{width:1px;height:18px;background:var(--room-rule);margin:0 6px}
+.rec-kind{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;background:transparent;color:var(--room-fg2,var(--text2));border:1px solid transparent;padding:6px 10px;cursor:pointer}
+.rec-kind:hover,.rec-kind.open{color:var(--room-fg,var(--text))}
+.rec-kind.on{color:var(--room-fg,var(--text));border-color:var(--room-rule)}
+.rec-kind .chev{font-size:9px;opacity:.7;margin-left:4px}
+.rec-lens-sub{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 2px}
+.room-more .blind{display:block;margin-top:8px;opacity:.75}
+.row .rec-watch{display:flex;align-items:baseline;gap:10px;max-width:52ch}.row .rec-watch i{flex:none;white-space:nowrap}
 @media (max-width:1000px){.row{grid-template-columns:96px 1fr 240px}.row .move{grid-column:2/-1}#board-list.nothumbs .row{grid-template-columns:1fr 240px}#board-list.nothumbs .row .move{grid-column:1/-1}}
 @media (max-width:640px){.row{grid-template-columns:84px 1fr}.row .mid,.row .move{grid-column:1/-1}#board-list.nothumbs .row{grid-template-columns:1fr}}
 .fi-divider{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);grid-column:1/-1;padding-top:10px}
@@ -2247,14 +2295,22 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.12em;margin:0 2px;line-height:1">by</span>
     <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIxNTUuMDAgMjY0LjM4IDQ2MC41MCA1OC4zOCIgYXJpYS1sYWJlbD0iVW5zdXJmYWNlZCI+CjxkZWZzPgo8Zz48ZyBpZD0idG0iPgo8cGF0aCBkPSJNIDAuNDUzMTI1IC0xOC40Mzc1IEwgMTAuNTMxMjUgLTE4LjQzNzUgTCAxMC41MzEyNSAtMTYgTCA2LjkzNzUgLTE2IEwgNi45Mzc1IC04LjE4NzUgTCAzLjk4NDM3NSAtOC4xODc1IEwgMy45ODQzNzUgLTE2IEwgMC40NTMxMjUgLTE2IFogTSAxMS43MDMxMjUgLTE4LjQzNzUgTCAxNi4xODc1IC0xOC40Mzc1IEwgMTcuNjA5Mzc1IC0xMi44NDM3NSBMIDE5LjEwOTM3NSAtMTguNDM3NSBMIDIzLjQ2ODc1IC0xOC40Mzc1IEwgMjMuNDY4NzUgLTguMTg3NSBMIDIwLjY4NzUgLTguMTg3NSBMIDIwLjY4NzUgLTE1LjQzNzUgTCAxOC43NjU2MjUgLTguMTg3NSBMIDE2LjQzNzUgLTguMTg3NSBMIDE0LjUzMTI1IC0xNS40Mzc1IEwgMTQuNTMxMjUgLTguMTg3NSBMIDExLjcwMzEyNSAtOC4xODc1IFogTSAxMS43MDMxMjUgLTE4LjQzNzUiLz4KPC9nPjwvZz4KPC9kZWZzPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSAxNzcuOTM3NSAzMTMuOTY0ODQ0IEMgMTczLjc4OTA2MiAzMTMuOTY0ODQ0IDE3MC40MDYyNSAzMTIuNTY2NDA2IDE2Ny43ODkwNjIgMzA5Ljc2OTUzMSBDIDE2NS4xNzE4NzUgMzA2Ljk3MjY1NiAxNjMuODYzMjgxIDMwMi45OTIxODggMTYzLjg2MzI4MSAyOTcuODIwMzEyIEwgMTYzLjg2MzI4MSAyNzUuMjY5NTMxIEwgMTcyLjk3NjU2MiAyNzUuMjY5NTMxIEwgMTcyLjcwNzAzMSAyOTcuMDk3NjU2IEMgMTcyLjc2NTYyNSAyOTkuODA0Njg4IDE3My40NTcwMzEgMzAxLjkxMDE1NiAxNzQuNzgxMjUgMzAzLjQxMDE1NiBDIDE3Ni4xMDE1NjIgMzA0LjkxNDA2MiAxNzguMTE3MTg4IDMwNS42Njc5NjkgMTgwLjgyNDIxOSAzMDUuNjY3OTY5IEMgMTgzLjgyODEyNSAzMDUuNjY3OTY5IDE4Ni4xOTE0MDYgMzA0Ljc5Njg3NSAxODcuOTA2MjUgMzAzLjA1MDc4MSBDIDE4OS42MTcxODggMzAxLjMwODU5NCAxOTAuNTM1MTU2IDI5OC45MDIzNDQgMTkwLjY1NjI1IDI5NS44MzIwMzEgTCAxOTAuNDc2NTYyIDI3NS4yNjk1MzEgTCAxOTkuNTg1OTM4IDI3NS4yNjk1MzEgTCAxOTkuNTg1OTM4IDMxMy4xNTIzNDQgTCAxOTAuMzgyODEyIDMxMy4xNTIzNDQgTCAxOTAuNzQ2MDk0IDMwNi4yMDcwMzEgQyAxODkuNDg0Mzc1IDMwOC42NzE4NzUgMTg3Ljc1MzkwNiAzMTAuNTgyMDMxIDE4NS41NTg1OTQgMzExLjkzNzUgQyAxODMuMzYzMjgxIDMxMy4yODkwNjIgMTgwLjgyNDIxOSAzMTMuOTY0ODQ0IDE3Ny45Mzc1IDMxMy45NjQ4NDQiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMjIxLjI0NjA5NCAyODguMDY2NDA2IEwgMjEyLjUgMjg4LjA2NjQwNiBDIDIxMi4xMDE1NjIgMjg4LjA2NjQwNiAyMTEuNzE0ODQ0IDI4OC4wNDI5NjkgMjExLjMzOTg0NCAyODguMDA3ODEyIEwgMjExLjMzOTg0NCAzMTMuMTUyMzQ0IEwgMjIwLjQ0OTIxOSAzMTMuMTUyMzQ0IEwgMjIwLjI2OTUzMSAyOTIuNTg1OTM4IEMgMjIwLjMzNTkzOCAyOTAuODgyODEyIDIyMC42Njc5NjkgMjg5LjM3ODkwNiAyMjEuMjQ2MDk0IDI4OC4wNjY0MDYiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMjM3LjcyNjU2MiAyODguMDY2NDA2IEMgMjM4LjAyNzM0NCAyODkuMDU0Njg4IDIzOC4yMjY1NjIgMjkwLjE2NDA2MiAyMzguMzA4NTk0IDI5MS40MTQwNjIgTCAyMzguMTI4OTA2IDMxMy4xNTIzNDQgTCAyNDcuMjM4MjgxIDMxMy4xNTIzNDQgTCAyNDcuMjM4MjgxIDI5MC42OTE0MDYgQyAyNDcuMjM4MjgxIDI4OS43NzM0MzggMjQ3LjE4MzU5NCAyODguOTEwMTU2IDI0Ny4wOTc2NTYgMjg4LjA2NjQwNiBaIE0gMjM3LjcyNjU2MiAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDI4Mi41OTc2NTYgMjkzLjc1NzgxMiBDIDI4MS4zNjcxODggMjkyLjg1NTQ2OSAyODAuMDQyOTY5IDI5Mi4xNjc5NjkgMjc4LjYyODkwNiAyOTEuNjgzNTk0IEMgMjc3LjIxNDg0NCAyOTEuMjAzMTI1IDI3NS43NTc4MTIgMjkwLjc4MTI1IDI3NC4yNTM5MDYgMjkwLjQyMTg3NSBDIDI3Mi42OTE0MDYgMjkwLjA2MjUgMjcxLjM5ODQzOCAyODkuNjk5MjE5IDI3MC4zNzUgMjg5LjMzOTg0NCBDIDI2OS4zNTE1NjIgMjg4Ljk3NjU2MiAyNjguNTM5MDYyIDI4OC42MTcxODggMjY3Ljk0MTQwNiAyODguMjU3ODEyIEMgMjY3LjgzOTg0NCAyODguMTk1MzEyIDI2Ny43NSAyODguMTI4OTA2IDI2Ny42NTYyNSAyODguMDY2NDA2IEwgMjU3Ljk2MDkzOCAyODguMDY2NDA2IEMgMjU4LjExNzE4OCAyODguOTE0MDYyIDI1OC4zNTkzNzUgMjg5LjY4NzUgMjU4LjY5NTMxMiAyOTAuMzc4OTA2IEMgMjU5LjMyNDIxOSAyOTEuNjcxODc1IDI2MC4xNjc5NjkgMjkyLjc2NTYyNSAyNjEuMjE4NzUgMjkzLjY2Nzk2OSBDIDI2Mi4yNzM0MzggMjk0LjU3MDMxMiAyNjMuNDcyNjU2IDI5NS4zMDg1OTQgMjY0LjgyODEyNSAyOTUuODc4OTA2IEMgMjY2LjE3OTY4OCAyOTYuNDUzMTI1IDI2Ny41NDY4NzUgMjk2LjkxNzk2OSAyNjguOTMzNTk0IDI5Ny4yNzczNDQgQyAyNzAuNTU0Njg4IDI5Ny41NzgxMjUgMjcxLjkzNzUgMjk3Ljg5NDUzMSAyNzMuMDgyMDMxIDI5OC4yMjI2NTYgQyAyNzQuMjIyNjU2IDI5OC41NTQ2ODggMjc1LjE3MTg3NSAyOTguOTMzNTk0IDI3NS45MjE4NzUgMjk5LjM1MTU2MiBDIDI3Ni42NzU3ODEgMjk5Ljc3MzQzOCAyNzcuMjE0ODQ0IDMwMC4yMjI2NTYgMjc3LjU0Njg3NSAzMDAuNzA3MDMxIEMgMjc3Ljg3NSAzMDEuMTg3NSAyNzguMDQyOTY5IDMwMS44MjAzMTIgMjc4LjA0Mjk2OSAzMDIuNTk3NjU2IEMgMjc4LjA0Mjk2OSAzMDMuODYzMjgxIDI3Ny41MTU2MjUgMzA0Ljg4NjcxOSAyNzYuNDY0ODQ0IDMwNS42Njc5NjkgQyAyNzUuNDEwMTU2IDMwNi40NDkyMTkgMjczLjc0MjE4OCAzMDYuODcxMDk0IDI3MS40NTcwMzEgMzA2LjkyOTY4OCBDIDI2OS4yOTI5NjkgMzA2LjkyOTY4OCAyNjcuMzU1NDY5IDMwNi40OTIxODggMjY1LjY0MDYyNSAzMDUuNjIxMDk0IEMgMjYzLjkyNTc4MSAzMDQuNzUgMjYyLjUyNzM0NCAzMDMuNDEwMTU2IDI2MS40NDUzMTIgMzAxLjYwNTQ2OSBMIDI1NS4wMzkwNjIgMzA2LjExNzE4OCBDIDI1Ni4zMDQ2ODggMzA4LjE2NDA2MiAyNTguMzYzMjgxIDMwOS45ODA0NjkgMjYxLjIxODc1IDMxMS41NzQyMTkgQyAyNjQuMDc0MjE5IDMxMy4xNjc5NjkgMjY3LjY2Nzk2OSAzMTMuOTY0ODQ0IDI3MiAzMTMuOTY0ODQ0IEMgMjc0LjcwNzAzMSAzMTMuOTY0ODQ0IDI3Ni45OTIxODggMzEzLjY0ODQzOCAyNzguODU1NDY5IDMxMy4wMTU2MjUgQyAyODAuNzE4NzUgMzEyLjM4NjcxOSAyODIuMjM4MjgxIDMxMS41NDY4NzUgMjgzLjQxMDE1NiAzMTAuNDkyMTg4IEMgMjg0LjU4MjAzMSAzMDkuNDQxNDA2IDI4NS40MjU3ODEgMzA4LjE5MTQwNiAyODUuOTM3NSAzMDYuNzUgQyAyODYuNDQ1MzEyIDMwNS4zMDQ2ODggMjg2LjcwMzEyNSAzMDMuNzczNDM4IDI4Ni43MDMxMjUgMzAyLjE0ODQzOCBDIDI4Ni43MDMxMjUgMzAwLjE2NDA2MiAyODYuMzI4MTI1IDI5OC40OTYwOTQgMjg1LjU3NDIxOSAyOTcuMTQwNjI1IEMgMjg0LjgyNDIxOSAyOTUuNzg5MDYyIDI4My44MjgxMjUgMjk0LjY2MDE1NiAyODIuNTk3NjU2IDI5My43NTc4MTIiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMzIyLjEwOTM3NSAyODguMDY2NDA2IEwgMzIyLjE3OTY4OCAyOTUuODMyMDMxIEMgMzIyLjA1ODU5NCAyOTguOTAyMzQ0IDMyMS4xNDA2MjUgMzAxLjMwODU5NCAzMTkuNDI5Njg4IDMwMy4wNTA3ODEgQyAzMTcuNzE0ODQ0IDMwNC43OTY4NzUgMzE1LjM1MTU2MiAzMDUuNjY3OTY5IDMxMi4zNDc2NTYgMzA1LjY2Nzk2OSBDIDMwOS42NDA2MjUgMzA1LjY2Nzk2OSAzMDcuNjI1IDMwNC45MTQwNjIgMzA2LjMwNDY4OCAzMDMuNDEwMTU2IEMgMzA0Ljk4MDQ2OSAzMDEuOTEwMTU2IDMwNC4yODkwNjIgMjk5LjgwNDY4OCAzMDQuMjMwNDY5IDI5Ny4wOTc2NTYgTCAzMDQuMzM5ODQ0IDI4OC4wNjY0MDYgTCAyOTUuMzkwNjI1IDI4OC4wNjY0MDYgTCAyOTUuMzkwNjI1IDI5Ny44MjAzMTIgQyAyOTUuMzkwNjI1IDMwMi45OTIxODggMjk2LjY5NTMxMiAzMDYuOTcyNjU2IDI5OS4zMTI1IDMwOS43Njk1MzEgQyAzMDEuOTI5Njg4IDMxMi41NjY0MDYgMzA1LjMxMjUgMzEzLjk2NDg0NCAzMDkuNDYwOTM4IDMxMy45NjQ4NDQgQyAzMTIuMzQ3NjU2IDMxMy45NjQ4NDQgMzE0Ljg4NjcxOSAzMTMuMjg5MDYyIDMxNy4wODIwMzEgMzExLjkzNzUgQyAzMTkuMjc3MzQ0IDMxMC41ODIwMzEgMzIxLjAwNzgxMiAzMDguNjc1NzgxIDMyMi4yNjk1MzEgMzA2LjIwNzAzMSBMIDMyMS45MTAxNTYgMzEzLjE1MjM0NCBMIDMzMS4xMDkzNzUgMzEzLjE1MjM0NCBMIDMzMS4xMDkzNzUgMjg4LjA2NjQwNiBaIE0gMzIyLjEwOTM3NSAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDM1Mi45ODgyODEgMjg4LjA2NjQwNiBMIDM0Mi44NjMyODEgMjg4LjA2NjQwNiBMIDM0Mi44NjMyODEgMzEzLjE1MjM0NCBMIDM1MS45NzI2NTYgMzEzLjE1MjM0NCBMIDM1MS42MTMyODEgMjk0Ljc1IEMgMzUxLjc2OTUzMSAyOTEuOTkyMTg4IDM1Mi4yMzA0NjkgMjg5Ljc2OTUzMSAzNTIuOTg4MjgxIDI4OC4wNjY0MDYiLz4KPHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gMzgxLjMzMjAzMSAyODguMDY2NDA2IEwgMzgxLjMzMjAzMSAzMTMuMTUyMzQ0IEwgMzkwLjQ0NTMxMiAzMTMuMTUyMzQ0IEwgMzkwLjIxODc1IDI4OC4wNjY0MDYgWiBNIDM4MS4zMzIwMzEgMjg4LjA2NjQwNiIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA0MzEuMjIyNjU2IDI5OS44OTQ1MzEgQyA0MzEuMjIyNjU2IDMwMiA0MzAuMzc4OTA2IDMwMy42NTIzNDQgNDI4LjY5OTIxOSAzMDQuODU1NDY5IEMgNDI3LjAxMTcxOSAzMDYuMDU4NTk0IDQyNC44MjAzMTIgMzA2LjY2MDE1NiA0MjIuMTEzMjgxIDMwNi42NjAxNTYgQyA0MTcuMzAwNzgxIDMwNi42NjAxNTYgNDE0Ljg5ODQzOCAzMDUuMDAzOTA2IDQxNC44OTg0MzggMzAxLjY5OTIxOSBDIDQxNC44OTg0MzggMzAwLjAxNTYyNSA0MTUuNDk2MDk0IDI5OC43OTY4NzUgNDE2LjcwMzEyNSAyOTguMDQyOTY5IEMgNDE3LjkwMjM0NCAyOTcuMjkyOTY5IDQxOS40OTYwOTQgMjk2LjkxNzk2OSA0MjEuNDgwNDY5IDI5Ni45MTc5NjkgTCA0MzEuMjIyNjU2IDI5Ni45MTc5NjkgWiBNIDQzMSAyODguMDY2NDA2IEMgNDMxLjE0NDUzMSAyODguOTc2NTYyIDQzMS4yMjI2NTYgMjg5Ljk5NjA5NCA0MzEuMjIyNjU2IDI5MS4xNDQ1MzEgTCA0MjAuODUxNTYyIDI5MC42MDE1NjIgQyA0MTguNjg3NSAyOTAuNjAxNTYyIDQxNi43MDMxMjUgMjkwLjgyODEyNSA0MTQuODk4NDM4IDI5MS4yNzczNDQgQyA0MTMuMDkzNzUgMjkxLjczMDQ2OSA0MTEuNTI3MzQ0IDI5Mi40MjE4NzUgNDEwLjIwNzAzMSAyOTMuMzU1NDY5IEMgNDA4Ljg4MjgxMiAyOTQuMjg1MTU2IDQwNy44NDM3NSAyOTUuNDU3MDMxIDQwNy4wOTM3NSAyOTYuODcxMDk0IEMgNDA2LjMzOTg0NCAyOTguMjg1MTU2IDQwNS45NjQ4NDQgMjk5Ljk4NDM3NSA0MDUuOTY0ODQ0IDMwMS45Njg3NSBDIDQwNS45NjQ4NDQgMzA0LjA3NDIxOSA0MDYuMzI4MTI1IDMwNS44OTQ1MzEgNDA3LjA0Njg3NSAzMDcuNDI1NzgxIEMgNDA3Ljc2OTUzMSAzMDguOTU3MDMxIDQwOC43NDYwOTQgMzEwLjIwNzAzMSA0MDkuOTgwNDY5IDMxMS4xNjc5NjkgQyA0MTEuMjEwOTM4IDMxMi4xMzI4MTIgNDEyLjY1NjI1IDMxMi44MzU5MzggNDE0LjMxMjUgMzEzLjI4OTA2MiBDIDQxNS45NjQ4NDQgMzEzLjczODI4MSA0MTcuNzIyNjU2IDMxMy45NjQ4NDQgNDE5LjU4NTkzOCAzMTMuOTY0ODQ0IEMgNDIyLjQxNDA2MiAzMTMuOTY0ODQ0IDQyNC43NTc4MTIgMzEzLjQzNzUgNDI2LjYyNSAzMTIuMzg2NzE5IEMgNDI4LjQ4ODI4MSAzMTEuMzM1OTM4IDQzMC4wODIwMzEgMzA5Ljc4NTE1NiA0MzEuNDA2MjUgMzA3Ljc0MjE4OCBMIDQzMS4yMjI2NTYgMzEzLjE1MjM0NCBMIDQ0MC4zMzU5MzggMzEzLjE1MjM0NCBMIDQ0MC4zMzU5MzggMjkwLjc4MTI1IEMgNDQwLjMzNTkzOCAyODkuODMyMDMxIDQ0MC4yNjk1MzEgMjg4LjkzNzUgNDQwLjE3MTg3NSAyODguMDY2NDA2IFogTSA0MzEgMjg4LjA2NjQwNiIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA0NzUuNDI5Njg4IDMwNC43MTg3NSBDIDQ3My45ODgyODEgMzA1LjUzMTI1IDQ3Mi4xMjUgMzA1LjkzNzUgNDY5LjgzOTg0NCAzMDUuOTM3NSBDIDQ2Ni40MTAxNTYgMzA1LjkzNzUgNDYzLjc1IDMwNC44Mzk4NDQgNDYxLjg1NTQ2OSAzMDIuNjQ0NTMxIEMgNDU5Ljk2MDkzOCAzMDAuNDQ5MjE5IDQ1OS4wMTU2MjUgMjk3LjYzNjcxOSA0NTkuMDE1NjI1IDI5NC4yMTA5MzggQyA0NTkuMDE1NjI1IDI5MS44NzUgNDU5LjQ2NDg0NCAyODkuODMyMDMxIDQ2MC4zNDc2NTYgMjg4LjA2NjQwNiBMIDQ1MC41NDY4NzUgMjg4LjA2NjQwNiBDIDQ0OS45NDE0MDYgMjg5Ljk5MjE4OCA0NDkuNjMyODEyIDI5Mi4wMzkwNjIgNDQ5LjYzMjgxMiAyOTQuMjEwOTM4IEMgNDQ5LjYzMjgxMiAyOTcuMDM5MDYyIDQ1MC4xNDQ1MzEgMjk5LjY2Nzk2OSA0NTEuMTY3OTY5IDMwMi4xMDE1NjIgQyA0NTIuMTkxNDA2IDMwNC41MzkwNjIgNDUzLjYwMTU2MiAzMDYuNjI4OTA2IDQ1NS40MDYyNSAzMDguMzcxMDk0IEMgNDU3LjIxMDkzOCAzMTAuMTE3MTg4IDQ1OS4zNDM3NSAzMTEuNDg0Mzc1IDQ2MS44MTI1IDMxMi40NzY1NjIgQyA0NjQuMjc3MzQ0IDMxMy40Njg3NSA0NjYuOTUzMTI1IDMxMy45NjQ4NDQgNDY5LjgzOTg0NCAzMTMuOTY0ODQ0IEMgNDczLjUwNzgxMiAzMTMuOTY0ODQ0IDQ3Ni41NDI5NjkgMzEzLjM0NzY1NiA0NzguOTQ5MjE5IDMxMi4xMTcxODggQyA0ODEuMzU1NDY5IDMxMC44ODI4MTIgNDgzLjQ5MjE4OCAzMDkuMjE0ODQ0IDQ4NS4zNTU0NjkgMzA3LjEwOTM3NSBMIDQ3OS4xMjg5MDYgMzAyLjIzODI4MSBDIDQ3OC4xMDkzNzUgMzAzLjA4MjAzMSA0NzYuODc1IDMwMy45MDYyNSA0NzUuNDI5Njg4IDMwNC43MTg3NSIvPgo8cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTSA1MjkuMjY1NjI1IDI4OC4wNjY0MDYgTCA1MjAuMTk1MzEyIDI4OC4wNjY0MDYgQyA1MjAuNTYyNSAyODguOTY0ODQ0IDUyMC44NTkzNzUgMjg5LjkxNzk2OSA1MjEuMDI3MzQ0IDI5MC45NjQ4NDQgTCA0OTkuNDcyNjU2IDI5MS4xNDQ1MzEgQyA0OTkuNjkxNDA2IDI5MC4wMTU2MjUgNTAwLjAwNzgxMiAyODguOTkyMTg4IDUwMC40MTc5NjkgMjg4LjA2NjQwNiBMIDQ5MS4zOTA2MjUgMjg4LjA2NjQwNiBDIDQ5MC43Njk1MzEgMjg5Ljk5MjE4OCA0OTAuNDQ5MjE5IDI5Mi4wMzUxNTYgNDkwLjQ0OTIxOSAyOTQuMjEwOTM4IEMgNDkwLjQ0OTIxOSAyOTcuMDM5MDYyIDQ5MC45NjA5MzggMjk5LjY2Nzk2OSA0OTEuOTg0Mzc1IDMwMi4xMDU0NjkgQyA0OTMuMDA3ODEyIDMwNC41MzkwNjIgNDk0LjQzMzU5NCAzMDYuNjI4OTA2IDQ5Ni4yNjk1MzEgMzA4LjM3MTA5NCBDIDQ5OC4xMDE1NjIgMzEwLjExNzE4OCA1MDAuMzQzNzUgMzExLjQ4NDM3NSA1MDIuOTg4MjgxIDMxMi40NzY1NjIgQyA1MDUuNjMyODEyIDMxMy40Njg3NSA1MDguNTgyMDMxIDMxMy45NjQ4NDQgNTExLjgyODEyNSAzMTMuOTY0ODQ0IEMgNTE1LjYxNzE4OCAzMTMuOTY0ODQ0IDUxOC43ODkwNjIgMzEzLjM3ODkwNiA1MjEuMzQzNzUgMzEyLjIwNzAzMSBDIDUyMy44OTg0MzggMzExLjAzMTI1IDUyNi4xNDA2MjUgMzA5LjU3NDIxOSA1MjguMDY2NDA2IDMwNy44MzIwMzEgTCA1MjIuNzQyMTg4IDMwMi4yMzgyODEgQyA1MjEuNDgwNDY5IDMwMy4yNjE3MTkgNTE5Ljk2MDkzOCAzMDQuMTk1MzEyIDUxOC4xODc1IDMwNS4wMzUxNTYgQyA1MTYuNDE0MDYyIDMwNS44Nzg5MDYgNTE0LjI2NTYyNSAzMDYuMjk2ODc1IDUxMS43MzgyODEgMzA2LjI5Njg3NSBDIDUwOC4yNSAzMDYuMjk2ODc1IDUwNS41MTU2MjUgMzA1LjQ4NDM3NSA1MDMuNTI3MzQ0IDMwMy44NjMyODEgQyA1MDEuNTQ2ODc1IDMwMi4yMzgyODEgNTAwLjIyMjY1NiAyOTkuOTI1NzgxIDQ5OS41NTg1OTQgMjk2LjkxNzk2OSBMIDUzMC4yMzA0NjkgMjk2LjU1NDY4OCBDIDUzMC40MTAxNTYgMjkzLjczMDQ2OSA1MzAuMDkzNzUgMjkwLjkxNzk2OSA1MjkuMjgxMjUgMjg4LjEyMTA5NCBDIDUyOS4yNzczNDQgMjg4LjEwMTU2MiA1MjkuMjY5NTMxIDI4OC4wODU5MzggNTI5LjI2NTYyNSAyODguMDY2NDA2Ii8+CjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDU2Ny41OTM3NSAyODguMDY2NDA2IEMgNTY4LjUgMjg5Ljc5Mjk2OSA1NjguOTY0ODQ0IDI5MS44MDQ2ODggNTY4Ljk2NDg0NCAyOTQuMTIxMDk0IEMgNTY4Ljk2NDg0NCAyOTcuNzMwNDY5IDU2Ny45Njg3NSAzMDAuNjAxNTYyIDU2NS45ODgyODEgMzAyLjczNDM3NSBDIDU2NCAzMDQuODcxMDk0IDU2MS4zMjQyMTkgMzA1LjkzNzUgNTU3Ljk1NzAzMSAzMDUuOTM3NSBDIDU1NC42NTIzNDQgMzA1LjkzNzUgNTUyLjAzNTE1NiAzMDQuODcxMDk0IDU1MC4xMDkzNzUgMzAyLjczNDM3NSBDIDU0OC4xODM1OTQgMzAwLjYwMTU2MiA1NDcuMTY0MDYyIDI5Ny43MzA0NjkgNTQ3LjA0Mjk2OSAyOTQuMTIxMDk0IEMgNTQ3LjEyNSAyOTEuODA0Njg4IDU0Ny42Mjg5MDYgMjg5Ljc5Mjk2OSA1NDguNTMxMjUgMjg4LjA2NjQwNiBMIDUzOC42MTcxODggMjg4LjA2NjQwNiBDIDUzOC4wODU5MzggMjg5Ljk0OTIxOSA1MzcuNzk2ODc1IDI5MS45Njg3NSA1MzcuNzUzOTA2IDI5NC4xMjEwOTQgQyA1MzcuODEyNSAyOTcuMDA3ODEyIDUzOC4zMDg1OTQgMjk5LjY1MjM0NCA1MzkuMjQyMTg4IDMwMi4wNTg1OTQgQyA1NDAuMTcxODc1IDMwNC40NjQ4NDQgNTQxLjQzMzU5NCAzMDYuNTU0Njg4IDU0My4wMzEyNSAzMDguMzI4MTI1IEMgNTQ0LjYyMTA5NCAzMTAuMTAxNTYyIDU0Ni41MDM5MDYgMzExLjQ4NDM3NSA1NDguNjY3OTY5IDMxMi40NzY1NjIgQyA1NTAuODMyMDMxIDMxMy40Njg3NSA1NTMuMTQ4NDM4IDMxMy45NjQ4NDQgNTU1LjYxMzI4MSAzMTMuOTY0ODQ0IEMgNTU4LjgwMDc4MSAzMTMuOTY0ODQ0IDU2MS41MDM5MDYgMzEzLjI1NzgxMiA1NjMuNzMwNDY5IDMxMS44NDc2NTYgQyA1NjUuOTU3MDMxIDMxMC40MzM1OTQgNTY3LjY2Nzk2OSAzMDguNTgyMDMxIDU2OC44NzUgMzA2LjI5Njg3NSBMIDU2OC42MDE1NjIgMzEzLjE1MjM0NCBMIDU3Ny43MTA5MzggMzEzLjE1MjM0NCBMIDU3Ny43MTA5MzggMjg4LjA2NjQwNiBaIE0gNTY3LjU5Mzc1IDI4OC4wNjY0MDYiLz4KPGcgZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLW9wYWNpdHk9IjEiPgo8dXNlIHhsaW5rOmhyZWY9IiN0bSIgeD0iNTgzLjI5MTUiIHk9IjI5MS42Njc1Ii8+CjwvZz4KPC9zdmc+" alt="Unsurfaced™" style="height:16px;width:auto;display:block;filter:invert(1) brightness(2);opacity:0.9;">
   </div>
-  <div class="nav-menu" id="nav-menu"><!-- SEAM:EXC_NAV: one dropdown, every door -->
+  <ul class="nav-list" id="nav-list"><!-- SEAM:EXC_NAV (EX33b): every door across the header; the menu below is the phone's -->
+<li><button class="nlb nl active" id="nl-explore" onclick="navTo('explore')">EXCAVATE</button></li>
+<li><button class="nlb nl" id="nl-record" onclick="_navRecord()">Record</button></li>
+<li><button class="nlb nl" id="nl-brands" onclick="navTo('brands')">Brands</button></li>
+<li><button class="nlb nl" id="nl-audiences" onclick="navTo('audiences')">Audiences</button></li>
+<li><button class="nlb nl" id="nl-library" onclick="navTo('library')">Library</button></li>
+<li><button class="nlb nl" id="nl-spaces" onclick="goHub()">Spaces</button></li>
+</ul>
+<div class="nav-menu" id="nav-menu"><!-- SEAM:EXC_NAV: one dropdown, every door -->
     <button class="nav-menu-btn" id="nav-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="navMenuToggle(event)"><span id="nav-menu-cur">EXCAVATE</span><span class="chev">&#9660;</span></button>
     <ul class="nav-menu-list" id="nav-menu-list">
       <li class="grp">EXCAVATE</li>
       <li><button class="nlb active" id="nav-explore" onclick="navTo('explore')">EXCAVATE<small>ask culture a question; the record</small></button></li><!-- SEAM:EXC_NAV: Brands and Audiences are lenses and rooms under EXCAVATE, not doors -->
       <li><button class="nlb" id="nav-library" onclick="navTo('library')">Library<small>reads, reports, RECONs</small></button></li>
-      <li style="display:none"><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands</button></li>
-      <li style="display:none"><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences</button></li>
+      <li><button class="nlb" id="nav-brands" onclick="navTo('brands')">Brands<small>the brand rooms</small></button></li>
+      <li><button class="nlb" id="nav-audiences" onclick="navTo('audiences')">Audiences<small>the audience rooms</small></button></li>
       <li id="nav-read-li" style="display:none"><a class="nlb" id="nav-read" href="read/">READ<small>the house reads, the desk, the stand</small></a></li>
       <li class="sep"></li>
       <li><button class="nlb" id="nav-spaces" onclick="goHub()">&#9670; Spaces<small>DAILY, EXCAVATE, MINE</small></button></li>
@@ -2435,8 +2491,8 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
       <div class="results-stats">
         <div class="result-stat"><span class="result-stat-val" id="res-sources">—</span><span class="result-stat-label">Sources</span></div>
-        <div class="result-stat"><span class="result-stat-val" id="res-insights">—</span><span class="result-stat-label">Insights</span></div>
-        <div class="result-stat"><span class="result-stat-val" id="res-ideas">—</span><span class="result-stat-label">Actions</span></div>
+        <div class="result-stat"><span class="result-stat-val" id="res-insights">—</span><span class="result-stat-label">Findings</span></div>
+        <div class="result-stat"><span class="result-stat-val" id="res-ideas">—</span><span class="result-stat-label">Moves</span></div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-new-search" onclick="clearSearch()">← New Search</button>
@@ -2447,49 +2503,51 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
       <div class="intent-doors" id="intent-doors" style="display:none"></div><!-- SEAM:EXC_INTENT: the task's door -->
       </div>
     </div>
-  </div>
+  <!-- EX33c: one closing div fewer: THE READ, the findings and the moves live inside #live-results (the stray div hid the findings grid and clipped the read) -->
+  <div class="read-jump" id="read-jump" style="display:none" role="navigation" aria-label="On this read"><button type="button" onclick="_readJump('read-block')">The answer</button><button type="button" onclick="_readJump('rlp-findings')">Findings</button><button type="button" onclick="_readJump('moves-section')">Moves</button><button type="button" onclick="_readJump('read-voices')">Voices</button><button type="button" onclick="_readJump('read-measured')">Measured</button><button type="button" onclick="_readJump('read-interp')">Interpretation</button><button type="button" onclick="_readJump('read-receipts')">Receipts</button></div>
   <!-- SEAM:READ_SURFACE — the first pass carries everything: THE READ, the interpretation, then findings with images, then sources. Nothing behind a dropdown. -->
   <div class="read-block" id="read-block" style="display:none"></div>
   <div class="results-sources-strip" id="results-sources-strip"></div>
   <!-- 5-LENS TAB BAR -->
   <div class="results-lens-bar" id="results-lens-bar">
-    <button class="rlb active cat-all" id="rlb-all" onclick="switchResultsLens('all')">All Lenses <span class="rlb-count" id="rlb-count-all">—</span></button>
-    <button class="rlb cat-consumer" id="rlb-consumer" onclick="switchResultsLens('consumer')">Consumer Behavior <span class="rlb-count" id="rlb-count-consumer">—</span></button>
-    <button class="rlb cat-market"          id="rlb-market"   onclick="switchResultsLens('market')">Market Dynamics <span class="rlb-count" id="rlb-count-market">—</span></button>
-    <button class="rlb cat-culture"         id="rlb-culture"  onclick="switchResultsLens('culture')">Cultural Signal <span class="rlb-count" id="rlb-count-culture">—</span></button>
-    <button class="rlb cat-brand"           id="rlb-brand"    onclick="switchResultsLens('brand')">Brand Health <span class="rlb-count" id="rlb-count-brand">—</span></button>
-    <button class="rlb cat-truth"           id="rlb-truth"    onclick="switchResultsLens('truth')">Signal Truth <span class="rlb-count" id="rlb-count-truth">—</span></button>
+    <button class="rlb active cat-all" id="rlb-all" onclick="switchResultsLens('all')">All findings <span class="rlb-count" id="rlb-count-all">—</span></button>
+    <button class="rlb cat-consumer" id="rlb-consumer" onclick="switchResultsLens('consumer')">Consumers <span class="rlb-count" id="rlb-count-consumer">—</span></button>
+    <button class="rlb cat-market"          id="rlb-market"   onclick="switchResultsLens('market')">Market <span class="rlb-count" id="rlb-count-market">—</span></button>
+    <button class="rlb cat-culture"         id="rlb-culture"  onclick="switchResultsLens('culture')">Culture <span class="rlb-count" id="rlb-count-culture">—</span></button>
+    <button class="rlb cat-brand"           id="rlb-brand"    onclick="switchResultsLens('brand')">Brand <span class="rlb-count" id="rlb-count-brand">—</span></button>
+    <button class="rlb cat-truth"           id="rlb-truth"    onclick="switchResultsLens('truth')">Fact checks <span class="rlb-count" id="rlb-count-truth">—</span></button>
   </div>
   <!-- SEAM:READ_BRIEF: the findings, one grid, strongest first -->
   <div class="results-lens-panel" id="rlp-findings"><div class="results-grid findings-grid" id="results-grid-all"></div></div>
   <div class="results-lens-panel" id="rlp-consumer">
-    <div class="lens-panel-head cat-consumer">Consumer Behavior</div>
+    <div class="lens-panel-head cat-consumer">Consumers</div>
     <div class="results-grid" id="results-grid-consumer"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent)">Consumer Actions</span></div><div class="lens-ideas-row" id="lens-ideas-consumer"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-market">
-    <div class="lens-panel-head cat-market">Market Dynamics</div>
+    <div class="lens-panel-head cat-market">Market</div>
     <div class="results-grid" id="results-grid-market"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent3)">Market Actions</span></div><div class="lens-ideas-row" id="lens-ideas-market"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-culture">
-    <div class="lens-panel-head cat-culture">Cultural Signal</div>
+    <div class="lens-panel-head cat-culture">Culture</div>
     <div class="results-grid" id="results-grid-culture"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent4)">Cultural Actions</span></div><div class="lens-ideas-row" id="lens-ideas-culture"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-brand">
-    <div class="lens-panel-head cat-brand">Brand Health</div>
+    <div class="lens-panel-head cat-brand">Brand</div>
     <div class="results-grid" id="results-grid-brand"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--accent2)">Brand Actions</span></div><div class="lens-ideas-row" id="lens-ideas-brand"></div></div>
   </div>
   <div class="results-lens-panel" id="rlp-truth">
     <div class="truth-panel" id="truth-panel" style="display:none"><div class="truth-label">Cross-Signal Intelligence Synthesis</div><div class="truth-headline" id="truth-headline"></div><div class="truth-body" id="truth-body"></div><div class="truth-signals" id="truth-signals"></div></div>
-    <div class="lens-panel-head cat-truth">Signal Truth</div>
+    <div class="lens-panel-head cat-truth">Fact checks</div>
     <div id="truth-claims"></div>
     <div class="results-grid" id="results-grid-truth"></div>
     <div class="lens-ideas-strip"><div class="section-header"><span class="section-title" style="color:var(--deep2)">Strategic Actions</span></div><div class="lens-ideas-row" id="lens-ideas-truth"></div></div>
   </div>
   <div class="moves-section" id="moves-section"></div>
+  <div class="read-block read-after" id="read-after" style="display:none"></div><!-- EX33c: the voices, the measures, the interpretation and the receipts, after the moves -->
   <!-- SEAM:VOICE@intelligence -->
   <div id="voice-strip"></div>
   <div id="results-grid" style="display:none"></div>
@@ -4005,25 +4063,37 @@ async function renderVoiceStrip(q){
   </div>`;
 }
 
+/* EX33c: one receipt behind every count on the page and in the download. sources: the distinct outlets the read cites;
+   lines: what the writer read; findings and moves: what it wrote. The badge, the header, the receipts rail and the paper all read from here. */
+function _receiptOf(data){
+  const norm=x=>String(x||'').toLowerCase().replace(/^unsurfaced lake\s*·\s*/,'').replace(/\s*\(t[0-9?]\)\s*$/,'').replace(/^www\./,'').replace(/\.(org|com|net|co|io|gov|edu)$/,'').replace(/[^a-z0-9]/g,'');
+  const seen=new Set(); for(const sv of (data&&data.sources)||[]){ const k=norm(sv&&(sv.display||sv.label)); if(k) seen.add(k); }
+  const rel=(data&&data.relevance)||null;
+  return { sources: seen.size, lines: rel&&rel.kept!=null?rel.kept:((data&&data.lines)||[]).length, findings: ((data&&data.insights)||[]).length, moves: ((data&&data.ideas)||[]).filter(x=>x&&x.headline).length };
+}
+/* EX33c: the house's words never reach the reader: the blind-spots line is said in the reader's terms. */
+function _blindWords(t){ return String(t||'').replace(/the open web and the lake/g, "the open web and the house's own archive").replace(/\bthe lake\b/g, "the house's own archive"); }
 function renderResults(q, data, mode){
   lastMode=mode;
   lastSources=data.sources||[];
   window._lastInsights=data.insights||[];
   window._lastSources=lastSources;
+  const rc=_receiptOf(data);   // EX33c: one receipt
 
   document.getElementById('live-results').style.display='block';
   document.getElementById('results-query').textContent=q;
-  document.getElementById('results-meta').textContent=((data.sources||[]).length+' SOURCES · '+(data.insights||[]).length+' FINDINGS · '+(mode==='live'?'LIVE READ':'GATHERED SIGNALS, LIVE ANALYSIS UNAVAILABLE')+' · ')+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
+  document.getElementById('results-meta').textContent=(rc.sources+(rc.sources===1?' SOURCE · ':' SOURCES · ')+rc.findings+(rc.findings===1?' FINDING · ':' FINDINGS · ')+(mode==='live'?(data.depth==='quick'?'QUICK READ':'FULL READ'):'GATHERED, NOT READ')+' · ')+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
 
   const pill=document.getElementById('results-mode-pill');
   pill.innerHTML=mode==='live'
-    ?'<div class="mode-pill basic">THE READ — LAKE + LIVE WIRE + OPEN WEB</div>'
-    :'<div class="mode-pill basic">GATHERED SIGNALS — LIVE ANALYSIS UNAVAILABLE</div>';
+    ?'<div class="mode-pill basic">THE READ</div>'
+    :'<div class="mode-pill basic">GATHERED, NOT READ</div>';
 
   renderVoiceStrip(q);   // fire and forget: the strip never blocks the page
-  document.getElementById('res-sources').textContent=lastSources.length||'—';
-  document.getElementById('res-insights').textContent=(data.insights||[]).length;
-  document.getElementById('res-ideas').textContent=(data.ideas||[]).length;
+  document.getElementById('res-sources').textContent=rc.sources||'—';
+  document.getElementById('res-insights').textContent=rc.findings;
+  document.getElementById('res-ideas').textContent=rc.moves;
+  { const jump=document.getElementById('read-jump'); if(jump) jump.style.display=mode==='live'?'':'none'; }
 
   // Sources strip
   const strip=document.getElementById('results-sources-strip');
@@ -4260,6 +4330,8 @@ function navTo(section) {
   if (sec) sec.classList.add('active');
   const btn = document.getElementById('nav-' + section);
   if (btn) btn.classList.add('active');
+  const nl = document.getElementById('nl-' + section);   // EX33b: the list across the header lights the same door
+  if (nl) nl.classList.add('active');
   _navMenuName(section); navMenuClose();   // SEAM:EXC_NAV
   window.scrollTo({top: 0, behavior: 'smooth'});
   if (section === 'explore')   initFeaturedInsights();
@@ -5214,7 +5286,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent='
 //  GLOBAL CONSTANTS & ERROR HANDLERS
 // ════════════════════════════════════════════════════════════════
 const CATS = ['consumer','market','culture','brand'];
-const CAT_LABELS = { consumer:'Consumer Behavior', market:'Market Dynamics', culture:'Cultural Signal', brand:'Brand Health' };
+const CAT_LABELS = { consumer:'Consumers', market:'Market', culture:'Culture', brand:'Brand' };   // EX33c: the lens in one word
 const CAT_COLORS = { consumer:'var(--accent)', market:'var(--accent3)', culture:'var(--accent4)', brand:'var(--accent2)' };
 const CAT_INTROS = {
   consumer: (q) => `Consumer behavior intelligence for "${q}" examines how people discover, evaluate, trust, and purchase. The findings below surface what drives purchase decisions, loyalty architecture, and trust signals.`,
@@ -5860,12 +5932,12 @@ function _fillLensPanels(lenses, truth){
   const card=(ins,i,cat)=>{
     const gi=all.indexOf(ins); const idx=gi>=0?gi:i;
     return `<div class="insight-card${ins.image?' has-img':''}" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
-        ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(ins.imageSource||ins.source||'source')}</div>`:''}
+        ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(_cleanSource(ins.imageSource||ins.source||'source'))}</div>`:''}
         <span class="card-cat ${ins.category||cat}">● ${safe(CAT_LABELS[ins.category||cat]||'Insight')}</span>
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
         ${_meaningBlock(ins)}
-        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(ins.source)}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
+        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(_cleanSource(ins.source))}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
       </div>`;
   };
   CATS.forEach(cat=>{
@@ -5878,6 +5950,7 @@ function _fillLensPanels(lenses, truth){
     const ideasEl=document.getElementById('lens-ideas-'+cat);
     if(ideasEl) ideasEl.innerHTML=ideas.slice(0,4).map(m=>_moveCard(m,all)).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">No move from this lens met the bar. Nothing invented to fill the space.</div></div>`;
     const lp=document.getElementById('rlp-'+cat); if(lp) lp.classList.toggle('empty', !insights.length);
+    const lb=document.getElementById('rlb-'+cat); if(lb) lb.classList.toggle('empty', !insights.length);   // EX33c: an empty lens is not a tab
   });
   const tH=document.getElementById('truth-headline'),tB=document.getElementById('truth-body');
   if(tH) tH.textContent=truth.headline||'';
@@ -5980,10 +6053,10 @@ function _sparklineMax(series, w, h, max, cls){
 /* SEAM:EXC_COMPETE: the competitive set on the same scale as the frame. The frame's line is the accent; a competitor's
    line is quiet and carries its name, so identity rides the label, never a second color. */
 function _competitorRow(ms){
-  const comps=(ms&&Array.isArray(ms.competitors)?ms.competitors:[]).filter(c=>c&&Array.isArray(c.series)); if(!comps.length) return '';
+  const comps=(ms&&Array.isArray(ms.competitors)?ms.competitors:[]).filter(c=>c&&Array.isArray(c.series)&&c.series.some(x=>Number(x)>0)); if(!comps.length) return '';   // EX33c: a flat zero is not a line
   const max=Math.max(1,...(ms.series||[]),...comps.flatMap(c=>c.series));
   const n=x=>safe(String(x==null?'':x));
-  return `<div class="rb-comps"><div class="rb-comp frame"><span class="rb-comp-k">this frame</span>${_sparklineMax(ms.series,120,30,max,'accent')}<span class="rb-comp-n">${n(ms.recent_7d)}<small> this wk</small></span></div>${comps.map(c=>`<div class="rb-comp"><span class="rb-comp-k">${n(c.name)}</span>${_sparklineMax(c.series,120,30,max,'quiet')}<span class="rb-comp-n">${n(c.recent_7d)}<small> this wk</small></span></div>`).join('')}<span class="rb-comp-cap">lake signals naming each, 12 weeks, one scale</span></div>`;
+  return `<div class="rb-comps"><div class="rb-comp frame"><span class="rb-comp-k">this frame</span>${_sparklineMax(ms.series,120,30,max,'accent')}<span class="rb-comp-n">${n(ms.recent_7d)}<small> this wk</small></span></div>${comps.map(c=>`<div class="rb-comp"><span class="rb-comp-k">${n(c.name)}</span>${_sparklineMax(c.series,120,30,max,'quiet')}<span class="rb-comp-n">${n(c.recent_7d)}<small> this wk</small></span></div>`).join('')}<span class="rb-comp-cap">stories naming each, 12 weeks, one scale</span></div>`;
 }
 /* SEAM:EXC_VOICES: consumer reality, verbatim. The speaker's own words; beside them only what the speaker said about
    themselves. No names, no handles, no link to the person, only to the video or the tag. A post that only passes on a headline
@@ -6033,7 +6106,7 @@ function _renderReadBlock(q, data, mode){
   const lines=Array.isArray(data.read)?data.read.filter(Boolean):[];
   if(mode!=='live'){   // SEAM:EXC_FALLBACK: the read did not finish; say so in the house's words, offer the full read, hide the lens machinery
     const n=(window._readFailed&&window._readFailed.items)||0;
-    el.innerHTML=`<section class="read-failed"><div class="rf-k">THE READ</div><h2>The reading did not finish in this pass.</h2><p>The engine gathered ${safe(String(n))} signals on "${safe(q)}" and the writer did not complete a read on them. Nothing gathered is shown as a finding: the house prints only what its writer stood behind. The voices below are verbatim and on the question.</p><div class="rf-acts"><button type="button" class="btn-go-deeper" onclick="_rfFull()">Run the full read</button><button type="button" class="btn-new-search" onclick="runSearch()">Try again</button></div><div class="read-thin">${safe(EXC_BLIND_LINE)}</div></section>`;
+    el.innerHTML=`<section class="read-failed"><div class="rf-k">THE READ</div><h2>The reading did not finish in this pass.</h2><p>The engine gathered ${safe(String(n))} signals on "${safe(q)}" and the writer did not complete a read on them. Nothing gathered is shown as a finding: the house prints only what its writer stood behind. The voices below are verbatim and on the question.</p><div class="rf-acts"><button type="button" class="btn-go-deeper" onclick="_rfFull()">Run the full read</button><button type="button" class="btn-new-search" onclick="runSearch()">Try again</button></div><div class="read-thin">${safe(_blindWords(EXC_BLIND_LINE))}</div></section>`;
     el.style.display='';
     const bar=document.getElementById('results-lens-bar'); if(bar) bar.style.display='none';
     document.querySelectorAll('.results-lens-panel').forEach(x=>{ x.style.display='none'; });
@@ -6064,12 +6137,13 @@ function _renderReadBlock(q, data, mode){
     const tiles=[[n(ms.recent_7d),'this week'+(vel?' <em>'+n(vel)+'</em>':'')],[n(ms.prior_7d),'the week before'],[n(ms.outlets),ms.outlets===1?'outlet':'outlets'],[n(ms.weeks_touched)+'<small>/'+n(ms.weeks||12)+'</small>','weeks touched']];
     if(ms.share_pct!=null) tiles.push([n(ms.share_pct)+'<small>%</small>','of '+n(String(ms.territory||'territory').replace(/-/g,' '))+' this week']);
     tiles.push([`<span class="rb-state ${n(ms.state||'STEADY')}">${n(String(ms.state||'STEADY').toLowerCase())}</span>`,ms.shape?'state · '+n(String(ms.shape).toLowerCase()):'state']);
-    _msHtml=`<div class="rb-measures"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of lake signals on this frame</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div>${_competitorRow(ms)}</div>`;
+    _msHtml=`<div class="rb-measures" id="read-measured"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of coverage on this frame</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div>${_competitorRow(ms)}</div>`;
   }
   // SEAM:EXC_TIMELINE: the evidence drawn, and the images the evidence itself carried.
   const evLines=Array.isArray(data.lines)?data.lines:[];
-  const _tlHtml=evLines.length>=2?`<div class="rb-timeline"><div class="rb-tl-head">What the read knew, and when <span>${n(evLines.length)} lines · row is the lens, size is the source tier · ◆ competitor · ■ counter view · ○ the record</span></div>${_timeline(evLines,1100)}</div>`:'';
-  const pics=evLines.filter(l=>l&&l.image&&l.url).slice(0,6);
+  const _tlHtml=evLines.length>=2?`<div class="rb-timeline"><div class="rb-tl-head">When the evidence was published <span>${n(evLines.length)} lines · row is the lens, size is the source tier · ◆ competitor · ■ counter view · ○ the record</span></div>${_timeline(evLines,1100)}</div>`:'';
+  // EX33c: the sources' images only when the look line (a full read) saw them; a quick read shows none, never a blank tile
+  const pics=(data.look&&Array.isArray(data.look.lines)&&data.look.lines.length)?evLines.filter(l=>l&&l.image&&l.url).slice(0,6):[];
   const _picHtml=pics.length?`<div class="rb-pics">${pics.map(l=>`<a class="rb-pic" href="${safeUrl(l.url)}" target="_blank" rel="noopener" title="${safeAttr(l.title)}"><img src="${safeUrl(l.image)}" alt="" loading="lazy" onerror="var s=this.closest('.rb-pics');this.parentNode.remove();if(s&&!s.querySelector('img'))s.remove()"><span>${safe(String(l.source||'').replace(/^Unsurfaced Lake · /,'').replace(/ \(T\d\)$/,''))}${l.date?' · '+safe(l.date):''}</span></a>`).join('')}<span class="rb-pics-cap">seen in the evidence, from the sources themselves</span></div>`:'';
   // SEAM:EXC_VOICES: three voices beside the measures.
   const _vqHtml=_voicesPull(meta.meta&&meta.meta.voices,3);
@@ -6088,13 +6162,14 @@ function _renderReadBlock(q, data, mode){
   if(hv&&hv.gap) rows.push(['gap check',(hv.gap.missing&&hv.gap.missing.length?'lacked '+hv.gap.missing.slice(0,3).map(safe).join(', '):'nothing named')+(hv.gap.added?`<br><b>+${n(hv.gap.added)}</b> lines found`:'')]);
   if(hv&&hv.framed&&hv.framed.asked&&hv.framed.asked.length) rows.push(['asked again',hv.framed.asked.map(x=>n(x==='competitors'?'competitive set':x==='counter'?'counter view':x)).join(', ')+(hv.framed.added?`, <b>+${n(hv.framed.added)}</b> lines`:', nothing new')]);
   if(Array.isArray(meta.rails)&&meta.rails.length){ const late=meta.rails.filter(r=>r.skipped==='late').length; const silent=meta.rails.filter(r=>r&&!(r.n>0)&&r.id!=='kg').map(r=>(r.name||r.id)+(r.skipped==='late'?' (late)':r.skipped==='cap'?' (cap)':r.ok===false?' (error)':''));
-    rows.push(['rails',`<b>${n(meta.rails.filter(r=>r.n>0).length)}</b> of ${n(meta.rails.length)} answered${late?`, ${n(late)} late, not waited for`:''}${silent.length?`<details class="rb-more"><summary>${n(silent.length)} silent</summary><div class="rb-silent">${silent.map(safe).join(', ')}</div></details>`:''}`]); }
+    rows.push(['asked',`<b>${n(meta.rails.filter(r=>r.n>0).length)}</b> of ${n(meta.rails.length)} sources answered${late?`, ${n(late)} late, not waited for`:''}${silent.length?`<details class="rb-more"><summary>${n(silent.length)} silent</summary><div class="rb-silent">${silent.map(safe).join(', ')}</div></details>`:''}`]); }
   if(att&&att.last_30d!=null) rows.push(['attention',`<b>${n(att.last_30d.toLocaleString())}</b> Wikipedia views in 30 days, ${n(att.prev_30d.toLocaleString())} the 30 before`]);
   if(vol&&vol.points) rows.push(['coverage',`GDELT series, ${n(vol.points)} points over 3 months`]);
   if(tm&&tm.total_ms){ const ev=((tm.frame_ms||0)+(tm.wire_ms||0)+(tm.pages_ms||0)+(tm.gap_ms||0)+(tm.facts_ms||0))/1000; const det=Array.isArray(tm.detail)?tm.detail:[];
     const why=det.length>1?det.slice(0,-1).map((p,i)=>`the first pass ${p.stop==='max_tokens'?'ran out of room':p.reason?'stopped ('+n(p.reason)+')':'did not finish'}; a second pass completed the read`).slice(0,1).join(''):'';   // SEAM:EXC_THIN: the receipt in plain words
     rows.push(['time',`<b>${n((tm.total_ms/1000).toFixed(0))} s</b>, evidence ${n(ev.toFixed(0))} s, writing ${n(((tm.model_ms||0)/1000).toFixed(0))} s${tm.passes>1?`, ${n(tm.passes)} passes`:''}${why?`<br><em>${why}</em>`:''}`]); }
   if(mdl) rows.push(['compiled',`${n(mdl.model||'')}${mdl.lane==='reserve'?' (reserve model'+(mdl.reason?': '+n(mdl.reason):'')+')':''}${mdl.lane==='overnight'?' overnight':''}${mdl.cached?', served from today\'s read':''}${data.compiled_at?'<br>'+n(String(data.compiled_at).slice(0,16).replace('T',' '))+' UTC':''}`]);
+  if(sc&&Number.isFinite(sc.score)) rows.push(['score',`<span class="rb-score" title="The read's own score: evidence volume and freshness, outlets, corroboration, grounding, the competitive set, and time"><span class="rb-score-bar"><i style="width:${Math.max(2,Math.min(100,sc.score))}%"></i></span><span class="rb-score-n">${n(sc.score)}</span></span> of 100`]);   // EX33c: the score is a receipt, not a badge
   if(meta.cls) rows.push(['read as',n(meta.cls)]);
   if(data.look&&Array.isArray(data.look.lines)&&data.look.lines.length) rows.push(['the look',data.look.lines.map(l=>n(l.line)).join(' ')]);   // SEAM:EXC_LOOK: what the evidence's images look like
   if(Array.isArray(data.ahead)&&data.ahead.length) rows.push(['ahead',data.ahead.map(n).join('; ')]);   // SEAM:EXC_AHEAD: the moments the frame is heading into
@@ -6102,32 +6177,60 @@ function _renderReadBlock(q, data, mode){
   if(data.client_lines) rows.push(['your evidence',`<b>${n(String(data.client_lines))}</b> of your own lines, first-party`]);   // SEAM:CLIENT_EVIDENCE
   const _rcptHtml=rows.length?`<aside class="rb-receipts"><div class="rb-receipts-head">What this read stood on</div><dl>${rows.map(r=>`<div class="rb-row"><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl></aside>`:'';
   const _ovHtml=ov?`<p class="rb-foot">Overnight read for the night of ${n(ov.night)}${ov.status==='reused'?', evidence unchanged since the last read':''}${ov.prev_night?', previous read '+n(ov.prev_night):''}. <button class="rb-go-live" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
-  el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ · ${safe(q).toUpperCase()}</div>${_scoreHtml}</div>
+  // EX33c: the answer first. The claim, the dek, the frame and its question, the bet with its date, the figures in one line.
+  const rcpt=_receiptOf(data);
+  const w=data.watch||null;
+  const _betHtml=w&&w.claim?`<p class="rb-bet"><i>Check by ${safe(_recDay(w.by))}</i> ${safe(String(w.claim).replace(/[\s.]+$/,''))}</p>`:'';
+  const _lineHtml=ms&&ms.recent_7d!=null?`<p class="rb-measure-line">${_recMeasureLine(ms)}${rcpt.sources?` <span class="dot">&middot;</span> <b>${n(rcpt.sources)}</b> ${rcpt.sources===1?'source':'sources'} cited`:''}</p>`:'';
+  el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ${data.depth==='quick'?' · QUICK':''}</div></div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${_rcHtml}
     ${_plateHtml}
-    ${_tlHtml}
-    ${_picHtml}
-    ${_msHtml}
-    ${_vqHtml}
-    <div class="rb-body">
-      <div class="rb-prose">${data.brief?`<div class="rb-interp-head">The interpretation</div><p class="rb-interp">${safe(data.brief)}</p>`:''}${_pxHtml}${_ovHtml}</div>
-      ${_rcptHtml}
-    </div>
-    <p class="rb-foot rb-law">Time is a weight: now 24h, recent 30d, current 90d, context 2y, archive older or undated. A strong older source is the record: cited with its year, never as news.</p>
-    <div class="read-deeper">
-      <button onclick="switchResultsLens('consumer');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CONSUMER</button>
-      <button onclick="switchResultsLens('market');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · MARKET</button>
-      <button onclick="switchResultsLens('culture');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · CULTURE</button>
-      <button onclick="switchResultsLens('brand');document.getElementById('results-lens-bar').scrollIntoView({behavior:'smooth',block:'start'})">DEEPER · BRAND</button>
-      <button onclick="openSourcesModal()">EVERY SOURCE</button>
-      <button onclick="downloadReport()">DOWNLOAD THE READ</button>
-      <button onclick="trackThis(document.getElementById('search-input').value)">TRACK THIS</button>
-      <button onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">MAKE WITH PLAY</button><!-- SEAM:PLAY_HANDOFF -->
-    </div>`;
-  el.querySelectorAll('.tl-g[data-url]').forEach(g=>{ g.style.cursor='pointer'; g.addEventListener('click',()=>window.open(g.getAttribute('data-url'),'_blank','noopener')); });
+    ${_betHtml}
+    ${_lineHtml}`;
   el.style.display='block';
+  // EX33c: after the findings and the moves: the voices, the measures, the interpretation with its receipts, the receipts drawer, one action rail.
+  const after=document.getElementById('read-after');
+  if(after){
+    const srcs=Array.isArray(data.sources)?data.sources:[];
+    const _drawer=`<details class="rb-drawer" id="read-receipts"><summary>Receipts: every source, when it was published, what was set aside</summary>${_tlHtml}${_sourcesGrouped(srcs, evLines)}<p class="rb-foot rb-law">Time is a weight: now 24h, recent 30d, current 90d, context 2y, archive older or undated. A strong older source is the record: cited with its year, never as news.</p></details>`;
+    const _acts=`<div class="read-acts"><button type="button" class="btn-go-deeper" onclick="trackThis(document.getElementById('search-input').value)">Track this</button>${data.depth==='quick'?`<button type="button" class="read-act" onclick="goDeeper()">The full read</button>`:''}<button type="button" class="read-act" onclick="downloadReport()">Download</button><button type="button" class="read-act" onclick="openSourcesModal()">Every source</button><button class="read-act" onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">MAKE WITH PLAY</button><!-- SEAM:PLAY_HANDOFF --></div>`;
+    after.innerHTML=`${_vqHtml?`<div id="read-voices">${_vqHtml}</div>`:''}
+      ${_picHtml}
+      ${_msHtml}
+      <div class="rb-body" id="read-interp">
+        <div class="rb-prose">${data.brief?`<div class="rb-interp-head">The interpretation</div><p class="rb-interp">${safe(data.brief)}</p>`:''}${_pxHtml}${_ovHtml}</div>
+        ${_rcptHtml}
+      </div>
+      ${_drawer}
+      ${_acts}`;
+    after.querySelectorAll('.tl-g[data-url]').forEach(g=>{ g.style.cursor='pointer'; g.addEventListener('click',()=>window.open(g.getAttribute('data-url'),'_blank','noopener')); });
+    after.style.display=mode==='live'?'block':'none';
+  }
+}
+/* EX33c: the jump rail scrolls to a part of the read. */
+function _readJump(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+/* EX33c: a source line in the reader's words: the outlet's name only, no tier, no rail label, no machinery prefix. */
+function _cleanSource(x){ return String(x||'').replace(/^Unsurfaced Lake\s*·\s*/i,'').replace(/\s*\(T[0-9?]\)\s*$/,'').trim(); }
+function _cleanTitle(t){ return String(t||'').replace(/^CONSENSUS:\s*/i,'').replace(/^Research signal:\s*/i,'').replace(/^\[PDF\]\s*/i,'').replace(/\s*[\u2014-]+\s*(Brand Health|Market Dynamics|Cultural|Consumer)[^\n]*Signal\s*$/i,'').replace(/^["\u201c]|["\u201d]$/g,'').trim(); }
+/* EX33c: the sources grouped as a reader thinks of them: reporting, records and filings, reference, voices. */
+function _sourceGroup(l){
+  const u=String((l&&l.url)||'').toLowerCase(), src=_cleanSource(l&&(l.source||l.label||l.display)).toLowerCase(), t=String((l&&l.title)||'').toLowerCase();
+  if(/youtube|reddit|mastodon|bluesky|bsky|tiktok|comments/.test(u+' '+src+' '+t)) return 'voices';
+  if(/sec\.gov|\/ir\.|investor|filing|quarterly report|annual report|\.pdf|press release|newsroom|prnewswire|businesswire/.test(u+' '+t)) return 'records';
+  if(/wikipedia|crossref|doi\.org|openalex|arxiv|semanticscholar|igds\.org|census|statista/.test(u+' '+src)) return 'reference';
+  return 'reporting';
+}
+function _sourcesGrouped(sources, lines){
+  const pool=(Array.isArray(sources)&&sources.length?sources:(lines||[])).filter(l=>l&&(l.url||l.title));
+  const seen=new Set(), rows=[];
+  for(const l of pool){ const k=String(l.url||l.title).toLowerCase(); if(seen.has(k)) continue; seen.add(k); if(/evidence thin for/i.test(String(l.title||''))) continue; rows.push(l); }
+  const groups={ reporting:[], records:[], reference:[], voices:[] };
+  for(const l of rows) groups[_sourceGroup(l)].push(l);
+  const names={ reporting:'Reporting', records:'Records and filings', reference:'Reference', voices:'Voices' };
+  const line=l=>{ const src=_cleanSource(l.source||l.label||l.display), title=_cleanTitle(l.title); const host=(()=>{ try{ return new URL(l.url).hostname.replace(/^www\./,''); }catch(e){ return ''; } })(); const shown=title&&!/^(document|untitled)$/i.test(title)?title:(host||src); return `<li>${safe(src||host)}${l.date?' · '+safe(String(l.date).slice(0,10)):''}: ${l.url?`<a href="${safeUrl(l.url)}" target="_blank" rel="noopener">${safe(shown)}</a>`:safe(shown)}</li>`; };
+  return `<div class="rb-sources">${Object.keys(groups).filter(g=>groups[g].length).map(g=>`<div class="rb-src-group"><div class="rb-src-k">${names[g]} <span>${groups[g].length}</span></div><ol>${groups[g].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(line).join('')}</ol></div>`).join('')}</div>`;
 }
 function _renderResultsV2(q, lenses, truth, mode) {
   lastMode    = mode;
@@ -6469,6 +6572,9 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:#fff;max-width:780px;mar
 .pdf-truth-finding{font-size:12px;font-weight:600;color:#1a1a1a;margin-bottom:4px;line-height:1.4;}
 .pdf-truth-stat{font-family:'Courier New',monospace;font-size:10px;color:#FF3B3B;font-weight:700;}
 .pdf-footer{border-top:1px solid #ebebeb;margin-top:40px;padding-top:16px;font-family:'Courier New',monospace;font-size:9px;color:#bbb;text-align:center;letter-spacing:.1em;}
+.pdf-bet{font-size:13px;color:#1a1a1a;margin:0 0 10px;padding:10px 14px;border:1px solid #e5e5e5;border-left:3px solid #FF3B3B;}
+.pdf-deck a{color:#444;}
+.rb-sources .rb-src-group{margin:0 0 14px;}.rb-sources .rb-src-k{font-family:'Courier New',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#888;margin:0 0 6px;}.rb-sources .rb-src-k span{color:#bbb;}.rb-sources ol{padding-left:20px;font-size:12px;}.rb-sources li{margin:0 0 4px;}
 </style>
 </head>
 <body>
@@ -6508,21 +6614,25 @@ function _pdfIdea(idea){
    with their confidence and evidence dates, the moves with their proof, the measures line, the blind-spots line, the sources. No lens
    template, no invented move, no dash. */
 function _buildReadPDF(q, syn, dateStr, timeStr){
+  // EX33c: the paper is the read in the reader's order: the claim as the title, the question and who it serves, the bet, the
+  // one measure line, the findings, the moves, the interpretation, the blind spots, then every source grouped and cleaned.
   const e=x=>safe(String(x==null?'':x));
   const read=Array.isArray(syn.read)?syn.read.filter(Boolean):[];
   const f=syn.frame||{}; const who=[f.entity||f.category,f.audience,f.market].filter(Boolean).map(e).join(' \u00b7 ');
-  const m=syn.measures||null;
-  const meas=m&&m.recent_7d!=null?`<p class="pdf-meas">Measured on the lake: ${e(m.recent_7d)} stories this week, ${e(m.prior_7d)} the week before${m.velocity_pct!=null?' ('+(m.velocity_pct>=0?'+':'')+e(m.velocity_pct)+'%)':''}; ${e(m.outlets)} outlets; ${e(m.weeks_touched)} of ${e(m.weeks||12)} weeks on record.</p>`:'';
-  const ins=(syn.insights||[]).slice(0,8).map(x=>`<div class="pdf-finding"><div class="pdf-finding-cat">${e(x.confidence||'')} confidence${x.dated&&x.dated.newest?' \u00b7 evidence to '+e(x.dated.newest):''}</div><div class="pdf-finding-title">${e(x.title)}</div><div class="pdf-finding-excerpt">${e(x.excerpt)}</div>${x.source?`<div class="pdf-finding-meta">${e(x.source)}</div>`:''}</div>`).join('');
+  const m=syn.measures||null, rc=_receiptOf(syn), w=syn.watch||null;
+  const meas=m&&m.recent_7d!=null?`<p class="pdf-meas">Measured: ${e(m.recent_7d)} stories this week, ${e(m.prior_7d)} the week before${m.velocity_pct!=null?' ('+(m.velocity_pct>=0?'+':'')+e(m.velocity_pct)+'%)':''}; ${e(m.outlets)} outlets; ${e(m.weeks_touched)} of ${e(m.weeks||12)} weeks on record; ${e(rc.sources)} sources cited.</p>`:'';
+  const bet=w&&w.claim?`<p class="pdf-bet"><b>Check by ${e(_recDay(w.by))}:</b> ${e(String(w.claim).replace(/[\s.]+$/,''))}.</p>`:'';
+  const ins=(syn.insights||[]).slice(0,8).map(x=>`<div class="pdf-finding"><div class="pdf-finding-cat">${e(x.confidence||'')} confidence${x.dated&&x.dated.newest?' \u00b7 evidence to '+e(x.dated.newest):''}${x.stance==='counter'?' \u00b7 against the consensus':''}</div><div class="pdf-finding-title">${e(_cleanTitle(String(x.title||'').replace(/^Where the house disagrees:\s*/i,'')))}</div><div class="pdf-finding-excerpt">${e(x.excerpt)}</div>${x.source?`<div class="pdf-finding-meta">${e(_cleanSource(x.source))}</div>`:''}</div>`).join('');
   const mv=(syn.ideas||[]).filter(x=>x&&x.headline).slice(0,6).map(x=>`<div class="pdf-idea"><div class="pdf-idea-type">${e(x.type||'Move')}${x.for?' \u00b7 for '+e(x.for):''}</div><div class="pdf-idea-title">${e(x.headline)}</div><div class="pdf-idea-body">${e(x.body)}${x.proof?' <i>Proof: '+e(x.proof)+'</i>':''}</div></div>`).join('');
-  const src=(syn.lines||[]).slice(0,40).map(l=>`<li>${e(l.source)}${l.date?' \u00b7 '+e(l.date):''}: ${l.url?`<a href="${safeAttr(l.url)}">${e(l.title)}</a>`:e(l.title)}</li>`).join('');
-  return `<div class="pdf-header"><div class="pdf-brand">EXCAVATE by Unsurfaced\u2122</div><div class="pdf-meta">THE READ \u00b7 ${e(dateStr)} at ${e(timeStr)}${syn.depth==='quick'?' \u00b7 quick read':''}</div><div class="pdf-title">${e(q)}</div>${who?`<div class="pdf-deck">${who}</div>`:''}</div>`+
-    (read.length?`<div class="pdf-section-head">The read</div><p class="pdf-read1">${e(read[0])}</p><p class="pdf-read2">${e(read[1]||'')}</p>`:'')+meas+
-    (syn.brief?`<div class="pdf-section-head">The interpretation</div><p>${e(syn.brief)}</p>`:'')+
+  const src=_sourcesGrouped(syn.sources||[], syn.lines||[]).replace(/<a href="([^"]*)" target="_blank" rel="noopener">/g,'<a href="$1">');
+  const title=read[0]||q, link=syn.permalink||(window._liveLast&&window._liveLast.permalink)||'';
+  return `<div class="pdf-header"><div class="pdf-brand">EXCAVATE by Unsurfaced\u2122</div><div class="pdf-meta">THE READ \u00b7 ${e(dateStr)} at ${e(timeStr)}${syn.depth==='quick'?' \u00b7 quick read':''}</div><div class="pdf-title">${e(title)}</div><div class="pdf-deck">${who?who+'<br>':''}Asked: ${e(q)}${f.question?'<br>'+e(f.question):''}${link?'<br><a href="'+safeAttr(link)+'">'+e(link)+'</a>':''}</div></div>`+
+    (read.length?`<div class="pdf-section-head">The read</div><p class="pdf-read1">${e(read[0])}</p><p class="pdf-read2">${e(read[1]||'')}</p>`:'')+bet+meas+
     (ins?`<div class="pdf-section-head">Findings</div>${ins}`:'')+(mv?`<div class="pdf-section-head">Moves</div>${mv}`:'')+
-    `<div class="pdf-section-head">What this read does not see</div><p>${e(syn.blind||EXC_BLIND_LINE)}</p>`+
-    (src?`<div class="pdf-section-head">What the read stood on</div><ol class="pdf-src">${src}</ol>`:'')+
-    `<div class="pdf-footer">EXCAVATE by Unsurfaced\u2122 \u00b7 Cultural intelligence \u00b7 ${e(dateStr)}<br>Every figure above was checked against the evidence it cites or the lake's own counts.</div>`;
+    (syn.brief?`<div class="pdf-section-head">The interpretation</div><p>${e(syn.brief)}</p>`:'')+
+    `<div class="pdf-section-head">What this read does not see</div><p>${e(_blindWords(syn.blind||EXC_BLIND_LINE))}</p>`+
+    (src?`<div class="pdf-section-head">What the read stood on</div>${src}`:'')+
+    `<div class="pdf-footer">EXCAVATE by Unsurfaced\u2122 \u00b7 Cultural intelligence \u00b7 ${e(dateStr)}<br>Every figure above was checked against the evidence it cites or the house's own counts.</div>`;
 }
 function _buildResultsPDF(dateStr,timeStr){
   const q=document.getElementById('results-query')?.textContent||'Search Results';
@@ -6659,6 +6769,8 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
 const _NAV_NAMES = { explore: 'EXCAVATE', brands: 'Brands', audiences: 'Audiences', library: 'Library' };   // SEAM:EXC_NAV
 function navMenuToggle(e) { if (e) e.stopPropagation(); const m = document.getElementById('nav-menu'); if (!m) return; const open = !m.classList.contains('open'); m.classList.toggle('open', open); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
 function navMenuClose() { const m = document.getElementById('nav-menu'); if (m && m.classList.contains('open')) { m.classList.remove('open'); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', 'false'); } }
+/* EX33b: Record is a door of its own: the record on EXCAVATE, scrolled to. */
+function _navRecord() { navTo('explore'); const nl = document.getElementById('nl-record'); if (nl) { document.querySelectorAll('.nav-list .nl').forEach(b => b.classList.remove('active')); nl.classList.add('active'); } setTimeout(() => { const h = document.getElementById('board-h2'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }
 function _navMenuName(section) { const c = document.getElementById('nav-menu-cur'); if (c && _NAV_NAMES[section]) c.textContent = _NAV_NAMES[section]; }
 document.addEventListener('click', e => { const m = document.getElementById('nav-menu'); if (m && !m.contains(e.target)) navMenuClose(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') navMenuClose(); });
@@ -10552,23 +10664,31 @@ async function _recordLoad() {
   return null;
 }
 function _recLensRow(tiles) {
+  // EX33b: one line. Everything, Positions, Ahead, Watching; then Brands, Categories, Audiences, Places as kinds that open their
+  // chips beneath (a chip with fewer than two readings is not shown; a count only on the lens that is on); then the rooms.
   const el = document.getElementById('rec-lenses'); if (!el) return;
-  const count = (f) => { const n = new Map(); for (const t of tiles) { const v = f(t); for (const x of (Array.isArray(v) ? v : [v])) if (x) n.set(x, (n.get(x) || 0) + 1); } return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8); };
-  const groups = [['brand', count(t => t.frame && t.frame.entity)], ['category', count(t => t.frame && t.frame.category)], ['audience', count(t => t.frame && t.frame.audience)], ['place', count(t => (t.place || []).map(p => p.place))]];
+  const count = (f) => { const n = new Map(); for (const t of tiles) { const v = f(t); for (const x of (Array.isArray(v) ? v : [v])) if (x) n.set(x, (n.get(x) || 0) + 1); } return [...n.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 12); };
+  const groups = { brand: count(t => t.frame && t.frame.entity), category: count(t => t.frame && t.frame.category), audience: count(t => t.frame && t.frame.audience), place: count(t => (t.place || []).map(p => p.place)) };
   const positions = (_FI_RECORD && _FI_RECORD.positions) || [];
-  const btn = (kind, value, label, n) => `<button type="button" class="rec-lens${_recLens.kind === kind && _recLens.value === value ? ' on' : ''}" onclick="_recLensSet('${safeAttr(kind)}',${value == null ? 'null' : JSON.stringify(String(value)).replace(/"/g, '&quot;')})">${safe(label)}${n != null ? `<small>${safe(String(n))}</small>` : ''}</button>`;
-  const aheadN = tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length).length;
-  let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Where the house has a position', positions.length) : '') + (aheadN ? btn('ahead', null, 'Ahead', aheadN) : '');   // SEAM:EXC_AHEAD
-  for (const [kind, list] of groups) if (list.length) html += `<span class="rec-lens-k">${kind}</span>` + list.map(([v, n]) => btn(kind, v, v, n)).join('');
-  html += `<span class="rec-lens-k">rooms</span><button type="button" class="rec-lens room" onclick="navTo('brands')">Brand rooms</button><button type="button" class="rec-lens room" onclick="navTo('audiences')">Audiences</button>`;
+  const on = (kind, value) => _recLens.kind === kind && _recLens.value === value;
+  const btn = (kind, value, label, n) => `<button type="button" class="rec-lens${on(kind, value) ? ' on' : ''}" onclick="_recLensSet('${safeAttr(kind)}',${value == null ? 'null' : JSON.stringify(String(value)).replace(/"/g, '&quot;')})">${safe(label)}${on(kind, value) && n != null ? `<small>${safe(String(n))}</small>` : ''}</button>`;
+  const aheadN = tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length).length, watchN = tiles.filter(t => t.watch && !t.called).length;
+  let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Positions', positions.length) : '') + (aheadN ? btn('ahead', null, 'Ahead', aheadN) : '') + (watchN ? btn('watching', null, 'Watching', watchN) : '');   // SEAM:EXC_AHEAD
+  const kinds = [['brand', 'Brands'], ['category', 'Categories'], ['audience', 'Audiences'], ['place', 'Places']];
+  html += '<span class="rec-sep"></span>';
+  for (const [kind, label] of kinds) if (groups[kind].length) html += `<button type="button" class="rec-kind${_recLens.open === kind ? ' open' : ''}${_recLens.kind === kind ? ' on' : ''}" onclick="_recLensOpen('${kind}')">${label}${_recLens.kind === kind && _recLens.value ? ': ' + safe(_recLens.value) : ''}<span class="chev">&#9662;</span></button>`;
+  html += `<span class="rec-sep"></span><button type="button" class="rec-lens room" onclick="navTo('brands')">Brand rooms</button><button type="button" class="rec-lens room" onclick="navTo('audiences')">Audience rooms</button>`;
   if (['brand', 'category', 'audience'].includes(_recLens.kind) && _recLens.value) html += `<button type="button" class="rec-lens follow" onclick="_followLens()">Follow ${safe(_recLens.value)}</button>`;   // SEAM:CLIENT_PROFILE
+  if (_recLens.open && groups[_recLens.open] && groups[_recLens.open].length) html += `<div class="rec-lens-sub">${groups[_recLens.open].map(([v, c]) => btn(_recLens.open, v, v, c)).join('')}</div>`;
   el.innerHTML = html; el.style.display = '';
 }
-function _recLensSet(kind, value) { _recLens = { kind, value }; if (_FI_RECORD && _FI_LAKE) _renderScroll(_FI_RECORD, _FI_LAKE); }
+function _recLensOpen(kind) { _recLens.open = _recLens.open === kind ? null : kind; if (_FI_RECORD) _recLensRow(_FI_RECORD.tiles || []); }
+function _recLensSet(kind, value) { _recLens = { kind, value, open: null }; if (_FI_RECORD && _FI_LAKE) _renderScroll(_FI_RECORD, _FI_LAKE); }
 function _recFilter(tiles) {
   const L = _recLens; if (!L || L.kind === 'all') return tiles;
   if (L.kind === 'positions') return tiles.filter(t => t.position);
   if (L.kind === 'ahead') return tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length);   // SEAM:EXC_AHEAD
+  if (L.kind === 'watching') return tiles.filter(t => t.watch && !t.called);   // EX33b: the bets still open
   if (L.kind === 'place') return tiles.filter(t => (t.place || []).some(p => p.place === L.value));
   const key = L.kind === 'brand' ? 'entity' : L.kind;
   return tiles.filter(t => t.frame && t.frame[key] === L.value);
@@ -10585,13 +10705,22 @@ function _recDateline(t) {
   return `<div class="rec-dateline">${bits.join(' · ')}</div>`;
 }
 function _recWatch(t) {
+  // EX33b: the bet reads as one sentence with its date; the claim's own full stop is stripped so the line never doubles it.
   const w = t.watch, c = t.called;
   if (!w) return '';
-  const what = `${safe(w.claim || (w.measure.replace('_', ' ') + ' ' + (w.op === 'gte' ? 'at or above' : 'at or below') + ' ' + w.value))}`;
+  const what = safe(String(w.claim || (w.measure.replace('_', ' ') + ' ' + (w.op === 'gte' ? 'at or above' : 'at or below') + ' ' + w.value)).replace(/[\s.]+$/, ''));
   if (c && c.verdict === 'held') return `<div class="rec-watch held"><i>Held</i> ${what} (measured ${safe(String(c.measured))} on ${safe(_recDay(c.by))})</div>`;
   if (c && c.verdict === 'missed') return `<div class="rec-watch missed"><i>Missed</i> ${what} (measured ${safe(String(c.measured))} on ${safe(_recDay(c.by))})</div>`;
   if (c && c.verdict === 'unmeasured') return `<div class="rec-watch"><i>Not measured</i> ${what}</div>`;
-  return `<div class="rec-watch open"><i>Watching</i> ${what}, checked ${safe(_recDay(w.by))}</div>`;
+  return `<div class="rec-watch open"><i>Check by ${safe(_recDay(w.by))}</i> ${what}</div>`;
+}
+/* EX33b: the figures once, in one line; the stats block is retired to the reading's receipt. */
+function _recMeasureLine(m) {
+  if (!m) return '';
+  const v = m.velocity_pct, r = Number(m.recent_7d) || 0;
+  const vel = v == null ? '' : v > 0 ? `<span class="up">up ${safe(String(v))}%</span>` : v < 0 ? `<span>down ${safe(String(Math.abs(v)))}%</span>` : '<span>flat</span>';
+  const bits = [r ? `<b>${safe(String(r))}</b> ${r === 1 ? 'story' : 'stories'} this week` : 'no stories this week', m.outlets ? `<b>${safe(String(m.outlets))}</b> ${Number(m.outlets) === 1 ? 'outlet' : 'outlets'}` : '', vel, `${safe(String(m.weeks_touched || 0))} of ${safe(String(m.weeks || 12))} weeks`];
+  return bits.filter(Boolean).join(' <span class="dot">&middot;</span> ');
 }
 function _recFoot(t) {
   const q = String((t.frame && t.frame.query) || t.title || '');
@@ -10607,14 +10736,20 @@ function _playRecord(id) {
     move: t.move ? { headline: t.move, body: null, because: null, proof: null, type: null } : null, title: t.title || null, thesis: t.claim || null, findings: [], evidence: [], voices: (t.voices || []).slice(0, 4).map(v => v.text).filter(Boolean) };
   _playOpen(pkg);
 }
-function _renderScrollRow(t) {
+function _renderScrollRow(t, seen) {
+  // EX33b: one shape for every reading. The photograph only when the sources carried one and no other row shows it; a row without
+  // one shifts left. The claim, the dek, the whole question, the bet with its date; the pulse or, when the line is flat at zero,
+  // the words; the figures once; the move as the second thing you read.
   const m = t.measures || {}, f = t.frame || {};
   const who = [f.entity || f.category, f.audience].filter(Boolean).map(safe).join(' · ') + (Array.isArray(f.competitors) && f.competitors.length ? ' · vs ' + f.competitors.slice(0, 3).map(safe).join(', ') : '');
-  const photo = t.photo && t.photo.src ? `<figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.className='photo empty';this.remove()"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : '<figure class="photo empty" aria-hidden="true"></figure>';
-  return `<article class="row rec${t.developed_by ? ' developed' : ''}" data-state="${safeAttr(m.state || 'STEADY')}" onclick="openFeaturedCard('${safeAttr(t.id)}')">${photo}
-    <div>${_recDateline(t)}<div class="who">${who}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.question ? `<p class="q"><i>Answers</i>${safe(t.question)}</p>` : ''}${_recWatch(t)}<div class="foot">${_recFoot(t)}</div></div>
-    <div class="mid">${_pulse(m.series)}${_doorMeasureRow(m, t.since)}</div>
-    ${t.move ? `<div class="move"><i>Recommended move</i><br>${safe(t.move)}</div>` : '<div></div>'}</article>`;
+  const src = t.photo && t.photo.src ? String(t.photo.src) : '';
+  const show = src && !(seen && seen.has(src)); if (show && seen) seen.add(src);
+  const photo = show ? `<figure class="photo"><img src="${safeAttr(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="var r=this.closest('.row');this.parentNode.remove();if(r)r.classList.add('nophoto')"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : '';
+  const series = Array.isArray(m.series) ? m.series : [], flat = series.length >= 2 && series.every(x => !(Number(x) || 0));
+  return `<article class="row rec${photo ? '' : ' nophoto'}${t.developed_by ? ' developed' : ''}" data-state="${safeAttr(m.state || 'STEADY')}" onclick="openFeaturedCard('${safeAttr(t.id)}')">${photo}
+    <div>${_recDateline(t)}<div class="who">${who}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.dek ? `<p class="dek">${safe(t.dek)}</p>` : ''}${t.question ? `<p class="q"><i>Answers</i>${safe(t.question)}</p>` : ''}${_recWatch(t)}<div class="foot">${_recFoot(t)}</div></div>
+    <div class="mid">${flat ? '<div class="pulse flat">no coverage this quarter</div>' : _pulse(series)}<div class="measure">${_recMeasureLine(m)}</div></div>
+    ${t.move ? `<div class="move"><i>The move</i><br>${safe(t.move)}</div>` : '<div></div>'}</article>`;
 }
 /* SEAM:ASK_RECORD: the question goes to the worker with the thread so far; the answer's markers become links: a deployed insight opens,
    a lake line goes to its source. Nothing here is general knowledge; the record says when it is silent. */
@@ -10661,26 +10796,26 @@ function _renderScroll(rec, data) {
   _recLensRow(all);
   const counts = document.getElementById('rec-counts'), c = rec.counts || {};
   const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
-  if (counts) { counts.innerHTML = (calLine ? `<span class="rec-cal"><b>Calibration</b> ${calLine}</span>` : '') + `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}<span class="blind">${safe(rec.blind || '')}</span>`; counts.style.display = ''; }
+  if (counts) { counts.innerHTML = (calLine ? `<span class="rec-cal"><b>Calibration</b> ${calLine}</span>` : '') + `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}`; counts.style.display = ''; }   // EX33b: the blind-spots line moved to the foot
   _renderCurrents(rec.currents);   // SEAM:CROSS_CURRENTS
   const sub = document.getElementById('board-sub');
   if (sub) sub.textContent = 'What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.';
   const strip = document.getElementById('fi-state-strip'); if (strip) strip.style.display = 'none';
-  // the two newest deployments with a photograph lead; the rest scroll
-  const leads = tiles.filter(t => t.photo && t.photo.src && !t.developed_by).slice(0, _doorLeads());
-  const rest = tiles.filter(t => !leads.includes(t));
-  grid.innerHTML = leads.map((t, i) => _renderDoorCard(Object.assign({}, t, { claim: t.claim }), i)).join('');
+  // EX33b: one shape for every reading; nothing leads as a card, the record reads top to bottom
+  const leads = [], rest = tiles;
+  grid.innerHTML = '';
   if (list) {
     const readKeys = new Set(all.map(t => t.key));
     let lake = ((data && data.proposed) || []).filter(x => x && x.cluster_id && !readKeys.has('theme:' + x.cluster_id));
     list.classList.toggle('nothumbs', false);
-    list.innerHTML = rest.map(_renderScrollRow).join('') +
+    const seen = new Set();   // EX33b: a photograph appears once on the page
+    list.innerHTML = rest.map(t => _renderScrollRow(t, seen)).join('') +
       (!tiles.length ? '<div class="fi-divider" style="padding:14px 0 4px">Nothing deployed under this lens yet</div>' : '') +
       (lake.length && _recLens.kind === 'all' ? '<div class="fi-divider" style="padding:14px 0 4px">Also moving, not yet read</div>' + lake.slice(0, 12).map(x => _renderLakeRow(x)).join('') : '');
   }
   _drawPulses();
   const more = document.getElementById('board-more');
-  if (more) { more.textContent = 'A reading is deployed when a subject is new on the board or moved past the threshold since its last reading, at most six a night, as few as none. Every reading carries one measurable watch; the record grades it on the database\'s own counts when its date comes, and a miss stays.'; more.style.display = 'block'; }
+  if (more) { more.innerHTML = safe('A reading is deployed when a subject is new on the board or moved past the threshold since its last reading, at most six a night, as few as none. Every reading carries one bet; the record grades it when its date comes, and a miss stays.') + (rec.blind ? `<span class="blind">${safe(String(rec.blind).replace(/This read does not see/, 'These readings do not see').replace(/its voices come/i, 'their voices come').replace(/its news from the open web and the lake/i, 'their news from the open web and the house\'s own archive'))}</span>` : ''); more.style.display = 'block'; }   // EX33b: the blind-spots line at the foot, in the reader's words
 }
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');

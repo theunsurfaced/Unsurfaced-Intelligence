@@ -850,7 +850,7 @@ async function synthesize(body, env, origin, hooks) {
       'Return JSON exactly shaped as:\n' +
       '{' + (isReport ? '"read":["line 1: one sharp sentence reframing what the evidence actually shows",' +
       '"line 2: one sentence naming the move it implies"],' : '') +
-      '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
+      '"insights":[{"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon",' +
       '"excerpt":"1-2 sentence finding grounded in the evidence",' +
       '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
       (isReport ? '"implication":"1 sentence: what this means for a brand decision",' : '') +
@@ -1124,12 +1124,14 @@ const EXC_THIN = { MIN: 12 };   // SEAM:EXC_THIN: under this many lines on the f
 const EXC_BLIND = 'This read does not see TikTok, Instagram or X. Its voices come from YouTube and Mastodon; its news from the open web and the lake.';
 /* SEAM:EXC_HEADLINE: the Method's headline law, for the live writer. Oct 8: a quick read opened on a 40-word line with three claims, a
  * parenthetical source, a semicolon and an off-market clause, and its move argued against its own findings. */
-const EXC_HEADLINE_LAW = 'HEADLINE LAW: the first line of "read" is the headline: 6 to 12 words, present tense, one claim about the people the question is about, ' +
-  'with a verb; never a figure, a percentage, a source name, a year, a semicolon, a colon or a list of brands. The second line is the dek: one sentence under 30 words that ' +
-  'carries the one figure that proves the headline and names its source in words. The move the dek implies follows the insights and the ideas; it never argues against them. ' +
-  'Every insight title is a claim with a verb, 4 to 9 words, no figure. Nothing in the read speaks of a market the frame did not name.';
+const EXC_HEADLINE_LAW = 'HEADLINE LAW: the first line of "read" is the headline: a sentence a sharp editor would say out loud about people, 6 to 14 words, present tense, ' +
+  'whole words and articles; its subject is a person, a group or a named thing, never the signal, the count, the coverage or the measure; one claim, one consequence; ' +
+  'a number only when the number is the point, and then one number; never a source name, a year, a share of coverage, a semicolon, a colon, a parenthesis or a list of brands. ' +
+  'The second line is the dek: one sentence under 30 words that carries the one figure that proves the headline and names its source in words. ' +
+  'Every insight title obeys the same law at 6 to 13 words; when the evidence is only a count, the title says what the count means in the world or the insight is not written. ' +
+  'The move the dek implies follows the insights and the ideas; it never argues against them. Nothing in the read speaks of a market the frame did not name.';
 /* SEAM:EXC_DISAGREE: the law the writer reads when consensus lines are in the evidence. */
-const EXC_DISAGREE_LAW = 'WHERE THE HOUSE DISAGREES: lines whose title begins CONSENSUS are what published trend reports and outlooks claim, never evidence of what people do. When the dated evidence contradicts a consensus claim, one insight titled "Where the house disagrees: <the claim in five words>" names the claim, the lines that contradict it and the stronger reading, at the confidence those lines earn. When nothing contradicts it, write nothing about it. Never adopt a consensus claim as a finding and never cite a CONSENSUS line as evidence for a figure.';
+const EXC_DISAGREE_LAW = 'WHERE THE HOUSE DISAGREES: lines whose title begins CONSENSUS are what published trend reports and outlooks claim, never evidence of what people do. When the dated evidence contradicts a consensus claim, one insight states the stronger reading as a plain sentence under the HEADLINE LAW (its title never begins with a label or a colon); its excerpt names the consensus claim it answers and the lines that contradict it, at the confidence those lines earn; it carries "stance":"counter". When nothing contradicts it, write nothing about it. Never adopt a consensus claim as a finding and never cite a CONSENSUS line as evidence for a figure.';
 const EXC_ROOM = { report: 16000, plain: 8000, quick: 9000, ceiling: 32000, MIN_SALVAGE: 3 };   // SEAM:EXC_DEPTH: a quick read's room.   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
 const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4,   // SEAM:EXC_SPEED
   BEAT_MS: 15000, WRITE_MS: 165000, COMPLETE_MS: 60000, COMPLETE_TOKENS: 6000, PARTIAL_TTL: 900 };   // SEAM:EXC_STALL: the heartbeat, the writing's wall clock, the completion call, a partial read's short cache
@@ -1405,7 +1407,7 @@ function excReportPrompt(query, evidence) {
     'Return JSON exactly shaped as:\n' +
     '{"frame":{"category":"the category this topic sits in, 1 to 3 words","audience":"the people that category serves here, 1 to 3 words"},' +
     '"read":["line 1, the headline: 6 to 12 words, present tense, one claim about the people in the question, no figure, no source name, no semicolon","line 2, the dek: one sentence under 30 words carrying the one figure that proves line 1 and naming its source in words"],' +   // SEAM:EXC_HEADLINE
-    '"insights":[{"category":"consumer|market|culture|brand","title":"<=9-word claim",' +
+    '"insights":[{"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon",' +
     '"excerpt":"1-2 sentences: what happened, naming the concrete thing from the evidence",' +
     '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
     '"meaning":{"culture":"1 sentence: what this says about the culture right now",' +
@@ -8732,7 +8734,7 @@ async function memoryRecord(env) {
  * Every read is kept in door_reads, so a tile says what changed since last
  * night. A visitor pays nothing: tiles come from KV, the read from the table.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.3r' };   // SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
+const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.4' };   // SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
 /* SEAM:RECORD_LAW: when a subject earns a read. New on the board: earned. Read before and the evidence changed: earned only when it
  * moved past the threshold since that read (stories this week up or down by MIN_DELTA, or velocity past MIN_VEL percent, or MIN_OUTLETS
  * new outlets); otherwise its last read stands (reused) and nothing is spent. At most CAP reads a night, the largest moves first; a
@@ -8837,15 +8839,15 @@ function excDoorPrompt(frame, evidence, measures, memory, night) {
     (memory ? 'WHAT WE SAID BEFORE (our own earlier lines on this subject, its exact stories a week and how each call graded; build on what held; if the evidence now says otherwise, line 1 says so plainly; never cite it): ' + memory + '\n\n' : '') +
     'EVIDENCE:\n' + evidence + '\n\n' +
     'Write the overnight read for this frame. Return JSON exactly shaped as:\n' +
-    // SEAM:EXC_DOOR_VOICE: the headline law and the question law. Line 1 is a plain statement about people (who is doing what), with the
-    // measured number where MEASURES gives one; never a count of coverage dressed as a finding ("chatter jumped to 68 signals"), never
-    // "X, not Y", never a slogan. Line 2 is the move. "question" is the question this read answers for the professional it serves.
-    '{"read":["line 1: one plain sentence, at most 30 words, stating what people are doing (buyers, viewers, listeners, users: the audience named in the frame) and how much, with the measured number where MEASURES gives one; a statement an expert would make, no slogan, no X-not-Y, never a count of coverage as the finding","line 2: one sentence, at most 25 words, the move it implies"],' +
+    // SEAM:EXC_DOOR_VOICE: the headline law and the question law. Line 1 is the headline: a sentence about people, never about the
+    // signal or the coverage, with a number only when the number is the point. Line 2 is the dek: the one measured figure that proves
+    // line 1, its source in words. Never "X, not Y", never a slogan. "question" is the question this read answers for the professional it serves.
+    '{"read":["line 1, the headline: a sentence about people (buyers, viewers, listeners, users: the audience named in the frame) under the HEADLINE LAW, 6 to 14 words, whole words and articles, a number only when the number is the point, never the signal, the count or the coverage as its subject, no slogan, no X-not-Y","line 2, the dek: one sentence under 30 words carrying the one measured figure that proves line 1, from MEASURES or a dated line, naming its source in words"],' +
     '"question":"the question this read answers for the professional it serves, one sentence, plain",' +
-    '"insights":[3 to 4 of {"category":"consumer|market|culture|brand","title":"<=9-word claim","excerpt":"1-2 sentences naming the concrete thing from the evidence","evidence":[1-based numbers of the lines it stands on]}],' +
+    '"insights":[3 to 4 of {"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon","excerpt":"1-2 sentences naming the concrete thing from the evidence","evidence":[1-based numbers of the lines it stands on]}],' +
     '"ideas":[1 to 2 of {"type":"Positioning|Product|Campaign|Content|Partnership|Channel|Pricing","for":"brand|product|creative|media|retail|partnerships","headline":"verb-first action, at most 10 words","body":"1-2 sentences: exactly what to do, where, for whom","because":"1 sentence: the tension this move resolves","proof":"1 sentence naming the evidence it stands on","evidence":[1-based numbers],"from":<0-based index of the insight it comes from>}],' +
     // SEAM:RECORD_WATCH: the one measurable thing this read bets on, so the record can grade it on the database's own counts
-    '"watch":{"claim":"one sentence, under 20 words: what the read expects the lake to show by the date","measure":"signals_7d|outlets|velocity_pct","op":"gte|lte","value":<a number the MEASURES line makes plausible>,"by":"a date between ' + day(DOOR_LAW.WATCH_MIN_D) + ' and ' + day(DOOR_LAW.WATCH_MAX_D) + '"},' +
+    '"watch":{"claim":"one sentence, under 20 words, naming what will be true in the world by the date (a release, a price, a count of people, a public statement, a ranking); never the lake, the signal or the coverage as its subject","measure":"signals_7d|outlets|velocity_pct","op":"gte|lte","value":<a number the MEASURES line makes plausible: the proxy the record will grade>,"by":"a date between ' + day(DOOR_LAW.WATCH_MIN_D) + ' and ' + day(DOOR_LAW.WATCH_MAX_D) + '"},' +
     '"brief":"2 to 3 sentences a strategist would say out loud: where this frame is right now and the one thing to do first"}\n' +
     'Lead with what changed in the freshest bands. Never restate source counts as findings. If lines disagree, one finding names it. The watch is a bet the read is willing to lose in public. JSON only.';
 }
@@ -8979,6 +8981,7 @@ function doorTile(r) {
     frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null, query: f.query || null },
     claim: rd && rd.read && rd.read[0] ? rd.read[0] : null, move: rd && rd.ideas && rd.ideas[0] ? rd.ideas[0].headline : null, findings: rd && rd.insights ? rd.insights.length : 0,
     question: (rd && rd.question) || f.question || null,   // SEAM:EXC_DOOR_VOICE: the question this reading answers
+    dek: rd && rd.read && rd.read[1] && r.night >= '2026-10-10' ? rd.read[1] : null,   // EX33a: the dek (the one figure, its source in words); before the 3.4 voice line 2 was the move, so older readings carry none
     photo: doorPhoto(rd, r.evidence),   // the sources' own photograph, credited; null when none of the lines carries one
     measures: { series: m.series || [], recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0, weeks_touched: m.weeks_touched || 0, weeks: m.weeks || 12, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, state: m.state || 'STEADY', shape: m.shape || null, newest: m.newest || null },
     evidence_n: (r.evidence || []).length, since: s, image: null,
@@ -8990,7 +8993,7 @@ function doorTile(r) {
 /* SEAM:EXC_DOOR_VOICE PURE: the photograph a tile shows is one the read's own sources carried: the first cited insight's image, else the
  * first evidence line with an https image. Never stock, always credited to the outlet. */
 function doorPhoto(rd, evidence) {
-  const ok = u => typeof u === 'string' && /^https:\/\//.test(u);
+  const ok = u => typeof u === 'string' && /^https:\/\//.test(u) && !/logo|favicon|avatar|icon|sprite|placeholder/i.test(u);   // a logo is a mark, not a photograph
   // the credit is the outlet's name only: a lake line is labeled for the model ("Unsurfaced Lake · Hypebeast (T2)"), never for a reader
   const outlet = v => String(v || '').replace(/^Unsurfaced Lake\s*·\s*/i, '').replace(/\s*\(T[0-9?]\)\s*$/, '').trim().slice(0, 80) || null;
   for (const x of ((rd && rd.insights) || [])) if (x && ok(x.image)) return { src: x.image, credit: outlet(x.source) };
@@ -9624,7 +9627,7 @@ async function benchRun(request, env, origin) {
 }
 /* SEAM:RECORD_WATCH: the nightly grade. Every ready read whose watch has come due and has no grade is measured by the database the
  * same way its read was (excMeasures on its frame) and marked held or missed on its row. A miss stays. No model is asked. */
-const RECORD = { KEY: 'record:v1', TTL: 600, LIMIT: 80, GRADE_LIMIT: 40, POSITION_MIN: 3, POSITION_HELD: 2 };
+const RECORD = { KEY: 'record:v1', TTL: 600, LIMIT: 80, GRADE_LIMIT: 40, POSITION_MIN: 3, POSITION_HELD: 2, SINCE: '2026-10-08' };   // SINCE: the night the earned law went live; the record is what the law earned
 async function doorCalled(env) {
   const today = doorNight(), out = { checked: 0, held: 0, missed: 0, unmeasured: 0 };
   const rows = (await sbRest(env, 'door_reads?status=eq.ready&read->watch=not.is.null&meta->called=is.null&select=id,frame,read,meta,night&order=night.asc&limit=' + RECORD.GRADE_LIMIT).catch(excQuiet('called_rows', []))) || [];
@@ -9648,7 +9651,8 @@ async function doorRecord(env) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(RECORD.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('record_get')(e); }
   const SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta';
   const rows = (await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&' + SEL + '&order=night.desc,created_at.desc&limit=' + RECORD.LIMIT).catch(excQuiet('record_rows', []))) || [];
-  const tiles = rows.map(doorTile);
+  // SEAM:RECORD_LAW: readings deployed before the law, or written on no evidence at all, stay in their subject's history, never in the record
+  const tiles = rows.map(doorTile).filter(t => t.deployed >= RECORD.SINCE && (t.measures.recent_7d > 0 || t.measures.outlets > 0 || t.evidence_n >= DOOR.MIN_EVIDENCE));
   const by = new Map();
   for (const t of tiles) { const o = by.get(t.key) || { key: t.key, label: t.label, deployments: 0, held: 0, missed: 0, since: t.deployed }; o.deployments++; if (t.called && t.called.verdict === 'held') o.held++; if (t.called && t.called.verdict === 'missed') o.missed++; if (t.deployed < o.since) o.since = t.deployed; by.set(t.key, o); }
   const positions = [...by.values()].filter(o => o.deployments >= RECORD.POSITION_MIN && o.held >= RECORD.POSITION_HELD).sort((a, b) => b.held - a.held || b.deployments - a.deployments);

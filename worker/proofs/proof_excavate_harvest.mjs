@@ -207,7 +207,7 @@ ok(table.filter(r => r.status === 'compiling').length === 2 && th2.status === 'f
   'D3 every row keeps its frame (whole), its measures, its evidence pack and the batch it waits on, and the pack includes the news top-up');
 ok(th1.evidence.filter(e => e.image).length === 1 && th1.evidence.find(e => e.image).image === 'https://img.example/curl0.jpg' && th1.evidence.every(e => 'image' in e),
   'D3b each stored line keeps its https image (an http one is dropped), so the photograph survives into the landing');
-ok(/^v3\.3r~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '3.3r',
+ok(/^v3\.4~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '3.4',
   'D3c the reuse stamp carries the door\'s voice version');
 const landedText = JSON.stringify({ read: ['Texture-first shelving now owns 30% of fashion beauty signals this week.', 'Put the curl line on the endcap.'], insights: [{ category: 'market', title: 'Shelves sort by curl', excerpt: 'Curl aisle story 0 says so.', evidence: [1] }, { category: 'consumer', title: 'Buyers read labels', excerpt: 'x', evidence: [2] }, { category: 'brand', title: 'Being leads', excerpt: 'x', evidence: [3] }], ideas: [{ type: 'Channel', for: 'retail', headline: 'Pitch the curl endcap to Target', body: 'b', because: 'c', proof: 'p', evidence: [1], from: 0 }], brief: 'Where it is.' });
 const q7 = quiet();
@@ -258,7 +258,7 @@ q8d.done();
 D.DOOR.VOICE = '3.2q';
 ok(outV.reused === 0 && outV.kept === 0 && outV.queued === 2 && table.filter(r => r.night !== '2000-01-02' && r.frame_key === 'theme:th1')[0].status === 'compiling',
   'D6d when the voice changes, a frame whose evidence did not move is written again: no read from the old voice is reused');
-ok(/"read":\["line 1: one plain sentence, at most 30 words, stating what people are doing/.test(D.excDoorPrompt(frame, 'E', m)) && /"question":"the question this read answers/.test(D.excDoorPrompt(frame, 'E', m)) && /3 to 4 of \{"category"/.test(D.excDoorPrompt(frame, 'E', m)) && /Lead with what changed/.test(D.excDoorPrompt(frame, 'E', m)), 'D7 the door asks for the light shape under the headline and question laws: a plain line about people and the question, three or four findings, one or two moves, a brief');
+ok(/"read":\["line 1, the headline: a sentence about people \(buyers, viewers, listeners, users: the audience named in the frame\) under the HEADLINE LAW/.test(D.excDoorPrompt(frame, 'E', m)) && /"question":"the question this read answers/.test(D.excDoorPrompt(frame, 'E', m)) && /3 to 4 of \{"category"/.test(D.excDoorPrompt(frame, 'E', m)) && /Lead with what changed/.test(D.excDoorPrompt(frame, 'E', m)), 'D7 the door asks for the light shape under the headline and question laws: a plain line about people and the question, three or four findings, one or two moves, a brief');
 ok(/if \(path === '\/excavate\/door\/read' && request\.method === 'GET'\) return doorReadRoute\(request, env, origin\);/.test(w) && /\.then\(\(\) => doorPass\(env\)\)/.test(w) && /row\.kind === 'door_read' && row\.meta && row\.meta\.door_id/.test(w) && /which === 'door' \? await doorPass\(env, \{ force: true \}\)/.test(w) && /door: door && door\.tiles && door\.tiles\.length \? door : null/.test(w),
   'D8 the read route, the cron chain, the batch drain, the admin door and the feed all know the door');
 // D9: the cadence. The door compiles a new batch every EVERY_D nights; inside the gap it republishes the standing set and spends nothing.

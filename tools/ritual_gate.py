@@ -329,6 +329,8 @@ for f in worker_js:
     except Exception as e: FAIL.append(f"[bench] {_bf} unreadable: {e}"); continue
     if _b.get("writer_hash") != _wh:
         FAIL.append(f"[bench] {f}: the writer changed since the bench last ran ({str(_b.get('writer_hash'))[:12]} -> {_wh[:12]}); run tools/bench/run.mjs against the uploaded version")
+    elif not _b.get("ok"):
+        FAIL.append(f"[bench] {_bf} records no written pack (ok {_b.get('ok')}); run tools/bench/run.mjs against the uploaded version")
     elif _b.get("mean") is not None and _b.get("mean") < _b.get("floor", 70):
         FAIL.append(f"[bench] mean {_b.get('mean')} is below the floor {_b.get('floor', 70)}")
     print(f"  bench   {f}: writer {_wh[:12]}, last run {str(_b.get('at'))[:10]} mean {_b.get('mean')} on {_b.get('ok')} of {_b.get('packs')} packs")
