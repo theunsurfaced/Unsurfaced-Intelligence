@@ -63,7 +63,7 @@ const band = X.doorBand(many.tiles, []);
 ok(band.length === X.DOOR_VOICES.BAND && band.slice(0, 5).map(v => v.on).join(',') === 'S0,S1,S2,S3,S4' && band[5].on === 'S0', 'X5 twelve quotes at most, one subject at a time, so no subject fills the band');
 
 // ── P ─────────────────────────────────────────────────────────────────
-const arrival = page.slice(page.indexOf('<section class="hero">'), page.indexOf('<!-- RESULTS PANEL -->'));
+const arrival = page.slice(page.indexOf('<section class="hero ask" id="hero-ask">'), page.indexOf('<!-- RESULTS PANEL -->'));
 ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is the cultural intelligence engine behind Unsurfaced\./.test(arrival) && /placeholder="Ask culture a question: a brand, a category, the people, or the question itself"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
   'P1 the arrival opens with the headline, the plain sub and the search under it');
 ok(/setSearch\('smart glasses, who buys and who refuses'\)/.test(arrival) && /setSearch\('luxury in Lagos'\)/.test(arrival) && !/Gen Z purchase behavior trends/.test(arrival), 'P2 the examples are questions a person would type');
@@ -110,7 +110,7 @@ ok(/<section class="hub-block room-sec room-voices" id="voices-block"/.test(page
   'P16e the voices block owns its own class (the reading page owns .voices) and its line names no house');
 ok(/function _renderDoorRow\(t\)/.test(page) && /<figure class="photo empty" aria-hidden="true"><\/figure>/.test(page) && /id="board-list"/.test(page) && /list\.innerHTML = order\.rest\.map\(t => _renderDoorRow\(t\)\)/.test(page) && /\.pos \.figures,\.row \.figures\{[^}]*grid-template-columns:1fr 1fr/.test(page),
   'P12 the rows carry a square thumbnail or an honest empty square; the figures sit in a two-by-two grid on cards and rows');
-ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && /<section class="week nophoto" id="week-block"[^]*?<\/section>\s*<\/section>/.test(page) && /#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr/.test(page) && /@media \(max-width:1000px\)\{#sec-explore \.hero\{grid-template-columns:1fr/.test(page) && /function _dashShow\(on\)/.test(page) && (page.match(/_dashShow\(/g) || []).length >= 6,
+ok(/<section class="hero ask" id="hero-ask">[^]*?<div class="hero-left">/.test(page) && /<section class="week nophoto" id="week-block"[^]*?<\/section>\s*<\/section>/.test(page) && /#sec-explore \.hero\{display:grid;grid-template-columns:1fr 1fr/.test(page) && /@media \(max-width:1000px\)\{#sec-explore \.hero\{grid-template-columns:1fr/.test(page) && /function _dashShow\(on\)/.test(page) && (page.match(/_dashShow\(/g) || []).length >= 6,
   'P13 the first screen carries the invitation and the week\'s read side by side, stacking under 1000px; the week leaves and returns with the board');
 ok(/filter:saturate\(\.78\) sepia\(\.08\) contrast\(1\.02\)/.test(page) && /#main-dashboard \.builder-panel\{display:none\}/.test(page) && /--room-fg3:#8A8478/.test(page) && /-webkit-line-clamp:1/.test(page),
   'P14 photographs share one grade and come to full color under the hand; the builder is off the arrival; the quiet gray is a step lighter; the question is one line on the board');

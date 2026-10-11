@@ -1460,6 +1460,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:CLIENT_FRAME",
    "purpose": "the room's frame panel: three questions on the first entry (brands, industries from the house's list, words), audiences, markets and the followed frames behind More of your frame; the learned chips kept or refused in one tap; the save carries all five rows"
+  },
+  "SEAM:ENGINE_STATE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX36a THE STRIP: GET /excavate/state, public, cached ten minutes, no model call: the last pass and the last grade (door_pass, door_called), the record's deployments, open bets (a watch with no held or missed verdict), held and missed, the week's signals against the prior week and the lake's size (PostgREST exact counts through sbCount), and the fourteen territories with 7-day and prior counts, a velocity, a state (spike, rising, steady, falling, quiet) and their movers among the record's subjects. Nothing a reader owns is in it."
+  },
+  "SEAM:ENGINE_STATE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ENGINE_STATE",
+   "purpose": "the hero as the ask, one band, with the week's read laid out under it; the engine-now strip (the week's signals as the page's one large figure, readings, open bets, graded, the lake, the pass line), which remembers the visitor's last look in this browser only, says what changed since, and counts from then to now when it comes into view; the slim ask that sticks under the nav once the hero's ask has scrolled away; `/` focuses the ask from anywhere but a field"
   }
  },
  "planned": [

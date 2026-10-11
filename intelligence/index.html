@@ -1515,6 +1515,27 @@ body::before{display:none}
 nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.08em;text-transform:uppercase;color:var(--room-fg2);text-decoration:none;background:none;border:0}
 #sec-explore .hero{display:grid;grid-template-columns:1fr 1fr;gap:calc(56px*var(--k));align-items:center;padding:calc(48px*var(--k)) var(--room-g) calc(44px*var(--k));max-width:var(--room-w);margin:0 auto}
 #sec-explore .hero.solo{grid-template-columns:1fr}
+/* SEAM:ENGINE_STATE (EX36a): the ask as one band; the week's read full width under it; the strip; the sticky ask */
+#sec-explore .hero.ask{grid-template-columns:1fr;gap:calc(24px*var(--k));align-items:start;padding:calc(28px*var(--k)) var(--room-g) calc(8px*var(--k))}
+#sec-explore .hero.ask h1.hero-title{font-size:clamp(26px,2.6vw,calc(36px*var(--k)));max-width:none;margin:0 0 6px}
+#sec-explore .hero.ask .hero-sub{font-size:calc(14.5px*var(--k));max-width:70ch;margin:0 0 calc(16px*var(--k))}
+#sec-explore .hero.ask .week{display:grid;grid-template-columns:5fr 7fr;gap:calc(28px*var(--k));align-items:start;margin-top:calc(18px*var(--k))}
+#sec-explore .hero.ask .week.nophoto{grid-template-columns:1fr}
+.engine-now{max-width:var(--room-w);margin:0 auto;padding:calc(10px*var(--k)) var(--room-g) calc(28px*var(--k));border-bottom:1px solid var(--border)}
+.en-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 10px}
+.en-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--accent)}
+.en-since{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--text3)}
+.en-grid{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1fr;gap:18px;align-items:end}
+.en-sig b{display:block;font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(44px,5.2vw,78px);line-height:.95;letter-spacing:-.03em;color:var(--room-ivory,var(--text))}
+.en-sig>span,.en-cell>span{display:block;font-size:13px;color:var(--text2);margin-top:6px}.en-cell b span{display:inline}.en-sig em{font-style:normal;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px}
+.en-cell{background:none;border:0;border-left:1px solid var(--border);padding:0 0 0 14px;text-align:left;color:inherit;font:inherit;cursor:default}
+button.en-cell{cursor:pointer}button.en-cell:hover b{color:var(--accent)}
+.en-cell b{display:block;font-family:'Syne',sans-serif;font-weight:800;font-size:28px;line-height:1;letter-spacing:-.02em}.en-cell b small{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--text3);margin:0 10px 0 4px}
+.en-pass{font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);margin-top:14px;line-height:1.6}
+.ask-sticky{position:sticky;top:60px;z-index:var(--z-sticky);margin:0 0 8px;padding:6px 0;background:rgba(10,10,15,.94);backdrop-filter:blur(16px)}
+.ask-sticky button{width:100%;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:10px 14px;font:inherit;font-size:14px;cursor:text;text-align:left}
+.ask-sticky .as-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--accent)}.ask-sticky kbd{margin-left:auto;font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--border);padding:2px 6px;color:var(--text3)}
+@media (max-width:760px){.en-grid{grid-template-columns:1fr 1fr}.en-sig{grid-column:1/-1}.en-cell{border-left:0;padding:0}#sec-explore .hero.ask .week{grid-template-columns:1fr}.ask-sticky{top:56px}}
 @media (max-width:1000px){#sec-explore .hero{grid-template-columns:1fr;gap:28px;align-items:start}}
 #main-dashboard .builder-panel{display:none}
 #sec-explore .hero-eyebrow{display:none}
@@ -2356,7 +2377,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 
 <div id="sec-explore" class="page-section active">
 <!-- HERO -->
-<section class="hero">
+<section class="hero ask" id="hero-ask"><!-- SEAM:ENGINE_STATE (EX36a): the ask, one band; the week's read rides under it until the scroll -->
  <div class="hero-left">
   <h1 class="hero-title">Ask culture a question.</h1>
   <p class="hero-sub">EXCAVATE is the cultural intelligence engine behind Unsurfaced. Name a brand, a category or a behavior and it returns the reading: what people are doing, how much, and the move to make. Every source attached.</p>
@@ -2413,6 +2434,18 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     </div>
   </section>
 </section>
+<!-- SEAM:ENGINE_STATE (EX36a): the engine, now. Nightly numbers, every one counted; the page remembers what this visitor saw last time -->
+<section class="engine-now" id="engine-now" style="display:none" aria-label="The engine, now">
+  <div class="en-head"><span class="en-k">THE ENGINE, NOW</span><span class="en-since" id="en-since"></span></div>
+  <div class="en-grid">
+    <div class="en-sig" title="Signals the lake captured in the last seven days, counted by the database"><b id="en-week">0</b><span>captured this week<em id="en-week-d"></em></span></div>
+    <button type="button" class="en-cell" onclick="_navRecord()" title="Readings deployed since the earned law, on the record"><b id="en-dep">0</b><span>readings on the record</span></button>
+    <button type="button" class="en-cell" onclick="_recLensSet('watching'); _navRecord()" title="Bets whose check date has not come"><b id="en-open">0</b><span>open bets</span></button>
+    <div class="en-cell" title="Bets graded by the record on the database's own counts"><b><span id="en-held">0</span><small>held</small><span id="en-missed">0</span><small>missed</small></b><span>graded</span></div>
+    <div class="en-cell" title="Every signal the lake holds"><b id="en-lake">0</b><span>kept in all</span></div>
+  </div>
+  <div class="en-pass" id="en-pass"></div>
+</section>
 
 <div class="error-banner" id="error-banner"></div>
 
@@ -2435,6 +2468,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 
 <!-- MAIN DASHBOARD -->
 <div class="main" id="main-dashboard">
+  <div class="ask-sticky" id="ask-sticky" style="display:none"><button type="button" onclick="_askFocus()"><span class="as-k">ASK</span><span id="ask-sticky-q">Ask culture a question</span><kbd>/</kbd></button></div><!-- SEAM:ENGINE_STATE: the ask follows the reader -->
   <!-- SEAM:HUB_FLOW — the front page is one column in the outline's order:
        pulse (ticker above), headline, search, featured 4x2, trending 3x2, insight builder.
        The sidebar is retired. Every renderer that fed it still mounts here by id. -->
@@ -10137,6 +10171,7 @@ function initFeaturedInsights() {
   }
   _renderFeaturedGrid(false);   // instant paint from the pool (always)
   renderTrendingNow();
+  _stateLoad();   // SEAM:ENGINE_STATE (EX36a)
   _checkAndRefreshFeatured();    // background live enrichment
 }
 
@@ -10520,12 +10555,57 @@ function _renderWeek(data) {
   const fig = document.getElementById('week-photo');
   if (ph) { document.getElementById('week-img').src = ph.src; document.getElementById('week-credit').textContent = ph.credit ? 'Photo: ' + ph.credit : ''; fig.style.display = 'block'; el.classList.remove('nophoto'); }
   else { fig.style.display = 'none'; el.classList.add('nophoto'); }
-  el.style.display = 'block'; window._weekReady = true;
+  el.style.display = ''; window._weekReady = true;   // SEAM:ENGINE_STATE: the stylesheet lays it out
   setTimeout(() => el.querySelectorAll('[data-to]').forEach(n => _countUp(n, Number(n.getAttribute('data-from')) || 0, Number(n.getAttribute('data-to')) || 0, 1000)), 400);
 }
+/* SEAM:ENGINE_STATE (EX36a): the engine, now. GET /excavate/state is counted, not written. The visitor's last look is kept in this
+   browser only (uai_engine_seen) so the strip can say what changed since and count from then to now. */
+const _EN_SEEN = 'uai_engine_seen';
+async function _stateLoad() {
+  const el = document.getElementById('engine-now'); if (!el) return;
+  let s = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/state'); s = r.ok ? await r.json() : null; } catch (e) { s = null; }
+  if (!s || !s.ok) { el.style.display = 'none'; return; }
+  _stateRender(s);
+}
+function _stateRender(s) {
+  const el = document.getElementById('engine-now'), rec = s.record || {}, sig = s.signals || {};
+  const now = { week: sig.week || 0, dep: rec.deployments || 0, open: rec.open || 0, held: rec.held || 0, missed: rec.missed || 0, lake: sig.lake || 0, at: s.at || new Date().toISOString() };
+  let prev = null; try { prev = JSON.parse(localStorage.getItem(_EN_SEEN) || 'null'); } catch (e) { prev = null; }
+  const from = prev && typeof prev.week === 'number' ? prev : null;
+  const set = (id, v) => { const b = document.getElementById(id); if (b) { b.setAttribute('data-from', String(from ? (from[id.replace('en-', '')] || 0) : 0)); b.setAttribute('data-to', String(v)); b.textContent = String(from ? (from[id.replace('en-', '')] || 0) : 0); } };
+  set('en-week', now.week); set('en-dep', now.dep); set('en-open', now.open); set('en-held', now.held); set('en-missed', now.missed); set('en-lake', now.lake);
+  const d = document.getElementById('en-week-d'); if (d) { const diff = (sig.week || 0) - (sig.prior || 0); d.textContent = sig.prior == null ? '' : (diff >= 0 ? ' ▲ ' + diff.toLocaleString() : ' ▼ ' + Math.abs(diff).toLocaleString()) + ' on last week'; }
+  const since = document.getElementById('en-since');
+  if (since) {
+    if (from) { const parts = []; const dd = now.dep - (from.dep || 0), gg = (now.held + now.missed) - ((from.held || 0) + (from.missed || 0)), ll = now.lake - (from.lake || 0);
+      if (dd > 0) parts.push(dd + (dd === 1 ? ' reading' : ' readings')); if (gg > 0) parts.push(gg + ' graded'); if (ll > 0) parts.push(ll.toLocaleString() + ' captured');
+      since.textContent = parts.length ? 'Since you were here: ' + parts.join(', ') : 'Nothing new since you were here'; }
+    else since.textContent = 'Your first look';
+  }
+  const pass = document.getElementById('en-pass');
+  if (pass) { const when = x => { const dt = x && x.at ? new Date(x.at) : null; return dt && !isNaN(dt) ? dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null; };
+    const p = s.pass, c = s.called, lines = [];
+    if (p) lines.push(p.error ? 'The last pass stopped early' : p.skipped ? 'Last pass ' + (when(p) || '') + ': nothing earned a reading' : 'Last pass ' + (when(p) || '') + ': ' + (p.candidates || 0) + ' candidates, ' + (p.kept || 0) + ' written' + (p.queued ? ', ' + p.queued + ' queued' : '') + (p.thin ? ', ' + p.thin + ' thin' : '') + (p.failed ? ', ' + p.failed + ' failed' : ''));
+    if (c && c.checked) lines.push('Graded ' + (when(c) || '') + ': ' + (c.held || 0) + ' held, ' + (c.missed || 0) + ' missed' + (c.unmeasured ? ', ' + c.unmeasured + ' unmeasured' : ''));
+    if (sig.sampled) lines.push('Territory counts are over the latest ' + (8000).toLocaleString() + ' captures');
+    pass.textContent = lines.join(' · '); }
+  el.style.display = '';
+  try { localStorage.setItem(_EN_SEEN, JSON.stringify(now)); } catch (e) {}
+  window._engineState = s;
+  const go = () => el.querySelectorAll('[data-to]').forEach(b => _countUp(b, Number(b.getAttribute('data-from')) || 0, Number(b.getAttribute('data-to')) || 0, 1200));
+  if ('IntersectionObserver' in window) { const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { io.disconnect(); go(); } }, { threshold: 0.2 }); io.observe(el); } else go();
+}
+// the ask follows the reader: the slim bar shows once the hero's ask has left the viewport; `/` focuses the ask from anywhere
+function _askFocus() { const inp = document.getElementById('search-input'); if (!inp) return; window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => inp.focus(), 250); }
+(function () {
+  document.addEventListener('keydown', e => { if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return; const a = document.activeElement, tag = a && a.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (a && a.isContentEditable)) return; e.preventDefault(); _askFocus(); });
+  const wire = () => { const shell = document.querySelector('#hero-ask .search-shell'), bar = document.getElementById('ask-sticky'); if (!shell || !bar || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(es => { const seen = es.some(x => x.isIntersecting); bar.style.display = seen ? 'none' : ''; }, { threshold: 0 }).observe(shell); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
 function _countUp(el, from, to, ms) {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to; return; }
-  let t0 = null; const step = ts => { if (!t0) t0 = ts; let k = Math.min(1, (ts - t0) / ms); k = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(from + (to - from) * k); if (k < 1) requestAnimationFrame(step); };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = Number(to).toLocaleString('en-US'); return; }
+  let t0 = null; const step = ts => { if (!t0) t0 = ts; let k = Math.min(1, (ts - t0) / ms); k = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(from + (to - from) * k).toLocaleString('en-US'); if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
 }
 /* SEAM:EXC_DOOR_VOICE: what people are saying (verbatim quotes about the board's own subjects and from the monthly report, described
