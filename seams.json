@@ -1438,6 +1438,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:CALIBRATION",
    "purpose": "the calibration line in the record's counts"
+  },
+  "SEAM:ACCESS_KNOCK": {
+   "file": "worker/src/index.js",
+   "purpose": "EX34 THE DOOR: how a new reader gets in. POST /access/knock (signed in): a reader not yet approved knocks once; the house is told by mail who they are (name, title, company, email) with the desk line that opens the door; the knock is kept on app_user (migration 0044: name, company, title, knocked_at, approved_at); a second knock tells no one. The desk opens the door: {run:\"access\", email, action: approve | hold | revoke} flips app_user.status, the column is_approved() reads, stamps approved_at and sends the welcome once; {run:\"knocks\"} lists who waits. The watch line carries door.pending and trips access_waiting when a knock is a day old. Nothing spends."
+  },
+  "SEAM:ACCESS_KNOCK@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ACCESS_KNOCK",
+   "purpose": "the waiting room knocks once per load, asks is_approved() every 45 seconds while it is up and enters on yes; the first entry opens the profile as \"set your frame\" (role, brands) once per browser"
   }
  },
  "planned": [

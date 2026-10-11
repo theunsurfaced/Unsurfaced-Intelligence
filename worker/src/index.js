@@ -207,6 +207,7 @@ export default {
       if (path === '/mine/t' && request.method === 'GET') return mineTokenStudy(url, env, origin);
       if (path === '/mine/t/respond' && request.method === 'POST') return mineTokenRespond(request, env, origin);
 
+      if (path === '/access/knock' && request.method === 'POST') return accessKnock(request, env, origin);   // SEAM:ACCESS_KNOCK (signed in; the house is told once)
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
       if (!user) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
@@ -7912,7 +7913,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9058,6 +9059,7 @@ async function doorSet(env) {
  * pass (earned, written, failed, graded), the rails that answered on the last reads, today's spend against every cap, the writer's
  * failures today, the last backup, the running version. Read from the ledgers the engine already keeps; no model is asked. ═══ */
 const WATCH = { KEY: 'watch:v1', TTL: 1800, ALERT_TTL: 6 * 3600, CRON_LATE_H: 30, RAIL_SILENT_MIN: 6, SPEND_WARN: 0.8, PPLX_WARN: 0.9, FAIL_BURST: 3, BACKUP_LATE_H: 48, FAIL_KEY: 'watch:fail:' };
+const ACCESS = { KEY: 'knock:', TTL: 30 * 86400, WAIT_H: 24, MAX_PENDING: 50, ACTIONS: ['approve', 'hold', 'revoke'] };   // SEAM:ACCESS_KNOCK: the door's numbers
 async function watchHealth(env) {
   const now = Date.now(), today = new Date().toISOString().slice(0, 10), out = { at: new Date(now).toISOString(), version: null, cron: null, called: null, rails: null, spend: {}, pplx: null, writer: null, backup: null, trips: [] };
   try { out.version = env.CF_VERSION_METADATA ? { id: String(env.CF_VERSION_METADATA.id || '').slice(0, 36), tag: env.CF_VERSION_METADATA.tag || null } : null; } catch (e) { out.version = null; }
@@ -9096,6 +9098,11 @@ async function watchHealth(env) {
   try { const b = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get('backup:last')) || 'null') : null; out.backup = b;
     const age = b && b.at ? (now - Date.parse(b.at)) / 36e5 : null;
     if (age == null || age > WATCH.BACKUP_LATE_H) out.trips.push({ kind: 'backup_late', say: age == null ? 'no backup is on record' : 'the last backup is ' + Math.round(age) + ' hours old' }); } catch (e) { excQuiet('watch_backup')(e); }
+  // SEAM:ACCESS_KNOCK: who has knocked and still waits; a day at the door trips
+  try { const pend = (await sbRest(env, 'app_user?status=eq.pending&knocked_at=not.is.null&select=email,knocked_at&order=knocked_at.asc&limit=' + ACCESS.MAX_PENDING).catch(excQuiet('watch_door', []))) || [];
+    const waits = pend.map(x => (now - Date.parse(x.knocked_at)) / 36e5).filter(h => isFinite(h) && h >= 0);
+    out.door = { pending: pend.length, oldest_h: waits.length ? Math.round(Math.max.apply(null, waits)) : 0 };
+    if (waits.some(h => h >= ACCESS.WAIT_H)) out.trips.push({ kind: 'access_waiting', say: pend.length + (pend.length === 1 ? ' person has' : ' people have') + ' waited at the door, the longest for ' + out.door.oldest_h + ' hours' }); } catch (e) { excQuiet('watch_door')(e); }
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(WATCH.KEY, JSON.stringify(out), { expirationTtl: WATCH.TTL }); } catch (e) { excQuiet('watch_put')(e); } }
   return out;
 }
@@ -9141,6 +9148,74 @@ async function watchNote(env, kind, meta) {
 }
 /* SEAM:DESK_ROLES: who may run what. An admin runs everything; an editor (app_user.role editor) the free passes that read or republish
  * and never spend a model; the desk key stands for the owner. Every run is logged with who ran it. */
+/* SEAM:ACCESS_KNOCK: the door. A signed-in reader who is not yet approved knocks once: the house is told by mail (who, where from, what
+ * they do), the knock is kept on app_user (migration 0044), and the watch counts who has waited past ACCESS.WAIT_H. The desk opens the
+ * door: {run:"access", email, action} flips app_user.status, the column is_approved() reads, and the reader gets the welcome. {run:"knocks"}
+ * lists who waits. Nothing here spends. */
+async function accessKnock(request, env, origin) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const who = { name: String(body.name || '').slice(0, 80).trim(), company: String(body.company || '').slice(0, 80).trim(), title: String(body.title || '').slice(0, 80).trim() };
+  const rows = (await sbRest(env, 'app_user?id=eq.' + user.id + '&select=status,role,knocked_at').catch(excQuiet('knock_read', []))) || [];
+  const row = rows[0] || null;
+  if (row && ((row.status || 'pending') === 'approved' || row.role === 'admin')) return json({ ok: true, status: 'approved' }, 200, origin, env);
+  if (!row) await sbRest(env, 'app_user', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=ignore-duplicates' }, body: { id: user.id, email: user.email || null, status: 'pending' } }).catch(excQuiet('knock_insert'));
+  let first = !(row && row.knocked_at);
+  const key = ACCESS.KEY + user.id;
+  try { if (env.RATE_LIMIT) { if (await env.RATE_LIMIT.get(key)) first = false; else await env.RATE_LIMIT.put(key, '1', { expirationTtl: ACCESS.TTL }); } } catch (e) { excQuiet('knock_kv')(e); }
+  const patch = { knocked_at: row && row.knocked_at ? row.knocked_at : new Date().toISOString() };
+  if (who.name) patch.name = who.name; if (who.company) patch.company = who.company; if (who.title) patch.title = who.title;
+  await sbRest(env, 'app_user?id=eq.' + user.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch }).catch(excQuiet('knock_patch'));
+  let told = false;
+  if (first) {
+    const to = await watchRecipients(env), html = accessKnockHtml(user, who);
+    for (const addr of to) { const r = await sendEmail(env, { to: addr, subject: 'At the door: ' + (who.name || user.email || 'a new reader') + (who.company ? ', ' + who.company : ''), html }).catch(excQuiet('knock_mail', { ok: false })); if (r && r.ok) told = true; }
+  }
+  logEvent(env, 'intelligence', 'access', 'access_knock', null, { user: user.id, email: user.email || null, first, told, company: who.company || null });
+  return json({ ok: true, status: 'pending', first, told }, 200, origin, env);
+}
+function accessKnockHtml(user, who) {
+  const line = [who.name || null, who.title || null, who.company || null].filter(Boolean).map(esc).join(' \u00b7 ');
+  return '<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6;max-width:560px">'
+    + '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#777;margin:0 0 8px">Unsurfaced Intelligence</p>'
+    + '<h2 style="margin:0 0 10px;font-size:20px">Someone is at the door.</h2>'
+    + '<p style="margin:0 0 6px"><strong>' + (line || esc(user.email || '')) + '</strong></p>'
+    + '<p style="margin:0 0 16px;color:#444">' + esc(user.email || '') + ' signed up and is waiting on the pending screen. Nothing opens until you say so.</p>'
+    + '<p style="margin:0 0 6px">To let them in, from the desk:</p>'
+    + '<pre style="background:#f4f4f4;padding:10px 12px;border-radius:6px;font-size:12px;margin:0 0 14px">{"run":"access","email":"' + esc(user.email || '') + '","action":"approve"}</pre>'
+    + '<p style="margin:0;color:#666;font-size:13px">Or in Supabase, app_user, set their status to approved. They get the welcome either way the desk does it; the page lets them in on its own within a minute.</p></div>';
+}
+function accessWelcomeHtml(env, row) {
+  const base = String(env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
+  return '<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6;max-width:560px">'
+    + '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#777;margin:0 0 8px">Unsurfaced Intelligence</p>'
+    + '<h2 style="margin:0 0 10px;font-size:20px">The door is open' + (row.name ? ', ' + esc(String(row.name).split(' ')[0]) : '') + '.</h2>'
+    + '<p style="margin:0 0 14px;color:#444">Your account is approved. Sign in and the platform opens.</p>'
+    + '<p style="margin:0 0 14px"><a href="' + base + '/intelligence/" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-size:14px">Open EXCAVATE</a></p>'
+    + '<p style="margin:0 0 6px"><strong>First, set your frame.</strong> Your role writes the implications on every reading; the brands you track decide what reaches you. Your profile is under your name, top right.</p>'
+    + '<p style="margin:0;color:#666;font-size:13px">Every reading on the record is dated, kept and graded against what it bet would happen. A live read is yours to ask; the house keeps score.</p></div>';
+}
+async function accessDesk(env, body) {
+  const email = String((body && body.email) || '').trim().toLowerCase(), action = ACCESS.ACTIONS.includes(String(body && body.action)) ? String(body.action) : 'approve';
+  if (!email) return { ok: false, error: 'missing_email', say: 'name the email: {run:"access", email:"...", action:"approve"}' };
+  const rows = (await sbRest(env, 'app_user?email=eq.' + encodeURIComponent(email) + '&select=id,email,status,role,name').catch(excQuiet('access_read', []))) || [];
+  if (!rows.length) return { ok: false, error: 'no_such_user', say: email + ' has not signed up; nothing to open' };
+  const row = rows[0], was = row.status || 'pending', want = action === 'approve' ? 'approved' : action === 'revoke' ? 'revoked' : 'pending';
+  const patch = { status: want }; if (action === 'approve') patch.approved_at = new Date().toISOString();
+  let r = await sbRest(env, 'app_user?id=eq.' + row.id, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: patch }).catch(excQuiet('access_patch', null));
+  let note = null;
+  if (!r && action === 'revoke') { r = await sbRest(env, 'app_user?id=eq.' + row.id, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { status: 'pending' } }).catch(excQuiet('access_patch2', null)); note = 'the table does not take revoked; the account is back at pending'; }
+  if (!r || !r.length) return { ok: false, error: 'patch_failed', say: 'the row would not take status ' + want };
+  let welcomed = false;
+  if (action === 'approve' && was !== 'approved') { const m = await sendEmail(env, { to: row.email, subject: 'The door is open', html: accessWelcomeHtml(env, row) }).catch(excQuiet('access_mail', { ok: false })); welcomed = !!(m && m.ok); }
+  logEvent(env, 'intelligence', 'access', 'access_' + action, null, { user: row.id, email: row.email, from: was, to: r[0].status || want, welcomed });
+  return Object.assign({ ok: true, email: row.email, was, now: r[0].status || want, welcomed }, note ? { note } : {});
+}
+async function accessKnocks(env) {
+  const rows = (await sbRest(env, 'app_user?status=eq.pending&select=email,name,company,title,knocked_at,created_at&order=created_at.desc&limit=' + ACCESS.MAX_PENDING).catch(excQuiet('knocks_read', []))) || [];
+  return { pending: rows.length, people: rows.map(x => ({ email: x.email, name: x.name || null, company: x.company || null, title: x.title || null, since: x.knocked_at || x.created_at || null, knocked: !!x.knocked_at })) };
+}
 const DESK_ROLES = { EDITOR_RUNS: ['record', 'called', 'door_publish', 'voices', 'score', 'backup', 'watch', 'health'] };   // SEAM:CROSS_CURRENTS: currents spends Fable; admin only
 async function callerRole(env, uid) {
   try { const r = await sbRest(env, `app_user?id=eq.${uid}&select=role,email`); return r && r[0] ? { role: r[0].role || null, email: r[0].email || null } : { role: null, email: null }; }

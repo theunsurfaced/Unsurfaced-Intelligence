@@ -55,6 +55,6 @@ ok(/_reachBlock\(t\.id\);   \/\/ SEAM:ROLE_IMPLICATIONS/.test(page) && /FOR YOUR
   'E2 opening a deployed reading adds the reach block: the implications for your role, the evidence pack, the embed');
 ok(/\['held', 'useful', 'wrong'\]\.map\(m => `<button type="button" class="reach-mark/.test(page) && /api\('excavate\/mark', \{ id, mark \}\)/.test(page), 'E3 the three marks with their counts, posted signed in');
 ok(/onclick="_followLens\(\)">Follow \$\{safe\(_recLens\.value\)\}<\/button>/.test(page) && /async function _followLens\(\)/.test(page), 'E4 a lens on the record can be followed in one click');
-ok(/\.pm-wrap\{position:fixed;inset:0;[^}]*z-index:var\(--z-modal\)/.test(page), 'E5 the profile modal sits on the modal token');
+ok(/\.pm-wrap\{position:fixed;inset:0;[^}]*z-index:var\(--z-app-modal\)/.test(page), 'E5 the profile modal sits above the hub and the spaces (EX34: the first entry opens it over the hub)');
 ok(!/—/.test(between(w, 'const PROFILE = {', '/* ═══ SEAM:BACKUP') + between(page, 'async function _profileGet()', 'function _embedCopy(')), 'F1 no em dash in the new code');
 console.log('\nproof_reach: ' + pass + ' checks PASS');

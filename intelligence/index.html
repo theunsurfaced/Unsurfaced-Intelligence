@@ -483,10 +483,11 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .read-failed .rf-acts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .voices-blind{margin:8px 0 0}
 .pdf-meas,.pdf-read1,.pdf-read2{margin:0 0 10px}.pdf-read1{font-weight:700;font-size:18px}.pdf-src{padding-left:20px;font-size:12px}.pdf-src li{margin:0 0 4px}
-.pm-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:var(--z-modal);padding:16px}   /* SEAM:CLIENT_PROFILE */
+.pm-wrap{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:var(--z-app-modal);padding:16px}   /* SEAM:CLIENT_PROFILE; above the hub and the spaces (SEAM:ACCESS_KNOCK) */
 .pm{background:var(--surface);border:1px solid var(--border);max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:22px 24px;color:var(--text)}
 .pm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .pm-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--accent)}
+.pm-lead{font-size:14px;line-height:1.55;color:var(--text2);margin:0 0 16px}   /* SEAM:ACCESS_KNOCK */
 .pm-x{background:none;border:0;color:var(--text2);font-size:22px;cursor:pointer}
 .pm label{display:block;margin:0 0 14px;font-size:14px}.pm label small{display:block;color:var(--text2);font-size:12px;margin:2px 0 6px}
 .pm input[type=text],.pm input:not([type]),.pm select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;font:inherit}
@@ -9393,7 +9394,9 @@ function _enterPlatform() {
   if (ab) { ab.textContent = 'Sign out'; ab.onclick = function () { lgSignOut(); }; }
   const gb = document.getElementById('uai-gate-back');
   if (gb) gb.remove();
+  if (window._accessPoll) { clearInterval(window._accessPoll); window._accessPoll = null; }
   goHub();
+  setTimeout(function () { try { _accessFirstRun(); } catch (e) {} }, 900);   // SEAM:ACCESS_KNOCK (EX34): the first entry sets the frame
   /* SEAM:DOOR_GATE — land inside the chosen territory, not on a homepage. */
   let door = null;
   try { door = sessionStorage.getItem('pending_door'); sessionStorage.removeItem('pending_door'); } catch (e) {}
@@ -9412,10 +9415,34 @@ function _authShowPending() {
     const panel = document.getElementById('lg-panel-pending'); if (panel) panel.classList.add('active');
     const em = document.getElementById('lg-pending-email');
     if (em) em.textContent = (_currentUser && _currentUser.email) ? _currentUser.email : '';
+    _accessKnock();   // SEAM:ACCESS_KNOCK (EX34): the house is told once; the page lets the reader in when the door opens
     _lgClearError();
   } catch (e) {}
 }
 
+// SEAM:ACCESS_KNOCK (EX34): the knock. Once per page load the pending reader tells the house (POST /access/knock carries the sign-up's
+// name, company and title); then the page asks is_approved() every 45 seconds while the pending panel is up, and enters on yes.
+async function _accessKnock() {
+  if (!sbEnabled()) return;
+  if (!window._accessKnocked) { window._accessKnocked = true;
+    try { const u = _currentUser || {}; const r = await api('access/knock', { name: [u.firstName, u.lastName].filter(Boolean).join(' ').trim(), company: u.company || '', title: u.role || '' }); if (r && r.status === 'approved') { _enterPlatform(); return; } } catch (e) {} }
+  if (window._accessPoll) return;
+  window._accessPoll = setInterval(async function () {
+    const panel = document.getElementById('lg-panel-pending');
+    if (!panel || !panel.classList.contains('active') || !_currentUser) { clearInterval(window._accessPoll); window._accessPoll = null; return; }
+    let yes = false; try { const { data, error } = await _sb.rpc('is_approved'); yes = !error && data === true; } catch (e) { yes = false; }
+    if (yes) { clearInterval(window._accessPoll); window._accessPoll = null; _enterPlatform(); showToast('The door is open. Welcome in.'); }
+  }, 45000);
+}
+// The first entry: a reader with no frame yet is asked for one (role, the brands they track); once, then never again on this browser.
+async function _accessFirstRun() {
+  if (!sbEnabled()) return;
+  let seen = false; try { seen = localStorage.getItem('uai_frame_set') === '1'; } catch (e) {}
+  if (seen) return;
+  const prof = await _profileGet(); if (!prof) return;
+  if ((prof.tracked_brands || []).length || (prof.follows || []).length) { try { localStorage.setItem('uai_frame_set', '1'); } catch (e) {} return; }
+  window._profileFirstRun = true; _profileOpen();
+}
 // Show the Research Ops entry point only to confirmed admins. The link is
 // hidden in markup by default; this reveals it only when the backend's
 // is_admin() returns true for the signed-in user. In localStorage mode
@@ -10536,7 +10563,8 @@ async function _profileOpen() {
   const roles = (prof.roles || []).map(r => `<option value="${safeAttr(r)}"${r === prof.role_title ? ' selected' : ''}>${safe(r)}</option>`).join('');
   const follows = (prof.follows || []).map((f, i) => `<span class="pm-chip">${safe(f.kind)}: ${safe(f.value)}<button type="button" aria-label="remove" onclick="_profileUnfollow(${i})">&times;</button></span>`).join('') || '<span class="pm-none">Nothing followed yet. Pick a lens on the record and press Follow.</span>';
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}"${i === (prof.digest_day == null ? 1 : prof.digest_day) ? ' selected' : ''}>${d}</option>`).join('');
-  el.innerHTML = `<div class="pm" role="dialog" aria-modal="true"><div class="pm-head"><div class="pm-k">YOUR PROFILE</div><button type="button" class="pm-x" onclick="_profileClose()" aria-label="close">&times;</button></div>
+  el.innerHTML = `<div class="pm" role="dialog" aria-modal="true"><div class="pm-head"><div class="pm-k">${window._profileFirstRun ? 'SET YOUR FRAME' : 'YOUR PROFILE'}</div><button type="button" class="pm-x" onclick="_profileClose()" aria-label="close">&times;</button></div>
+    ${window._profileFirstRun ? '<p class="pm-lead">Welcome in. Your role writes the implications on every reading; the brands you track decide what reaches you. Two fields and you are set.</p>' : ''}
     <label>Your role <small>the implications on every insight are written for it</small><select id="pm-role">${roles}</select></label>
     <label>Brands you track <small>comma separated; a reading on one of them, or on its competitive set, reaches you</small><input id="pm-tracked" value="${safeAttr((prof.tracked_brands || []).join(', '))}" placeholder="Jordan Brand, New Balance"></label>
     <div class="pm-follows"><div class="pm-k">Frames you follow</div>${follows}</div>
@@ -10553,14 +10581,15 @@ async function _profileOpen() {
   el.style.display = '';
   _evidenceList();
 }
-function _profileClose() { const el = document.getElementById('profile-modal'); if (el) el.style.display = 'none'; }
+function _profileClose() { const el = document.getElementById('profile-modal'); if (el) el.style.display = 'none'; window._profileFirstRun = false; }
 async function _profileSubmit() {
   const v = id => (document.getElementById(id) || {}).value || '';
   const patch = { role_title: v('pm-role'), tracked_brands: v('pm-tracked').split(',').map(x => x.trim()).filter(Boolean), push_email: !!(document.getElementById('pm-email') || {}).checked, digest_day: parseInt(v('pm-day'), 10) };
   if (v('pm-slack').trim()) patch.slack_webhook = v('pm-slack').trim();
   if (v('pm-teams').trim()) patch.teams_webhook = v('pm-teams').trim();
   const saved = await _profileSave(patch);
-  showToast(saved ? 'Profile saved' : 'Could not save the profile');
+  showToast(saved ? (window._profileFirstRun ? 'Your frame is set' : 'Profile saved') : 'Could not save the profile');
+  if (saved && window._profileFirstRun) { window._profileFirstRun = false; try { localStorage.setItem('uai_frame_set', '1'); } catch (e) {} }
   if (saved) _profileClose();
 }
 async function _profileUnfollow(i) { const prof = window._profile || await _profileGet(); if (!prof) return; const follows = (prof.follows || []).slice(); follows.splice(i, 1); const saved = await _profileSave({ follows }); if (saved) _profileOpen(); }
@@ -13937,7 +13966,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
         <div style="text-align:center;padding:6px 0 2px;">
           <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;">Account pending</div>
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;line-height:1.15;margin-bottom:12px;">You're on the list.</div>
-          <p style="font-size:13px;color:var(--text3);line-height:1.6;margin:0 0 6px;">Your profile is in. An admin reviews new access before the platform opens &mdash; you'll be let in shortly. No second sign-up needed.</p>
+          <p style="font-size:13px;color:var(--text3);line-height:1.6;margin:0 0 6px;">Your profile is in and the house has been told. A person opens the door, not a rule; you'll get an email when it opens, and this page lets you in on its own.</p>
           <p id="lg-pending-email" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);letter-spacing:.04em;margin:0 0 18px;"></p>
         </div>
         <button class="lg-submit" id="lg-pending-check" onclick="_authShowApp()">CHECK AGAIN &rarr;</button>
