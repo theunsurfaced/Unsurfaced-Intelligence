@@ -1469,6 +1469,10 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:ENGINE_STATE",
    "purpose": "the hero as the ask, one band, with the week's read laid out under it; the engine-now strip (the week's signals as the page's one large figure, readings, open bets, graded, the lake, the pass line), which remembers the visitor's last look in this browser only, says what changed since, and counts from then to now when it comes into view; the slim ask that sticks under the nav once the hero's ask has scrolled away; `/` focuses the ask from anywhere but a field"
+  },
+  "SEAM:LEAD_SCROLL": {
+   "file": "intelligence/index.html",
+   "purpose": "EX36b THE DEPLOYMENTS: the hero's right column is a rail of cards. The week's read (with its movers) is the first card when it is here; then the three newest readings with photographs, each with its photograph, dateline, headline, dek, one measure line, the bet as a countdown to its check date (or its grade) and Open the reading. Auto-advances every eight seconds, pauses on hover, focus and touch, arrows, dots, keyboard, swipe by scroll-snap; no autoplay under reduced motion. One pool, one rule: a reading on the rail is left out of the record's rows and its lens counts. The record renders from its own route whatever the feed says."
   }
  },
  "planned": [

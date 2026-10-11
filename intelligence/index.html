@@ -1561,6 +1561,15 @@ button.en-cell{cursor:pointer}button.en-cell:hover b{color:var(--accent)}
 .room-dateline{font-family:'Space Mono',monospace;font-size:calc(12px*var(--k));color:var(--room-red)}
 /* this week's read */
 .week{display:block;padding:0;border:0}
+/* SEAM:LEAD_SCROLL (EX36b): the rail and its cards */
+.lead-rail{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;outline:none}.lead-rail::-webkit-scrollbar{display:none}
+.lead-rail:focus-visible{outline:1px solid var(--accent);outline-offset:6px}
+.lead-card{flex:0 0 100%;min-width:100%;scroll-snap-align:start}
+.lead-card .text h2{margin-top:0}.lead-measure{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));color:var(--room-fg3);margin:0 0 10px}
+.lead-card .rec-watch{margin:0 0 12px}.lead-when{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-left:8px}
+.lead-acts{margin-top:4px}
+.lead-nav{display:flex;align-items:center;gap:10px;margin-top:12px}.lead-arrow{background:none;border:1px solid var(--border);color:var(--text2);font:inherit;padding:4px 10px;cursor:pointer}.lead-arrow:hover{color:var(--text);border-color:var(--text3)}
+.lead-dots{display:flex;gap:6px;flex:1}.lead-dot{width:22px;height:3px;border:0;padding:0;background:var(--border);cursor:pointer}.lead-dot.on{background:var(--accent)}
 .week .photo{margin:0}
 .week .photo img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
 .week .photo figcaption{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));color:var(--room-fg3);margin-top:calc(8px*var(--k));margin-bottom:calc(14px*var(--k))}
@@ -2424,7 +2433,9 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 <!-- compat stub --><input id="search-bar" style="display:none" aria-hidden="true">
  </div>
   <!-- SEAM:EXC_DOOR_VOICE: this week's read beside the invitation: its photograph, the engine's two sentences, the three movers (chosen, never summed) -->
-  <section class="week nophoto" id="week-block" style="display:none">
+  <section class="week nophoto" id="week-block" style="display:none"><!-- SEAM:LEAD_SCROLL (EX36b): the latest deployments, one card at a time; the week's read first -->
+    <div class="lead-rail" id="lead-rail" tabindex="0" aria-roledescription="carousel" aria-label="The latest deployments">
+    <article class="lead-card" id="lead-week">
     <figure class="photo" id="week-photo" style="display:none"><img id="week-img" alt="" referrerpolicy="no-referrer"><figcaption id="week-credit"></figcaption></figure>
     <div class="text">
       <div class="room-dateline" id="week-dateline">This week's read</div>
@@ -2432,6 +2443,9 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
       <p id="week-p"></p>
       <div class="movers" id="week-movers"></div>
     </div>
+    </article>
+    </div>
+    <div class="lead-nav" id="lead-nav" style="display:none"><button type="button" class="lead-arrow" onclick="_leadGo(-1)" aria-label="previous">&larr;</button><div class="lead-dots" id="lead-dots"></div><button type="button" class="lead-arrow" onclick="_leadGo(1)" aria-label="next">&rarr;</button></div>
   </section>
 </section>
 <!-- SEAM:ENGINE_STATE (EX36a): the engine, now. Nightly numbers, every one counted; the page remembers what this visitor saw last time -->
@@ -10170,6 +10184,7 @@ function initFeaturedInsights() {
     return;
   }
   _renderFeaturedGrid(false);   // instant paint from the pool (always)
+  _recordLoad().then(rec => { if (rec && rec.tiles.length && !window._scrollDrawn) _renderScroll(rec, _FI_LAKE || { proposed: [] }); });   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
   renderTrendingNow();
   _stateLoad();   // SEAM:ENGINE_STATE (EX36a)
   _checkAndRefreshFeatured();    // background live enrichment
@@ -10532,7 +10547,7 @@ function _renderDoorGrid(door, proposed) {
 function _renderWeek(data) {
   const el = document.getElementById('week-block'), hero = document.querySelector('#sec-explore .hero'); if (!el) return;
   const read = String((data.field && data.field.read) || '').trim(), tiles = (data.door && data.door.tiles) || [];
-  if (!read && !tiles.length) { el.style.display = 'none'; if (hero) hero.classList.add('solo'); return; }
+  if (!read && !tiles.length) { const lw = document.getElementById('lead-week'); if (lw) lw.style.display = 'none'; if (!(window._leadIds && window._leadIds.size)) el.style.display = 'none'; if (hero) hero.classList.add('solo'); _leadWire(); return; }   // SEAM:LEAD_SCROLL: the rail stays when readings are on it
   if (hero) hero.classList.remove('solo');
   const parts = read.split(/(?<=\.)\s+/).filter(Boolean);
   document.getElementById('week-h2').textContent = parts[0] || '';
@@ -10555,7 +10570,9 @@ function _renderWeek(data) {
   const fig = document.getElementById('week-photo');
   if (ph) { document.getElementById('week-img').src = ph.src; document.getElementById('week-credit').textContent = ph.credit ? 'Photo: ' + ph.credit : ''; fig.style.display = 'block'; el.classList.remove('nophoto'); }
   else { fig.style.display = 'none'; el.classList.add('nophoto'); }
-  el.style.display = ''; window._weekReady = true;   // SEAM:ENGINE_STATE: the stylesheet lays it out
+  el.style.display = ''; window._weekReady = true;
+  const lw = document.getElementById('lead-week'); if (lw) lw.style.display = '';   // SEAM:LEAD_SCROLL: the week's read leads when it is here
+  _leadWire();   // SEAM:ENGINE_STATE: the stylesheet lays it out
   setTimeout(() => el.querySelectorAll('[data-to]').forEach(n => _countUp(n, Number(n.getAttribute('data-from')) || 0, Number(n.getAttribute('data-to')) || 0, 1000)), 400);
 }
 /* SEAM:ENGINE_STATE (EX36a): the engine, now. GET /excavate/state is counted, not written. The visitor's last look is kept in this
@@ -11010,9 +11027,56 @@ function _renderCurrents(cur) {
     list.map(c => `<article class="rec-cur"><h3>${safe(c.title)}</h3><p>${safe(c.body)}</p>${c.move ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : ''}<div class="rec-cur-subs">${(c.subjects || []).map(x => `<span>${safe(x)}</span>`).join('')}</div></article>`).join('') + '</div>';
   el.style.display = '';
 }
+/* SEAM:LEAD_SCROLL (EX36b): the newest readings with photographs follow the week's read on the rail, each with its bet as a countdown.
+   A reading on the rail is not repeated in the record below. Built once per record build. */
+const LEAD = { MAX: 3, EVERY_MS: 8000 };
+let _leadBuilt = null, _leadTimer = null, _leadPaused = false;
+window._leadIds = new Set();
+function _leadDays(by) { const d = by ? new Date(String(by).slice(0, 10) + 'T12:00:00Z') : null; if (!d || isNaN(d)) return null; return Math.round((d.getTime() - Date.now()) / 86400000); }
+function _leadBet(t) {
+  const w = t.watch, c = t.called; if (!w) return '';
+  if (c && (c.verdict === 'held' || c.verdict === 'missed')) return _recWatch(t);
+  const what = safe(String(w.claim || '').replace(/[\s.]+$/, '')), days = _leadDays(w.by);
+  const when = days == null ? '' : days > 1 ? 'Checked in ' + days + ' days' : days === 1 ? 'Checked tomorrow' : days === 0 ? 'Checked today' : 'Being checked';
+  return `<div class="rec-watch open"><i>The bet</i> ${what}${when ? ` <span class="lead-when">${when}</span>` : ''}</div>`;
+}
+function _leadRender(rec) {
+  const rail = document.getElementById('lead-rail'); if (!rail || !rec || !Array.isArray(rec.tiles)) return;
+  if (_leadBuilt === (rec.built_at || 'x')) return; _leadBuilt = rec.built_at || 'x';
+  rail.querySelectorAll('.lead-reading').forEach(x => x.remove());
+  const pick = rec.tiles.filter(t => t.photo && t.photo.src && (t.claim || t.title)).sort((a, b) => String(b.deployed || '').localeCompare(String(a.deployed || ''))).slice(0, LEAD.MAX);
+  window._leadIds = new Set(pick.map(t => t.id));
+  const words = s => String(s || '').replace(/-/g, ' ');
+  rail.insertAdjacentHTML('beforeend', pick.map(t => { const m = t.measures || {}, f = t.frame || {};
+    return `<article class="lead-card lead-reading" data-id="${safeAttr(t.id)}">
+    <figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>
+    <div class="text"><div class="room-dateline">Deployed ${safe(_recDay(t.deployed))}${m.territory ? ' · ' + safe(words(m.territory)) : ''}${f.entity ? ' · ' + safe(f.entity) : ''}</div>
+      <h2>${safe(t.claim || t.title)}</h2>${t.dek ? `<p>${safe(t.dek)}</p>` : ''}
+      <div class="lead-measure">${_recMeasureLine(m)}</div>${_leadBet(t)}
+      <div class="lead-acts"><button type="button" class="btn-go-deeper" onclick="openFeaturedCard('${safeAttr(t.id)}')">Open the reading</button></div></div></article>`; }).join(''));
+  const sec = document.getElementById('week-block'); if (sec && pick.length) { sec.style.display = ''; const hero = document.querySelector('#sec-explore .hero'); if (hero) hero.classList.remove('solo'); }
+  const lw = document.getElementById('lead-week'), h2 = document.getElementById('week-h2'); if (lw && !(h2 && h2.textContent.trim())) lw.style.display = 'none';   // no week's read yet: the readings lead
+  _leadWire();
+}
+function _leadCards() { const rail = document.getElementById('lead-rail'); return rail ? [...rail.querySelectorAll('.lead-card')].filter(c => c.style.display !== 'none') : []; }
+function _leadIndex() { const rail = document.getElementById('lead-rail'); if (!rail || !rail.clientWidth) return 0; return Math.round(rail.scrollLeft / rail.clientWidth); }
+function _leadGo(step, to) { const rail = document.getElementById('lead-rail'), n = _leadCards().length; if (!rail || !n) return; const i = to == null ? (_leadIndex() + step + n) % n : to; rail.scrollTo({ left: i * rail.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); _leadDots(i); }
+function _leadDots(active) { const d = document.getElementById('lead-dots'), n = _leadCards().length; if (!d) return; const i = active == null ? _leadIndex() : active; d.innerHTML = Array.from({ length: n }, (_, k) => `<button type="button" class="lead-dot${k === i ? ' on' : ''}" aria-label="card ${k + 1}" onclick="_leadGo(0, ${k})"></button>`).join(''); }
+function _leadTick() { if (_leadPaused || document.hidden) return; if (_leadCards().length > 1) _leadGo(1); }
+function _leadWire() {
+  const rail = document.getElementById('lead-rail'), nav = document.getElementById('lead-nav'); if (!rail || !nav) return;
+  const n = _leadCards().length; nav.style.display = n > 1 ? '' : 'none'; _leadDots();
+  if (rail._wired) return; rail._wired = true;
+  rail.addEventListener('scroll', () => { clearTimeout(rail._st); rail._st = setTimeout(() => _leadDots(), 80); }, { passive: true });
+  ['mouseenter', 'focusin', 'touchstart'].forEach(ev => rail.addEventListener(ev, () => { _leadPaused = true; }, { passive: true }));
+  ['mouseleave', 'focusout', 'touchend'].forEach(ev => rail.addEventListener(ev, () => { _leadPaused = false; }, { passive: true }));
+  rail.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); _leadGo(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); _leadGo(-1); } });
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) _leadTimer = setInterval(_leadTick, LEAD.EVERY_MS);
+}
 function _renderScroll(rec, data) {
+  window._scrollDrawn = true; _leadRender(rec);   // SEAM:LEAD_SCROLL: the rail first, so the record below leaves out what the rail carries
   const grid = document.getElementById('featured-insights-grid'), list = document.getElementById('board-list'); if (!grid) return;
-  const all = (rec.tiles || []).slice(), tiles = _recFilter(all);
+  const onRail0 = window._leadIds || new Set(), all = (rec.tiles || []).filter(t => !onRail0.has(t.id)), tiles = _recFilter(all);   // SEAM:LEAD_SCROLL: the rows and their counts leave out what the rail carries
   _recLensRow(all);
   const counts = document.getElementById('rec-counts'), c = rec.counts || {};
   const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
@@ -11029,7 +11093,8 @@ function _renderScroll(rec, data) {
     let lake = ((data && data.proposed) || []).filter(x => x && x.cluster_id && !readKeys.has('theme:' + x.cluster_id));
     list.classList.toggle('nothumbs', false);
     const seen = new Set();   // EX33b: a photograph appears once on the page
-    list.innerHTML = rest.map(t => _renderScrollRow(t, seen)).join('') +
+    const onRail = window._leadIds || new Set(), rows = rest.filter(t => !onRail.has(t.id));   // SEAM:LEAD_SCROLL: one pool, one rule
+    list.innerHTML = rows.map(t => _renderScrollRow(t, seen)).join('') +
       (!tiles.length ? '<div class="fi-divider" style="padding:14px 0 4px">Nothing deployed under this lens yet</div>' : '') +
       (lake.length && _recLens.kind === 'all' ? '<div class="fi-divider" style="padding:14px 0 4px">Also moving, not yet read</div>' + lake.slice(0, 12).map(x => _renderLakeRow(x)).join('') : '');
   }
