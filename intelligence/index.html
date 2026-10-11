@@ -47,7 +47,7 @@
 .page-section{display:none;}
 .page-section.active{display:block;}
 html{overflow-x:hidden;}
-body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}   /* SEAM:ASK_FOLLOWS: no overflow on body, so sticky sticks; html clips */
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:var(--z-floor);}
 
 /* ── DEEP GATE ── */
@@ -90,8 +90,24 @@ nav .nav-menu #nav-spaces{display:flex;}
 .nav-list .nl:hover{color:var(--text);}
 .nav-list .nl.active{color:var(--text);}
 .nav-list .nl.active::after{content:'';position:absolute;left:12px;right:12px;bottom:2px;height:2px;background:var(--accent);}
-@media (min-width:761px){nav .nav-menu{display:none;}}
+@media (min-width:761px){nav .nav-menu{display:none;}nav{display:grid;grid-template-columns:1fr auto 1fr;}.nav-list{justify-self:center;margin:0;}.nav-right{justify-self:end;}}   /* SEAM:THE_FIT (EX36f): the doors centered, the logo and the account at the edges */
 @media (max-width:760px){.nav-list{display:none;}}
+@media (min-width:761px) and (max-width:1000px){nav{padding:0 20px;grid-template-columns:auto 1fr auto}.nav-list{gap:0}.nav-list .nl{padding:9px 8px;font-size:10px;letter-spacing:.08em}.nav-list .nl.active::after{left:8px;right:8px}.nav-logo>span:nth-child(2){display:none}.nav-logo img{height:13px!important}.nav-right{gap:6px}.nav-right .btn-accent{padding:8px 10px;font-size:10px}}   /* SEAM:THE_FIT (EX36f): the tablet */
+/* SEAM:THE_FIT (EX36f): the phone. The ask's input takes the line; Quick, Full and Search sit under it. The header's logo shrinks so the menu and the sign-in fit. */
+@media (max-width:480px){
+  #sec-explore .search-wrapper{flex-wrap:wrap}
+  #sec-explore .search-bar{flex:1 1 100%;padding:14px 16px;font-size:16px}
+  #sec-explore .search-actions{flex:1 1 100%;border-top:1px solid var(--room-rule)}
+  #sec-explore .search-actions .depth-switch{flex:0 0 auto}
+  #sec-explore .search-btn{flex:1;padding:12px 0;text-align:center}
+  #sec-explore .search-clear{position:absolute;right:8px;top:12px;margin:0}
+  nav{padding:0 12px;gap:8px}
+  .nav-logo>span:first-child{font-size:13px!important}
+  .nav-logo>span:nth-child(2){display:none}
+  .nav-logo img{height:12px!important}
+  .nav-menu-btn{padding:7px 8px;font-size:10px;gap:6px}
+  .nav-right>*{padding:7px 6px!important}
+}
 @media (max-width:640px){.nav-menu-btn{padding:8px 10px;font-size:10px;}.nav-menu-list{left:auto;right:0;min-width:220px;max-width:calc(100vw - 28px);}}
 
 /* ── TICKER ── */
@@ -514,7 +530,15 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rec-cur .move{font-size:13px}.rec-cur .move i{font-style:normal;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 .rec-cur-subs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rec-cur-subs span{font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--room-rule,var(--border));padding:2px 6px;color:var(--room-fg2,var(--text2))}
 .rec-ahead{color:var(--room-fg2,var(--text2))}
-.rec-ask{margin:0 0 18px;border:1px solid var(--room-rule,var(--border));padding:14px 16px}   /* SEAM:ASK_RECORD */
+.rec-ask{margin:0 0 18px;padding:0}.rec-ask:has(#ask-thread:empty){display:none}   /* SEAM:ASK_RECORD; EX36a: the thread only, under the head */
+.room-head.rec-head{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(340px,40%);align-items:center;gap:calc(28px*var(--k))}
+.room-head.rec-head .sub{max-width:none}
+.rec-head .rec-ask-row{margin:0;align-items:center;border:1px solid var(--room-rule,var(--border));padding:6px 6px 6px 12px;gap:10px}
+.rec-head .rec-ask-row input{border:0;background:transparent;padding:6px 4px;min-width:0}.rec-head .rec-ask-row input:focus{outline:none}
+.rec-ask-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--accent);white-space:nowrap}
+.rec-head .btn-go-deeper{padding:8px 14px}
+@media (max-width:1000px){.room-head.rec-head{grid-template-columns:minmax(0,1fr)}.rec-head .rec-ask-row{margin-top:4px}}
+.rec-head .rec-ask-row{min-width:0;flex-wrap:wrap}.rec-head .rec-ask-row input{flex:1 1 160px}   /* SEAM:THE_FIT (EX36f) */
 .rec-ask-row{display:flex;gap:8px}.rec-ask-row input{flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:9px 11px;font:inherit}
 .rec-ask-thread{max-height:360px;overflow:auto;margin-top:10px}
 .ask-turn{padding:10px 0;border-top:1px solid var(--room-rule,var(--border))}.ask-turn b{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:4px}
@@ -1513,30 +1537,15 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 body::before{display:none}
 .ticker-bar{display:none}
 nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.08em;text-transform:uppercase;color:var(--room-fg2);text-decoration:none;background:none;border:0}
-#sec-explore .hero{display:grid;grid-template-columns:1fr 1fr;gap:calc(56px*var(--k));align-items:center;padding:calc(48px*var(--k)) var(--room-g) calc(44px*var(--k));max-width:var(--room-w);margin:0 auto}
+#sec-explore .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:calc(56px*var(--k));align-items:center;padding:calc(48px*var(--k)) var(--room-g) calc(44px*var(--k));max-width:var(--room-w);margin:0 auto}
 #sec-explore .hero.solo{grid-template-columns:1fr}
-/* SEAM:ENGINE_STATE (EX36a): the ask as one band; the week's read full width under it; the strip; the sticky ask */
-#sec-explore .hero.ask{grid-template-columns:1fr;gap:calc(24px*var(--k));align-items:start;padding:calc(28px*var(--k)) var(--room-g) calc(8px*var(--k))}
-#sec-explore .hero.ask h1.hero-title{font-size:clamp(26px,2.6vw,calc(36px*var(--k)));max-width:none;margin:0 0 6px}
-#sec-explore .hero.ask .hero-sub{font-size:calc(14.5px*var(--k));max-width:70ch;margin:0 0 calc(16px*var(--k))}
-#sec-explore .hero.ask .week{display:grid;grid-template-columns:5fr 7fr;gap:calc(28px*var(--k));align-items:start;margin-top:calc(18px*var(--k))}
-#sec-explore .hero.ask .week.nophoto{grid-template-columns:1fr}
-.engine-now{max-width:var(--room-w);margin:0 auto;padding:calc(10px*var(--k)) var(--room-g) calc(28px*var(--k));border-bottom:1px solid var(--border)}
-.en-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 10px}
-.en-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--accent)}
-.en-since{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--text3)}
-.en-grid{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1fr;gap:18px;align-items:end}
-.en-sig b{display:block;font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(44px,5.2vw,78px);line-height:.95;letter-spacing:-.03em;color:var(--room-ivory,var(--text))}
-.en-sig>span,.en-cell>span{display:block;font-size:13px;color:var(--text2);margin-top:6px}.en-cell b span{display:inline}.en-sig em{font-style:normal;color:var(--text3);font-family:'Space Mono',monospace;font-size:11px}
-.en-cell{background:none;border:0;border-left:1px solid var(--border);padding:0 0 0 14px;text-align:left;color:inherit;font:inherit;cursor:default}
-button.en-cell{cursor:pointer}button.en-cell:hover b{color:var(--accent)}
-.en-cell b{display:block;font-family:'Syne',sans-serif;font-weight:800;font-size:28px;line-height:1;letter-spacing:-.02em}.en-cell b small{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--text3);margin:0 10px 0 4px}
-.en-pass{font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);margin-top:14px;line-height:1.6}
+/* SEAM:ASK_FOLLOWS (EX36a): the slim ask under the nav */
 .ask-sticky{position:sticky;top:60px;z-index:var(--z-sticky);margin:0 0 8px;padding:6px 0;background:rgba(10,10,15,.94);backdrop-filter:blur(16px)}
 .ask-sticky button{width:100%;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:10px 14px;font:inherit;font-size:14px;cursor:text;text-align:left}
 .ask-sticky .as-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--accent)}.ask-sticky kbd{margin-left:auto;font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--border);padding:2px 6px;color:var(--text3)}
-@media (max-width:760px){.en-grid{grid-template-columns:1fr 1fr}.en-sig{grid-column:1/-1}.en-cell{border-left:0;padding:0}#sec-explore .hero.ask .week{grid-template-columns:1fr}.ask-sticky{top:56px}}
-@media (max-width:1000px){#sec-explore .hero{grid-template-columns:1fr;gap:28px;align-items:start}}
+@media (max-width:760px){.ask-sticky{top:56px}}
+@media (max-width:1000px){#sec-explore .hero{grid-template-columns:minmax(0,1fr);gap:28px;align-items:start}}
+#sec-explore .hero-left,#sec-explore .hero-right,#sec-explore .lead-rail,#sec-explore .search-shell{min-width:0}   /* SEAM:THE_FIT (EX36f) */
 #main-dashboard .builder-panel{display:none}
 #sec-explore .hero-eyebrow{display:none}
 #sec-explore h1.hero-title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(30px,3.4vw,calc(48px*var(--k)));line-height:1.04;letter-spacing:-.03em;color:var(--room-ivory);margin:0 0 calc(16px*var(--k));max-width:14ch}
@@ -2386,7 +2395,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 
 <div id="sec-explore" class="page-section active">
 <!-- HERO -->
-<section class="hero ask" id="hero-ask"><!-- SEAM:ENGINE_STATE (EX36a): the ask, one band; the week's read rides under it until the scroll -->
+<section class="hero">
  <div class="hero-left">
   <h1 class="hero-title">Ask culture a question.</h1>
   <p class="hero-sub">EXCAVATE is the cultural intelligence engine behind Unsurfaced. Name a brand, a category or a behavior and it returns the reading: what people are doing, how much, and the move to make. Every source attached.</p>
@@ -2448,18 +2457,6 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <div class="lead-nav" id="lead-nav" style="display:none"><button type="button" class="lead-arrow" onclick="_leadGo(-1)" aria-label="previous">&larr;</button><div class="lead-dots" id="lead-dots"></div><button type="button" class="lead-arrow" onclick="_leadGo(1)" aria-label="next">&rarr;</button></div>
   </section>
 </section>
-<!-- SEAM:ENGINE_STATE (EX36a): the engine, now. Nightly numbers, every one counted; the page remembers what this visitor saw last time -->
-<section class="engine-now" id="engine-now" style="display:none" aria-label="The engine, now">
-  <div class="en-head"><span class="en-k">THE ENGINE, NOW</span><span class="en-since" id="en-since"></span></div>
-  <div class="en-grid">
-    <div class="en-sig" title="Signals the lake captured in the last seven days, counted by the database"><b id="en-week">0</b><span>captured this week<em id="en-week-d"></em></span></div>
-    <button type="button" class="en-cell" onclick="_navRecord()" title="Readings deployed since the earned law, on the record"><b id="en-dep">0</b><span>readings on the record</span></button>
-    <button type="button" class="en-cell" onclick="_recLensSet('watching'); _navRecord()" title="Bets whose check date has not come"><b id="en-open">0</b><span>open bets</span></button>
-    <div class="en-cell" title="Bets graded by the record on the database's own counts"><b><span id="en-held">0</span><small>held</small><span id="en-missed">0</span><small>missed</small></b><span>graded</span></div>
-    <div class="en-cell" title="Every signal the lake holds"><b id="en-lake">0</b><span>kept in all</span></div>
-  </div>
-  <div class="en-pass" id="en-pass"></div>
-</section>
 
 <div class="error-banner" id="error-banner"></div>
 
@@ -2482,7 +2479,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 
 <!-- MAIN DASHBOARD -->
 <div class="main" id="main-dashboard">
-  <div class="ask-sticky" id="ask-sticky" style="display:none"><button type="button" onclick="_askFocus()"><span class="as-k">ASK</span><span id="ask-sticky-q">Ask culture a question</span><kbd>/</kbd></button></div><!-- SEAM:ENGINE_STATE: the ask follows the reader -->
+  <div class="ask-sticky" id="ask-sticky" style="display:none"><button type="button" onclick="_askFocus()"><span class="as-k">ASK</span><span id="ask-sticky-q">Ask culture a question</span><kbd>/</kbd></button></div><!-- SEAM:ASK_FOLLOWS (EX36a) -->
   <!-- SEAM:HUB_FLOW — the front page is one column in the outline's order:
        pulse (ticker above), headline, search, featured 4x2, trending 3x2, insight builder.
        The sidebar is retired. Every renderer that fed it still mounts here by id. -->
@@ -2490,13 +2487,12 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
   <div class="fi-field-read" id="fi-field-read" style="display:none"></div>
 
   <section class="hub-block room-sec" id="board-block">
-    <div class="room-head">
+    <div class="room-head rec-head"><!-- SEAM:QUIET_ENGINE (EX36a): the name, the line and the ask on one line -->
       <h2 id="board-h2">The record</h2>
-      <div class="sub" id="board-sub">What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.</div>
+      <div class="sub" id="board-sub">What the house has read, dated and kept. A later reading develops an earlier one; both stand.</div>
+      <form class="rec-ask-row" onsubmit="return _askSubmit(event)"><span class="rec-ask-k">ASK THE RECORD</span><input id="ask-q" maxlength="400" placeholder="What has the house seen on retro silhouettes since August, and did it hold?" autocomplete="off" aria-label="Ask the record"><button type="submit" class="btn-go-deeper">Ask</button></form>
     </div>
-    <div class="rec-ask" id="rec-ask"><!-- SEAM:ASK_RECORD: a conversation over the record and the lake -->
-      <div class="reach-k">ASK THE RECORD</div>
-      <form class="rec-ask-row" onsubmit="return _askSubmit(event)"><input id="ask-q" maxlength="400" placeholder="What has the house seen on retro silhouettes since August, and did it hold?" autocomplete="off"><button type="submit" class="btn-go-deeper">Ask</button></form>
+    <div class="rec-ask" id="rec-ask"><!-- SEAM:ASK_RECORD: a conversation over the record and the lake; the thread opens under the head -->
       <div class="rec-ask-thread" id="ask-thread"></div>
     </div>
     <div class="rec-lenses" id="rec-lenses" style="display:none"></div><!-- SEAM:RECORD_SCROLL: the lens row -->
@@ -10186,7 +10182,6 @@ function initFeaturedInsights() {
   _renderFeaturedGrid(false);   // instant paint from the pool (always)
   _recordLoad().then(rec => { if (rec && rec.tiles.length && !window._scrollDrawn) _renderScroll(rec, _FI_LAKE || { proposed: [] }); });   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
   renderTrendingNow();
-  _stateLoad();   // SEAM:ENGINE_STATE (EX36a)
   _checkAndRefreshFeatured();    // background live enrichment
 }
 
@@ -10206,7 +10201,7 @@ function _renderFeaturedGrid(isLive) {
   if (_lakeFresh) { _FI_LAKE = _lakeC.lake; _renderLakeGrid(_FI_LAKE); return; }
   _hideFieldChrome();
   // SEAM:HUB_FEED — no pool paint. The grid is the lake's or it says so.
-  grid.innerHTML = `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">THE LAKE IS FILLING</div><p class="card-excerpt">Featured reads are chosen from what the lake has captured and what recurs. The first field assembles at 06:00; until then nothing here is typed by hand.</p></div>`;
+  grid.innerHTML = `<div class="insight-card" style="grid-column:1/-1;opacity:.85"><div class="idea-type">THE FIRST READINGS ARE ON THEIR WAY</div><p class="card-excerpt">Readings appear here as the house writes them. Nothing here is typed by hand.</p></div>`;
   const _lbl = document.getElementById('fi-refresh-label'); if (_lbl) _lbl.textContent = 'FIELD READ · PENDING';
   return;
 
@@ -10572,51 +10567,15 @@ function _renderWeek(data) {
   else { fig.style.display = 'none'; el.classList.add('nophoto'); }
   el.style.display = ''; window._weekReady = true;
   const lw = document.getElementById('lead-week'); if (lw) lw.style.display = '';   // SEAM:LEAD_SCROLL: the week's read leads when it is here
-  _leadWire();   // SEAM:ENGINE_STATE: the stylesheet lays it out
+  _leadWire();
   setTimeout(() => el.querySelectorAll('[data-to]').forEach(n => _countUp(n, Number(n.getAttribute('data-from')) || 0, Number(n.getAttribute('data-to')) || 0, 1000)), 400);
 }
-/* SEAM:ENGINE_STATE (EX36a): the engine, now. GET /excavate/state is counted, not written. The visitor's last look is kept in this
-   browser only (uai_engine_seen) so the strip can say what changed since and count from then to now. */
-const _EN_SEEN = 'uai_engine_seen';
-async function _stateLoad() {
-  const el = document.getElementById('engine-now'); if (!el) return;
-  let s = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/state'); s = r.ok ? await r.json() : null; } catch (e) { s = null; }
-  if (!s || !s.ok) { el.style.display = 'none'; return; }
-  _stateRender(s);
-}
-function _stateRender(s) {
-  const el = document.getElementById('engine-now'), rec = s.record || {}, sig = s.signals || {};
-  const now = { week: sig.week || 0, dep: rec.deployments || 0, open: rec.open || 0, held: rec.held || 0, missed: rec.missed || 0, lake: sig.lake || 0, at: s.at || new Date().toISOString() };
-  let prev = null; try { prev = JSON.parse(localStorage.getItem(_EN_SEEN) || 'null'); } catch (e) { prev = null; }
-  const from = prev && typeof prev.week === 'number' ? prev : null;
-  const set = (id, v) => { const b = document.getElementById(id); if (b) { b.setAttribute('data-from', String(from ? (from[id.replace('en-', '')] || 0) : 0)); b.setAttribute('data-to', String(v)); b.textContent = String(from ? (from[id.replace('en-', '')] || 0) : 0); } };
-  set('en-week', now.week); set('en-dep', now.dep); set('en-open', now.open); set('en-held', now.held); set('en-missed', now.missed); set('en-lake', now.lake);
-  const d = document.getElementById('en-week-d'); if (d) { const diff = (sig.week || 0) - (sig.prior || 0); d.textContent = sig.prior == null ? '' : (diff >= 0 ? ' ▲ ' + diff.toLocaleString() : ' ▼ ' + Math.abs(diff).toLocaleString()) + ' on last week'; }
-  const since = document.getElementById('en-since');
-  if (since) {
-    if (from) { const parts = []; const dd = now.dep - (from.dep || 0), gg = (now.held + now.missed) - ((from.held || 0) + (from.missed || 0)), ll = now.lake - (from.lake || 0);
-      if (dd > 0) parts.push(dd + (dd === 1 ? ' reading' : ' readings')); if (gg > 0) parts.push(gg + ' graded'); if (ll > 0) parts.push(ll.toLocaleString() + ' captured');
-      since.textContent = parts.length ? 'Since you were here: ' + parts.join(', ') : 'Nothing new since you were here'; }
-    else since.textContent = 'Your first look';
-  }
-  const pass = document.getElementById('en-pass');
-  if (pass) { const when = x => { const dt = x && x.at ? new Date(x.at) : null; return dt && !isNaN(dt) ? dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null; };
-    const p = s.pass, c = s.called, lines = [];
-    if (p) lines.push(p.error ? 'The last pass stopped early' : p.skipped ? 'Last pass ' + (when(p) || '') + ': nothing earned a reading' : 'Last pass ' + (when(p) || '') + ': ' + (p.candidates || 0) + ' candidates, ' + (p.kept || 0) + ' written' + (p.queued ? ', ' + p.queued + ' queued' : '') + (p.thin ? ', ' + p.thin + ' thin' : '') + (p.failed ? ', ' + p.failed + ' failed' : ''));
-    if (c && c.checked) lines.push('Graded ' + (when(c) || '') + ': ' + (c.held || 0) + ' held, ' + (c.missed || 0) + ' missed' + (c.unmeasured ? ', ' + c.unmeasured + ' unmeasured' : ''));
-    if (sig.sampled) lines.push('Territory counts are over the latest ' + (8000).toLocaleString() + ' captures');
-    pass.textContent = lines.join(' · '); }
-  el.style.display = '';
-  try { localStorage.setItem(_EN_SEEN, JSON.stringify(now)); } catch (e) {}
-  window._engineState = s;
-  const go = () => el.querySelectorAll('[data-to]').forEach(b => _countUp(b, Number(b.getAttribute('data-from')) || 0, Number(b.getAttribute('data-to')) || 0, 1200));
-  if ('IntersectionObserver' in window) { const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { io.disconnect(); go(); } }, { threshold: 0.2 }); io.observe(el); } else go();
-}
-// the ask follows the reader: the slim bar shows once the hero's ask has left the viewport; `/` focuses the ask from anywhere
-function _askFocus() { const inp = document.getElementById('search-input'); if (!inp) return; window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => inp.focus(), 250); }
+/* SEAM:ASK_FOLLOWS (EX36a): the ask follows the reader. A slim bar shows once the hero's ask has left the viewport; `/` focuses the ask
+   from anywhere but a field. */
+function _askFocus() { const inp = document.getElementById('search-input'); if (!inp) return; window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); setTimeout(() => inp.focus(), 250); }
 (function () {
   document.addEventListener('keydown', e => { if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return; const a = document.activeElement, tag = a && a.tagName; if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (a && a.isContentEditable)) return; e.preventDefault(); _askFocus(); });
-  const wire = () => { const shell = document.querySelector('#hero-ask .search-shell'), bar = document.getElementById('ask-sticky'); if (!shell || !bar || !('IntersectionObserver' in window)) return;
+  const wire = () => { const shell = document.querySelector('#sec-explore .hero .search-shell'), bar = document.getElementById('ask-sticky'); if (!shell || !bar || !('IntersectionObserver' in window)) return;
     new IntersectionObserver(es => { const seen = es.some(x => x.isIntersecting); bar.style.display = seen ? 'none' : ''; }, { threshold: 0 }).observe(shell); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
 })();
@@ -11080,10 +11039,11 @@ function _renderScroll(rec, data) {
   _recLensRow(all);
   const counts = document.getElementById('rec-counts'), c = rec.counts || {};
   const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
-  if (counts) { counts.innerHTML = (calLine ? `<span class="rec-cal"><b>Calibration</b> ${calLine}</span>` : '') + `<span><b>${safe(String(c.deployments || all.length))}</b> readings deployed</span><span><b>${safe(String(c.subjects || 0))}</b> subjects</span>${(c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''}${c.open ? `<span><b>${safe(String(c.open))}</b> watching</span>` : ''}`; counts.style.display = ''; }   // EX33b: the blind-spots line moved to the foot
+  // SEAM:QUIET_ENGINE (EX36a): the score, never the machinery: no count of readings or subjects, no calibration line
+  if (counts) { const score = (c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''; counts.innerHTML = score + (c.open ? `<span><b>${safe(String(c.open))}</b> being checked</span>` : ''); counts.style.display = counts.innerHTML ? '' : 'none'; }
   _renderCurrents(rec.currents);   // SEAM:CROSS_CURRENTS
   const sub = document.getElementById('board-sub');
-  if (sub) sub.textContent = 'What the engine deployed, dated and kept. A reading is written when the evidence earns it, never on a schedule; a later reading develops an earlier one and both stand.';
+  if (sub) sub.textContent = 'What the house has read, dated and kept. A later reading develops an earlier one; both stand.';   // SEAM:QUIET_ENGINE
   const strip = document.getElementById('fi-state-strip'); if (strip) strip.style.display = 'none';
   // EX33b: one shape for every reading; nothing leads as a card, the record reads top to bottom
   const leads = [], rest = tiles;
@@ -11100,7 +11060,7 @@ function _renderScroll(rec, data) {
   }
   _drawPulses();
   const more = document.getElementById('board-more');
-  if (more) { more.innerHTML = safe('A reading is deployed when a subject is new on the board or moved past the threshold since its last reading, at most six a night, as few as none. Every reading carries one bet; the record grades it when its date comes, and a miss stays.') + (rec.blind ? `<span class="blind">${safe(String(rec.blind).replace(/This read does not see/, 'These readings do not see').replace(/its voices come/i, 'their voices come').replace(/its news from the open web and the lake/i, 'their news from the open web and the house\'s own archive'))}</span>` : ''); more.style.display = 'block'; }   // EX33b: the blind-spots line at the foot, in the reader's words
+  if (more) { more.innerHTML = safe('Every reading carries one bet; the record grades it when its date comes, and a miss stays.') + (rec.blind ? `<span class="blind">${safe(String(rec.blind).replace(/This read does not see/, 'These readings do not see').replace(/its voices come/i, 'their voices come').replace(/its news from the open web and the lake/i, 'their news from the open web and the house\'s own archive'))}</span>` : ''); more.style.display = 'block'; }   // EX33b: the blind-spots line at the foot, in the reader's words
 }
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');

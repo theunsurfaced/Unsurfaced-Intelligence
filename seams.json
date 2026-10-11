@@ -1463,16 +1463,23 @@
   },
   "SEAM:ENGINE_STATE": {
    "file": "worker/src/index.js",
-   "purpose": "EX36a THE STRIP: GET /excavate/state, public, cached ten minutes, no model call: the last pass and the last grade (door_pass, door_called), the record's deployments, open bets (a watch with no held or missed verdict), held and missed, the week's signals against the prior week and the lake's size (PostgREST exact counts through sbCount), and the fourteen territories with 7-day and prior counts, a velocity, a state (spike, rising, steady, falling, quiet) and their movers among the record's subjects. Nothing a reader owns is in it."
-  },
-  "SEAM:ENGINE_STATE@intelligence": {
-   "file": "intelligence/index.html",
-   "tag": "SEAM:ENGINE_STATE",
-   "purpose": "the hero as the ask, one band, with the week's read laid out under it; the engine-now strip (the week's signals as the page's one large figure, readings, open bets, graded, the lake, the pass line), which remembers the visitor's last look in this browser only, says what changed since, and counts from then to now when it comes into view; the slim ask that sticks under the nav once the hero's ask has scrolled away; `/` focuses the ask from anywhere but a field"
+   "purpose": "EX36a: GET /excavate/state, public, cached ten minutes, no model call: the fourteen territories as intelligence about the world (the change in coverage on last week as a percentage and a state: spike, rising, steady, falling, quiet; readings in it; the movers among the record's subjects). Nothing about the engine leaves here: no capture counts, no pass internals, no sizes."
   },
   "SEAM:LEAD_SCROLL": {
    "file": "intelligence/index.html",
    "purpose": "EX36b THE DEPLOYMENTS: the hero's right column is a rail of cards. The week's read (with its movers) is the first card when it is here; then the three newest readings with photographs, each with its photograph, dateline, headline, dek, one measure line, the bet as a countdown to its check date (or its grade) and Open the reading. Auto-advances every eight seconds, pauses on hover, focus and touch, arrows, dots, keyboard, swipe by scroll-snap; no autoplay under reduced motion. One pool, one rule: a reading on the rail is left out of the record's rows and its lens counts. The record renders from its own route whatever the feed says."
+  },
+  "SEAM:ASK_FOLLOWS": {
+   "file": "intelligence/index.html",
+   "purpose": "EX36a: the ask follows the reader: a slim bar sticks under the nav once the hero's ask has scrolled away and focuses it; `/` focuses the ask from anywhere but a field."
+  },
+  "SEAM:QUIET_ENGINE": {
+   "file": "intelligence/index.html",
+   "purpose": "EX36a: the page never says how the engine works. The record's line carries the score (held, missed, being checked) and no count of readings or subjects and no calibration; its copy says what it is, not the law; the empty state names no lake."
+  },
+  "SEAM:THE_FIT": {
+   "file": "intelligence/index.html",
+   "purpose": "EX36f THE FIT: the nav's doors sit centered on the desktop header (three columns: the logo, the doors, the account); on the tablet they compress so the header fits. The hero's columns and the record's head are minmax(0,1fr), so no input sets the page wider than the screen; under 480 the ask wraps (the input on its own line, Quick, Full and Search under it) and the header's logo shrinks so the menu and the sign-in fit."
   }
  },
  "planned": [

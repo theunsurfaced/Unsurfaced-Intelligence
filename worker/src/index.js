@@ -177,7 +177,7 @@ export default {
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
       if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
-      if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the engine's night, counted, public
+      if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the territories, public
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
       if (path === '/client/profile' && (request.method === 'GET' || request.method === 'POST')) return profileRoute(request, env, origin);   // SEAM:CLIENT_PROFILE (signed in)
@@ -9785,17 +9785,11 @@ async function doorRecord(env) {
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(RECORD.KEY, JSON.stringify(set), { expirationTtl: RECORD.TTL }); } catch (e) { excQuiet('record_put')(e); } }
   return set;
 }
-/* SEAM:ENGINE_STATE (EX36a): the engine, now. Every figure is a count the database made or a row the chain wrote: the last pass (door_pass),
- * the last grade (door_called), the open bets and the deployments from the record, the week's signals against the prior week and the lake's
- * size (PostgREST exact counts), and the fourteen territories with their 7-day and prior counts, a state, and their movers among the
- * record's subjects. Public, cached STATE.TTL; nothing a reader owns is in it. No model call. */
-const STATE = { KEY: 'state:v1', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };
-async function sbCount(env, path) {
-  const r = await fetch(env.SUPABASE_URL + '/rest/v1/' + path + (path.includes('?') ? '&' : '?') + 'select=id&limit=1', { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY, Prefer: 'count=exact', Range: '0-0', 'Range-Unit': 'items' } });
-  if (!r.ok && r.status !== 206) throw new Error('sb_' + r.status);
-  const cr = r.headers.get('content-range') || '', m = /\/(\d+)$/.exec(cr);
-  return m ? parseInt(m[1], 10) : null;
-}
+/* SEAM:ENGINE_STATE (EX36a): the territories as intelligence about the world. For each of the house's territories: the change in its
+ * coverage on last week (counted from the lake, served as a percentage and a state: spike, rising, steady, falling, quiet), how many
+ * readings the record holds in it, and its movers among the record's subjects (most covered, fastest rise, sharpest fall). Nothing about
+ * the engine leaves here: no capture counts, no pass internals, no sizes. Public, cached STATE.TTL; no model call. */
+const STATE = { KEY: 'state:v2', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };
 function stateOf(recent, prior) {
   if (!recent && !prior) return 'quiet';
   const pct = prior ? Math.round((recent - prior) / prior * 100) : (recent ? 100 : 0);
@@ -9804,32 +9798,22 @@ function stateOf(recent, prior) {
 async function excavateState(env) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(STATE.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('state_get')(e); }
   const now = Date.now(), iso = ms => new Date(ms).toISOString(), d7 = iso(now - 7 * 86400000), d14 = iso(now - 14 * 86400000);
-  const ev = async (event) => ((await sbRest(env, 'activity_events?event=eq.' + event + '&select=created_at,meta&order=created_at.desc&limit=1').catch(excQuiet('state_ev', []))) || [])[0] || null;
-  const pass = await ev('door_pass'), called = await ev('door_called');
-  const rec = await doorRecord(env).catch(excQuiet('state_record', null)) || { tiles: [], counts: { deployments: 0, held: 0, missed: 0 } };
+  const rec = await doorRecord(env).catch(excQuiet('state_record', null)) || { tiles: [] };
   const tiles = rec.tiles || [];
-  const open = tiles.filter(t => t.watch && !(t.called && (t.called.verdict === 'held' || t.called.verdict === 'missed'))).length;
-  const tonight = pass && pass.meta && pass.meta.night ? tiles.filter(t => t.deployed === pass.meta.night).length : 0;
-  let week = null, prior = null, lake = null;
-  try { week = await sbCount(env, 'signals?created_at=gte.' + d7); prior = await sbCount(env, 'signals?created_at=gte.' + d14 + '&created_at=lt.' + d7); lake = await sbCount(env, 'signals'); } catch (e) { excQuiet('state_counts')(e); }
   const rows = (await sbRest(env, 'signals?created_at=gte.' + d14 + '&select=territory,created_at&order=created_at.desc&limit=' + STATE.ROWS).catch(excQuiet('state_rows', []))) || [];
-  const terr = {}; for (const s of TERRITORY_SLUGS) terr[s] = { territory: s, recent_7d: 0, prior_7d: 0 };
-  for (const r of rows) { const o = terr[r.territory]; if (!o) continue; if (r.created_at >= d7) o.recent_7d++; else o.prior_7d++; }
+  const terr = {}; for (const s of TERRITORY_SLUGS) terr[s] = { territory: s, recent: 0, prior: 0 };
+  for (const r of rows) { const o = terr[r.territory]; if (!o) continue; if (r.created_at >= d7) o.recent++; else o.prior++; }
   const name = t => (t.frame && (t.frame.entity || t.frame.category)) || t.title || '';
   const territories = Object.values(terr).map(o => {
     const mine = tiles.filter(t => t.measures && t.measures.territory === o.territory && typeof t.measures.recent_7d === 'number');
     const loud = mine.slice().sort((a, b) => b.measures.recent_7d - a.measures.recent_7d)[0];
     const moved = mine.filter(t => t.measures.velocity_pct != null && (t.measures.recent_7d + (t.measures.prior_7d || 0)) >= 3);
     const fast = moved.slice().sort((a, b) => b.measures.velocity_pct - a.measures.velocity_pct)[0], cool = moved.slice().sort((a, b) => a.measures.velocity_pct - b.measures.velocity_pct)[0];
-    const pct = o.prior_7d ? Math.round((o.recent_7d - o.prior_7d) / o.prior_7d * 100) : (o.recent_7d ? 100 : 0);
-    return Object.assign(o, { velocity_pct: pct, state: stateOf(o.recent_7d, o.prior_7d), readings: mine.length,
-      movers: { loud: loud ? { name: name(loud), n: loud.measures.recent_7d, id: loud.id } : null, fast: fast && fast.measures.velocity_pct > 0 ? { name: name(fast), pct: fast.measures.velocity_pct, id: fast.id } : null, cool: cool && cool.measures.velocity_pct < 0 ? { name: name(cool), pct: cool.measures.velocity_pct, id: cool.id } : null } });
-  }).sort((a, b) => (b.recent_7d - b.prior_7d) - (a.recent_7d - a.prior_7d) || b.recent_7d - a.recent_7d);
-  const out = { at: iso(now),
-    pass: pass ? Object.assign({ at: pass.created_at }, pass.meta || {}, { deployed: tonight }) : null,
-    called: called ? Object.assign({ at: called.created_at }, called.meta || {}) : null,
-    record: { deployments: (rec.counts && rec.counts.deployments) || tiles.length, held: (rec.counts && rec.counts.held) || 0, missed: (rec.counts && rec.counts.missed) || 0, open, subjects: (rec.counts && rec.counts.subjects) || 0 },
-    signals: { week, prior, lake, sampled: rows.length >= STATE.ROWS }, territories };
+    const pct = o.prior ? Math.round((o.recent - o.prior) / o.prior * 100) : (o.recent ? 100 : 0);
+    return { territory: o.territory, velocity_pct: pct, state: stateOf(o.recent, o.prior), readings: mine.length, _move: o.recent - o.prior, _recent: o.recent,
+      movers: { loud: loud ? { name: name(loud), n: loud.measures.recent_7d, id: loud.id } : null, fast: fast && fast.measures.velocity_pct > 0 ? { name: name(fast), pct: fast.measures.velocity_pct, id: fast.id } : null, cool: cool && cool.measures.velocity_pct < 0 ? { name: name(cool), pct: cool.measures.velocity_pct, id: cool.id } : null } };
+  }).sort((a, b) => b._move - a._move || b._recent - a._recent).map(x => { delete x._move; delete x._recent; return x; });
+  const out = { at: iso(now), territories };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(STATE.KEY, JSON.stringify(out), { expirationTtl: STATE.TTL }); } catch (e) { excQuiet('state_put')(e); } }
   return out;
 }
