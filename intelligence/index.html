@@ -528,6 +528,30 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .pm-ev{border-top:1px solid var(--border);padding-top:12px;margin:4px 0 14px}.pm-ev small{display:block;color:var(--text2);font-size:12px;margin:4px 0 8px}
 .pm-ev input,.pm-ev textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;font:inherit;margin:0 0 8px}
 .pm-file{cursor:pointer;display:inline-block}
+/* SEAM:CLIENT_ROOM (EX35a): the room */
+.pm.room{max-width:760px;padding:24px 28px 0}.pm.room input,.pm.room select,.pm.room textarea{box-sizing:border-box}
+.rm-panel{border-top:1px solid var(--border);padding:18px 0 16px}
+.rm-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+.rm-fold>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:12px}.rm-fold>summary::-webkit-details-marker{display:none}
+.rm-fold>summary .rm-k{margin:0}.rm-hint{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.04em}
+.rm-fold[open]>summary{margin-bottom:10px}
+.rm-you{display:flex;gap:18px;align-items:flex-start}.rm-avatar{width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:24px;flex:none}
+.rm-fields{flex:1;min-width:0}.rm-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rm-row2 label{margin:0 0 12px}
+.rm-email{font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);margin:2px 0 0}
+.rm-line{font-size:14px;color:var(--text2);line-height:1.5;margin:0 0 12px}.rm-sub{font-size:13px;color:var(--text);margin:14px 0 6px}.rm-sub small{color:var(--text3);font-size:11px;margin-left:6px}
+.rm-pick{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 4px}.rm-pill{font-family:'Space Mono',monospace;font-size:11px;border:1px solid var(--border);background:none;color:var(--text2);padding:5px 10px;cursor:pointer}.rm-pill.on{border-color:var(--accent);color:var(--text);background:var(--surface2)}
+.pm-chip.learned{border-style:dashed}.pm-chip.learned button:first-of-type{color:var(--accent)}.rm-learned{margin-top:14px;padding-top:10px;border-top:1px dashed var(--border)}
+.rm-reach{align-items:end}.rm-reach .pm-row{font-size:13px}
+.rm-more{margin:6px 0 0}.rm-more>summary{cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;color:var(--text2);margin:0 0 10px}.rm-more[open]>summary{color:var(--text)}
+.rm-more input,.rm-more textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;font:inherit;margin:0 0 8px}
+.pm label.rm-drop{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px dashed var(--border);padding:22px 16px;cursor:pointer;text-align:center;margin:0 0 12px}.pm label.rm-drop.over{border-color:var(--accent);background:var(--surface2)}
+.rm-drop-k{font-size:14px}.rm-drop-s{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)}
+.rm-shelf-list{display:block}.rm-item{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.rm-item-kind{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border:1px solid var(--border);padding:2px 6px}.rm-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm-item-meta{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)}.rm-item-x{background:none;border:0;color:var(--text2);cursor:pointer;font-size:16px}
+.rm-save{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 0 14px;display:flex;align-items:center;gap:12px;margin-top:4px}
+.rm-save .btn-go-deeper[disabled]{opacity:.45;cursor:default}.rm-save-note{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);flex:1}
+@media (max-width:640px){.pm.room{padding:18px 16px 0}.rm-row2{grid-template-columns:1fr}.rm-you{flex-direction:column}.rm-item{grid-template-columns:auto 1fr auto}.rm-item-meta{grid-column:2;grid-row:2}}
 .read-thin{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 10px;max-width:70ch;}   /* SEAM:EXC_THIN */
 .btn-go-deeper{background:var(--accent);border:0;color:#fff;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:10px 14px;cursor:pointer;}
 .btn-go-deeper:hover{background:#ff5555;}
@@ -9789,7 +9813,7 @@ function _renderNavUser() {
   wrap.id = 'nav-user-wrap';
   wrap.style.position = 'relative';
   wrap.innerHTML = `<div class="nav-user" onclick="toggleUserMenu()">
-    <div class="nav-user-avatar">${ini}</div>
+    <div class="nav-user-avatar" onclick="event.stopPropagation(); _profileOpen()" title="Your profile">${ini}</div><!-- SEAM:CLIENT_ROOM -->
     <span class="nav-user-name">${fn}</span>
   </div>
   <div class="nav-user-menu" id="nav-user-menu">
@@ -10560,37 +10584,123 @@ async function _profileOpen() {
   window._profile = prof;
   let el = document.getElementById('profile-modal');
   if (!el) { el = document.createElement('div'); el.id = 'profile-modal'; el.className = 'pm-wrap'; document.body.appendChild(el); }
+  const u = _currentUser || {}, first = !!window._profileFirstRun;
+  const ini = ((u.firstName || '?')[0] + (u.lastName || '?')[0]).toUpperCase();
   const roles = (prof.roles || []).map(r => `<option value="${safeAttr(r)}"${r === prof.role_title ? ' selected' : ''}>${safe(r)}</option>`).join('');
+  const brands = (prof.tracked_brands || []);
   const follows = (prof.follows || []).map((f, i) => `<span class="pm-chip">${safe(f.kind)}: ${safe(f.value)}<button type="button" aria-label="remove" onclick="_profileUnfollow(${i})">&times;</button></span>`).join('') || '<span class="pm-none">Nothing followed yet. Pick a lens on the record and press Follow.</span>';
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}"${i === (prof.digest_day == null ? 1 : prof.digest_day) ? ' selected' : ''}>${d}</option>`).join('');
-  el.innerHTML = `<div class="pm" role="dialog" aria-modal="true"><div class="pm-head"><div class="pm-k">${window._profileFirstRun ? 'SET YOUR FRAME' : 'YOUR PROFILE'}</div><button type="button" class="pm-x" onclick="_profileClose()" aria-label="close">&times;</button></div>
+  // SEAM:CLIENT_ROOM (EX35a): four panels in reading order; the first entry folds the last two
+  el.innerHTML = `<div class="pm room" role="dialog" aria-modal="true"><div class="pm-head"><div class="pm-k">${window._profileFirstRun ? 'SET YOUR FRAME' : 'YOUR PROFILE'}</div><button type="button" class="pm-x" onclick="_profileClose()" aria-label="close">&times;</button></div>
     ${window._profileFirstRun ? '<p class="pm-lead">Welcome in. Your role writes the implications on every reading; the brands you track decide what reaches you. Two fields and you are set.</p>' : ''}
-    <label>Your role <small>the implications on every insight are written for it</small><select id="pm-role">${roles}</select></label>
-    <label>Brands you track <small>comma separated; a reading on one of them, or on its competitive set, reaches you</small><input id="pm-tracked" value="${safeAttr((prof.tracked_brands || []).join(', '))}" placeholder="Jordan Brand, New Balance"></label>
-    <div class="pm-follows"><div class="pm-k">Frames you follow</div>${follows}</div>
-    <label class="pm-row"><input type="checkbox" id="pm-email"${prof.push_email ? ' checked' : ''}> Email me when a reading deploys or a watch is graded on my frames</label>
-    <label>Slack webhook <small>${prof.slack_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; an incoming webhook URL'}</small><input id="pm-slack" placeholder="https://hooks.slack.com/services/..."></label>
-    <label>Teams webhook <small>${prof.teams_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; a workflow webhook URL'}</small><input id="pm-teams" placeholder="https://....webhook.office.com/..."></label>
-    <label>Brief day <small>a five-line brief over the week's readings on your frames opens that day's mail</small><select id="pm-day">${days}</select></label>
-    <div class="pm-ev"><div class="pm-k">YOUR EVIDENCE</div><small>A read on your frames takes your own lines in as first-party evidence and says how many it stood on.</small>
-      <div class="pm-follows" id="pm-evidence-list"></div>
-      <input id="pm-ev-title" placeholder="Title (your tracker, deck or report)"><input id="pm-ev-hint" placeholder="What it is about (a brand, a category), optional">
-      <textarea id="pm-ev-text" rows="4" placeholder="Paste the text here"></textarea>
-      <div class="pm-acts"><button type="button" class="btn-new-search" onclick="_evidencePaste()">Keep the text</button><label class="btn-new-search pm-file">Upload .txt .md .csv .json<input type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" onchange="_evidenceUpload(this)" style="display:none"></label></div></div><!-- SEAM:CLIENT_EVIDENCE -->
-    <div class="pm-acts"><button type="button" class="btn-go-deeper" onclick="_profileSubmit()">Save</button><button type="button" class="btn-new-search" onclick="_profileClose()">Close</button></div></div>`;
+    <section class="rm-panel" id="rm-you"><div class="rm-k">You</div>
+      <div class="rm-you"><div class="rm-avatar" id="rm-avatar" title="Your picture arrives with the next build">${safe(ini)}</div>
+        <div class="rm-fields">
+          <div class="rm-row2"><label>Name<input id="pm-name" value="${safeAttr([u.firstName, u.lastName].filter(Boolean).join(' '))}" placeholder="Your name"></label><label>Title<input id="pm-title" value="${safeAttr(u.role || '')}" placeholder="Brand manager"></label></div>
+          <div class="rm-row2"><label>Company<input id="pm-company" value="${safeAttr(u.company || '')}" placeholder="Where you work"></label><label>Your role <small>the implications on every reading are written for it</small><select id="pm-role">${roles}</select></label></div>
+          <div class="rm-email">${safe(u.email || '')}</div>
+        </div></div></section>
+    <section class="rm-panel" id="rm-frame"><div class="rm-k">Your frame</div>
+      <p class="rm-line">${first ? 'Three questions. The house learns the rest from what you read.' : 'A reading on any of these reaches you. The house adds what it learns from your reads below; you keep what fits.'}</p>
+      <div class="rm-sub">Who are you watching? <small>brands, yours and theirs</small></div>
+      <div class="pm-follows" id="pm-tracked-chips"></div>
+      <input id="pm-tracked-add" placeholder="Add a brand and press Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();_brandAdd();}"><input type="hidden" id="pm-tracked" value="${safeAttr(brands.join(', '))}">
+      <div class="rm-sub">What world do you work in? <small>pick from the house's territories</small></div>
+      <div class="rm-pick" id="pm-industries-pick">${(prof.industries_all || []).map(x => `<button type="button" class="rm-pill${(prof.industries || []).includes(x.id) ? ' on' : ''}" data-id="${safeAttr(x.id)}" onclick="_industryToggle(this)">${safe(x.name)}</button>`).join('')}</div><input type="hidden" id="pm-industries" value="${safeAttr((prof.industries || []).join(', '))}">
+      <div class="rm-sub">What words would you want to see first on a Monday? <small>topics, terms, product names</small></div>
+      <div class="pm-follows" id="pm-keywords-chips"></div>
+      <input id="pm-keywords-add" placeholder="Add a word and press Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();_chipAdd('pm-keywords',20);}"><input type="hidden" id="pm-keywords" value="${safeAttr((prof.keywords || []).join(', '))}">
+      <details class="rm-more" id="rm-frame-more"${first ? '' : ' open'}><summary>More of your frame</summary>
+        <div class="rm-sub">Audiences you serve</div>
+        <div class="pm-follows" id="pm-audiences-chips"></div>
+        <input id="pm-audiences-add" placeholder="Add an audience and press Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();_chipAdd('pm-audiences',8);}"><input type="hidden" id="pm-audiences" value="${safeAttr((prof.audiences || []).join(', '))}">
+        <div class="rm-sub">Markets</div>
+        <div class="pm-follows" id="pm-markets-chips"></div>
+        <input id="pm-markets-add" placeholder="Add a market and press Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();_chipAdd('pm-markets',6);}"><input type="hidden" id="pm-markets" value="${safeAttr((prof.markets || []).join(', '))}">
+        <div class="rm-sub">Frames you follow <small>from the record's lenses</small></div>
+        <div class="pm-follows">${follows}</div></details>
+      ${(prof.learned || []).length ? `<div class="rm-learned" id="rm-learned"><div class="rm-sub">The house thinks you also watch <small>from your own reads; keep what fits</small></div><div class="pm-follows">${prof.learned.map(l => `<span class="pm-chip learned">${safe(l.kind)}: ${safe(l.value)}<button type="button" aria-label="keep" title="keep" onclick="_learnAct('${safeAttr(l.kind)}','${safeAttr(l.value)}','confirm')">&#10003;</button><button type="button" aria-label="not this" title="not this" onclick="_learnAct('${safeAttr(l.kind)}','${safeAttr(l.value)}','decline')">&times;</button></span>`).join('')}</div></div>` : ''}</section><!-- SEAM:CLIENT_FRAME -->
+    <details class="rm-panel rm-fold" id="rm-reach"${first ? '' : ' open'}><summary><span class="rm-k">How it reaches you</span><span class="rm-hint">${prof.push_email ? 'email on' : 'email off'} · ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][prof.digest_day == null ? 1 : prof.digest_day]} brief${prof.slack_webhook ? ' · Slack' : ''}${prof.teams_webhook ? ' · Teams' : ''}</span></summary>
+      <div class="rm-row2 rm-reach"><label class="pm-row"><input type="checkbox" id="pm-email"${prof.push_email ? ' checked' : ''}> Email me when a reading deploys or a watch is graded on my frames</label>
+        <label>Brief day <small>a five-line brief over the week's readings on your frames</small><select id="pm-day">${days}</select></label></div>
+      <details class="rm-more"><summary>Add a channel</summary>
+        <label>Slack webhook <small>${prof.slack_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; an incoming webhook URL'}</small><input id="pm-slack" placeholder="https://hooks.slack.com/services/..."></label>
+        <label>Teams webhook <small>${prof.teams_webhook ? 'set; paste a new one to replace it, or leave blank to keep it' : 'optional; a workflow webhook URL'}</small><input id="pm-teams" placeholder="https://....webhook.office.com/..."></label></details></details>
+    <details class="rm-panel rm-fold" id="rm-shelf"${first ? '' : ' open'}><summary><span class="rm-k">YOUR SHELF</span><span class="rm-hint" id="rm-shelf-hint">your own evidence</span></summary>
+      <p class="rm-line">A read on your frames takes your own lines in as first-party evidence and says how many it stood on.</p>
+      <label class="rm-drop" id="rm-drop" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');_evidenceUpload({ files: event.dataTransfer.files })">
+        <span class="rm-drop-k">Drop a file here, or choose one</span><span class="rm-drop-s">.txt .md .csv .json today; PDF, decks and recordings next</span>
+        <input type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" onchange="_evidenceUpload(this)" style="display:none"></label>
+      <div class="pm-follows rm-shelf-list" id="pm-evidence-list"></div>
+      <details class="rm-more"><summary>Paste text instead</summary>
+        <input id="pm-ev-title" placeholder="Title (your tracker, deck or report)"><input id="pm-ev-hint" placeholder="What it is about (a brand, a category), optional">
+        <textarea id="pm-ev-text" rows="4" placeholder="Paste the text here"></textarea>
+        <div class="pm-acts"><button type="button" class="btn-new-search" onclick="_evidencePaste()">Keep the text</button></div></details><!-- SEAM:CLIENT_EVIDENCE --></details>
+    <div class="rm-save"><button type="button" class="btn-go-deeper" id="pm-save" onclick="_profileSubmit()"${first ? '' : ' disabled'}>${first ? 'Set my frame' : 'Save'}</button><span class="rm-save-note" id="pm-save-note">${first ? 'Role and brands, then set' : 'Nothing to save'}</span><button type="button" class="btn-new-search" onclick="_profileClose()">Close</button></div></div>`;
   el.style.display = '';
+  _brandChips();
   _evidenceList();
+  el.querySelectorAll('input,select,textarea').forEach(x => { if (!/^pm-ev-|-add$/.test(x.id)) { x.addEventListener('input', _profileDirty); x.addEventListener('change', _profileDirty); } });
+  if (!window._roomKeys) { window._roomKeys = true; document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.getElementById('profile-modal'); if (m && m.style.display !== 'none') _profileClose(); } }); }
 }
+// the lists as chips; a hidden input per list carries what the save reads (pm-tracked for brands, pm-keywords, pm-audiences, pm-markets)
+function _chipsRender(hid) {
+  const h = document.getElementById(hid), box = document.getElementById(hid + '-chips'); if (!h || !box) return;
+  const list = h.value.split(',').map(x => x.trim()).filter(Boolean);
+  const empty = { 'pm-tracked': 'No brands yet. Add one below.', 'pm-keywords': 'No words yet.', 'pm-audiences': 'None yet.', 'pm-markets': 'None yet.' }[hid] || 'None yet.';
+  box.innerHTML = list.length ? list.map((b, i) => `<span class="pm-chip">${safe(b)}<button type="button" aria-label="remove" onclick="_chipRemove('${hid}',${i})">&times;</button></span>`).join('') : `<span class="pm-none">${empty}</span>`;
+}
+function _chipAdd(hid, max) {
+  const add = document.getElementById(hid + '-add'), h = document.getElementById(hid); if (!add || !h) return;
+  const v = add.value.trim(); if (!v) return;
+  const list = h.value.split(',').map(x => x.trim()).filter(Boolean);
+  if (list.length >= max) { showToast(hid === 'pm-tracked' ? 'Twelve brands is the most a frame holds' : max + ' is the most this row holds'); return; }
+  if (!list.some(x => x.toLowerCase() === v.toLowerCase())) list.push(v);
+  h.value = list.join(', '); add.value = ''; _chipsRender(hid); _profileDirty();
+}
+function _chipRemove(hid, i) { const h = document.getElementById(hid); if (!h) return; const list = h.value.split(',').map(x => x.trim()).filter(Boolean); list.splice(i, 1); h.value = list.join(', '); _chipsRender(hid); _profileDirty(); }
+function _brandChips() { ['pm-tracked', 'pm-keywords', 'pm-audiences', 'pm-markets'].forEach(_chipsRender); }
+function _brandAdd() { _chipAdd('pm-tracked', 12); }
+function _brandRemove(i) { _chipRemove('pm-tracked', i); }
+function _industryToggle(btn) {
+  const h = document.getElementById('pm-industries'); if (!h || !btn) return;
+  const on = btn.classList.toggle('on'), id = btn.getAttribute('data-id');
+  let list = h.value.split(',').map(x => x.trim()).filter(Boolean);
+  if (on) { if (list.length >= 6) { btn.classList.remove('on'); showToast('Six industries is the most a frame holds'); return; } if (!list.includes(id)) list.push(id); } else list = list.filter(x => x !== id);
+  h.value = list.join(', '); _profileDirty();
+}
+// SEAM:CLIENT_FRAME: what the house learned, kept or refused in one tap; the room re-reads itself
+async function _learnAct(kind, value, act) {
+  const body = {}; body[act] = { kind, value };
+  const saved = await _profileSave(body);
+  showToast(saved ? (act === 'confirm' ? 'Kept: ' + value : 'Set aside') : 'Could not save');
+  if (saved) _profileOpen();
+}
+function _profileDirty() { const b = document.getElementById('pm-save'), s = document.getElementById('pm-save-note'); if (b) b.disabled = false; if (s) s.textContent = 'Unsaved changes'; }
 function _profileClose() { const el = document.getElementById('profile-modal'); if (el) el.style.display = 'none'; window._profileFirstRun = false; }
 async function _profileSubmit() {
   const v = id => (document.getElementById(id) || {}).value || '';
-  const patch = { role_title: v('pm-role'), tracked_brands: v('pm-tracked').split(',').map(x => x.trim()).filter(Boolean), push_email: !!(document.getElementById('pm-email') || {}).checked, digest_day: parseInt(v('pm-day'), 10) };
+  const list = id => v(id).split(',').map(x => x.trim()).filter(Boolean);
+  const patch = { role_title: v('pm-role'), tracked_brands: list('pm-tracked'), industries: list('pm-industries'), keywords: list('pm-keywords'), audiences: list('pm-audiences'), markets: list('pm-markets'), push_email: !!(document.getElementById('pm-email') || {}).checked, digest_day: parseInt(v('pm-day'), 10) };   // SEAM:CLIENT_FRAME
   if (v('pm-slack').trim()) patch.slack_webhook = v('pm-slack').trim();
   if (v('pm-teams').trim()) patch.teams_webhook = v('pm-teams').trim();
   const saved = await _profileSave(patch);
+  // SEAM:CLIENT_ROOM: who they are lives on the account (user metadata), not in client_profile
+  const name = v('pm-name').trim(), title = v('pm-title').trim(), company = v('pm-company').trim(), u = _currentUser || {};
+  const was = [[u.firstName, u.lastName].filter(Boolean).join(' '), u.role || '', u.company || ''];
+  if (saved && sbEnabled() && (name !== was[0] || title !== was[1] || company !== was[2])) {
+    const parts = name.split(/\s+/).filter(Boolean), data = { first_name: parts[0] || u.firstName || '', last_name: parts.slice(1).join(' '), company, role: title };
+    try { const { data: d, error } = await _sb.auth.updateUser({ data }); if (!error && d && d.user) { _currentUser = _userFromSb(d.user); _navUserRefresh(); } else showToast('The frame is saved; the name did not take'); } catch (e) { showToast('The frame is saved; the name did not take'); }
+  }
   showToast(saved ? (window._profileFirstRun ? 'Your frame is set' : 'Profile saved') : 'Could not save the profile');
   if (saved && window._profileFirstRun) { window._profileFirstRun = false; try { localStorage.setItem('uai_frame_set', '1'); } catch (e) {} }
   if (saved) _profileClose();
+}
+function _navUserRefresh() {
+  const u = _currentUser || {}, w = document.getElementById('nav-user-wrap'); if (!w) return;
+  const a = w.querySelector('.nav-user-avatar'), nm = w.querySelector('.nav-user-name');
+  if (a) a.textContent = ((u.firstName || '?')[0] + (u.lastName || '?')[0]).toUpperCase();
+  if (nm) nm.textContent = u.firstName || '';
 }
 async function _profileUnfollow(i) { const prof = window._profile || await _profileGet(); if (!prof) return; const follows = (prof.follows || []).slice(); follows.splice(i, 1); const saved = await _profileSave({ follows }); if (saved) _profileOpen(); }
 /* SEAM:CLIENT_PROFILE: follow the lens on the record (a brand, a category, an audience) in one click. */
@@ -10645,7 +10755,8 @@ async function _evidenceList() {
   const box = document.getElementById('pm-evidence-list'); if (!box) return;
   let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/client/evidence', { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
   const items = (j && j.items) || [];
-  box.innerHTML = items.length ? items.map(it => `<span class="pm-chip">${safe(it.title)} <small>${safe(String(it.chunks))} parts</small><button type="button" aria-label="remove" onclick="_evidenceDelete(${parseInt(it.id, 10)})">&times;</button></span>`).join('') : '<span class="pm-none">Nothing yet. Paste text or upload a .txt, .md, .csv or .json file; a PDF or a deck is read best as its exported text.</span>';
+  const hint = document.getElementById('rm-shelf-hint'); if (hint) hint.textContent = items.length ? items.length + (items.length === 1 ? ' item' : ' items') : 'nothing yet';
+  box.innerHTML = items.length ? items.map(it => `<div class="rm-item"><span class="rm-item-kind">${safe(String(it.kind || 'text'))}</span><span class="rm-item-title">${safe(it.title)}</span><span class="rm-item-meta">read, ${safe(String(it.chunks))} parts${it.created_at ? ' · ' + safe(String(it.created_at).slice(0, 10)) : ''}</span><button type="button" class="rm-item-x" aria-label="remove" onclick="_evidenceDelete(${parseInt(it.id, 10)})">&times;</button></div>`).join('') : '<span class="pm-none">Nothing on the shelf yet. Drop a file or paste text.</span>';
 }
 async function _evidencePaste() {
   const t = (document.getElementById('pm-ev-text') || {}).value || '', title = (document.getElementById('pm-ev-title') || {}).value || '', hint = (document.getElementById('pm-ev-hint') || {}).value || '';

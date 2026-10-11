@@ -1447,6 +1447,19 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:ACCESS_KNOCK",
    "purpose": "the waiting room knocks once per load, asks is_approved() every 45 seconds while it is up and enters on yes; the first entry opens the profile as \"set your frame\" (role, brands) once per browser"
+  },
+  "SEAM:CLIENT_ROOM": {
+   "file": "intelligence/index.html",
+   "purpose": "EX35a THE ROOM: the reader's profile as a room with four panels in reading order (You: picture, name, title, company, role; Your frame: brands and followed frames as chips; How it reaches you: email, brief day, Slack and Teams behind Add a channel; Your shelf: one drop zone, the list with what the house did with each item, paste text as the second way), opened from the avatar and the name menu; one Save that lights when something changed (Set my frame on the first entry); name, title and company save to the account (user metadata), the rest to client_profile; the first entry folds the last two panels. Page only."
+  },
+  "SEAM:CLIENT_FRAME": {
+   "file": "worker/src/index.js",
+   "purpose": "EX35e THE FRAME: a reader's frame is wider than brands. client_profile carries industries (the house's fourteen territories, picked from the list so they match a reading exactly), audiences, keywords (lowercased) and markets (migration 0045), with the caps in FRAME; the push matches a reading by brand, competitor, followed lens, industry (the reading's territory), audience, market or a word of theirs in the claim or question, in that order; a signed-in live read logs read_frame under the reader's id (never a bench read); GET /client/profile offers what the house learned from the reader's own reads (a name seen twice in sixty days, not on the frame, not declined) as chips; POST takes confirm (onto the frame) and decline (kept off, client_profile.declined). Learned from the reader's own reads only."
+  },
+  "SEAM:CLIENT_FRAME@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:CLIENT_FRAME",
+   "purpose": "the room's frame panel: three questions on the first entry (brands, industries from the house's list, words), audiences, markets and the followed frames behind More of your frame; the learned chips kept or refused in one tap; the save carries all five rows"
   }
  },
  "planned": [

@@ -1041,6 +1041,7 @@ async function synthesize(body, env, origin, hooks) {
       model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cached: false }, compiled_at: new Date().toISOString() };
     data.score = excReadScore(data, merged, frame0, data.timing);   // SEAM:EXC_SCORE
     console.log('exc_read', JSON.stringify({ q: query.slice(0, 60), ev: merged.length, aside: gate.dropped.length, lane: compiled.lane, passes: passes.length, score: data.score.score, ms: data.timing, harvest: data.harvest }));
+    if (body._uid && !body.bench && frame0) logEvent(env, 'intelligence', 'excavate', 'read_frame', body._uid, { entity: frame0.entity || null, category: frame0.category || null, audience: frame0.audience || null, market: frame0.market || null, q: query.slice(0, 80) });   // SEAM:CLIENT_FRAME: the reader's own reads teach their frame
     if (env.RATE_LIMIT && compiled.lane === 'live') {
       if (!body.bench) try { await env.RATE_LIMIT.put(excCacheKey(qhash), JSON.stringify(data), { expirationTtl: partial ? EXC_SPEED.PARTIAL_TTL : EXC_MODEL.CACHE_TTL }); }   // SEAM:EXC_STALL: a partial read waits briefly for the page that lost its stream
       catch (e) { console.log('exc_cache_write', String(e && e.message).slice(0, 80)); }
@@ -9419,11 +9420,20 @@ async function crossCurrentsWeekly(env) { return new Date().getUTCDay() === CURR
 /* ═══ SEAM:CLIENT_PROFILE: the reader's profile. The role their implications are written for, the brands they track, the frames they
  * follow, where the push goes. One row per signed-in user, made on first read. ═══ */
 const PROFILE = { ROLES: ['brand', 'strategy', 'creative', 'media', 'product', 'insights', 'founder', 'other'], MAX_TRACKED: 12, MAX_FOLLOWS: 12, FOLLOW_KINDS: ['brand', 'category', 'audience'] };
+/* SEAM:CLIENT_FRAME (EX35e): the frame is wider than brands. Industries are the house's territories, picked from the list so they match a
+ * reading exactly; audiences, words and markets are the reader's own; what the house learns from their reads comes back as chips. */
+const FRAME = { INDUSTRIES: 6, AUDIENCES: 8, KEYWORDS: 20, MARKETS: 6, DECLINED: 100, LEARN_DAYS: 60, LEARN_MIN: 2, LEARN_MAX: 8, LEARN_EVENTS: 300 };
+const INDUSTRY_NAMES = { 'advertising-marketing': 'Advertising and marketing', 'technology-innovation': 'Technology', 'artificial-intelligence': 'AI', 'business-economics': 'Business and economics', 'entrepreneurship-creator': 'Entrepreneurs and creators', 'music': 'Music', 'fashion-beauty': 'Fashion and beauty', 'sneakers-streetwear': 'Sneakers and streetwear', 'art-design': 'Art and design', 'architecture-cities': 'Architecture and cities', 'entertainment-gaming': 'Entertainment and gaming', 'food-hospitality': 'Food and hospitality', 'sustainability-impact': 'Sustainability', 'global-diaspora': 'Global and diaspora' };
+const frameWords = (xs, max, len) => { const seen = new Set(), out = []; for (const x0 of (Array.isArray(xs) ? xs : [])) { const x = String(x0 || '').trim().replace(/\s+/g, ' ').slice(0, len || 60); if (x.length < 2 || seen.has(x.toLowerCase())) continue; seen.add(x.toLowerCase()); out.push(x); if (out.length >= max) break; } return out; };
 function profileWebhookOk(u) { return !u || /^https:\/\/(hooks\.slack\.com\/|[\w.-]+\.webhook\.office\.com\/|[\w.-]+\.logic\.azure\.com\/)/.test(String(u)); }
 function profileClean(b, prev) {
   const out = {};
   if (b.role_title != null) out.role_title = PROFILE.ROLES.includes(String(b.role_title)) ? String(b.role_title) : 'other';
   if (Array.isArray(b.tracked_brands)) out.tracked_brands = [...new Set(b.tracked_brands.map(x => String(x || '').trim().slice(0, 60)).filter(x => x.length >= 2))].slice(0, PROFILE.MAX_TRACKED);
+  if (Array.isArray(b.industries)) out.industries = [...new Set(b.industries.map(x => String(x || '').trim().toLowerCase()).filter(x => Object.prototype.hasOwnProperty.call(INDUSTRY_NAMES, x)))].slice(0, FRAME.INDUSTRIES);
+  if (Array.isArray(b.audiences)) out.audiences = frameWords(b.audiences, FRAME.AUDIENCES, 60);
+  if (Array.isArray(b.keywords)) out.keywords = frameWords(b.keywords.map(x => String(x || '').toLowerCase()), FRAME.KEYWORDS, 40);
+  if (Array.isArray(b.markets)) out.markets = frameWords(b.markets, FRAME.MARKETS, 40);
   if (Array.isArray(b.follows)) out.follows = b.follows.filter(f => f && PROFILE.FOLLOW_KINDS.includes(f.kind) && String(f.value || '').trim().length >= 2).map(f => ({ kind: f.kind, value: String(f.value).trim().slice(0, 80) })).filter((f, i, a) => a.findIndex(g => g.kind === f.kind && g.value.toLowerCase() === f.value.toLowerCase()) === i).slice(0, PROFILE.MAX_FOLLOWS);
   if (b.push_email != null) out.push_email = !!b.push_email;
   if (b.slack_webhook !== undefined) out.slack_webhook = profileWebhookOk(b.slack_webhook) ? (String(b.slack_webhook || '').slice(0, 400) || null) : (prev ? prev.slack_webhook : null);
@@ -9438,14 +9448,41 @@ async function profileLoad(env, user) {
   await sbRest(env, 'client_profile', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: made }).catch(excQuiet('profile_make'));
   return made;
 }
-function profilePublic(p) { return { role_title: p.role_title || 'strategy', tracked_brands: p.tracked_brands || [], follows: p.follows || [], push_email: p.push_email !== false, slack_webhook: p.slack_webhook ? 'set' : null, teams_webhook: p.teams_webhook ? 'set' : null, digest_day: p.digest_day == null ? 1 : p.digest_day, roles: PROFILE.ROLES }; }
+function profilePublic(p) { return { role_title: p.role_title || 'strategy', tracked_brands: p.tracked_brands || [], follows: p.follows || [], push_email: p.push_email !== false, slack_webhook: p.slack_webhook ? 'set' : null, teams_webhook: p.teams_webhook ? 'set' : null, digest_day: p.digest_day == null ? 1 : p.digest_day, roles: PROFILE.ROLES,
+  industries: p.industries || [], audiences: p.audiences || [], keywords: p.keywords || [], markets: p.markets || [], learned: p.learned || [], industries_all: Object.keys(INDUSTRY_NAMES).map(k => ({ id: k, name: INDUSTRY_NAMES[k] })) }; }   // SEAM:CLIENT_FRAME
+/* SEAM:CLIENT_FRAME: what the house has learned. The reader's own reads (read_frame events, LEARN_DAYS back) name entities, audiences and
+ * markets; one that appears LEARN_MIN times or more, is not on the frame and was not declined, comes back as a chip. Confirming moves it onto
+ * the frame; declining keeps it off for good. Learned from the reader's own reads only; never from another reader's. */
+async function profileLearn(env, uid, prof) {
+  const since = new Date(Date.now() - FRAME.LEARN_DAYS * 86400000).toISOString();
+  const rows = (await sbRest(env, 'activity_events?event=eq.read_frame&session_id=eq.' + uid + '&created_at=gte.' + since + '&select=meta&order=created_at.desc&limit=' + FRAME.LEARN_EVENTS).catch(excQuiet('learn_rows', []))) || [];
+  const lc = x => String(x || '').toLowerCase().trim(), have = new Set(), counts = new Map();
+  for (const b of (prof.tracked_brands || [])) have.add('brand:' + lc(b));
+  for (const a of (prof.audiences || [])) have.add('audience:' + lc(a));
+  for (const m of (prof.markets || [])) have.add('market:' + lc(m));
+  for (const f of (prof.follows || [])) have.add((f.kind === 'brand' ? 'brand' : f.kind === 'audience' ? 'audience' : 'x') + ':' + lc(f.value));
+  for (const d of (prof.declined || [])) have.add(lc(d.kind) + ':' + lc(d.value));
+  for (const r of rows) { const m = r.meta || {};
+    for (const [kind, v] of [['brand', m.entity], ['audience', m.audience], ['market', m.market]]) { const key = kind + ':' + lc(v); if (!v || String(v).length < 2 || have.has(key)) continue;
+      const cur = counts.get(key) || { kind, value: String(v).trim().slice(0, 60), n: 0 }; cur.n++; counts.set(key, cur); } }
+  return [...counts.values()].filter(x => x.n >= FRAME.LEARN_MIN).sort((a, b) => b.n - a.n).slice(0, FRAME.LEARN_MAX);
+}
+function profileLearnAct(body, prev) {
+  const lc = x => String(x || '').toLowerCase().trim(), out = {};
+  const pick = o => o && typeof o === 'object' && ['brand', 'audience', 'market'].includes(String(o.kind)) && String(o.value || '').trim().length >= 2 ? { kind: String(o.kind), value: String(o.value).trim().slice(0, 60) } : null;
+  const c = pick(body.confirm), d = pick(body.decline);
+  if (c) { const field = c.kind === 'brand' ? 'tracked_brands' : c.kind === 'audience' ? 'audiences' : 'markets', max = c.kind === 'brand' ? PROFILE.MAX_TRACKED : c.kind === 'audience' ? FRAME.AUDIENCES : FRAME.MARKETS;
+    const list = (prev[field] || []).slice(); if (!list.some(x => lc(x) === lc(c.value)) && list.length < max) list.push(c.value); out[field] = list; }
+  if (d) { const list = (prev.declined || []).filter(x => !(lc(x.kind) === lc(d.kind) && lc(x.value) === lc(d.value))); list.push(d); out.declined = list.slice(-FRAME.DECLINED); }
+  return out;
+}
 async function profileRoute(request, env, origin) {
   const user = await authenticate(request, env);
   if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
   const prev = await profileLoad(env, user);
-  if (request.method === 'GET') return json({ ok: true, profile: profilePublic(prev) }, 200, origin, env);
+  if (request.method === 'GET') { let learned = []; try { learned = await profileLearn(env, user.id, prev); } catch (e) { excQuiet('learn')(e); } return json({ ok: true, profile: profilePublic(Object.assign({}, prev, { learned })) }, 200, origin, env); }   // SEAM:CLIENT_FRAME
   let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
-  const patch = Object.assign(profileClean(body, prev), { email: user.email || prev.email || null, updated_at: new Date().toISOString() });
+  const patch = Object.assign(profileClean(body, prev), profileLearnAct(body, prev), { email: user.email || prev.email || null, updated_at: new Date().toISOString() });
   await sbRest(env, 'client_profile?user_id=eq.' + user.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch }).catch(excQuiet('profile_patch'));
   return json({ ok: true, profile: profilePublic(Object.assign({}, prev, patch)) }, 200, origin, env);
 }
@@ -9516,6 +9553,12 @@ function pushMatches(tile, prof) {
   if (f.category && follows.some(x => x.kind === 'category' && lc(x.value) === lc(f.category))) return 'category';
   if (f.audience && follows.some(x => x.kind === 'audience' && lc(x.value) === lc(f.audience))) return 'audience';
   if (Array.isArray(f.competitors) && f.competitors.some(c => tracked.includes(lc(c)))) return 'competitor';
+  // SEAM:CLIENT_FRAME: industries (the reading's territory), the reader's own audiences and markets, and their words in the claim or the question
+  const terr = lc(tile.measures && tile.measures.territory); if (terr && (prof.industries || []).map(lc).includes(terr)) return 'industry';
+  if (f.audience && (prof.audiences || []).map(lc).includes(lc(f.audience))) return 'audience';
+  if (f.market && (prof.markets || []).map(lc).includes(lc(f.market))) return 'market';
+  const text = lc([tile.claim, tile.title, tile.question, f.category].filter(Boolean).join(' '));
+  if (text && (prof.keywords || []).some(k => k && k.length >= 2 && text.includes(lc(k)))) return 'keyword';
   return null;
 }
 async function pushBrief(env, prof, tiles) {
@@ -9539,7 +9582,7 @@ async function pushWebhook(url, text) {
 async function pushNightly(env) {
   const today = doorNight(), out = { readers: 0, matched: 0, sent: { email: 0, slack: 0, teams: 0 }, briefs: 0 };
   const profs = (await sbRest(env, 'client_profile?select=*&limit=' + PUSH.MAX_READERS).catch(excQuiet('push_profiles', []))) || [];
-  const active = profs.filter(p => ((p.tracked_brands || []).length || (p.follows || []).length) && (p.push_email !== false || p.slack_webhook || p.teams_webhook));
+  const active = profs.filter(p => ((p.tracked_brands || []).length || (p.follows || []).length || (p.industries || []).length || (p.audiences || []).length || (p.keywords || []).length || (p.markets || []).length) && (p.push_email !== false || p.slack_webhook || p.teams_webhook));   // SEAM:CLIENT_FRAME
   if (!active.length) return out;
   const SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta';
   const deployed = ((await sbRest(env, 'door_reads?status=eq.ready&night=eq.' + today + '&' + SEL).catch(excQuiet('push_rows', []))) || []).map(doorTile);
