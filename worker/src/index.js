@@ -91,6 +91,9 @@ export default {
         .then(() => doorPass(env))   // SEAM:EXC_DOOR v2: the door compiles after the feed and the tracks are fresh
         .then(s => console.log('door_pass', JSON.stringify(s)))
         .catch(e => { console.log('door_pass_error', String(e && e.message)); return logEvent(env, 'intelligence', 'door', 'door_pass', null, { error: 'door_pass_error: ' + String(e && e.message).slice(0, 160) }); })
+        .then(() => boardSweep(env))   // SEAM:BOARD_SWEEP (EX38): the board's subjects deepen the lake, research-flagged
+        .then(s => console.log('board_sweep', JSON.stringify(s)))
+        .catch(e => console.log('board_sweep_error', String(e && e.message)))
         .then(() => doorCalled(env))   // SEAM:RECORD_WATCH: the watches that came due, graded on the database's counts
         .then(s => console.log('door_called', JSON.stringify(s)))
         .catch(e => console.log('door_called_error', String(e && e.message)))
@@ -8021,7 +8024,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'intake' ? await intakeDesk(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9159,6 +9162,35 @@ async function doorPublish(env) {
   await ledgerPut(env, 'door', ledgerDoorRows(tiles));   // SEAM:LEDGER: what the arrival posted, kept
   return set;
 }
+/* SEAM:BOARD_SWEEP (EX38 THE LOOP): the board feeds the lake. Each subject the board considers gathers on its own query through the
+ * free rails (Exa, Perplexity and YouTube skipped; the frame comes from the week's cache or Haiku under its own cap), and the rows
+ * enter the lake as `recon_board`: research by 0038's rule, so they deepen the evidence behind every subject and count in nothing.
+ * Two subjects at a time, inside BUDGET_MS, nightly after the door; {run:"sweep"} at the desk. */
+const BOARD_SWEEP = { MAX: 24, PAR: 2, BUDGET_MS: 240000, KEY: 'sweep:last', SKIP: ['exa', 'pplx', 'youtube', 'youtube_shorts', 'competitors', 'counter', 'consensus', 'calendar'] };
+async function boardSweep(env) {
+  const t0 = Date.now();
+  const subs = (await doorCandidates(env).catch(excQuiet('sweep_subjects', []))) || [];
+  const seen = new Set(), list = [];
+  for (const s of subs) { const q = String(s.query || '').replace(/\s+/g, ' ').trim(), k = q.toLowerCase(); if (q.length < 4 || seen.has(k)) continue; seen.add(k); list.push({ key: s.key, kind: s.kind, q, title: s.title }); if (list.length >= BOARD_SWEEP.MAX) break; }
+  const out = { subjects: list.length, gathered: 0, captured: 0, rails: {}, ms: 0, errors: [] };
+  for (let i = 0; i < list.length; i += BOARD_SWEEP.PAR) {
+    if (Date.now() - t0 > BOARD_SWEEP.BUDGET_MS) { out.errors.push('budget'); break; }
+    const res = await Promise.all(list.slice(i, i + BOARD_SWEEP.PAR).map(async s => {
+      try {
+        const g = await gatherOpenSignals(env, s.q, { skip: BOARD_SWEEP.SKIP });
+        if (!g || !g.ok) return null;
+        const captured = await lakeCapture(env, g.items, { provenance: 'recon_board', query: s.q, cls: g.cls });
+        (g.rails || []).forEach(r => { if (r && r.n > 0) out.rails[r.id] = (out.rails[r.id] || 0) + r.n; });
+        return { items: (g.items || []).length, captured };
+      } catch (e) { out.errors.push(String(s.title || s.q).slice(0, 40) + ':' + String(e && e.message).slice(0, 40)); return null; }
+    }));
+    res.forEach(r => { if (r) { out.gathered += r.items; out.captured += r.captured; } });
+  }
+  out.ms = Date.now() - t0; out.errors = out.errors.slice(0, 6);
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(BOARD_SWEEP.KEY, JSON.stringify(Object.assign({ at: new Date().toISOString() }, out)), { expirationTtl: 3 * 86400 }); } catch (e) { excQuiet('sweep_put')(e); } }
+  await logEvent(env, 'intelligence', 'sweep', 'board_sweep', null, out).catch(excQuiet('sweep_log', null));
+  return out;
+}
 async function doorSet(env) {
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(DOOR.KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('door_set')(e); }
   return null;
@@ -9211,6 +9243,7 @@ async function watchHealth(env) {
     const waits = pend.map(x => (now - Date.parse(x.knocked_at)) / 36e5).filter(h => isFinite(h) && h >= 0);
     out.door = { pending: pend.length, oldest_h: waits.length ? Math.round(Math.max.apply(null, waits)) : 0 };
     if (waits.some(h => h >= ACCESS.WAIT_H)) out.trips.push({ kind: 'access_waiting', say: pend.length + (pend.length === 1 ? ' person has' : ' people have') + ' waited at the door, the longest for ' + out.door.oldest_h + ' hours' }); } catch (e) { excQuiet('watch_door')(e); }
+  try { out.sweep = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get(BOARD_SWEEP.KEY)) || 'null') : null; } catch (e) { out.sweep = null; }   // SEAM:BOARD_SWEEP: last night's loop
   // SEAM:INTAKE (EX37): dead feeds and quiet territories trip the line
   try { const health = await intakeHealth(env); const dead = DAILY_POV.sources.filter(s => health[s.name] && health[s.name].fail >= INTAKE.DEAD_AFTER).map(s => s.name);
     const days = []; for (let i = 0; i < INTAKE.QUIET_DAYS; i++) { const y = await intakeYield(env, new Date(now - i * 86400000).toISOString().slice(0, 10)); if (y) days.push(y); }

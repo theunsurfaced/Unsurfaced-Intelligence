@@ -1484,6 +1484,10 @@
   "SEAM:INTAKE": {
    "file": "worker/src/index.js",
    "purpose": "EX37 THE INTAKE: every territory feeds the lake. The registry holds sixty or more sources over the twenty territories, three or more across two tiers each, with a GDELT lane per territory; every slice reads every source and one lane per territory (a dead feed is skipped until the 05:15 probe); a multi-territory source places each story by its words. The drain is sized to the paid plan: one neighbourhood call per row (echo, anchor, momentum from one sample), a joiner inherits its cluster, only starters are classified, ten to a call. The desk's {run:\"intake\"} and the watch (dead feeds, a territory quiet three days) see it."
+  },
+  "SEAM:BOARD_SWEEP": {
+   "file": "worker/src/index.js",
+   "purpose": "EX38 THE LOOP: the board feeds the lake. After the door compiles each night, up to 24 of the board's own candidates (recurring patterns and tracked brands, by velocity) gather on their queries through the free rails (Exa, Perplexity, YouTube skipped) and the rows enter the lake as recon_board, research by 0038's rule: findable by the ask, cited by reads and RECONs, embedded by the drain, never counted in a measure, so the board cannot feed its own numbers. Two at a time inside four minutes; {run:\"sweep\"}; the watch line carries the last sweep."
   }
  },
  "planned": [
