@@ -1506,6 +1506,24 @@
   "SEAM:RECORD_FACE": {
    "file": "intelligence/index.html",
    "purpose": "EX40 THE FACE OF THE RECORD: a cross-current is a card with a face. Its subjects resolve to the record's own tiles by label, so the card shows the photographs of the readings it runs across (up to three, each once, the sources' own, credited on hover, each opening its reading), the pulse of their coverage summed over twelve weeks, the headline, the body folded to five lines with More, the move whole, and the subjects as buttons that open their readings. Fewer currents than four widen; one column on a phone. Nothing is fetched."
+  },
+  "SEAM:EXC_NAME": {
+   "file": "worker/src/index.js",
+   "purpose": "EX41 THE NAME: a query that carries a known name is read as that name, never as words. Before the framer runs, the names in the query are found in three places together, bounded: the house's own record (titles in the lake), the tracked brands (name or alias) and the knowledge graph (the whole query as typed). They ride into the framer with what they are and where they were found, under the law that a known name is the entity and its category is what it is or does. The frame carries `named`; the page says \"Read as \"; the chips stay editable. Seven sources join the registry (Black Enterprise, TheGrio, AfroTech, Blavity, Essence, The Root, EURweb)."
+  },
+  "SEAM:EXC_NAME@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_NAME",
+   "purpose": "EX41 on the page: the line under the chips says when the query was read as a known name."
+  },
+  "SEAM:EXC_PROBE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX42 THE PROBE: how the engine reads a request. The law: the probe answers the reading with evidence and names the underneath, never silently substituting the adjacent question for the one asked. The one framer call returns readings (literal, named, cultural, adjacent, situational); each is tested by evidence mass from the house's counts (the lake behind its anchors, the record's readings, the name hints), no model; a confirmed name is the reading; a deeper reading leads only when it beats the literal by LEAD_RATIO, else it is named underneath; the literal leads when nothing else has mass and is never dropped; a close second runs as a thread. POST /excavate/reading records a reader's flip to `meanings` (0046) and reframes; a phrase flipped twice to the same reading leads with it. No mass leaves the worker."
+  },
+  "SEAM:EXC_PROBE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_PROBE",
+   "purpose": "EX42 on the page: \"Read as …\" with why; the underneath as chips the reader takes; a flip records and reads again."
   }
  },
  "planned": [

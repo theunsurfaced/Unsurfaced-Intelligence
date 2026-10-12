@@ -17,7 +17,7 @@ const cleanSrc = between(w, 'function excFrameClean(f) {', 'function excFrameWho
 const SYS = new Function(fsys + '; return EXC_FRAME_SYS;')();
 ok(/"task": one of read \(/.test(SYS) && /"threads": when the query stacks two or three distinct subjects/.test(SYS) && /"period": the years/.test(SYS) && /brief \(how a brand or team can win/.test(SYS) && /create \(ideas, a campaign/.test(SYS),
   'A1 the framer is asked for the task (seven kinds), the threads and the period, beside the frame it already wrote');
-ok(/REV: 'f2'/.test(between(w, 'const EXC_FRAME = ', '\n')), 'A2 the frame cache moves to f2, so no frame cached without its intent is served');
+ok(/REV: 'p1'/.test(between(w, 'const EXC_FRAME = ', '\n')), 'A2 the frame cache moves to p1 (EX42: the probe), so no frame cached without its intent, its names or its readings is served');
 const C = new Function(cleanSrc + '; return excFrameClean;')();
 const raw = { entity: 'Jordan Brand', category: 'athletic sneakers', audience: 'Gen Z', market: 'US', anchors: ['jordan brand'], task: 'Brief', threads: ['Labor displacement', 'Safety incidents', 'Public trust'], period: '2023-2026' };
 let f = C(raw);

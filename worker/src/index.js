@@ -170,7 +170,8 @@ export default {
       if (path === '/excavate/voice' && request.method === 'POST') return excavateVoice(request, env, origin);
       if (path === '/excavate/anchors' && request.method === 'POST') return excavateAnchors(request, env, origin);
       if (path === '/excavate/gather' && request.method === 'POST') return excavateGather(request, env, origin, ctx);    // SEAM:GATHER_SERVER
-      if (path === '/excavate/interpret' && request.method === 'POST') return excavateInterpret(request, env, origin);   // SEAM:EXC_INTENT: the frame before the gather
+      if (path === '/excavate/interpret' && request.method === 'POST') return excavateInterpret(request, env, origin);
+      if (path === '/excavate/reading' && request.method === 'POST') return excavateReading(request, env, origin);     // SEAM:EXC_PROBE (EX42): a reader takes another reading; the house learns   // SEAM:EXC_INTENT: the frame before the gather
       if (path === '/excavate/suggest' && request.method === 'POST') return excavateSuggest(request, env, origin);       // SEAM:EXC_INTENT: suggestions as the person types
       if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
       if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
@@ -1268,6 +1269,112 @@ async function excCompile(env, o) {
   return { text: text || '', lane: 'reserve', model: CONFIG.TEXT_MODEL, reason: why, cost_usd: 0, truncated: false, stop_reason: null };
 }
 // SEAM:EXC_FRAME: the frame call lives in the lane block, beside the read's own Claude call.
+/* SEAM:EXC_NAME (EX41): the names in a query, found before the frame. Three places, asked together and bounded: the house's own
+ * record (titles in the lake that carry the phrase), the tracked brands (name or alias in the query) and the knowledge graph (the
+ * whole query, as people type it). Up to NAME.MAX names, each with what it is and where it was found. No model. A query is read as
+ * the names it carries, never as the words those names happen to be made of. */
+const NAME = { MAX: 3, MS: 2500, MIN_WORDS: 2, MAX_WORDS: 4, RECORD_MIN: 2 };
+function excNameCandidates(q) {
+  const words = String(q || '').toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  const out = [], seen = new Set();
+  for (let len = Math.min(NAME.MAX_WORDS, words.length); len >= NAME.MIN_WORDS; len--) for (let i = 0; i + len <= words.length && out.length < 6; i++) { const c = words.slice(i, i + len).join(' '); if (!seen.has(c)) { seen.add(c); out.push(c); } }
+  return out;
+}
+async function excNameHints(env, q) {
+  const query = String(q || '').replace(/\s+/g, ' ').trim(); if (query.split(' ').length < NAME.MIN_WORDS) return [];
+  const hints = [], seen = new Set(), add = (h) => { const k = String(h.name || '').toLowerCase(); if (!k || seen.has(k)) { const e = hints.find(x => x.name.toLowerCase() === k); if (e && h.from && !e.from.includes(h.from[0])) e.from.push(h.from[0]); return; } seen.add(k); hints.push(h); };
+  const deadline = new Promise(res => setTimeout(() => res(null), NAME.MS));
+  const graph = (async () => {
+    const key = env.GOOGLE_KG_KEY; if (!key) return;
+    const j = await railFetch('https://kgsearch.googleapis.com/v1/entities:search?limit=3&languages=en&query=' + encodeURIComponent(query) + '&key=' + key);
+    for (const e of ((j && j.itemListElement) || []).map(x => x.result).filter(Boolean)) {
+      const name = String(e.name || '').trim(); if (!name || (e.resultScore != null && e.resultScore < 30)) continue;
+      const kind = (Array.isArray(e['@type']) ? e['@type'] : []).filter(x => x !== 'Thing').map(x => String(x).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase())[0] || null;
+      add({ name, what: [kind, e.description ? String(e.description).trim() : null].filter(Boolean).join(': ').slice(0, 160), from: ['graph'] });
+    }
+  })();
+  const tracked = (async () => {
+    const low = ' ' + query.toLowerCase() + ' ';
+    for (const tr of (await loadTracks(env)) || []) { for (const nm of [tr.name].concat(tr.aliases || []).filter(Boolean)) { if (nm.length >= 3 && low.includes(' ' + String(nm).toLowerCase() + ' ')) { add({ name: tr.name, what: [tr.kind, tr.sector].filter(Boolean).join(', ').slice(0, 120) || 'tracked by the house', from: ['tracked'] }); break; } } }
+  })();
+  const record = (async () => {
+    const cands = excNameCandidates(query).slice(0, 4); if (!cands.length) return;
+    const rows = (await sbRest(env, 'signals?status=neq.rejected&or=(' + cands.map(c => 'title.ilike.*' + encodeURIComponent(c.replace(/[%*_,()"\\]/g, ' ')) + '*').join(',') + ')&select=title&order=captured_at.desc&limit=40')) || [];
+    for (const c of cands) { const hit = rows.filter(r => String(r.title || '').toLowerCase().includes(c)); if (hit.length >= NAME.RECORD_MIN) { const cased = (String(hit[0].title).match(new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')) || [c])[0]; add({ name: cased, what: hit.length + ' stories in the record', from: ['record'], n: hit.length }); if (hints.length >= NAME.MAX) break; } }
+  })();
+  await Promise.race([Promise.all([graph.catch(excQuiet('name_graph', null)), tracked.catch(excQuiet('name_tracked', null)), record.catch(excQuiet('name_record', null))]), deadline]);
+  return hints.slice(0, NAME.MAX);
+}
+function excNamePrompt(hints) {
+  if (!hints || !hints.length) return '';
+  return '\nNames found in this query: ' + hints.map((h, i) => (i + 1) + '. ' + h.name + (h.what ? ' (' + h.what + ')' : '') + ' [' + h.from.join(', ') + ']').join('; ')
+    + '. Law: when the query carries a known name, the entity is that name and the category is what the name is or does; the words of the name are never read as a category. If a found name does not fit the query, ignore it.';
+}
+/* SEAM:EXC_PROBE (EX42): the probe. A query has more than one reading; the engine finds the one with evidence behind it, answers that
+ * one, and names the others. Mass is counted from the house's own tables, never judged by a model: the lake behind a reading's anchors
+ * (the sweep, 90 days; this week's rows count double), the record's readings that touch it, and the name hints. The reading with the most
+ * mass leads; the literal leads only when nothing else has mass; a second reading within THREAD_RATIO of the lead runs as a thread. A
+ * phrase readers have flipped to the same reading PRIOR_MIN times leads with it. No figure leaves the worker as a score. */
+const PROBE = { KINDS: ['literal', 'named', 'cultural', 'adjacent', 'situational'], MAX: 5, DAYS: 90, ROWS: 300, THREAD_RATIO: 0.6, THREAD_MIN: 3, LEAD_RATIO: 1.5, MS: 3500, W_RECORD: 5, W_HINT: 8, W_WEEK: 1, PRIOR_MIN: 2, PRIOR_DAYS: 180 };
+function excReadingLabel(r) { return r ? (r.entity ? r.entity + (r.category ? ' in ' + r.category.toLowerCase() : '') : (r.audience && r.category ? r.audience + ' ' + r.category.toLowerCase() : r.category || r.kind)) : ''; }
+async function excReadingMass(env, r, hints) {
+  const anchors = excMeasureAnchors({ entity: r.entity, anchors: r.anchors });
+  let lake = 0, week = 0, record = 0, hint = 0;
+  if (anchors.length && ilikeOr(anchors) !== 'id=is.null') {
+    const since = new Date(Date.now() - PROBE.DAYS * 864e5).toISOString(), d7 = new Date(Date.now() - 7 * 864e5).toISOString();
+    const rows = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(anchors) + (await sweepOnly(env)) + '&captured_at=gte.' + since + '&select=captured_at&order=captured_at.desc&limit=' + PROBE.ROWS).catch(excQuiet('probe_lake', []))) || [];
+    lake = rows.length; week = rows.filter(x => x.captured_at >= d7).length;
+  }
+  const names = [r.entity, r.category].filter(x => x && x.length >= 3);
+  if (names.length) {
+    const q = 'door_reads?status=in.(ready,reused)&or=(' + names.map(x => 'frame->>entity.ilike.*' + encodeURIComponent(x.replace(/[%*_,()"\\]/g, ' ')) + '*').join(',') + ')&select=id&limit=20';
+    record = ((await sbRest(env, q).catch(excQuiet('probe_record', []))) || []).length;
+  }
+  if (r.entity && (hints || []).some(h => h.name.toLowerCase() === r.entity.toLowerCase() || r.entity.toLowerCase().includes(h.name.toLowerCase()))) hint = 1;
+  return { mass: lake + week * PROBE.W_WEEK + record * PROBE.W_RECORD + hint * PROBE.W_HINT, lake, week, record, hint };
+}
+async function excProbePrior(env, phrase) {
+  try {
+    const since = new Date(Date.now() - PROBE.PRIOR_DAYS * 864e5).toISOString();
+    const rows = (await sbRest(env, 'meanings?phrase=eq.' + encodeURIComponent(phrase) + '&created_at=gte.' + since + '&select=kind,entity,category&order=created_at.desc&limit=40')) || [];
+    const by = new Map(); for (const x of rows) { const k = [x.kind, String(x.entity || '').toLowerCase(), String(x.category || '').toLowerCase()].join('|'); by.set(k, (by.get(k) || 0) + 1); }
+    let best = null; for (const [k, c] of by) if (c >= PROBE.PRIOR_MIN && (!best || c > best.c)) best = { k, c };
+    if (!best) return null; const [kind, entity, category] = best.k.split('|'); return { kind, entity: entity || null, category: category || null, n: best.c };
+  } catch (e) { return null; }
+}
+async function excProbe(env, f, query, hints) {
+  // f is the framer's clean output (the lead reading as its frame, the readings beside it); returns f with the lead chosen by mass
+  const readings = (f.readings || []).slice();
+  if (!readings.some(r => r.kind === 'literal')) readings.unshift({ kind: 'literal', entity: null, category: f.category, audience: f.audience, anchors: f.anchors, question: f.question, why: 'The words as a category.' });
+  if (!readings.length) return f;
+  const deadline = new Promise(res => setTimeout(() => res(null), PROBE.MS));
+  const masses = await Promise.race([Promise.all(readings.map(r => excReadingMass(env, r, hints).catch(excQuiet('probe_mass', { mass: 0, lake: 0, week: 0, record: 0, hint: 0 })))), deadline]);
+  if (!masses) return f;   // the test did not finish in time: the framer's own lead stands, nothing underneath
+  readings.forEach((r, i) => { r.mass = masses[i].mass; r._m = masses[i]; });
+  const phrase = String(query || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
+  const prior = await excProbePrior(env, phrase).catch(excQuiet('probe_prior', null));
+  const literal = readings.find(r => r.kind === 'literal');
+  const others = readings.filter(r => r.kind !== 'literal' && r.mass > 0).sort((a, b) => b.mass - a.mass);
+  // Choose. A name confirmed by the graph, the record or the tracked brands, with any coverage behind it, is the reading: the words are
+  // that name, and a category made of the same words has no claim however many rows its generic anchors touch. Any other reading leads
+  // only when its mass beats the literal's by LEAD_RATIO; otherwise it is named underneath. The literal leads when nothing else has mass.
+  const named = others.find(r => r.kind === 'named' && r._m && r._m.hint && (r._m.lake + r._m.record) > 0);
+  let lead = named || (others[0] && (!literal || others[0].mass >= PROBE.LEAD_RATIO * literal.mass) ? others[0] : (literal || readings[0]));
+  let fromPrior = false;
+  if (prior) { const p = readings.find(r => r.kind === prior.kind && String(r.entity || '').toLowerCase() === String(prior.entity || '') ); if (p) { lead = p; fromPrior = true; } }
+  const out = Object.assign({}, f);
+  if (lead.kind !== 'literal' || fromPrior) { if (lead.entity != null) out.entity = lead.entity; if (lead.category) out.category = lead.category; if (lead.audience) out.audience = lead.audience; if (lead.anchors && lead.anchors.length) out.anchors = lead.anchors; if (lead.question) out.question = lead.question; }
+  if (lead.kind === 'named' && (!out.task || out.task === 'read')) out.task = 'brand';
+  out.read_as = { kind: lead.kind, label: excReadingLabel(lead), why: lead.why || null, prior: fromPrior };
+  // the underneath: readings with mass that are not the lead, strongest first, the literal always kept when it is not the lead
+  const under = readings.filter(r => r !== lead && (r.mass > 0 || r.kind === 'literal')).sort((a, b) => (a.kind === 'literal') - (b.kind === 'literal') || b.mass - a.mass).slice(0, 3);   // the deeper readings first, the words last
+  out.underneath = under.map(r => ({ kind: r.kind, label: excReadingLabel(r), why: r.why || null, entity: r.entity, category: r.category, audience: r.audience, anchors: r.anchors, question: r.question }));
+  // a close second runs as a thread, so the read answers both questions and says which is which
+  const second = under[0];
+  if (second && second.kind !== 'literal' && lead.kind !== 'literal' && second.mass >= PROBE.THREAD_RATIO * lead.mass && second._m && second._m.lake >= PROBE.THREAD_MIN && lead.question && second.question && !(out.threads && out.threads.length)) out.threads = [lead.question, second.question];
+  out.readings = readings.slice().sort((a, b) => b.mass - a.mass).map(r => ({ kind: r.kind, entity: r.entity, category: r.category, audience: r.audience, anchors: r.anchors, question: r.question, why: r.why }));   // ordered by mass; the mass itself never leaves
+  return out;
+}
 async function excFrameFor(env, query) {
   try {
     const qn = String(query || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -1278,12 +1385,15 @@ async function excFrameFor(env, query) {
     // A query the model cannot frame, or a closed tier, is remembered an hour; a wobble (slow, network, overloaded) five minutes.
     const miss = async why => { console.log('exc_frame_miss', why); const ttl = /unframeable|claude_cap|claude_off|claude_unconfigured/.test(why) ? EXC_FRAME.MISS_TTL : EXC_FRAME.WOBBLE_TTL;
       if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify({ _miss: 1, why }), { expirationTtl: ttl }); } catch (e) { excQuiet('frame_miss_cache')(e); } } return null; };
-    const call = callClaude(env, 'frame', { system: EXC_FRAME_SYS, cache: true, prompt: 'Query: "' + qn + '"', max_tokens: EXC_FRAME.MAX_TOKENS,
+    const hints = await excNameHints(env, query).catch(excQuiet('name_hints', []));   // SEAM:EXC_NAME (EX41): the names, before the frame
+    const call = callClaude(env, 'frame', { system: EXC_FRAME_SYS, cache: true, prompt: 'Query: "' + String(query || '').replace(/\s+/g, ' ').trim().slice(0, 200) + '"' + excNamePrompt(hints), max_tokens: EXC_FRAME.MAX_TOKENS,   // SEAM:EXC_PROBE: the case kept
       temperature: 0, kind: 'excavate_frame', timeout_ms: EXC_FRAME.TIMEOUT_MS });
     const r = await Promise.race([call, new Promise(res => setTimeout(() => res({ ok: false, error: 'frame_slow' }), EXC_FRAME.TIMEOUT_MS + 300))]);
     if (!r || !r.ok) return miss(String((r && r.error) || 'none'));
-    const f = excFrameClean(extractJson(r.text || ''));
-    if (!f) return miss('unframeable');
+    const f0 = excFrameClean(extractJson(r.text || ''));
+    if (!f0) return miss('unframeable');
+    const f = excFrameClean(await excProbe(env, f0, query, hints).catch(excQuiet('probe', f0)));   // SEAM:EXC_PROBE (EX42): the lead by mass, the underneath named
+    if (f.entity && hints.length) { const h = hints.find(x => x.name.toLowerCase() === f.entity.toLowerCase() || f.entity.toLowerCase().includes(x.name.toLowerCase()) || x.name.toLowerCase().includes(f.entity.toLowerCase())); if (h) f.named = { name: h.name, what: h.what || null, from: h.from }; }   // SEAM:EXC_NAME: how the query was read
     if (env.RATE_LIMIT) await env.RATE_LIMIT.put(key, JSON.stringify(f), { expirationTtl: EXC_FRAME.TTL });
     return f;
   } catch (e) { console.log('exc_frame_error', String(e && e.message).slice(0, 120)); return null; }
@@ -1533,7 +1643,7 @@ function excGround(text, evidence) {
  * phrases that mark an off-topic one, and a query phrased for each kind of rail. Cached a week per query.
  * A frame never blocks a read: no key, a cap, a slow answer or a bad reply all return null and the read
  * runs on the raw query exactly as before. */
-const EXC_FRAME = { TIMEOUT_MS: 4500, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 300, REV: 'f2', MAX_TOKENS: 700, DOOR_SHARE: 0.5 };
+const EXC_FRAME = { TIMEOUT_MS: 4500, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 300, REV: 'p1', MAX_TOKENS: 1400, DOOR_SHARE: 0.5 };
 const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research engine. Output STRICT JSON only, no fences. ' +
   'Shape: {"entity":"the named brand, person, product or place, or null","category":"1 to 3 words","audience":"1 to 3 words",' +
   '"market":"the country or region the query is about; US when it names none","competitors":["up to 5 named players this entity or category competes with in that market"],' +
@@ -1543,6 +1653,10 @@ const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research en
   '"exclude":["0 to 8 lowercase phrases that mark an off-topic item: homonyms and neighboring categories"],' +
   '"queries":{"news":"a news search for this frame","research":"an academic search phrasing","discourse":"how people say it on forums and video","web":"a web search for this frame"}} ' +
   'Every query is under 8 words. Never use the em dash character. ' +
+  'A query is often a name: a brand, a show, a podcast, a person, a venue, a movement, as people type it. When names are listed with the query, read the query as those names; when none are listed, still ask whether the words are a name before reading them as a category. ' +   // SEAM:EXC_NAME (EX41)
+  // SEAM:EXC_PROBE (EX42): the readings. The frame above is the lead reading; the others are named so the engine can test them.
+  'Also "readings": 2 to 5 readings of the same query, the first being the one the frame above took. Each: {"kind": one of literal (the words as a category), named (the words are a name), cultural (what the phrase means inside a community: shorthand, a ritual, a movement), adjacent (one step out: the audience it leads, the category it sits in, who competes for it), situational (why now: what moved this week), ' +
+  '"entity": the named thing or null, "category": 1 to 3 words, "audience": 1 to 3 words, "anchors": 6 to 10 lowercase words or phrases that an on-topic item would contain, "question": the one decision question this reading asks, one sentence, "why": one plain sentence on what this reading is}. Always include the literal reading and, when a name was listed or the words could be one, the named reading. Never invent a reading the words do not support. ' +
   // SEAM:EXC_INTENT: what the person wants, and whether the query stacks subjects.
   'Also: "task": one of read (what is happening with the subject), brand (a named brand or how it is doing), compare (two or more named things against each other), ' +
   'audience (a group of people and what they value), timeline (how the subject changed over years), brief (how a brand or team can win, a decision to inform), create (ideas, a campaign, concepts, copy or assets to make). ' +
@@ -1564,6 +1678,12 @@ function excFrameClean(f) {
     period: (m => (m ? m[1] + ' to ' + m[2] : null))(/(\d{4})\s*(?:to|-|\u2013)\s*(\d{4})/.exec(String(f.period || ''))),
     queries: { news: str(q.news, 90), research: str(q.research, 90), discourse: str(q.discourse, 90), web: str(q.web, 90) } };
   if (out.threads.length === 1) out.threads = [];   // one thread is no split
+  if (f.named && typeof f.named === 'object' && str(f.named.name, 80)) out.named = { name: str(f.named.name, 80), what: str(f.named.what, 160), from: (Array.isArray(f.named.from) ? f.named.from : []).map(x => String(x)).slice(0, 3) };   // SEAM:EXC_NAME (EX41)
+  // SEAM:EXC_PROBE (EX42): the readings, how the query was read, and what lies underneath; never a score
+  const reading = r => r && typeof r === 'object' && ['literal', 'named', 'cultural', 'adjacent', 'situational'].includes(String(r.kind || '').toLowerCase()) ? { kind: String(r.kind).toLowerCase(), entity: str(r.entity, 80), category: str(r.category, 40), audience: str(r.audience, 40), anchors: list(r.anchors, 10, 40), question: str(r.question, 220), why: str(r.why, 200) } : null;   // no mass leaves: never a score
+  out.readings = (Array.isArray(f.readings) ? f.readings : []).map(reading).filter(Boolean).slice(0, 5);
+  if (f.read_as && typeof f.read_as === 'object') out.read_as = { kind: str(f.read_as.kind, 20), label: str(f.read_as.label, 120), why: str(f.read_as.why, 200), prior: !!f.read_as.prior };
+  out.underneath = (Array.isArray(f.underneath) ? f.underneath : []).map(u => u && typeof u === 'object' ? { kind: str(u.kind, 20), label: str(u.label, 120), why: str(u.why, 200), entity: str(u.entity, 80), category: str(u.category, 40), audience: str(u.audience, 40), anchors: list(u.anchors, 10, 40), question: str(u.question, 220) } : null).filter(Boolean).slice(0, 3);
   return out.category || out.entity ? out : null;
 }
 const EXC_TASKS = ['read', 'brand', 'compare', 'audience', 'timeline', 'brief', 'create'];   // SEAM:EXC_INTENT
@@ -5064,7 +5184,15 @@ const DAILY_POV = {
     { name:'Condé Nast Traveler', feed:'https://www.cntraveler.com/feed/rss',          tier:1, territories:['travel-experiences','luxury'], verified:false },
     { name:'PhocusWire',         feed:'https://www.phocuswire.com/rss',                tier:2, territories:['travel-experiences','technology-innovation'], verified:false },
     { name:'Afar',               feed:'https://www.afar.com/feed',                     tier:2, territories:['travel-experiences'], verified:false },
-    { name:'Thrillist',          feed:'https://www.thrillist.com/rss',                 tier:3, territories:['travel-experiences','food-hospitality'], verified:false }
+    { name:'Thrillist',          feed:'https://www.thrillist.com/rss',                 tier:3, territories:['travel-experiences','food-hospitality'], verified:false },
+    // EX41: Black culture, business and media, where names like Earn Your Leisure are covered
+    { name:'Black Enterprise',   feed:'https://www.blackenterprise.com/feed/',         tier:1, territories:['business-economics','entrepreneurship-creator','global-diaspora'], verified:false },
+    { name:'TheGrio',            feed:'https://thegrio.com/feed/',                     tier:2, territories:['global-diaspora','media-platforms','entertainment-gaming'], verified:false },
+    { name:'AfroTech',           feed:'https://afrotech.com/feed',                     tier:2, territories:['technology-innovation','entrepreneurship-creator','global-diaspora'], verified:false },
+    { name:'Blavity',            feed:'https://blavity.com/feed',                      tier:2, territories:['global-diaspora','media-platforms','entrepreneurship-creator'], verified:false },
+    { name:'Essence',            feed:'https://www.essence.com/feed/',                 tier:1, territories:['fashion-beauty','global-diaspora','entertainment-gaming'], verified:false },
+    { name:'The Root',           feed:'https://www.theroot.com/rss',                   tier:2, territories:['global-diaspora','media-platforms'], verified:false },
+    { name:'EURweb',             feed:'https://eurweb.com/feed/',                      tier:3, territories:['entertainment-gaming','global-diaspora','music'], verified:false }
   ],
   // SEAM:INTAKE (EX37): GDELT lanes by territory. Every slice asks one query per territory (rotating), tier 4 by law: breadth
   // behind the sources, never sole evidence. The five beats below stay for the legacy fallback only.
@@ -7769,6 +7897,25 @@ async function excavateInterpret(request, env, origin) {
   const frame = await excFrameFor(env, q);
   if (!frame) return json({ ok: false, error: 'unframeable', query: q }, 200, origin, env);
   return json({ ok: true, query: q, frame, label: excFrameLabel(frame) }, 200, origin, env);
+}
+/* SEAM:EXC_PROBE (EX42): a reader takes one of the underneath readings. The flip is written to `meanings` (the phrase, the reading, who,
+ * when) and the frame is rebuilt from that reading, so the read that follows answers it and says so. The probe reads the ledger as a
+ * prior: a phrase flipped PRIOR_MIN times to the same reading leads with it next time, marked as the readers' reading. */
+async function excavateReading(request, env, origin) {
+  const gate = await excavateAuth(request, env, origin);
+  if (gate.err) return gate.err;
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const q = String(body.query || body.q || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const r = body.reading && typeof body.reading === 'object' ? body.reading : null;
+  if (q.length < 4 || !r || !PROBE.KINDS.includes(String(r.kind || ''))) return json({ ok: false, error: 'bad_reading' }, 200, origin, env);
+  const base = await excFrameFor(env, q);
+  if (!base) return json({ ok: false, error: 'unframeable', query: q }, 200, origin, env);
+  const clean = excFrameClean(Object.assign({}, base, { entity: r.entity || null, category: r.category || base.category, audience: r.audience || base.audience, anchors: (Array.isArray(r.anchors) && r.anchors.length) ? r.anchors : base.anchors, question: r.question || base.question, threads: [],
+    read_as: { kind: r.kind, label: excReadingLabel(r), why: r.why || null, prior: false }, underneath: (base.underneath || []).filter(u => u.kind !== r.kind || u.label !== excReadingLabel(r)).concat(base.read_as ? [{ kind: base.read_as.kind, label: base.read_as.label, why: base.read_as.why, entity: base.entity, category: base.category, audience: base.audience, anchors: base.anchors, question: base.question }] : []).slice(0, 3) }));
+  const phrase = q.toLowerCase();
+  sbRest(env, 'meanings', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { phrase, kind: r.kind, entity: clean.entity, category: clean.category, reader: gate.user.id } }).catch(excQuiet('meanings_write', null));
+  try { if (env.RATE_LIMIT) await env.RATE_LIMIT.put('xfr:' + EXC_FRAME.REV + ':' + (await sha256hex(phrase)), JSON.stringify(clean), { expirationTtl: EXC_FRAME.TTL }); } catch (e) { excQuiet('reading_cache')(e); }   // the reader's reading is the frame for this phrase for the week
+  return json({ ok: true, query: q, frame: clean, label: excFrameLabel(clean) }, 200, origin, env);
 }
 /* SEAM:EXC_INTENT: suggestions as the person types. POST /excavate/suggest {q} (signed in): tracked brands, territories, the
  * house's recent reads and its RECONs whose words start with what was typed. Database reads only; nothing is spent. */

@@ -63,8 +63,8 @@ ok(/await sweepRefound\(env, rows, fresh\);/.test(fnOf('spineCapture')) && /\(aw
 // the RECON in flight is untouched: its research reads the lake as it always did. Every place the sweep is asked for, by function:
 const enclosing = i => { const head = w.slice(0, i); const m = [...head.matchAll(/^(?:async )?function (\w+)\(/gm)].pop(); return m ? m[1] : null; };
 const askers = new Set([...w.matchAll(/await sweepOnly\(env\)/g)].map(m => enclosing(m.index)));
-ok([...askers].sort().join(',') === 'audiencesRefresh,brandRoom,composeFromLake,dailyLakePublic,excMeasures,fetchRecurrenceRows,tracksRefresh',
-  'S13 the sweep is asked for in exactly seven places: the board\'s recurrence, tracked brands, a brand\'s room, cohorts, a read\'s measures, DAILY\'s picks and the public ticker');
+ok([...askers].sort().join(',') === 'audiencesRefresh,brandRoom,composeFromLake,dailyLakePublic,excMeasures,excReadingMass,fetchRecurrenceRows,tracksRefresh',
+  'S13 the sweep is asked for in exactly eight places: the board\'s recurrence, tracked brands, a brand\'s room, cohorts, a read\'s measures, the probe\'s mass (EX42), DAILY\'s picks and the public ticker');
 const flaggers = new Set([...w.matchAll(/await sweepReady\(env\)/g)].map(m => enclosing(m.index)));
 ok([...flaggers].sort().join(',') === 'excavatePropose,sweepOnly,sweepRefound',
   'S14 the column is asked about only by the sweep\'s refound, the ledger\'s sweep note and sweepOnly: a RECON\'s stages, a read\'s pack and a tile\'s evidence read the whole lake, research included');

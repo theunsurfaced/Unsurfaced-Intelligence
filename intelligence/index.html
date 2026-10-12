@@ -447,9 +447,19 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .cm-shelf-acts{display:flex;gap:8px;margin-top:10px;}
 
 /* SEAM:EXC_INTENT: the interpretation, as chips under the bar */
-.intent-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0 0;min-height:0;}
+.intent-row{display:flex;flex-direction:column;gap:8px;margin:12px 0 0;min-height:0;}   /* SEAM:EXC_PROBE (EX42b): rows */
+.in-head,.in-vs{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.in-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.intent-chip.field{display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:7px 10px 6px;min-width:0}
+.intent-chip.field input{width:100%;min-width:0;font-size:13px;text-overflow:ellipsis}
+.in-vs .intent-chip{padding:5px 8px 5px 10px;gap:8px}
+@media (max-width:480px){.in-grid{grid-template-columns:1fr}}
 .intent-lead{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-right:4px;}
 .intent-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:12px;padding:5px 9px;cursor:text;}
+/* SEAM:EXC_PROBE (EX42): the underneath */
+.intent-under{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:2px}.intent-lead.on{color:var(--accent)}.in-under-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%}.in-under-list .intent-chip.under{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:7px 10px 6px;text-align:left;min-width:0}.in-under-list .intent-chip.under span{font-size:13px}
+@media (max-width:480px){.in-under-list{grid-template-columns:1fr}}.intent-under>small{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-right:4px}
+.intent-chip.under{cursor:pointer;background:none;border-style:dashed;font:inherit;font-size:12px}.intent-chip.under small{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}.intent-chip.under:hover{border-color:var(--accent);border-style:solid;color:var(--accent)}
 .intent-chip small{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
 .intent-chip input{background:transparent;border:0;outline:0;color:var(--text);font:inherit;min-width:40px;width:auto;padding:0;}
 .intent-chip.task{border-color:var(--accent);color:var(--accent);cursor:default;}
@@ -459,7 +469,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .intent-add{background:transparent;border:1px dashed var(--border2);color:var(--text);font-size:12px;padding:5px 9px;width:130px;outline:0;font-family:'Syne',sans-serif;}
 .intent-go{background:none;border:1px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;padding:6px 10px;cursor:pointer;text-transform:uppercase;}
 .intent-go:hover{border-color:var(--accent);color:var(--accent);}
-.intent-say{font-size:12px;color:var(--text2);margin-top:6px;}
+.intent-say{font-size:13.5px;line-height:1.5;color:var(--room-fg2,var(--text2));margin-top:10px;max-width:62ch;}   /* SEAM:EXC_PROBE (EX42b): readable */
 .suggest-box{position:absolute;left:0;right:0;top:100%;z-index:var(--z-menu);background:var(--surface);border:1px solid var(--border2);border-top:0;display:none;max-height:300px;overflow:auto;}
 .suggest-box.open{display:block;}
 .suggest-item{display:flex;justify-content:space-between;gap:12px;padding:10px 16px;cursor:pointer;font-size:13px;color:var(--text);}
@@ -5111,12 +5121,16 @@ function _inSentence(f) {
   if (!f) return '';
   const who = f.entity || f.category || 'the subject';
   const parts = [(_IN_TASK[f.task] || 'Reading') + ': ' + who + (f.entity && f.category ? ' in ' + f.category : '')];
+  // SEAM:EXC_PROBE (EX42): how the question was read, in the probe's words, as its own sentence; EX41's name line stands in when the probe said nothing
+  let lead = '';
+  if (f.read_as && f.read_as.label) lead = 'Read as ' + f.read_as.label + (f.read_as.why ? ': ' + f.read_as.why.replace(/\.$/, '') : '') + (f.read_as.prior ? ' (as readers have read it)' : '') + '.';
+  else if (f.named && f.named.name) lead = 'Read as ' + f.named.name + (f.named.what ? ', ' + String(f.named.what).replace(/^[a-z ]+: /, '') : '') + (f.named.from && f.named.from.includes('record') ? ' (on the record)' : '') + '.';   // SEAM:EXC_NAME (EX41)
   if (f.audience) parts.push('for ' + f.audience);
   if ((f.competitors || []).length) parts.push('against ' + f.competitors.join(', '));
   if (f.market && f.market !== 'US') parts.push('in ' + f.market);
   if (f.period) parts.push(f.period);
   if ((f.threads || []).length > 1) parts.push(f.threads.length + ' threads, read together');
-  return parts.join(', ') + '.';
+  return lead ? lead : parts.join(', ') + '.';   // SEAM:EXC_PROBE (EX42b): how the question was read, or the summary when the probe said nothing; never both
 }
 /* PURE: the frame the chips hold, cleaned the way the worker cleans it, with the person's edits. */
 function _inFrameOut(f) {
@@ -5143,15 +5157,28 @@ function _inRender() {
   const I = window._intent, f = I.frame;
   if (I.busy) { row.innerHTML = '<span class="intent-lead">Reading the question</span>'; if (say) say.textContent = ''; return; }
   if (!f) { row.innerHTML = ''; if (say) say.textContent = ''; return; }
-  const chip = (k, label, v) => `<span class="intent-chip"><small>${label}</small><input value="${safeAttr(v || '')}" size="${Math.max(3, String(v || '').length)}" placeholder="none" onchange="_inEdit('${k}',this.value)"></span>`;
-  let html = `<span class="intent-lead">The read</span><span class="intent-chip task" title="What the question asks for">${safe(_IN_TASK[f.task] || 'Reading')}</span>`;
-  html += _IN_FIELDS.filter(([k]) => k !== 'period' || f.period).map(([k, label]) => chip(k, label, f[k])).join('');
-  html += (f.competitors || []).map((c, i) => `<span class="intent-chip"><small>vs</small>${safe(c)}<button type="button" aria-label="Remove" onclick="_inListDel('competitors',${i})">×</button></span>`).join('');
-  if ((f.competitors || []).length < 5) html += `<input class="intent-add" placeholder="Add a competitor" onkeydown="if(event.key==='Enter'){event.preventDefault();_inListAdd('competitors',this.value)}">`;
-  html += (f.threads || []).map((t, i) => `<span class="intent-chip thread"><small>thread ${i + 1}</small>${safe(t)}<button type="button" aria-label="Remove" onclick="_inListDel('threads',${i})">×</button></span>`).join('');
-  if (I.edited) html += `<button class="intent-go" type="button" onclick="runSearch()">Read it this way</button>`;
+  // SEAM:EXC_PROBE (EX42b): the read as rows: the head, the fields in a grid, the competitors, the underneath
+  const chip = (k, label, v) => `<label class="intent-chip field"><small>${label}</small><input value="${safeAttr(v || '')}" placeholder="none" onchange="_inEdit('${k}',this.value)"></label>`;
+  let html = `<div class="in-head"><span class="intent-lead">The read</span><span class="intent-chip task" title="What the question asks for">${safe(_IN_TASK[f.task] || 'Reading')}</span>${I.edited ? `<button class="intent-go" type="button" onclick="runSearch()">Read it this way</button>` : ''}</div>`;
+  html += `<div class="in-grid">` + _IN_FIELDS.filter(([k]) => k !== 'period' || f.period).map(([k, label]) => chip(k, label, f[k])).join('') + `</div>`;
+  html += `<div class="in-vs"><span class="intent-lead">Against</span>` + (f.competitors || []).map((c, i) => `<span class="intent-chip"><span>${safe(c)}</span><button type="button" aria-label="Remove" onclick="_inListDel('competitors',${i})">×</button></span>`).join('')
+    + ((f.competitors || []).length < 5 ? `<input class="intent-add" placeholder="Add a competitor" onkeydown="if(event.key==='Enter'){event.preventDefault();_inListAdd('competitors',this.value)}">` : '') + `</div>`;
+  if ((f.threads || []).length) html += `<div class="in-vs"><span class="intent-lead">Threads</span>` + f.threads.map((t, i) => `<span class="intent-chip thread"><span>${safe(t)}</span><button type="button" aria-label="Remove" onclick="_inListDel('threads',${i})">×</button></span>`).join('') + `</div>`;
+  // SEAM:EXC_PROBE (EX42): the underneath, each a reading the reader can take
+  if ((f.underneath || []).length) html += `<div class="intent-under"><span class="intent-lead on">Underneath it</span><div class="in-under-list">${f.underneath.map((u, i) => `<button type="button" class="intent-chip under" title="${safeAttr((u.why || '') + (u.question ? ' ' + u.question : ''))}" onclick="_inTake(${i})"><small>${safe(_IN_KIND[u.kind] || u.kind)}</small><span>${safe(u.label || '')}</span></button>`).join('')}</div></div>`;
   row.innerHTML = html;
   if (say) say.textContent = _inSentence(f);
+}
+/* SEAM:EXC_PROBE (EX42): the reader takes one of the underneath readings. The worker records the flip and rebuilds the frame from
+   that reading (the reading just answered joins the underneath), then the read runs again and says which reading it answered. */
+const _IN_KIND = { literal: 'the words', named: 'a name', cultural: 'in the culture', adjacent: 'one step out', situational: 'this week' };
+async function _inTake(i) {
+  const I = window._intent, f = I.frame, u = f && (f.underneath || [])[i]; if (!u) return;
+  I.busy = true; _inRender();
+  const d = await _inApi('/excavate/reading', { query: I.q, reading: u });
+  I.busy = false;
+  if (d && d.ok && d.frame) { I.frame = Object.assign({ competitors: [], threads: [] }, d.frame); I.edited = false; _inRender(); runSearch(); }
+  else { I.frame = Object.assign({}, f, { entity: u.entity || null, category: u.category || f.category, audience: u.audience || f.audience, anchors: u.anchors && u.anchors.length ? u.anchors : f.anchors, question: u.question || f.question, read_as: { kind: u.kind, label: u.label, why: u.why }, underneath: (f.underneath || []).filter((x, j) => j !== i) }); I.edited = true; _inRender(); }
 }
 function _inEdit(k, v) { const f = window._intent.frame; if (!f) return; f[k] = String(v || '').trim() || null; window._intent.edited = true; _inRender(); }
 function _inListDel(k, i) { const f = window._intent.frame; if (!f) return; f[k] = (f[k] || []).filter((x, j) => j !== i); window._intent.edited = true; _inRender(); }
