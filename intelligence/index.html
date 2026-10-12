@@ -528,7 +528,26 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rec-cur-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .rec-cur h3{font-size:17px;line-height:1.3;margin:0 0 6px}.rec-cur p{margin:0 0 8px;color:var(--room-fg2,var(--text2));font-size:14px;line-height:1.5}
 .rec-cur .move{font-size:13px}.rec-cur .move i{font-style:normal;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.rec-cur-subs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rec-cur-subs span{font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--room-rule,var(--border));padding:2px 6px;color:var(--room-fg2,var(--text2))}
+.rec-cur-subs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.rec-cur-subs span,.rec-cur-subs button{font-family:'Space Mono',monospace;font-size:10px;border:1px solid var(--room-rule,var(--border));padding:3px 8px;color:var(--room-fg2,var(--text2));background:none;cursor:default}
+.rec-cur-subs button{cursor:pointer;color:var(--room-ivory,var(--text))}.rec-cur-subs button:hover{border-color:var(--accent);color:var(--accent)}
+/* SEAM:RECORD_FACE (EX40): a current with a face */
+.rec-cur-grid.n1{grid-template-columns:1fr}.rec-cur-grid.n2{grid-template-columns:repeat(2,minmax(0,1fr))}.rec-cur-grid.n3{grid-template-columns:repeat(3,minmax(0,1fr))}.rec-cur-grid.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rec-cur{display:flex;flex-direction:column;min-width:0}
+.rec-cur-faces.big-pulse{display:flex;flex-direction:column;justify-content:center;padding:14px 14px 10px;border:1px solid var(--room-rule,var(--border))}.rec-cur-faces.big-pulse .pulse{flex:0 0 64px;position:relative;min-height:0}.rec-cur-faces.big-pulse .pulse svg{width:100%;height:100%;display:block;overflow:visible}.rec-cur-faces.big-pulse .pulse .pf{fill:var(--room-pulse);stroke:none}.rec-cur-faces.big-pulse .pulse .pl{fill:none;stroke:var(--room-red);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}.rec-cur-faces.big-pulse .pulse circle{fill:var(--room-red)}.rec-cur-faces.big-pulse small{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--room-fg3,var(--text3));margin-top:6px}
+.rec-cur-faces.names{display:flex;align-items:flex-end;padding:14px;border:1px solid var(--room-rule,var(--border));background:linear-gradient(160deg,var(--room-card) 0%,#0e0e12 100%)}.rec-cur-faces.names div{display:flex;flex-direction:column;gap:2px}.rec-cur-faces.names span{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(18px,1.7vw,26px);line-height:1.05;letter-spacing:-.02em;color:var(--room-ivory,var(--text))}.rec-cur-faces.names span:nth-child(n+2){color:var(--room-fg3,var(--text3))}
+.rec-cur-faces{display:grid;gap:2px;aspect-ratio:16/9;margin:0 0 12px;overflow:hidden;background:var(--room-card)}
+.rec-cur-faces.n1{grid-template-columns:1fr}.rec-cur-faces.n2{grid-template-columns:1fr 1fr}.rec-cur-faces.n3{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr}
+.rec-cur-faces.n3 .face:first-child{grid-row:1/3}
+.rec-cur-faces .face{display:block;padding:0;border:0;background:var(--room-card);cursor:pointer;min-width:0;min-height:0;overflow:hidden}
+.rec-cur-faces .face img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.85);transition:filter .25s,transform .4s}
+.rec-cur-faces .face:hover img{filter:saturate(1.05);transform:scale(1.03)}
+.rec-cur-pulse{margin:0 0 10px}.rec-cur-pulse .pulse{height:34px;position:relative}.rec-cur-pulse .pulse svg{width:100%;height:100%;display:block;overflow:visible}.rec-cur-pulse .pulse .pf{fill:var(--room-pulse);stroke:none}.rec-cur-pulse .pulse .pl{fill:none;stroke:var(--room-red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.rec-cur-pulse .pulse circle{fill:var(--room-red)}.rec-cur-pulse small{display:block;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--room-fg3,var(--text3));margin-top:2px}
+.rec-cur h3{font-size:18px}
+.rec-cur p.body{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}.rec-cur.open p.body{display:block;-webkit-line-clamp:unset}
+.rec-cur-more{align-self:flex-start;background:none;border:0;padding:0 0 8px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--room-fg3,var(--text3));cursor:pointer}.rec-cur-more:hover{color:var(--accent)}
+.rec-cur .move{margin-top:auto;padding-top:8px}
+@media (max-width:1000px){.rec-cur-grid.n3,.rec-cur-grid.n4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.rec-cur-grid.n2,.rec-cur-grid.n3,.rec-cur-grid.n4{grid-template-columns:1fr}.rec-currents{padding:14px}}
 .rec-ahead{color:var(--room-fg2,var(--text2))}
 .rec-ask{margin:0 0 18px;padding:0}.rec-ask:has(#ask-thread:empty){display:none}   /* SEAM:ASK_RECORD; EX36a: the thread only, under the head */
 .room-head.rec-head{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(340px,40%);align-items:center;gap:calc(28px*var(--k))}
@@ -11018,16 +11037,44 @@ async function _askSubmit(ev) {
   return false;
 }
 /* SEAM:CROSS_CURRENTS: the patterns running across the fortnight's deployments, named once a week; above the scroll. */
-function _renderCurrents(cur) {
+/* SEAM:RECORD_FACE (EX40): a current resolved against the record's own tiles. Its subjects are the tiles' labels; the tiles carry the
+   sources' photographs, the twelve-week series and the ids, so a current can show the faces of the readings it runs across, the pulse of
+   their coverage summed, and open any of them. Nothing is fetched. */
+function _curResolve(c, tiles) {
+  const by = new Map(); for (const t of (tiles || [])) { if (t && t.label) by.set(String(t.label).toLowerCase(), t); }
+  const subs = (c.subjects || []).map(s => { const t = by.get(String(s).toLowerCase()) || null; return { name: s, tile: t, short: t && t.frame && (t.frame.entity || t.frame.category) ? String(t.frame.entity || t.frame.category) : String(s).replace(/\s+in\s+.*$/, '') }; });
+  const seen = new Set(), faces = [];
+  for (const s of subs) { const ph = s.tile && s.tile.photo && s.tile.photo.src; if (ph && !seen.has(ph)) { seen.add(ph); faces.push({ src: ph, credit: s.tile.photo.credit || '', id: s.tile.id, name: s.short }); } if (faces.length >= 3) break; }
+  let series = null;
+  for (const s of subs) { const v = s.tile && s.tile.measures && Array.isArray(s.tile.measures.series) ? s.tile.measures.series : null; if (!v || v.length < 2) continue; if (!series) series = v.map(x => Number(x) || 0); else for (let i = 0; i < series.length && i < v.length; i++) series[i] += Number(v[i]) || 0; }
+  return { subs, faces, series: series && series.some(x => x > 0) ? series : null };
+}
+function _curToggle(btn) {
+  const art = btn.closest('.rec-cur'); if (!art) return;
+  const open = art.classList.toggle('open'); btn.textContent = open ? 'Less' : 'More'; btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function _renderCurrents(cur, tilesIn) {
   let el = document.getElementById('rec-currents');
   const host = document.getElementById('rec-counts');
   if (!el && host) { el = document.createElement('div'); el.id = 'rec-currents'; el.className = 'rec-currents'; host.insertAdjacentElement('afterend', el); }
   if (!el) return;
   const list = cur && Array.isArray(cur.currents) ? cur.currents : [];
   if (!list.length) { el.style.display = 'none'; return; }
-  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))} over ${safe(String(cur.rows || ''))} readings</span></div><div class="rec-cur-grid">` +
-    list.map(c => `<article class="rec-cur"><h3>${safe(c.title)}</h3><p>${safe(c.body)}</p>${c.move ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : ''}<div class="rec-cur-subs">${(c.subjects || []).map(x => `<span>${safe(x)}</span>`).join('')}</div></article>`).join('') + '</div>';
+  const tiles = tilesIn || (typeof _FI_RECORD !== 'undefined' && _FI_RECORD && _FI_RECORD.tiles) || [];   // SEAM:RECORD_FACE (EX40)
+  const face = (c) => {
+    const r = _curResolve(c, tiles);
+    // every current has a face: the readings' photographs when they carry one; else their pulse drawn large; else the subjects' names set large
+    const faces = r.faces.length ? `<div class="rec-cur-faces n${r.faces.length}">${r.faces.map(f => `<button type="button" class="face" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(f.id)}')" title="${safeAttr(f.name + (f.credit ? ' · Photo: ' + f.credit : ''))}"><img src="${safeAttr(f.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`).join('')}</div>`
+      : r.series ? `<div class="rec-cur-faces big-pulse">${_pulse(r.series)}<small>Coverage across its readings, twelve weeks</small></div>`
+      : `<div class="rec-cur-faces names"><div>${r.subs.slice(0, 4).map(s => `<span>${safe(s.short)}</span>`).join('')}</div></div>`;
+    const pulse = r.faces.length && r.series ? `<div class="rec-cur-pulse">${_pulse(r.series)}<small>Coverage across its readings, twelve weeks</small></div>` : '';
+    const subs = r.subs.map(s => s.tile ? `<button type="button" onclick="openFeaturedCard('${safeAttr(s.tile.id)}')" title="${safeAttr(s.name)}">${safe(s.short)}</button>` : `<span title="${safeAttr(s.name)}">${safe(s.short)}</span>`).join('');
+    const long = String(c.body || '').length > 300;
+    return `<article class="rec-cur">${faces}${pulse}<h3>${safe(c.title)}</h3><p class="body">${safe(c.body)}</p>${long ? `<button type="button" class="rec-cur-more" aria-expanded="false" onclick="_curToggle(this)">More</button>` : ''}${c.move ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : ''}<div class="rec-cur-subs">${subs}</div></article>`;
+  };
+  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))} over ${safe(String(cur.rows || ''))} readings</span></div><div class="rec-cur-grid n${Math.min(4, list.length)}">` + list.map(face).join('') + '</div>';
   el.style.display = '';
+  if (typeof _drawPulses === 'function') setTimeout(_drawPulses, 50);
 }
 /* SEAM:LEAD_SCROLL (EX36b): the newest readings with photographs follow the week's read on the rail, each with its bet as a countdown.
    A reading on the rail is not repeated in the record below. Built once per record build. */
@@ -11084,7 +11131,7 @@ function _renderScroll(rec, data) {
   const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
   // SEAM:QUIET_ENGINE (EX36a): the score, never the machinery: no count of readings or subjects, no calibration line
   if (counts) { const score = (c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''; counts.innerHTML = score + (c.open ? `<span><b>${safe(String(c.open))}</b> being checked</span>` : ''); counts.style.display = counts.innerHTML ? '' : 'none'; }
-  _renderCurrents(rec.currents);   // SEAM:CROSS_CURRENTS
+  _renderCurrents(rec.currents, rec.tiles);   // SEAM:CROSS_CURRENTS; SEAM:RECORD_FACE: with the tiles, for the faces
   const sub = document.getElementById('board-sub');
   if (sub) sub.textContent = 'What the house has read, dated and kept. A later reading develops an earlier one; both stand.';   // SEAM:QUIET_ENGINE
   const strip = document.getElementById('fi-state-strip'); if (strip) strip.style.display = 'none';
