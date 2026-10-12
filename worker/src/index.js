@@ -177,6 +177,7 @@ export default {
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
       if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
       if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the territories, public
+      if (path === '/excavate/method' && request.method === 'GET') return excavateMethodRoute(env, origin);            // SEAM:TERRITORIES (EX39): how the numbers are made, public
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
       if (path === '/client/profile' && (request.method === 'GET' || request.method === 'POST')) return profileRoute(request, env, origin);   // SEAM:CLIENT_PROFILE (signed in)
@@ -7010,7 +7011,8 @@ function ytQuotaDay(d) {
 }
 const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artificial-intelligence',
   'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
-  'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora'];
+  'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora',
+  'sports-culture','wellness-fitness','retail-dtc','luxury','travel-experiences','media-platforms'];   // SEAM:TERRITORIES (EX39): the twenty, fed since EX37
 
 /* SEAM:EXC_VOICES: consumer reality, verbatim. The discourse rails (YouTube comments, Mastodon posts) hand the
  * page every on-frame quote they fetched, in the speaker's own words, ranked by what other people made of it
@@ -8985,8 +8987,39 @@ function doorCompileRead(parsed, merged, frame, measures, night) {
   const watch = doorWatchOf(parsed.watch, night);   // SEAM:RECORD_WATCH
   return { read: read.length === 2 ? read : null, question: parsed && typeof parsed.question === 'string' ? parsed.question.replace(/\s+/g, ' ').trim().slice(0, 220) || null : null, insights, ideas, brief, watch, read_checks: excGround(read.concat([brief]).join(' '), merged.concat(pool)), window: excWindow(merged, now), evidence_n: merged.length };   // SEAM:EXC_DOOR_VOICE: the question rides with the read
 }
+/* SEAM:TERRITORIES (EX39) · the text behind the row. The evidence a reading is written from used to be a headline and a dek. Now, for
+ * the tier 1 and 2 lines of every subject that will be read, the article itself is pulled (Tavily extract first, the worker's own fetch
+ * behind it: deepExtract) and the passage that carries the frame's words rides as the line's text, marked quoted. Bounded: PER lines a
+ * subject, PAGES pages a pass, BUDGET_MS of the pass; a page that cannot be read keeps its dek. Tavily's free thousand credits a month
+ * read five thousand pages; a pass reads at most PAGES. */
+const DOOR_TEXT = { PER: 6, PAGES: 120, BUDGET_MS: 150000, MIN: 400, MAX: 700, TIER: 2 };
+function doorPassage(text, words, max) {
+  const paras = String(text || '').split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z"“])/).map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s.length >= 80);
+  if (!paras.length) return null;
+  const ws = (words || []).map(w => String(w || '').toLowerCase()).filter(w => w.length >= 3);
+  let best = paras[0], bestN = -1;
+  for (const s of paras) { const low = s.toLowerCase(); const k = ws.filter(w => low.includes(w)).length + (/\d/.test(s) ? 0.5 : 0); if (k > bestN) { best = s; bestN = k; } }
+  return best.length > max ? best.slice(0, max - 1).replace(/\s+\S*$/, '') + '…' : best;
+}
+async function doorQuotes(env, ev, frame, ledger) {
+  const lines = (ev && ev.merged) || []; if (!lines.length || typeof deepExtract !== 'function') return 0;
+  if (Date.now() - ledger.t0 > DOOR_TEXT.BUDGET_MS || ledger.pages >= DOOR_TEXT.PAGES) { ledger.skipped = (ledger.skipped || 0) + 1; return 0; }
+  const want = lines.filter(c => c && /^https:\/\//.test(String(c.url || '')) && excTier(c) <= DOOR_TEXT.TIER && !c.quoted).slice(0, Math.min(DOOR_TEXT.PER, DOOR_TEXT.PAGES - ledger.pages));
+  if (!want.length) return 0;
+  ledger.pages += want.length;
+  const words = [].concat(frame ? [frame.entity, frame.category, frame.audience] : [], (frame && frame.anchors) || []).filter(Boolean);
+  let got = 0;
+  try {
+    const { texts, stats } = await deepExtract(env, want.map(c => c.url));
+    ledger.credits += (stats && stats.credits) || 0;
+    for (const c of want) { const t = texts.get(c.url); if (!t || !t.text || t.text.length < DOOR_TEXT.MIN) continue; const q = doorPassage(t.text, words, DOOR_TEXT.MAX); if (q) { c.text = q; c.quoted = true; got++; } }
+  } catch (e) { excQuiet('door_quotes')(e); }
+  ledger.quoted += got;
+  return got;
+}
 async function doorPass(env, opts) {
   const night = doorNight(), out = { night, candidates: 0, kept: 0, reused: 0, queued: 0, thin: 0, failed: 0, usd: 0 };
+  const textLedger = { t0: Date.now(), pages: 0, quoted: 0, credits: 0 };   // SEAM:TERRITORIES: the text behind the row, bounded for the pass
   const every = doorEvery(env);   // SEAM:DOOR_CADENCE
   if (!(opts && opts.force) && every > 1) {
     const last = ((await sbRest(env, 'door_reads?status=in.(ready,reused)&night=lt.' + night + '&select=night&order=night.desc&limit=1').catch(excQuiet('door_rows', []))) || [])[0];
@@ -9014,12 +9047,13 @@ async function doorPass(env, opts) {
     try {
       const frame = excFrameClean(await excFrameFor(env, cand.query));
       const ev = await doorEvidence(env, cand, frame, tiers);
+      await doorQuotes(env, ev, frame, textLedger);   // SEAM:TERRITORIES (EX39): the article's own passage on the tier 1 and 2 lines
       const measures = frame ? await excMeasures(env, frame) : null;
       const prev = prevBy.get(cand.key) || null;
       const pm = prev && prev.measures && prev.measures.recent_7d != null && !!prev.measures.sweep === !!(measures && measures.sweep) ? prev.measures : null;   // "since" needs a measured last night, counted the same way (SEAM:SWEEP_MEASURE)
       // Every row carries the same keys: an upsert writes the whole row, so a key left out would be nulled on another row.
       const base = { frame_key: cand.key, night, frame: Object.assign({ title: cand.title, subtitle: cand.subtitle, kind: cand.kind, lens: cand.lens, query: cand.query }, frame ? { entity: frame.entity, category: frame.category, audience: frame.audience, market: frame.market, competitors: frame.competitors, question: frame.question, anchors: frame.anchors, exclude: frame.exclude, queries: frame.queries } : {}),
-        measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null, place: c.country || null })),   // SEAM:EXC_PLACE   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
+        measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), quoted: !!c.quoted, image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null, place: c.country || null })),   // SEAM:EXC_PLACE   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
         meta: { set_aside: ev.set_aside, prev_id: prev ? prev.id : null, prev_night: prev ? prev.night : null, since: pm ? { recent_delta: (measures ? measures.recent_7d : 0) - (pm.recent_7d || 0), outlets_delta: (measures ? measures.outlets : 0) - (pm.outlets || 0) } : null },
         status: 'queued', error: null, stamp: null, read: null, cost_usd: null };
       if (ev.merged.length < DOOR.MIN_EVIDENCE) { out.thin++; rowsOut.push(Object.assign(base, { status: 'failed', error: 'thin_evidence' })); continue; }
@@ -9061,6 +9095,7 @@ async function doorPass(env, opts) {
     if (sub && sub.ok) { out.queued = items.length; out.usd = sub.est_usd || 0; } else if (items.length) { out.failed += items.length; console.log('door_batch_error', String((sub && sub.error) || '')); }
   }
   try { await doorPublish(env); } catch (e) { out.publish_error = String(e && e.message).slice(0, 120); excQuiet('door_publish')(e); }
+  out.text = { pages: textLedger.pages, quoted: textLedger.quoted, credits: textLedger.credits, skipped: textLedger.skipped || 0 };   // SEAM:TERRITORIES: the text behind the row
   await logEvent(env, 'intelligence', 'door', 'door_pass', null, out);   // awaited: the record must land before the route answers or the chain closes
   return out;
 }
@@ -9585,7 +9620,8 @@ const PROFILE = { ROLES: ['brand', 'strategy', 'creative', 'media', 'product', '
 /* SEAM:CLIENT_FRAME (EX35e): the frame is wider than brands. Industries are the house's territories, picked from the list so they match a
  * reading exactly; audiences, words and markets are the reader's own; what the house learns from their reads comes back as chips. */
 const FRAME = { INDUSTRIES: 6, AUDIENCES: 8, KEYWORDS: 20, MARKETS: 6, DECLINED: 100, LEARN_DAYS: 60, LEARN_MIN: 2, LEARN_MAX: 8, LEARN_EVENTS: 300 };
-const INDUSTRY_NAMES = { 'advertising-marketing': 'Advertising and marketing', 'technology-innovation': 'Technology', 'artificial-intelligence': 'AI', 'business-economics': 'Business and economics', 'entrepreneurship-creator': 'Entrepreneurs and creators', 'music': 'Music', 'fashion-beauty': 'Fashion and beauty', 'sneakers-streetwear': 'Sneakers and streetwear', 'art-design': 'Art and design', 'architecture-cities': 'Architecture and cities', 'entertainment-gaming': 'Entertainment and gaming', 'food-hospitality': 'Food and hospitality', 'sustainability-impact': 'Sustainability', 'global-diaspora': 'Global and diaspora' };
+const INDUSTRY_NAMES = { 'advertising-marketing': 'Advertising and marketing', 'technology-innovation': 'Technology', 'artificial-intelligence': 'AI', 'business-economics': 'Business and economics', 'entrepreneurship-creator': 'Entrepreneurs and creators', 'music': 'Music', 'fashion-beauty': 'Fashion and beauty', 'sneakers-streetwear': 'Sneakers and streetwear', 'art-design': 'Art and design', 'architecture-cities': 'Architecture and cities', 'entertainment-gaming': 'Entertainment and gaming', 'food-hospitality': 'Food and hospitality', 'sustainability-impact': 'Sustainability', 'global-diaspora': 'Global and diaspora',
+  'sports-culture': 'Sports', 'wellness-fitness': 'Wellness and fitness', 'retail-dtc': 'Retail', 'luxury': 'Luxury', 'travel-experiences': 'Travel', 'media-platforms': 'Media and platforms' };   // SEAM:TERRITORIES (EX39)
 const frameWords = (xs, max, len) => { const seen = new Set(), out = []; for (const x0 of (Array.isArray(xs) ? xs : [])) { const x = String(x0 || '').trim().replace(/\s+/g, ' ').slice(0, len || 60); if (x.length < 2 || seen.has(x.toLowerCase())) continue; seen.add(x.toLowerCase()); out.push(x); if (out.length >= max) break; } return out; };
 function profileWebhookOk(u) { return !u || /^https:\/\/(hooks\.slack\.com\/|[\w.-]+\.webhook\.office\.com\/|[\w.-]+\.logic\.azure\.com\/)/.test(String(u)); }
 function profileClean(b, prev) {
@@ -9950,7 +9986,7 @@ async function doorRecord(env) {
  * coverage on last week (counted from the lake, served as a percentage and a state: spike, rising, steady, falling, quiet), how many
  * readings the record holds in it, and its movers among the record's subjects (most covered, fastest rise, sharpest fall). Nothing about
  * the engine leaves here: no capture counts, no pass internals, no sizes. Public, cached STATE.TTL; no model call. */
-const STATE = { KEY: 'state:v2', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };
+const STATE = { KEY: 'state:v3', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };   // v3: SEAM:TERRITORIES (twenty, named, with their sources)
 function stateOf(recent, prior) {
   if (!recent && !prior) return 'quiet';
   const pct = prior ? Math.round((recent - prior) / prior * 100) : (recent ? 100 : 0);
@@ -9971,12 +10007,50 @@ async function excavateState(env) {
     const moved = mine.filter(t => t.measures.velocity_pct != null && (t.measures.recent_7d + (t.measures.prior_7d || 0)) >= 3);
     const fast = moved.slice().sort((a, b) => b.measures.velocity_pct - a.measures.velocity_pct)[0], cool = moved.slice().sort((a, b) => a.measures.velocity_pct - b.measures.velocity_pct)[0];
     const pct = o.prior ? Math.round((o.recent - o.prior) / o.prior * 100) : (o.recent ? 100 : 0);
-    return { territory: o.territory, velocity_pct: pct, state: stateOf(o.recent, o.prior), readings: mine.length, _move: o.recent - o.prior, _recent: o.recent,
+    const declared = DAILY_POV.sources.filter(s => (s.territories || []).includes(o.territory));   // SEAM:TERRITORIES: the declared universe, by tier
+    return { territory: o.territory, name: INDUSTRY_NAMES[o.territory] || o.territory.replace(/-/g, ' '), velocity_pct: pct, state: stateOf(o.recent, o.prior), readings: mine.length, _move: o.recent - o.prior, _recent: o.recent,
+      sources: { n: declared.length, tiers: [1, 2, 3].map(k => declared.filter(s => s.tier === k).length) },
       movers: { loud: loud ? { name: name(loud), n: loud.measures.recent_7d, id: loud.id } : null, fast: fast && fast.measures.velocity_pct > 0 ? { name: name(fast), pct: fast.measures.velocity_pct, id: fast.id } : null, cool: cool && cool.measures.velocity_pct < 0 ? { name: name(cool), pct: cool.measures.velocity_pct, id: cool.id } : null } };
   }).sort((a, b) => b._move - a._move || b._recent - a._recent).map(x => { delete x._move; delete x._recent; return x; });
   const out = { at: iso(now), territories };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(STATE.KEY, JSON.stringify(out), { expirationTtl: STATE.TTL }); } catch (e) { excQuiet('state_put')(e); } }
   return out;
+}
+/* SEAM:TERRITORIES (EX39): the method surface. What every number on the page means, written from the constants that compute it:
+ * the measures (their window, what they count, what they never count), the state thresholds, the record's grading, the source universe
+ * with its tiers by territory, and the laws. Public; cached an hour; no model. */
+const METHOD = { KEY: 'method:v1', TTL: 3600 };
+function excavateMethod() {
+  const terr = TERRITORY_SLUGS.map(sl => ({ territory: sl, name: INDUSTRY_NAMES[sl] || sl, sources: DAILY_POV.sources.filter(s => (s.territories || []).includes(sl)).map(s => ({ name: s.name, tier: s.tier })) }));
+  return {
+    version: DAILY_POV.version, at: new Date().toISOString(),
+    measures: [
+      { id: 'stories_this_week', name: 'Stories this week', says: 'How many stories in the last seven days name the subject (its name and its anchors, matched in headlines) across the declared sources.', window: '7 days, against the 7 before', counts: 'the sweep: the sources read on schedule and GDELT behind them', never: 'what a search or a RECON brought in (research), stories rejected as echoes, or anything a reader uploaded' },
+      { id: 'velocity_pct', name: 'Velocity', says: 'This week\'s stories against last week\'s, as a percentage. No last week and some this week reads as +100%.', window: '7 days against the 7 before', counts: 'the sweep', never: 'research' },
+      { id: 'outlets', name: 'Outlets', says: 'How many distinct sources carried the subject this week. One outlet is a story; two is a pattern.', window: '7 days', counts: 'the sweep', never: 'research' },
+      { id: 'weeks_touched', name: 'Weeks touched', says: 'In how many of the last ' + EXC_MEASURE.WEEKS + ' weeks the subject was covered at all. Persistence, not volume.', window: EXC_MEASURE.WEEKS + ' weeks', counts: 'the sweep', never: 'research' },
+      { id: 'share_pct', name: 'Share of territory', says: 'The subject\'s stories this week as a share of its territory\'s stories this week. Shown only when the subject\'s own territory agrees with its frame.', window: '7 days', counts: 'the sweep', never: 'research' },
+      { id: 'state', name: 'A territory\'s state', says: 'The change in a territory\'s coverage on last week: spike at +' + STATE.SPIKE + '% or more, rising at +' + STATE.RISE + '%, falling at ' + STATE.FALL + '%, steady between, quiet when nothing was captured.', window: '7 days against the 7 before', counts: 'the sweep', never: 'research' },
+      { id: 'bet', name: 'The bet and the grade', says: 'Every reading names one thing that will or will not be true by a date between ' + DOOR_LAW.WATCH_MIN_D + ' and ' + DOOR_LAW.WATCH_MAX_D + ' days out, measured the same way the reading was. On that date the database grades it held or missed. A miss stays on the record.', window: DOOR_LAW.WATCH_MIN_D + ' to ' + DOOR_LAW.WATCH_MAX_D + ' days', counts: 'the sweep, on the date', never: 'a model\'s opinion' },
+      { id: 'earned', name: 'When a subject is read', says: 'A subject is read when it is new on the board, or when its numbers moved since its last reading: ' + DOOR_LAW.MIN_DELTA + ' stories, ' + DOOR_LAW.MIN_VEL + ' points of velocity or ' + DOOR_LAW.MIN_OUTLETS + ' outlets. Nothing is written to fill a page.', window: 'nightly', counts: 'the sweep', never: 'a quota' }
+    ],
+    tiers: Object.keys(DAILY_POV.tiers).map(k => ({ tier: Number(k), role: DAILY_POV.tiers[k].role, cadence: DAILY_POV.tiers[k].cadence })),
+    universe: { sources: DAILY_POV.sources.length, territories: terr, gdelt: DAILY_POV.gdelt.role, law: 'A feed is a candidate until its first capture; one that stops answering is tried again each morning and dropped from the count while it is dead.' },
+    laws: [
+      { id: 'sweep', say: 'The numbers count the sweep: the declared sources read on schedule. What a reader\'s search or a RECON brings in is kept and findable, and never counted.' },
+      { id: 'echo', say: 'Repeated coverage of one announcement is one story: a copy at ' + SPINE.ECHO_SIM + ' similarity or above is set aside.' },
+      { id: 'gdelt', say: 'GDELT is breadth and validation, never the sole evidence for a story.' },
+      { id: 'private', say: 'What a client uploads or searches teaches the engine and is shown to no one but that client and the house.' },
+      { id: 'record', say: 'The record is what the engine deployed and when; a later reading develops an earlier one, both stand, and a miss is never removed.' },
+      { id: 'resist', say: DAILY_POV.resist.map(r => r.law).join(' ') }
+    ]
+  };
+}
+async function excavateMethodRoute(env, origin) {
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(METHOD.KEY) : null; if (hit) return json(Object.assign({ ok: true }, JSON.parse(hit)), 200, origin, env); } catch (e) { excQuiet('method_get')(e); }
+  const out = excavateMethod();
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(METHOD.KEY, JSON.stringify(out), { expirationTtl: METHOD.TTL }); } catch (e) { excQuiet('method_put')(e); } }
+  return json(Object.assign({ ok: true }, out), 200, origin, env);
 }
 async function excavateStateRoute(env, origin) { return json(Object.assign({ ok: true }, await excavateState(env)), 200, origin, env); }
 async function doorRecordRoute(request, env, origin) {

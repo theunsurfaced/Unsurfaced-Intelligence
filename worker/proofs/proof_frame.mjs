@@ -15,7 +15,7 @@ const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i 
 const P = new Function(between(w, 'const PROFILE = {', 'async function profileLoad(') + '; return { profileClean, FRAME, INDUSTRY_NAMES };')();
 const c = P.profileClean({ industries: ['music', 'MUSIC', 'cars', 'fashion-beauty'], audiences: ['Gen Z', 'gen z ', 'x'], keywords: ['Retro', 'RETRO', 'drop culture'], markets: ['US', 'UK'] }, {});
 ok(c.industries.join() === 'music,fashion-beauty' && c.audiences.join() === 'Gen Z' && c.keywords.join() === 'retro,drop culture' && c.markets.join() === 'US,UK', 'A1 industries are the house\'s own (lowercased, unknown ones dropped), words are lowercased, duplicates and short names go');
-ok(P.profileClean({ industries: Object.keys(P.INDUSTRY_NAMES) }, {}).industries.length === P.FRAME.INDUSTRIES && Object.keys(P.INDUSTRY_NAMES).length === 14, 'A2 six industries at most; the fourteen territories all have names');
+ok(P.profileClean({ industries: Object.keys(P.INDUSTRY_NAMES) }, {}).industries.length === P.FRAME.INDUSTRIES && Object.keys(P.INDUSTRY_NAMES).length === 20, 'A2 six industries at most; the twenty territories all have names');
 
 // ── B: the push matches the wider frame ─────────────────────────────────────────────────────────────────────────────
 const M = new Function('ROLE_WORDS', 'esc', 'EXC_BLIND', between(w, 'const PUSH = {', 'async function pushWebhook(') + '; return { pushMatches };')({ other: 'x' }, s => String(s), 'B');

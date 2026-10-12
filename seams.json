@@ -1488,6 +1488,15 @@
   "SEAM:BOARD_SWEEP": {
    "file": "worker/src/index.js",
    "purpose": "EX38 THE LOOP: the board feeds the lake. After the door compiles each night, up to 24 of the board's own candidates (recurring patterns and tracked brands, by velocity) gather on their queries through the free rails (Exa, Perplexity, YouTube skipped) and the rows enter the lake as recon_board, research by 0038's rule: findable by the ask, cited by reads and RECONs, embedded by the drain, never counted in a measure, so the board cannot feed its own numbers. Two at a time inside four minutes; {run:\"sweep\"}; the watch line carries the last sweep."
+  },
+  "SEAM:TERRITORIES": {
+   "file": "worker/src/index.js",
+   "purpose": "EX39 THE TERRITORIES: the lake becomes the map. Twenty territories named everywhere the page can see them; GET /excavate/state carries each territory's name and declared sources by tier; GET /excavate/method is the method surface, written from the constants that compute every number (windows, what is counted, what never is, the thresholds, the grading, the source universe with tiers, the laws). On the door pass the tier 1 and 2 evidence lines carry the article's own passage (deepExtract, bounded per subject and per pass), marked quoted, so the writer reads the story and not its dek. On the page: the map under the board, a Territories lens on the record, and How the numbers are made with the source list."
+  },
+  "SEAM:TERRITORIES@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:TERRITORIES",
+   "purpose": "EX39 on the page: the territories as a map under the board (state, movers, readings, declared sources; open one and the record shows it), the Territories lens, and How the numbers are made from GET /excavate/method with the source list."
   }
  },
  "planned": [

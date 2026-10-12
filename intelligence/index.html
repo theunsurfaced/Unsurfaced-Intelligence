@@ -1887,6 +1887,22 @@ details.viz-table td,details.viz-table th{border-bottom:1px solid var(--room-rul
 @media (max-width:640px){.tl-said li{grid-template-columns:minmax(0,1fr);gap:4px}.tl-inner{padding-left:16px;padding-right:16px}}
 .ledger .call button{all:unset;cursor:pointer;border-bottom:1px solid transparent}
 .ledger .call button:hover,.ledger .call button:focus-visible{border-bottom-color:var(--room-red)}
+/* SEAM:TERRITORIES (EX39): the map and the method */
+.terr-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--room-rule);border:1px solid var(--room-rule)}
+.terr{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:left;background:var(--bg);border:0;color:var(--room-fg2);padding:calc(16px*var(--k)) calc(18px*var(--k));font:inherit;cursor:pointer;min-height:calc(118px*var(--k))}
+.terr:hover{background:var(--room-card)}
+.terr .tn{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(15px*var(--k));color:var(--room-ivory);letter-spacing:-.01em}
+.terr .ts{font-family:'Space Mono',monospace;font-size:calc(10px*var(--k));letter-spacing:.12em;text-transform:uppercase;margin-top:6px;color:var(--room-fg3)}
+.terr.st-spike .ts,.terr.st-rising .ts{color:var(--room-red)}.terr.st-falling .ts{color:var(--room-fg2)}
+.terr .tm{font-size:calc(12.5px*var(--k));line-height:1.45;margin-top:8px;color:var(--room-fg2)}
+.terr .tf{font-size:calc(12px*var(--k));margin-top:8px;color:var(--room-fg3)}.terr .tf b{color:var(--room-ivory);font-weight:700}
+.method-ledger .mh{margin:0 0 calc(14px*var(--k))}.method-ledger .mh b{display:block;font-family:'Syne',sans-serif;font-weight:700;font-size:calc(13.5px*var(--k));color:var(--room-ivory)}
+.method-ledger .mh p{margin:3px 0 2px;font-size:calc(13px*var(--k));line-height:1.5;color:var(--room-fg2)}.method-ledger .mh small{font-family:'Space Mono',monospace;font-size:calc(10px*var(--k));letter-spacing:.04em;color:var(--room-fg3);line-height:1.5}
+.method-sources{margin-top:calc(14px*var(--k));border-top:1px solid var(--room-rule);padding-top:calc(14px*var(--k))}
+.method-sources .ms{font-size:calc(12.5px*var(--k));line-height:1.9;color:var(--room-fg2);margin-bottom:6px}.method-sources .ms b{color:var(--room-ivory);font-weight:700;margin-right:8px}
+.method-sources .ms span{white-space:nowrap;margin-right:12px}.method-sources .ms small{font-family:'Space Mono',monospace;font-size:9px;color:var(--room-fg3);margin-left:3px}
+@media (max-width:1000px){.terr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.terr{min-height:0;padding:12px 14px}.terr .tm{display:none}}
 .room-score{margin-top:calc(16px*var(--k));font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);max-width:66ch}
 /* partners */
 .partners{padding:calc(40px*var(--k)) 0 calc(48px*var(--k));border-top:1px solid var(--room-rule);display:flex;justify-content:space-between;gap:calc(30px*var(--k));flex-wrap:wrap;align-items:center}
@@ -2510,6 +2526,11 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <div id="trending-now-list" style="display:none"></div>
   </section>
 
+  <section class="hub-block room-sec" id="terr-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): the twenty, each with its state, movers, readings and declared sources -->
+    <div class="room-head"><h2>The territories</h2><div class="sub">Twenty areas of culture, each read from its own declared sources. The state is the change in coverage on last week; open one for its readings.</div></div>
+    <div class="terr-grid" id="terr-grid"></div>
+  </section>
+
   <section class="hub-block room-sec room-voices" id="voices-block" style="display:none">
     <div class="room-head"><h2>What people are saying</h2><div class="sub">Comments quoted as written, about the subjects on the board and the month behind them.</div></div>
     <div class="track" id="voices-track"></div>
@@ -2519,6 +2540,13 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <div class="room-head"><h2>Track record</h2><div class="sub">Every call we make on the board is checked 30, 60 and 90 days later against what the subject itself did, week by week: never on whether it stayed on our board.</div></div>
     <div class="ledger" id="record-ledger"></div>
     <p class="room-score" id="record-score"></p>
+  </section>
+
+  <section class="hub-block room-sec" id="method-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): how the numbers are made, from GET /excavate/method -->
+    <div class="room-head"><h2>How the numbers are made</h2><div class="sub" id="method-sub">Every figure on this page is a count from declared sources read on schedule. What each one means, and what it never counts.</div></div>
+    <div class="ledger method-ledger" id="method-ledger"></div>
+    <p class="room-more" id="method-more"><button type="button" class="rec-lens" onclick="_methodSources()" id="method-sources-btn">The source list</button></p>
+    <div class="method-sources" id="method-sources" style="display:none"></div>
   </section>
 
   <section class="partners">
@@ -10180,7 +10208,8 @@ function initFeaturedInsights() {
     return;
   }
   _renderFeaturedGrid(false);   // instant paint from the pool (always)
-  _recordLoad().then(rec => { if (rec && rec.tiles.length && !window._scrollDrawn) _renderScroll(rec, _FI_LAKE || { proposed: [] }); });   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
+  _recordLoad().then(rec => { if (rec && rec.tiles.length && !window._scrollDrawn) _renderScroll(rec, _FI_LAKE || { proposed: [] }); });
+  _terrLoad(); _methodLoad();   // SEAM:TERRITORIES (EX39): the map and the method, independent of the feed   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
   renderTrendingNow();
   _checkAndRefreshFeatured();    // background live enrichment
 }
@@ -10859,23 +10888,68 @@ async function _recordLoad() {
   try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; return j; } } catch (e) {}
   return null;
 }
+/* SEAM:TERRITORIES (EX39): the twenty territories as a map, from GET /excavate/state (the state on last week, the movers, the
+   readings, the declared sources; nothing about the engine), and how the numbers are made, from GET /excavate/method. */
+let _TERR = null, _METHOD = null;
+function _terrName(slug) { const s = _TERR && (_TERR.territories || []).find(x => x.territory === slug); return s && s.name ? s.name : String(slug || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
+async function _terrLoad() {
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/state'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.territories) && j.territories.length) { _TERR = j; _terrRender(j); } } catch (e) {}
+}
+function _terrRender(st) {
+  const el = document.getElementById('terr-block'), grid = document.getElementById('terr-grid'); if (!el || !grid) return;
+  const mark = { spike: '▲', rising: '▲', steady: '●', falling: '▼', quiet: '○' }, word = { spike: 'Spiking', rising: 'Rising', steady: 'Steady', falling: 'Falling', quiet: 'Quiet this week' };
+  const pct = x => x.state === 'quiet' || x.velocity_pct == null ? '' : (x.velocity_pct >= 0 ? '+' : '') + x.velocity_pct + '% on last week';
+  const mover = x => { const m = x.movers || {}; const bits = []; if (m.loud && m.loud.name) bits.push('Most covered: ' + m.loud.name); if (m.fast && m.fast.name) bits.push('Fastest: ' + m.fast.name); if (m.cool && m.cool.name) bits.push('Cooling: ' + m.cool.name); return bits.join(' · '); };
+  const tiers = x => x.sources && x.sources.n ? x.sources.n + (x.sources.n === 1 ? ' source' : ' sources') + ' across ' + (x.sources.tiers || []).filter(Boolean).length + ' tiers' : '';
+  grid.innerHTML = (st.territories || []).map(x => `<button type="button" class="terr st-${safeAttr(x.state || 'quiet')}" onclick="_terrOpen('${safeAttr(x.territory)}')">
+      <div class="tn">${safe(x.name || _terrName(x.territory))}</div>
+      <div class="ts"><span class="mk">${mark[x.state] || '○'}</span> ${safe(word[x.state] || 'Quiet')}${pct(x) ? ' · ' + safe(pct(x)) : ''}</div>
+      ${mover(x) ? `<div class="tm">${safe(mover(x))}</div>` : ''}
+      <div class="tf">${x.readings ? `<b>${safe(String(x.readings))}</b> ${x.readings === 1 ? 'reading' : 'readings'}` : 'No reading yet'}${tiers(x) ? ' · ' + safe(tiers(x)) : ''}</div>
+    </button>`).join('');
+  el.style.display = '';
+}
+function _terrOpen(slug) {
+  _recLensSet('territory', slug);
+  const b = document.getElementById('board-block'); if (b) b.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+async function _methodLoad() {
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/method'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.measures)) { _METHOD = j; _methodRender(j); } } catch (e) {}
+}
+function _methodRender(m) {
+  const el = document.getElementById('method-block'), led = document.getElementById('method-ledger'), sub = document.getElementById('method-sub'); if (!el || !led) return;
+  const u = m.universe || {};
+  if (sub && u.sources) sub.textContent = `Every figure on this page is a count from ${u.sources} declared sources across ${(u.territories || []).length} territories, read on schedule. What each one means, and what it never counts.`;
+  const meas = (m.measures || []).map(x => `<div class="mh"><b>${safe(x.name)}</b><p>${safe(x.says)}</p><small>Counts ${safe(x.counts)}; never ${safe(x.never)}.</small></div>`).join('');
+  const tiers = (m.tiers || []).map(x => `<div class="mh"><b>Tier ${safe(String(x.tier))}</b><p>${safe(x.role)}</p><small>${safe(x.cadence)}</small></div>`).join('') + (u.gdelt ? `<div class="mh"><b>GDELT</b><p>${safe(u.gdelt)}</p></div>` : '') + (u.law ? `<div class="mh"><small>${safe(u.law)}</small></div>` : '');
+  const laws = (m.laws || []).filter(x => x.id !== 'resist').map(x => `<div class="mh"><p>${safe(x.say)}</p></div>`).join('');
+  led.innerHTML = `<div class="col"><h3>The measures</h3>${meas}</div><div class="col"><h3>The sources</h3>${tiers}</div><div class="col"><h3>The laws</h3>${laws}</div>`;
+  el.style.display = '';
+}
+function _methodSources() {
+  const box = document.getElementById('method-sources'), btn = document.getElementById('method-sources-btn'); if (!box || !_METHOD) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; if (btn) btn.textContent = 'The source list'; return; }
+  const terr = (_METHOD.universe && _METHOD.universe.territories) || [];
+  box.innerHTML = terr.map(x => `<div class="ms"><b>${safe(x.name)}</b> ${(x.sources || []).map(s => `<span>${safe(s.name)}<small>T${safe(String(s.tier))}</small></span>`).join('')}</div>`).join('');
+  box.style.display = ''; if (btn) btn.textContent = 'Hide the source list';
+}
 function _recLensRow(tiles) {
   // EX33b: one line. Everything, Positions, Ahead, Watching; then Brands, Categories, Audiences, Places as kinds that open their
   // chips beneath (a chip with fewer than two readings is not shown; a count only on the lens that is on); then the rooms.
   const el = document.getElementById('rec-lenses'); if (!el) return;
   const count = (f) => { const n = new Map(); for (const t of tiles) { const v = f(t); for (const x of (Array.isArray(v) ? v : [v])) if (x) n.set(x, (n.get(x) || 0) + 1); } return [...n.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 12); };
-  const groups = { brand: count(t => t.frame && t.frame.entity), category: count(t => t.frame && t.frame.category), audience: count(t => t.frame && t.frame.audience), place: count(t => (t.place || []).map(p => p.place)) };
+  const groups = { brand: count(t => t.frame && t.frame.entity), category: count(t => t.frame && t.frame.category), audience: count(t => t.frame && t.frame.audience), place: count(t => (t.place || []).map(p => p.place)), territory: count(t => t.measures && t.measures.territory) };   // SEAM:TERRITORIES
   const positions = (_FI_RECORD && _FI_RECORD.positions) || [];
   const on = (kind, value) => _recLens.kind === kind && _recLens.value === value;
   const btn = (kind, value, label, n) => `<button type="button" class="rec-lens${on(kind, value) ? ' on' : ''}" onclick="_recLensSet('${safeAttr(kind)}',${value == null ? 'null' : JSON.stringify(String(value)).replace(/"/g, '&quot;')})">${safe(label)}${on(kind, value) && n != null ? `<small>${safe(String(n))}</small>` : ''}</button>`;
   const aheadN = tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length).length, watchN = tiles.filter(t => t.watch && !t.called).length;
   let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Positions', positions.length) : '') + (aheadN ? btn('ahead', null, 'Ahead', aheadN) : '') + (watchN ? btn('watching', null, 'Watching', watchN) : '');   // SEAM:EXC_AHEAD
-  const kinds = [['brand', 'Brands'], ['category', 'Categories'], ['audience', 'Audiences'], ['place', 'Places']];
+  const kinds = [['brand', 'Brands'], ['category', 'Categories'], ['audience', 'Audiences'], ['place', 'Places'], ['territory', 'Territories']];   // SEAM:TERRITORIES
   html += '<span class="rec-sep"></span>';
-  for (const [kind, label] of kinds) if (groups[kind].length) html += `<button type="button" class="rec-kind${_recLens.open === kind ? ' open' : ''}${_recLens.kind === kind ? ' on' : ''}" onclick="_recLensOpen('${kind}')">${label}${_recLens.kind === kind && _recLens.value ? ': ' + safe(_recLens.value) : ''}<span class="chev">&#9662;</span></button>`;
+  for (const [kind, label] of kinds) if (groups[kind].length) html += `<button type="button" class="rec-kind${_recLens.open === kind ? ' open' : ''}${_recLens.kind === kind ? ' on' : ''}" onclick="_recLensOpen('${kind}')">${label}${_recLens.kind === kind && _recLens.value ? ': ' + safe(kind === 'territory' ? _terrName(_recLens.value) : _recLens.value) : ''}<span class="chev">&#9662;</span></button>`;
   html += `<span class="rec-sep"></span><button type="button" class="rec-lens room" onclick="navTo('brands')">Brand rooms</button><button type="button" class="rec-lens room" onclick="navTo('audiences')">Audience rooms</button>`;
   if (['brand', 'category', 'audience'].includes(_recLens.kind) && _recLens.value) html += `<button type="button" class="rec-lens follow" onclick="_followLens()">Follow ${safe(_recLens.value)}</button>`;   // SEAM:CLIENT_PROFILE
-  if (_recLens.open && groups[_recLens.open] && groups[_recLens.open].length) html += `<div class="rec-lens-sub">${groups[_recLens.open].map(([v, c]) => btn(_recLens.open, v, v, c)).join('')}</div>`;
+  if (_recLens.open && groups[_recLens.open] && groups[_recLens.open].length) html += `<div class="rec-lens-sub">${groups[_recLens.open].map(([v, c]) => btn(_recLens.open, v, _recLens.open === 'territory' ? _terrName(v) : v, c)).join('')}</div>`;
   el.innerHTML = html; el.style.display = '';
 }
 function _recLensOpen(kind) { _recLens.open = _recLens.open === kind ? null : kind; if (_FI_RECORD) _recLensRow(_FI_RECORD.tiles || []); }
@@ -10886,6 +10960,7 @@ function _recFilter(tiles) {
   if (L.kind === 'ahead') return tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length);   // SEAM:EXC_AHEAD
   if (L.kind === 'watching') return tiles.filter(t => t.watch && !t.called);   // EX33b: the bets still open
   if (L.kind === 'place') return tiles.filter(t => (t.place || []).some(p => p.place === L.value));
+  if (L.kind === 'territory') return tiles.filter(t => t.measures && t.measures.territory === L.value);   // SEAM:TERRITORIES
   const key = L.kind === 'brand' ? 'entity' : L.kind;
   return tiles.filter(t => t.frame && t.frame[key] === L.value);
 }
