@@ -1896,11 +1896,6 @@ details.viz-table td,details.viz-table th{border-bottom:1px solid var(--room-rul
 .terr.st-spike .ts,.terr.st-rising .ts{color:var(--room-red)}.terr.st-falling .ts{color:var(--room-fg2)}
 .terr .tm{font-size:calc(12.5px*var(--k));line-height:1.45;margin-top:8px;color:var(--room-fg2)}
 .terr .tf{font-size:calc(12px*var(--k));margin-top:8px;color:var(--room-fg3)}.terr .tf b{color:var(--room-ivory);font-weight:700}
-.method-ledger .mh{margin:0 0 calc(14px*var(--k))}.method-ledger .mh b{display:block;font-family:'Syne',sans-serif;font-weight:700;font-size:calc(13.5px*var(--k));color:var(--room-ivory)}
-.method-ledger .mh p{margin:3px 0 2px;font-size:calc(13px*var(--k));line-height:1.5;color:var(--room-fg2)}.method-ledger .mh small{font-family:'Space Mono',monospace;font-size:calc(10px*var(--k));letter-spacing:.04em;color:var(--room-fg3);line-height:1.5}
-.method-sources{margin-top:calc(14px*var(--k));border-top:1px solid var(--room-rule);padding-top:calc(14px*var(--k))}
-.method-sources .ms{font-size:calc(12.5px*var(--k));line-height:1.9;color:var(--room-fg2);margin-bottom:6px}.method-sources .ms b{color:var(--room-ivory);font-weight:700;margin-right:8px}
-.method-sources .ms span{white-space:nowrap;margin-right:12px}.method-sources .ms small{font-family:'Space Mono',monospace;font-size:9px;color:var(--room-fg3);margin-left:3px}
 @media (max-width:1000px){.terr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.terr{min-height:0;padding:12px 14px}.terr .tm{display:none}}
 .room-score{margin-top:calc(16px*var(--k));font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);max-width:66ch}
@@ -2527,7 +2522,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
   </section>
 
   <section class="hub-block room-sec" id="terr-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): the twenty, each with its state, movers, readings and declared sources -->
-    <div class="room-head"><h2>The territories</h2><div class="sub">Twenty areas of culture, each read from its own declared sources. The state is the change in coverage on last week; open one for its readings.</div></div>
+    <div class="room-head"><h2>The territories</h2><div class="sub">Twenty areas of culture. The state is the change in coverage on last week; open one for its readings.</div></div>
     <div class="terr-grid" id="terr-grid"></div>
   </section>
 
@@ -2540,13 +2535,6 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <div class="room-head"><h2>Track record</h2><div class="sub">Every call we make on the board is checked 30, 60 and 90 days later against what the subject itself did, week by week: never on whether it stayed on our board.</div></div>
     <div class="ledger" id="record-ledger"></div>
     <p class="room-score" id="record-score"></p>
-  </section>
-
-  <section class="hub-block room-sec" id="method-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): how the numbers are made, from GET /excavate/method -->
-    <div class="room-head"><h2>How the numbers are made</h2><div class="sub" id="method-sub">Every figure on this page is a count from declared sources read on schedule. What each one means, and what it never counts.</div></div>
-    <div class="ledger method-ledger" id="method-ledger"></div>
-    <p class="room-more" id="method-more"><button type="button" class="rec-lens" onclick="_methodSources()" id="method-sources-btn">The source list</button></p>
-    <div class="method-sources" id="method-sources" style="display:none"></div>
   </section>
 
   <section class="partners">
@@ -10209,7 +10197,7 @@ function initFeaturedInsights() {
   }
   _renderFeaturedGrid(false);   // instant paint from the pool (always)
   _recordLoad().then(rec => { if (rec && rec.tiles.length && !window._scrollDrawn) _renderScroll(rec, _FI_LAKE || { proposed: [] }); });
-  _terrLoad(); _methodLoad();   // SEAM:TERRITORIES (EX39): the map and the method, independent of the feed   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
+  _terrLoad();   // SEAM:TERRITORIES (EX39): the map, independent of the feed   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
   renderTrendingNow();
   _checkAndRefreshFeatured();    // background live enrichment
 }
@@ -10631,11 +10619,12 @@ function _renderDoorVoices(voices) {
 function _renderRecord(record) {
   const el = document.getElementById('record-block'), ledger = document.getElementById('record-ledger'), score = document.getElementById('record-score'); if (!el || !ledger) return;
   const r = record || {}, c = r.counts || {}, held = c.held || 0, faded = c.faded || 0, open = c.open || 0;
-  if (!(held + faded + open)) { el.style.display = 'none'; return; }
+  // SEAM:QUIET_ENGINE (EX39b): nothing to show until a call has been graded; the open bets sit on their readings, not in a ledger here
+  if (!(held + faded)) { el.style.display = 'none'; ledger.innerHTML = ''; return; }
   const line = x => { const g = x.d30 || {}, called = 'Called ' + String(x.state || '').toLowerCase() + ' the week of ' + _day(x.week);
     return g.verdict === 'open' ? called + ', checked the week of ' + _day(_tlAddWeeks(x.week, 5)) : called + ', ' + _tlGradeNumbers(g); };
   const col = (label, n, list) => `<div class="col"><h3><b>${_fmtN(n)}</b>${label}</h3>${(list || []).slice(0, 4).map(x => `<div class="call">${_tlKey(x.key) ? `<button type="button" onclick="openTimeline('${_tlKey(x.key)}', this)">${safe(x.title)}</button>` : safe(x.title)}<small>${safe(line(x))}</small></div>`).join('') || '<div class="call" style="color:var(--room-fg3)">Nothing named here yet.</div>'}</div>`;
-  ledger.innerHTML = col('held at 30 days', held, r.held) + col('faded at 30 days', faded, r.faded) + col('still open', open, r.open);
+  ledger.innerHTML = ''; ledger.style.display = 'none';   // SEAM:QUIET_ENGINE (EX39b): the score, not the machinery
   const later = h => (r[h] && (r[h].held + r[h].faded)) ? ` At ${h === 'd60' ? 60 : 90} days, ${r[h].held} of ${r[h].held + r[h].faded} held.` : '';
   if (score) score.textContent = ((held + faded) ? `${held} of ${held + faded} calls graded at 30 days held.` : 'No call has reached its 30 days yet.') + later('d60') + later('d90')
     + (open ? ` ${open} ${open === 1 ? 'is' : 'are'} still open${r.next_due ? '; the next is checked the week of ' + _day(r.next_due) : ''}.` : '')
@@ -10888,9 +10877,9 @@ async function _recordLoad() {
   try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; return j; } } catch (e) {}
   return null;
 }
-/* SEAM:TERRITORIES (EX39): the twenty territories as a map, from GET /excavate/state (the state on last week, the movers, the
-   readings, the declared sources; nothing about the engine), and how the numbers are made, from GET /excavate/method. */
-let _TERR = null, _METHOD = null;
+/* SEAM:TERRITORIES (EX39): the twenty territories as a map, from GET /excavate/state: the state on last week, the movers, the
+   readings; nothing about the engine (EX39b: and nothing about the sources behind it). */
+let _TERR = null;
 function _terrName(slug) { const s = _TERR && (_TERR.territories || []).find(x => x.territory === slug); return s && s.name ? s.name : String(slug || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
 async function _terrLoad() {
   try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/state'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.territories) && j.territories.length) { _TERR = j; _terrRender(j); } } catch (e) {}
@@ -10900,38 +10889,17 @@ function _terrRender(st) {
   const mark = { spike: '▲', rising: '▲', steady: '●', falling: '▼', quiet: '○' }, word = { spike: 'Spiking', rising: 'Rising', steady: 'Steady', falling: 'Falling', quiet: 'Quiet this week' };
   const pct = x => x.state === 'quiet' || x.velocity_pct == null ? '' : (x.velocity_pct >= 0 ? '+' : '') + x.velocity_pct + '% on last week';
   const mover = x => { const m = x.movers || {}; const bits = []; if (m.loud && m.loud.name) bits.push('Most covered: ' + m.loud.name); if (m.fast && m.fast.name) bits.push('Fastest: ' + m.fast.name); if (m.cool && m.cool.name) bits.push('Cooling: ' + m.cool.name); return bits.join(' · '); };
-  const tiers = x => x.sources && x.sources.n ? x.sources.n + (x.sources.n === 1 ? ' source' : ' sources') + ' across ' + (x.sources.tiers || []).filter(Boolean).length + ' tiers' : '';
   grid.innerHTML = (st.territories || []).map(x => `<button type="button" class="terr st-${safeAttr(x.state || 'quiet')}" onclick="_terrOpen('${safeAttr(x.territory)}')">
       <div class="tn">${safe(x.name || _terrName(x.territory))}</div>
       <div class="ts"><span class="mk">${mark[x.state] || '○'}</span> ${safe(word[x.state] || 'Quiet')}${pct(x) ? ' · ' + safe(pct(x)) : ''}</div>
       ${mover(x) ? `<div class="tm">${safe(mover(x))}</div>` : ''}
-      <div class="tf">${x.readings ? `<b>${safe(String(x.readings))}</b> ${x.readings === 1 ? 'reading' : 'readings'}` : 'No reading yet'}${tiers(x) ? ' · ' + safe(tiers(x)) : ''}</div>
+      <div class="tf">${x.readings ? `<b>${safe(String(x.readings))}</b> ${x.readings === 1 ? 'reading' : 'readings'}` : 'No reading yet'}</div>
     </button>`).join('');
   el.style.display = '';
 }
 function _terrOpen(slug) {
   _recLensSet('territory', slug);
   const b = document.getElementById('board-block'); if (b) b.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-}
-async function _methodLoad() {
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/method'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.measures)) { _METHOD = j; _methodRender(j); } } catch (e) {}
-}
-function _methodRender(m) {
-  const el = document.getElementById('method-block'), led = document.getElementById('method-ledger'), sub = document.getElementById('method-sub'); if (!el || !led) return;
-  const u = m.universe || {};
-  if (sub && u.sources) sub.textContent = `Every figure on this page is a count from ${u.sources} declared sources across ${(u.territories || []).length} territories, read on schedule. What each one means, and what it never counts.`;
-  const meas = (m.measures || []).map(x => `<div class="mh"><b>${safe(x.name)}</b><p>${safe(x.says)}</p><small>Counts ${safe(x.counts)}; never ${safe(x.never)}.</small></div>`).join('');
-  const tiers = (m.tiers || []).map(x => `<div class="mh"><b>Tier ${safe(String(x.tier))}</b><p>${safe(x.role)}</p><small>${safe(x.cadence)}</small></div>`).join('') + (u.gdelt ? `<div class="mh"><b>GDELT</b><p>${safe(u.gdelt)}</p></div>` : '') + (u.law ? `<div class="mh"><small>${safe(u.law)}</small></div>` : '');
-  const laws = (m.laws || []).filter(x => x.id !== 'resist').map(x => `<div class="mh"><p>${safe(x.say)}</p></div>`).join('');
-  led.innerHTML = `<div class="col"><h3>The measures</h3>${meas}</div><div class="col"><h3>The sources</h3>${tiers}</div><div class="col"><h3>The laws</h3>${laws}</div>`;
-  el.style.display = '';
-}
-function _methodSources() {
-  const box = document.getElementById('method-sources'), btn = document.getElementById('method-sources-btn'); if (!box || !_METHOD) return;
-  if (box.style.display !== 'none') { box.style.display = 'none'; if (btn) btn.textContent = 'The source list'; return; }
-  const terr = (_METHOD.universe && _METHOD.universe.territories) || [];
-  box.innerHTML = terr.map(x => `<div class="ms"><b>${safe(x.name)}</b> ${(x.sources || []).map(s => `<span>${safe(s.name)}<small>T${safe(String(s.tier))}</small></span>`).join('')}</div>`).join('');
-  box.style.display = ''; if (btn) btn.textContent = 'Hide the source list';
 }
 function _recLensRow(tiles) {
   // EX33b: one line. Everything, Positions, Ahead, Watching; then Brands, Categories, Audiences, Places as kinds that open their

@@ -177,7 +177,7 @@ export default {
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
       if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
       if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the territories, public
-      if (path === '/excavate/method' && request.method === 'GET') return excavateMethodRoute(env, origin);            // SEAM:TERRITORIES (EX39): how the numbers are made, public
+      if (path === '/excavate/method' && request.method === 'GET') return excavateMethodRoute(request, env, origin);   // SEAM:TERRITORIES (EX39b): how the numbers are made, the house's own (desk key or admin)
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
       if (path === '/client/profile' && (request.method === 'GET' || request.method === 'POST')) return profileRoute(request, env, origin);   // SEAM:CLIENT_PROFILE (signed in)
@@ -9986,7 +9986,7 @@ async function doorRecord(env) {
  * coverage on last week (counted from the lake, served as a percentage and a state: spike, rising, steady, falling, quiet), how many
  * readings the record holds in it, and its movers among the record's subjects (most covered, fastest rise, sharpest fall). Nothing about
  * the engine leaves here: no capture counts, no pass internals, no sizes. Public, cached STATE.TTL; no model call. */
-const STATE = { KEY: 'state:v3', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };   // v3: SEAM:TERRITORIES (twenty, named, with their sources)
+const STATE = { KEY: 'state:v4', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };   // v4: SEAM:TERRITORIES (twenty, named); EX39b: no sources
 function stateOf(recent, prior) {
   if (!recent && !prior) return 'quiet';
   const pct = prior ? Math.round((recent - prior) / prior * 100) : (recent ? 100 : 0);
@@ -10007,9 +10007,7 @@ async function excavateState(env) {
     const moved = mine.filter(t => t.measures.velocity_pct != null && (t.measures.recent_7d + (t.measures.prior_7d || 0)) >= 3);
     const fast = moved.slice().sort((a, b) => b.measures.velocity_pct - a.measures.velocity_pct)[0], cool = moved.slice().sort((a, b) => a.measures.velocity_pct - b.measures.velocity_pct)[0];
     const pct = o.prior ? Math.round((o.recent - o.prior) / o.prior * 100) : (o.recent ? 100 : 0);
-    const declared = DAILY_POV.sources.filter(s => (s.territories || []).includes(o.territory));   // SEAM:TERRITORIES: the declared universe, by tier
-    return { territory: o.territory, name: INDUSTRY_NAMES[o.territory] || o.territory.replace(/-/g, ' '), velocity_pct: pct, state: stateOf(o.recent, o.prior), readings: mine.length, _move: o.recent - o.prior, _recent: o.recent,
-      sources: { n: declared.length, tiers: [1, 2, 3].map(k => declared.filter(s => s.tier === k).length) },
+    return { territory: o.territory, name: INDUSTRY_NAMES[o.territory] || o.territory.replace(/-/g, ' '), velocity_pct: pct, state: stateOf(o.recent, o.prior), readings: mine.length, _move: o.recent - o.prior, _recent: o.recent,   // SEAM:QUIET_ENGINE (EX39b): named; nothing about the sources behind it
       movers: { loud: loud ? { name: name(loud), n: loud.measures.recent_7d, id: loud.id } : null, fast: fast && fast.measures.velocity_pct > 0 ? { name: name(fast), pct: fast.measures.velocity_pct, id: fast.id } : null, cool: cool && cool.measures.velocity_pct < 0 ? { name: name(cool), pct: cool.measures.velocity_pct, id: cool.id } : null } };
   }).sort((a, b) => b._move - a._move || b._recent - a._recent).map(x => { delete x._move; delete x._recent; return x; });
   const out = { at: iso(now), territories };
@@ -10046,7 +10044,10 @@ function excavateMethod() {
     ]
   };
 }
-async function excavateMethodRoute(env, origin) {
+async function excavateMethodRoute(request, env, origin) {
+  // SEAM:QUIET_ENGINE (EX39b): the method is the house's own. The desk key, or a signed-in admin; nobody else.
+  const key = request.headers.get('x-desk-key') || '', deskKey = env.DESK_API_KEY || env.FIELD_API_KEY || '';
+  if (!(deskKey && key === deskKey)) { const user = await authenticate(request, env).catch(excQuiet('method_auth', null)); if (!user || !(await callerIsAdmin(env, user.id).catch(excQuiet('method_admin', false)))) return json({ ok: false, error: 'unauthorized' }, 401, origin, env); }
   try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(METHOD.KEY) : null; if (hit) return json(Object.assign({ ok: true }, JSON.parse(hit)), 200, origin, env); } catch (e) { excQuiet('method_get')(e); }
   const out = excavateMethod();
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(METHOD.KEY, JSON.stringify(out), { expirationTtl: METHOD.TTL }); } catch (e) { excQuiet('method_put')(e); } }

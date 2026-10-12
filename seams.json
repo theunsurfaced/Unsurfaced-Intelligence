@@ -1475,7 +1475,7 @@
   },
   "SEAM:QUIET_ENGINE": {
    "file": "intelligence/index.html",
-   "purpose": "EX36a: the page never says how the engine works. The record's line carries the score (held, missed, being checked) and no count of readings or subjects and no calibration; its copy says what it is, not the law; the empty state names no lake."
+   "purpose": "EX36a: the page never says how the engine works. The record's line carries the score (held, missed, being checked) and no count of readings or subjects and no calibration; its copy says what it is, not the law; the empty state names no lake. EX39b: the method surface is the house's own (GET /excavate/method answers the desk key or an admin), the state and the territory cards say nothing about the sources, and the track record is off the page until a call has been graded, then a score line with no ledger of bets."
   },
   "SEAM:THE_FIT": {
    "file": "intelligence/index.html",
@@ -1497,6 +1497,11 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:TERRITORIES",
    "purpose": "EX39 on the page: the territories as a map under the board (state, movers, readings, declared sources; open one and the record shows it), the Territories lens, and How the numbers are made from GET /excavate/method with the source list."
+  },
+  "SEAM:QUIET_ENGINE@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:QUIET_ENGINE",
+   "purpose": "EX39b: the method route locked to the house; the state without source counts."
   }
  },
  "planned": [
