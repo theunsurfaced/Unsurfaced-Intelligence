@@ -52,7 +52,7 @@ ok(/which === 'themes' \? await themePass\(env, 8, THEME\.BATCH\)/.test(w), 'S8 
 
 // ── DAILY untouched ───────────────────────────────────────────────────────
 ok(/ECHO_SIM: 0\.93, CLUSTER_SIM: 0\.80/.test(w), 'D1 CONNECT still clusters at 0.80 and rejects echoes at 0.93');
-ok(/const cluster_id = \(anchorId && clusterOf\[anchorId\]\) \|\| crypto\.randomUUID\(\);/.test(w), 'D2 CONNECT still mints its own clusters; themes are a second column');
+ok(/const cluster_id = joined \? clusterOf\[anchor\.id\] : crypto\.randomUUID\(\);/.test(w), 'D2 CONNECT still mints its own clusters; themes are a second column');
 const composeFn = (() => { const i = w.indexOf('async function composeFromLake('); const j = w.indexOf('\nasync function ', i + 10); return w.slice(i, j); })();
 ok(composeFn.length > 500 && !/theme/.test(composeFn), 'D3 compose reads no theme');
 

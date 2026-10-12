@@ -1480,6 +1480,10 @@
   "SEAM:THE_FIT": {
    "file": "intelligence/index.html",
    "purpose": "EX36f THE FIT: the nav's doors sit centered on the desktop header (three columns: the logo, the doors, the account); on the tablet they compress so the header fits. The hero's columns and the record's head are minmax(0,1fr), so no input sets the page wider than the screen; under 480 the ask wraps (the input on its own line, Quick, Full and Search under it) and the header's logo shrinks so the menu and the sign-in fit."
+  },
+  "SEAM:INTAKE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX37 THE INTAKE: every territory feeds the lake. The registry holds sixty or more sources over the twenty territories, three or more across two tiers each, with a GDELT lane per territory; every slice reads every source and one lane per territory (a dead feed is skipped until the 05:15 probe); a multi-territory source places each story by its words. The drain is sized to the paid plan: one neighbourhood call per row (echo, anchor, momentum from one sample), a joiner inherits its cluster, only starters are classified, ten to a call. The desk's {run:\"intake\"} and the watch (dead feeds, a territory quiet three days) see it."
   }
  },
  "planned": [

@@ -115,7 +115,7 @@ await LC({}, [{ url: 'https://n.example/9', title: 'gathered', kind: 'news' }], 
 ok(rows.length === 1 && !('research' in rows[0]) && rows[0].momentum.provenance === 'recon_gather', 'T7b a capture never sends the research flag: the database sets it from the provenance it carries (SEAM:SWEEP_MEASURE, 0038)');
 ok(/'rpc\/match_signals_read'/.test(between('async function brandSignal(', 'async function excavateLake(')) &&
    /'rpc\/match_signals_read'/.test(between('async function excavateLake(', 'async function fieldRail(')), 'T8 brand signal and the lake search read match_signals_read');
-ok((w.match(/'rpc\/match_signals'/g) || []).length >= 3, 'T9 DAILY keeps its own match_signals: its ranking does not move');
+ok((w.match(/'rpc\/match_signals'/g) || []).length >= 2, 'T9 DAILY keeps its own match_signals: its ranking does not move (EX37: the drain asks once per row)');
 ok(/status <> 'rejected'/.test(mig) && /coalesce\(s\.published_at, s\.captured_at\) >= p_since/.test(mig) && /published_at timestamptz/.test(mig), 'T10 0027: no rejected rows, publish dates returned and windowed');
 ok(/check \(source_tier between 0 and 4\)/.test(mig) && /pg_get_constraintdef\(oid\) ilike '%source_tier%'/.test(mig), 'T11 0027: tier 0 (MINE) allowed, whatever the old check was named');
 ok(/p_query     vector\(384\),\s+p_count     int default 12,\s+p_territory text default null,\s+p_min_tier  int default 4,\s+p_since     timestamptz default null/.test(mig) &&

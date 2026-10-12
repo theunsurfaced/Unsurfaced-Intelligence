@@ -69,10 +69,10 @@ const flaggers = new Set([...w.matchAll(/await sweepReady\(env\)/g)].map(m => en
 ok([...flaggers].sort().join(',') === 'excavatePropose,sweepOnly,sweepRefound',
   'S14 the column is asked about only by the sweep\'s refound, the ledger\'s sweep note and sweepOnly: a RECON\'s stages, a read\'s pack and a tile\'s evidence read the whole lake, research included');
 
-const fl = between(w, "const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);", 'calls++;\n        const reply');
+const fl = between(w, "const echo = near.find(n => n.similarity >= SPINE.ECHO_SIM);", 'const anchor = near.find(');
 ok(/if \(echo\.research === true && !\/\^\(live\|recon\)\/\.test\(String\(\(r\.momentum && r\.momentum\.provenance\) \|\| ''\)\) && calls \+ 1 <= budget\)/.test(fl) && /'signals\?id=eq\.' \+ echo\.id \+ '&research=is\.true', \{ method: 'PATCH', headers: \{ Prefer: 'return=minimal' \}, body: \{ research: false \} \}/.test(fl) && fl.indexOf("research: false") < fl.indexOf("status: 'rejected'"),
   'S15 research never erases the sweep: a sweep story that echoes a search\'s row makes that row the sweep\'s before the copy is set aside (inside the drain\'s call budget)');
-ok(/momentumMech\(near\.filter\(n => n\.research !== true\), r\.territory, r\.source_tier, novelty\)/.test(w), 'S16 research never ranks the paper: a story\'s momentum counts the sweep around it');
+ok(/momentumMech\(near\.filter\(n => n\.research !== true\), territory, r\.source_tier, novelty\)/.test(w), 'S16 research never ranks the paper: a story\'s momentum counts the sweep around it');
 
 // ── V: the board's voices ─────────────────────────────────────────────────
 const voiceSrc = w.slice(w.indexOf('const VOICES = {'), w.indexOf('function voiceOnFrame(')) + w.slice(w.indexOf('function stripHtml('), w.indexOf('function hintsOf('));

@@ -62,7 +62,7 @@ export default {
     // minute on the database (2026-09-12: the stacked burst was the 504).
     const cron = String(event && event.cron || ''), t0 = Date.now();   // SEAM:READ_DEEP: the invocation's own clock (a cron has 15 minutes)
     if (cron === '15 5 * * *') {
-      await (runDailySpine(env)
+      await (runDailySpine(env, { feeds: 'all', gdelt: 'all', advance: INTAKE.DRAIN, probe: true })   // SEAM:INTAKE: the probe tries the dead feeds again
         .then(s => console.log('spine_capture', JSON.stringify(s)))
         .catch(e => console.log('spine_capture_error', String(e && e.message))));
     } else if (cron === '10 6 * * *') {
@@ -113,13 +113,9 @@ export default {
         .then(s => console.log('watch_tick', JSON.stringify(s)))
         .catch(e => console.log('watch_tick_error', String(e && e.message))));
     } else {
-      // advance:42 runs the full spine incl. CONNECT at 34 external subrequests
-      // (free cap 50). NOTE: `calls` counts sbRest AND env.AI.run alike, but only
-      // sbRest is an *external* subrequest; env.AI.run is a Cloudflare service
-      // binding on the separate 1000 ceiling. 26 was sized as if AI calls spent
-      // the scarce budget — they never did, and CONNECT starved for five calls
-      // that did not exist. 46/50 return identical work: 42 is saturation.
-      await (runDailySpine(env, { feeds: 6, gdelt: 1, advance: 42 })
+      // SEAM:INTAKE (EX37): every source and every territory lane each slice, then a drain of INTAKE.DRAIN calls. The worker is on
+      // the paid plan (1,000 subrequests an invocation); `calls` counts sbRest and env.AI.run alike, which is conservative.
+      await (runDailySpine(env, { feeds: 'all', gdelt: 'all', advance: INTAKE.DRAIN })
         .then(s => console.log('spine_slice', JSON.stringify(s)))
         .catch(e => console.log('spine_slice_error', String(e && e.message)))
         .then(() => themePass(env, 1, THEME.DRAIN_BATCH))   // SEAM:THEMES: the day joins its themes as it lands
@@ -4951,6 +4947,9 @@ const DAILY_POV = {
     4: { role: 'validation + primary evidence',                               cadence: 'on-demand' }
   },
   // verified:false = candidate feed; CAPTURE tolerates failure per-source.
+  // SEAM:INTAKE (EX37): the registry, every territory fed. Three sources across two tiers for each of the twenty territories; a
+  // multi-territory source places each story by its words within the source's own territories. verified:false is a candidate: the
+  // probe on the 05:15 run tries it, the slice skips it while it is dead, and the desk's {run:"intake"} says which are.
   sources: [
     { name:'The Verge',          feed:'https://www.theverge.com/rss/index.xml',        tier:1, territories:['technology-innovation','artificial-intelligence'], verified:true },
     { name:'TechCrunch',         feed:'https://techcrunch.com/feed/',                  tier:1, territories:['technology-innovation','entrepreneurship-creator'], verified:true },
@@ -4962,7 +4961,7 @@ const DAILY_POV = {
     { name:'Billboard',          feed:'https://www.billboard.com/feed/',               tier:1, territories:['music','entertainment-gaming'], verified:true },
     { name:'Eater',              feed:'https://www.eater.com/rss/index.xml',           tier:1, territories:['food-hospitality'], verified:true },
     { name:'Fast Company',       feed:'https://www.fastcompany.com/latest/rss',        tier:1, territories:['business-economics','advertising-marketing'], verified:false },
-    { name:'Business of Fashion',feed:'https://www.businessoffashion.com/arc/outboundfeeds/rss/', tier:1, territories:['fashion-beauty','business-economics'], verified:false },
+    { name:'Business of Fashion',feed:'https://www.businessoffashion.com/arc/outboundfeeds/rss/', tier:1, territories:['fashion-beauty','business-economics','luxury','retail-dtc'], verified:false },
     { name:'Engadget',           feed:'https://www.engadget.com/rss.xml',              tier:2, territories:['technology-innovation'], verified:true },
     { name:"It's Nice That",     feed:'https://feeds.feedburner.com/itsnicethat/SlXC',              tier:2, territories:['art-design','advertising-marketing'], verified:false },
     { name:'Core77',             feed:'https://feeds.feedburner.com/core77/blog',      tier:2, territories:['art-design'], verified:false },
@@ -4975,11 +4974,118 @@ const DAILY_POV = {
     { name:'Hyperallergic',      feed:'https://hyperallergic.com/feed/',               tier:2, territories:['art-design'], verified:true },
     { name:'Rest of World',      feed:'https://restofworld.org/feed/latest/',          tier:2, territories:['global-diaspora','technology-innovation'], verified:true },
     { name:'Blackbird Spyplane', feed:'https://www.blackbirdspyplane.com/feed',        tier:3, territories:['fashion-beauty','sneakers-streetwear'], verified:true },
-    { name:'Embedded',           feed:'https://embedded.substack.com/feed',            tier:3, territories:['entertainment-gaming','global-diaspora'], verified:true },
+    { name:'Embedded',           feed:'https://embedded.substack.com/feed',            tier:3, territories:['entertainment-gaming','global-diaspora','media-platforms'], verified:true },
     { name:'Dirt',               feed:'https://rss.beehiiv.com/feeds/C8g1hSvrGA.xml',  tier:3, territories:['entertainment-gaming','art-design'], verified:false },
     { name:'OkayAfrica',         feed:'https://www.okayafrica.com/feeds/feed.rss',     tier:3, territories:['global-diaspora','music'], verified:false },
-    { name:'Link in Bio',        feed:'https://www.linkinbio.news/feed',               tier:3, territories:['advertising-marketing','entrepreneurship-creator'], verified:false }
+    { name:'Link in Bio',        feed:'https://www.linkinbio.news/feed',               tier:3, territories:['advertising-marketing','entrepreneurship-creator','media-platforms'], verified:false },
+    // EX37: advertising and media
+    { name:'Adweek',             feed:'https://www.adweek.com/feed/',                  tier:1, territories:['advertising-marketing','media-platforms'], verified:false },
+    { name:'Ad Age',             feed:'https://adage.com/rss.xml',                     tier:1, territories:['advertising-marketing'], verified:false },
+    { name:'Digiday',            feed:'https://digiday.com/feed/',                     tier:2, territories:['advertising-marketing','media-platforms','retail-dtc'], verified:false },
+    { name:'Marketing Brew',     feed:'https://www.marketingbrew.com/feed',            tier:3, territories:['advertising-marketing'], verified:false },
+    { name:'Nieman Lab',         feed:'https://www.niemanlab.org/feed/',               tier:2, territories:['media-platforms'], verified:false },
+    { name:'Platformer',         feed:'https://www.platformer.news/rss/',              tier:3, territories:['media-platforms','technology-innovation'], verified:false },
+    { name:'Social Media Today', feed:'https://www.socialmediatoday.com/feeds/news/',  tier:2, territories:['media-platforms','advertising-marketing'], verified:false },
+    { name:'Garbage Day',        feed:'https://www.garbageday.email/feed',             tier:3, territories:['media-platforms','entrepreneurship-creator'], verified:false },
+    // EX37: technology and intelligence
+    { name:'Wired',              feed:'https://www.wired.com/feed/rss',                tier:1, territories:['technology-innovation','artificial-intelligence'], verified:false },
+    { name:'Ars Technica',       feed:'https://feeds.arstechnica.com/arstechnica/index', tier:1, territories:['technology-innovation','artificial-intelligence'], verified:false },
+    { name:'MIT Technology Review', feed:'https://www.technologyreview.com/feed/',     tier:1, territories:['artificial-intelligence','technology-innovation','sustainability-impact'], verified:false },
+    { name:'VentureBeat AI',     feed:'https://venturebeat.com/category/ai/feed/',     tier:2, territories:['artificial-intelligence'], verified:false },
+    { name:'404 Media',          feed:'https://www.404media.co/rss/',                  tier:3, territories:['technology-innovation','media-platforms'], verified:false },
+    { name:'Import AI',          feed:'https://importai.substack.com/feed',            tier:3, territories:['artificial-intelligence'], verified:false },
+    // EX37: business, creators, retail, luxury
+    { name:'Quartz',             feed:'https://qz.com/rss',                            tier:1, territories:['business-economics'], verified:false },
+    { name:'Fortune',            feed:'https://fortune.com/feed/',                     tier:1, territories:['business-economics'], verified:false },
+    { name:'Marketplace',        feed:'https://www.marketplace.org/feed/',             tier:2, territories:['business-economics'], verified:false },
+    { name:'Harvard Business Review', feed:'https://feeds.hbr.org/harvardbusiness',    tier:2, territories:['business-economics'], verified:false },
+    { name:'Tubefilter',         feed:'https://www.tubefilter.com/feed/',              tier:2, territories:['entrepreneurship-creator','media-platforms'], verified:false },
+    { name:'Entrepreneur',       feed:'https://www.entrepreneur.com/latest.rss',       tier:2, territories:['entrepreneurship-creator','business-economics'], verified:false },
+    { name:'Passionfruit',       feed:'https://passionfru.it/feed/',                   tier:3, territories:['entrepreneurship-creator'], verified:false },
+    { name:'Retail Dive',        feed:'https://www.retaildive.com/feeds/news/',        tier:1, territories:['retail-dtc','business-economics'], verified:false },
+    { name:'Modern Retail',      feed:'https://www.modernretail.co/feed/',             tier:2, territories:['retail-dtc'], verified:false },
+    { name:'Retail Brew',        feed:'https://www.retailbrew.com/feed',               tier:3, territories:['retail-dtc'], verified:false },
+    { name:'Jing Daily',         feed:'https://jingdaily.com/feed/',                   tier:2, territories:['luxury','fashion-beauty','global-diaspora'], verified:false },
+    { name:'Luxury Daily',       feed:'https://www.luxurydaily.com/feed/',             tier:2, territories:['luxury'], verified:false },
+    { name:'Robb Report',        feed:'https://robbreport.com/feed/',                  tier:1, territories:['luxury','travel-experiences'], verified:false },
+    // EX37: music, fashion, beauty, sneakers
+    { name:'Stereogum',          feed:'https://www.stereogum.com/feed/',               tier:2, territories:['music'], verified:false },
+    { name:'Music Business Worldwide', feed:'https://www.musicbusinessworldwide.com/feed/', tier:2, territories:['music','business-economics'], verified:false },
+    { name:'Consequence',        feed:'https://consequence.net/feed/',                 tier:2, territories:['music','entertainment-gaming'], verified:false },
+    { name:'NME',                feed:'https://www.nme.com/feed',                      tier:2, territories:['music','entertainment-gaming'], verified:false },
+    { name:'Vogue',              feed:'https://www.vogue.com/feed/rss',                tier:1, territories:['fashion-beauty','luxury'], verified:false },
+    { name:'WWD',                feed:'https://wwd.com/feed/',                         tier:1, territories:['fashion-beauty','retail-dtc','luxury'], verified:false },
+    { name:'Allure',             feed:'https://www.allure.com/feed/rss',               tier:1, territories:['fashion-beauty'], verified:false },
+    { name:'Glossy',             feed:'https://www.glossy.co/feed/',                   tier:2, territories:['fashion-beauty','retail-dtc','luxury'], verified:false },
+    { name:'Sneaker News',       feed:'https://sneakernews.com/feed/',                 tier:1, territories:['sneakers-streetwear'], verified:false },
+    { name:'Kicks On Fire',      feed:'https://www.kicksonfire.com/feed/',             tier:3, territories:['sneakers-streetwear'], verified:false },
+    // EX37: art, architecture, entertainment, gaming
+    { name:'Artnet News',        feed:'https://news.artnet.com/feed',                  tier:1, territories:['art-design','luxury'], verified:false },
+    { name:'Designboom',         feed:'https://www.designboom.com/feed/',              tier:2, territories:['art-design','architecture-cities'], verified:false },
+    { name:'Design Milk',        feed:'https://design-milk.com/feed/',                 tier:3, territories:['art-design'], verified:false },
+    { name:"The Architect's Newspaper", feed:'https://www.archpaper.com/feed/',        tier:2, territories:['architecture-cities'], verified:false },
+    { name:'Architectural Digest', feed:'https://www.architecturaldigest.com/feed/rss', tier:1, territories:['architecture-cities','art-design','luxury'], verified:false },
+    { name:'Metropolis',         feed:'https://metropolismag.com/feed/',               tier:3, territories:['architecture-cities','sustainability-impact'], verified:false },
+    { name:'Variety',            feed:'https://variety.com/feed/',                     tier:1, territories:['entertainment-gaming','media-platforms','music'], verified:false },
+    { name:'The Hollywood Reporter', feed:'https://www.hollywoodreporter.com/feed/',   tier:1, territories:['entertainment-gaming','media-platforms'], verified:false },
+    { name:'Polygon',            feed:'https://www.polygon.com/rss/index.xml',         tier:1, territories:['entertainment-gaming'], verified:false },
+    { name:'Kotaku',             feed:'https://kotaku.com/rss',                        tier:2, territories:['entertainment-gaming'], verified:false },
+    { name:'Game Developer',     feed:'https://www.gamedeveloper.com/rss.xml',         tier:2, territories:['entertainment-gaming','technology-innovation'], verified:false },
+    // EX37: food, sustainability, diaspora, sports, wellness, travel
+    { name:'Bon Appétit',        feed:'https://www.bonappetit.com/feed/rss',           tier:1, territories:['food-hospitality'], verified:false },
+    { name:'Food Dive',          feed:'https://www.fooddive.com/feeds/news/',          tier:2, territories:['food-hospitality','retail-dtc'], verified:false },
+    { name:"Nation's Restaurant News", feed:'https://www.nrn.com/rss.xml',             tier:2, territories:['food-hospitality'], verified:false },
+    { name:'Punch',              feed:'https://punchdrink.com/feed/',                  tier:3, territories:['food-hospitality'], verified:false },
+    { name:'The Takeout',        feed:'https://thetakeout.com/rss',                    tier:3, territories:['food-hospitality'], verified:false },
+    { name:'Grist',              feed:'https://grist.org/feed/',                       tier:1, territories:['sustainability-impact'], verified:false },
+    { name:'Inside Climate News', feed:'https://insideclimatenews.org/feed/',          tier:1, territories:['sustainability-impact'], verified:false },
+    { name:'Trellis',            feed:'https://trellis.net/feed/',                     tier:2, territories:['sustainability-impact','business-economics'], verified:false },
+    { name:'Canary Media',       feed:'https://www.canarymedia.com/rss.xml',           tier:2, territories:['sustainability-impact','technology-innovation'], verified:false },
+    { name:'Heatmap',            feed:'https://heatmap.news/rss',                      tier:3, territories:['sustainability-impact'], verified:false },
+    { name:'Africa Is a Country', feed:'https://africasacountry.com/feed',             tier:2, territories:['global-diaspora'], verified:false },
+    { name:'Remezcla',           feed:'https://remezcla.com/feed/',                    tier:2, territories:['global-diaspora','music'], verified:false },
+    { name:'The Native',         feed:'https://thenativemag.com/feed/',                tier:3, territories:['global-diaspora','music','fashion-beauty'], verified:false },
+    { name:'Semafor',            feed:'https://www.semafor.com/rss',                   tier:1, territories:['global-diaspora','business-economics','media-platforms'], verified:false },
+    { name:'ESPN',               feed:'https://www.espn.com/espn/rss/news',            tier:1, territories:['sports-culture'], verified:false },
+    { name:'Front Office Sports', feed:'https://frontofficesports.com/feed/',          tier:2, territories:['sports-culture','business-economics'], verified:false },
+    { name:'Sportico',           feed:'https://www.sportico.com/feed/',                tier:2, territories:['sports-culture','business-economics'], verified:false },
+    { name:'SB Nation',          feed:'https://www.sbnation.com/rss/index.xml',        tier:1, territories:['sports-culture'], verified:false },
+    { name:'Boardroom',          feed:'https://boardroom.tv/feed/',                    tier:3, territories:['sports-culture','entrepreneurship-creator','sneakers-streetwear'], verified:false },
+    { name:'Well+Good',          feed:'https://www.wellandgood.com/feed/',             tier:1, territories:['wellness-fitness'], verified:false },
+    { name:"Men's Health",       feed:'https://www.menshealth.com/rss/all.xml/',       tier:1, territories:['wellness-fitness'], verified:false },
+    { name:"Women's Health",     feed:'https://www.womenshealthmag.com/rss/all.xml/',  tier:1, territories:['wellness-fitness','fashion-beauty'], verified:false },
+    { name:'Athletech News',     feed:'https://athletechnews.com/feed/',               tier:2, territories:['wellness-fitness','business-economics'], verified:false },
+    { name:'Fitt Insider',       feed:'https://insider.fitt.co/feed/',                 tier:3, territories:['wellness-fitness'], verified:false },
+    { name:'Skift',              feed:'https://skift.com/feed/',                       tier:1, territories:['travel-experiences','business-economics'], verified:false },
+    { name:'Condé Nast Traveler', feed:'https://www.cntraveler.com/feed/rss',          tier:1, territories:['travel-experiences','luxury'], verified:false },
+    { name:'PhocusWire',         feed:'https://www.phocuswire.com/rss',                tier:2, territories:['travel-experiences','technology-innovation'], verified:false },
+    { name:'Afar',               feed:'https://www.afar.com/feed',                     tier:2, territories:['travel-experiences'], verified:false },
+    { name:'Thrillist',          feed:'https://www.thrillist.com/rss',                 tier:3, territories:['travel-experiences','food-hospitality'], verified:false }
   ],
+  // SEAM:INTAKE (EX37): GDELT lanes by territory. Every slice asks one query per territory (rotating), tier 4 by law: breadth
+  // behind the sources, never sole evidence. The five beats below stay for the legacy fallback only.
+  lanes: {
+    'advertising-marketing':  ['advertising campaign brand', 'marketing agency creative work'],
+    'technology-innovation':  ['technology industry', 'consumer tech launch'],
+    'artificial-intelligence':['artificial intelligence', 'generative AI model'],
+    'business-economics':     ['consumer spending economy', 'business strategy earnings'],
+    'entrepreneurship-creator':['creator economy', 'startup founder'],
+    'music':                  ['music industry', 'album release tour'],
+    'fashion-beauty':         ['fashion industry', 'beauty brand skincare'],
+    'sneakers-streetwear':    ['sneaker release', 'streetwear brand collaboration'],
+    'art-design':             ['design studio exhibition', 'contemporary art market'],
+    'architecture-cities':    ['architecture urban design', 'city housing public space'],
+    'entertainment-gaming':   ['video game industry', 'streaming series box office'],
+    'food-hospitality':       ['restaurant industry', 'food trend hospitality'],
+    'sustainability-impact':  ['sustainability climate consumer', 'circular economy brand'],
+    'global-diaspora':        ['African diaspora culture', 'Afrobeats Latino culture global'],
+    'sports-culture':         ['sports culture fans', 'athlete brand sponsorship'],
+    'wellness-fitness':       ['wellness fitness trend', 'gym longevity habits'],
+    'retail-dtc':             ['retail industry consumer', 'direct to consumer brand ecommerce'],
+    'luxury':                 ['luxury brand market', 'luxury consumer fashion'],
+    'travel-experiences':     ['travel industry experiences', 'tourism hospitality trend'],
+    'media-platforms':        ['social media platform', 'media industry streaming podcast']
+  },
   gdelt: { tier: 4, role: 'breadth sweep + validation; never sole evidence for a story' },
   resist: [
     { rule:'trend_laundering',   law:'one celebrity moment, campaign, show or viral post is not a movement: require a second independent appearance' },
@@ -4997,6 +5103,7 @@ const DAILY_POV = {
   ],
   stages: {
     filter: 'You are the FILTER stage of a cultural-intelligence pipeline. Given one captured signal (title, summary, source), output ONLY JSON: {"territory": <one of the configured territories>, "novelty": <0-5, 0=routine 5=genuinely new behavior or condition>, "announcement": <true if routine PR/launch language with no behavioral evidence>, "note": <at most 12 words on what is actually new>}. No prose outside the JSON.',
+    filter_batch: 'You are the FILTER stage of a cultural-intelligence pipeline. You are given several captured signals, each numbered. Output ONLY a JSON array with one object per signal, in order: {"i": <number>, "territory": <one of the configured territories>, "novelty": <0-5, 0=routine 5=genuinely new behavior or condition>, "announcement": <true if routine PR/launch language with no behavioral evidence>, "note": <at most 12 words on what is actually new>}. No prose outside the JSON.',
     connect: 'Given a small set of signals from different territories, name the one pattern connecting them in at most 2 sentences: a behavior, tension or value appearing in multiple places at once. If no real connection exists, output exactly NONE. Never force it.',
     interpret: 'You write the take for Unsurfaced DAILY. 2-4 sentences. Move through the arc without naming its parts: the observable shift, the human tension underneath it, the new expectation forming, and the possibility it opens. Use only facts present in the evidence; if you infer, say so plainly. Declarative, specific, zero hype. The reader should finish smarter, not busier.',
     apply: 'One sentence: why this matters right now and what it could unlock. End with exactly one audience tag in brackets from: [creative] [founder] [marketer] [exec] [talent].'
@@ -5041,7 +5148,7 @@ function dailyPovPublic(origin, env) {
   return json({ ok: true, pov: DAILY_POV }, 200, origin, env);
 }
 
-/* ═══ SEAM:DAILY_SPINE — the lake-filler. CAPTURE (27 feeds + GDELT) →
+/* ═══ SEAM:DAILY_SPINE — the lake-filler. CAPTURE (the registry + GDELT by territory; SEAM:INTAKE) →
  * hash dedup → embed (Workers AI, own account) → FILTER (echo kill +
  * t1 classify) → CONNECT (neighbors, clusters, mechanical momentum).
  * Runs inside runDailyPipeline BEFORE the edition (failures never block
@@ -5050,10 +5157,29 @@ function dailyPovPublic(origin, env) {
  * one item, never the run. Momentum here is mechanical v1; the composer
  * (DAILY-03) refines. ═══ */
 const SPINE = {
-  FEED_CAP: 10, GDELT_CAP: 4, MAX_NEW: 120, EMBED_BATCH: 16,
-  MAX_CLASSIFY: 48, MAX_CONNECT: 48, PAR: 6, TIMEOUT_MS: 8000,
+  FEED_CAP: 20, GDELT_CAP: 6, MAX_NEW: 800, EMBED_BATCH: 32,
+  MAX_CLASSIFY: 48, MAX_CONNECT: 48, PAR: 12, TIMEOUT_MS: 8000,
   ECHO_SIM: 0.93, CLUSTER_SIM: 0.80, BREADTH_SIM: 0.75
 };
+/* SEAM:INTAKE (EX37): sized to the paid plan (1,000 subrequests an invocation, fifteen minutes of wall time for a cron), so every
+ * source and every territory lane is read on every slice, and the drain takes hundreds of rows a slice instead of a dozen. The
+ * only stage that spends the Workers AI allowance is the classify (llama-4-scout), so it runs on rows that start a cluster, ten to
+ * a call; embedding is close to free. A feed that fails DEAD_AFTER slices in a row is skipped until the 05:15 probe tries it
+ * again. The yield is counted per source and per territory for the desk's {run:"intake"} and the watch. */
+const INTAKE = { DRAIN: 400, EMBED: 256, PLACE: 120, CLASSIFY_BATCH: 10, DEAD_AFTER: 3, HEALTH_KEY: 'intake:health', YIELD_KEY: 'intake:yield:', YIELD_DAYS: 4, QUIET_DAYS: 3, DEAD_TRIP: 8 };
+function territoryGuessIn(text, allowed) {
+  const s = String(text || '').toLowerCase(), list = (allowed && allowed.length) ? allowed : DAILY_POV.territories;
+  let best = null, bestN = 0;
+  for (const terr of list) { const n = terr.split('-').filter(w => w.length > 4 && s.includes(w)).length; if (n > bestN) { best = terr; bestN = n; } }
+  return best;
+}
+function intakeTerritory(source, item) {
+  const terrs = (source && source.territories) || [];
+  if (terrs.length <= 1) return terrs[0] || null;
+  return territoryGuessIn(String(item.title || '') + ' ' + String(item.summary || ''), terrs) || terrs[0];
+}
+async function intakeHealth(env) { try { return JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(INTAKE.HEALTH_KEY)) || '{}') || {}; } catch (e) { return {}; } }
+async function intakeYield(env, day) { try { return JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(INTAKE.YIELD_KEY + day)) || 'null'); } catch (e) { return null; } }
 
 // tolerant RSS2/Atom item extraction — no DOM in Workers, regex law with
 // CDATA + entity handling; malformed feeds yield what they can, never throw.
@@ -5112,7 +5238,7 @@ function hashInput(title, url) {
   let u = '';
   try {
     const p = new URL(String(url || ''));
-    u = (p.host + p.pathname).toLowerCase().replace(/\/+$/, '');
+    u = (p.host.replace(/^(amp|m|www)\./, '') + p.pathname).toLowerCase().replace(/\/+$/, '').replace(/\/amp$/, '');   // SEAM:INTAKE: the same story on an AMP or mobile host is one story
   } catch (e) { u = String(url || '').toLowerCase().slice(0, 120); }
   return t + '|' + u;
 }
@@ -5209,21 +5335,31 @@ async function spineCapture(env, opts) {
   const hours = Math.floor(Date.now() / 18e5);   // 30-min epochs — matches the drain cadence
   const nFeeds = (opts && opts.feeds) || 10;
   const nLanes = (opts && opts.gdelt) != null ? opts.gdelt : 2;
-  const sources = rotatePick(DAILY_POV.sources, nFeeds, hours);
-  const lanes = rotatePick(DAILY_BEATS, nLanes, hours);
+  // SEAM:INTAKE (EX37): 'all' reads every source (a dead one skipped until the probe) and one lane per territory; a number keeps the rotation.
+  const health = await intakeHealth(env), probe = !!(opts && opts.probe);
+  const sources = nFeeds === 'all'
+    ? DAILY_POV.sources.filter(s => probe || !(health[s.name] && health[s.name].fail >= INTAKE.DEAD_AFTER))
+    : rotatePick(DAILY_POV.sources, nFeeds, hours);
+  const lanes = nLanes === 'all'
+    ? Object.keys(DAILY_POV.lanes || {}).map(terr => { const qs = DAILY_POV.lanes[terr]; return { beat: terr, territory: terr, q: qs[hours % qs.length] }; })
+    : rotatePick(DAILY_BEATS, nLanes, hours);
+  const bySource = {}, byTerritory = {}, count = (name, terr) => { bySource[name] = (bySource[name] || 0) + 1; if (terr) byTerritory[terr] = (byTerritory[terr] || 0) + 1; };
   for (let i = 0; i < sources.length; i += SPINE.PAR) {
     const chunk = sources.slice(i, i + SPINE.PAR);
     const settled = await Promise.allSettled(chunk.map(async (s) => {
       const r = await fetchWithTimeout(s.feed, SPINE.TIMEOUT_MS);
       if (!r.ok) throw new Error('http_' + r.status);
       const got = rssItems(await r.text(), SPINE.FEED_CAP);
-      return got.map(it => ({ ...it, source_name: s.name, source_tier: s.tier, territory: s.territories[0] || null }));  // it.image rides along
+      if (!got.length) throw new Error('empty');
+      return got.map(it => ({ ...it, source_name: s.name, source_tier: s.tier, territory: intakeTerritory(s, it) }));  // it.image rides along; SEAM:INTAKE: placed by its words within the source's territories
     }));
     settled.forEach((res, j) => {
-      if (res.status === 'fulfilled') items.push(...res.value);
-      else feedErrors.push(chunk[j].name + ':' + String(res.reason && res.reason.message || res.reason).slice(0, 40));
+      const s = chunk[j], h = health[s.name] || { fail: 0 };
+      if (res.status === 'fulfilled') { items.push(...res.value); res.value.forEach(it => count(s.name, it.territory)); health[s.name] = { fail: 0, ok_at: new Date().toISOString(), n: res.value.length }; }
+      else { const err = String(res.reason && res.reason.message || res.reason).slice(0, 40); feedErrors.push(s.name + ':' + err); health[s.name] = { fail: (h.fail || 0) + 1, ok_at: h.ok_at || null, err, err_at: new Date().toISOString() }; }
     });
   }
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(INTAKE.HEALTH_KEY, JSON.stringify(health)); } catch (e) { excQuiet('intake_health')(e); } }
   // GDELT breadth sweep — tier 4, never sole evidence, rotating lanes.
   for (const lane of lanes) {
     try {
@@ -5239,13 +5375,17 @@ async function spineCapture(env, opts) {
       const eng = news.filter(s => !s.lang || /^(english|eng|en)$/i.test(String(s.lang).trim()));
       gdeltSeen += news.length;
       gdeltKept += Math.min(eng.length, SPINE.GDELT_CAP);
-      eng.slice(0, SPINE.GDELT_CAP).forEach(s => items.push({
+      eng.slice(0, SPINE.GDELT_CAP).forEach(s => { items.push({
         title: s.title, url: s.url, summary: s.snippet || '', published_at: null,
         image: /^https?:\/\//.test(String(s.image || '')) ? String(s.image).slice(0, 500) : null,
-        source_name: s.source || 'GDELT', source_tier: 4, territory: null
-      }));
+        source_name: s.source || 'GDELT', source_tier: 4, territory: lane.territory || null   // SEAM:INTAKE: a territory lane places its rows
+      }); count('GDELT', lane.territory || null); });
     } catch (e) {}
   }
+  // SEAM:INTAKE: the day's yield, per source and per territory, kept four days for the desk and the watch
+  if (env.RATE_LIMIT) { try { const day = new Date().toISOString().slice(0, 10), y = (await intakeYield(env, day)) || { day, by_source: {}, by_territory: {}, slices: 0 };
+      for (const k in bySource) y.by_source[k] = (y.by_source[k] || 0) + bySource[k]; for (const k in byTerritory) y.by_territory[k] = (y.by_territory[k] || 0) + byTerritory[k]; y.slices++;
+      await env.RATE_LIMIT.put(INTAKE.YIELD_KEY + day, JSON.stringify(y), { expirationTtl: INTAKE.YIELD_DAYS * 86400 }); } catch (e) { excQuiet('intake_yield')(e); } }
   // in-memory dedup by fingerprint, then bulk insert (dupes vs the lake ignored).
   const byHash = new Map();
   for (const it of items) {
@@ -5262,14 +5402,12 @@ async function spineCapture(env, opts) {
     }) || [];
     await sweepRefound(env, rows, fresh);   // SEAM:SWEEP_MEASURE
   }
-  return { captured: items.length, unique: rows.length, fresh, feedErrors,
+  return { captured: items.length, unique: rows.length, fresh, feedErrors, sources: sources.length, lanes: lanes.length,
     gdelt: gdeltSeen ? (gdeltKept + '/' + gdeltSeen) : null };
 }
 
-/* spineAdvance — the budgeted drain. Pulls its OWN backlog from the lake
- * by status, spends at most `budget` subrequests (free-tier law: every
- * fetch/AI/sb call counts), and stops mid-stage when the wallet empties.
- * Fully resumable: whatever is left advances on the next slice. */
+/* spineAdvance — the budgeted drain. Pulls its OWN backlog from the lake by status, spends at most `budget` subrequests
+ * (SEAM:INTAKE: INTAKE.DRAIN on the paid plan), and stops mid-stage when the wallet empties. Fully resumable. */
 
 /* ═══ SEAM:DAILY_COMPOSER — twelve from the lake. Candidates are recent
  * connected/filtered signals; a PURE slot-filler enforces the POV edition
@@ -5474,152 +5612,120 @@ async function composeFromLake(env, today) {
 }
 
 async function spineAdvance(env, budget) {
-  // Drain newest-first. composeFromLake only sees captured_at >= now-36h, so
-  // oldest-first spends every call on rows the paper can never print and the
-  // lake reads 0/6 until the whole backlog clears. Today's signal goes first;
-  // the stale tail drains behind it on leftover budget.
+  // SEAM:INTAKE (EX37): the drain in two stages. EMBED gives every new row its vector (close to free). PLACE asks the lake once per
+  // row for its neighbourhood (p_count 40) and reads everything from that one sample: an echo (>= ECHO_SIM) rejects the row; an
+  // anchor (>= CLUSTER_SIM) joins it to the anchor's cluster, inheriting the cluster's territory and the anchor's novelty; the rest
+  // start clusters of their own and are the only rows the model classifies, CLASSIFY_BATCH to a call. Momentum is counted on the
+  // same sample (research never ranks the paper: SEAM:SWEEP_MEASURE). Newest first; resumable; stops when the budget empties.
   let calls = 0;
-  const stats = { embedded: 0, filtered: 0, rejected: 0, connected: 0 };
+  const stats = { embedded: 0, placed: 0, joined: 0, classified: 0, rejected: 0, connected: 0 };
   const vecOf = (e) => Array.isArray(e) ? e : (typeof e === 'string' ? JSON.parse(e) : null);
-  // pgvector takes a bracketed literal. A raw JS array serializes toward PG
-  // '{...}' and vector(384) refuses it — kbEmbed has always done it this way.
+  // pgvector takes a bracketed literal. A raw JS array serializes toward PG '{...}' and vector(384) refuses it.
   const vecStr = (v) => '[' + v.join(',') + ']';
-  // ON CONFLICT DO UPDATE forms the whole tuple before it resolves the
-  // conflict, so a partial body trips NOT NULL on title/url (23502). Every
-  // upsert carries back the row it just read.
+  // ON CONFLICT DO UPDATE forms the whole tuple before it resolves the conflict, so every upsert carries back the row it read.
   const carry = (r) => ({ content_hash: r.content_hash, title: r.title, url: r.url,
     summary: r.summary, image: r.image, published_at: r.published_at,
     source_name: r.source_name, source_tier: r.source_tier, territory: r.territory });
   const errs = [];
+  // the batch reply is a JSON array (parseModelJson reads one object): the array first, then an object that wraps one
+  const parseJsonList = (s) => { try { const m = String(s || '').match(/\[[\s\S]*\]/); if (m) { const a = JSON.parse(m[0]); if (Array.isArray(a)) return a; } } catch (e) {} const o = parseModelJson(s); return o && Array.isArray(o.signals) ? o.signals : (o && typeof o === 'object' && o.i ? [o] : []); };
+  const upsert = async (rows) => { calls++; await sbRest(env, 'signals?on_conflict=content_hash', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: rows }); };
 
-  // E · EMBED backlog: raw rows without vectors.
+  // E · EMBED backlog: raw and reference rows without vectors, newest first.
   if (calls + 3 <= budget) {
     calls++;
     let back = [];
-    try { back = await sbRest(env, 'signals?status=in.(raw,reference)&embedding=is.null&order=captured_at.desc&limit=32&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
+    try { back = await sbRest(env, 'signals?status=in.(raw,reference)&embedding=is.null&order=captured_at.desc&limit=' + INTAKE.EMBED + '&select=content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,status') || []; }
     catch (e) { back = []; }
     for (let i = 0; i < back.length && calls + 2 <= budget; i += SPINE.EMBED_BATCH) {
       const batch = back.slice(i, i + SPINE.EMBED_BATCH);
       try {
         calls++;
-        const out = await env.AI.run(KB_EMBED_MODEL, {
-          text: batch.map(r => (r.title + '. ' + (r.summary || '')).slice(0, 512))
-        });
+        const out = await env.AI.run(KB_EMBED_MODEL, { text: batch.map(r => (r.title + '. ' + (r.summary || '')).slice(0, 512)) });
         const data = (out && out.data) || [];
         if (data.length !== batch.length) throw new Error('embed_shape');
-        calls++;
-        await sbRest(env, 'signals?on_conflict=content_hash', {
-          method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' },
-          body: batch.map((r, j) => Object.assign({}, r, { embedding: vecStr(data[j]) }))
-        });
+        await upsert(batch.map((r, j) => Object.assign({}, r, { embedding: vecStr(data[j]) })));
         stats.embedded += batch.length;
       } catch (e) { errs.push('embed:' + String(e && e.message).slice(0, 50)); }
     }
   }
 
-  // F · FILTER backlog: raw rows WITH vectors — echo kill + t1 classify.
-  if (calls + 4 <= budget) {
+  // P · PLACE backlog: raw rows with vectors (and rows the old drain left at `filtered`). One neighbourhood call per row; echoes out, joiners in, starters classified in batches.
+  if (calls + 6 <= budget) {
     calls++;
-    const back = await sbRest(env, 'signals?status=eq.raw&embedding=not.is.null&order=captured_at.desc&limit=12&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || [];
-    const updates = [];
+    let back = [];
+    try { back = await sbRest(env, 'signals?status=in.(raw,filtered)&embedding=not.is.null&order=captured_at.desc&limit=' + INTAKE.PLACE + '&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || []; }
+    catch (e) { back = []; }
+    const rejected = [], placed = [], anchors = new Set();
     for (const r of back) {
-      if (calls + 3 > budget) break;
+      if (calls + 4 > budget) break;
       const vec = vecOf(r.embedding);
       if (!vec) continue;
       try {
         calls++;
-        const near = await sbRest(env, 'rpc/match_signals', { method: 'POST', body: { p_query: vec, p_count: 2 } }) || [];
-        const echo = near.find(n => n.id !== r.id && n.similarity >= SPINE.ECHO_SIM);
+        const near = ((await sbRest(env, 'rpc/match_signals', { method: 'POST', body: { p_query: vec, p_count: 40 } })) || []).filter(n => n.id !== r.id);
+        const echo = near.find(n => n.similarity >= SPINE.ECHO_SIM);
         if (echo) {
           // SEAM:SWEEP_MEASURE: the sweep brought in a story a search already holds; the story is the sweep's, so the search's copy counts from now on.
           if (echo.research === true && !/^(live|recon)/.test(String((r.momentum && r.momentum.provenance) || '')) && calls + 1 <= budget) {
             calls++;
             await sbRest(env, 'signals?id=eq.' + echo.id + '&research=is.true', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { research: false } }).catch(e => errs.push('sweep_echo:' + String(e && e.message).slice(0, 40)));
           }
-          updates.push(Object.assign(carry(r), { status: 'rejected', momentum: Object.assign({}, r.momentum, { echo_of: echo.id }) })); stats.rejected++; continue;
+          rejected.push(Object.assign(carry(r), { status: 'rejected', momentum: Object.assign({}, r.momentum, { echo_of: echo.id }) })); stats.rejected++; continue;
         }
-        calls++;
-        const reply = await callModel(env, 't1', [
-          { role: 'system', content: DAILY_POV.stages.filter + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
-          { role: 'user', content: 'TITLE: ' + r.title + '\nSUMMARY: ' + (r.summary || '(none)') + '\nSOURCE: ' + r.source_name }
-        ], { max_tokens: 160 });
-        const j = parseModelJson(reply) || {};
-        const territory = DAILY_POV.territories.includes(j.territory) ? j.territory : (r.territory || 'technology-innovation');
-        const novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0));
-        if (j.announcement === true && novelty <= 1) {
-          updates.push(Object.assign(carry(r), { territory, status: 'rejected', momentum: Object.assign({}, r.momentum, { novelty, announcement: true }) }));
-          stats.rejected++;
-        } else {
-          // merge, never replace: momentum.promoted is the receipt for a hand-
-          // promoted signal and must outlive every stage that touches the row.
-          updates.push(Object.assign(carry(r), { territory, status: 'filtered', momentum: Object.assign({}, r.momentum, { novelty, note: String(j.note || '').slice(0, 90) }) }));
-          stats.filtered++;
-        }
-      } catch (e) { errs.push('filter:' + String(e && e.message).slice(0, 50)); }
-    }
-    if (updates.length && calls + 1 <= budget) {
-      calls++;
-      await sbRest(env, 'signals?on_conflict=content_hash', {
-        method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
-      });
-    }
-  }
-
-  // C · CONNECT backlog: filtered rows — neighbors, clusters, momentum.
-  if (calls + 5 <= budget) {
-    calls++;
-    const back = await sbRest(env, 'signals?status=eq.filtered&order=captured_at.desc&limit=8&select=id,content_hash,title,url,summary,image,published_at,source_name,source_tier,territory,embedding,momentum') || [];
-    const found = [], anchors = new Set();
-    for (const r of back) {
-      if (calls + 3 > budget) break;
-      const vec = vecOf(r.embedding);
-      if (!vec) { errs.push('connect:no_vec'); continue; }
-      try {
-        calls++;
-        // Two args, not three. PostgREST resolves rpc/ by the EXACT set of named
-        // arguments - {p_query,p_count,p_since} against match_signals(p_query,
-        // p_count) is a 404, not a fallback to the closest overload. FILTER's
-        // two-arg call is the proven shape; it is why echo-kill works at all.
-        // The p_since window was never read: this threw on every row since the
-        // day it was written, and `catch (e) {}` ate it, so CONNECT has never
-        // run once. Losing the 14-day bound is a gain, not a cost - anchors may
-        // now reach the whole archive, which is what recurrence actually wants.
-        // p_count was 6. Every momentum dim is computed from this sample, so a
-        // story carried by 6 outlets and one carried by 60 produced identical
-        // momentum - and the composer ranks on those dims, which meant velocity,
-        // breadth and depth could not spread and the paper was effectively
-        // ranked by tier and a model's novelty guess. 40 costs the same single
-        // subrequest; HNSW does not care and the payload is ~20KB.
-        const near = (await sbRest(env, 'rpc/match_signals', {
-          method: 'POST', body: { p_query: vec, p_count: 40 }
-        }) || []).filter(n => n.id !== r.id);
-        const anchor = near.find(n => n.similarity >= SPINE.CLUSTER_SIM);
+        const anchor = near.find(n => n.similarity >= SPINE.CLUSTER_SIM && n.status !== 'rejected');
         if (anchor) anchors.add(anchor.id);
-        found.push({ r, near, anchorId: anchor ? anchor.id : null });
-      } catch (e) { errs.push('connect:' + String(e && e.message).slice(0, 50)); }
+        placed.push({ r, near, anchor });
+      } catch (e) { errs.push('place:' + String(e && e.message).slice(0, 50)); }
     }
-    let clusterOf = {};
+    stats.placed = placed.length;
+    // the anchors' clusters, one call
+    let clusterOf = {}, terrOf = {};
     if (anchors.size && calls + 1 <= budget) {
       calls++;
-      const det = await sbRest(env, `signals?id=in.(${[...anchors].join(',')})&select=id,cluster_id`) || [];
-      det.forEach(d => { clusterOf[d.id] = d.cluster_id; });
+      const det = (await sbRest(env, 'signals?id=in.(' + [...anchors].join(',') + ')&select=id,cluster_id,territory').catch(e => { errs.push('anchors:' + String(e && e.message).slice(0, 40)); return []; })) || [];
+      det.forEach(d => { clusterOf[d.id] = d.cluster_id; terrOf[d.id] = d.territory; });
     }
-    const updates = found.map(({ r, near, anchorId }) => {
-      const cluster_id = (anchorId && clusterOf[anchorId]) || crypto.randomUUID();
-      const novelty = (r.momentum && r.momentum.novelty) || 0;
-      const m = momentumMech(near.filter(n => n.research !== true), r.territory, r.source_tier, novelty);   // SEAM:SWEEP_MEASURE: research never ranks the paper
-      return Object.assign(carry(r), { cluster_id, status: 'connected',
-        momentum: Object.assign({}, r.momentum, m, { neighbors: near.slice(0, 4).map(n => n.id) }) });
-    });
-    if (updates.length && calls + 1 <= budget) {
-      calls++;
-      await sbRest(env, 'signals?on_conflict=content_hash', {
-        method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: updates
-      });
-      // Count what landed. The increment used to fire inside the .map(), so a
-      // skipped or failed upsert still reported connected:8 - the same lie
-      // stats.embedded told for seven days.
-      stats.connected += updates.length;
+    // the starters, classified CLASSIFY_BATCH to a call; a batch that fails keeps the source's territory and a neutral novelty
+    const starters = placed.filter(x => !(x.anchor && clusterOf[x.anchor.id]));
+    const judged = new Map();
+    for (let i = 0; i < starters.length && calls + 1 <= budget; i += INTAKE.CLASSIFY_BATCH) {
+      const batch = starters.slice(i, i + INTAKE.CLASSIFY_BATCH);
+      try {
+        calls++;
+        const reply = await callModel(env, 't1', [
+          { role: 'system', content: DAILY_POV.stages.filter_batch + ' Territories: ' + DAILY_POV.territories.join(', ') + '.' },
+          { role: 'user', content: batch.map((x, k) => '#' + (k + 1) + '\nTITLE: ' + x.r.title + '\nSUMMARY: ' + (x.r.summary || '(none)') + '\nSOURCE: ' + x.r.source_name).join('\n\n') }
+        ], { max_tokens: 90 * batch.length + 40 });
+        const list = parseJsonList(reply);
+        list.forEach((j, k) => { const idx = (Number(j && j.i) || (k + 1)) - 1; if (batch[idx] && !judged.has(batch[idx].r.id)) judged.set(batch[idx].r.id, j); });
+        stats.classified += batch.length;
+      } catch (e) { errs.push('classify:' + String(e && e.message).slice(0, 50)); }
+    }
+    const updates = [];
+    for (const { r, near, anchor } of placed) {
+      const joined = !!(anchor && clusterOf[anchor.id]);
+      let territory = r.territory, novelty = 2, note = null;
+      if (joined) {
+        territory = terrOf[anchor.id] || r.territory; novelty = Math.max(0, Math.min(5, Number(anchor.momentum && anchor.momentum.novelty) || 2)); stats.joined++;
+      } else {
+        const j = judged.get(r.id) || {};
+        if (DAILY_POV.territories.includes(j.territory)) territory = j.territory; else if (!territory) territory = 'technology-innovation';
+        novelty = Math.max(0, Math.min(5, Number(j.novelty) || 0)); note = String(j.note || '').slice(0, 90) || null;
+        if (j.announcement === true && novelty <= 1) { updates.push(Object.assign(carry(r), { territory, status: 'rejected', momentum: Object.assign({}, r.momentum, { novelty, announcement: true }) })); stats.rejected++; continue; }
+        if (!judged.has(r.id)) novelty = 2;   // unjudged (budget or a failed batch): neutral, never a rejection
+      }
+      const cluster_id = joined ? clusterOf[anchor.id] : crypto.randomUUID();
+      // merge, never replace: momentum.promoted is the receipt for a hand-promoted signal and must outlive every stage that touches the row.
+      const m = momentumMech(near.filter(n => n.research !== true), territory, r.source_tier, novelty);   // SEAM:SWEEP_MEASURE: research never ranks the paper
+      updates.push(Object.assign(carry(r), { territory, cluster_id, status: 'connected',
+        momentum: Object.assign({}, r.momentum, m, { novelty, note: note || (r.momentum && r.momentum.note) || undefined, joined: joined || undefined, neighbors: near.slice(0, 4).map(n => n.id) }) }));
+    }
+    for (const rows of [rejected, updates]) {
+      if (!rows.length) continue;
+      if (calls + 1 > budget) { errs.push('upsert:budget'); break; }
+      try { await upsert(rows); if (rows === updates) stats.connected += rows.filter(u => u.status === 'connected').length; }
+      catch (e) { errs.push('upsert:' + String(e && e.message).slice(0, 50)); }
     }
   }
   stats.calls = calls;
@@ -6735,7 +6841,7 @@ async function dailySpineGuarded(request, env, origin) {
   if (!user || !(await callerIsAdmin(env, user.id)))
     return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   try {
-    const stats = await runDailySpine(env, { feeds: 10, gdelt: 2, advance: 42 });
+    const stats = await runDailySpine(env, { feeds: 'all', gdelt: 'all', advance: INTAKE.DRAIN, probe: true });   // SEAM:INTAKE
     return json({ ok: true, ...stats }, 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'spine_error', detail: String(e && e.message).slice(0, 140) }, 200, origin, env);
@@ -7915,7 +8021,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'intake' ? await intakeDesk(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9105,6 +9211,13 @@ async function watchHealth(env) {
     const waits = pend.map(x => (now - Date.parse(x.knocked_at)) / 36e5).filter(h => isFinite(h) && h >= 0);
     out.door = { pending: pend.length, oldest_h: waits.length ? Math.round(Math.max.apply(null, waits)) : 0 };
     if (waits.some(h => h >= ACCESS.WAIT_H)) out.trips.push({ kind: 'access_waiting', say: pend.length + (pend.length === 1 ? ' person has' : ' people have') + ' waited at the door, the longest for ' + out.door.oldest_h + ' hours' }); } catch (e) { excQuiet('watch_door')(e); }
+  // SEAM:INTAKE (EX37): dead feeds and quiet territories trip the line
+  try { const health = await intakeHealth(env); const dead = DAILY_POV.sources.filter(s => health[s.name] && health[s.name].fail >= INTAKE.DEAD_AFTER).map(s => s.name);
+    const days = []; for (let i = 0; i < INTAKE.QUIET_DAYS; i++) { const y = await intakeYield(env, new Date(now - i * 86400000).toISOString().slice(0, 10)); if (y) days.push(y); }
+    const quiet = days.length >= INTAKE.QUIET_DAYS ? DAILY_POV.territories.filter(terr => days.every(y => !(y.by_territory && y.by_territory[terr]))) : [];
+    out.intake = { sources: DAILY_POV.sources.length, dead, quiet, today: days[0] ? { slices: days[0].slices, rows: Object.values(days[0].by_source || {}).reduce((a, b) => a + b, 0) } : null };
+    if (dead.length >= INTAKE.DEAD_TRIP) out.trips.push({ kind: 'intake_dead', say: dead.length + ' feeds have been dead for ' + INTAKE.DEAD_AFTER + ' slices or more: ' + dead.slice(0, 6).join(', ') });
+    if (quiet.length) out.trips.push({ kind: 'intake_quiet', say: quiet.length + (quiet.length === 1 ? ' territory has' : ' territories have') + ' captured nothing for ' + INTAKE.QUIET_DAYS + ' days: ' + quiet.join(', ') }); } catch (e) { excQuiet('watch_intake')(e); }
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(WATCH.KEY, JSON.stringify(out), { expirationTtl: WATCH.TTL }); } catch (e) { excQuiet('watch_put')(e); } }
   return out;
 }
@@ -9132,6 +9245,21 @@ async function watchAlert(env, trips, line) {
   for (const addr of to) { const r = await sendEmail(env, { to: addr, subject: 'EXCAVATE: ' + fresh.map(t => t.kind.replace(/_/g, ' ')).join(', '), html }).catch(excQuiet('alert_send', { ok: false })); if (r && r.ok) sent++; }
   logEvent(env, 'intelligence', 'watch', 'watch_alert', null, { trips: fresh.map(t => t.kind), to: to.length, sent });
   return { sent, to: to.length, trips: fresh.map(t => t.kind) };
+}
+/* SEAM:INTAKE (EX37): the desk's view of the intake. The registry against its gate (three sources across two tiers for every
+ * territory), which feeds are dead and since when, the day's yield per source and per territory, and the drain's backlog. */
+function intakeGate() {
+  const out = {};
+  for (const terr of DAILY_POV.territories) { const s = DAILY_POV.sources.filter(x => (x.territories || []).includes(terr)); out[terr] = { sources: s.length, tiers: [...new Set(s.map(x => x.tier))].sort(), under: s.length < 3 || new Set(s.map(x => x.tier)).size < 2 }; }
+  return out;
+}
+async function intakeDesk(env) {
+  const health = await intakeHealth(env), today = new Date().toISOString().slice(0, 10);
+  const days = []; for (let i = 0; i < INTAKE.YIELD_DAYS; i++) { const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10); const y = await intakeYield(env, d); if (y) days.push(y); }
+  const dead = DAILY_POV.sources.filter(s => health[s.name] && health[s.name].fail >= INTAKE.DEAD_AFTER).map(s => ({ name: s.name, feed: s.feed, fail: health[s.name].fail, err: health[s.name].err || null, last_ok: health[s.name].ok_at || null }));
+  const never = DAILY_POV.sources.filter(s => !health[s.name]).map(s => s.name);
+  const gate = intakeGate(), under = Object.keys(gate).filter(k => gate[k].under);
+  return { sources: DAILY_POV.sources.length, lanes: Object.keys(DAILY_POV.lanes || {}).length, gate_under: under, gate, dead, never_tried: never, yield: days, today };
 }
 async function watchTick(env) {
   const line = await watchHealth(env);
