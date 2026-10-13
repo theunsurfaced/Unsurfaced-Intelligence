@@ -1352,6 +1352,36 @@
     return String(p || "").replace(/^findings\[(\d+)\]/, function (m, i) { return "Finding " + (+i + 1); }).replace(/^executive_summary\[(\d+)\]/, function (m, i) { return "Answer line " + (+i + 1); })
       .replace(/^by_the_numbers\[(\d+)\]/, function (m, i) { return "Numbers line " + (+i + 1); }).replace(/\[(\d+)\]/g, function (m, i) { return " " + (+i + 1); }).replace(/\./g, ", ").replace(/_/g, " ");
   }
+  /* SEAM:READ_LINE: every line of text in a read, as a scope the line desk takes; the lane a revise will take; what a revision changed. */
+  function deskGet(o, path) { var k = []; String(path).replace(/([^.[\]]+)|\[(\d+)\]/g, function (m, a, i) { k.push(i != null ? Number(i) : a); return m; }); return k.reduce(function (x, j) { return x == null ? undefined : x[j]; }, o); }
+  function deskPaths(o) {
+    var out = [];
+    (function walk(v, p) {
+      if (out.length > 400) return;
+      if (typeof v === "string") { if (p && /^[a-z_]+(?:\[\d+\])?(?:\.[a-z_]+(?:\[\d+\])?)*$/.test(p) && !/(?:^|\.)(?:evidence|lead_image|cover_image|voices|quotes|then|now)(?:\[|$)/.test(p)) out.push(p); return; }
+      if (Array.isArray(v)) { v.forEach(function (x, i) { walk(x, p + "[" + i + "]"); }); return; }
+      if (v && typeof v === "object") Object.keys(v).forEach(function (k) { walk(v[k], p ? p + "." + k : k); });
+    })(o || {}, "");
+    return out;
+  }
+  function deskHolds(row) { return row.status === "held" ? (row.violations || []).filter(function (v) { return /^number_not_in_evidence:/.test(String(v)); }).length : 0; }
+  function deskReviseLabel(row, open) {
+    var holds = deskHolds(row);
+    if (!open.length && !holds) return "Add a note to revise";
+    var line = open.every(function (n) { return n.scope && typeof deskGet(row.read || {}, n.scope) === "string"; });
+    return "Revise: " + (open.length ? open.length + " note" + (open.length === 1 ? "" : "s") : "") + (open.length && holds ? " + " : "") + (holds ? holds + " hold" + (holds === 1 ? "" : "s") : "") +
+      (line && row.kind !== "recon" ? " · line edit, instant" : " · full revision");
+  }
+  function revHtml(row) {
+    var rv = row.meta && row.meta.revision; if (!rv) return "";
+    var d = rv.diff || [], un = rv.unapplied || [], cl = rv.clear || [];
+    return '<div class="noprint" style="border:1px solid #C41230;padding:12px 16px;margin:0 0 16px;font-family:\'Space Mono\',monospace;font-size:11px;line-height:1.6">' +
+      '<div style="letter-spacing:.14em">WHAT CHANGED · ' + (rv.lane === "line" ? "LINE EDIT" : "FULL REVISION") + " · " + d.length + " line" + (d.length === 1 ? "" : "s") +
+      (cl.length ? " · " + cl.length + " hold" + (cl.length === 1 ? "" : "s") + " cleared" : "") + "</div>" +
+      (un.length ? '<div style="color:#C41230;margin-top:4px">NOT APPLIED: ' + un.map(function (u) { return esc(u.scope) + " (" + esc(u.text) + ")"; }).join(" · ") + "</div>" : "") +
+      d.slice(0, 12).map(function (x) { return '<div style="margin-top:6px"><span style="color:#C41230">' + esc(x.path) + "</span> " + esc(x.from) + " <b>→</b> " + esc(x.to) + "</div>"; }).join("") +
+      (d.length > 12 ? '<div style="opacity:.7;margin-top:4px">and ' + (d.length - 12) + " more</div>" : "") + "</div>";
+  }
   function deskNotesHtml(row) {
     var v = (row.violations || []).map(String).filter(function (n) { return /^(?:style|register|house_voice|repeat_quote|time_law|house_word|id_in_prose):/.test(n); });
     if (!v.length) return "";
@@ -1406,7 +1436,7 @@
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF' + (CUT ? " (client cut)" : "") + '</button>');
       if (x.title && (row.kind === "report" || row.kind === "recon")) btns.push('<button class="btn" id="cut">' + (CUT ? "Full read" : "Client cut") + '</button>');   /* SEAM:READ_CUT: the same document, as a client reads it */
       if (row.status === "ready") btns.push('<button class="btn" id="pub">Publish</button>');
-      if (row.status === "held") btns.push('<button class="btn" id="reland">Re-land</button>');
+      if (row.status === "held") btns.push('<button class="btn red" id="clearhold" title="Rewrite each line held on a figure the evidence does not give, then run the laws again">Fix the hold</button>', '<button class="btn" id="reland" title="Runs the stored text through the laws again. It clears a hold only after a code fix">Re-land</button>');   /* SEAM:READ_CLEAR */
       if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="desk">The desk</button>');   // SEAM:READ_DESK: notes, revise, standing inputs
@@ -1471,7 +1501,7 @@
         document.title = "Unsurfaced Intelligence · " + row.label;
         var rp = reportDoc(CUT ? readCut(x) : x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq,
           stat: stat, fmtDate: fmtDate, pad: pad, firstSentence: firstSentence, mark: mark, capHtml: capHtml, ROLES: ROLES, cited: cited, used: used, cut: CUT });   /* SEAM:READ_CUT: the view the address asks for */
-        app.innerHTML = '<div class="doc">' + (row.status === "held" ? '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>" : (RT ? "" : deskNotesHtml(row))) + rp.html + "</div>";
+        app.innerHTML = '<div class="doc">' + revHtml(row) + (row.status === "held" ? '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>" : (RT ? "" : deskNotesHtml(row))) + rp.html + "</div>";
         if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
         if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, rp.coverPool);
         bind(row);
@@ -1492,6 +1522,7 @@
       contents.push(["Sources", "Every source cited, numbered"]);
 
       var h = "";
+      h += revHtml(row);   /* SEAM:READ_LINE */
       if (row.status === "held") h += '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>";
 
       /* Cover */
@@ -1659,7 +1690,9 @@
     });
   }
   function bind(row) {
-    if ((row.kind === "report" || row.kind === "weekly") && (row.status === "ready" || row.status === "published")) standLoad(row);   /* a RECON is delivered, never staged: no stand bar */ else standPanel("");   // SEAM:REPORT_STAND, SEAM:READ_SWEEP
+    if ((row.kind === "report" || row.kind === "weekly") && (row.status === "ready" || row.status === "published")) standLoad(row);   /* a RECON is delivered, never staged: no stand bar */
+    else if ((row.kind === "report" || row.kind === "weekly") && row.status === "held") standPanel('<b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE STAND</b> <span class="status s-failed">held</span> <span style="opacity:.8">This ' + (row.kind === "weekly" ? "week" : "report") + ' lands on the stand once the hold is cleared. Press Fix the hold above.</span>');   /* SEAM:READ_CLEAR: a held read says why it cannot land */
+    else standPanel("");   // SEAM:REPORT_STAND, SEAM:READ_SWEEP
     /* Download PDF: the platform renders the file once in Chromium and keeps it.
      * Nothing depends on this browser's print dialog. */
     var p = document.getElementById("pdf"); if (p) p.onclick = function () {
@@ -1684,6 +1717,16 @@
       history.replaceState(null, "", location.pathname + "?" + q.toString()); CUT = q.get("cut") === "client" ? "client" : null; openRead(row.id); };
     var pub = document.getElementById("pub"); if (pub) pub.onclick = function () {
       pub.disabled = true; call("/reads/publish", { id: row.id }).then(function (d) { pub.textContent = d && d.ok ? "Published" : "Publish failed"; }); };
+    var fh = document.getElementById("clearhold"); if (fh) fh.onclick = function () {   /* SEAM:READ_CLEAR: fix the hold where it stands */
+      fh.disabled = true; fh.textContent = "Fixing the hold";
+      call("/reads/clear", { id: row.id }).then(function (d) {
+        if (d && d.ok && d.status === "ready") { openRead(row.id); return; }
+        fh.disabled = false; fh.textContent = "Fix the hold";
+        window.alert(d && d.ok ? "Rewrote " + d.changes.length + " line" + (d.changes.length === 1 ? "" : "s") + ", and the laws still hold it: " + (d.fatal || []).join(" \u00b7 ")
+          : d && d.error === "needs_revise" ? "This hold is not a figure. Open THE DESK and press Revise: the hold travels with the revision as a note."
+          : "The house refused: " + ((d && d.error) || "no answer") + ". Open THE DESK and press Revise: the hold travels with the revision as a note.");
+      }).catch(function () { fh.disabled = false; fh.textContent = "Fix the hold"; window.alert("The house did not answer."); });
+    };
     var rl = document.getElementById("reland"); if (rl) rl.onclick = function () {
       rl.disabled = true; call("/reads/reland", { id: row.id }).then(function () { openRead(row.id); }); };
     /* SEAM:READ_PRUNE: an old version goes, after a confirm; the newest cut of a window and anything on the stand stay. */
@@ -1717,10 +1760,11 @@
       html += open.map(function (n) { return '<div class="pf-row"><span class="pf-path" style="' + mono + '">' + esc(n.scope || "whole read") + "</span> " + esc(n.text) +
         ' <small style="opacity:.6">' + esc(n.by || "") + " · " + esc(String(n.at || "").slice(0, 16).replace("T", " ")) + '</small> <button class="btn" data-drop="' + n.n + '" style="padding:2px 8px;font-size:9px;color:#141414;border-color:rgba(20,20,20,.45)">Drop</button></div>'; }).join("");
       html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">Add a note</div>' +
-        '<input id="desk-scope" placeholder="scope, optional: findings[2] or patterns[0].why_it_matters" style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:12px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414;margin-bottom:6px">' +
+        '<datalist id="desk-paths">' + deskPaths(row.read).map(function (p) { return '<option value="' + esc(p) + '">'; }).join("") + "</datalist>" +   /* SEAM:READ_LINE */
+        '<input id="desk-scope" list="desk-paths" placeholder="pin to a line (pick one) for an instant edit, or leave empty for the whole read" style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:12px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414;margin-bottom:6px">' +
         '<textarea id="desk-text" rows="3" placeholder="The implication, the thought-starter, the correction. Written to the writer." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414"></textarea>' +
         '<div style="margin-top:8px"><button class="btn" id="desk-add" style="color:#141414;border-color:rgba(20,20,20,.45)">Add note</button> ' +
-        '<button class="btn red" id="desk-revise">Revise this read' + (open.length ? " with " + open.length + " note" + (open.length === 1 ? "" : "s") : "") + '</button> <span id="desk-say" style="font-size:12px;opacity:.75"></span></div></div>';
+        '<button class="btn red" id="desk-revise">' + esc(deskReviseLabel(row, open)) + '</button> <button class="btn" id="desk-inputs" style="color:#141414;border-color:rgba(20,20,20,.45)">Re-apply standing inputs</button> <span id="desk-say" style="font-size:12px;opacity:.75"></span></div></div>';   /* SEAM:READ_LINE */
       if (own) html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">This RECON · every version' + (own.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(own.updated_by) + "</small>" : "") + "</div>" +
         '<textarea id="desk-own" rows="3" placeholder="Direction for this RECON only. It reaches the deep version and every revision of it." style="width:100%;box-sizing:border-box;padding:8px;font:inherit;font-size:13px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414">' + esc(own.inputs || "") + "</textarea></div>";
       html += '<div class="pf-bar"><div style="' + mono + ';margin-bottom:6px">Standing inputs · ' + esc(KIND[row.kind] || row.kind) + (mine.updated_by ? ' <small style="text-transform:none;letter-spacing:0;opacity:.6">last by ' + esc(mine.updated_by) + "</small>" : "") + "</div>" +
@@ -1739,13 +1783,30 @@
           return call("/reads/get", { id: row.id }).then(function (g) { if (g && g.ok) { row.meta = g.read.meta; deskShow(row, deskRows); } });
         });
       };
-      var rv = document.getElementById("desk-revise"); if (rv) rv.onclick = function () {
-        if (!window.confirm("Revise " + row.label + " v" + row.version + " from the same sources under " + open.length + " note" + (open.length === 1 ? "" : "s") + " and the standing inputs? A new version compiles (about the cost of the original); the stand does not change until you stage it.")) return;
-        rv.disabled = true; rv.textContent = "Queuing the revision";
-        call("/reads/revise", { id: row.id }).then(function (d) {
-          if (d && d.ok) { say2("Version " + d.version + " is compiling as #" + d.id + ". It lands in the library like any read."); rv.textContent = "Revision queued"; }
-          else { rv.disabled = false; rv.textContent = "Revise this read"; say2("The house refused: " + ((d && d.error) || "no answer")); }
-        });
+      var rv = document.getElementById("desk-revise"); if (rv) rv.onclick = function () {   /* SEAM:READ_LINE: the typed note goes with the revise; line notes are edited at once */
+        var pend = document.getElementById("desk-text").value.trim(), psc = document.getElementById("desk-scope").value.trim();
+        if (!open.length && pend.length < 3 && !deskHolds(row)) return say2("Add a note first, or press Re-apply standing inputs.");
+        if (!window.confirm("Revise " + row.label + " v" + row.version + "? Notes pinned to a line are edited at once, for cents; any other note compiles a new version (about the cost of the original). The stand does not change until you stage it.")) return;
+        var full = function () {
+          rv.disabled = true; rv.textContent = "Queuing the full revision";
+          call("/reads/revise", { id: row.id, lane: "full" }).then(function (f) { say2(f && f.ok ? "Version " + f.version + " is compiling as #" + f.id + ". It lands in the library; its bar shows what changed." : "The house refused: " + ((f && f.error) || "no answer")); });
+        };
+        var go = function () {
+          rv.disabled = true; rv.textContent = "Revising";
+          call("/reads/revise", { id: row.id }).then(function (d) {
+            if (d && d.ok && d.lane === "line") { openRead(d.id); return; }
+            if (d && d.ok) { say2("Version " + d.version + " is compiling as #" + d.id + ". It lands in the library; its bar shows what changed."); rv.textContent = "Revision queued"; return; }
+            rv.disabled = false; rv.textContent = "Run a full revision instead";
+            say2(d && d.error === "no_notes" ? "Add a note first, or press Re-apply standing inputs." : "The line desk refused: " + ((d && d.error) || "no answer") + ". Press again to run a full revision.");
+            rv.onclick = full;
+          });
+        };
+        if (pend.length >= 3) call("/reads/note", { id: row.id, text: pend, scope: psc }).then(function (a) { if (!a || !a.ok) return say2("The note was refused: " + ((a && a.error) || "no answer")); open = open.concat([a.note]); go(); });
+        else go();
+      };
+      var ri = document.getElementById("desk-inputs"); if (ri) ri.onclick = function () {
+        if (!window.confirm("Re-apply the standing inputs to " + row.label + " v" + row.version + "? A new version compiles (about the cost of the original).")) return;
+        ri.disabled = true; call("/reads/revise", { id: row.id, inputs: true, lane: "full" }).then(function (d) { say2(d && d.ok ? "Version " + d.version + " is compiling as #" + d.id + "." : "The house refused: " + ((d && d.error) || "no answer")); });
       };
       var sv = document.getElementById("desk-save"); if (sv) sv.onclick = function () {
         sv.disabled = true; sv.textContent = "Saving";

@@ -274,6 +274,7 @@ export default {
         case '/reads/collect':
         case '/reads/publish':
         case '/reads/reland':
+        case '/reads/clear':         // SEAM:READ_CLEAR: fix the hold
         case '/reads/delete':        // SEAM:READ_PRUNE: an old version goes; the newest cut of a window, and anything on the stand, stays
         case '/reads/cover':         // SEAM:REPORT_BRIEF: the cover is the house's pick
         case '/reads/record':
@@ -13597,7 +13598,7 @@ async function readSubmitRevision(env, row) {
   const K = HOUSE_READ.KINDS[row.kind];
   const prior = await readRow(env, row.meta && row.meta.revised_from);
   if (!prior || !prior.read) { await readPatch(env, row.id, { status: 'failed', error: 'no_prior_read' }); return { ok: false, error: 'no_prior_read' }; }
-  const notes = readNotesOpen(row);
+  const notes = readNotesOpen(row).concat(readHoldNotes(prior));   // SEAM:READ_CLEAR: a held read's holds travel as pinned notes
   const stats = Object.assign({}, prior.stats || {});
   const items = await readItemsByIds(env, prior.pack_ids || []);
   const dEarly = row.kind === 'recon' ? (deepOf(row) || deepOf(prior)) : null;   // SEAM:READ_DEEP: one figure for the comments read, in the revision's ground too
@@ -13692,6 +13693,10 @@ async function readLand(env, id, text, cost, stopReason, force) {
   if (think && pr.read) {   // SEAM:READ_THINK: the concept territories, drawn after the landing (a render that fails never holds the read)
     const renders = await deepRenders(env, row, pr.read).catch(deepLog('renders'));
     if (renders) await readPatch(env, id, { meta: Object.assign({}, metaW, { renders }) }).catch(deepLog('renders_patch'));
+  }
+  if (pr.read && row.meta && row.meta.plan === 'revise') {   // SEAM:READ_LINE: a revision lands with its receipt; a figure hold is cleared once
+    const after = await readReviseAfter(env, id).catch(e => { console.log('read_revise_after', String(e && e.message || e).slice(0, 80)); return null; });
+    if (after) return { id, status: after.status, fatal: after.fatal, revision: after };
   }
   return { id, status, fatal: v.fatal.length };
 }
@@ -13923,6 +13928,185 @@ async function readProofRun(env, kind, read, ground, packIds, extraIds) {
   return { read: cur, notes, receipt: { at: new Date().toISOString(), model, lane, reason, cost_usd: cost, parts, changes: receipts.length,
     spelling: receipts.filter(c => c.pass === 'spelling').length, editor: receipts.filter(c => c.pass === 'editor').length,
     receipts: receipts.slice(0, READ_PROOF.MAX_CHANGES) } };
+}
+/* SEAM:READ_CLEAR: a hold the copy can fix is fixed where it stands. A read held because a line prints a figure the
+ * evidence does not give (number_not_in_evidence) had no way out but an override: Revise never saw the hold, Proofread
+ * may not change a number, Re-land runs the same text through the same laws (Oct 13: the week of Oct 5, held twice on
+ * "1996" in its social copy). The copy desk rewrites each flagged line without its figure, one call per line on the
+ * live tier, and the rewrite is accepted only when the figure is gone, no number came in, the S-ids hold, the line did
+ * not grow and carries no em dash. Then the laws run again on the whole read: nothing fatal left, the read is ready.
+ * A hold that is not a figure (no title, an unparsable reply) is a revision's work: readHoldNotes carries it there. */
+const READ_CLEAR = { MAX_TOKENS: 1500, MAX_LINES: 12, FATAL: /^(?:number_not_in_evidence|missing_title_or_thesis|unparsable)/ };
+const READ_CLEAR_SYS = 'You are the copy desk at Unsurfaced Intelligence. One line of a finished read prints a figure that is in no line of the evidence, so the read is held. ' +
+  'Rewrite the line without that figure: drop the figure, or the few words that exist only to carry it, and keep everything else as it is: the meaning, the voice, ' +
+  'the other words, the names, any S-ids. Add no number of any kind, written in digits or in words. Never make the line longer. Never use an em dash. ' +
+  'Return one JSON object and nothing else: {"text": "<the line>"}. No preamble, no fences.';
+/* PURE: the figures each line was held on, from a row's violations: { "social.cover_line": ["1996"], ... }, and the holds no rewrite can fix. */
+function readHoldFigures(violations) {
+  const by = {}, other = [];
+  for (const x of Array.isArray(violations) ? violations : []) {
+    const s = String(x), m = /^number_not_in_evidence:(.+):([^:]+)$/.exec(s);
+    if (m) { (by[m[1]] = by[m[1]] || []).includes(m[2]) || by[m[1]].push(m[2]); }
+    else if (READ_CLEAR.FATAL.test(s)) other.push(s);
+  }
+  return { by, other };
+}
+/* PURE (SEAM:READ_DESK): a held read's holds as desk notes, each pinned to its line, so a revision fixes what held it. */
+function readHoldNotes(row) {
+  if (!row || row.status !== 'held') return [];
+  const h = readHoldFigures(row.violations);
+  const notes = Object.keys(h.by).map(p => ({ scope: p, by: 'the laws', status: 'open',
+    text: 'HELD: ' + h.by[p].join(', ') + (h.by[p].length > 1 ? ' are' : ' is') + ' in no line of the evidence. Rewrite this line without ' + (h.by[p].length > 1 ? 'those figures' : 'that figure') + ' and print no figure the evidence does not give.' }));
+  for (const o of h.other) notes.push({ scope: null, by: 'the laws', status: 'open', text: 'HELD: ' + o + '. Write the read whole, with its title and thesis, as one JSON object.' });
+  return notes;
+}
+/* PURE: a dot path into a read ("social.frames[4].headline"), read and written. */
+function readPathKeys(path) { const k = []; String(path).replace(/([^.[\]]+)|\[(\d+)\]/g, (m, a, i) => { k.push(i != null ? Number(i) : a); return m; }); return k; }
+function readPathGet(o, path) { return readPathKeys(path).reduce((x, k) => (x == null ? undefined : x[k]), o); }
+function readPathSet(o, path, v) { const k = readPathKeys(path), last = k.pop(); const at = k.reduce((x, j) => (x == null ? undefined : x[j]), o); if (at == null) return false; at[last] = v; return true; }
+/* PURE: may this rewrite stand? null when it may, else the reason. */
+function readClearAccept(before, after, figs) {
+  if (typeof after !== 'string' || !after.trim()) return 'empty';
+  const nums = s => (String(s).replace(/\bS\d+\b/g, ' ').match(/\d[\d,]*(?:\.\d+)?/g) || []).map(x => x.replace(/,/g, '').replace(/^0+(?=\d)/, ''));
+  const gone = new Set((figs || []).map(f => String(f).replace(/,/g, '').replace(/^0+(?=\d)/, '')));
+  const had = nums(before), now = nums(after);
+  if (now.some(n => gone.has(n))) return 'figure_kept';
+  const left = had.slice(); for (const n of now) { const i = left.indexOf(n); if (i < 0) return 'number_added:' + n; left.splice(i, 1); }
+  if (readSids(before) !== readSids(after)) return 'sids';
+  if (after.length > before.length + READ_PROOF.SLACK) return 'longer';
+  if (/—/.test(after)) return 'dash';
+  return null;
+}
+async function readClearPart(env, path, line, figs) {
+  let r;
+  try {
+    r = await callClaude(env, 'live', { system: READ_CLEAR_SYS, cache: true, kind: 'read_clear', max_tokens: READ_CLEAR.MAX_TOKENS,
+      prompt: 'THE LINE (' + path + '):\n' + line + '\n\nTHE FIGURE IN NO LINE OF THE EVIDENCE: ' + figs.join(', ') });
+  } catch (e) { return { ok: false, error: 'clear_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
+  if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'clear_failed', cost_usd: (r && r.cost_usd) || 0 };
+  const j = parseModelJson(r.text) || extractJson(r.text);
+  if (!j || typeof j.text !== 'string') return { ok: false, error: 'clear_unparsable', cost_usd: r.cost_usd || 0 };
+  return { ok: true, text: j.text.replace(/\s+/g, ' ').trim(), cost_usd: r.cost_usd || 0 };
+}
+async function readClearRun(env, row) {
+  const h = readHoldFigures(row.violations), paths = Object.keys(h.by);
+  if (h.other.length) return { ok: false, error: 'needs_revise', holds: h.other };
+  if (!paths.length) return { ok: false, error: 'nothing_to_clear' };
+  if (paths.length > READ_CLEAR.MAX_LINES) return { ok: false, error: 'too_many_lines:' + paths.length };
+  const read = JSON.parse(JSON.stringify(row.read)), changes = [];
+  let cost = 0;
+  for (const p of paths) {
+    const line = readPathGet(read, p);
+    if (typeof line !== 'string') return { ok: false, error: 'not_a_line:' + p, cost_usd: cost };
+    const r = await readClearPart(env, p, line, h.by[p]);
+    cost += (r && r.cost_usd) || 0;
+    if (!r.ok) return { ok: false, error: r.error + ':' + p, cost_usd: cost };
+    const why = readClearAccept(line, r.text, h.by[p]);
+    if (why) return { ok: false, error: 'refused:' + why + ':' + p, cost_usd: cost };
+    readPathSet(read, p, r.text);
+    changes.push({ path: p, from: line, to: r.text, pass: 'clear', figures: h.by[p] });
+  }
+  const items = await readWindowItems(env, row.window_start, row.window_end);
+  const v = readValidate(row.kind, read, readGroundOf(row, items), row.pack_ids || [], readReportExtraIds(row.meta && row.meta.pack));
+  const kept = (Array.isArray(row.violations) ? row.violations : []).filter(x => !READ_CLEAR.FATAL.test(String(x)));
+  return { ok: true, read: v.read || read, fatal: v.fatal, violations: v.fatal.concat(kept), changes, cost_usd: Math.round(cost * 1e6) / 1e6 };
+}
+/* SEAM:READ_LINE: the desk's revision, made strong (Oct 13). A revision was always a full recompile: the whole read
+ * rewritten through the batch lane to change one line, at the cost of the original, with the untouched sections kept
+ * only because the law asked. The line desk takes every note pinned to a line of text (the desk's, and a held read's
+ * holds) and edits those lines alone, one live-tier call per line; the spelling pass and the laws then run on the whole
+ * read, a figure hold is cleared the way Fix the hold clears it, and the new version is written ready or held at once.
+ * A note on the whole read, or on a section, still takes the full revision. Every revision keeps a receipt
+ * (meta.revision): the lines that changed, the holds cleared, and any pinned note whose line did not change. */
+const READ_LINE = { MAX_TOKENS: 2500, MAX_LINES: 16, GROW: 2, GROW_MIN: 300, DIFF_MAX: 80 };
+const READ_LINE_SYS = 'You are the editor at Unsurfaced Intelligence. You revise one line of a finished read under the desk\'s notes. ' +
+  'Apply every note to the line and change nothing the notes do not ask for. Keep the house voice: declarative, specific, expert, no hedging, no agency-speak. ' +
+  'Every figure you print must already be in the line or given in a note: never invent a number, a date or a year. Keep any S-ids the line carries. Never use an em dash. ' +
+  'Where a note offers an implication or a thought-starter, write it as the house\'s position, as interpretation. ' +
+  'Return one JSON object and nothing else: {"text": "<the revised line>"}. No preamble, no fences.';
+/* PURE: the notes the line desk can take (pinned to a line of text in the read) and the ones that need the whole read. */
+function readLinePlan(read, notes) {
+  const lines = {}, whole = [];
+  for (const n of notes || []) {
+    const v = n && n.scope ? readPathGet(read || {}, n.scope) : undefined;
+    if (typeof v === 'string') (lines[n.scope] = lines[n.scope] || []).push(n); else whole.push(n);
+  }
+  return { lines, whole, paths: Object.keys(lines) };
+}
+/* PURE: may an edited line stand? null when it may. A line held on a figure must lose it. */
+function readLineAccept(before, after, figs) {
+  if (typeof after !== 'string' || !after.trim()) return 'empty';
+  if (/—/.test(after)) return 'dash';
+  if (after.length > Math.max(before.length * READ_LINE.GROW, before.length + READ_LINE.GROW_MIN)) return 'longer';
+  if (figs && figs.length) {
+    const norm = x => String(x).replace(/,/g, '').replace(/^0+(?=\d)/, '');
+    const gone = new Set(figs.map(norm)), now = (after.replace(/\bS\d+\b/g, ' ').match(/\d[\d,]*(?:\.\d+)?/g) || []).map(norm);
+    if (now.some(n => gone.has(n))) return 'figure_kept';
+  }
+  return null;
+}
+async function readLinePart(env, path, line, notes) {
+  let r;
+  try {
+    r = await callClaude(env, 'live', { system: READ_LINE_SYS, cache: true, kind: 'read_line', max_tokens: READ_LINE.MAX_TOKENS,
+      prompt: 'THE LINE (' + path + '):\n' + line + '\n\nTHE NOTES (' + notes.length + '):\n' + readNotesText(notes) });
+  } catch (e) { return { ok: false, error: 'edit_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
+  if (!r || !r.ok) return { ok: false, error: (r && r.error) || 'edit_failed', cost_usd: (r && r.cost_usd) || 0 };
+  const j = parseModelJson(r.text) || extractJson(r.text);
+  if (!j || typeof j.text !== 'string') return { ok: false, error: 'edit_unparsable', cost_usd: r.cost_usd || 0 };
+  return { ok: true, text: j.text.replace(/\s+/g, ' ').trim(), cost_usd: r.cost_usd || 0 };
+}
+async function readLineRun(env, row, plan) {
+  if (plan.paths.length > READ_LINE.MAX_LINES) return { ok: false, error: 'too_many_lines:' + plan.paths.length };
+  const read = JSON.parse(JSON.stringify(row.read)), changes = [];
+  const figs = readHoldFigures(row.status === 'held' ? row.violations : []).by;
+  let cost = 0;
+  for (const p of plan.paths) {
+    const line = readPathGet(read, p);
+    const r = await readLinePart(env, p, line, plan.lines[p]);
+    cost += (r && r.cost_usd) || 0;
+    if (!r.ok) return { ok: false, error: r.error + ':' + p, cost_usd: cost };
+    const why = readLineAccept(line, r.text, figs[p]);
+    if (why) return { ok: false, error: 'refused:' + why + ':' + p, cost_usd: cost };
+    readPathSet(read, p, r.text);
+    changes.push({ path: p, from: line, to: r.text, pass: 'edit', notes: plan.lines[p].map(n => n.n || n.text.slice(0, 80)) });
+  }
+  const am = readAmerican(read);
+  const items = await readWindowItems(env, row.window_start, row.window_end);
+  const v = readValidate(row.kind, am.read, readGroundOf(row, items), row.pack_ids || [], readReportExtraIds(row.meta && row.meta.pack));
+  let out = v.read || am.read, fatal = v.fatal, clear = null;
+  if (fatal.length && !readHoldFigures(fatal).other.length) {   // a figure the edit brought in: cleared once, as Fix the hold clears it
+    const c = await readClearRun(env, Object.assign({}, row, { read: out, violations: fatal }));
+    cost += (c && c.cost_usd) || 0;
+    if (c.ok) { out = c.read; fatal = c.fatal; clear = c.changes; }
+  }
+  const kept = (Array.isArray(row.violations) ? row.violations : []).filter(x => !READ_CLEAR.FATAL.test(String(x)) && !plan.paths.some(p => String(x).indexOf(':' + p + ':') >= 0));
+  return { ok: true, read: out, fatal, violations: fatal.concat(kept, v.notes), changes, clear, cost_usd: Math.round(cost * 1e6) / 1e6 };
+}
+/* SEAM:READ_LINE: a full revision's receipt, written when it lands: what changed, any pinned note whose line did not
+ * change, and a figure hold cleared once (the writer brought a year in again: the revision does not stop at held). */
+async function readReviseAfter(env, id) {
+  const row = await readRow(env, id);
+  if (!row || !row.read || !row.meta || row.meta.plan !== 'revise') return null;
+  const prior = row.meta.revised_from ? await readRow(env, row.meta.revised_from) : null;
+  const unapplied = [];
+  for (const n of row.meta.notes || []) {
+    if (!n || !n.scope || !prior || !prior.read) continue;
+    const a = readPathGet(prior.read, n.scope);
+    if (a !== undefined && JSON.stringify(a) === JSON.stringify(readPathGet(row.read, n.scope))) unapplied.push({ n: n.n || null, scope: n.scope, text: String(n.text || '').slice(0, 160) });
+  }
+  let status = row.status, fatal = (Array.isArray(row.violations) ? row.violations : []).filter(x => READ_CLEAR.FATAL.test(String(x))), clear = null, cost = 0;
+  const patch = {};
+  if (status === 'held' && fatal.length && !readHoldFigures(fatal).other.length) {
+    const c = await readClearRun(env, row);
+    cost = (c && c.cost_usd) || 0;
+    if (c.ok) { clear = c.changes; fatal = c.fatal; status = c.fatal.length ? 'held' : 'ready'; Object.assign(patch, { status, read: c.read, violations: c.violations, error: status === 'ready' ? null : row.error }); row.read = c.read; }
+  }
+  const revision = { lane: 'full', at: new Date().toISOString(), clear, unapplied, cost_usd: cost,
+    diff: prior && prior.read ? readProofDiff(prior.read, row.read).slice(0, READ_LINE.DIFF_MAX) : [] };
+  patch.meta = Object.assign({}, row.meta, { revision });
+  await readPatch(env, id, patch);
+  return { status, fatal: fatal.length, unapplied: unapplied.length, cleared: clear ? clear.length : 0 };
 }
 function readGroundOf(row, items) {
   // SEAM:READ_COUNTS: a read landed before the counts existed gets them on the ground. The stories' lines are ground; so are the lake lines (SEAM:READ_REPORT).
@@ -14775,6 +14959,21 @@ async function readRoute(path, body, env, origin, user) {
     const r = await readLand(env, row.id, jobs[0].result, parseFloat(jobs[0].cost_usd) || 0, jobs[0].stop_reason, true);
     return json(Object.assign({ ok: true }, r), 200, origin, env);
   }
+  if (path === '/reads/clear') {
+    // SEAM:READ_CLEAR: fix the hold. Each line held on a figure the evidence does not give is rewritten without it, then the
+    // laws run again; nothing fatal left, the read is ready. A hold of any other kind answers needs_revise (Revise carries it).
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (row.status !== 'held') return json({ ok: false, error: 'not_held', status: row.status }, 200, origin, env);
+    if (!row.read || !row.read.title) return json({ ok: false, error: 'needs_revise', holds: ['not_written'] }, 200, origin, env);
+    const c = await readClearRun(env, row);
+    if (!c.ok) return json({ ok: false, error: c.error, holds: c.holds || null, cost_usd: c.cost_usd || 0 }, 200, origin, env);
+    const status = c.fatal.length ? 'held' : 'ready';
+    await readPatch(env, row.id, { status, read: c.read, violations: c.violations, error: status === 'ready' ? null : row.error,
+      meta: Object.assign({}, row.meta || {}, { clear: { at: new Date().toISOString(), by: user.id, changes: c.changes, cost_usd: c.cost_usd } }) });
+    logEvent(env, 'intelligence', 'reads', 'read_cleared', null, { id: row.id, kind: row.kind, status, lines: c.changes.length, cost_usd: c.cost_usd });
+    return json({ ok: true, id: row.id, status, changes: c.changes, fatal: c.fatal, cost_usd: c.cost_usd }, 200, origin, env);
+  }
   if (path === '/reads/collect') {
     const t0 = Date.now(), drain = await claudeBatchDrain(env);
     const tick = await readTick(env, { deep: true, t0 });   // SEAM:READ_DEEP: the admin's collect moves a deep RECON as the tick would
@@ -15014,7 +15213,30 @@ async function readRoute(path, body, env, origin, user) {
     if (row.status === 'compiling' || row.status === 'queued') return json({ ok: false, error: 'still_compiling' }, 200, origin, env);
     const notes = readNotesOpen(row);
     const desk = await readDeskInputs(env, row.kind, row);
-    if (!notes.length && !desk) return json({ ok: false, error: 'nothing_to_apply' }, 200, origin, env);
+    if (!notes.length && !desk) { if (!readHoldNotes(row).length) return json({ ok: false, error: 'nothing_to_apply' }, 200, origin, env); }   // SEAM:READ_CLEAR: a held read always has its holds to apply
+    // SEAM:READ_LINE: no note and no hold is not a revision (Oct 13: v2 was revised on 0 notes and came back the same, paid for);
+    // re-applying the standing inputs is asked for on purpose (inputs: true). Notes all pinned to lines take the line desk.
+    const holdN = readHoldNotes(row), all = notes.concat(holdN);
+    if (!all.length && body.inputs !== true) return json({ ok: false, error: 'no_notes' }, 200, origin, env);
+    const plan = readLinePlan(row.read, all);
+    if (all.length && !plan.whole.length && body.lane !== 'full' && row.kind !== 'recon') {
+      const e = await readLineRun(env, row, plan);
+      if (!e.ok) return json({ ok: false, error: e.error, lane: 'line', retry: 'full', cost_usd: e.cost_usd || 0 }, 200, origin, env);
+      const carryL = {}; for (const k of ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue', 'pack', 'proof']) if (row.meta && row.meta[k] != null) carryL[k] = row.meta[k];
+      const by = String(user.email || user.id).replace(/@.*$/, '');
+      const { row: nx } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(carryL, { plan: 'revise', lane: 'line', revised_from: row.id, revised_from_version: row.version, revised_by: by }));
+      if (!nx) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
+      const st = e.fatal.length ? 'held' : 'ready';
+      await readPatch(env, nx.id, { status: st, read: e.read, violations: e.violations, stats: row.stats || {}, pack_ids: row.pack_ids || [], label: row.label, cost_usd: e.cost_usd,
+        error: st === 'held' ? 'held_for_review' : null,
+        meta: Object.assign({}, nx.meta || {}, { notes: notes.map(n => Object.assign({}, n, { status: 'applied', applied_in: nx.id })),
+          revision: { lane: 'line', at: new Date().toISOString(), by, holds: holdN.map(n => n.scope), changes: e.changes, clear: e.clear, unapplied: [], cost_usd: e.cost_usd,
+            diff: readProofDiff(row.read, e.read).slice(0, READ_LINE.DIFF_MAX) } }) });
+      const appliedL = ((row.meta && row.meta.notes) || []).map(n => notes.includes(n) ? Object.assign({}, n, { status: 'applied', applied_in: nx.id }) : n);
+      await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { notes: appliedL }) });
+      logEvent(env, 'intelligence', 'reads', 'read_revise', null, { id: nx.id, from: row.id, kind: row.kind, lane: 'line', notes: all.length, status: st, cost_usd: e.cost_usd });
+      return json({ ok: true, id: nx.id, from: row.id, version: nx.version, notes: all.length, lane: 'line', status: st, changes: e.changes.length, cost_usd: e.cost_usd }, 200, origin, env);
+    }
     const dd = row.kind === 'recon' ? deepOf(row) : null;   // SEAM:READ_DEEP: a revision of a deep RECON is paid inside its ceiling; { budget } may raise it
     const askedB = body.budget == null || body.budget === '' ? NaN : Number(body.budget);
     const ddBudget = dd ? (Number.isFinite(askedB) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, askedB)) : (Number(dd.budget_usd) || READ_DEEP.BUDGET_USD)) : null;
@@ -15027,7 +15249,7 @@ async function readRoute(path, body, env, origin, user) {
     const applied = ((row.meta && row.meta.notes) || []).map(n => notes.includes(n) ? Object.assign({}, n, { status: 'applied', applied_in: next.id }) : n);
     await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { notes: applied }) });
     const sub = await readSubmitRevision(env, next);
-    return json(Object.assign({ id: next.id, from: row.id, version: next.version, notes: notes.length }, sub), 200, origin, env);
+    return json(Object.assign({ id: next.id, from: row.id, version: next.version, notes: notes.length, lane: 'full' }, sub), 200, origin, env);   // SEAM:READ_LINE
   }
   if (path === '/reads/desk') {
     // SEAM:READ_DESK: the editors' standing inputs. { kind } reads them; { kind, inputs } writes them (admin). kind is a read kind or 'all'.

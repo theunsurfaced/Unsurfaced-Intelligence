@@ -1524,6 +1524,24 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:EXC_PROBE",
    "purpose": "EX42 on the page: \"Read as …\" with why; the underneath as chips the reader takes; a flip records and reads again."
+  },
+  "SEAM:READ_CLEAR": {
+   "file": "worker/src/index.js",
+   "purpose": "fix the hold: POST /reads/clear {id} (admin) on a held read rewrites each line held on a figure the evidence does not give (number_not_in_evidence) without that figure, one live-tier call per line (readClearPart), accepted only when the figure is gone, no number came in, the S-ids hold, the line did not grow and carries no em dash (readClearAccept); then readValidate runs on the whole read and, nothing fatal left, the read is ready; the receipts are meta.clear. A hold that is not a figure answers needs_revise. readHoldNotes carries a held read's holds into its revision as pinned notes (readSubmitRevision), so Revise fixes what held it, and revise is never refused on a held read"
+  },
+  "SEAM:READ_CLEAR@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_CLEAR",
+   "purpose": "Fix the hold on every held read (calls /reads/clear; ready reopens the read, anything else says why and points to Revise); a held weekly or report shows its stand bar with why it cannot land; Re-land says it clears a hold only after a code fix"
+  },
+  "SEAM:READ_LINE": {
+   "file": "worker/src/index.js",
+   "purpose": "the line desk: POST /reads/revise takes the line lane when every note (the desk's open notes and a held read's holds, readHoldNotes) is pinned to a line of text (readLinePlan): each line is edited on the live tier under its notes (readLinePart, readLineAccept), readAmerican and readValidate run on the whole read, a figure hold is cleared once (readClearRun), and the new version is written ready or held at once with its receipt (meta.revision: lane, changes, holds, clear, diff). A note on the whole read or a section takes the full revision (lane full; body.lane full forces it). Revise with no note and no hold answers no_notes; body.inputs true re-applies the standing inputs. A full revision lands with its receipt (readReviseAfter from readLand: the diff, any pinned note whose line did not change as unapplied, a figure hold cleared once)"
+  },
+  "SEAM:READ_LINE@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_LINE",
+   "purpose": "the desk: the scope field offers every line of the read (deskPaths); Revise names its lane and counts the notes and holds (deskReviseLabel), takes a typed note with it, opens the new version at once on the line lane and offers the full revision when the line desk refuses; Re-apply standing inputs is its own button; a revised read shows WHAT CHANGED (revHtml): the lines, the holds cleared, any note not applied"
   }
  },
  "planned": [
