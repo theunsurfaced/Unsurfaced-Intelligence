@@ -265,6 +265,8 @@ export default {
         case '/knowledge/list':      return kbList(env, origin, user);
         case '/knowledge/search':    return kbSearch(body, env, origin, user);
         case '/knowledge/delete':    return kbDelete(body, env, origin, user);
+        case '/knowledge/cut':       return kbCutRoute(body, env, origin, user);   // SEAM:FEED_BRIDGE
+        case '/knowledge/used':      return kbUsed(body, env, origin, user);
         case '/claude/ping':         // SEAM:CLAUDE_ROUTE admin doors: ping, ledger, kill switch
         case '/claude/ledger':
         case '/claude/kill':         return claudeRoute(path, body, env, origin, user);
@@ -4509,11 +4511,11 @@ async function buildStudioManifest(env, day, issueNo, items) {
     const base = (it, story) => ({ issue_no: issueNo, date: day, kicker: it.kicker, headline: it.headline,
       take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story,
       territory: it.territory || null, editorial_format: it.format || 'dispatch',
-      apply: it.apply || null, momentum: it.momentum || null });
+      apply: it.apply || null, momentum: it.momentum || null, story_id: it.id || null });   // SEAM:STUDIO_LOOK: the story's photograph rides the relay
     const sixPayload = { issue_no: issueNo, date: day,
       slides: (items || []).slice(0, 6).map(it => ({
         kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name,
-        territory: it.territory || null, editorial_format: it.format || null })) };
+        territory: it.territory || null, editorial_format: it.format || null, story_id: it.id || null })) };   // SEAM:STUDIO_LOOK
     // The slate walk: 2 edition anchors + hero per story (lead carries an alt).
     // Six pieces on a full slate, down from seventeen. Caps are code, not comment.
     const MATRIX = [
@@ -4568,7 +4570,7 @@ async function studioCutStory(body, env, origin, user) {
   const base = { issue_no: ed.issue_no, date: day, kicker: it.kicker, headline: it.headline,
     take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9,
     territory: it.territory || null, editorial_format: it.format || 'dispatch',
-    apply: it.apply || null, momentum: it.momentum || null,
+    apply: it.apply || null, momentum: it.momentum || null, story_id: it.id || null,   // SEAM:STUDIO_LOOK
     selection: 'admin cut: ' + hero.why };
   const payload = hero.format === 'hand_meme'
     ? Object.assign({}, base, await studioMemeLines(env, it)) : base;
@@ -4735,7 +4737,8 @@ async function kbEmbed(env, chunks) {
 async function kbInsert(env, user, chunks, vecs, extra) {
   const rows = chunks.map((c, i) => Object.assign({
     content: c, embedding: vecs[i], submitted_by: user.id,
-    tags: extra.tags || [], target: extra.target, status: 'live'
+    tags: extra.tags || [], target: extra.target, status: 'live',
+    drop_key: extra.drop_key || null, title: extra.title || null, shareable: !!extra.shareable   // SEAM:FEED_BRIDGE (0047)
   }, extra.source_url ? { source_url: extra.source_url } : {},
      extra.file_ref ? { file_ref: extra.file_ref } : {}));
   await sbRest(env, 'knowledge_base', { method: 'POST', body: rows });
@@ -4764,6 +4767,7 @@ async function kbWhoami(env, origin, user) {
 async function kbSubmit(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   const target = kbTarget(body.target), tags = kbTags(body.tags);
+  const drop = kbDrop(k => body[k]);   // SEAM:FEED_BRIDGE
   let text = String(body.text || '').slice(0, 60000), source_url = null;
   if (!text && body.url) {
     let t;
@@ -4786,8 +4790,9 @@ async function kbSubmit(body, env, origin, user) {
   const chunks = kbChunk(text);
   try {
     const vecs = await kbEmbed(env, chunks);
-    const added = await kbInsert(env, user, chunks, vecs, { tags, target, source_url });
-    return json({ ok: true, added, target, tags }, 200, origin, env);
+    const added = await kbInsert(env, user, chunks, vecs, { tags, target, source_url, drop_key: drop.drop_key, title: drop.title, shareable: drop.shareable });
+    const fx = await kbAfter(env, Object.assign({}, drop, { chunks, target, tags, source_url, text }));   // SEAM:FEED_BRIDGE: the lake, then STUDIO when asked
+    return json(Object.assign({ ok: true, added, target, tags, drop_key: drop.drop_key, shareable: drop.shareable }, fx), 200, origin, env);
   } catch (e) {
     await sbRest(env, 'knowledge_base', { method: 'POST', body: [{
       content: text.slice(0, 900), submitted_by: user.id, tags, target,
@@ -4800,6 +4805,7 @@ async function kbFile(request, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   const u = new URL(request.url);
   const target = kbTarget(u.searchParams.get('target')), tags = kbTags(u.searchParams.get('tags'));
+  const drop = kbDrop(k => u.searchParams.get(k));   // SEAM:FEED_BRIDGE
   const name = (request.headers.get('x-filename') || 'drop.txt').replace(/[^\w.-]/g, '_');
   if (!/\.(txt|md|markdown|csv|json)$/i.test(name))
     return json({ ok: false, error: 'text_files_only' }, 200, origin, env);
@@ -4815,15 +4821,16 @@ async function kbFile(request, env, origin, user) {
   const chunks = kbChunk(text);
   try {
     const vecs = await kbEmbed(env, chunks);
-    const added = await kbInsert(env, user, chunks, vecs, { tags, target, file_ref });
-    return json({ ok: true, added, target, tags, file_ref }, 200, origin, env);
+    const added = await kbInsert(env, user, chunks, vecs, { tags, target, file_ref, drop_key: drop.drop_key, title: drop.title || name.replace(/\.[a-z]+$/i, ''), shareable: drop.shareable });
+    const fx = await kbAfter(env, Object.assign({}, drop, { title: drop.title || name.replace(/\.[a-z]+$/i, ''), chunks, target, tags, text }));   // SEAM:FEED_BRIDGE
+    return json(Object.assign({ ok: true, added, target, tags, file_ref, drop_key: drop.drop_key, shareable: drop.shareable }, fx), 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
   }
 }
 async function kbList(env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const rows = await sbRest(env, 'knowledge_base?select=id,content,source_url,file_ref,tags,target,status,created_at&order=created_at.desc&limit=50');
+  const rows = await sbRest(env, 'knowledge_base?select=id,content,source_url,file_ref,tags,target,status,created_at,drop_key,title,shareable&order=created_at.desc&limit=120');
   return json({ ok: true, rows: (rows || []).map(r => Object.assign(r, { content: String(r.content || '').slice(0, 140) })) }, 200, origin, env);
 }
 async function kbSearch(body, env, origin, user) {
@@ -4836,8 +4843,135 @@ async function kbSearch(body, env, origin, user) {
     body: { p_target: kbTarget(body.target), p_query: vec, p_count: Math.min(+body.count || 8, 20) } });
   return json({ ok: true, rows: rows || [] }, 200, origin, env);
 }
+/* SEAM:FEED_BRIDGE (EX45 THE FEED): one drop, every destination. Until Oct 13 a FEED drop landed in knowledge_base and
+ * nothing read it but the recall test. Now every drop has a key, a title and a shareable flag (0047). A drop for INTELLIGENCE
+ * or BOTH is mirrored into the lake as `recon_feed`: research by 0038's rule, so every read, RECON and ask can find and cite it
+ * as house material, and it counts in no measure. A shareable drop for DAILY or BOTH can be cut into STUDIO: the desk drafts one
+ * finding from the drop (no figure, date or name the drop does not give), studioSelect picks the format and studioCaption
+ * writes the caption under STUDIO's voice; the piece carries source feed and the drop key. Internal is the default: an
+ * unshared drop feeds the reads and never a public asset. */
+const KB_FEED = { BASE: 'https://unsurfaced-intelligence.com/', SOURCE: 'Unsurfaced desk', TIER: 2, LAKE_MAX: 40, DRAFT_TOKENS: 900, GROUND: 6000, KEY_RX: /^d[a-z0-9]{6,20}$/ };
+const KB_DRAFT_SYS = 'You are the STUDIO desk at Unsurfaced. Turn the founder\'s drop below into one finding for a social asset. ' + STUDIO_VOICE + ' ' +
+  'Return one JSON object and nothing else: {"kicker": at most 3 words, "headline": at most 12 words stated as a claim, "take": at most 230 characters, ' +
+  '"apply": at most 160 characters on how a reader uses it, "format": one of "number" (a figure from the drop leads), "provocation" (an open question), "signal" (an early sign) or "dispatch"}. ' +
+  'Every figure, date and name you print must appear in the drop. Never an em dash. No preamble, no fences.';
+/* PURE: the drop's own fields, from a JSON body or a file upload's query string. */
+function kbDrop(get) {
+  const yes = v => v === true || v === 'true' || v === '1' || v === 1;
+  return { drop_key: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title: String(get('title') || '').replace(/\s+/g, ' ').trim().replace(/—/g, ':').slice(0, 140) || null,
+    shareable: yes(get('shareable')), assets: yes(get('assets')) };
+}
+/* PURE: a drop's name when none was given: its first sentence. */
+function kbTitleOf(text) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  const m = /^(.{12,140}?[.!?])(\s|$)/.exec(t);
+  return (m ? m[1] : t.slice(0, 120)).replace(/—/g, ':');
+}
+/* PURE: the lake's copy of a drop, one row a chunk, each with its own address so none collapses into another. */
+function kbMirrorItems(d) {
+  const chunks = (d.chunks || []).slice(0, KB_FEED.LAKE_MAX), n = chunks.length, title = d.title || kbTitleOf(chunks[0]);
+  const at = new Date().toISOString();
+  return chunks.map((c, i) => ({
+    url: (d.source_url ? String(d.source_url).split('#')[0] : KB_FEED.BASE) + '#desk-' + d.drop_key + '-' + (i + 1),
+    title: n > 1 ? title + ' (' + (i + 1) + ' of ' + n + ')' : title, text: String(c).slice(0, 600),
+    source_name: KB_FEED.SOURCE, source_tier: KB_FEED.TIER, published_at: at, kind: 'news', rail: 'feed' }));
+}
+async function kbMirror(env, d) {
+  if (!['intelligence', 'both'].includes(d.target)) return { lake: 0, skipped: 'target_daily' };
+  const lake = await lakeCapture(env, kbMirrorItems(d), { provenance: 'recon_feed', query: 'feed:' + d.drop_key });
+  return { lake };
+}
+/* PURE: every figure in the text appears in the ground. */
+function kbNumsOK(text, ground) {
+  const norm = x => String(x).replace(/,/g, '').replace(/^0+(?=\d)/, '');
+  const have = new Set((String(ground || '').match(/\d[\d,]*(?:\.\d+)?/g) || []).map(norm));
+  return (String(text || '').match(/\d[\d,]*(?:\.\d+)?/g) || []).every(n => have.has(norm(n)));
+}
+async function kbDraft(env, d) {
+  const ground = String(d.text || (d.chunks || []).join('\n\n')).slice(0, KB_FEED.GROUND);
+  let r;   // STUDIO stays on Workers AI (SEAM:CLAUDE_ROUTE): the drop is internal data, so it rides the sensitive tier on our account
+  try {
+    const text = await callModel(env, 't1', [{ role: 'system', content: KB_DRAFT_SYS },
+      { role: 'user', content: 'THE DROP' + (d.title ? ' (' + d.title + ')' : '') + ':\n' + ground }], { max_tokens: KB_FEED.DRAFT_TOKENS, sensitive: true });
+    r = { ok: true, text, cost_usd: 0 };
+  } catch (e) { return { ok: false, error: 'draft_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
+  const j = parseModelJson(r.text) || extractJson(r.text);
+  if (!j || typeof j.headline !== 'string' || typeof j.take !== 'string') return { ok: false, error: 'draft_unparsable', cost_usd: r.cost_usd || 0 };
+  const clean = (x, n) => studioTrimClean(String(x || '').replace(/\s+/g, ' ').replace(/—/g, ':').trim(), n);
+  const it = { kicker: clean(j.kicker || 'From the desk', 40), headline: clean(j.headline, 120), take: clean(j.take, 230), apply: clean(j.apply, 160),
+    format: ['number', 'provocation', 'signal', 'dispatch'].includes(j.format) ? j.format : 'dispatch' };
+  const all = [it.kicker, it.headline, it.take, it.apply].join(' ');
+  if (!it.headline || !it.take) return { ok: false, error: 'draft_empty', cost_usd: r.cost_usd || 0 };
+  if (!kbNumsOK(all, ground) || studioFabricated(all, ground)) return { ok: false, error: 'draft_invented_a_figure', cost_usd: r.cost_usd || 0 };
+  return { ok: true, item: it, ground, cost_usd: r.cost_usd || 0 };
+}
+async function kbCut(env, d) {
+  if (!['daily', 'both'].includes(d.target)) return { ok: false, error: 'target_intelligence' };
+  if (!d.shareable) return { ok: false, error: 'internal' };
+  const dr = await kbDraft(env, d);
+  if (!dr.ok) return dr;
+  const day = new Date().toISOString().slice(0, 10);
+  const item = Object.assign({}, dr.item, { standfirst: dr.ground.slice(0, 600), source_name: KB_FEED.SOURCE, editorial_format: dr.item.format,
+    beat: 'culture', territory: territoryGuess(dr.item.headline + ' ' + dr.item.take), date: day });
+  const hero = studioSelect(item);
+  const story = 100 + String(d.drop_key).split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 800;
+  const base = { issue_no: null, date: day, kicker: item.kicker, headline: item.headline, take: item.take, source_name: KB_FEED.SOURCE,
+    beat: item.beat, story, territory: item.territory, editorial_format: item.format, apply: item.apply || null, momentum: null,
+    story_id: null, source: 'feed', drop_key: d.drop_key, selection: 'feed drop: ' + hero.why };
+  const payload = hero.format === 'hand_meme' ? Object.assign({}, base, await studioMemeLines(env, item)) : base;
+  const piece = { day, lane: hero.lane, format: hero.format, platform: hero.platform, status: 'draft',
+    copy: { caption: await studioCaption(env, hero.platform, item) }, payload };
+  await sbRest(env, 'content_pieces', { method: 'POST', body: [piece] });
+  logEvent(env, 'intelligence', 'studio', 'feed_cut', null, { drop: d.drop_key, format: hero.format, platform: hero.platform });
+  return { ok: true, pieces: 1, format: hero.format, platform: hero.platform, headline: item.headline, cost_usd: dr.cost_usd };
+}
+/* After a drop lands: the lake copy, then the cut when asked. Neither can lose the drop itself. */
+async function kbAfter(env, d) {
+  const out = {};
+  try { out.lake = await kbMirror(env, d); } catch (e) { out.lake = { lake: 0, error: String(e && e.message || e).slice(0, 80) }; }
+  if (d.assets) {
+    try { out.studio = await kbCut(env, d); } catch (e) { out.studio = { ok: false, error: String(e && e.message || e).slice(0, 80) }; }
+  }
+  return out;
+}
+function kbKey(x) { const k = String(x || '').trim(); return KB_FEED.KEY_RX.test(k) ? k : null; }
+async function kbCutRoute(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const key = kbKey(body.drop_key);
+  if (!key) return json({ ok: false, error: 'bad_drop' }, 200, origin, env);
+  const rows = await sbRest(env, 'knowledge_base?drop_key=eq.' + key + '&status=eq.live&select=id,content,source_url,title,target,shareable&order=id.asc&limit=60') || [];
+  if (!rows.length) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  let shareable = !!rows[0].shareable;
+  if (!shareable && body.shareable === true) {
+    await sbRest(env, 'knowledge_base?drop_key=eq.' + key, { method: 'PATCH', body: { shareable: true } });
+    shareable = true;
+  }
+  const r = await kbCut(env, { drop_key: key, title: rows[0].title || null, target: rows[0].target, shareable, chunks: rows.map(x => x.content), text: rows.map(x => x.content).join('\n\n') });
+  return json(Object.assign({ drop_key: key, shareable }, r), 200, origin, env);
+}
+async function kbUsed(body, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const key = kbKey(body.drop_key);
+  if (!key) return json({ ok: false, error: 'bad_drop' }, 200, origin, env);
+  const rows = await sbRest(env, 'knowledge_base?drop_key=eq.' + key + '&select=title,content,target,shareable&order=id.asc&limit=1') || [];
+  if (!rows.length) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const lake = await sbRest(env, 'signals?momentum->>query=eq.' + encodeURIComponent('feed:' + key) + '&select=id,status&limit=100') || [];
+  const studio = await sbRest(env, 'content_pieces?payload->>drop_key=eq.' + key + '&select=id,day,format,platform,status&order=id.desc&limit=20') || [];
+  const title = rows[0].title || kbTitleOf(rows[0].content);
+  const words = String(title).replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  const reads = words.length >= 2 ? (await sbRest(env, 'house_reads?meta->pack->>text=ilike.' + encodeURIComponent('*' + words.join('*') + '*') +
+    '&select=id,kind,label,version,status&order=id.desc&limit=12') || []) : [];
+  return json({ ok: true, drop_key: key, title, target: rows[0].target, shareable: !!rows[0].shareable, lake: lake.length, studio, reads }, 200, origin, env);
+}
 async function kbDelete(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  const key = kbKey(body.drop_key);   // SEAM:FEED_BRIDGE: a whole drop goes, and its lake copies with it
+  if (key) {
+    await sbRest(env, 'knowledge_base?drop_key=eq.' + key, { method: 'DELETE' });
+    await sbRest(env, 'signals?momentum->>query=eq.' + encodeURIComponent('feed:' + key), { method: 'DELETE' });
+    return json({ ok: true, deleted: key }, 200, origin, env);
+  }
   const id = parseInt(body.id, 10);
   if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
   await sbRest(env, `knowledge_base?id=eq.${id}`, { method: 'DELETE' });

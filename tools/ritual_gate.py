@@ -241,6 +241,7 @@ SPENDERS = {
     'deepExtract': 'Tavily extract (FIELD_API_KEY credits, a credit for every five pages) on the deep read stage only, inside the commission ceiling checked before it runs; pages read are kept, so a retry never pays twice (SEAM:READ_DEEP)',
     'fieldRail': 'excavateAuth + on request only (field: true); one Tavily search a call against FIELD_API_KEY\'s monthly credits (SEAM:EXCAVATE_WIRE)',
     'deepOutletTypes': 'claudeGate on the recon tier; a Haiku call per READ_DEEP.OUTLET.CHUNK outlets neither the registry nor the learned map (one KV entry) knows, at most READ_DEEP.OUTLET.MAX a RECON (SEAM:READ_DEEP)',
+    'kbDraft': 'callModel on Workers AI (sensitive tier, our account), one call per drop cut into STUDIO; called by kbCut only, from a shareable drop at /knowledge/submit, /knowledge/file (assets) or the admin /knowledge/cut door (SEAM:FEED_BRIDGE)',
     'readLinePart': 'claudeGate on the live tier, one call per line a desk note is pinned to; called by readLineRun only, from the admin /reads/revise door when every note is pinned to a line; at most READ_LINE.MAX_LINES lines a revision (SEAM:READ_LINE)',
     'readClearPart': 'claudeGate on the live tier, one call per line held on a figure the evidence does not give; called by readClearRun only, from the admin /reads/clear door; at most READ_CLEAR.MAX_LINES lines a press (SEAM:READ_CLEAR)',
     'readProofPart': 'claudeGate on the live tier per part; called by readProof only, which readLand (the batch drain) and the admin /reads/proof door call; READ_PROOF.PARALLEL parts at once',

@@ -11530,12 +11530,15 @@ function renderTrendingNow() {
     w.innerHTML = '<div class="kb" role="dialog" aria-modal="true">' +
       '<button class="kb-close" id="kbClose">CLOSE \u2715</button>' +
       '<h2>Feed the ecosystem.</h2>' +
-      '<div class="kb-sub">Your data \u2192 chunked \u2192 embedded on our account \u2192 knowledge base. Never a free model.</div>' +
+      '<div class="kb-sub">Your data \u2192 embedded on our account \u2192 the knowledge base and the lake, where every read can cite it, counted in nothing. Internal unless you mark it shareable. Never a free model.</div>' +
       '<label>Paste text</label><textarea id="kbText" placeholder="Notes, research, transcripts, positioning docs\u2026"></textarea>' +
       '<div class="kb-row"><div><label>Or a link</label><input type="url" id="kbUrl" placeholder="https://\u2026 (readable core is extracted)"></div>' +
       '<div><label>Or a text file</label><label class="kb-file">\uFF0B .txt .md .csv .json<input type="file" id="kbFile" accept=".txt,.md,.markdown,.csv,.json" hidden></label></div></div>' +
       '<div class="kb-row"><div><label>Tags (comma-separated)</label><input type="text" id="kbTags" placeholder="brand, q3, fieldnotes"></div>' +
       '<div><label>Target</label><select id="kbTarget"><option value="both">BOTH</option><option value="daily">DAILY</option><option value="intelligence">INTELLIGENCE</option></select></div></div>' +
+      '<div class="kb-row"><div><label>Title (how the drop is cited)</label><input type="text" id="kbTitle" placeholder="Optional: the drop\u2019s name in reads and STUDIO"></div>' +   /* SEAM:FEED_BRIDGE */
+      '<div><label>Where it goes</label><label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;margin-top:6px"><input type="checkbox" id="kbShare"> Shareable: may become public assets</label>' +
+      '<label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;margin-top:6px"><input type="checkbox" id="kbAssets"> Make STUDIO assets now</label></div></div>' +
       '<button class="kb-btn" id="kbGo">Feed it</button>' +
       '<div class="kb-status" id="kbStatus"></div>' +
       '<div class="kb-list"><label style="margin-top:0">Test the recall</label>' +
@@ -11561,8 +11564,9 @@ function renderTrendingNow() {
     btn.disabled = true; stat("FEEDING\u2026");
     try {
       var d = await api("knowledge/submit", { text: text, url: url || undefined,
-        tags: document.getElementById("kbTags").value, target: document.getElementById("kbTarget").value });
-      if (d && d.ok) { stat("LIVE \u2014 " + d.added + " chunks in the base."); document.getElementById("kbText").value = ""; document.getElementById("kbUrl").value = ""; list(); }
+        tags: document.getElementById("kbTags").value, target: document.getElementById("kbTarget").value,
+        title: document.getElementById("kbTitle").value, shareable: document.getElementById("kbShare").checked, assets: document.getElementById("kbAssets").checked });   /* SEAM:FEED_BRIDGE */
+      if (d && d.ok) { stat(kbSaid(d)); document.getElementById("kbText").value = ""; document.getElementById("kbUrl").value = ""; document.getElementById("kbTitle").value = ""; list(); }
       else stat("REFUSED \u2014 " + esc3((d && d.error) || "unknown"));
     } catch (e) { stat(kbErr(e)); }
     btn.disabled = false;
@@ -11574,28 +11578,67 @@ function renderTrendingNow() {
     try {
       var auth = await _authHeader();
       var qs = "?target=" + encodeURIComponent(document.getElementById("kbTarget").value) +
-        "&tags=" + encodeURIComponent(document.getElementById("kbTags").value);
+        "&tags=" + encodeURIComponent(document.getElementById("kbTags").value) +
+        "&title=" + encodeURIComponent(document.getElementById("kbTitle").value) + "&shareable=" + (document.getElementById("kbShare").checked ? "1" : "0") +
+        "&assets=" + (document.getElementById("kbAssets").checked ? "1" : "0");   /* SEAM:FEED_BRIDGE */
       var r = await fetch(API_BASE.replace(/\/$/, "") + "/knowledge/file" + qs, { method: "POST",
         headers: Object.assign({ "content-type": f.type || "text/plain", "x-filename": f.name }, auth), body: f });
       var d = await r.json();
-      if (d && d.ok) { stat("LIVE \u2014 " + d.added + " chunks, original archived."); list(); }
+      if (d && d.ok) { stat(kbSaid(d) + " Original archived."); list(); }
       else stat("REFUSED \u2014 " + esc3((d && d.error) || r.status));
     } catch (e) { stat(kbErr(e)); }
     inp.target.value = "";
   }
+  /* SEAM:FEED_BRIDGE: what a drop did, said plainly. */
+  function kbSaid(d) {
+    var s = "LIVE: " + d.added + " chunk" + (d.added === 1 ? "" : "s") + " in the base.";
+    if (d.lake) s += d.lake.skipped ? " DAILY only: not in the lake." : " " + (d.lake.lake || 0) + " in the lake, citable by every read.";
+    if (d.studio) s += d.studio.ok ? " STUDIO: a " + String(d.studio.format || "").replace(/_/g, " ") + " for " + d.studio.platform + " is on the counter." :
+      d.studio.error === "internal" ? " STUDIO: held, the drop is internal. Mark it shareable to cut it." :
+      d.studio.error === "target_intelligence" ? " STUDIO: this drop is for INTELLIGENCE only." : " STUDIO refused: " + d.studio.error + ".";
+    return s;
+  }
+  /* SEAM:FEED_BRIDGE: drops listed as drops (one key, every chunk); older rows stand alone. */
   async function list() {
     try {
       var d = await api("knowledge/list", {});
-      var rows = (d && d.rows) || [];
-      document.getElementById("kbRows").innerHTML = rows.length ? rows.map(function (r) {
-        return '<div class="kb-item"><div class="c">' + esc3(r.content) + '\u2026' +
-          (r.source_url ? ' <a data-pv href="' + esc3(r.source_url) + '" class="source-link">source</a>' : '') + '</div>' +
-          chip(r) + '<button class="kb-x" data-id="' + r.id + '" title="Remove">\u2715</button></div>';
-      }).join("") : '<div class="kb-item"><div class="c">Nothing fed yet \u2014 the base is hungry.</div></div>';
-      var xs = document.querySelectorAll("#kbRows .kb-x");
-      for (var i = 0; i < xs.length; i++) xs[i].addEventListener("click", async function (e) {
-        await api("knowledge/delete", { id: +e.target.getAttribute("data-id") }); list();
+      var rows = (d && d.rows) || [], drops = [], byKey = {};
+      rows.forEach(function (r) {
+        var k = r.drop_key || ("row" + r.id);
+        if (!byKey[k]) { byKey[k] = { key: r.drop_key || null, id: r.id, title: r.title, first: r.content, url: r.source_url, target: r.target, status: r.status, shareable: !!r.shareable, n: 0 }; drops.push(byKey[k]); }
+        byKey[k].n++;
       });
+      document.getElementById("kbRows").innerHTML = drops.length ? drops.map(function (x) {
+        var name = x.title ? "<b>" + esc3(x.title) + "</b> " : "";
+        return '<div class="kb-item"><div class="c">' + name + esc3(x.first) + '…' +
+          (x.url ? ' <a data-pv href="' + esc3(x.url) + '" class="source-link">source</a>' : '') +
+          (x.key ? '<div class="kb-used" data-used-out="' + esc3(x.key) + '" style="margin-top:6px;font-size:11px;opacity:.85"></div>' : '') + '</div>' +
+          '<span class="kb-chip ' + esc3(x.status) + '">' + esc3(x.target) + ' · ' + (x.n > 1 ? x.n + " chunks · " : "") + (x.shareable ? "shareable" : "internal") + '</span>' +
+          (x.key ? '<button class="kb-x" data-used="' + esc3(x.key) + '" title="Where it was used" style="width:auto;padding:0 8px">USED</button>' +
+            '<button class="kb-x" data-cut="' + esc3(x.key) + '" data-share="' + (x.shareable ? 1 : 0) + '" title="Make STUDIO assets" style="width:auto;padding:0 8px">ASSETS</button>' : '') +
+          '<button class="kb-x" ' + (x.key ? 'data-drop="' + esc3(x.key) + '"' : 'data-id="' + x.id + '"') + ' title="Remove">✕</button></div>';
+      }).join("") : '<div class="kb-item"><div class="c">Nothing fed yet. The base is hungry.</div></div>';
+      document.querySelectorAll("#kbRows [data-id]").forEach(function (b) { b.addEventListener("click", async function () { await api("knowledge/delete", { id: +b.getAttribute("data-id") }); list(); }); });
+      document.querySelectorAll("#kbRows [data-drop]").forEach(function (b) { b.addEventListener("click", async function () {
+        if (!window.confirm("Remove this drop and its copies in the lake? STUDIO pieces already cut stay on the counter.")) return;
+        await api("knowledge/delete", { drop_key: b.getAttribute("data-drop") }); list(); }); });
+      document.querySelectorAll("#kbRows [data-used]").forEach(function (b) { b.addEventListener("click", async function () {
+        var key = b.getAttribute("data-used"), out = document.querySelector('[data-used-out="' + key + '"]');
+        out.textContent = "LOOKING…";
+        try {
+          var u = await api("knowledge/used", { drop_key: key });
+          if (!u || !u.ok) { out.textContent = "UNKNOWN: " + ((u && u.error) || "no answer"); return; }
+          out.innerHTML = "LAKE: " + u.lake + " row" + (u.lake === 1 ? "" : "s") + " · STUDIO: " + (u.studio.length ? u.studio.map(function (p) { return esc3(p.format.replace(/_/g, " ") + " (" + p.status + ")"); }).join(", ") : "none") +
+            " · READS: " + (u.reads.length ? u.reads.map(function (r) { return '<a href="read/?id=' + r.id + '">' + esc3(r.label + " v" + r.version) + "</a>"; }).join(", ") : "none yet");
+        } catch (e) { out.textContent = kbErr(e); }
+      }); });
+      document.querySelectorAll("#kbRows [data-cut]").forEach(function (b) { b.addEventListener("click", async function () {
+        var key = b.getAttribute("data-cut"), shared = b.getAttribute("data-share") === "1";
+        if (!shared && !window.confirm("This drop is internal. Mark it shareable and cut it into a STUDIO asset? The asset can be posted publicly.")) return;
+        b.disabled = true; stat("CUTTING THE DROP INTO STUDIO…");
+        try { var c = await api("knowledge/cut", { drop_key: key, shareable: true }); stat(kbSaid({ added: 0, studio: c }).replace(/^LIVE: 0 chunks in the base\. /, "")); list(); }
+        catch (e) { stat(kbErr(e)); b.disabled = false; }
+      }); });
     } catch (e) { document.getElementById("kbRows").innerHTML = '<div class="kb-item"><div class="c">' + kbErr(e) + '</div></div>'; }
   }
   async function search() {
@@ -13687,54 +13730,78 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     return { lines: [String(text)], size: o.min || o.size };
   }
 
+  /* SEAM:STUDIO_LOOK: one story frame, the Weekly's grammar. Pure: the photograph is used only when the caller
+     found it sharp (stLoaded), so the layout never leaves a hole where a photograph failed. */
+  function stStory(H, o) {
+    var vert = H > 1600, imgH = vert ? 1100 : 760, ops = [{ op: "fill", color: BRAND.black }];
+    if (o.img) {
+      ops.push({ op: "image", src: o.img, x: 0, y: 0, w: 1080, h: imgH });
+      ops.push({ op: "shade", y0: imgH - 340, y1: imgH + 20 });
+    }
+    var top = o.img ? imgH + 40 : (vert ? 520 : 300);
+    ops.push(
+      { op: "text", text: "UNSURFACED™ DAILY", x: 84, y: 110, font: "Space Mono", size: 24, weight: "700", color: BRAND.ivory, ls: 4 },
+      { op: "text", text: String(o.n || ""), x: 996, y: 110, font: "Space Mono", size: 24, weight: "700", color: BRAND.ivory, ls: 4, align: "right" },
+      { op: "dot", x: 92, y: top - 12, r: 8, color: BRAND.red },
+      { op: "text", text: String(o.kicker || "THE SIGNAL").toUpperCase(), x: 116, y: top - 2, font: "Space Mono", size: 26, weight: "700", color: BRAND.red, ls: 6 },
+      { op: "wrap", text: String(o.headline || ""), x: 84, y: top + 90, w: 912, font: "Syne", size: o.img ? 70 : 88, min: 52, weight: "800", color: BRAND.ivory, lh: 1.06, max: o.img ? 3 : 5 },
+      { op: "wrap", text: stTrimClean(o.take, 230), x: 84, y: o.img ? top + 260 : top + 560, follow: 30, w: 912, font: "Space Mono", size: 28, weight: "400", color: BRAND.cream, lh: 1.45, max: o.img ? 4 : 6 },
+      { op: "rule", x: 84, y: H - 114, w: 912, hgt: 3, color: BRAND.red },
+      { op: "text", text: String(o.label || "").toUpperCase(), x: 84, y: H - 60, font: "Space Mono", size: 20, weight: "400", color: BRAND.ivory, ls: 3 },
+      { op: "text", text: o.source ? "SOURCE · " + String(o.source).toUpperCase() : "", x: 996, y: H - 60, font: "Space Mono", size: 20, weight: "400", color: BRAND.ivory, ls: 3, align: "right" });
+    return ops;
+  }
+  /* SEAM:STUDIO_LOOK: photographs for the paint program, loaded once and kept; under 600px wide is not sharp enough. */
+  window.STUDIO_IMG = window.STUDIO_IMG || {};
+  window.studioPreload = function (urls) {
+    return Promise.all((urls || []).filter(Boolean).map(function (u) {
+      if (Object.prototype.hasOwnProperty.call(window.STUDIO_IMG, u)) return Promise.resolve(window.STUDIO_IMG[u]);
+      return new Promise(function (res) {
+        if (typeof Image === "undefined") { window.STUDIO_IMG[u] = null; return res(null); }
+        var im = new Image(); im.crossOrigin = "anonymous";
+        im.onload = function () { window.STUDIO_IMG[u] = im.naturalWidth >= 600 ? im : null; res(window.STUDIO_IMG[u]); };
+        im.onerror = function () { window.STUDIO_IMG[u] = null; res(null); };
+        im.src = u;
+      });
+    }));
+  };
+  window.stLoaded = function (u) { return u && window.STUDIO_IMG[u] ? u : null; };
+
   /* ── templates: payload (+platform) -> frames [{w,h,ops}] ── */
   window.STUDIO_TEMPLATES = {
     version: "foundry-1.1",
-    signal_still: function (p) {
-      var take = stTrimClean(p.take, 260);
-      return [{ w: 1080, h: 1350, ops: [
-        { op: "fill", color: BRAND.black },
-        { op: "text", text: "UNSURFACED\u2122 DAILY", x: 84, y: 118, font: "Space Mono", size: 26, weight: "700", color: BRAND.ivory, ls: 7 },
-        { op: "text", text: "ISSUE " + String(p.issue_no || "").padStart(3, "0"), x: 996, y: 118, font: "Space Mono", size: 26, weight: "700", color: BRAND.ivory, ls: 7, align: "right" },
-        { op: "dot", x: 84, y: 176, r: 9, color: BRAND.red },
-        { op: "text", text: String(p.kicker || "THE SIGNAL").toUpperCase(), x: 114, y: 188, font: "Space Mono", size: 30, weight: "700", color: BRAND.red, ls: 9 },
-        { op: "wrap", text: String(p.headline || ""), x: 84, y: 300, w: 912, font: "Syne", size: 108, min: 72, weight: "800", color: BRAND.ivory, lh: 1.04, max: 5 },
-        { op: "text", text: "\u2014 THE TAKE", x: 84, y: 878, font: "Space Mono", size: 24, weight: "700", color: BRAND.red, ls: 8 },
-        { op: "wrap", text: take, x: 84, y: 930, w: 912, font: "Space Mono", size: 31, weight: "400", color: BRAND.cream, lh: 1.5, max: 6 },
-        { op: "rule", x: 84, y: 1252, w: 912, hgt: 3, color: BRAND.red },
-        { op: "text", text: String(p.date || ""), x: 84, y: 1300, font: "Space Mono", size: 22, weight: "400", color: BRAND.ivory, ls: 5 },
-        { op: "text", text: "SOURCE \u00B7 " + String(p.source_name || "").toUpperCase(), x: 996, y: 1300, font: "Space Mono", size: 22, weight: "400", color: BRAND.ivory, ls: 4, align: "right" }
-      ]}];
+    /* SEAM:STUDIO_LOOK (EX45): the still and THE SIX are drawn the way the Weekly draws its frames: the story's own
+       photograph (sharp ones only, through the image relay), the fade into black, the kicker, the Syne headline, the cream
+       take, the red rule, the counter and the source. No sharp photograph: the type layout. No em dash on any asset. */
+    signal_still: function (p, platform) {
+      var H = platform === "tiktok" ? 1920 : 1350;
+      return [{ w: 1080, h: H, ops: stStory(H, { kicker: p.kicker, headline: p.headline, take: p.take, img: p.img,
+        n: p.issue_no ? "ISSUE " + String(p.issue_no).padStart(3, "0") : "FROM THE DESK",
+        label: String(p.date || ""), source: p.source_name }) }];
     },
     the_six: function (p, platform) {
-      var vert = platform === "tiktok";
-      var H = vert ? 1920 : 1350;
-      // Portrait band shifts down for photo-mode: content +285, foot +570.
-      function sy(y) { return !vert ? y : (y <= 150 ? y : (y >= 1250 ? y + 570 : y + 285)); }
-      var frames = [];
+      var H = platform === "tiktok" ? 1920 : 1350, slides = (p.slides || []).slice(0, 6), n = slides.length;
+      var issue = "ISSUE " + String(p.issue_no || "").padStart(3, "0") + " · " + String(p.date || "");
+      var lead = slides[0] && slides[0].img, frames = [];
+      var cover = [{ op: "fill", color: BRAND.black }];
+      if (lead) cover.push({ op: "image", src: lead, x: 0, y: 0, w: 1080, h: H, dim: 0.62 });
+      cover.push(
+        { op: "text", text: "UNSURFACED™ DAILY", x: 84, y: 110, font: "Space Mono", size: 24, weight: "700", color: BRAND.ivory, ls: 4 },
+        { op: "dot", x: 96, y: Math.round(H * 0.4), r: 12, color: BRAND.red },
+        { op: "wrap", text: "THE SIX.", x: 84, y: Math.round(H * 0.4) + 170, w: 912, font: "Syne", size: 170, min: 120, weight: "800", color: BRAND.ivory, lh: 1, max: 2 },
+        { op: "text", text: issue, x: 84, y: Math.round(H * 0.4) + 260, font: "Space Mono", size: 26, weight: "700", color: BRAND.red, ls: 6, follow: 44 },
+        { op: "text", text: "SIX FINDINGS · EVERY SOURCE A RECEIPT · SWIPE", x: 84, y: H - 80, font: "Space Mono", size: 22, weight: "400", color: BRAND.ivory, ls: 3 });
+      frames.push({ w: 1080, h: H, ops: cover });
+      slides.forEach(function (s, i) {
+        frames.push({ w: 1080, h: H, ops: stStory(H, { kicker: s.kicker, headline: s.headline, take: s.take, img: s.img,
+          n: (i + 1) + " / " + n, label: issue, source: s.source_name }) });
+      });
       frames.push({ w: 1080, h: H, ops: [
         { op: "fill", color: BRAND.black },
-        { op: "text", text: "UNSURFACED\u2122 DAILY", x: 84, y: 118, font: "Space Mono", size: 26, weight: "700", color: BRAND.ivory, ls: 7 },
-        { op: "dot", x: 84, y: sy(560), r: 12, color: BRAND.red },
-        { op: "wrap", text: "THE SIX.", x: 84, y: sy(640), w: 912, font: "Syne", size: 190, min: 120, weight: "800", color: BRAND.ivory, lh: 1, max: 2 },
-        { op: "text", text: "ISSUE " + String(p.issue_no || "").padStart(3, "0") + " \u00B7 " + String(p.date || ""), x: 84, y: sy(900), font: "Space Mono", size: 28, weight: "700", color: BRAND.red, ls: 8 },
-        { op: "text", text: "SIX FINDINGS \u00B7 EVERY SOURCE A RECEIPT", x: 84, y: sy(1300), font: "Space Mono", size: 22, weight: "400", color: BRAND.ivory, ls: 5 }
+        { op: "text", text: "UNSURFACED™ DAILY", x: 84, y: 110, font: "Space Mono", size: 24, weight: "700", color: BRAND.ivory, ls: 4 },
+        { op: "wrap", text: "The read is free. The moves are yours.", x: 84, y: Math.round(H * 0.415), w: 912, font: "Syne", size: 100, min: 72, weight: "800", color: BRAND.ivory, lh: 1.05, max: 4 },
+        { op: "text", text: "UNSURFACED-INTELLIGENCE.COM/DAILY", x: 84, y: H - 80, font: "Space Mono", size: 26, weight: "700", color: BRAND.red, ls: 3 }
       ]});
-      (p.slides || []).slice(0, 6).forEach(function (s, i) {
-        var paper = i % 3 === 1;
-        var fg = paper ? BRAND.ink : BRAND.ivory, bg = paper ? BRAND.cream : BRAND.black;
-        var sub = paper ? "#555555" : BRAND.cream;
-        frames.push({ w: 1080, h: H, ops: [
-          { op: "fill", color: bg },
-          { op: "text", text: String(i + 1) + " / 6", x: 996, y: 118, font: "Space Mono", size: 26, weight: "700", color: fg, ls: 6, align: "right" },
-          { op: "dot", x: 84, y: sy(168), r: 8, color: BRAND.red },
-          { op: "text", text: String(s.kicker || "THE SIGNAL").toUpperCase(), x: 110, y: sy(179), font: "Space Mono", size: 27, weight: "700", color: BRAND.red, ls: 8 },
-          { op: "wrap", text: String(s.headline || ""), x: 84, y: sy(290), w: 912, font: "Syne", size: 92, min: 62, weight: "800", color: fg, lh: 1.06, max: 5 },
-          { op: "wrap", text: stTrimClean(s.take, 230), x: 84, y: sy(880), w: 912, font: "Space Mono", size: 29, weight: "400", color: sub, lh: 1.5, max: 6 },
-          { op: "rule", x: 84, y: sy(1252), w: 912, hgt: 3, color: BRAND.red },
-          { op: "text", text: "SOURCE \u00B7 " + String(s.source_name || "").toUpperCase(), x: 84, y: sy(1300), font: "Space Mono", size: 22, weight: "400", color: fg, ls: 4 }
-        ]});
-      });
       return frames;
     },
     hand_meme: function (p, platform) {
@@ -13797,7 +13864,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
           font: "Syne", size: layout.headSize, weight: "800", color: BRAND.ivory });
       }
       if (f >= 132) {
-        ops.push({ op: "text", text: "\u2014 THE TAKE", x: 84, y: 1180, font: "Space Mono", size: 26, weight: "700", color: BRAND.red, ls: 8 });
+        ops.push({ op: "text", text: "THE TAKE", x: 84, y: 1180, font: "Space Mono", size: 26, weight: "700", color: BRAND.red, ls: 8 });
         var tl = Math.min(layout.takeLines.length, Math.floor((f - 132) / 12) + 1);
         for (var j = 0; j < tl; j++)
           ops.push({ op: "text", text: layout.takeLines[j], x: 84, y: 1240 + j * layout.takeSize * 1.5,
@@ -13820,6 +13887,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     var ctx = canvas.getContext("2d");
     if (!ctx) return;
     var measure = function (t, size, font, weight) { ctx.font = (weight || "400") + " " + size + "px '" + font + "'"; return ctx.measureText(t).width; };
+    var lastY = null;
     frame.ops.forEach(function (o) {
       if (o.op === "fill") { ctx.fillStyle = o.color; ctx.fillRect(0, 0, frame.w, frame.h); }
       else if (o.op === "rule" || o.op === "rect") { ctx.fillStyle = o.color; ctx.fillRect(o.x, o.y, o.w, o.hgt); }
@@ -13828,13 +13896,27 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
         ctx.font = fontStr(o, o.size); ctx.fillStyle = o.color;
         try { ctx.letterSpacing = (o.ls || 0) + "px"; } catch (e) {}
         ctx.textAlign = o.align || "left";
-        ctx.fillText(o.text, o.x, o.y);
+        ctx.fillText(o.text, o.x, o.follow != null && lastY != null ? Math.max(o.y, lastY + o.follow + o.size) : o.y);   /* SEAM:STUDIO_LOOK: a label follows the block above it */
         try { ctx.letterSpacing = "0px"; } catch (e) {}
         ctx.textAlign = "left";
       } else if (o.op === "wrap") {
         var r = wrapWith(measure, o.text, o);
+        var wy = o.follow != null && lastY != null ? Math.max(o.y, lastY + o.follow + r.size) : o.y;   /* SEAM:STUDIO_LOOK: the take follows the headline */
         ctx.font = fontStr(o, r.size); ctx.fillStyle = o.color;
-        for (var i = 0; i < r.lines.length; i++) ctx.fillText(r.lines[i], o.x, o.y + i * r.size * (o.lh || 1.1));
+        for (var i = 0; i < r.lines.length; i++) ctx.fillText(r.lines[i], o.x, wy + i * r.size * (o.lh || 1.1));
+        lastY = wy + (r.lines.length - 1) * r.size * (o.lh || 1.1);
+      } else if (o.op === "image") {   /* SEAM:STUDIO_LOOK: the story's photograph, cover-fit, clipped to its box */
+        var im = window.STUDIO_IMG && window.STUDIO_IMG[o.src];
+        if (im && im.naturalWidth) {
+          var sc = Math.max(o.w / im.naturalWidth, o.h / im.naturalHeight), iw = im.naturalWidth * sc, ih = im.naturalHeight * sc;
+          ctx.save(); ctx.beginPath(); ctx.rect(o.x, o.y, o.w, o.h); ctx.clip();
+          ctx.drawImage(im, o.x + (o.w - iw) / 2, o.y + (o.h - ih) / 2, iw, ih); ctx.restore();
+          if (o.dim) { ctx.fillStyle = "rgba(10,10,10," + o.dim + ")"; ctx.fillRect(o.x, o.y, o.w, o.h); }
+        }
+      } else if (o.op === "shade") {
+        var g = ctx.createLinearGradient(0, o.y0, 0, o.y1);
+        g.addColorStop(0, "rgba(10,10,10,0)"); g.addColorStop(1, "rgba(10,10,10,1)");
+        ctx.fillStyle = g; ctx.fillRect(0, o.y0, frame.w, o.y1 - o.y0);
       }
     });
   };
@@ -13962,9 +14044,17 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     if (!c) return function (t, size) { return String(t).length * size * 0.55; };
     return function (t, size, font, weight) { c.font = (weight || "400") + " " + size + "px '" + font + "'"; return c.measureText(t).width; };
   }
-  function framesFor(piece) {
+  async function framesFor(piece) {   /* SEAM:STUDIO_LOOK: the photographs load first, so the layout knows which it has */
     var t = STUDIO_TEMPLATES[piece.format];
-    if (t) return { kind: "frames", frames: t(piece.payload || {}, piece.platform) };
+    if (t) {
+      var p = JSON.parse(JSON.stringify(piece.payload || {}));
+      var src = function (id) { return id ? API_BASE.replace(/\/$/, "") + "/img/s/" + id : null; };
+      var want = [src(p.story_id)].concat((p.slides || []).map(function (s) { return src(s.story_id); }));
+      await studioPreload(want);
+      p.img = stLoaded(src(p.story_id));
+      (p.slides || []).forEach(function (s) { s.img = stLoaded(src(s.story_id)); });
+      return { kind: "frames", frames: t(p, piece.platform) };
+    }
     if (piece.format === "kinetic_take") {
       var layout = studioMotionLayout(piece.payload || {}, ctxMeasure());
       return { kind: "motion", program: studioMotionProgram(piece.payload || {}, layout) };
@@ -13973,7 +14063,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
   }
   async function renderPiece(piece) {
     await ensureFonts();
-    var fr = framesFor(piece);
+    var fr = await framesFor(piece);
     if (!fr) return null;
     if (fr.kind === "motion") {
       showToast("Encoding the reel \u2014 ten seconds of tape\u2026");
@@ -14054,7 +14144,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
       var piece = map[c.getAttribute("data-prev")]; if (!piece) return;
       await ensureFonts();
       try {
-        var fr = framesFor(piece); if (!fr) return;
+        var fr = await framesFor(piece); if (!fr) return;
         var frame = fr.kind === "motion" ? { w: fr.program.w, h: fr.program.h, ops: fr.program.at(252) } : fr.frames[0];
         var big = document.createElement("canvas");
         studioPaint(big, frame);

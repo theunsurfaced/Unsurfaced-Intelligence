@@ -1542,6 +1542,24 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:READ_LINE",
    "purpose": "the desk: the scope field offers every line of the read (deskPaths); Revise names its lane and counts the notes and holds (deskReviseLabel), takes a typed note with it, opens the new version at once on the line lane and offers the full revision when the line desk refuses; Re-apply standing inputs is its own button; a revised read shows WHAT CHANGED (revHtml): the lines, the holds cleared, any note not applied"
+  },
+  "SEAM:FEED_BRIDGE": {
+   "file": "worker/src/index.js",
+   "purpose": "one drop, every destination (EX45): kbDrop gives every FEED drop a key, a title and a shareable flag (0047); kbMirror copies a drop for INTELLIGENCE or BOTH into the lake as recon_feed (research by 0038's rule: citable by every read, RECON and ask, counted in no measure; one row a chunk, source Unsurfaced desk, tier 2); kbCut cuts a shareable drop for DAILY or BOTH into STUDIO (kbDraft on the live tier drafts kicker, headline, take, apply and format from the drop, refused when a figure is not in the drop; studioSelect, studioCaption; the piece carries source feed and the drop key); an internal drop is never cut. /knowledge/cut makes assets later (and may mark the drop shareable); /knowledge/used says where a drop went (lake rows, STUDIO pieces, reads whose pack cites it); /knowledge/delete with a drop_key removes the drop and its lake copies"
+  },
+  "SEAM:FEED_BRIDGE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:FEED_BRIDGE",
+   "purpose": "the FEED panel: a title, Shareable and Make STUDIO assets on every drop (paste, link or file); the answer says what the drop did (base, lake, STUDIO, or why STUDIO held it); drops listed as drops with USED (lake rows, STUDIO pieces, reads), ASSETS (cut now, marking an internal drop shareable after a confirm) and remove"
+  },
+  "SEAM:STUDIO_LOOK": {
+   "file": "intelligence/index.html",
+   "purpose": "STUDIO drawn in the Weekly's hand (EX45): stStory is the Weekly's story frame as a paint program (the story's photograph through /img/s, the fade into black, kicker, Syne headline, cream take following it, red rule, counter, label and source); signal_still is one story frame; THE SIX opens on a full-bleed photograph under a 62 percent dim and closes on the house line; studioPreload and stLoaded keep only sharp photographs (600px wide or more) so a missing one falls back to the type layout; studioPaint gains the image, shade and follow ops; framesFor loads the photographs before the template runs; no em dash on any asset"
+  },
+  "SEAM:STUDIO_LOOK@worker": {
+   "file": "worker/src/index.js",
+   "tag": "SEAM:STUDIO_LOOK",
+   "purpose": "every STUDIO payload carries its story id (the still, the meme, the admin cut and each slide of THE SIX) so the page can draw the story's own photograph"
   }
  },
  "planned": [
