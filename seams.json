@@ -1560,6 +1560,10 @@
    "file": "worker/src/index.js",
    "tag": "SEAM:STUDIO_LOOK",
    "purpose": "every STUDIO payload carries its story id (the still, the meme, the admin cut and each slide of THE SIX) so the page can draw the story's own photograph"
+  },
+  "SEAM:PLANS": {
+   "file": "worker/src/index.js",
+   "purpose": "the plans, the seats and the meter (EX46, claude/membership-plan.md): member_groups, group_seats and credit_ledger (0048); a credit is $0.05 of spend; meterCharge charges every live spend a reader starts before it spends (an EXCAVATE read where it compiles: 12 full, 7 quick, a cached read free; a PLAY run 1; a still 1; a render on its real fal price; a question to the record 1) through credit_spend, which checks the pool or the seat and writes in one locked step; meterSettle and meterRefund give a failed spend back once (credit_refund); a reader in no group is watched (meter_watch) until plans:enforce turns the wall on; the meter down never stops a reader, the house caps stand behind it; desk runs plan, seat (a paid seat is the approval), credits, plans; GET /plan"
   }
  },
  "planned": [

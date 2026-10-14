@@ -225,7 +225,7 @@ SPENDERS = {
     'playGenerate': 'underLimit (DAILY_LIMIT); the words on claudeGate, live tier (cap, kill switch) through callClaude with a room per kind, Workers AI as the reserve when the tier refuses (SEAM:PLAY_CLAUDE)',
     'playInterpret': 'underLimit (DAILY_LIMIT) + claudeGate on the frame tier (Haiku, its own cap) + a week of KV cache per ask + a 7s deadline; signed in (SEAM:PLAY_BRIEF)',
     'playImage': 'underLimit (DAILY_LIMIT)',
-    'playRender': 'renderBudget: personal seconds + RENDER_CEILING house seconds',
+    'playRender': 'the meter (SEAM:PLANS: credits on the real fal price, refunded when fal refuses or the render fails) + renderBudget: personal seconds + RENDER_CEILING house seconds',
     'playAssemble': 'renderBudget',
     'pvTranslate': 'pvTranslateAllowed: per-IP hourly + house daily meter',
     'synthesize': 'underLimit (DAILY_LIMIT) on /excavate/*',

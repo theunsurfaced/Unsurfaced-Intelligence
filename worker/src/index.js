@@ -229,15 +229,15 @@ export default {
 
       const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref') ? await safeJson(request) : {};
       switch (path) {
-        case '/play/generate':       return playGenerate(body, env, origin);
+        case '/play/generate':       return meterRun(env, origin, user, 'play.words', () => playGenerate(body, env, origin));   // SEAM:PLANS
         case '/play/interpret':      return playInterpret(body, env, origin, user);   // SEAM:PLAY_BRIEF
         case '/play/handoff':        return playHandoff(body, env, origin, user);     // SEAM:PLAY_HANDOFF
-        case '/play/generate-image': return playImage(body, env, origin, user);
+        case '/play/generate-image': return meterRun(env, origin, user, 'play.still', () => playImage(body, env, origin, user));   // SEAM:PLANS
         case '/play/render':         return playRender(body, env, origin, user);
         case '/play/assemble':       return playAssemble(body, env, origin, user);
         case '/play/upload-ref':     return playUploadRef(request, env, origin, user);
-        case '/excavate/synthesize': { const b2 = Object.assign({}, body || {}, { _uid: user && user.id || null }); return b2.stream ? synthesizeStream(b2, env, origin, ctx) : synthesize(b2, env, origin); }   // SEAM:EXC_STREAM; SEAM:CLIENT_EVIDENCE: the reader's id rides so their own lines can join
-        case '/ask':                 return askRecord(body, env, origin, user);   // SEAM:ASK_RECORD
+        case '/excavate/synthesize': { const b2 = Object.assign({}, body || {}, { _uid: user && user.id || null, _m: { uid: user && user.id || null } }); const res = await (b2.stream ? synthesizeStream(b2, env, origin, ctx) : synthesize(b2, env, origin)); if (!b2.stream) await meterSettle(env, b2._m, res); return res; }   // SEAM:PLANS: charged where it compiles, refunded if it fails   // SEAM:EXC_STREAM; SEAM:CLIENT_EVIDENCE: the reader's id rides so their own lines can join
+        case '/ask':                 return meterRun(env, origin, user, 'ask', () => askRecord(body, env, origin, user));   // SEAM:ASK_RECORD; SEAM:PLANS
         case '/mine/notify':        return mineNotify(body, env, origin, user);
         case '/mine/invites':       return mineInvites(body, env, origin, user);
         case '/mine/client-access': return mineClientAccess(body, env, origin, user);
@@ -248,6 +248,7 @@ export default {
         case '/mine/ask':            return mineAsk(body, env, origin);
         case '/mine/upload':         return mineUpload(request, env, origin, user);
         case '/whoami':             return kbWhoami(env, origin, user);
+        case '/plan':               return planRoute(env, origin, user);   // SEAM:PLANS: the reader's plan and balance
         case '/studio/manifest':     return studioManifest(body, env, origin, user);
         case '/studio/generate':     return studioGenerate(env, origin, user);
         case '/studio/cut-story':    return studioCutStory(body, env, origin, user);
@@ -576,7 +577,6 @@ async function playRender(body, env, origin, user) {
   const seconds = pool.kind === 'video'
     ? Math.min(Math.max(parseInt(body.seconds, 10) || 4, 2), 10)
     : pool.sec;
-  if (!(await renderBudget(env, user.id, seconds))) return json({ ok: false, error: 'render_budget' }, 429, origin, env);
   const httpsOnly = u => /^https:\/\//.test(String(u || ''));
   const imageUrl = httpsOnly(body.image_url) ? String(body.image_url).slice(0, 600) : '';
   const imageUrls = (Array.isArray(body.image_urls) ? body.image_urls : []).filter(httpsOnly).map(u => String(u).slice(0, 600)).slice(0, 9);
@@ -621,17 +621,22 @@ async function playRender(body, env, origin, user) {
     input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
     if (seed) input.seed = seed; // stable project seed \u2192 one visual law across units
   }
+  // SEAM:PLANS: the render is charged on its real fal price before fal is asked; the seconds budget still bounds the day
+  const meter = await meterCharge(env, user.id, 'play.render', renderCredits(model, pool.kind, seconds), { model, seconds, usd: renderUsd(model, pool.kind, seconds) });
+  if (!meter.ok) return json(meterRefusal(meter), 402, origin, env);
+  if (!(await renderBudget(env, user.id, seconds))) { await meterRefund(env, meter); return json({ ok: false, error: 'render_budget' }, 429, origin, env); }
   const r = await fetch('https://queue.fal.run/' + model, {
     method: 'POST',
     headers: { Authorization: 'Key ' + env.FAL_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
   const j = await r.json().catch(() => null);
+  if (!r.ok || !j || !j.request_id) await meterRefund(env, meter);
   if (!r.ok || !j || !j.request_id)
     return json({ ok: false, error: 'fal_' + r.status, detail: String((j && (j.detail || j.message)) || '').slice(0, 300) }, 502, origin, env);
   const project = String(body.project || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'engine';
   const rec = { model, kind: pool.kind, status_url: j.status_url, response_url: j.response_url,
-    user: user.id, project, unit: String(body.unit || '').slice(0, 40), at: Date.now() };
+    user: user.id, project, unit: String(body.unit || '').slice(0, 40), at: Date.now(), meter: meter.ref || null, credits: meter.credits || 0 };
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + j.request_id, JSON.stringify(rec), { expirationTtl: 259200 });
   await logEvent(env, 'play', null, 'render_submit', null, { pool: String(body.pool), model });
   return json({ ok: true, request_id: j.request_id }, 200, origin, env);
@@ -652,12 +657,13 @@ async function playRenderStatus(reqId, env, origin, user) {
   const status = (st && st.status) || 'UNKNOWN';
   if (status !== 'COMPLETED') {
     const failed = /FAILED|ERROR|CANCEL/i.test(status);
+    if (failed && rec.meter) await meterRefund(env, { ref: rec.meter });   // SEAM:PLANS: a failed render gives its credits back (once)
     return json({ ok: true, status: failed ? 'failed' : 'running', queue: st && st.queue_position }, 200, origin, env);
   }
   const out = await fetch(rec.response_url, { headers: hdr }).then(x => x.json()).catch(() => null);
   const url = (out && ((out.images && out.images[0] && out.images[0].url)
     || (out.video && out.video.url) || (out.image && out.image.url) || out.video_url || out.url)) || '';
-  if (!url) return json({ ok: true, status: 'failed' }, 200, origin, env);
+  if (!url) { if (rec.meter) await meterRefund(env, { ref: rec.meter }); return json({ ok: true, status: 'failed' }, 200, origin, env); }
   const ext = rec.kind === 'video' ? 'mp4' : 'jpg';
   const key = `play/${user.id}/${rec.project}/${reqId}.${ext}`;
   let asset = url;
@@ -749,6 +755,9 @@ async function synthesize(body, env, origin, hooks) {
     }
     // SEAM:EXC_STREAM: a caller whose stream was cut asks cache_only while the worker's own read lands; nothing is compiled twice.
     if (body.cache_only) return reply({ ok: false, error: 'not_cached' }, 200, origin, env);
+    // SEAM:PLANS: the read compiles here and nowhere else, so it is charged here (a cached read was served above for nothing)
+    if (body._m && body._m.uid && !body.bench) { const act = quick ? 'excavate.quick' : 'excavate.full'; const mc = await meterCharge(env, body._m.uid, act, PLANS.COST[act], null);
+      if (!mc.ok) return reply(meterRefusal(mc), 402, origin, env); body._m.charge = mc; }
     const T = { start: Date.now() };
     const stage = st => { try { if (hooks.onStage) hooks.onStage(st); } catch (e) { excQuiet('stage')(e); } };
     // SEAM:EXC_FRAME: the frame the gather used rides in with the corpus; without one, it is made here (cached a week).
@@ -3930,6 +3939,7 @@ async function synthesizeStream(body, env, origin, wctx) {
       await send('final', { ok: false, error: 'stream_failed' });
     } finally {
       clearInterval(beat);
+      if (body && body._m && body._m.charge) await meterSettle(env, body._m, { ok: outcome === 'ok' || outcome === 'partial' });   // SEAM:PLANS
       console.log('exc_stream_end', JSON.stringify({ q: String((body && body.query) || '').slice(0, 60), outcome, ms: Date.now() - T0, client: open }));
       try { await w.close(); } catch (e) { excQuiet('stream_close')(e); }
     }
@@ -8308,7 +8318,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9516,6 +9526,224 @@ async function doorSet(env) {
  * pass (earned, written, failed, graded), the rails that answered on the last reads, today's spend against every cap, the writer's
  * failures today, the last backup, the running version. Read from the ledgers the engine already keeps; no model is asked. ═══ */
 const WATCH = { KEY: 'watch:v1', TTL: 1800, ALERT_TTL: 6 * 3600, CRON_LATE_H: 30, RAIL_SILENT_MIN: 6, SPEND_WARN: 0.8, PPLX_WARN: 0.9, FAIL_BURST: 3, BACKUP_LATE_H: 48, FAIL_KEY: 'watch:fail:' };
+/* ═══ SEAM:PLANS (EX46): the plans, the seats and the meter. A group holds a plan (member, engine, partner, retainer), a seat count
+ * and a credit mode: one pool for the team (seats times the seat allowance) or the allowance on each seat. A credit is five cents of
+ * model, search and render spend. Every live spend a reader starts (an EXCAVATE read that compiles, a PLAY run, a still, a render on
+ * its real fal price, a question to the record) is charged before it spends, in one database call that checks and writes together
+ * (credit_spend, 0048), and a spend that fails is refunded once (credit_refund). Cached reads, pop-outs, the record, MINE and the
+ * house's own passes cost nothing. A reader in no group is a Member: while plans:enforce is off the meter only watches them (a
+ * meter_watch event says what they would have spent); once it is on, a Member is told what Engine adds. If the meter cannot be
+ * reached the reader is not stopped; the house-wide caps stay behind it. The desk sets everything by hand until checkout ships:
+ * {run:"plan"}, {run:"seat"}, {run:"credits"}, {run:"plans"}. GET /plan is the reader's own plan and balance. ═══ */
+const PLANS = {
+  KINDS: ['member', 'engine', 'partner', 'retainer'], MODES: ['pool', 'seat'],
+  SEAT_CREDITS: 400, CREDIT_USD: 0.05, MAX_SEATS: 500, MAX_GRANT: 100000, ENFORCE_KEY: 'plans:enforce',
+  COST: { 'excavate.full': 12, 'excavate.quick': 7, 'play.words': 1, 'play.still': 1, 'ask': 1 },
+  // fal prices from the bill (Oct 13): dollars a second for video, a picture for stills. The longest matching prefix wins; a model
+  // not listed is charged as the dearest of its kind.
+  RENDER: {
+    'fal-ai/kling-video/v3/standard/': { sec: 0.14 },
+    'bytedance/seedance-2.0/fast/': { sec: 0.12 },
+    'bytedance/seedance-2.0/reference-to-video': { sec: 0.15 },
+    'fal-ai/flux/schnell': { each: 0.003 },
+    'fal-ai/flux-pro/v1.1': { each: 0.04 },
+    'fal-ai/flux-2/turbo/edit': { each: 0.03 },
+    'fal-ai/flux-2-pro/edit': { each: 0.06 },
+    'fal-ai/ffmpeg-api/merge-videos': { each: 0 }
+  },
+  FALLBACK: { video: { sec: 0.15 }, image: { each: 0.06 } }
+};
+function renderUsd(model, kind, seconds) {
+  const m = String(model || ''); let best = null;
+  for (const k of Object.keys(PLANS.RENDER)) if (m.startsWith(k) && (!best || k.length > best.length)) best = k;
+  const p = best ? PLANS.RENDER[best] : (PLANS.FALLBACK[kind] || PLANS.FALLBACK.video);
+  return p.sec != null ? p.sec * Math.max(1, Number(seconds) || 1) : (p.each || 0);
+}
+function renderCredits(model, kind, seconds) {
+  const usd = renderUsd(model, kind, seconds);
+  return usd > 0 ? Math.max(1, Math.ceil(usd / PLANS.CREDIT_USD - 1e-9)) : 0;
+}
+function planPeriod(d) { const t = d || new Date(); return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1)).toISOString().slice(0, 10); }
+function planNext(p) { const d = new Date(p + 'T00:00:00Z'); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10); }
+async function plansEnforced(env) {
+  if (!env.RATE_LIMIT) return false;
+  return (await env.RATE_LIMIT.get(PLANS.ENFORCE_KEY).catch(excQuiet('plans_flag', null))) === '1';
+}
+async function meterCharge(env, uid, action, credits, meta) {
+  const n = Math.max(0, Math.round(Number(credits) || 0));
+  if (!uid || n <= 0) return { ok: true, ref: null, credits: 0 };
+  const ref = 'm:' + crypto.randomUUID();
+  const usd = meta && meta.usd != null ? +Number(meta.usd).toFixed(4) : +(n * PLANS.CREDIT_USD).toFixed(4);
+  let r = null;
+  try { r = await sbRest(env, 'rpc/credit_spend', { method: 'POST', body: { p_user: uid, p_action: action, p_credits: n, p_ref: ref, p_cost: usd } }); }
+  catch (e) { console.log('meter_down', action, String(e && e.message).slice(0, 60)); return { ok: true, ref: null, credits: 0, down: true }; }
+  if (r && r.ok) return { ok: true, ref, credits: n, left: r.left, allowance: r.allowance, resets: r.resets, plan: r.plan, mode: r.mode };
+  if (r && r.error === 'no_group') {
+    if (await callerIsAdmin(env, uid)) return { ok: true, ref: null, credits: 0, house: true };
+    const enforce = await plansEnforced(env);
+    logEvent(env, 'intelligence', 'plans', enforce ? 'meter_refused' : 'meter_watch', null, { user: uid, action, credits: n, usd, meta: meta || null });
+    return enforce ? { ok: false, error: 'plan_required', plan: 'member', action, credits: n } : { ok: true, ref: null, credits: 0, watch: true };
+  }
+  logEvent(env, 'intelligence', 'plans', 'meter_refused', null, { user: uid, action, credits: n, error: (r && r.error) || 'unreadable' });
+  return Object.assign({ action, credits: n }, r || {}, { ok: false, error: (r && r.error) || 'meter_unreadable' });
+}
+function meterRefusal(m) {
+  if (m.error === 'credits_out') return { ok: false, error: 'credits_out', left: m.left || 0, needs: m.credits, resets: m.resets || null, mode: m.mode || null,
+    say: (m.left || 0) + ' credits left this month and this needs ' + m.credits + '. They reset on ' + (m.resets || 'the first') + '. Add a seat or ask the team.' };
+  if (m.plan === 'member' || m.error === 'plan_required' && !m.status) return { ok: false, error: 'plan_required', plan: 'member',
+    say: 'Live reads, PLAY and answers from the record come with Engine. Everything on the landing stays open to you.' };
+  return { ok: false, error: m.error || 'plan_required', plan: m.plan || null, say: 'This plan is paused. Ask the team.' };
+}
+async function meterRefund(env, m) {
+  if (!m || !m.ref) return { ok: true, none: true };
+  try { return await sbRest(env, 'rpc/credit_refund', { method: 'POST', body: { p_ref: m.ref } }); }
+  catch (e) { console.log('meter_refund', String(e && e.message).slice(0, 60)); return { ok: false, error: 'refund_failed' }; }
+}
+async function meterSettle(env, holder, res) {
+  if (!holder || !holder.charge || !holder.charge.ref) return { settled: false };
+  let ok = true;
+  if (res instanceof Response) { ok = res.ok; if (ok) { const j = await res.clone().json().catch(excQuiet('meter_settle', null)); ok = !!(j && j.ok); } }
+  else ok = !!(res && res.ok);
+  if (ok) return { settled: true, refunded: false };
+  await meterRefund(env, holder.charge);
+  return { settled: true, refunded: true };
+}
+async function meterRun(env, origin, user, action, run) {
+  const m = await meterCharge(env, user && user.id, action, PLANS.COST[action] || 0, null);
+  if (!m.ok) return json(meterRefusal(m), 402, origin, env);
+  const res = await run();
+  await meterSettle(env, { charge: m }, res);
+  return res;
+}
+async function planState(env, uid) {
+  const seat = ((await sbRest(env, 'group_seats?user_id=eq.' + uid + '&select=role,group_id').catch(excQuiet('plan_seat', []))) || [])[0];
+  if (!seat) return { plan: 'member', group: null };
+  const g = ((await sbRest(env, 'member_groups?id=eq.' + seat.group_id + '&select=*').catch(excQuiet('plan_group', []))) || [])[0];
+  if (!g) return { plan: 'member', group: null };
+  const period = planPeriod(), pool = g.credit_mode === 'pool';
+  const rows = (await sbRest(env, 'credit_ledger?group_id=eq.' + g.id + '&period=eq.' + period + '&select=user_id,credits&limit=10000').catch(excQuiet('plan_ledger', []))) || [];
+  const used = rows.filter(r => pool || r.user_id === uid).reduce((a, r) => a + (Number(r.credits) || 0), 0);
+  const allowance = pool ? g.seats * g.seat_credits : g.seat_credits;
+  return { plan: g.plan, status: g.status, role: seat.role, group: { id: g.id, name: g.name, seats: g.seats, mode: g.credit_mode, seat_credits: g.seat_credits },
+    period, resets: planNext(period), allowance, used, left: Math.max(0, allowance - used) };
+}
+async function planRoute(env, origin, user) {
+  return json(Object.assign({ ok: true, enforced: await plansEnforced(env) }, await planState(env, user.id)), 200, origin, env);
+}
+async function planUser(env, email) {
+  const e = String(email || '').trim().toLowerCase();
+  if (!e) return null;
+  return ((await sbRest(env, 'app_user?email=eq.' + encodeURIComponent(e) + '&select=id,email,status,role,name,company').catch(excQuiet('plan_user', []))) || [])[0] || null;
+}
+async function planSeatOf(env, uid) {
+  return ((await sbRest(env, 'group_seats?user_id=eq.' + uid + '&select=group_id,role').catch(excQuiet('plan_seat_of', []))) || [])[0] || null;
+}
+async function planDesk(env, body) {   // {run:"plan", email, plan, seats, mode, credits, status, name}
+  const u = await planUser(env, body.email);
+  if (!u) return { ok: false, error: 'no_such_user', say: 'name an email that has signed up: {run:"plan", email:"...", plan:"engine", seats:3, mode:"pool"}' };
+  const patch = {};
+  if (body.plan != null) { if (!PLANS.KINDS.includes(String(body.plan))) return { ok: false, error: 'bad_plan', say: 'plan is ' + PLANS.KINDS.join(', ') }; patch.plan = String(body.plan); }
+  if (body.seats != null) { const n = parseInt(body.seats, 10); if (!(n >= 1 && n <= PLANS.MAX_SEATS)) return { ok: false, error: 'bad_seats', say: 'seats run 1 to ' + PLANS.MAX_SEATS }; patch.seats = n; }
+  if (body.mode != null) { if (!PLANS.MODES.includes(String(body.mode))) return { ok: false, error: 'bad_mode', say: 'mode is pool (one bank for the team) or seat (an allowance on each seat)' }; patch.credit_mode = String(body.mode); }
+  if (body.credits != null) { const c = parseInt(body.credits, 10); if (!(c >= 0 && c <= PLANS.MAX_GRANT)) return { ok: false, error: 'bad_credits' }; patch.seat_credits = c; }
+  if (body.status != null) { if (!['active', 'paused'].includes(String(body.status))) return { ok: false, error: 'bad_status', say: 'status is active or paused' }; patch.status = String(body.status); }
+  if (body.name) patch.name = String(body.name).replace(/\s+/g, ' ').trim().slice(0, 80);
+  const seat = await planSeatOf(env, u.id);
+  if (seat && seat.role !== 'owner') return { ok: false, error: 'seat_in_group', say: u.email + ' holds a seat in another group; set the plan on its owner' };
+  let g = null;
+  if (seat) {
+    if (!Object.keys(patch).length) return Object.assign({ ok: true, unchanged: true, email: u.email }, await planState(env, u.id));
+    if (patch.seats != null) {
+      const held = ((await sbRest(env, 'group_seats?group_id=eq.' + seat.group_id + '&select=user_id').catch(excQuiet('plan_held', []))) || []).length;
+      if (patch.seats < held) return { ok: false, error: 'seats_below_held', say: held + ' seats are held; take a teammate off before going under that' };
+    }
+    patch.updated_at = new Date().toISOString();
+    g = ((await sbRest(env, 'member_groups?id=eq.' + seat.group_id, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: patch }).catch(excQuiet('plan_patch', null))) || [])[0] || null;
+  } else {
+    if (!patch.plan || patch.plan === 'member') return { ok: false, error: 'missing_plan', say: 'a new group needs a paid plan: engine, partner or retainer' };
+    g = ((await sbRest(env, 'member_groups', { method: 'POST', headers: { Prefer: 'return=representation' },
+      body: Object.assign({ name: u.company || u.email, owner_id: u.id, seats: 1, credit_mode: 'pool', seat_credits: PLANS.SEAT_CREDITS }, patch) }).catch(excQuiet('plan_make', null))) || [])[0] || null;
+    if (g) {
+      const put = await sbRest(env, 'group_seats', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { group_id: g.id, user_id: u.id, role: 'owner' } }).catch(excQuiet('plan_owner', false));
+      if (put === false) { await sbRest(env, 'member_groups?id=eq.' + g.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('plan_unmake')); return { ok: false, error: 'write_failed', say: 'the owner seat would not save; nothing was kept' }; }
+    }
+  }
+  if (!g) return { ok: false, error: 'write_failed', say: 'the group would not save; is 0048_plans.sql in?' };
+  logEvent(env, 'intelligence', 'plans', 'plan_set', null, { email: u.email, group: g.id, plan: g.plan, seats: g.seats, mode: g.credit_mode, made: !seat });
+  const out = Object.assign({ ok: true, email: u.email, made: !seat }, await planState(env, u.id));
+  if (g.plan !== 'member' && (u.status || 'pending') !== 'approved' && u.role !== 'admin') out.note = u.email + ' is not approved at the door yet: {run:"access", email:"' + u.email + '"}';
+  return out;
+}
+async function seatDesk(env, body) {   // {run:"seat", email, owner, action:"add"|"remove"}
+  const action = String(body.action || 'add') === 'remove' ? 'remove' : 'add';
+  const u = await planUser(env, body.email);
+  if (!u) return { ok: false, error: 'no_such_user', say: String(body.email || 'that email') + ' has not signed up yet' };
+  if (action === 'remove') {
+    const s = await planSeatOf(env, u.id);
+    if (!s) return { ok: true, email: u.email, none: true, say: u.email + ' holds no seat' };
+    if (s.role === 'owner') return { ok: false, error: 'owner_seat', say: 'the owner holds the group; move the plan to member instead' };
+    const del = await sbRest(env, 'group_seats?user_id=eq.' + u.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('seat_drop', false));
+    if (del === false) return { ok: false, error: 'write_failed' };
+    logEvent(env, 'intelligence', 'plans', 'seat_remove', null, { email: u.email, group: s.group_id });
+    return { ok: true, email: u.email, removed: true, group: s.group_id };
+  }
+  const o = await planUser(env, body.owner);
+  if (!o) return { ok: false, error: 'no_owner', say: 'name the group by its owner: {run:"seat", email:"...", owner:"owner@..."}' };
+  const os = await planSeatOf(env, o.id);
+  if (!os || os.role !== 'owner') return { ok: false, error: 'no_group', say: o.email + ' owns no group; set one with {run:"plan"} first' };
+  const g = ((await sbRest(env, 'member_groups?id=eq.' + os.group_id + '&select=id,name,seats,plan,status').catch(excQuiet('seat_group', []))) || [])[0];
+  if (!g) return { ok: false, error: 'no_group' };
+  const held = (await sbRest(env, 'group_seats?group_id=eq.' + g.id + '&select=user_id').catch(excQuiet('seat_held', []))) || [];
+  if (held.some(x => x.user_id === u.id)) return { ok: true, email: u.email, already: true, group: g.id };
+  if (await planSeatOf(env, u.id)) return { ok: false, error: 'seat_elsewhere', say: u.email + ' already holds a seat in another group' };
+  if (held.length >= g.seats) return { ok: false, error: 'no_free_seat', say: 'all ' + g.seats + ' seats are held; add one with {run:"plan", email:"' + o.email + '", seats:' + (g.seats + 1) + '}' };
+  const put = await sbRest(env, 'group_seats', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { group_id: g.id, user_id: u.id, role: 'member' } }).catch(excQuiet('seat_put', false));
+  if (put === false) return { ok: false, error: 'write_failed' };
+  // A paid seat is the approval (Oct 14): the teammate is let in and welcomed, with no knock and no wait.
+  let door = null;
+  if (g.plan !== 'member' && (u.status || 'pending') !== 'approved' && u.role !== 'admin') door = await accessDesk(env, { email: u.email, action: 'approve' });
+  logEvent(env, 'intelligence', 'plans', 'seat_add', null, { email: u.email, group: g.id, approved: door ? !!door.ok : null });
+  return { ok: true, email: u.email, group: g.id, name: g.name, seats: g.seats, held: held.length + 1, approved: door ? !!door.ok : null, welcomed: door ? !!door.welcomed : null };
+}
+async function creditsDesk(env, body) {   // {run:"credits", email[, grant, note]}
+  const u = await planUser(env, body.email);
+  if (!u) return { ok: false, error: 'no_such_user' };
+  const st = await planState(env, u.id);
+  if (!st.group) return Object.assign({ ok: true, email: u.email }, st, { say: u.email + ' is a Member: no credits; set a plan with {run:"plan"}' });
+  if (body.grant != null) {
+    const n = parseInt(body.grant, 10);
+    if (!(n > 0 && n <= PLANS.MAX_GRANT)) return { ok: false, error: 'bad_grant', say: 'grant a whole number of credits, 1 to ' + PLANS.MAX_GRANT };
+    const put = await sbRest(env, 'credit_ledger', { method: 'POST', headers: { Prefer: 'return=minimal' },
+      body: { group_id: st.group.id, user_id: st.group.mode === 'pool' ? null : u.id, period: st.period, action: 'grant', credits: -n, ref: 'grant:' + String(body.note || '').slice(0, 80) } }).catch(excQuiet('credit_grant', false));
+    if (put === false) return { ok: false, error: 'write_failed' };
+    logEvent(env, 'intelligence', 'plans', 'credit_grant', null, { email: u.email, group: st.group.id, credits: n, note: String(body.note || '').slice(0, 80) || null });
+    return Object.assign({ ok: true, email: u.email, granted: n }, await planState(env, u.id));
+  }
+  const rows = (await sbRest(env, 'credit_ledger?group_id=eq.' + st.group.id + '&period=eq.' + st.period + '&select=user_id,action,credits&limit=10000').catch(excQuiet('credit_rows', []))) || [];
+  const by = {};
+  for (const r of rows) { const k = String(r.action || '').replace(/^refund:/, ''); by[k] = (by[k] || 0) + (Number(r.credits) || 0); }
+  return Object.assign({ ok: true, email: u.email }, st, { by_action: by });
+}
+async function plansDesk(env, body) {   // {run:"plans"[, enforce:true|false]}
+  if (body.enforce === true || body.enforce === false) {
+    if (!env.RATE_LIMIT) return { ok: false, error: 'no_kv' };
+    if (body.enforce) await env.RATE_LIMIT.put(PLANS.ENFORCE_KEY, '1'); else await env.RATE_LIMIT.delete(PLANS.ENFORCE_KEY);
+    logEvent(env, 'intelligence', 'plans', 'plans_enforce', null, { on: body.enforce });
+  }
+  const enforce = await plansEnforced(env), period = planPeriod();
+  const groups = (await sbRest(env, 'member_groups?select=id,name,plan,seats,credit_mode,seat_credits,status,billing&order=created_at.asc&limit=200').catch(excQuiet('plans_groups', []))) || [];
+  const seats = (await sbRest(env, 'group_seats?select=group_id&limit=10000').catch(excQuiet('plans_seats', []))) || [];
+  const led = (await sbRest(env, 'credit_ledger?period=eq.' + period + '&select=group_id,credits&limit=50000').catch(excQuiet('plans_ledger', []))) || [];
+  const watch = (await sbRest(env, 'activity_events?event=eq.meter_watch&created_at=gte.' + period + '&select=meta&limit=10000').catch(excQuiet('plans_watch', []))) || [];
+  const count = (rows, id, f) => rows.filter(r => r.group_id === id).reduce((a, r) => a + f(r), 0);
+  const readers = new Set(watch.map(w => w.meta && w.meta.user).filter(Boolean));
+  return { enforce, period, resets: planNext(period),
+    say: enforce ? 'the wall is on: a reader in no group is told what Engine adds instead of spending' : 'the wall is off: Members spend as before and the meter only watches them',
+    groups: groups.map(g => ({ name: g.name, plan: g.plan, status: g.status, billing: g.billing, seats: g.seats, held: count(seats, g.id, () => 1), mode: g.credit_mode,
+      allowance: g.credit_mode === 'pool' ? g.seats * g.seat_credits : g.seat_credits, per: g.credit_mode === 'pool' ? 'team' : 'seat', used: count(led, g.id, r => Number(r.credits) || 0) })),
+    members_watched: { readers: readers.size, actions: watch.length, credits: watch.reduce((a, w) => a + ((w.meta && Number(w.meta.credits)) || 0), 0),
+      usd: +watch.reduce((a, w) => a + ((w.meta && Number(w.meta.usd)) || 0), 0).toFixed(2) } };
+}
 const ACCESS = { KEY: 'knock:', TTL: 30 * 86400, WAIT_H: 24, MAX_PENDING: 50, ACTIONS: ['approve', 'hold', 'revoke'] };   // SEAM:ACCESS_KNOCK: the door's numbers
 async function watchHealth(env) {
   const now = Date.now(), today = new Date().toISOString().slice(0, 10), out = { at: new Date(now).toISOString(), version: null, cron: null, called: null, rails: null, spend: {}, pplx: null, writer: null, backup: null, trips: [] };
