@@ -6326,7 +6326,7 @@ function _renderReadBlock(q, data, mode){
   if(after){
     const srcs=Array.isArray(data.sources)?data.sources:[];
     const _drawer=`<details class="rb-drawer" id="read-receipts"><summary>Receipts: every source, when it was published, what was set aside</summary>${_tlHtml}${_sourcesGrouped(srcs, evLines)}<p class="rb-foot rb-law">Time is a weight: now 24h, recent 30d, current 90d, context 2y, archive older or undated. A strong older source is the record: cited with its year, never as news.</p></details>`;
-    const _acts=`<div class="read-acts"><button type="button" class="btn-go-deeper" onclick="trackThis(document.getElementById('search-input').value)">Track this</button>${data.depth==='quick'?`<button type="button" class="read-act" onclick="goDeeper()">The full read</button>`:''}<button type="button" class="read-act" onclick="downloadReport()">Download</button><button type="button" class="read-act" onclick="openSourcesModal()">Every source</button><button class="read-act" onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">MAKE WITH PLAY</button><!-- SEAM:PLAY_HANDOFF --></div>`;
+    const _acts=`<div class="read-acts"><button type="button" class="btn-go-deeper" onclick="trackThis(document.getElementById('search-input').value)">Track this</button>${data.depth==='quick'?`<button type="button" class="read-act" onclick="goDeeper()">The full read</button>`:''}<button type="button" class="read-act" onclick="downloadReport()">Download</button><button type="button" class="read-act" onclick="openSourcesModal()">Every source</button><button type="button" class="read-act" onclick="_askTeam('search', document.getElementById('search-input').value)">Ask the team</button><button class="read-act" onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">MAKE WITH PLAY</button><!-- SEAM:PLAY_HANDOFF --></div>`;
     after.innerHTML=`${_vqHtml?`<div id="read-voices">${_vqHtml}</div>`:''}
       ${_picHtml}
       ${_msHtml}
@@ -9500,6 +9500,8 @@ function mineCloseTrace() { const m = document.getElementById('mine-modal'); if 
 // localStorage mode has no real roles, so it enters freely.
 async function _authShowApp() {
   if (sbEnabled()) {
+    await _inviteTake();   // SEAM:CHECKOUT (EX49): a seat's invite is taken before the door is checked; it is the approval
+    try { const n = sessionStorage.getItem('uai_plan_note'); if (n) { sessionStorage.removeItem('uai_plan_note'); setTimeout(function () { showToast(n); }, 1200); } } catch (e) {}
     let approved = false;
     try { const { data, error } = await _sb.rpc('is_approved'); approved = !error && data === true; }
     catch (e) { approved = false; }
@@ -10720,6 +10722,7 @@ async function _profileOpen() {
           <div class="rm-row2"><label>Company<input id="pm-company" value="${safeAttr(u.company || '')}" placeholder="Where you work"></label><label>Your role <small>the implications on every reading are written for it</small><select id="pm-role">${roles}</select></label></div>
           <div class="rm-email">${safe(u.email || '')}</div>
         </div></div></section>
+    <section class="rm-panel" id="rm-plan"><div class="rm-k">Your plan</div><div id="rm-plan-body"><span class="pm-none">Reading your plan</span></div></section><!-- SEAM:CHECKOUT -->
     <section class="rm-panel" id="rm-frame"><div class="rm-k">Your frame</div>
       <p class="rm-line">${first ? 'Three questions. The house learns the rest from what you read.' : 'A reading on any of these reaches you. The house adds what it learns from your reads below; you keep what fits.'}</p>
       <div class="rm-sub">Who are you watching? <small>brands, yours and theirs</small></div>
@@ -10760,6 +10763,7 @@ async function _profileOpen() {
   el.style.display = '';
   _brandChips();
   _evidenceList();
+  _planPanel();   // SEAM:CHECKOUT
   el.querySelectorAll('input,select,textarea').forEach(x => { if (!/^pm-ev-|-add$/.test(x.id)) { x.addEventListener('input', _profileDirty); x.addEventListener('change', _profileDirty); } });
   if (!window._roomKeys) { window._roomKeys = true; document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = document.getElementById('profile-modal'); if (m && m.style.display !== 'none') _profileClose(); } }); }
 }
@@ -10841,7 +10845,7 @@ async function _reachBlock(id) {
   if (!el) { el = document.createElement('section'); el.id = 'reach-block'; el.className = 'reach'; rb.insertAdjacentElement('afterend', el); }
   el.innerHTML = `<div class="reach-k">FOR YOUR ROLE</div><div class="reach-imps" id="reach-imps"><span class="pm-none">Writing the implications for your role</span></div>
     <div class="reach-row"><span class="reach-k">THIS READING</span><div class="reach-marks" id="reach-marks"></div>
-    <button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_embedCopy('${safeAttr(id)}')">Embed</button><button type="button" class="tl-open" onclick="_panelAsk('${safeAttr(id)}')">Ask the panel</button></div>
+    <button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_embedCopy('${safeAttr(id)}')">Embed</button><button type="button" class="tl-open" onclick="_panelAsk('${safeAttr(id)}')">Ask the panel</button><button type="button" class="tl-open" onclick="_askTeam('insight','${safeAttr(id)}')">Ask the team</button><!-- SEAM:ASK_TEAM --></div>
     <div class="reach-panel" id="reach-panel" style="display:none"></div>`;
   el.style.display = '';
   _marksLoad(id);
@@ -10849,8 +10853,8 @@ async function _reachBlock(id) {
   try {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/roles?id=' + encodeURIComponent(id), { headers: await _authHeader() });
     const j = r.ok ? await r.json() : null; const box = document.getElementById('reach-imps'); if (!box) return;
-    if (!j || !j.ok || !(j.implications || []).length) { box.innerHTML = '<span class="pm-none">' + (j && j.error === 'auth_required' ? 'Sign in and set your role to read the implications for it.' : 'No implications were written for this reading.') + '</span>'; return; }
-    box.innerHTML = `<div class="reach-role">for ${safe(j.role)}</div>` + j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');
+    if (!j || !j.ok || !(j.implications || []).length) { box.innerHTML = '<span class="pm-none">' + (j && j.error === 'auth_required' ? 'Sign in and set your role to read the implications for it.' : j && j.error === 'not_written' ? safe(j.say || 'The implications for your role are written overnight.') : 'No implications were written for this reading.') + '</span>'; return; }
+    box.innerHTML = `<div class="reach-role">${j.fallback ? 'for every role' : 'for ' + safe(j.role)}</div>` + j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');   // SEAM:POPOUT
   } catch (e) { const box = document.getElementById('reach-imps'); if (box) box.innerHTML = '<span class="pm-none">The implications did not load.</span>'; }
 }
 /* SEAM:INSIGHT_PANEL: the panel on the claim. Ask the panel drafts a three-question MINE study from the reading (reviewed and launched in
@@ -10864,6 +10868,109 @@ async function _panelLoad(id) {
     ? `<p class="pm-none">${safe(pnl.status === 'draft' ? 'Drafted in MINE, not yet launched. Open MINE to review the three questions and launch it.' : `${pnl.n} answered so far; the panel shows its numbers at ${pnl.min_n}.`)}</p>`
     : `<p><b>${safe(String(pnl.n))}</b> people answered${pnl.scale ? `; <b>${safe(String(pnl.scale.agree_pct))}%</b> said it is true of them (5 or more on 7; mean ${safe(String(pnl.scale.mean))})` : ''}${who ? `; ${who}` : ''}.</p>` + (pnl.quotes || []).map(q => `<blockquote class="reach-quote">${safe(q)}</blockquote>`).join(''));
   box.style.display = '';
+}
+/* SEAM:ASK_TEAM (EX48): ask the team. Under every deployed insight and every live read; the panel takes the question and lists the
+   reader's own asks with the team's answers, and a yes to an offer. A person answers; nothing here asks a model. */
+async function _askTeam(kind, ref) {
+  if (!_currentUser) { showToast('Sign in to ask the team'); return; }
+  let el = document.getElementById('ask-modal');
+  if (!el) { el = document.createElement('div'); el.id = 'ask-modal'; el.className = 'pm-wrap'; document.body.appendChild(el); }
+  const about = String(ref || '').trim();
+  window._askRef = { kind: kind || 'other', ref: about.slice(0, 300) };
+  const what = kind === 'insight' ? 'this reading' : kind === 'search' && about ? '"' + safe(about.slice(0, 120)) + '"' : 'what you found';
+  el.innerHTML = `<div class="pm room" role="dialog" aria-modal="true"><div class="pm-head"><div class="pm-k">ASK THE TEAM</div><button type="button" class="pm-x" onclick="_askClose()" aria-label="close">&times;</button></div>
+    <p class="pm-lead">Want more on ${what}? Tell the team what you would want found, tested or thought through. A person reads every ask and answers by email; when the answer is a bigger piece of work, they say what it would be.</p>
+    <textarea id="ask-q" rows="5" maxlength="1500" placeholder="What would you want to know next?" style="width:100%;box-sizing:border-box;background:transparent;color:inherit;border:1px solid var(--border);padding:10px;font:inherit"></textarea>
+    <div class="reach-row" style="border-top:0;padding-top:10px"><button type="button" class="tl-open" id="ask-send" onclick="_askSend()">Send to the team</button><span class="pm-none" id="ask-note"></span></div>
+    <div class="reach-k" style="margin-top:20px">YOUR ASKS</div><div id="ask-list"><span class="pm-none">Reading your asks</span></div></div>`;
+  el.style.display = '';
+  _askList();
+}
+function _askClose() { const el = document.getElementById('ask-modal'); if (el) el.style.display = 'none'; }
+async function _askSend() {
+  const q = ((document.getElementById('ask-q') || {}).value || '').trim(), note = document.getElementById('ask-note'), btn = document.getElementById('ask-send');
+  if (q.length < 20) { if (note) note.textContent = 'Say a little more first.'; return; }
+  if (btn) btn.disabled = true;
+  let d = null; try { d = await api('asks', Object.assign({}, window._askRef || {}, { question: q })); } catch (e) { d = null; }
+  if (btn) btn.disabled = false;
+  if (d && d.ok) { document.getElementById('ask-q').value = ''; if (note) note.textContent = d.say || 'Sent.'; showToast('Sent to the team'); _askList(); }
+  else if (note) note.textContent = (d && d.say) || 'It did not send. Try again in a minute.';
+}
+async function _askList() {
+  const box = document.getElementById('ask-list'); if (!box) return;
+  let j = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/asks', { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const asks = (j && j.asks) || [];
+  if (!asks.length) { box.innerHTML = '<span class="pm-none">Nothing asked yet.</span>'; return; }
+  const lab = { new: 'With the team', answered: 'Answered', offered: 'Answered, with an offer', closed: 'Closed' };
+  box.innerHTML = asks.map(a => `<div class="reach-imp" style="margin:0 0 14px"><div class="reach-role">${safe(lab[a.status] || a.status)} · ${safe(String(a.at || '').slice(0, 10))}${a.about ? ' · ' + safe(String(a.about).slice(0, 80)) : ''}</div><b>${safe(a.question)}</b>${a.reply ? `<p style="white-space:pre-wrap">${safe(a.reply)}</p>` : ''}${a.offer ? `<p><b>What we would do next:</b> ${safe(a.offer.say)}.</p>` + (a.accepted ? '<p class="pm-none">You said yes. The scope and the price are on their way.</p>' : `<button type="button" class="tl-open" onclick="_askAccept('${safeAttr(a.id)}')">Yes, send me the scope</button>`) : ''}</div>`).join('');
+}
+async function _askAccept(id) {
+  let d = null; try { d = await api('asks', { accept: id }); } catch (e) { d = null; }
+  showToast(d && d.ok ? 'The team will send the scope and the price' : 'That did not go through'); _askList();
+}
+/* SEAM:CHECKOUT (EX49): YOUR PLAN in the room. The plan, the credits and the reset date; the owner's seats, teammates and invites;
+   Engine and top-ups when the house is selling. An invite link is taken the moment the reader is signed in. */
+(function () { try { const q = new URLSearchParams(location.search), t = q.get('invite'); if (t && /^[a-f0-9]{48}$/.test(t)) { localStorage.setItem('uai_invite', t); q.delete('invite'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash); }
+  if (q.get('plan') === 'done') sessionStorage.setItem('uai_plan_note', 'Your plan is live. Welcome to Engine.'); if (q.get('topup') === 'done') sessionStorage.setItem('uai_plan_note', 'Your credits are in.'); } catch (e) {} })();
+async function _inviteTake() {
+  let t = null; try { t = localStorage.getItem('uai_invite'); } catch (e) { t = null; }
+  if (!t || !_currentUser) return;
+  let d = null; try { d = await api('plan/invite/accept', { token: t }); } catch (e) { return; }
+  if (d && (d.ok || ['used', 'revoked', 'expired', 'not_found', 'bad_token'].includes(d.error))) { try { localStorage.removeItem('uai_invite'); } catch (e) {} }
+  if (d && d.ok && !d.already) showToast('Your seat on ' + (d.group || 'the team') + ' is open');
+  else if (d && !d.ok) setTimeout(function () { showToast(d.say || 'The invite did not go through'); }, 400);
+}
+function _planMoney(c) { return '$' + (c / 100).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+async function _planPanel() {
+  const box = document.getElementById('rm-plan-body'); if (!box) return;
+  let p = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/plan', { headers: await _authHeader() }); p = r.ok ? await r.json() : null; } catch (e) { p = null; }
+  if (!p || !p.ok) { box.innerHTML = '<span class="pm-none">Your plan did not load.</span>'; return; }
+  const names = { member: 'Member', engine: 'Engine', partner: 'Partner', retainer: 'Retainer' };
+  if (!p.group || p.plan === 'member') {
+    const e = (p.prices && p.prices.engine) || {};
+    box.innerHTML = `<p class="rm-line"><b>Member.</b> The landing, every pop-out, the intelligence and the moves are yours, and you can ask the team for more.</p>` + (p.sell ? `<p class="rm-line">Engine opens live reads, PLAY and MINE on 400 credits a seat each month.</p>
+      <div class="pm-acts"><label class="rm-sub" style="margin:0;display:flex;align-items:center;gap:8px">Seats <input id="rp-seats" type="number" min="1" max="50" value="1" style="width:64px;background:transparent;color:inherit;border:1px solid var(--border);padding:7px 9px;font:inherit"></label>
+      <button type="button" class="btn-go-deeper" onclick="_planBuy('month')">Engine, ${_planMoney(e.month || 10000)} a seat a month</button><button type="button" class="btn-new-search" onclick="_planBuy('year')">${_planMoney(e.year || 100000)} a seat a year</button></div>` : '');
+    return;
+  }
+  const pct = p.allowance ? Math.round(100 * Math.min(p.used, p.allowance) / p.allowance) : 0;
+  let html = `<p class="rm-line"><b>${safe(names[p.plan] || p.plan)}</b>${p.group.name ? ' · ' + safe(p.group.name) : ''}${p.status === 'paused' ? ' · <b>paused</b>: the payment did not go through' : ''}</p>
+    <div class="rm-sub"><b>${safe(String(p.left))}</b> of ${safe(String(p.allowance))} credits left ${p.group.mode === 'seat' ? 'on your seat' : 'for the team'} · resets ${safe(String(p.resets || ''))}</div>
+    <div style="height:4px;background:var(--border);margin:6px 0 12px"><div style="height:4px;width:${pct}%;background:var(--accent)"></div></div>`;
+  if (p.sell) html += `<div class="pm-acts"><button type="button" class="btn-new-search" onclick="_planTopup()">${safe(String((p.prices.topup || {}).credits || 200))} more credits this month, ${_planMoney((p.prices.topup || {}).cents || 2500)}</button></div>`;
+  if (p.role === 'owner') html += `<div id="rp-team"><span class="pm-none">Reading your team</span></div>`;
+  box.innerHTML = html;
+  if (p.role === 'owner') _planTeam(p);
+}
+async function _planTeam(p) {
+  const box = document.getElementById('rp-team'); if (!box) return;
+  let t = null; try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/plan/invites', { headers: await _authHeader() }); t = r.ok ? await r.json() : null; } catch (e) { t = null; }
+  if (!t || !t.ok) { box.innerHTML = ''; return; }
+  const free = t.seats - t.held - t.invites.length;
+  box.innerHTML = `<div class="rm-sub">Your team · ${safe(String(t.held))} of ${safe(String(t.seats))} seats held${t.invites.length ? ', ' + safe(String(t.invites.length)) + ' invited' : ''}</div>
+    <div class="pm-follows">${t.members.map(m => `<span class="pm-chip">${safe(m.email || m.name || 'a teammate')}${m.role === 'owner' ? ' (you)' : `<button type="button" aria-label="remove" data-email="${safeAttr(m.email || '')}" onclick="_planRemove(this.dataset.email)">&times;</button>`}</span>`).join('')}
+    ${t.invites.map(i => `<span class="pm-chip">${safe(i.email)} · invited<button type="button" aria-label="withdraw" data-id="${safeAttr(i.id)}" onclick="_planRevoke(this.dataset.id)">&times;</button></span>`).join('')}</div>
+    ${free > 0 ? `<div class="pm-acts"><input id="rp-invite" type="email" placeholder="A teammate's email" style="flex:1;background:transparent;color:inherit;border:1px solid var(--border);padding:7px 9px;font:inherit"><button type="button" class="btn-new-search" onclick="_planInvite()">Give a seat</button></div>` : '<p class="rm-line">Every seat is held or invited.</p>'}
+    ${t.plan === 'engine' && t.billing === 'stripe' ? `<div class="pm-acts"><label class="rm-sub" style="margin:0;display:flex;align-items:center;gap:8px">Seats <input id="rp-seat-count" type="number" min="1" max="500" value="${safeAttr(String(t.seats))}" style="width:64px;background:transparent;color:inherit;border:1px solid var(--border);padding:7px 9px;font:inherit"></label><button type="button" class="btn-new-search" onclick="_planSeats()">Change seats</button></div>` : ''}`;
+}
+async function _planCall(path, body) { try { return await api(path, body); } catch (e) { return null; } }
+async function _planBuy(cycle) {
+  const seats = parseInt((document.getElementById('rp-seats') || {}).value, 10) || 1;
+  const d = await _planCall('plan/checkout', { cycle, seats });
+  if (d && d.ok && d.url) location.href = d.url; else showToast((d && d.say) || 'Checkout did not open');
+}
+async function _planTopup() { const d = await _planCall('plan/topup', {}); if (d && d.ok && d.url) location.href = d.url; else showToast((d && d.say) || 'Checkout did not open'); }
+async function _planInvite() {
+  const el = document.getElementById('rp-invite'), email = el ? el.value.trim() : '';
+  const d = await _planCall('plan/invite', { email });
+  showToast(d && d.ok ? 'Invite sent to ' + email : (d && d.say) || 'The invite did not send'); if (d && d.ok) _planPanel();
+}
+async function _planRevoke(id) { const d = await _planCall('plan/invite/revoke', { id }); showToast(d && d.ok ? 'Invite withdrawn' : 'That did not go through'); _planPanel(); }
+async function _planRemove(email) { if (!confirm('Take ' + email + "'s seat? They keep their account as a Member.")) return; const d = await _planCall('plan/member/remove', { email }); showToast(d && d.ok ? 'Seat freed' : (d && d.say) || 'That did not go through'); _planPanel(); }
+async function _planSeats() {
+  const n = parseInt((document.getElementById('rp-seat-count') || {}).value, 10);
+  const d = await _planCall('plan/seats', { seats: n });
+  showToast(d && d.ok ? 'Seats set to ' + n + '; the bill follows' : (d && d.say) || 'That did not go through'); _planPanel();
 }
 async function _panelAsk(id) {
   try { const d = await api('excavate/insight/panel', { id }); if (d && d.ok) { showToast(d.existed ? 'The panel already exists for this reading' : 'Panel drafted in MINE: review and launch it there'); _panelLoad(id); } else showToast(d && d.error === 'auth_required' ? 'Sign in to ask the panel' : 'Could not draft the panel' + (d && d.detail ? ': ' + d.detail : '')); }

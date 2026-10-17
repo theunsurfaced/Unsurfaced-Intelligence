@@ -251,6 +251,7 @@ SPENDERS = {
     'excGapCheck': 'claudeGate on the frame tier (Haiku, its own cap) + a 4.5s deadline; one call per read, called by synthesize only (excavateAuth)',
     'excFrameFor': 'claudeGate on the frame tier (Haiku, its own $3 cap) + a week of KV cache per query + a 4.5s deadline; callers: synthesize and gather (excavateAuth) and excFrameTiles (the public feed, at most one set of 12 per edition, cached 6h)',
     'benchGrade': 'claudeGate on the frame tier (Haiku); called by benchRun only, which the desk key or a signed-in admin opens (SEAM:BENCH); one call per pack, at most sixty kept',
+    'popoutWrite': 'claudeGate on the frame tier (Haiku, its own cap); called by popoutPass only: the 30-minute slice (cron-bounded, at most POPOUT.PER_RUN board insights a slice, only those whose roles are not written, one call an insight for every role readers hold) or the admin desk {run: popout} (SEAM:POPOUT)',
     'roleImplications': 'claudeGate on the frame tier (Haiku) + a day of KV cache per insight and role; called by roleImplicationsRoute only, signed in (SEAM:ROLE_IMPLICATIONS)',
     'pushBrief': 'claudeGate on the frame tier (Haiku); called by pushNightly only (cron-bounded, the 06:10 chain, or the admin desk {run: push}), once per reader on their digest day and only when their frames deployed (SEAM:REACH_PUSH)',
     'excLook': 'Workers AI vision over at most LOOK.MAX images inside LOOK.MS; called by synthesize only (excavateAuth), on a full read, never for quick reads or the bench (SEAM:EXC_LOOK)',

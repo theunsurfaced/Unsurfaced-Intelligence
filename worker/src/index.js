@@ -127,6 +127,9 @@ export default {
         .then(() => deskScore(env))   // SEAM:DESK — score every 30 minutes, after the slice lands
         .then(s => console.log('desk_score', JSON.stringify(s)))
         .catch(e => console.log('desk_score_error', String(e && e.message)))
+        .then(() => popoutPass(env))   // SEAM:POPOUT (EX47): board readings the last drain landed get their role lines
+        .then(s => console.log('popout_pass', JSON.stringify(s)))
+        .catch(e => console.log('popout_pass_error', String(e && e.message)))
         .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
         .then(s => console.log('claude_drain', JSON.stringify(s)))
         .catch(e => console.log('claude_drain_error', String(e && e.message)))
@@ -249,6 +252,15 @@ export default {
         case '/mine/upload':         return mineUpload(request, env, origin, user);
         case '/whoami':             return kbWhoami(env, origin, user);
         case '/plan':               return planRoute(env, origin, user);   // SEAM:PLANS: the reader's plan and balance
+        case '/plan/checkout':      // SEAM:CHECKOUT (EX49): Engine by the seat; top-ups; the owner's seats and invites; taking an invite
+        case '/plan/topup':
+        case '/plan/seats':
+        case '/plan/invites':
+        case '/plan/invite':
+        case '/plan/invite/revoke':
+        case '/plan/invite/accept':
+        case '/plan/member/remove': return planBillingRoute(path, request, env, origin, user, body);
+        case '/asks':               return askTeamRoute(request, env, origin, user, body);   // SEAM:ASK_TEAM (EX48): ask the team; your asks; yes to an offer
         case '/studio/manifest':     return studioManifest(body, env, origin, user);
         case '/studio/generate':     return studioGenerate(env, origin, user);
         case '/studio/cut-story':    return studioCutStory(body, env, origin, user);
@@ -3794,7 +3806,7 @@ async function sendEmail(env, msg) {
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [msg.to], subject: msg.subject, html: msg.html })
+    body: JSON.stringify(Object.assign({ from, to: [msg.to], subject: msg.subject, html: msg.html }, msg.reply_to ? { reply_to: msg.reply_to } : {}))   // SEAM:ASK_TEAM: an optional reply-to
   });
   if (r.ok) return { ok: true };
   let detail = '';
@@ -3836,6 +3848,12 @@ async function stripeWebhook(request, env, origin) {
     } else if (evt.type === 'checkout.session.completed') {
       if (o.mode === 'payment' && o.metadata && o.metadata.kind === 'report') {   // SEAM:REPORT_STAND: the order is recorded even if the buyer never comes back
         await rsRecordOrder(env, o, 'webhook').catch(e => console.log('report_order_webhook', String(e && e.message).slice(0, 80)));
+      } else if (o.mode === 'subscription' && o.metadata && o.metadata.kind === 'plan') {   // SEAM:CHECKOUT: the plan goes live when it is paid
+        const pr = await planCheckoutDone(env, o).catch(e => ({ retry: true, error: String(e && e.message).slice(0, 80) }));
+        if (pr && pr.retry) { console.log('plan_checkout_retry', pr.error); return new Response('retry', { status: 500 }); }   // Stripe sends it again
+      } else if (o.mode === 'payment' && o.metadata && o.metadata.kind === 'topup') {   // SEAM:CHECKOUT: a top-up lands once
+        const tr = await planTopupDone(env, o).catch(e => ({ retry: true, error: String(e && e.message).slice(0, 80) }));
+        if (tr && tr.retry) { console.log('plan_topup_retry', tr.error); return new Response('retry', { status: 500 }); }
       } else if (o.mode === 'payment' && o.metadata && o.metadata.kind === 'study_funding' && o.metadata.study_id) {
         const amt = o.amount_total || 0;
         let firstTime = false;
@@ -3843,6 +3861,11 @@ async function stripeWebhook(request, env, origin) {
         catch (e) { firstTime = false; }  // unique stripe_session_id → already credited
         if (firstTime && amt > 0) await sbRest(env, 'rpc/add_study_funding', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { p_study: o.metadata.study_id, p_amount: amt } }).catch(() => {});
       }
+    } else if (evt.type === 'checkout.session.async_payment_succeeded' && o.metadata && o.metadata.kind === 'plan') {   // SEAM:CHECKOUT: a slow payment cleared
+      const ar = await planCheckoutDone(env, o).catch(e => ({ retry: true, error: String(e && e.message).slice(0, 80) }));
+      if (ar && ar.retry) return new Response('retry', { status: 500 });
+    } else if (evt.type === 'customer.subscription.updated' || evt.type === 'customer.subscription.deleted') {   // SEAM:CHECKOUT: seats, a failed payment, a cancel
+      await planSubscriptionChanged(env, o, evt.type).catch(e => console.log('plan_subscription_webhook', String(e && e.message).slice(0, 80)));
     } else if (evt.type === 'transfer.paid' || evt.type === 'payout.paid') {
       if (o.id) await sbRest(env, `payment?stripe_transfer_id=eq.${o.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: 'paid' } }).catch(() => {});
     } else if (evt.type === 'transfer.failed' || evt.type === 'payout.failed') {
@@ -8318,7 +8341,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9628,7 +9651,8 @@ async function planState(env, uid) {
     period, resets: planNext(period), allowance, used, left: Math.max(0, allowance - used) };
 }
 async function planRoute(env, origin, user) {
-  return json(Object.assign({ ok: true, enforced: await plansEnforced(env) }, await planState(env, user.id)), 200, origin, env);
+  return json(Object.assign({ ok: true, enforced: await plansEnforced(env), sell: await plansSelling(env),   // SEAM:CHECKOUT: what the room may offer
+    prices: { engine: CHECKOUT.PRICES.engine.seat, topup: CHECKOUT.TOPUP } }, await planState(env, user.id)), 200, origin, env);
 }
 async function planUser(env, email) {
   const e = String(email || '').trim().toLowerCase();
@@ -9725,6 +9749,11 @@ async function creditsDesk(env, body) {   // {run:"credits", email[, grant, note
   return Object.assign({ ok: true, email: u.email }, st, { by_action: by });
 }
 async function plansDesk(env, body) {   // {run:"plans"[, enforce:true|false]}
+  if (body.sell === true || body.sell === false) {   // SEAM:CHECKOUT: the self-serve checkout and top-ups sell only with this on
+    if (!env.RATE_LIMIT) return { ok: false, error: 'no_kv' };
+    if (body.sell) await env.RATE_LIMIT.put(CHECKOUT.SELL_KEY, '1'); else await env.RATE_LIMIT.delete(CHECKOUT.SELL_KEY);
+    logEvent(env, 'intelligence', 'plans', 'plans_sell', null, { on: body.sell });
+  }
   if (body.enforce === true || body.enforce === false) {
     if (!env.RATE_LIMIT) return { ok: false, error: 'no_kv' };
     if (body.enforce) await env.RATE_LIMIT.put(PLANS.ENFORCE_KEY, '1'); else await env.RATE_LIMIT.delete(PLANS.ENFORCE_KEY);
@@ -9737,12 +9766,403 @@ async function plansDesk(env, body) {   // {run:"plans"[, enforce:true|false]}
   const watch = (await sbRest(env, 'activity_events?event=eq.meter_watch&created_at=gte.' + period + '&select=meta&limit=10000').catch(excQuiet('plans_watch', []))) || [];
   const count = (rows, id, f) => rows.filter(r => r.group_id === id).reduce((a, r) => a + f(r), 0);
   const readers = new Set(watch.map(w => w.meta && w.meta.user).filter(Boolean));
-  return { enforce, period, resets: planNext(period),
+  return { enforce, sell: await plansSelling(env), period, resets: planNext(period),
     say: enforce ? 'the wall is on: a reader in no group is told what Engine adds instead of spending' : 'the wall is off: Members spend as before and the meter only watches them',
     groups: groups.map(g => ({ name: g.name, plan: g.plan, status: g.status, billing: g.billing, seats: g.seats, held: count(seats, g.id, () => 1), mode: g.credit_mode,
       allowance: g.credit_mode === 'pool' ? g.seats * g.seat_credits : g.seat_credits, per: g.credit_mode === 'pool' ? 'team' : 'seat', used: count(led, g.id, r => Number(r.credits) || 0) })),
     members_watched: { readers: readers.size, actions: watch.length, credits: watch.reduce((a, w) => a + ((w.meta && Number(w.meta.credits)) || 0), 0),
       usd: +watch.reduce((a, w) => a + ((w.meta && Number(w.meta.usd)) || 0), 0).toFixed(2) } };
+}
+/* ═══ SEAM:ASK_TEAM (EX48): a member asks the team for more. Any signed-in reader can ask about an insight, a search or a read (five
+ * a day); the house is mailed at once, with the member as the reply-to, and the desk answers with {run:"ask_reply"}: the answer is
+ * kept, mailed, and shown on the page. When the honest answer is a bigger piece of work, the reply carries an offer (a RECON or a brief
+ * session) and the team sends the scope and the price; the member says yes on the page. The team answers with a scoped offer, not free
+ * work (Oct 13). Nothing here calls a model. ═══ */
+const ASK_TEAM = { KINDS: ['insight', 'search', 'read', 'other'], STATUS: ['new', 'answered', 'offered', 'closed'], MIN: 20, MAX: 1500, DAY: 5, KEY: 'askteam:', LIST: 20, DESK: 100, REPLY_MIN: 10, REPLY_MAX: 4000,
+  OFFERS: { recon: 'a RECON: a report the team commissions on your question', brief: 'a brief session: ninety minutes with the team on it', none: null } };
+function askTeamPublic(r) {
+  return { id: r.id, kind: r.kind, about: r.ref_title || null, question: r.question, status: r.status, reply: r.reply || null,
+    offer: r.offer && r.offer !== 'none' ? { kind: r.offer, say: ASK_TEAM.OFFERS[r.offer] } : null, accepted: !!r.accepted_at, at: r.created_at, answered_at: r.answered_at || null };
+}
+function askTeamHouseHtml(row, plan) {
+  return '<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6;max-width:560px">'
+    + '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#777;margin:0 0 8px">Unsurfaced Intelligence · a member asks</p>'
+    + '<h2 style="margin:0 0 10px;font-size:19px">' + esc(row.email || 'A member') + (plan ? ' <span style="font-weight:400;color:#777">(' + esc(plan) + ')</span>' : '') + '</h2>'
+    + (row.ref_title ? '<p style="margin:0 0 6px;color:#444">About ' + esc(row.kind) + ': <strong>' + esc(row.ref_title) + '</strong></p>' : '')
+    + '<blockquote style="margin:0 0 16px;padding:8px 12px;border-left:3px solid #C41230;background:#f6f6f6">' + esc(row.question) + '</blockquote>'
+    + '<p style="margin:0 0 6px">Reply to this email to answer them directly, or answer from the desk so it shows on their page:</p>'
+    + '<pre style="background:#f4f4f4;padding:10px 12px;border-radius:6px;font-size:12px;white-space:pre-wrap">{"run":"ask_reply","id":"' + esc(row.id) + '","reply":"...","offer":"recon | brief | none"}</pre></div>';
+}
+function askTeamReplyHtml(env, row, reply, offer) {
+  const base = String(env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
+  return '<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6;max-width:560px">'
+    + '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#777;margin:0 0 8px">Unsurfaced Intelligence · the team answers</p>'
+    + '<p style="margin:0 0 6px;color:#666">You asked' + (row.ref_title ? ' about <strong>' + esc(row.ref_title) + '</strong>' : '') + ':</p>'
+    + '<blockquote style="margin:0 0 16px;padding:8px 12px;border-left:3px solid #ccc;color:#444">' + esc(row.question) + '</blockquote>'
+    + '<div style="margin:0 0 16px;white-space:pre-wrap">' + esc(reply) + '</div>'
+    + (offer && ASK_TEAM.OFFERS[offer] ? '<div style="background:#f6f6f6;padding:12px 14px;margin:0 0 16px"><strong>What we would do next:</strong> ' + esc(ASK_TEAM.OFFERS[offer]) + '. Say yes on the page, or reply to this email, and the team sends a scope and a price.</div>' : '')
+    + '<p style="margin:0"><a href="' + base + '/intelligence/" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 15px;border-radius:6px;font-size:14px">Open EXCAVATE</a></p></div>';
+}
+async function askTeamRoute(request, env, origin, user, body) {
+  if (request.method === 'GET') {
+    const rows = (await sbRest(env, 'member_asks?user_id=eq.' + user.id + '&select=id,kind,ref_title,question,status,reply,offer,accepted_at,created_at,answered_at&order=created_at.desc&limit=' + ASK_TEAM.LIST).catch(excQuiet('ask_list', []))) || [];
+    return json({ ok: true, asks: rows.map(askTeamPublic) }, 200, origin, env);
+  }
+  if (body && body.accept) {
+    const id = String(body.accept);
+    const row = /^[0-9a-f-]{36}$/.test(id) ? ((await sbRest(env, 'member_asks?id=eq.' + id + '&select=*').catch(excQuiet('ask_accept_read', []))) || [])[0] : null;
+    if (!row || row.user_id !== user.id) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (row.status !== 'offered') return json({ ok: false, error: 'no_offer', say: 'There is no offer on this ask yet.' }, 200, origin, env);
+    if (!row.accepted_at) {
+      await sbRest(env, 'member_asks?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { accepted_at: new Date().toISOString() } }).catch(excQuiet('ask_accept'));
+      const html = '<div style="font-family:system-ui;line-height:1.6;max-width:560px"><h2 style="margin:0 0 10px;font-size:19px">' + esc(row.email || 'A member') + ' said yes to ' + esc(ASK_TEAM.OFFERS[row.offer] || 'the offer') + '.</h2><p>Their ask: ' + esc(row.question) + '</p><p>Send the scope and the price; reply to this email to reach them.</p></div>';
+      for (const a of await watchRecipients(env)) await sendEmail(env, { to: a, subject: 'Yes to the offer: ' + (row.email || 'a member'), html, reply_to: row.email || undefined }).catch(excQuiet('ask_accept_mail', { ok: false }));
+      logEvent(env, 'intelligence', 'ask', 'ask_accept', null, { id, offer: row.offer, user: user.id });
+    }
+    return json({ ok: true, accepted: true, say: 'The team will send the scope and the price.' }, 200, origin, env);
+  }
+  const kind = ASK_TEAM.KINDS.includes(String(body && body.kind)) ? String(body.kind) : 'other';
+  const question = String((body && body.question) || '').replace(/\s+/g, ' ').trim();
+  if (question.length < ASK_TEAM.MIN) return json({ ok: false, error: 'too_short', say: 'Say a little more: what would you want the team to find or think through?' }, 200, origin, env);
+  if (question.length > ASK_TEAM.MAX) return json({ ok: false, error: 'too_long', say: 'Keep it under ' + ASK_TEAM.MAX + ' characters.' }, 200, origin, env);
+  const day = new Date().toISOString().slice(0, 10), key = ASK_TEAM.KEY + user.id + ':' + day;
+  let n = 0;
+  if (env.RATE_LIMIT) { n = parseInt(await env.RATE_LIMIT.get(key).catch(excQuiet('ask_kv', null)), 10) || 0;
+    if (n >= ASK_TEAM.DAY) return json({ ok: false, error: 'ask_limit', say: ASK_TEAM.DAY + ' asks a day reach the team. The rest can wait for tomorrow.' }, 200, origin, env); }
+  const ref = String((body && body.ref) || '').replace(/\s+/g, ' ').trim().slice(0, 300) || null;
+  let refTitle = String((body && body.ref_title) || '').replace(/\s+/g, ' ').trim().slice(0, 240) || null;
+  if (kind === 'insight' && ref && /^[0-9a-f-]{36}$/.test(ref)) {
+    const r = ((await sbRest(env, 'door_reads?id=eq.' + ref + '&select=id,frame_key,night,status,frame,measures,read,meta').catch(excQuiet('ask_ref', []))) || [])[0];
+    if (r && r.read) { const t = doorTile(r); refTitle = String(t.claim || t.title || refTitle || '').slice(0, 240) || refTitle; }
+  }
+  if (kind === 'search' && ref && !refTitle) refTitle = ref.slice(0, 240);
+  const st = await planState(env, user.id);
+  const row = ((await sbRest(env, 'member_asks', { method: 'POST', headers: { Prefer: 'return=representation' },
+    body: { user_id: user.id, email: user.email || null, group_id: st.group ? st.group.id : null, plan: st.plan || 'member', kind, ref, ref_title: refTitle, question } }).catch(excQuiet('ask_put', null))) || [])[0];
+  if (!row) return json({ ok: false, error: 'not_saved', say: 'The ask did not save. Try again in a minute.' }, 200, origin, env);
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(key, String(n + 1), { expirationTtl: 26 * 3600 }).catch(excQuiet('ask_kv_put'));
+  let told = false;
+  for (const a of await watchRecipients(env)) { const m = await sendEmail(env, { to: a, subject: 'A member asks: ' + question.slice(0, 60), html: askTeamHouseHtml(row, st.plan), reply_to: user.email || undefined }).catch(excQuiet('ask_mail', { ok: false })); if (m && m.ok) told = true; }
+  logEvent(env, 'intelligence', 'ask', 'ask_team', null, { id: row.id, kind, user: user.id, plan: st.plan || 'member', told });
+  return json({ ok: true, ask: askTeamPublic(row), told, say: 'Sent to the team. The answer comes to ' + (user.email || 'your email') + ' and shows here.' }, 200, origin, env);
+}
+async function asksDesk(env, body) {   // {run:"asks"[, status:"new"|"offered"|"answered"|"closed"|"all"]}
+  const s = String((body && body.status) || 'new'), filt = s === 'all' ? '' : 'status=eq.' + (ASK_TEAM.STATUS.includes(s) ? s : 'new') + '&';
+  const rows = (await sbRest(env, 'member_asks?' + filt + 'select=*&order=created_at.asc&limit=' + ASK_TEAM.DESK).catch(excQuiet('asks_desk', []))) || [];
+  return { status: s, count: rows.length, asks: rows.map(r => ({ id: r.id, email: r.email, plan: r.plan, kind: r.kind, about: r.ref_title, question: r.question, status: r.status, since: r.created_at, reply: r.reply || null, offer: r.offer || null, accepted: !!r.accepted_at })),
+    say: rows.length ? 'answer one with {run:"ask_reply", id:"...", reply:"...", offer:"recon"|"brief"|"none"}' : 'nothing waits' };
+}
+async function askReplyDesk(env, body, who) {   // {run:"ask_reply", id, reply, offer, close}
+  const id = String((body && body.id) || ''), reply = String((body && body.reply) || '').trim(), offer = Object.prototype.hasOwnProperty.call(ASK_TEAM.OFFERS, String(body && body.offer)) ? String(body.offer) : 'none';
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, error: 'bad_id' };
+  if (reply.length < ASK_TEAM.REPLY_MIN || reply.length > ASK_TEAM.REPLY_MAX) return { ok: false, error: 'bad_reply', say: 'the reply runs ' + ASK_TEAM.REPLY_MIN + ' to ' + ASK_TEAM.REPLY_MAX + ' characters' };
+  if (/\u2014/.test(reply)) return { ok: false, error: 'em_dash', say: 'the house writes without em dashes' };
+  const row = ((await sbRest(env, 'member_asks?id=eq.' + id + '&select=*').catch(excQuiet('ask_reply_read', []))) || [])[0];
+  if (!row) return { ok: false, error: 'no_such_ask' };
+  const status = body.close ? 'closed' : offer !== 'none' ? 'offered' : 'answered';
+  const put = await sbRest(env, 'member_asks?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { reply, offer, status, answered_by: who ? String(who).slice(0, 80) : null, answered_at: new Date().toISOString() } }).catch(excQuiet('ask_reply_put', false));
+  if (put === false) return { ok: false, error: 'write_failed' };
+  const to = await watchRecipients(env);
+  const m = row.email ? await sendEmail(env, { to: row.email, subject: 'The team answered your ask', html: askTeamReplyHtml(env, row, reply, offer), reply_to: to[0] || undefined }).catch(excQuiet('ask_reply_mail', { ok: false })) : { ok: false };
+  logEvent(env, 'intelligence', 'ask', 'ask_reply', null, { id, status, offer, mailed: !!(m && m.ok) });
+  return { ok: true, id, email: row.email, status, offer, mailed: !!(m && m.ok) };
+}
+/* ═══ SEAM:CHECKOUT (EX49): plans are bought by the seat, credits topped up, teammates invited. Engine is self-serve from the room
+ * ($100 a seat a month or $1,000 a year); Partner and Retainer are links the desk issues; a top-up is 200 credits for $25. Nothing
+ * self-serve sells until {run:"plans", sell:true}. The Stripe webhook sets the plan and keeps the seats and the status. An owner invites
+ * by email into a paid, free seat; the signed link is tied to that address, expires in CHECKOUT.INVITE_DAYS, and taking it is the
+ * approval at the door (Oct 14). Nothing here calls a model. ═══ */
+const CHECKOUT = { SELL_KEY: 'plans:sell', SELF_MAX: 50, INVITE_DAYS: 14, TOKEN_BYTES: 24, INVITES_A_DAY: 20,
+  TOPUP: { credits: 200, cents: 2500 },
+  PRICES: {
+    engine: { included: 0, cycles: ['month', 'year'], seat: { month: 10000, year: 100000 } },
+    partner: { included: 5, cycles: ['year'], base: { year: 1000000 }, seat: { year: 150000 } },
+    retainer: { included: 1, cycles: ['month'], base: null, seat: { month: 12500 } }
+  },
+  NAMES: { engine: 'Unsurfaced Engine', partner: 'Unsurfaced Partner', retainer: 'Unsurfaced Retainer' } };
+async function plansSelling(env) {
+  if (!env.RATE_LIMIT) return false;
+  return (await env.RATE_LIMIT.get(CHECKOUT.SELL_KEY).catch(excQuiet('plans_sell', null))) === '1';
+}
+function checkoutSite(env) { return String(env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, ''); }
+// PURE: the Stripe Checkout params for a plan. Throws on a plan, cycle, seat count or base it cannot sell.
+function checkoutParams(o) {
+  const P = CHECKOUT.PRICES[o.plan];
+  if (!P) throw new Error('bad_plan');
+  const cycle = P.cycles.includes(o.cycle) ? o.cycle : P.cycles[0];
+  const seats = parseInt(o.seats, 10);
+  if (!(seats >= 1 && seats <= PLANS.MAX_SEATS)) throw new Error('bad_seats');
+  const seatCents = P.seat[cycle], baseCents = o.plan === 'retainer' ? parseInt(o.base_cents, 10) : (P.base ? P.base[cycle] : 0);
+  if (o.plan === 'retainer' && !(baseCents >= 100000)) throw new Error('retainer_base');
+  const included = P.included, name = CHECKOUT.NAMES[o.plan];
+  const sold = Math.max(seats, included), extra = Math.max(0, sold - included);   // a Partner is never sold under the 5 it includes
+  const line = (cents, qty, label) => ({ quantity: qty, price_data: { currency: 'usd', unit_amount: cents, recurring: { interval: cycle }, product_data: { name: label } } });
+  const items = o.plan === 'engine' ? [line(seatCents, seats, name + ' seat')]
+    : [line(baseCents, 1, name + (included > 1 ? ' with ' + included + ' seats' : ' with 1 seat'))].concat(extra ? [line(seatCents, extra, name + ' added seat')] : []);
+  const md = { kind: 'plan', user: String(o.user), plan: o.plan, cycle, seats: String(sold), included: String(included), seat_cents: String(seatCents), by: o.by || 'self' };
+  const p = { mode: 'subscription', line_items: items, metadata: md, subscription_data: { metadata: md }, client_reference_id: String(o.user),
+    success_url: o.site + '/intelligence/?plan=done', cancel_url: o.site + '/intelligence/?plan=cancel', allow_promotion_codes: 'true' };
+  if (o.email) p.customer_email = o.email;
+  return p;
+}
+async function checkoutGroupOf(env, uid) {
+  const seat = await planSeatOf(env, uid);
+  if (!seat) return { seat: null, group: null };
+  const g = ((await sbRest(env, 'member_groups?id=eq.' + seat.group_id + '&select=*').catch(excQuiet('co_group', []))) || [])[0] || null;
+  return { seat, group: g };
+}
+async function checkoutHeld(env, gid) {
+  const seats = (await sbRest(env, 'group_seats?group_id=eq.' + gid + '&select=user_id,role').catch(excQuiet('co_held', []))) || [];
+  const now = new Date().toISOString();
+  const invites = (await sbRest(env, 'group_invites?group_id=eq.' + gid + '&accepted_at=is.null&revoked_at=is.null&expires_at=gt.' + encodeURIComponent(now) + '&select=id,email,expires_at,created_at&order=created_at.desc').catch(excQuiet('co_invites', []))) || [];
+  return { seats, invites };
+}
+// the webhook: a paid checkout makes or updates the owner's group
+async function planCheckoutDone(env, s) {
+  const md = s.metadata || {}, uid = md.user;
+  if (!uid || !CHECKOUT.PRICES[md.plan]) return { ok: false, error: 'no_plan' };
+  if (s.payment_status === 'unpaid') { logEvent(env, 'intelligence', 'plans', 'plan_checkout_pending', null, { user: uid, session: s.id }); return { ok: true, pending: true }; }   // a slow payment goes live on async_payment_succeeded
+  const seats = Math.max(1, parseInt(md.seats, 10) || 1);
+  const stripe = { customer: s.customer || null, subscription: s.subscription || null, cycle: md.cycle, included: parseInt(md.included, 10) || 0, seat_cents: parseInt(md.seat_cents, 10) || 0, session: s.id, at: new Date().toISOString() };
+  if (stripe.subscription) {   // a webhook delivered twice changes nothing twice
+    const had = ((await sbRest(env, 'member_groups?meta->stripe->>subscription=eq.' + encodeURIComponent(stripe.subscription) + '&select=id').catch(excQuiet('co_had', null))) || null);
+    if (had === null) return { ok: false, retry: true, error: 'read_failed' };
+    if (had[0]) return { ok: true, already: true, group: had[0].id };
+  }
+  const { seat, group } = await checkoutGroupOf(env, uid);
+  if (seat && seat.role !== 'owner') { logEvent(env, 'intelligence', 'plans', 'plan_checkout_conflict', null, { user: uid, session: s.id }); await checkoutConflict(env, uid, stripe, 'holds a seat on another team'); return { ok: false, error: 'seat_in_group' }; }
+  const live = group && group.plan !== 'member' && group.meta && group.meta.stripe && group.meta.stripe.subscription && !group.meta.stripe.ended_at;
+  if (live && group.meta.stripe.subscription !== stripe.subscription) { logEvent(env, 'intelligence', 'plans', 'plan_checkout_conflict', null, { user: uid, session: s.id, had: group.meta.stripe.subscription }); await checkoutConflict(env, uid, stripe, 'already has a live subscription (' + group.meta.stripe.subscription + ')'); return { ok: false, error: 'second_subscription' }; }
+  const u = ((await sbRest(env, 'app_user?id=eq.' + uid + '&select=id,email,status,role,company').catch(excQuiet('co_user', []))) || [])[0] || {};
+  let g = null;
+  if (group) {
+    const held = ((await sbRest(env, 'group_seats?group_id=eq.' + group.id + '&select=user_id').catch(excQuiet('co_held2', []))) || []).length;
+    g = ((await sbRest(env, 'member_groups?id=eq.' + group.id, { method: 'PATCH', headers: { Prefer: 'return=representation' },
+      body: { plan: md.plan, seats: Math.max(seats, held), billing: 'stripe', status: 'active', updated_at: new Date().toISOString(), meta: Object.assign({}, group.meta || {}, { stripe }) } }).catch(excQuiet('co_patch', null))) || [])[0] || null;
+  } else {
+    g = ((await sbRest(env, 'member_groups', { method: 'POST', headers: { Prefer: 'return=representation' },
+      body: { name: u.company || u.email || s.customer_email || 'A team', owner_id: uid, plan: md.plan, seats, credit_mode: 'pool', seat_credits: PLANS.SEAT_CREDITS, billing: 'stripe', meta: { stripe } } }).catch(excQuiet('co_make', null))) || [])[0] || null;
+    if (g) { const put = await sbRest(env, 'group_seats', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { group_id: g.id, user_id: uid, role: 'owner' } }).catch(excQuiet('co_owner', false));
+      if (put === false) { await sbRest(env, 'member_groups?id=eq.' + g.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('co_unmake')); return { ok: false, retry: true, error: 'write_failed' }; } }
+  }
+  if (!g) return { ok: false, retry: true, error: 'write_failed' };   // Stripe sends it again
+  let door = null;
+  if (md.by === 'desk' && u.email && (u.status || 'pending') !== 'approved' && u.role !== 'admin') door = await accessDesk(env, { email: u.email, action: 'approve' });
+  logEvent(env, 'intelligence', 'plans', 'plan_checkout', null, { user: uid, group: g.id, plan: md.plan, seats, cycle: md.cycle, by: md.by || 'self' });
+  const html = '<div style="font-family:system-ui;line-height:1.6;max-width:560px"><h2 style="margin:0 0 10px;font-size:19px">' + esc(u.email || s.customer_email || 'Someone') + ' is on ' + esc(CHECKOUT.NAMES[md.plan]) + '.</h2><p>' + esc(String(seats)) + (seats === 1 ? ' seat' : ' seats') + ', billed by the ' + esc(md.cycle) + '.</p></div>';
+  for (const a of await watchRecipients(env)) await sendEmail(env, { to: a, subject: 'New plan: ' + (u.email || 'a member') + ', ' + md.plan + ', ' + seats + (seats === 1 ? ' seat' : ' seats'), html }).catch(excQuiet('co_mail', { ok: false }));
+  return { ok: true, group: g.id, made: !group, approved: door ? !!door.ok : null };
+}
+// a payment the house cannot place on a team: nothing is overwritten; the house is told to sort it by hand (refund or merge)
+async function checkoutConflict(env, uid, stripe, why) {
+  const u = ((await sbRest(env, 'app_user?id=eq.' + uid + '&select=email').catch(excQuiet('co_conflict_user', []))) || [])[0] || {};
+  const html = '<div style="font-family:system-ui;line-height:1.6;max-width:560px"><h2 style="margin:0 0 10px;font-size:19px">A payment needs a person.</h2><p>' + esc(u.email || uid) + ' paid (subscription ' + esc(stripe.subscription || 'none') + ', customer ' + esc(stripe.customer || 'none') + ') but ' + esc(why) + '. Nothing was changed. Refund it in Stripe or move the team by hand.</p></div>';
+  for (const a of await watchRecipients(env)) await sendEmail(env, { to: a, subject: 'Payment to sort by hand: ' + (u.email || uid), html }).catch(excQuiet('co_conflict_mail', { ok: false }));
+}
+// the webhook: the subscription moved (seats, a failed payment, a cancel)
+async function planSubscriptionChanged(env, sub, type) {
+  if (!sub || !sub.id) return { ok: false };
+  const g = ((await sbRest(env, 'member_groups?meta->stripe->>subscription=eq.' + encodeURIComponent(sub.id) + '&select=*').catch(excQuiet('co_sub_group', []))) || [])[0];
+  if (!g) return { ok: false, error: 'no_group' };
+  const st = (g.meta && g.meta.stripe) || {}, now = new Date().toISOString();
+  let patch;
+  if (type === 'customer.subscription.deleted' || ['canceled', 'incomplete_expired'].includes(sub.status)) {
+    patch = { plan: 'member', status: 'active', updated_at: now, meta: Object.assign({}, g.meta || {}, { stripe: Object.assign({}, st, { ended_at: now, last_status: sub.status || 'canceled' }) }) };
+  } else {
+    const items = (sub.items && sub.items.data) || [];
+    const extra = items.filter(i => i && i.price && (st.included ? i.price.unit_amount === st.seat_cents : true)).reduce((a, i) => a + (parseInt(i.quantity, 10) || 0), 0);
+    const seats = Math.max(1, (st.included || 0) + extra);
+    patch = { status: ['active', 'trialing'].includes(sub.status) ? 'active' : 'paused', seats, updated_at: now, meta: Object.assign({}, g.meta || {}, { stripe: Object.assign({}, st, { last_status: sub.status || null }) }) };
+  }
+  await sbRest(env, 'member_groups?id=eq.' + g.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch }).catch(excQuiet('co_sub_patch'));
+  logEvent(env, 'intelligence', 'plans', 'plan_subscription', null, { group: g.id, type, status: sub.status || null, plan: patch.plan || g.plan, seats: patch.seats || g.seats });
+  return { ok: true, group: g.id, patch };
+}
+// the webhook: a top-up lands once
+async function planTopupDone(env, s) {
+  const md = s.metadata || {}, n = parseInt(md.credits, 10) || 0;
+  if (!md.group || !(n > 0)) return { ok: false };
+  const g = ((await sbRest(env, 'member_groups?id=eq.' + md.group + '&select=id,credit_mode').catch(excQuiet('co_topup_group', []))) || [])[0];
+  if (!g) return { ok: false, error: 'no_group' };
+  const put = await sbRest(env, 'credit_ledger', { method: 'POST', headers: { Prefer: 'return=minimal' },
+    body: { group_id: g.id, user_id: g.credit_mode === 'seat' ? (md.user || null) : null, period: planPeriod(), action: 'topup', credits: -n, cost_usd: null, ref: 'topup:' + s.id } }).catch(excQuiet('co_topup_put', false));
+  if (put === false) {   // already landed (a second delivery), or the write failed and Stripe should send it again
+    const had = await sbRest(env, 'credit_ledger?ref=eq.' + encodeURIComponent('topup:' + s.id) + '&action=eq.topup&select=ref').catch(excQuiet('co_topup_had', null));
+    if (had && had.length) return { ok: true, already: true, credits: n };
+    return { ok: false, retry: true, error: 'write_failed' };
+  }
+  logEvent(env, 'intelligence', 'plans', 'plan_topup', null, { group: g.id, credits: n, session: s.id });
+  return { ok: true, credits: n };
+}
+// seats on a Stripe-billed group: the seat line's quantity, prorated
+async function planSeatsSet(env, g, seats) {
+  const st = (g.meta && g.meta.stripe) || {};
+  if (g.billing !== 'stripe' || !st.subscription) return { ok: false, error: 'not_stripe', say: 'This plan is billed by the team. Ask them to change the seats.' };
+  const { seats: held, invites } = await checkoutHeld(env, g.id);
+  if (seats < held.length + invites.length) return { ok: false, error: 'seats_below_held', say: held.length + ' seats are held and ' + invites.length + ' invited; free one first.' };
+  const sub = await stripeApi(env, 'subscriptions/' + st.subscription, 'GET');
+  const items = (sub && sub.items && sub.items.data) || [];
+  const extra = Math.max(0, seats - (st.included || 0));
+  const item = items.find(i => i.price && i.price.unit_amount === st.seat_cents);
+  const up = seats > (g.seats || 0), how = up ? 'always_invoice' : 'create_prorations';   // an added seat is invoiced now, not at the next renewal
+  if (item && extra > 0) await stripeApi(env, 'subscription_items/' + item.id, 'POST', { quantity: extra, proration_behavior: how });
+  else if (item && extra === 0) await stripeApi(env, 'subscription_items/' + item.id + '?proration_behavior=create_prorations', 'DELETE');
+  else if (!item && extra > 0) { const base = items[0]; if (!base) return { ok: false, error: 'no_items' };
+    await stripeApi(env, 'subscription_items', 'POST', { subscription: sub.id, quantity: extra, proration_behavior: how, price_data: { currency: 'usd', product: base.price.product, unit_amount: st.seat_cents, recurring: { interval: base.price.recurring.interval } } }); }
+  await sbRest(env, 'member_groups?id=eq.' + g.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { seats, updated_at: new Date().toISOString() } }).catch(excQuiet('co_seats_patch'));
+  logEvent(env, 'intelligence', 'plans', 'plan_seats', null, { group: g.id, seats });
+  return { ok: true, seats };
+}
+function inviteHtml(env, from, g, token) {
+  const link = checkoutSite(env) + '/intelligence/?invite=' + token;
+  return '<div style="font-family:system-ui,Segoe UI,sans-serif;color:#111;line-height:1.6;max-width:560px">'
+    + '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#777;margin:0 0 8px">Unsurfaced Intelligence</p>'
+    + '<h2 style="margin:0 0 10px;font-size:20px">' + esc(from || 'Your team') + ' gave you a seat.</h2>'
+    + '<p style="margin:0 0 14px;color:#444">' + esc(g.name || 'Your team') + ' is on ' + esc(CHECKOUT.NAMES[g.plan] || 'Unsurfaced') + '. Your seat opens the intelligence engine: live reads, PLAY and MINE.</p>'
+    + '<p style="margin:0 0 14px"><a href="' + esc(link) + '" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-size:14px">Take your seat</a></p>'
+    + '<p style="margin:0;color:#666;font-size:13px">Sign up or sign in with this address. The link is yours alone and closes in ' + CHECKOUT.INVITE_DAYS + ' days.</p></div>';
+}
+async function planBillingRoute(path, request, env, origin, user, body) {
+  const out = (o, s) => json(o, s || 200, origin, env);
+  body = body || {};
+  if (path === '/plan/invite/accept') return out(await inviteAccept(env, user, body));
+  if (path === '/plan/checkout') {
+    if (!(await plansSelling(env))) return out({ ok: false, error: 'not_on_sale', say: 'Plans open soon. Ask the team in the meantime.' });
+    if (!env.STRIPE_SECRET_KEY) return out({ ok: false, error: 'payments_unconfigured' });
+    const { seat, group } = await checkoutGroupOf(env, user.id);
+    if (seat && seat.role !== 'owner') return out({ ok: false, error: 'seat_in_group', say: 'You hold a seat on a team plan already.' });
+    if (group && group.billing === 'stripe' && group.plan !== 'member') return out({ ok: false, error: 'already_on_a_plan', say: 'Your plan is live. Change the seats instead.' });
+    const seats = parseInt(body.seats, 10) || 1;
+    if (!(seats >= 1 && seats <= CHECKOUT.SELF_MAX)) return out({ ok: false, error: 'bad_seats', say: 'One to ' + CHECKOUT.SELF_MAX + ' seats here; more through the team.' });
+    const p = checkoutParams({ plan: 'engine', cycle: body.cycle === 'year' ? 'year' : 'month', seats, user: user.id, email: user.email, site: checkoutSite(env), by: 'self' });
+    const sess = await stripeApi(env, 'checkout/sessions', 'POST', p);
+    logEvent(env, 'intelligence', 'plans', 'plan_checkout_start', null, { user: user.id, seats, cycle: p.metadata.cycle });
+    return out({ ok: true, url: sess.url });
+  }
+  const { seat, group } = await checkoutGroupOf(env, user.id);
+  if (path === '/plan/topup') {
+    if (!(await plansSelling(env))) return out({ ok: false, error: 'not_on_sale', say: 'Top-ups open soon. Ask the team in the meantime.' });
+    if (!group || group.plan === 'member' || group.status !== 'active') return out({ ok: false, error: 'plan_required', say: 'Top-ups are for a live plan.' });
+    if (!env.STRIPE_SECRET_KEY) return out({ ok: false, error: 'payments_unconfigured' });
+    const md = { kind: 'topup', group: group.id, user: user.id, credits: String(CHECKOUT.TOPUP.credits) };
+    const sess = await stripeApi(env, 'checkout/sessions', 'POST', { mode: 'payment', line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: CHECKOUT.TOPUP.cents, product_data: { name: CHECKOUT.TOPUP.credits + ' Unsurfaced credits for this month' } } }],
+      metadata: md, payment_intent_data: { metadata: md }, client_reference_id: user.id, customer_email: user.email || undefined, success_url: checkoutSite(env) + '/intelligence/?topup=done', cancel_url: checkoutSite(env) + '/intelligence/?topup=cancel' });
+    return out({ ok: true, url: sess.url });
+  }
+  if (!seat || seat.role !== 'owner' || !group) return out({ ok: false, error: 'owner_only', say: 'The team\'s owner manages seats and invites.' });
+  if (path === '/plan/invites') {
+    const { seats, invites } = await checkoutHeld(env, group.id);
+    const ids = seats.map(x => x.user_id).filter(Boolean);
+    const people = ids.length ? ((await sbRest(env, 'app_user?id=in.(' + ids.join(',') + ')&select=id,email,name').catch(excQuiet('co_people', []))) || []) : [];
+    const byId = new Map(people.map(p => [p.id, p]));
+    return out({ ok: true, seats: group.seats, held: seats.length, members: seats.map(x => ({ email: (byId.get(x.user_id) || {}).email || null, name: (byId.get(x.user_id) || {}).name || null, role: x.role })),
+      invites: invites.map(i => ({ id: i.id, email: i.email, expires_at: i.expires_at })), billing: group.billing, plan: group.plan, cycle: ((group.meta || {}).stripe || {}).cycle || null });
+  }
+  if (path === '/plan/invite') return out(await inviteCreate(env, user, group, body));
+  if (path === '/plan/invite/revoke') {
+    const id = String(body.id || '');
+    if (!/^[0-9a-f-]{36}$/.test(id)) return out({ ok: false, error: 'bad_id' });
+    await sbRest(env, 'group_invites?id=eq.' + id + '&group_id=eq.' + group.id + '&accepted_at=is.null', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { revoked_at: new Date().toISOString() } }).catch(excQuiet('co_revoke'));
+    logEvent(env, 'intelligence', 'plans', 'invite_revoke', null, { group: group.id, id });
+    return out({ ok: true, revoked: id });
+  }
+  if (path === '/plan/member/remove') {
+    const who = await planUser(env, body.email);
+    const s2 = who ? await planSeatOf(env, who.id) : null;
+    if (!who || !s2 || s2.group_id !== group.id) return out({ ok: false, error: 'not_on_team' });
+    if (s2.role === 'owner') return out({ ok: false, error: 'owner_seat', say: 'The owner holds the team.' });
+    await sbRest(env, 'group_seats?user_id=eq.' + who.id + '&group_id=eq.' + group.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('co_remove'));
+    // a door the seat opened closes with it; a door the house opened by hand stays open
+    const au = ((await sbRest(env, 'app_user?id=eq.' + who.id + '&select=status,approved_via').catch(excQuiet('co_remove_who', []))) || [])[0] || {};
+    const back = au.approved_via === 'seat' && au.status === 'approved';
+    if (back) await sbRest(env, 'app_user?id=eq.' + who.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: 'pending', approved_via: null } }).catch(excQuiet('co_remove_door'));
+    logEvent(env, 'intelligence', 'plans', 'seat_remove', null, { group: group.id, email: who.email, by: 'owner', door_closed: back });
+    return out({ ok: true, removed: who.email, door_closed: back });
+  }
+  if (path === '/plan/seats') {
+    const n = parseInt(body.seats, 10);
+    if (!(n >= 1 && n <= PLANS.MAX_SEATS)) return out({ ok: false, error: 'bad_seats' });
+    if (group.plan !== 'engine') return out({ ok: false, error: 'team_billed', say: 'Partner and Retainer seats change through the team.' });
+    try { return out(await planSeatsSet(env, group, n)); } catch (e) { return out({ ok: false, error: 'stripe', say: String((e && e.message) || 'Stripe refused the change').slice(0, 160) }); }
+  }
+  return out({ ok: false, error: 'not_found' }, 404);
+}
+async function inviteCreate(env, user, g, body) {
+  const email = String((body && body.email) || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return { ok: false, error: 'bad_email', say: 'That is not an email address.' };
+  if (g.plan === 'member' || g.status !== 'active') return { ok: false, error: 'plan_required', say: 'Invites open with a live plan.' };
+  const { seats, invites } = await checkoutHeld(env, g.id);
+  const same = invites.filter(i => String(i.email).toLowerCase() === email);
+  const holder = await planUser(env, email);
+  if (holder && seats.some(s => s.user_id === holder.id)) return { ok: false, error: 'already_on_team', say: email + ' already holds a seat.' };
+  if (seats.length + invites.length - same.length >= g.seats) return { ok: false, error: 'no_free_seat', say: 'All ' + g.seats + ' seats are taken or invited. Add a seat first.' };
+  const capKey = 'invites:' + g.id + ':' + new Date().toISOString().slice(0, 10);
+  const sent = env.RATE_LIMIT ? parseInt(await env.RATE_LIMIT.get(capKey).catch(excQuiet('co_cap', null)), 10) || 0 : 0;
+  if (sent >= CHECKOUT.INVITES_A_DAY) return { ok: false, error: 'invite_limit', say: CHECKOUT.INVITES_A_DAY + ' invites a day per team. The rest can go tomorrow.' };
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(capKey, String(sent + 1), { expirationTtl: 26 * 3600 }).catch(excQuiet('co_cap_put'));
+  for (const i of same) await sbRest(env, 'group_invites?id=eq.' + i.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { revoked_at: new Date().toISOString() } }).catch(excQuiet('co_reinvite'));
+  const bytes = new Uint8Array(CHECKOUT.TOKEN_BYTES); crypto.getRandomValues(bytes);
+  const token = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+  const expires = new Date(Date.now() + CHECKOUT.INVITE_DAYS * 864e5).toISOString();
+  const row = ((await sbRest(env, 'group_invites', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { group_id: g.id, email, token_hash: await sha256hex(token), invited_by: user.id, expires_at: expires } }).catch(excQuiet('co_invite_put', null))) || [])[0];
+  if (!row) return { ok: false, error: 'write_failed', say: 'The invite did not save. Try again in a minute.' };
+  const m = await sendEmail(env, { to: email, subject: (user.email || 'Your team') + ' gave you a seat on Unsurfaced', html: inviteHtml(env, user.email, g, token), reply_to: user.email || undefined }).catch(excQuiet('co_invite_mail', { ok: false }));
+  logEvent(env, 'intelligence', 'plans', 'invite_send', null, { group: g.id, email, mailed: !!(m && m.ok), again: same.length > 0 });
+  return { ok: true, invite: { id: row.id, email, expires_at: expires }, mailed: !!(m && m.ok) };
+}
+async function inviteAccept(env, user, body) {
+  const token = String((body && body.token) || '');
+  if (!/^[a-f0-9]{48}$/.test(token)) return { ok: false, error: 'bad_token', say: 'This invite link is not whole. Open it again from the email.' };
+  const inv = ((await sbRest(env, 'group_invites?token_hash=eq.' + (await sha256hex(token)) + '&select=*').catch(excQuiet('co_inv_read', []))) || [])[0];
+  if (!inv) return { ok: false, error: 'not_found', say: 'This invite is not on record. Ask your team for a new one.' };
+  if (inv.accepted_at) return inv.accepted_by === user.id ? { ok: true, already: true } : { ok: false, error: 'used', say: 'This invite was already taken.' };
+  if (inv.revoked_at) return { ok: false, error: 'revoked', say: 'This invite was withdrawn. Ask your team for a new one.' };
+  if (Date.parse(inv.expires_at) < Date.now()) return { ok: false, error: 'expired', say: 'This invite has closed. Ask your team for a new one.' };
+  const mine = String(user.email || '').toLowerCase(), theirs = String(inv.email || '').toLowerCase();
+  if (!mine || mine !== theirs) return { ok: false, error: 'email_mismatch', say: 'This invite was sent to ' + theirs.replace(/^(.).*(@.*)$/, '$1***$2') + '. Sign in with that address.' };
+  const g = ((await sbRest(env, 'member_groups?id=eq.' + inv.group_id + '&select=*').catch(excQuiet('co_inv_group', []))) || [])[0];
+  if (!g || g.plan === 'member' || g.status !== 'active') return { ok: false, error: 'plan_required', say: 'The team\'s plan is not live. Ask the team\'s owner.' };
+  const me = ((await sbRest(env, 'app_user?id=eq.' + user.id + '&select=id,email,status,role,name,approved_via').catch(excQuiet('co_inv_me', []))) || [])[0] || null;
+  if (me && me.status === 'revoked') return { ok: false, error: 'door_closed', say: 'This account cannot take a seat. Ask the team.' };   // a door the house closed stays closed
+  const mineSeat = await planSeatOf(env, user.id);
+  if (mineSeat && mineSeat.group_id === g.id) { await sbRest(env, 'group_invites?id=eq.' + inv.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { accepted_at: new Date().toISOString(), accepted_by: user.id } }).catch(excQuiet('co_inv_mark0')); return { ok: true, already: true, group: g.name }; }
+  // the seat is taken in one locked step (seat_take, 0050): the count, the invite and the seat together
+  const took = await sbRest(env, 'rpc/seat_take', { method: 'POST', body: { p_group: g.id, p_user: user.id, p_invite: inv.id } }).catch(excQuiet('co_seat_take', null));
+  if (!took || !took.ok) { const why = (took && took.error) || 'write_failed';
+    return { ok: false, error: why, say: { seat_elsewhere: 'You hold a seat on another team already.', no_free_seat: 'Every seat on the team is taken. Ask the team\'s owner to add one.', invite_closed: 'This invite has closed. Ask your team for a new one.', plan_required: 'The team\'s plan is not live. Ask the team\'s owner.' }[why] || 'The seat did not save. Try the link again in a minute.' }; }
+  // a paid seat is the approval (Oct 14): in at the door with the welcome, no knock; marked so the door closes if the seat is taken back
+  let opened = false;
+  if (!me) { await sbRest(env, 'app_user', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: { id: user.id, email: user.email || null, status: 'approved', approved_at: new Date().toISOString(), approved_via: 'seat' } }).catch(excQuiet('co_inv_door')); opened = true; }
+  else if ((me.status || 'pending') !== 'approved' && me.role !== 'admin') { await sbRest(env, 'app_user?id=eq.' + user.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: 'approved', approved_at: new Date().toISOString(), approved_via: 'seat' } }).catch(excQuiet('co_inv_door2')); opened = true; }
+  if (opened && user.email) await sendEmail(env, { to: user.email, subject: 'The door is open', html: accessWelcomeHtml(env, me || {}) }).catch(excQuiet('co_inv_welcome', { ok: false }));
+  logEvent(env, 'intelligence', 'plans', 'invite_accept', null, { group: g.id, user: user.id, opened });
+  const owner = ((await sbRest(env, 'app_user?id=eq.' + g.owner_id + '&select=email').catch(excQuiet('co_inv_owner', []))) || [])[0];
+  if (owner && owner.email) await sendEmail(env, { to: owner.email, subject: (user.email || 'Your teammate') + ' took their seat', html: '<div style="font-family:system-ui;line-height:1.6"><p>' + esc(user.email || 'Your teammate') + ' joined ' + esc(g.name || 'your team') + ' on Unsurfaced.</p></div>' }).catch(excQuiet('co_inv_tell', { ok: false }));
+  return { ok: true, group: g.name, plan: g.plan, approved: true, opened };
+}
+async function checkoutDesk(env, body) {   // {run:"checkout", email, plan, seats, cycle, base}: a link to send
+  const u = await planUser(env, body.email);
+  if (!u) return { ok: false, error: 'no_such_user', say: 'the buyer signs up first; then {run:"checkout", email:"...", plan:"partner", seats:7}' };
+  if (!env.STRIPE_SECRET_KEY) return { ok: false, error: 'payments_unconfigured' };
+  const { seat } = await checkoutGroupOf(env, u.id);
+  if (seat && seat.role !== 'owner') return { ok: false, error: 'seat_in_group', say: u.email + ' holds a seat on another team' };
+  let p;
+  try { p = checkoutParams({ plan: String(body.plan || ''), cycle: String(body.cycle || ''), seats: body.seats || 1, base_cents: body.base != null ? Math.round(Number(body.base) * 100) : null, user: u.id, email: u.email, site: checkoutSite(env), by: 'desk' }); }
+  catch (e) { return { ok: false, error: String(e.message), say: e.message === 'retainer_base' ? 'name the Retainer base in dollars a month: base:12000' : 'plan is engine, partner or retainer; seats 1 to ' + PLANS.MAX_SEATS }; }
+  const sess = await stripeApi(env, 'checkout/sessions', 'POST', p);
+  const total = p.line_items.reduce((a, l) => a + l.price_data.unit_amount * l.quantity, 0);
+  logEvent(env, 'intelligence', 'plans', 'plan_checkout_link', null, { email: u.email, plan: p.metadata.plan, seats: p.metadata.seats, cycle: p.metadata.cycle });
+  return { ok: true, email: u.email, plan: p.metadata.plan, seats: +p.metadata.seats, cycle: p.metadata.cycle, total_usd: total / 100, per: p.metadata.cycle, url: sess.url, say: 'send this link to ' + u.email + '; the plan goes live when they pay' };
+}
+async function seatsDesk(env, body) {   // {run:"seats", email, seats}: change a Stripe-billed team's seats
+  const u = await planUser(env, body.email);
+  if (!u) return { ok: false, error: 'no_such_user' };
+  const { seat, group } = await checkoutGroupOf(env, u.id);
+  if (!seat || seat.role !== 'owner' || !group) return { ok: false, error: 'no_group', say: 'name the team by its owner' };
+  const n = parseInt(body.seats, 10);
+  if (!(n >= 1 && n <= PLANS.MAX_SEATS)) return { ok: false, error: 'bad_seats' };
+  if (group.billing !== 'stripe') return planDesk(env, { email: u.email, seats: n });
+  try { return await planSeatsSet(env, group, n); } catch (e) { return { ok: false, error: 'stripe', say: String((e && e.message) || '').slice(0, 160) }; }
 }
 const ACCESS = { KEY: 'knock:', TTL: 30 * 86400, WAIT_H: 24, MAX_PENDING: 50, ACTIONS: ['approve', 'hold', 'revoke'] };   // SEAM:ACCESS_KNOCK: the door's numbers
 async function watchHealth(env) {
@@ -10217,11 +10637,96 @@ async function roleImplicationsRoute(request, env, origin) {
   const user = await authenticate(request, env);
   if (!user) return json({ ok: false, error: 'auth_required' }, 401, origin, env);
   const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
+  if (!/^[0-9a-f-]{36}$/.test(id)) return json({ ok: false, error: 'not_found' }, 200, origin, env);   // checked before it reaches the database
   const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&status=in.(ready,reused)&select=id,frame_key,night,status,frame,measures,read,evidence,meta').catch(excQuiet('roleimp_rows', []))) || [];
-  if (!/^[0-9a-f-]{36}$/.test(id) || !rows[0] || !rows[0].read) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  if (!rows[0] || !rows[0].read) return json({ ok: false, error: 'not_found' }, 200, origin, env);
   const prof = await profileLoad(env, user);
+  const want = PROFILE.ROLES.includes(prof.role_title) ? prof.role_title : (prof.role_title ? 'other' : 'strategy');
+  // SEAM:POPOUT (EX47): the lines written overnight are served as they are; opening never calls a model
+  const pick = popoutPick(rows[0].meta && rows[0].meta.roles && rows[0].meta.roles.by_role, want);
+  if (pick) return json(Object.assign({ id, ok: true, stored: true }, pick), 200, origin, env);
+  if (!(await popoutLiveAllowed(env, user.id))) return json({ id, ok: false, error: 'not_written', role: want, say: 'The implications for your role are written overnight. They will be here tomorrow.' }, 200, origin, env);
   const tile = Object.assign(doorTile(rows[0]), { brief: rows[0].read.brief || null });
-  return json(Object.assign({ id }, await roleImplications(env, tile, prof.role_title || 'strategy')), 200, origin, env);
+  return json(Object.assign({ id }, await roleImplications(env, tile, want)), 200, origin, env);
+}
+/* ═══ SEAM:POPOUT (EX47): the pop-out is written before anyone opens it. Everything under a deployed insight is read from the database
+ * except the implications for the reader's role, which used to be asked of Haiku on open. popoutPass writes them for every role the
+ * house's readers hold (and "other", always) in one call an insight, onto door_reads.meta.roles, in the 30-minute slice once the night's
+ * readings land; at most POPOUT.PER_RUN insights a slice, only board insights whose roles are not written; a role new among readers is
+ * asked alone for the insights already on the board. The route serves the reader's role, else "other". Opening never spends. ═══ */
+const POPOUT = { REV: 'p1', PER_RUN: 8, MAX_TOKENS: 2600, TIMEOUT_MS: 45000, ALWAYS: ['other'] };
+const POPOUT_SYS = 'You write for professionals reading one cultural-intelligence insight. For each reader the prompt names by key, write three implications. Return JSON only: {"roles":{"<key>":[3 of {"title":"a verb-first line under 10 words","body":"one or two sentences, under 45 words, naming what this reader should do, decide or watch this week, in their role; concrete, on the insight, no slogans, no new figures"}]}}. Use exactly the keys given, each once. No em dash.';
+function popoutPick(stored, want) {
+  if (!stored || typeof stored !== 'object') return null;
+  for (const k of [want, 'other', 'strategy']) if (Array.isArray(stored[k]) && stored[k].length) return { role: k, implications: stored[k], fallback: k !== want };
+  return null;
+}
+async function popoutLiveAllowed(env, uid) {
+  if (!(await plansEnforced(env))) return true;
+  if (await callerIsAdmin(env, uid)) return true;
+  const st = await planState(env, uid);
+  return st.plan !== 'member' && st.status === 'active';
+}
+async function popoutRolesWanted(env) {
+  const rows = (await sbRest(env, 'client_profile?select=role_title&limit=5000').catch(excQuiet('popout_roles', []))) || [];
+  const set = new Set(POPOUT.ALWAYS);
+  for (const r of rows) if (r && PROFILE.ROLES.includes(r.role_title)) set.add(r.role_title);
+  return PROFILE.ROLES.filter(r => set.has(r));
+}
+function popoutClean(j, roles) {
+  const src = (j && j.roles && typeof j.roles === 'object') ? j.roles : {}, out = {};
+  for (const k of roles) {
+    const imps = (Array.isArray(src[k]) ? src[k] : []).slice(0, 3).map(x => ({ title: String((x && x.title) || '').replace(/\u2014/g, ',').trim().slice(0, 90), body: String((x && x.body) || '').replace(/\u2014/g, ',').trim().slice(0, 320) })).filter(x => x.title && x.body);
+    if (imps.length) out[k] = imps;
+  }
+  return out;
+}
+function popoutPrompt(tile, roles) {
+  const f = tile.frame || {};
+  return 'READERS (key: who they are):\n' + roles.map(k => k + ': ' + ROLE_WORDS[k]).join('\n') +
+    '\n\nINSIGHT (deployed ' + (tile.deployed || '') + '): ' + String(tile.claim || tile.title || '') + '\nTHE MOVE: ' + String(tile.move || '') +
+    '\nFRAME: ' + [f.entity, f.category, f.audience, f.market].filter(Boolean).join(' / ') + (Array.isArray(f.competitors) && f.competitors.length ? ' vs ' + f.competitors.slice(0, 4).join(', ') : '') +
+    (tile.question ? '\nQUESTION IT ANSWERS: ' + tile.question : '') + (tile.brief ? '\nINTERPRETATION: ' + String(tile.brief).slice(0, 700) : '');
+}
+async function popoutWrite(env, row, roles) {
+  const tile = Object.assign(doorTile(row), { brief: (row.read && row.read.brief) || null });
+  const r = await callClaude(env, 'frame', { system: POPOUT_SYS, cache: true, prompt: popoutPrompt(tile, roles), max_tokens: POPOUT.MAX_TOKENS, temperature: 0, kind: 'popout', timeout_ms: POPOUT.TIMEOUT_MS, meta: { surface: 'record', roles: roles.length } });
+  if (!r || !r.ok) return { ok: false, error: String((r && r.error) || 'none') };
+  const by = popoutClean(extractJson(r.text || ''), roles);
+  return { ok: Object.keys(by).length > 0, by_role: by, cost_usd: r.cost_usd || 0 };
+}
+async function popoutPass(env, opts) {
+  opts = opts || {};
+  const set = await doorSet(env).catch(excQuiet('popout_set', null));
+  const ids = [...new Set(((set && set.tiles) || []).map(t => t && t.id).filter(id => /^[0-9a-f-]{36}$/.test(String(id || ''))))];
+  const out = { tiles: ids.length, missing: 0, written: 0, failed: 0, cost_usd: 0, roles: [] };
+  if (!ids.length) return out;
+  const roles = await popoutRolesWanted(env); out.roles = roles;
+  const have = (await sbRest(env, 'door_reads?id=in.(' + ids.join(',') + ')&select=id,keys:meta->roles->keys,rev:meta->roles->>rev').catch(excQuiet('popout_have', []))) || [];
+  const need = [];
+  for (const h of have) {
+    const keys = Array.isArray(h.keys) ? h.keys : [];
+    const ask = opts.force || h.rev !== POPOUT.REV ? roles : roles.filter(k => !keys.includes(k));
+    if (ask.length) need.push({ id: h.id, ask, whole: ask === roles });
+  }
+  out.missing = need.length;
+  for (const n of need.slice(0, opts.max || POPOUT.PER_RUN)) {
+    const row = ((await sbRest(env, 'door_reads?id=eq.' + n.id + '&select=id,frame_key,night,status,frame,measures,read,evidence,meta').catch(excQuiet('popout_row', []))) || [])[0];
+    if (!row || !row.read) continue;
+    const w = await popoutWrite(env, row, n.ask);
+    out.cost_usd += Number(w.cost_usd) || 0;
+    if (!w.ok) { out.failed++; continue; }
+    const prior = n.whole ? {} : ((row.meta && row.meta.roles && row.meta.roles.by_role) || {});
+    const by_role = Object.assign({}, prior, w.by_role);
+    // a role the model left out is still marked asked, so it is not asked again every slice; the route falls back to other for it
+    const keys = [...new Set((n.whole ? [] : ((row.meta && row.meta.roles && row.meta.roles.keys) || [])).concat(Object.keys(by_role), n.ask))];
+    const meta = Object.assign({}, row.meta || {}, { roles: { rev: POPOUT.REV, at: new Date().toISOString(), keys, by_role } });
+    const put = await sbRest(env, 'door_reads?id=eq.' + n.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta } }).catch(excQuiet('popout_patch', false));
+    if (put === false) out.failed++; else out.written++;
+  }
+  out.cost_usd = +out.cost_usd.toFixed(4);
+  if (out.written || out.failed) logEvent(env, 'intelligence', 'popout', 'popout_pass', null, out);
+  return out;
 }
 /* ═══ SEAM:READER_MARKS: a reader marks a deployed insight held, useful or wrong. One mark per reader per insight; the counts are public
  * with the insight; the marks feed the bench's human score and the record's own honesty. ═══ */
