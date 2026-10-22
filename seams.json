@@ -1591,6 +1591,10 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:CHECKOUT",
    "purpose": "YOUR PLAN in the room: the plan, the credits and the reset date; the owner's seats, teammates, invites and seat count; Engine and top-up buttons when the house sells; an invite link kept from the URL and taken the moment the reader is signed in, before the door is checked"
+  },
+  "SEAM:GME_BROOKS": {
+   "file": "graymatterexperience/index.html",
+   "purpose": "the Gray Matter Experience x Brooks College Prep page (Oct 2026): five conversation videos in a 3x2 grid that play in place, the host card for Britney Robbins, the From the room gallery (photos by Nick Moody), deep links ?v= and ?p=, analytics events to dataLayer; static, no worker route, no model"
   }
  },
  "planned": [
