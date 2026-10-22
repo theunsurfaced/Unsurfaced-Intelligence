@@ -296,6 +296,7 @@ export default {
         case '/reads/stand':         // SEAM:REPORT_STAND: stage a report on the stand
         case '/reads/shelf':         // SEAM:REPORT_STAND: the shelf's state; send live, take off
         case '/reads/weekly-stand':  // SEAM:READ_SWEEP: a recut weekly replaces its issue on the stand
+        case '/reads/weekly-cover':  // SEAM:WEEKLY_COVER: re-render an issue's cover from its cut
         case '/reads/sweep':         // SEAM:READ_SWEEP: recut every existing weekly and monthly under the Method, then apply
         case '/reads/proof':         // SEAM:READ_PROOF recut
         case '/reads/commission':    // SEAM:READ_RECON: commission a RECON from a brief
@@ -15257,6 +15258,44 @@ function wkCoverStory(read) {
   for (const p of main) { for (const e of (p && p.evidence) || []) if (ok(e)) return String(e); }
   return null;
 }
+/* SEAM:WEEKLY_COVER: the stand's cover is the issue's own first page, the way the PDF prints it: the mark, the week, the
+ * headline, the standfirst and the four counts over the lead photograph. Browser Rendering screenshots the print page's
+ * cover section at letter size (8.5 x 11 in at 96 px, twice the pixels) with the print rules applied, through the same
+ * ticket the PDF uses, and the JPEG is kept in R2 under a fresh key so no cache holds the old cover. */
+const WK_COVER = { W: 816, H: 1056, SCALE: 2, QUALITY: 86, MIN_BYTES: 20000,
+  CSS: '.bar,.social,.noprint{display:none!important}.doc{max-width:none!important;margin:0!important}.page{margin:0!important;box-shadow:none!important}.page.cover{min-height:11in!important}' };
+async function wkCoverRender(env, row, issueNo) {
+  if (!env.CF_ACCOUNT_ID || !env.CF_BROWSER_TOKEN) throw new Error('print_not_configured: set CF_ACCOUNT_ID and CF_BROWSER_TOKEN');
+  if (!env.MEDIA || !env.RATE_LIMIT) throw new Error('print_needs_media_and_kv');
+  const rt = readHex(crypto.getRandomValues(new Uint8Array(32)));
+  await env.RATE_LIMIT.put('rpt:' + rt, String(row.id), { expirationTtl: READ_PRINT.TICKET_TTL });
+  let res, img;
+  try {
+    res = await fetch('https://api.cloudflare.com/client/v4/accounts/' + env.CF_ACCOUNT_ID + '/browser-rendering/screenshot', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + env.CF_BROWSER_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: READ_PRINT.PAGE + '?id=' + row.id + '&rt=' + rt,
+        gotoOptions: { waitUntil: 'domcontentloaded', timeout: READ_PRINT.LOAD_MS },
+        waitForSelector: { selector: 'html[data-print-ready="1"]', timeout: READ_PRINT.WAIT_MS },
+        viewport: { width: WK_COVER.W, height: WK_COVER.H, deviceScaleFactor: WK_COVER.SCALE },
+        addStyleTag: [{ content: WK_COVER.CSS }],
+        selector: 'section.page.cover',
+        screenshotOptions: { type: 'jpeg', quality: WK_COVER.QUALITY } })
+    });
+    img = await res.arrayBuffer();
+  } finally { await env.RATE_LIMIT.delete('rpt:' + rt); }
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  const head = new Uint8Array(img.slice(0, 3));
+  const jpeg = head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF;
+  if (!res.ok || !(jpeg || /^image\//.test(type)) || img.byteLength < WK_COVER.MIN_BYTES) {
+    console.log('wk_cover_render_failed', row.id, res.status, type, img.byteLength);
+    throw new Error('cover_render_failed ' + res.status + ' ' + type.slice(0, 40));
+  }
+  const key = 'weekly/cover-' + String(issueNo).padStart(3, '0') + '-p' + readHex(crypto.getRandomValues(new Uint8Array(4))) + '.jpg';
+  await env.MEDIA.put(key, img, { httpMetadata: { contentType: 'image/jpeg' } });
+  return key;
+}
 /* SEAM:WEEKLY_SHELF: put a ready weekly on the stand as the next issue. The week may not already be on the stand (that is a
  * replace, /reads/weekly-stand {id, issue_no}); the PDF is rendered or kept and written as weekly/issue-NNN.pdf; the cover is
  * the lead story's photograph through the relay, kept in R2 as weekly/cover-NNN; the shelf row carries the read's counts. */
@@ -15275,7 +15314,13 @@ async function wkStandNew(env, row, origin, user) {
   await env.MEDIA.put('weekly/issue-' + pad3 + '.pdf', bytes, { httpMetadata: { contentType: 'application/pdf' } });
   let coverKey = null, coverCredit = null;
   const sid = wkCoverStory(row.read);
-  if (sid) {
+  try { coverKey = await wkCoverRender(env, row, n); }   // SEAM:WEEKLY_COVER: the issue's own first page
+  catch (e) { console.log('wk_stand_cover_page', String(e && e.message).slice(0, 80)); }
+  if (sid && coverKey) {   // the credit stays the lead photograph's outlet
+    const it = await sbRest(env, 'edition_items?id=eq.' + sid.slice(1) + '&select=source_name&limit=1') || [];
+    coverCredit = it[0] && it[0].source_name ? String(it[0].source_name).slice(0, 80) : null;
+  }
+  if (sid && !coverKey) {   // fallback: the raw photograph, only when the page could not be rendered
     try {
       const r = await readImageRelay('/img/s/' + sid.slice(1), env);
       const type = (r.headers.get('content-type') || '').toLowerCase();
@@ -15295,7 +15340,7 @@ async function wkStandNew(env, row, origin, user) {
   if (!back[0]) return json({ ok: false, error: 'shelf_insert_failed' }, 200, origin, env);
   await readPatch(env, row.id, { status: 'published', meta: Object.assign({}, row.meta || {}, { published_by: user.id, published_at: new Date().toISOString(), weekly_issue: n }) });
   logEvent(env, 'intelligence', 'reads', 'weekly_stand_new', null, { id: row.id, issue_no: n, cover: !!coverKey, by: user.id });
-  return json({ ok: true, id: row.id, issue_no: n, pages: issue.page_count, bytes: issue.byte_size, cover: !!coverKey }, 200, origin, env);
+  return json({ ok: true, id: row.id, issue_no: n, pages: issue.page_count, bytes: issue.byte_size, cover: !!coverKey, cover_page: /-p[0-9a-f]{8}\.jpg$/.test(coverKey || '') }, 200, origin, env);
 }
 /* SEAM:READ_PRUNE PURE: may this version go? Given the row, every version of its window (any order) and the id of the cut
  * the stand carries for that window (readPruneStandId). A published cut that a newer cut has replaced on the stand is an old
@@ -15962,9 +16007,28 @@ async function readRoute(path, body, env, origin, user) {
     }
     return json({ ok: false, error: 'bad_run' }, 200, origin, env);
   }
+  if (path === '/reads/weekly-cover') {
+    // SEAM:WEEKLY_COVER: re-render the cover of an issue already on the stand from the cut the stand carries. Only the
+    // cover key moves; the PDF, the headline and the counts stay as they are.
+    const row = await readRow(env, body.id);
+    if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (row.kind !== 'weekly') return json({ ok: false, error: 'not_a_weekly' }, 200, origin, env);
+    const n = Number.parseInt(body.issue_no, 10);
+    if (!Number.isInteger(n) || n < 1) return json({ ok: false, error: 'bad_issue' }, 200, origin, env);
+    const issues = await sbRest(env, 'weekly_issues?issue_no=eq.' + n + '&select=issue_no,week_start&limit=1') || [];
+    if (!issues[0]) return json({ ok: false, error: 'issue_not_on_stand' }, 200, origin, env);
+    if (issues[0].week_start !== row.window_start) return json({ ok: false, error: 'not_this_week' }, 200, origin, env);
+    let key;
+    try { key = await wkCoverRender(env, row, n); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e).slice(0, 200) }, 200, origin, env); }
+    await sbRest(env, 'weekly_issues?issue_no=eq.' + n, { method: 'PATCH', body: { cover_key: key } });
+    logEvent(env, 'intelligence', 'reads', 'weekly_cover', null, { id: row.id, issue_no: n, key, by: user.id });
+    return json({ ok: true, issue_no: n, cover_key: key }, 200, origin, env);
+  }
   if (path === '/reads/weekly-stand') {
     // SEAM:READ_SWEEP: a recut weekly replaces its own issue on the stand: the PDF is rendered (or kept) and written over
-    // weekly/issue-NNN.pdf, and the shelf row's headline, standfirst, pages and size follow the read. The cover stays.
+    // weekly/issue-NNN.pdf, and the shelf row's headline, standfirst, pages and size follow the read. The cover follows
+    // the cut too (SEAM:WEEKLY_COVER): its first page is rendered again; when that fails the old cover stays.
     const row = await readRow(env, body.id);
     if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
     if (row.kind !== 'weekly') return json({ ok: false, error: 'not_a_weekly' }, 200, origin, env);
@@ -15984,10 +16048,12 @@ async function readRoute(path, body, env, origin, user) {
     const key = issues[0].r2_key || ('weekly/issue-' + String(n).padStart(3, '0') + '.pdf');
     await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'application/pdf' } });
     const patch = { lead: String(row.read.title || '').slice(0, 300), standfirst: String(row.read.thesis || '').slice(0, 600), page_count: rsPdfPages(bytes), byte_size: bytes.byteLength, r2_key: key };
+    try { patch.cover_key = await wkCoverRender(env, row, n); }   // SEAM:WEEKLY_COVER
+    catch (e) { console.log('wk_recut_cover', String(e && e.message).slice(0, 80)); }
     await sbRest(env, 'weekly_issues?issue_no=eq.' + n, { method: 'PATCH', body: patch });
     if (row.status !== 'published') await readPatch(env, row.id, { status: 'published', meta: Object.assign({}, row.meta || {}, { published_by: user.id, published_at: new Date().toISOString(), weekly_issue: n }) });
     logEvent(env, 'intelligence', 'reads', 'weekly_recut', null, { id: row.id, issue_no: n, bytes: bytes.byteLength, by: user.id });
-    return json({ ok: true, issue_no: n, key, bytes: bytes.byteLength, pages: patch.page_count, fresh: out.fresh }, 200, origin, env);
+    return json({ ok: true, issue_no: n, key, bytes: bytes.byteLength, pages: patch.page_count, fresh: out.fresh, cover: !!patch.cover_key }, 200, origin, env);
   }
   if (path === '/reads/shelf') {
     // SEAM:REPORT_STAND: the switch. {issue_no} reads the shelf row; {issue_no, status: published|draft|withdrawn} sets it.

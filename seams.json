@@ -1595,6 +1595,15 @@
   "SEAM:GME_BROOKS": {
    "file": "graymatterexperience/index.html",
    "purpose": "the Gray Matter Experience x Brooks College Prep page (Oct 2026): five conversation videos in a 3x2 grid that play in place, the host card for Britney Robbins, the From the room gallery (photos by Nick Moody), deep links ?v= and ?p=, analytics events to dataLayer; static, no worker route, no model"
+  },
+  "SEAM:WEEKLY_COVER": {
+   "file": "worker/src/index.js",
+   "purpose": "the stand's cover is the issue's own first page (Oct 22, 2026): wkCoverRender screenshots the print page's cover section through Browser Rendering (letter, 816 x 1056 at 2x, JPEG, print rules added as a style tag, the PDF's ticket) and keeps it in R2 as weekly/cover-NNN-p<8 hex>.jpg; wkStandNew uses it for a new issue with the lead photograph only as the fallback; the replace door renders it again so the cover follows the cut; POST /reads/weekly-cover {id, issue_no} (admin) re-renders the cover of an issue on the stand from the cut whose week it is and moves only cover_key; no model"
+  },
+  "SEAM:WEEKLY_COVER@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:WEEKLY_COVER",
+   "purpose": "a weekly already on the stand offers Render issue NNN's cover from this cut; a new issue says whether its cover is the page or the fallback photograph"
   }
  },
  "planned": [
