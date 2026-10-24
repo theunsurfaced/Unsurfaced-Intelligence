@@ -562,6 +562,7 @@
     var ids = Object.keys(RC_ALL).filter(function (s) { return /^S\d+$/.test(s) && RC_ALL[s] && RC_ALL[s].has_image; }).slice(0, 24);
     var html = '<div class="pf-head">THE SLOTS</div>' +
       '<div class="sp-house">' + esc(story) + " &nbsp;·&nbsp; house make this month $" + Number(d.house.used_usd || 0).toFixed(2) + " of $" + Number(d.house.cap_usd || 0).toFixed(0) + (d.make && !d.make.configured ? " · the make service is not configured (FAL_KEY)" : "") + "</div>" +
+      (note ? '<div class="sp-note" style="margin:6px 0 10px;padding:8px 10px;border-left:3px solid #C41230;background:#fff;opacity:1">' + esc(note) + "</div>" : "") +   /* ED1b: the house's reply, where it is seen */
       '<div class="sp-paths">' + paths + "</div>" +
       '<div><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">NOW</b> &nbsp;' + cur + (slot ? ' &nbsp;<button class="btn" id="sp-clear">Clear the slot</button>' : "") + "</div>" +
       '<div class="sp-brief">' +
@@ -581,7 +582,7 @@
       (ids.length ? '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">A PHOTOGRAPH FROM THE STORIES</b><div class="sp-note">Only when the image itself is what the finding is about. Pick one, then write the sentence in the read that makes it so.</div><div class="sp-stories">' +
         ids.map(function (s) { return '<img src="' + API + "/img/t/" + s.slice(1) + '" data-sid="' + s + '" class="' + (slot && slot.ref === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div>" +
         '<div id="sp-objrow" style="display:none;margin-top:8px"><input class="sp-obj" id="sp-obj" placeholder="The sentence in the read this photograph is the object of"><div style="margin-top:6px"><button class="btn" id="sp-objset">Set it as the object of the finding</button> <span class="sp-note" id="sp-objwhich"></span></div></div></div>' : "") +
-      (note ? '<div class="sp-note" style="margin-top:10px">' + esc(note) + "</div>" : "");
+      "";
     slotsPanel(html);
     slotsBind(row);
   }

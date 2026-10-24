@@ -1,5 +1,5 @@
 /**
- * proof_slots.mjs  --  ED1 THE SLOTS: rights records, the make service, the lake's look, the slot doors, the thumbnails.
+ * proof_slots.mjs  --  ED1 THE SLOTS (+ED1a the stamp, ED1b the look): rights records, the make service, the lake's look, the slot doors, the thumbnails.
  * Run from the repo root: node worker/proofs/proof_slots.mjs
  *   R rights   M make   L look   S slots   W wiring   P page   G migration
  */
@@ -17,13 +17,21 @@ const briefLine = between('const IMAGE_BRIEF = ', '\n') + '\n';
 const revLine = between('const IMAGE_BRIEF_REV = ', '\n') + '\n';
 
 // ── fakes ─────────────────────────────────────────────────────────────
-let sb = [], fixtures = {}, events = [], kv = new Map(), r2 = new Map(), fetches = [], aiAnswers = [], claudeAnswer = null;
+let sb = [], fixtures = {}, events = [], kv = new Map(), r2 = new Map(), fetches = [], claudeAnswer = null;
+// ED1b: the look's fakes answer by question, in queues, so parallel calls land in any order
+let AI = { real: [], logo: [], shows: [], tell: [], describe: [], embed: [] };
+const aiFor = (model, input) => {
+  if (model.includes('bge')) return { data: AI.embed.shift() || [] };
+  const q = String(input.prompt || '');
+  const k = /real or famous person/.test(q) ? 'real' : /brand logo/.test(q) ? 'logo' : /Which headline/.test(q) ? 'tell' : /art director/.test(q) ? 'describe' : 'shows';
+  const a = AI[k].shift(); return { response: a == null ? '' : a };
+};
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const env = {
   FAL_KEY: 'k', SUPABASE_URL: 'https://x', MAKE_HOUSE_CAP_USD: '0.05',
   MEDIA: { head: async k => r2.has(k) ? { key: k } : null, get: async k => r2.has(k) ? { arrayBuffer: async () => r2.get(k) } : null, put: async (k, b) => { r2.set(k, b); } },
   RATE_LIMIT: { get: async k => kv.has(k) ? kv.get(k) : null, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } },
-  AI: { run: async (model, input) => { const a = aiAnswers.shift(); if (model.includes('bge')) return { data: a || [] }; return { response: a == null ? '' : a }; } }
+  AI: { run: async (model, input) => aiFor(model, input) }
 };
 const jpeg = () => { const b = new Uint8Array(13000); b[0] = 0xFF; b[1] = 0xD8; b[2] = 0xFF; return b.buffer; };
 let falFail = null;
@@ -58,7 +66,7 @@ const sleep = async () => {};
 const readImgUrl = raw => /^https:\/\//.test(String(raw || '')) ? String(raw) : null;
 const readImgFetch = async href => ({ ok: true, headers: { get: () => 'image/jpeg' }, arrayBuffer: async () => jpeg() });
 const R = new Function('sbRest', 'readRow', 'readPatch', 'json', 'logEvent', 'callClaude', 'embedQuery', 'KB_EMBED_MODEL', 'excQuiet', 'sleep', 'readImgUrl', 'readImgFetch', 'fetch', 'console',
-  hex + briefLine + revLine + block + '; return { RIGHTS, MAKE, LAKE_LOOK, rightsContexts, rightsClears, readSlots, wkCoverCreditOf, makePrompt, briefReady, makeSize, makeImage, makeSpend, imageCheckParse, storyTellParse, storyTellOrder, storyTell, imageDescribePass, slotTarget, slotMain, slotLeads, slotBriefClean, slotRoute, IMAGE_BRIEF };')(
+  hex + briefLine + revLine + block + '; return { RIGHTS, MAKE, MAKE_FRAMES, LAKE_LOOK, rightsContexts, rightsClears, readSlots, wkCoverCreditOf, makePrompt, briefReady, makeSize, makeImage, makeSpend, imageYes, imageCheck, storyTellParse, storyTellOrder, storyTell, imageDescribePass, slotTarget, slotMain, slotLeads, slotBriefClean, slotRoute, IMAGE_BRIEF, IMAGE_BRIEF_REV };')(
   sbRest, readRow, readPatch, json, logEvent, callClaude, embedQuery, '@cf/baai/bge-small-en-v1.5', excQuiet, sleep, readImgUrl, readImgFetch, fetch, { log: () => {} });
 
 // ── R: rights ─────────────────────────────────────────────────────────
@@ -69,17 +77,20 @@ ok(!R.rightsContexts('story_obj', null).includes('stand_cover') && !R.rightsCont
 ok(R.rightsClears({ contexts: ['web'] }, 'web') && !R.rightsClears({ contexts: ['web'] }, 'recon') && !R.rightsClears(null, 'web'), 'R3 rightsClears reads the contexts column');
 ok(R.wkCoverCreditOf({ meta: { slots: { cover: { kind: 'house', credit: 'Unsurfaced, AI illustration' } } } }, 'Wired') === 'Unsurfaced, AI illustration' && R.wkCoverCreditOf({ meta: { slots: { cover: { kind: 'type' } } } }, 'Wired') === 'Unsurfaced' && R.wkCoverCreditOf({ meta: {} }, 'Wired') === 'Wired' && R.wkCoverCreditOf({}, null) === null,
   'R4 the stand\'s cover credit follows the cover slot, else the story\'s');
-ok(R.IMAGE_BRIEF === briefMd && /HARD/.test(R.IMAGE_BRIEF) && (R.IMAGE_BRIEF.match(/\(HARD\)/g) || []).length === 2, 'R5 the brief in the worker is the brief in the repo, with exactly two hard lines');
+ok(R.IMAGE_BRIEF === briefMd && /HARD/.test(R.IMAGE_BRIEF) && (R.IMAGE_BRIEF.match(/\(HARD\)/g) || []).length === 2 && R.IMAGE_BRIEF_REV === 'house-v2.1' && /No lettering, signage or logos anywhere in the frame\./.test(R.IMAGE_BRIEF.split('## The prompt the model receives')[1]),
+  'R5 the brief in the worker is the brief in the repo, with exactly two hard lines, at house-v2.1, and the prompt forbids lettering (ED1b)');
 
 // ── M: the make service ───────────────────────────────────────────────
 const brief = { scene: 'A woman in her sixties on a station platform at dawn, coat buttoned wrong, reading a paper ticket she has already folded twice.', light: 'sodium platform light', red: 'the ticket', story: 'she is paying for silence' };
 const prompt = R.makePrompt(brief);
-ok(prompt.includes(brief.scene) && prompt.includes('sodium platform light') && prompt.includes('deep signal red: the ticket') && !/\{scene\}|\{light\}|\{red\}/.test(prompt) && prompt.startsWith('Editorial photograph'),
+ok(prompt.includes(brief.scene) && prompt.includes('sodium platform light') && prompt.includes('deep signal red: the ticket') && !/\{scene\}|\{light\}|\{red\}/.test(prompt) && prompt.startsWith('Editorial photograph') && !/Framing:/.test(prompt),
   'M1 the prompt is the template paragraph with the scene, the light and the red filled');
+ok(R.MAKE_FRAMES.length === 4 && R.makePrompt(brief, R.MAKE_FRAMES[1]).endsWith(' Framing: ' + R.MAKE_FRAMES[1] + '.') && R.makePrompt(brief, R.MAKE_FRAMES[1]) !== R.makePrompt(brief, R.MAKE_FRAMES[2]),
+  'M1b a framing rides at the end of the prompt, so four framings are four prompts (ED1b)');
 ok(R.briefReady(brief) && !R.briefReady({ scene: brief.scene }) && !R.briefReady({ scene: 'short', story: 'a story sentence here' }), 'M2 no story sentence, no brief: nothing is made');
 ok(R.makeSize('cover', false).width === 896 && R.makeSize('cover', true).width === 1792 && R.makeSize('hero', false).height === 768 && R.makeSize('bogus', false).width === 896, 'M3 a final is drawn at twice the draft\'s pixels');
 const m1 = await R.makeImage(env, { brief, format: 'cover', seed: 101, by: 'u1' });
-ok(m1.ok && /^make\/[0-9a-f]{40}\.jpg$/.test(m1.ref) && m1.model === 'fal-ai/z-image/turbo' && Math.abs(m1.usd - 0.0052) < 1e-9 && r2.has(m1.ref) && m1.rec.kind === 'house' && m1.rec.basis === 'AIR' && m1.rec.credit === 'Unsurfaced, AI illustration' && m1.rec.made.seed === 101 && m1.rec.made.prompt_version === 'house-v2' && m1.rec.contexts.length === 8,
+ok(m1.ok && /^make\/[0-9a-f]{40}\.jpg$/.test(m1.ref) && m1.model === 'fal-ai/z-image/turbo' && Math.abs(m1.usd - 0.0052) < 1e-9 && r2.has(m1.ref) && m1.rec.kind === 'house' && m1.rec.basis === 'AIR' && m1.rec.credit === 'Unsurfaced, AI illustration' && m1.rec.made.seed === 101 && m1.rec.made.prompt_version === 'house-v2.1' && m1.rec.made.frame === null && m1.rec.contexts.length === 8,
   'M4 a draft lands in R2 under its hash with a rights record: house, AIR, credited, the brief and the seed on it');
 const submit = fetches.find(f => f.url === 'https://queue.fal.run/fal-ai/z-image/turbo');
 const sent = JSON.parse(submit.opts.body);
@@ -103,29 +114,35 @@ ok(m5.ok && m5.model === 'fal-ai/bytedance/seedream/v4/edit' && fin.image_urls[0
   'M11 the final refines the picked draft on the premium model at print size, the draft as its reference');
 
 // ── L: the lake\'s look ────────────────────────────────────────────────
-const c1 = R.imageCheckParse('REAL_PERSON: no\nLOGO: yes\nTEXT: no\nHANDS_FACES: yes\nRED: yes\nROOM: no\nSHOWS: a woman on a platform with a red ticket.');
-ok(c1.hard.join() === 'logo' && c1.advisory.join() === 'hands_faces,little_room' && c1.unknown.length === 0 && c1.shows === 'a woman on a platform with a red ticket.', 'L1 the checks parse: two hard lines, the rest advisory, the one sentence kept');
-const c2 = R.imageCheckParse('I cannot tell. SHOWS: a street.');
-ok(c2.hard.length === 0 && c2.advisory.length === 0 && c2.unknown.length === 6 && c2.shows === 'a street.', 'L2 what the model did not answer is unknown, never hard');
-ok(R.storyTellParse('MATCH: 2 CONFIDENCE: 0.8 SHOWS: a leash.', 3).pick === 2 && R.storyTellParse('MATCH: 9', 3).pick === 0 && R.storyTellParse('MATCH: 0 CONFIDENCE: 1.4', 3).confidence === 1 && R.storyTellOrder(['a', 'b', 'c', 'd'], 5).join() === R.storyTellOrder(['a', 'b', 'c', 'd'], 5).join() && R.storyTellOrder(['a', 'b', 'c', 'd'], 5).slice().sort().join() === 'a,b,c,d',
-  'L3 the story test parses and shuffles the same way every time');
-aiAnswers = ['MATCH: 1 CONFIDENCE: 0.9 SHOWS: a ticket.'];
+ok(R.LAKE_LOOK.MODEL === '@cf/llava-hf/llava-1.5-7b-hf' && /^Is this a photograph of a recognizable real or famous person\? Answer yes or no\.$/.test(R.LAKE_LOOK.REAL) && /brand logo/.test(R.LAKE_LOOK.LOGO) && /one sentence/.test(R.LAKE_LOOK.SHOWS),
+  'L1 the look runs on the model already proven here, one question a call (ED1b)');
+ok(R.imageYes('Yes') === true && R.imageYes(' no, it does not') === false && R.imageYes('No.') === false && R.imageYes('"Yes"') === true && R.imageYes('The image shows a man') === null && R.imageYes('') === null,
+  'L2 a yes or no is read from the start of the answer; anything else is unknown, never hard');
+AI.real = ['No'], AI.logo = ['Yes, a swoosh'], AI.shows = ['A man holds a brake lever to the light.'];
+const c1 = await R.imageCheck(env, m1.ref);
+ok(c1.hard.join() === 'logo' && c1.advisory.length === 0 && c1.unknown.length === 0 && c1.shows === 'A man holds a brake lever to the light.', 'L3 the checks: two hard questions and one sentence, asked at once, the verdict in the record\'s shape');
+AI.real = ['I cannot tell.'], AI.logo = [''], AI.shows = [''];
+const c2 = await R.imageCheck(env, m1.ref);
+ok(c2.hard.length === 0 && c2.unknown.join() === 'real_person,logo' && c2.shows === '' && (await R.imageCheck(env, 'make/none.jpg')).unknown.join() === 'no_image', 'L4 what the model did not answer is unknown; no image is unknown too');
+ok(R.storyTellParse('2', 3).pick === 2 && R.storyTellParse('Headline 3.', 3).pick === 3 && R.storyTellParse('9', 3).pick === 0 && R.storyTellParse('0', 3).pick === 0 && R.storyTellParse('none', 3).pick === 0 && R.storyTellOrder(['a', 'b', 'c', 'd'], 5).join() === R.storyTellOrder(['a', 'b', 'c', 'd'], 5).join() && R.storyTellOrder(['a', 'b', 'c', 'd'], 5).slice().sort().join() === 'a,b,c,d',
+  'L5 the story test reads the first number in the answer and shuffles the same way every time');
 const leads = ['People pay for silence', 'Makers brake their machines', 'Buyers buy the nineties'];
 const order = R.storyTellOrder(leads, m1.ref.length);
+AI.tell = ['1'];
 const t1 = await R.storyTell(env, m1.ref, leads, order[0]);
-ok(t1.correct === true && t1.matched === order[0] && t1.confidence === 0.9, 'L4 the image alone against the shuffled headlines: told its own story');
+ok(t1.correct === true && t1.matched === order[0] && t1.raw === '1' && (await R.storyTell(env, m1.ref, ['only one'], 'only one')).correct === null, 'L6 the image alone against the shuffled headlines: told its own story; fewer than two headlines is no test');
 rows[7] = { id: 7, kind: 'weekly', status: 'published', pack_ids: [11, 12], meta: {}, read: { title: 'People pay for silence', thesis: 'The audience now bills for quiet.', patterns: [{ name: 'Makers brake their machines', dek: 'A brake is a feature.', evidence: ['S11', 'S12'] }, { name: 'Buyers buy the nineties', evidence: ['S12'] }] } };
 fixtures['house_reads?select=pack_ids'] = () => [{ pack_ids: [11, 12] }];
 let described = [];
 describeRows = [{ id: 11, image_url: 'https://cdn.example.com/a.jpg' }, { id: 12, image_url: 'notaurl' }];
 fixtures['edition_items?id=eq.11'] = (p, o) => { if (o && o.method === 'PATCH') { described.push([11, o.body.image_desc]); return []; } return [{ id: 11, image_url: 'https://cdn.example.com/a.jpg', source_url: 'https://example.com/a', source_name: 'Wired' }]; };
 fixtures['edition_items?id=eq.12'] = (p, o) => { if (o && o.method === 'PATCH') { described.push([12, o.body.image_desc]); return []; } return [{ id: 12, image_url: null, source_url: null, source_name: 'Nobody' }]; };
-aiAnswers = ['Warm sodium light on a wet platform, one figure, a red umbrella, calm lower third.'];
+AI.describe = ['Warm sodium light on a wet platform, one figure, a red umbrella, calm lower third.'];
 const d1 = await R.imageDescribePass(env, {});
 ok(d1.ok && d1.described === 1 && d1.looked === 1 && described.length === 2 && described[0][1].startsWith('Warm sodium') && described[1][1] === '' && kv.get('look:day:' + new Date().toISOString().slice(0, 10)) === '1',
-  'L5 the describer writes one sentence per photograph, marks the unfetchable so it is not asked again, and counts the day');
+  'L7 the describer writes one sentence per photograph, marks the unfetchable so it is not asked again, and counts the day');
 kv.set('look:day:' + new Date().toISOString().slice(0, 10), String(R.LAKE_LOOK.PER_DAY));
-ok((await R.imageDescribePass(env, {})).day_cap === true, 'L6 at the day\'s cap the describer looks at nothing');
+ok((await R.imageDescribePass(env, {})).day_cap === true, 'L8 at the day\'s cap the describer looks at nothing');
 kv.delete('look:day:' + new Date().toISOString().slice(0, 10));
 
 // ── S: the slot doors ─────────────────────────────────────────────────
@@ -162,26 +179,26 @@ ok(b1.ok && b1.brief.story.startsWith('a maker') && rows[7].meta.briefs['pattern
 claudeAnswer = { ok: true, text: 'no json here' };
 ok((await R.slotRoute('/reads/slot-brief', { id: 7, path: 'cover' }, env, '', { id: 'u1' })).error === 'brief_not_written', 'S14 a brief that is not JSON is not a brief');
 r2.clear(); fetches = []; events = []; kv.set('make:house:' + new Date().toISOString().slice(0, 7), '0');
-aiAnswers = [
-  'REAL_PERSON: no LOGO: no TEXT: no HANDS_FACES: no RED: yes ROOM: yes SHOWS: a man holds a brake lever to the light.', 'MATCH: 0 CONFIDENCE: 0.2 SHOWS: a lever.', [[1, 0, 0]],
-  'REAL_PERSON: yes LOGO: no TEXT: no HANDS_FACES: no RED: yes ROOM: yes SHOWS: a famous actor holds a lever.', 'MATCH: 1 CONFIDENCE: 0.9 SHOWS: a lever.', [[0, 1, 0]]
-];
+AI = { real: ['No', 'Yes'], logo: ['No', 'No'], shows: ['a man holds a brake lever to the light.', 'a famous actor holds a lever.'], tell: ['0', '1'], describe: [], embed: [[[1, 0, 0]], [[0, 1, 0]]] };
 const mk = await R.slotRoute('/reads/slot-make', { id: 7, path: 'patterns[0]', n: 2, seed: 500, note: 'the first set read as a toy; make the lever real' }, env, '', { id: 'u1' });
-ok(mk.ok && mk.drafts.length === 2 && mk.drafts.every(d => d.ok) && mk.drafts[0].seed === 500 && mk.drafts[1].seed === 601 && mk.leads.length === 3 && Math.abs(mk.house.used_usd - 0.0104) < 1e-9,
+ok(mk.ok && mk.drafts.length === 2 && mk.drafts.every(d => d.ok) && mk.drafts[0].seed === 500 && mk.drafts[1].seed === 8419 && mk.leads.length === 3 && Math.abs(mk.house.used_usd - 0.0104) < 1e-9,
   'S15 /reads/slot-make makes the drafts from the kept brief, each with its own seed, and the house pays once for the set');
+const frames = mk.drafts.map(d => rightsRows.find(r => r.id === d.rights_id).made.frame);
+ok(frames[0] === R.MAKE_FRAMES[0] && frames[1] === R.MAKE_FRAMES[1] && mk.drafts[0].ref !== mk.drafts[1].ref, 'S15b the drafts carry their framings, in order, and are different images (ED1b)');
 const drafts = mk.drafts, flaggedDraft = drafts.find(d => d.flagged), cleanDraft = drafts.find(d => !d.flagged);
-ok(cleanDraft && flaggedDraft && flaggedDraft.checks.hard.join() === 'real_person' && rightsRows.find(r => r.id === flaggedDraft.rights_id).contexts.length === 0 && rightsRows.find(r => r.id === cleanDraft.rights_id).contexts.length === 8 && rightsRows.find(r => r.id === cleanDraft.rights_id).made.checks.shows.startsWith('a man holds'),
+ok(cleanDraft && flaggedDraft && flaggedDraft.checks.hard.join() === 'real_person' && rightsRows.find(r => r.id === flaggedDraft.rights_id).contexts.length === 0 && rightsRows.find(r => r.id === cleanDraft.rights_id).contexts.length === 8 && /holds/.test(rightsRows.find(r => r.id === cleanDraft.rights_id).made.checks.shows),
   'S16 every draft is checked and the verdict is on its record: a hard flag clears nothing, a clean draft clears everything');
-ok(cleanDraft.checks.advisory.some(a => a.startsWith('like_press:S11')) && (cleanDraft.tell.correct === false || cleanDraft.tell.matched === null), 'S17 a draft too like a story photograph is noted (advisory), and the story test says whether it told its own');
+ok(mk.drafts.some(d => d.checks.advisory.some(a => a.startsWith('like_press:S11'))) && mk.drafts.some(d => d.tell.correct === true) && mk.drafts.some(d => d.tell.matched === null), 'S17 a draft too like a story photograph is noted (advisory), and the story test says whether each told its own');
 ok(rows[7].meta.briefs['patterns[0]'].note.startsWith('the first set') && events.some(e => e.ev === 'slot_make' && e.meta.n === 2), 'S18 the remake note rides on the kept brief and the make is logged');
 kv.set('make:house:' + new Date().toISOString().slice(0, 7), '0.049');
 ok((await R.slotRoute('/reads/slot-make', { id: 7, path: 'patterns[0]', n: 4 }, env, '', { id: 'u1' })).error === 'house_cap', 'S19 four drafts past the cap: refused before anything is made');
 kv.set('make:house:' + new Date().toISOString().slice(0, 7), '0');
 ok((await R.slotRoute('/reads/slot-final', { id: 7, path: 'patterns[0]', rights_id: flaggedDraft.rights_id }, env, '', { id: 'u1' })).error === 'draft_failed_a_hard_check', 'S20 a flagged draft is not refined');
-aiAnswers = ['REAL_PERSON: no LOGO: no TEXT: no HANDS_FACES: no RED: yes ROOM: yes SHOWS: the lever, larger.'];
+AI.real = ['No']; AI.logo = ['No']; AI.shows = ['the lever, larger.'];
 const fn = await R.slotRoute('/reads/slot-final', { id: 7, path: 'patterns[0]', rights_id: cleanDraft.rights_id }, env, '', { id: 'u1' });
-ok(fn.ok && fn.model === 'fal-ai/bytedance/seedream/v4/edit' && fn.rights_id !== cleanDraft.rights_id && rightsRows.find(r => r.id === fn.rights_id).made.final_of === cleanDraft.rights_id && !fn.flagged && Math.abs(fn.usd - 0.03) < 1e-9,
-  'S21 the final is its own record, pointing back at the draft it refined');
+const finRec = rightsRows.find(r => r.id === fn.rights_id), cleanRec = rightsRows.find(r => r.id === cleanDraft.rights_id);
+ok(fn.ok && fn.model === 'fal-ai/bytedance/seedream/v4/edit' && fn.rights_id !== cleanDraft.rights_id && finRec.made.final_of === cleanDraft.rights_id && finRec.made.frame === cleanRec.made.frame && !fn.flagged && Math.abs(fn.usd - 0.03) < 1e-9,
+  'S21 the final is its own record, pointing back at the draft it refined, in the draft\'s framing');
 const set = await R.slotRoute('/reads/slot', { id: 7, path: 'patterns[0]', pick: { rights_id: fn.rights_id } }, env, '', { id: 'u1' });
 ok(set.ok && set.slot.kind === 'house' && rows[7].meta.slots['patterns[0]'].ref === fn.ref && rows[7].read.patterns[0].evidence.join() === 'S11,S12', 'S22 the final fills the slot; the read\'s text and evidence are untouched');
 
@@ -204,7 +221,7 @@ ok(stand.includes('wkCoverCreditOf(row, coverCredit)') && stand.indexOf('wkCover
 const rep = w.slice(w.indexOf("if (path === '/reads/weekly-stand') {"), w.indexOf("if (path === '/reads/shelf') {"));
 const door = w.slice(w.indexOf("if (path === '/reads/weekly-cover') {"), w.indexOf("if (path === '/reads/weekly-stand') {"));
 ok(/patch\.cover_credit = wkCoverCreditOf\(row, null\)/.test(rep) && /body: \{ cover_credit: cc \}/.test(door) && /body: \{ cover_key: key \}/.test(door), 'W8 a recut and a re-rendered cover carry the slot\'s credit to the stand');
-ok(/^const IMAGE_BRIEF = ".*";\s+\/\/ SEAM:BRIEF_SYNC/m.test(w) && /^const IMAGE_BRIEF_REV = 'house-v2';/m.test(w), 'W9 the brief and its version are constants the gate keeps in sync');
+ok(/^const IMAGE_BRIEF = ".*";\s+\/\/ SEAM:BRIEF_SYNC/m.test(w) && /^const IMAGE_BRIEF_REV = 'house-v2\.1';/m.test(w), 'W9 the brief and its version are constants the gate keeps in sync');
 
 // ── P: the page ───────────────────────────────────────────────────────
 ok(/var MIN = \{ cover: 1200, hero: 1000, wide: 380, strip: 380, thumb: 160, frame: 800, slot: 600 \}/.test(page), 'P1 mosaics and strips accept the 400 px thumbnail; a slot the house picked stands above 600');
@@ -219,6 +236,8 @@ ok(/id="slots">The slots<\/button>/.test(page) && /function slotsOpen\(row, note
   'P6 the slot panel: the brief, four drafts, the final, the object of the finding with its sentence, typographic, clear, and an override with a reason');
 ok(/data-over="1"/.test(page) && /Use anyway/.test(page) && /window\.prompt\("This draft failed a hard check/.test(page), 'P7 a flagged draft is shown, not hidden, and can be used only with a reason on the record');
 ok(!/—/.test(page.slice(page.indexOf('SEAM:READ_SLOTS: the slot panel'), page.indexOf('function slotsBind(row)') + 6000)), 'P8 no em dash in the panel\'s copy');
+const show = page.slice(page.indexOf('function slotsShow(row, note)'), page.indexOf('function slotBriefRead()'));
+ok(show.indexOf("(note ? '<div class=\"sp-note\"") > 0 && show.indexOf("(note ? '<div class=\"sp-note\"") < show.indexOf("'<div class=\"sp-paths\">'") && (show.match(/esc\(note\)/g) || []).length === 1, 'P10 the house\'s reply prints at the top of the panel, once (ED1b)');
 
 // ── G: migration ──────────────────────────────────────────────────────
 ok(/create table if not exists media_rights/.test(mig) && /kind in \('house', 'press', 'cc', 'story_obj', 'story_thumb', 'type'\)/.test(mig) && /basis in \('AIR', 'EDIT', 'CC', 'OBJ', 'THUMB', 'A'\)/.test(mig) && /contexts text\[\]/.test(mig) && /object_sentence text/.test(mig) && /made jsonb/.test(mig),

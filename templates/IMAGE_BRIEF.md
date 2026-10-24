@@ -1,6 +1,6 @@
 # The image brief, house style v2 (humanity first)
 
-Version house-v2. Loaded word for word as the standing instruction for every image the house makes. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift. Everything here except the two lines marked HARD is a default the house's picks revise.
+Version house-v2.1. Loaded word for word as the standing instruction for every image the house makes. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift. Everything here except the two lines marked HARD is a default the house's picks revise.
 
 ## What a house image is for
 
@@ -30,4 +30,4 @@ Fill these before anything is made:
 
 ## The prompt the model receives
 
-Editorial photograph for the cover of a weekly culture magazine. {scene} {light} Shot on 35mm film with natural grain, candid and unposed. Real everyday people with varied ages and backgrounds, unbranded clothing and plain, unlettered surfaces throughout. A strong, simple composition with one clear subject and calm, uncluttered space in the lower third of the frame for a headline. One small detail in deep signal red: {red}.
+Editorial photograph for the cover of a weekly culture magazine. {scene} {light} Shot on 35mm film with natural grain, candid and unposed. Real everyday people with varied ages and backgrounds, unbranded clothing and plain, unlettered surfaces throughout. A strong, simple composition with one clear subject and calm, uncluttered space in the lower third of the frame for a headline. One small detail in deep signal red: {red}. No lettering, signage or logos anywhere in the frame.
