@@ -248,4 +248,8 @@ ok(/const slots = row\.meta && row\.meta\.slots && Object\.keys\(row\.meta\.slot
   'W10 a slot change is a new print: the kept PDF\'s stamp carries the slots, and a read with no slots keeps its stamp');
 ok(/id="stand-weekly-replace">Replace issue /.test(page) && /var rb = document\.getElementById\("stand-weekly-replace"\)/.test(page) && (page.match(/call\("\/reads\/weekly-stand", \{ id: row\.id, issue_no: wk\.issue_no \}\)/g) || []).length === 2,
   'P9 a cut already on the stand can replace its issue\'s PDF, through the same door a recut uses');
+const media = between('async function serveMedia(', '\n}\n');
+ok(/headers\.set\('Access-Control-Allow-Origin', origin \|\| '\*'\);/.test(media) && /headers\.set\('Vary', 'Origin'\);/.test(media) && !/if \(origin\) headers\.set\('Access-Control-Allow-Origin'/.test(media),
+  'W11 /media always carries the CORS header and varies on origin, so a cached plain load serves a crossorigin one (ED1c)');
+ok(/return '<img class="ph ph-wait"' \+ \(RT \? ' crossorigin="anonymous"' : ""\) \+ ' src="' \+ u \+ '"/.test(page), 'P11 a slot image asks for crossorigin only in render mode (ED1c)');
 console.log(`\nproof_slots: ${pass} checks passed`);

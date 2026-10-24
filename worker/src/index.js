@@ -2525,7 +2525,8 @@ async function serveMedia(path, env, origin, request) {
   const ctype = String((obj.httpMetadata && obj.httpMetadata.contentType) || '');
   if (ctype.indexOf('text/html') >= 0)
     headers.set('Content-Security-Policy', 'sandbox allow-scripts allow-forms allow-popups');
-  if (origin) headers.set('Access-Control-Allow-Origin', origin);
+  headers.set('Access-Control-Allow-Origin', origin || '*');   // SEAM:READ_SLOTS (ED1c): always, so a reply cached from a plain load still serves a crossorigin one
+  headers.set('Vary', 'Origin');
   /* SEAM:CLICKPATH — full HTML responses carry the beacon, appended to the
      document (landing pages are small; buffering one is nothing). Range
      requests skip injection — nobody range-requests a landing page, and a

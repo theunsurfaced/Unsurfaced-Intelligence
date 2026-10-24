@@ -1639,7 +1639,7 @@
         if (!s || s.kind === "type") return "";
         var u = s.kind === "house" ? API + "/media/" + s.ref : (/^S\d+$/.test(String(s.ref)) ? API + "/img/s/" + String(s.ref).slice(1) + IMGV : null);
         if (!u) return "";
-        return '<img class="ph ph-wait" crossorigin="anonymous" src="' + u + '" alt="" loading="eager" referrerpolicy="no-referrer" data-s="' + esc(s.ref) + '" data-first="' + esc(s.ref) + '" data-min="' + MIN.slot + '" data-alts="" onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
+        return '<img class="ph ph-wait"' + (RT ? ' crossorigin="anonymous"' : "") + ' src="' + u + '" alt="" loading="eager" referrerpolicy="no-referrer" data-s="' + esc(s.ref) + '" data-first="' + esc(s.ref) + '" data-min="' + MIN.slot + '" data-alts="" onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
       }
       function slotCredit(s) { return s && s.credit ? esc(s.credit) : ""; }
       function uniq(list) { var seen = {}; return (list || []).filter(function (a) { if (!a || seen[a] || !real(a)) return false; seen[a] = 1; return true; }); }
