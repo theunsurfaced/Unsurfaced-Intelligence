@@ -16188,7 +16188,8 @@ function readPdfFooter(row, client) {
     '<span>' + esc(left) + '</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>';
 }
 async function readStamp(row) {
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(row.read || {}) + '|' + (row.status === 'held' ? 'held' : 'live')));
+  const slots = row.meta && row.meta.slots && Object.keys(row.meta.slots).length ? '|' + JSON.stringify(row.meta.slots) : '';   // SEAM:READ_SLOTS (ED1a): a slot change is a new print; a read with no slots keeps its stamp
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(row.read || {}) + slots + '|' + (row.status === 'held' ? 'held' : 'live')));
   return READ_PRINT.REV + ':' + readHex(d).slice(0, 20);
 }
 async function readRenderTicket(request, env, origin) {

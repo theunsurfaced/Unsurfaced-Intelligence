@@ -224,4 +224,9 @@ ok(!/—/.test(page.slice(page.indexOf('SEAM:READ_SLOTS: the slot panel'), page.
 ok(/create table if not exists media_rights/.test(mig) && /kind in \('house', 'press', 'cc', 'story_obj', 'story_thumb', 'type'\)/.test(mig) && /basis in \('AIR', 'EDIT', 'CC', 'OBJ', 'THUMB', 'A'\)/.test(mig) && /contexts text\[\]/.test(mig) && /object_sentence text/.test(mig) && /made jsonb/.test(mig),
   'G1 media_rights carries kind, basis, contexts, the object sentence and how a house image was made');
 ok(/alter table edition_items add column if not exists image_desc text/.test(mig) && /image_desc_at timestamptz/.test(mig) && /enable row level security/.test(mig) && /grant select, insert, update on media_rights to service_role/.test(mig), 'G2 the lake keeps a description per photograph; the table is the worker\'s alone');
+const stamp = between('async function readStamp(', 'async function readRenderTicket(');
+ok(/const slots = row\.meta && row\.meta\.slots && Object\.keys\(row\.meta\.slots\)\.length \? '\|' \+ JSON\.stringify\(row\.meta\.slots\) : '';/.test(stamp) && /JSON\.stringify\(row\.read \|\| \{\}\) \+ slots \+ '\|'/.test(stamp),
+  'W10 a slot change is a new print: the kept PDF\'s stamp carries the slots, and a read with no slots keeps its stamp');
+ok(/id="stand-weekly-replace">Replace issue /.test(page) && /var rb = document\.getElementById\("stand-weekly-replace"\)/.test(page) && (page.match(/call\("\/reads\/weekly-stand", \{ id: row\.id, issue_no: wk\.issue_no \}\)/g) || []).length === 2,
+  'P9 a cut already on the stand can replace its issue\'s PDF, through the same door a recut uses');
 console.log(`\nproof_slots: ${pass} checks passed`);
