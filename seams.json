@@ -1604,6 +1604,31 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:WEEKLY_COVER",
    "purpose": "a weekly already on the stand offers Render issue NNN's cover from this cut; a new issue says whether its cover is the page or the fallback photograph"
+  },
+  "SEAM:MEDIA_RIGHTS": {
+   "file": "worker/src/index.js",
+   "purpose": "ED1 (Oct 23, 2026): every image the house publishes carries a rights record (media_rights, 0051): kind (house, press, cc, story_obj, story_thumb, type), ref (an R2 key or a story id), the basis (AIR, EDIT, CC, OBJ, THUMB, A), the contexts it clears (rightsContexts: a house or type image everything; a press image never a paid cover; a story photograph as the object of the finding never a paid cover or paid social), the object sentence for OBJ, and for a house image how it was made and what the checks said; a hard check clears nothing unless an admin overrides it with a reason written on the record. A slot on a read (meta.slots[path] = {rights_id, ref, kind, credit, by, at, accepted?}) points at a record; the read contract is untouched. wkCoverCreditOf: the stand's cover credit follows the cover slot. No model"
+  },
+  "SEAM:MAKE_SERVICE": {
+   "file": "worker/src/index.js",
+   "purpose": "ED1: the make service, one contract for every producer: makeImage(env, {brief, format, seed, refine_from?, by, prepaid?}) makes a draft on MAKE.DRAFT (fal-ai/z-image/turbo, half a cent) or a final on MAKE.FINAL (seedream v4 edit, three cents) that refines the picked draft at twice the pixels with the draft as its reference; the prompt is the IMAGE_BRIEF template filled (makePrompt); nothing is made without a scene and a story sentence (briefReady); cached in R2 under make/<sha256 of prompt, brief version, model, seed, size>.jpg with its rights record (house, AIR, credited Unsurfaced, AI illustration); the house pays against a monthly cap in KV (make:house:YYYY-MM, MAKE_HOUSE_CAP_USD, $10) and a refused or failed make refunds and returns {ok:false, fallback:'type'}; through fal's queue (submit, poll, fetch), never throws into its caller"
+  },
+  "SEAM:LAKE_LOOK": {
+   "file": "worker/src/index.js",
+   "purpose": "ED1: one closed door to the vision model (imageLook, Workers AI, LOOK_MODEL or llama-3.2-11b-vision, inside the included neurons, LAKE_LOOK.MS and BYTES). The checks (imageCheck: two hard lines, a real person and a logo; TEXT, HANDS_FACES, RED, ROOM advisory; unanswered is unknown, never hard), the blind story test (storyTell: the image alone against the read's headlines in a fixed shuffle), the describer (imageDescribePass: story photographs that reached a read in the last fortnight get one art-director sentence on edition_items.image_desc, PER_RUN a slice in the 30-minute chain after the pop-out pass, PER_DAY a day in KV look:day:<date>, or the admin desk {run: describe}; an unfetchable photograph is marked empty and not asked again) and the likeness check (imageSimilar: a draft's description against the stories' descriptions by embedding, advisory). The lake is the first teaching pass in words; pixels never enter a model as training"
+  },
+  "SEAM:READ_SLOTS": {
+   "file": "worker/src/index.js",
+   "purpose": "ED1: the slot doors, admin only through readRoute: POST /reads/slots {id} (the paths: cover and one per finding; the slots, their records, the kept briefs, the house's month, the models); /reads/slot-brief {id, path} (a humanity-first brief from the finding on the frame tier, with the press's descriptions for palette and light, kept on meta.briefs[path]); /reads/slot-make {id, path, brief?, n?, seed?, note?} (up to four drafts in parallel, the set prepaid against the cap, each checked, story-tested and likeness-checked, the verdict and contexts written on its record; the brief and the remake note kept); /reads/slot-final {id, path, rights_id} (the picked draft refined at print size; a flagged draft is not refined); /reads/slot {id, path, pick, accepted?, override?} ({rights_id} a cleared record, or a flagged one with a reason of twelve characters or more written on the record; {story, object_sentence} a story photograph in the read as the object of the finding, OBJ, credited to the outlet, the sentence required; {type:true} the typographic block, a record of its own; {clear:true} the writer's pick again). /img/t/<id>: the relay at thumbnail size (READ_IMG.THUMB, 400 px, resized at the edge, cached apart, X-Img-Size says what was served). The stand: a new issue, a recut and a re-rendered cover carry the cover slot's credit"
+  },
+  "SEAM:READ_SLOTS@page": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:READ_SLOTS",
+   "purpose": "ED1: the slot panel (The slots, admins, every kind but reports until ED2): the paths, what fills each now, the brief (scene, light, red, story; the house writes one or the desk does), four drafts with their checks and the blind story test, the final, Use this (advisories accepted on the slot) or Use anyway with a reason for a flagged draft, a story photograph as the object of the finding with its sentence, Typographic, Clear. The print: the cover and each finding's hero follow their slot (slotImg: a house image from /media, a story photograph through the relay, the typographic block draws nothing and marks the cover) with the slot's credit; the writer's pick stands where no slot is set; mosaics and strips draw the 400 px thumbnail (/img/t, MIN wide and strip 380) and keep it when they step to the next candidate"
+  },
+  "SEAM:BRIEF_SYNC": {
+   "file": "worker/src/index.js",
+   "purpose": "ED1: IMAGE_BRIEF is byte-identical to templates/IMAGE_BRIEF.md (house style v2: humanity first, two HARD lines, the rest defaults the house learns from, the prompt paragraph the make service fills); the gate's step 11b fails on drift; tools/sync_brief.py re-syncs; IMAGE_BRIEF_REV is the version every make is hashed and recorded with"
   }
  },
  "planned": [

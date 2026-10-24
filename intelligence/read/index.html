@@ -242,6 +242,14 @@
   .pricectl input { width: 72px; background: #0C0C0C; color: #FAF7F2; border: 1px solid #3A3A3A; padding: 6px 8px; font-family: var(--mono); font-size: 12px; }
   .sell { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; line-height: 1.7; color: #CFC8BA; margin-top: 8px; }
   .sell b { color: #F2994A; font-weight: 400; } .sell .ok { color: #6FCF97; }
+  /* SEAM:READ_SLOTS: the slot panel, and the typographic cover's mark */
+  .slots { font-size: 13px; line-height: 1.55; } .slots .sp-paths { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; } .slots .sp-path { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 5px 9px; border: 1px solid rgba(20,20,20,.3); cursor: pointer; background: transparent; color: inherit; } .slots .sp-path.on { background: #141414; color: #FAF7F2; border-color: #141414; } .slots .sp-path.has::after { content: " \25CF"; color: #C41230; }
+  .slots .sp-brief { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 10px 0; } .slots .sp-brief label { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .15em; text-transform: uppercase; opacity: .7; margin-bottom: 3px; } .slots .sp-brief textarea, .slots .sp-brief input, .slots .sp-obj { width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px; padding: 6px 8px; border: 1px solid rgba(20,20,20,.3); background: #fff; color: #141414; } .slots .sp-brief textarea { min-height: 64px; resize: vertical; } .slots .sp-brief .wide { grid-column: 1 / -1; }
+  .slots .sp-drafts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; } .slots .sp-draft { border: 1px solid rgba(20,20,20,.15); padding: 6px; background: #fff; } .slots .sp-draft img { width: 100%; aspect-ratio: 7 / 9; object-fit: cover; display: block; background: #1A1A1A; cursor: zoom-in; } .slots .sp-draft.hero img { aspect-ratio: 3 / 2; } .slots .sp-draft.on { outline: 3px solid #C41230; } .slots .sp-draft .k { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-top: 6px; line-height: 1.5; } .slots .sp-draft .k b { color: #C41230; } .slots .sp-draft .k .ok { color: #2E7D4F; } .slots .sp-draft .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .slots .sp-stories { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .slots .sp-stories img { width: 84px; height: 56px; object-fit: cover; cursor: pointer; border: 2px solid transparent; opacity: .85; } .slots .sp-stories img:hover, .slots .sp-stories img.on { border-color: #C41230; opacity: 1; }
+  .slots .sp-house { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; } .slots .btn { border-color: rgba(20,20,20,.6); color: #141414; } .slots .btn.red { color: #FAF7F2; } .slots .sp-note { font-size: 12px; opacity: .8; margin-top: 6px; }
+  .cover.type .in::before { content: ""; position: absolute; left: 0.7in; top: 0.75in; width: 0.8in; height: 0.8in; border: 3px solid var(--red); }
+  @media (max-width: 760px) { .slots .sp-drafts { grid-template-columns: repeat(2, 1fr); } .slots .sp-brief { grid-template-columns: 1fr; } }
   .cover-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .cover-pick img { width: 72px; height: 48px; object-fit: cover; cursor: pointer; border: 2px solid transparent; opacity: .85; } .cover-pick img:hover, .cover-pick img.on { border-color: #C41230; opacity: 1; }
   .rp-terr { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
   .rp-terr > div { border-top: 2px solid var(--ink); padding-top: 8px; break-inside: avoid; }
@@ -493,6 +501,136 @@
       };
     }).catch(function () { standPanel(""); });
   }
+  /* SEAM:READ_SLOTS: the slot panel. Every image on the read is a slot the house fills: the cover and one per finding. For
+     the chosen slot: the brief (the house writes one from the finding, or the desk writes it), four drafts from the brief
+     with their checks and the blind story test, the final at print size, a story photograph as the object of the finding
+     (with the sentence that makes it so), or the typographic block. The read's text is untouched; the next PDF carries
+     the slot; on the stand, replace the issue or render its cover again. Two hard lines (a real person, a logo) refuse a
+     draft unless the house overrides them with a reason on the record; everything else is a note to accept or remake. */
+  var SL = { data: null, path: "cover", drafts: {}, pick: null };
+  function slotsPanel(html) {
+    var el = document.getElementById("slots-panel");
+    if (!el) { el = document.createElement("div"); el.id = "slots-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
+    el.innerHTML = html ? '<div class="slots" style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px">' + html + "</div>" : "";
+    var heads = el.querySelectorAll(".pf-head"); for (var m = 0; m < heads.length; m++) heads[m].style.cssText = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px";
+  }
+  function slotsOpen(row, note) {
+    call("/reads/slots", { id: row.id }).then(function (d) {
+      if (!d || !d.ok) { slotsPanel('<div class="pf-head">THE SLOTS</div>' + esc(d && d.error === "forbidden" ? "The slots are the house's to fill." : "The slots could not load: " + ((d && d.error) || "no answer") + ".")); return; }
+      SL.data = d; if (d.paths.indexOf(SL.path) < 0) SL.path = "cover";
+      slotsShow(row, note);
+    }).catch(function () { slotsPanel('<div class="pf-head">THE SLOTS</div>The house did not answer.'); });
+  }
+  function slotLabel(row, p) {
+    var x = row.read || {}; if (p === "cover") return "Cover";
+    var m = /^([a-z]+)\[(\d+)\]$/.exec(p), arr = m && x[m[1]], f = arr && arr[parseInt(m[2], 10)];
+    return (parseInt(m[2], 10) + 1) + " · " + (f && (f.name || f.title) ? String(f.name || f.title).slice(0, 48) : p);
+  }
+  function slotBriefOf(row, p) {
+    var d = SL.data, b = d.briefs && d.briefs[p]; if (b) return b;
+    var x = row.read || {}; if (p === "cover") return { scene: x.image_brief || "", light: "", red: "", story: "" };
+    var m = /^([a-z]+)\[(\d+)\]$/.exec(p), arr = m && x[m[1]], f = arr && arr[parseInt(m[2], 10)];
+    return { scene: (f && (f.image_brief || f.image_prompt)) || "", light: "", red: "", story: "" };
+  }
+  function slotChecksHtml(c, t) {
+    var out = [];
+    (c.hard || []).forEach(function (k) { out.push("<b>" + esc(k.replace(/_/g, " ")) + "</b>"); });
+    (c.advisory || []).forEach(function (k) { out.push(esc(k.replace(/_/g, " ").replace(/^like press:/, "like the press: "))); });
+    if (c.override && c.override.why) out.push("overridden: " + esc(c.override.why));
+    if (t && t.correct === true) out.push('<span class="ok">told its own story</span>'); else if (t && t.matched) out.push("read as: " + esc(String(t.matched).slice(0, 40))); else if (t) out.push("told no story");
+    if (!out.length) out.push('<span class="ok">clean</span>');
+    return out.join(" · ");
+  }
+  function slotsShow(row, note) {
+    var d = SL.data, p = SL.path, slot = d.slots[p], rec = d.rights[p], b = slotBriefOf(row, p), drafts = SL.drafts[p] || [];
+    var x = row.read || {};
+    var paths = d.paths.map(function (q) { return '<button class="sp-path' + (q === p ? " on" : "") + (d.slots[q] ? " has" : "") + '" data-path="' + esc(q) + '">' + esc(slotLabel(row, q)) + "</button>"; }).join("");
+    var cur = slot ? (slot.kind === "type" ? "Typographic: no image, the headline carries the page."
+      : slot.kind === "house" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">House image · ' + esc(slot.credit || "") + (rec && rec.made && rec.made.model ? " · " + esc(String(rec.made.model).split("/").slice(-2).join("/")) : "")
+      : '<img src="' + API + "/img/t/" + esc(String(slot.ref).slice(1)) + '" style="width:120px;vertical-align:middle;margin-right:10px">' + esc(slot.credit || "") + " · the object of the finding" + (rec && rec.object_sentence ? ': “' + esc(rec.object_sentence) + '”' : ""))
+      : "Not filled: the page shows the writer's pick (the lead photograph), as before.";
+    var story = p === "cover" ? (x.title || "") : slotLabel(row, p).replace(/^\d+ · /, "");
+    var ids = Object.keys(RC_ALL).filter(function (s) { return /^S\d+$/.test(s) && RC_ALL[s] && RC_ALL[s].has_image; }).slice(0, 24);
+    var html = '<div class="pf-head">THE SLOTS</div>' +
+      '<div class="sp-house">' + esc(story) + " &nbsp;·&nbsp; house make this month $" + Number(d.house.used_usd || 0).toFixed(2) + " of $" + Number(d.house.cap_usd || 0).toFixed(0) + (d.make && !d.make.configured ? " · the make service is not configured (FAL_KEY)" : "") + "</div>" +
+      '<div class="sp-paths">' + paths + "</div>" +
+      '<div><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">NOW</b> &nbsp;' + cur + (slot ? ' &nbsp;<button class="btn" id="sp-clear">Clear the slot</button>' : "") + "</div>" +
+      '<div class="sp-brief">' +
+        '<div class="wide"><label>The scene: an invented person, the moment, the place, the one detail that carries the idea</label><textarea id="sp-scene">' + esc(b.scene || "") + "</textarea></div>" +
+        '<div><label>The light</label><input id="sp-light" value="' + esc(b.light || "") + '"></div>' +
+        '<div><label>The one thing in signal red</label><input id="sp-red" value="' + esc(b.red || "") + '"></div>' +
+        '<div class="wide"><label>The story: a reader who sees this without the headline should think</label><input id="sp-story" value="' + esc(b.story || "") + '"></div>' +
+        '<div class="wide"><label>A note for the record (why this remake)</label><input id="sp-note" value=""></div>' +
+      "</div>" +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="sp-ask">Ask the house for a brief</button><button class="btn red" id="sp-make">Make four drafts</button><button class="btn" id="sp-type">Typographic</button>' +
+        '<span class="sp-note">Drafts on ' + esc((d.make && d.make.draft) || "") + " at about a cent each; the final on " + esc((d.make && d.make.final) || "") + " at three. The blind test shows each draft the read's headlines and asks which one it tells.</span></div>" +
+      (drafts.length ? '<div class="sp-drafts">' + drafts.map(function (dr, i) {
+        if (!dr.ok) return '<div class="sp-draft"><div class="k"><b>' + esc(dr.error || "failed") + "</b></div></div>";
+        return '<div class="sp-draft' + (p === "cover" ? "" : " hero") + (SL.pick === dr.rights_id ? " on" : "") + '"><img src="' + API + esc(dr.url) + '" data-full="' + API + esc(dr.url) + '"><div class="k">seed ' + esc(String(dr.seed)) + (dr.cached ? " · kept" : "") + (dr.final ? " · FINAL" : "") + "<br>" + slotChecksHtml(dr.checks || {}, dr.tell) + "</div>" +
+          '<div class="row">' + (dr.flagged ? '<button class="btn" data-use="' + i + '" data-over="1" title="Overrides a hard check with your reason, on the record">Use anyway</button>' : '<button class="btn" data-use="' + i + '">Use this</button>' + (dr.final ? "" : '<button class="btn red" data-final="' + i + '">Make the final</button>')) + "</div></div>";
+      }).join("") + "</div>" : "") +
+      (ids.length ? '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">A PHOTOGRAPH FROM THE STORIES</b><div class="sp-note">Only when the image itself is what the finding is about. Pick one, then write the sentence in the read that makes it so.</div><div class="sp-stories">' +
+        ids.map(function (s) { return '<img src="' + API + "/img/t/" + s.slice(1) + '" data-sid="' + s + '" class="' + (slot && slot.ref === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div>" +
+        '<div id="sp-objrow" style="display:none;margin-top:8px"><input class="sp-obj" id="sp-obj" placeholder="The sentence in the read this photograph is the object of"><div style="margin-top:6px"><button class="btn" id="sp-objset">Set it as the object of the finding</button> <span class="sp-note" id="sp-objwhich"></span></div></div></div>' : "") +
+      (note ? '<div class="sp-note" style="margin-top:10px">' + esc(note) + "</div>" : "");
+    slotsPanel(html);
+    slotsBind(row);
+  }
+  function slotBriefRead() {
+    return { scene: document.getElementById("sp-scene").value, light: document.getElementById("sp-light").value, red: document.getElementById("sp-red").value, story: document.getElementById("sp-story").value };
+  }
+  function slotsBind(row) {
+    var p = SL.path;
+    Array.prototype.forEach.call(document.querySelectorAll(".sp-path"), function (bt) { bt.onclick = function () { SL.path = bt.getAttribute("data-path"); SL.pick = null; slotsShow(row, null); }; });
+    var ask = document.getElementById("sp-ask"); if (ask) ask.onclick = function () {
+      ask.disabled = true; ask.textContent = "The house is writing";
+      call("/reads/slot-brief", { id: row.id, path: p }).then(function (d) { if (d && d.ok) { SL.data.briefs[p] = d.brief; slotsShow(row, "The house wrote a brief. Edit it, then make the drafts."); } else slotsShow(row, "No brief: " + ((d && d.error) || "no answer") + "."); })
+        .catch(function () { slotsShow(row, "The house did not answer."); });
+    };
+    var mk = document.getElementById("sp-make"); if (mk) mk.onclick = function () {
+      var b = slotBriefRead();
+      if (String(b.scene).trim().length < 40 || String(b.story).trim().length < 12) { slotsShow(row, "A brief needs the scene (40 characters or more) and the story sentence before anything is made."); return; }
+      mk.disabled = true; mk.textContent = "Making four drafts, about a minute";
+      call("/reads/slot-make", { id: row.id, path: p, brief: b, n: 4, seed: Math.floor(Math.random() * 100000), note: document.getElementById("sp-note").value }).then(function (d) {
+        if (!d || !d.ok) { slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); return; }
+        SL.drafts[p] = (d.drafts || []).concat(SL.drafts[p] || []).slice(0, 12); SL.data.briefs[p] = d.brief; if (d.house) SL.data.house = d.house;
+        var made = d.drafts.filter(function (z) { return z.ok; }).length, told = d.drafts.filter(function (z) { return z.ok && z.tell && z.tell.correct; }).length;
+        slotsShow(row, made + " draft" + (made === 1 ? "" : "s") + "; " + told + " told " + (told === 1 ? "its" : "their") + " own story in the blind test. Pick one, make the final, or remake with a note.");
+      }).catch(function () { slotsShow(row, "The house did not answer."); });
+    };
+    var tp = document.getElementById("sp-type"); if (tp) tp.onclick = function () {
+      call("/reads/slot", { id: row.id, path: p, pick: { type: true } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Typographic. The next PDF carries it."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
+    };
+    var cl = document.getElementById("sp-clear"); if (cl) cl.onclick = function () {
+      call("/reads/slot", { id: row.id, path: p, pick: { clear: true } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Cleared: the writer's pick again."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
+    };
+    Array.prototype.forEach.call(document.querySelectorAll(".sp-draft img"), function (im) { im.onclick = function () { window.open(im.getAttribute("data-full"), "_blank"); }; });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-use]"), function (bt) { bt.onclick = function () {
+      var dr = (SL.drafts[p] || [])[parseInt(bt.getAttribute("data-use"), 10)]; if (!dr) return;
+      var body = { id: row.id, path: p, pick: { rights_id: dr.rights_id }, accepted: (dr.checks && dr.checks.advisory) || [] };
+      if (bt.getAttribute("data-over")) { var why = window.prompt("This draft failed a hard check (" + ((dr.checks && dr.checks.hard) || []).join(", ").replace(/_/g, " ") + "). Why is the check wrong? Your reason goes on the record."); if (!why || why.trim().length < 12) return; body.override = why; }
+      bt.disabled = true;
+      call("/reads/slot", body).then(function (d) { if (d && d.ok) { SL.pick = dr.rights_id; slotsOpen(row, "Set. The next PDF carries it; on the stand, replace the issue or render its cover again."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); });
+    }; });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-final]"), function (bt) { bt.onclick = function () {
+      var i = parseInt(bt.getAttribute("data-final"), 10), dr = (SL.drafts[p] || [])[i]; if (!dr) return;
+      bt.disabled = true; bt.textContent = "Making the final, about a minute";
+      call("/reads/slot-final", { id: row.id, path: p, rights_id: dr.rights_id }).then(function (d) {
+        if (!d || !d.ok) { slotsShow(row, "The final failed: " + ((d && d.error) || "no answer") + "."); return; }
+        SL.drafts[p] = [{ ok: true, rights_id: d.rights_id, ref: d.ref, url: d.url, seed: d.seed, model: d.model, usd: d.usd, checks: d.checks, tell: dr.tell, flagged: d.flagged, final: true }].concat(SL.drafts[p] || []); if (d.house) SL.data.house = d.house;
+        slotsShow(row, "The final is made at print size. Use it to set the slot.");
+      }).catch(function () { slotsShow(row, "The house did not answer."); });
+    }; });
+    var which = null;
+    Array.prototype.forEach.call(document.querySelectorAll(".sp-stories img"), function (im) { im.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll(".sp-stories img"), function (o) { o.classList.remove("on"); }); im.classList.add("on"); which = im.getAttribute("data-sid");
+      document.getElementById("sp-objrow").style.display = "block"; document.getElementById("sp-objwhich").textContent = which + " · " + ((RC_ALL[which] && RC_ALL[which].headline) || "");
+    }; });
+    var os = document.getElementById("sp-objset"); if (os) os.onclick = function () {
+      if (!which) return; var sent = document.getElementById("sp-obj").value;
+      call("/reads/slot", { id: row.id, path: p, pick: { story: which, object_sentence: sent } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Set as the object of the finding, credited. The next PDF carries it."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); });
+    };
+  }
   function deskPanel(html) {   /* SEAM:READ_DESK */
     var el = document.getElementById("desk-panel");
     if (!el) { el = document.createElement("div"); el.id = "desk-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
@@ -601,7 +739,7 @@
    * candidate story, and when none is sharp enough the slot steps down to the
    * type-only design. Photos stay hidden until they pass, so nothing blurry
    * ever flashes on screen or reaches the PDF. */
-  var MIN = { cover: 1200, hero: 1000, wide: 520, strip: 420, thumb: 160, frame: 800 };
+  var MIN = { cover: 1200, hero: 1000, wide: 380, strip: 380, thumb: 160, frame: 800, slot: 600 };   /* SEAM:READ_SLOTS: wide and strip are 400 px thumbnails (/img/t); a slot the house picked is its own judgment above 600 */
   var IMGV = "?v=2";
   var RC = {}, TAKEN = {};
   var CAP_NUM = null;   /* REPORT_BRIEF: the report sets this to its source numbering, so a caption carries "12", never "S106" */
@@ -627,7 +765,7 @@
     if (!alts.length) return false;
     el.setAttribute("data-alts", alts.slice(1).join(","));
     el.setAttribute("data-s", alts[0]);
-    el.src = API + "/img/s/" + alts[0].slice(1) + IMGV;
+    el.src = API + (el.getAttribute("data-thumb") ? "/img/t/" : "/img/s/") + alts[0].slice(1) + IMGV;   /* SEAM:READ_SLOTS */
     return true;
   };
   window.phCheck = function (el) {
@@ -1448,6 +1586,7 @@
       if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="desk">The desk</button>');   // SEAM:READ_DESK: notes, revise, standing inputs
+      if (x.title && row.status !== "compiling" && row.kind !== "report" && row.kind !== "recon") btns.push('<button class="btn" id="slots">The slots</button>');   // SEAM:READ_SLOTS: the cover and every finding's image, the house's to fill (reports follow in ED2)
       if (x.title) btns.push('<button class="btn" id="pin-folio">Pin to folio</button>');   // SEAM:READ_FOLIO
       actions.innerHTML = btns.join(" ");
       /* SEAM:READ_FOLIO: a house read pinned to the open folio brings the stories and lines its claims cite, and its words as a prior view. */
@@ -1475,12 +1614,24 @@
       function img(s) { return rc[s] && rc[s].has_image !== false ? API + "/img/s/" + String(s).slice(1) : null; }
       function credit(s) { return rc[s] ? "Photo: " + esc(rc[s].source_name || "") : ""; }
       function photo(s, slot, alts, capMode) {
-        var u = img(s); if (!u) return "";
+        var thumb = slot === "wide" || slot === "strip";   /* SEAM:READ_SLOTS: the mosaics and strips draw the 400 px thumbnail */
+        var u = img(s); if (!u) return ""; if (thumb) u = u.replace("/img/s/", "/img/t/");
         alts = (alts || []).filter(function (a) { return a !== s && img(a); }).slice(0, slot === "cover" ? 30 : 10);
         return '<img class="ph ph-wait" crossorigin="anonymous" src="' + u + IMGV + '" alt="' + esc((rc[s] && rc[s].headline) || "") + '" loading="eager" referrerpolicy="no-referrer"' +
           ' data-s="' + s + '" data-first="' + s + '" data-min="' + MIN[slot || "thumb"] + '" data-alts="' + alts.join(",") + '"' +
-          (capMode ? ' data-cap="' + capMode + '"' : "") + ' onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
+          (capMode ? ' data-cap="' + capMode + '"' : "") + (thumb ? ' data-thumb="1"' : "") + ' onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
       }
+      /* SEAM:READ_SLOTS: a slot the house filled wins over the writer's suggestion. A house image comes from /media, a story
+         photograph through the relay, and the typographic block draws nothing. The slot's credit is the slot's. */
+      var SLOTS = (row.meta && row.meta.slots) || {};
+      function slotOf(path) { var s = SLOTS[path]; return s && s.kind ? s : null; }
+      function slotImg(s, slot) {
+        if (!s || s.kind === "type") return "";
+        var u = s.kind === "house" ? API + "/media/" + s.ref : (/^S\d+$/.test(String(s.ref)) ? API + "/img/s/" + String(s.ref).slice(1) + IMGV : null);
+        if (!u) return "";
+        return '<img class="ph ph-wait" crossorigin="anonymous" src="' + u + '" alt="" loading="eager" referrerpolicy="no-referrer" data-s="' + esc(s.ref) + '" data-first="' + esc(s.ref) + '" data-min="' + MIN.slot + '" data-alts="" onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
+      }
+      function slotCredit(s) { return s && s.credit ? esc(s.credit) : ""; }
       function uniq(list) { var seen = {}; return (list || []).filter(function (a) { if (!a || seen[a] || !real(a)) return false; seen[a] = 1; return true; }); }
       function pickImage(list, avoid) {
         list = (list || []).filter(real);
@@ -1517,6 +1668,7 @@
       }
 
       var main = x.patterns || x.features || x.held || [];
+      var mainKey = x.patterns ? "patterns" : x.features ? "features" : x.held ? "held" : "findings";   /* SEAM:READ_SLOTS: the slot paths */
       var sec = 0, contents = [];
       var rough = x.the_week || x.the_month || x.the_arc;
       var watch = Array.isArray(x.watch) ? x.watch : (x.watch ? String(x.watch).match(/[^.!?]+[.!?]+/g) || [x.watch] : []);
@@ -1536,16 +1688,18 @@
       /* Cover */
       var coverPool = uniq([x.cover_image].concat.apply([x.cover_image], main.map(function (p) { return [p.lead_image].concat(p.evidence || []); }))).filter(function (a) { return img(a); });
       var coverS = coverPool[0] || null;
-      if (coverS) used[coverS] = 1;
+      var coverSlot = slotOf("cover");   /* SEAM:READ_SLOTS: the house's slot wins over the writer's cover */
+      if (coverS && !coverSlot) used[coverS] = 1;
       var issues = st.issues && st.issues.first ? "Issues " + String(st.issues.first).padStart(3, "0") + " to " + String(st.issues.last).padStart(3, "0") : "";
       var nums = [["stories", "Stories read"], ["editions", "Editions"], ["sources_distinct", "Sources"], ["threads_total", "Recurring threads"]]
         .filter(function (n) { return stat(st, n[0]) !== null; })
         .map(function (n) { return "<div><b>" + stat(st, n[0]).toLocaleString("en-US") + "</b><span>" + n[1] + "</span></div>"; }).join("");
-      h += '<section class="page cover">' + (coverS ? '<div class="photo">' + photo(coverS, "cover", coverPool.slice(1)) + '</div><div class="shade"></div>' : "") +
+      var coverHtml = coverSlot ? slotImg(coverSlot, "cover") : (coverS ? photo(coverS, "cover", coverPool.slice(1)) : "");
+      h += '<section class="page cover' + (coverSlot && coverSlot.kind === "type" ? " type" : "") + '">' + (coverHtml ? '<div class="photo">' + coverHtml + '</div><div class="shade"></div>' : "") +
         '<div class="in">' + mark("rp-mark") + '<div class="kind">' + KIND[row.kind] + " · " + esc(row.label) + "</div>" +
         "<h1>" + esc(x.title) + '</h1><p class="thesis">' + esc(x.thesis) + "</p>" + (nums ? '<div class="nums">' + nums + "</div>" : "") +
         '<div class="foot"><span>' + esc(issues) + "</span><span>" + fmtDate(row.window_start) + " · " + fmtDate(row.window_end) + "</span>" +
-        (coverS ? '<span class="cvcredit">Cover: ' + esc(rc[coverS].source_name || "") + "</span>" : "") + "</div></div></section>";
+        (coverSlot ? (coverSlot.kind !== "type" && coverSlot.credit ? '<span class="cvcredit">Cover: ' + esc(String(coverSlot.credit).replace(/^Photo: /, "")) + "</span>" : "") : coverS ? '<span class="cvcredit">Cover: ' + esc(rc[coverS].source_name || "") + "</span>" : "") + "</div></div></section>";   /* SEAM:READ_SLOTS */
 
       /* How to read this + contents */
       h += inner('<div class="how"><div><div class="kicker">How to read this</div><div class="loop">' +
@@ -1577,11 +1731,14 @@
         main.forEach(function (p, i) {
           var ev = (p.evidence || []).filter(real);
           var lead = (p.lead_image && real(p.lead_image) && img(p.lead_image)) ? p.lead_image : pickImage(ev, used);
-          if (lead) used[lead] = 1;
-          var rest = ev.filter(function (s) { return s !== lead && img(s); }).slice(0, 4);
+          var pslot = slotOf(mainKey + "[" + i + "]");   /* SEAM:READ_SLOTS: the finding's slot */
+          if (lead && !pslot) used[lead] = 1;
+          var rest = ev.filter(function (s) { return (pslot || s !== lead) && img(s); }).slice(0, 4);
           var dek = p.dek || firstSentence(p.why_it_matters || p.line);
           var why = p.why_it_matters && !p.dek ? String(p.why_it_matters).slice(firstSentence(p.why_it_matters).length).trim() : p.why_it_matters;
-          h += inner((lead ? '<div class="hero">' + photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) + '<span class="tag">' + (x.held ? "What held" : "The Read") + " · " + (i + 1) + " of " + main.length + '</span><div class="credit">' + credit(lead) + "</div></div>"
+          var heroHtml = pslot ? (pslot.kind === "type" ? "" : slotImg(pslot, "hero")) : (lead ? photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) : "");
+          var heroCredit = pslot ? slotCredit(pslot) : (lead ? credit(lead) : "");
+          h += inner((heroHtml ? '<div class="hero">' + heroHtml + '<span class="tag">' + (x.held ? "What held" : "The Read") + " · " + (i + 1) + " of " + main.length + '</span><div class="credit">' + heroCredit + "</div></div>"
                            : '<div class="hero none"></div>') +
             '<div class="pname">' + esc(p.name) + (p.strength === "signal" ? '<span class="signal">Signal</span>' : "") + "</div>" +
             (dek ? '<p class="dek">' + prose(dek) + "</p>" : "") +
@@ -1752,6 +1909,11 @@
     };
     /* SEAM:READ_DESK: the editors' desk. Notes pinned to the read (or to one path in it), Revise under the open notes
        (a new version from the same pack, at any state), and the standing inputs for this kind and for every kind. */
+    var sl = document.getElementById("slots"); if (sl) sl.onclick = function () {   /* SEAM:READ_SLOTS */
+      var el = document.getElementById("slots-panel"); if (el && el.innerHTML) { slotsPanel(""); return; }
+      slotsPanel('<div class="pf-head">Opening the slots</div>');
+      slotsOpen(row, null);
+    };
     var dk = document.getElementById("desk"); if (dk) dk.onclick = function () {
       var el = document.getElementById("desk-panel"); if (el && el.innerHTML) { deskPanel(""); return; }
       deskPanel('<div class="pf-head">Opening the desk</div>');

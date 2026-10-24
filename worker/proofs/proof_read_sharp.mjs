@@ -38,7 +38,7 @@ r = await R.readImageRelay('/img/s/741', {});
 ok(r.status === 200 && r.headers.get('x-img-from') === 'stored', 'S5 the stored image is still the last resort');
 ok([...store.keys()].every(k => k.includes('/v2/s/')), 'S6 cache key v2: every photo cached small is fetched again');
 
-ok(/var MIN = \{ cover: 1200, hero: 1000, wide: 520, strip: 420, thumb: 160, frame: 800 \}/.test(page), 'Q1 each slot has a minimum source width');
+ok(/var MIN = \{ cover: 1200, hero: 1000, wide: 380, strip: 380, thumb: 160, frame: 800, slot: 600 \}/.test(page), 'Q1 each slot has a minimum source width (ED1: wide and strip are 400 px thumbnails; a slot the house picked stands above 600)');
 ok(/el\.naturalWidth < min\) \{ if \(!phNext\(el\)\) phGone\(el\)/.test(page), 'Q2 below the minimum: next candidate, then the type-only design');
 ok(/\.ph-wait \{ visibility: hidden; \}/.test(page) && /class="ph ph-wait"/.test(page), 'Q3 a photo is hidden until it passes: nothing blurry flashes');
 ok(/data-min="' \+ MIN\[slot \|\| "thumb"\]/.test(page) && !(page.match(/\bphoto\([^,()]*\)/g) || []).length, 'Q4 every photo names its slot');

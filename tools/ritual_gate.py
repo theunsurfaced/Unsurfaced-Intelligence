@@ -19,6 +19,7 @@ Checks:
   9. Spender registry every AI-spending function is registered with its guard
  10. Proofs           every worker/proofs/*.mjs exits 0
  11. Prompt sync      worker READ_METHOD == templates/CULTURAL_READ_METHOD.md
+ 11b. Brief sync      worker IMAGE_BRIEF == templates/IMAGE_BRIEF.md
 """
 import re, sys, json, glob, base64, hashlib, subprocess, tempfile, os
 
@@ -257,6 +258,10 @@ SPENDERS = {
     'excLook': 'Workers AI vision over at most LOOK.MAX images inside LOOK.MS; called by synthesize only (excavateAuth), on a full read, never for quick reads or the bench (SEAM:EXC_LOOK)',
     'crossCurrentsPass': 'claudeGate on the doc tier (Fable); called by crossCurrentsWeekly (cron-bounded: Sundays in the 06:10 chain) or the admin desk {run: currents}; one call a week over at most 80 rows (SEAM:CROSS_CURRENTS)',
     'askRecord': 'claudeGate on the live tier (Sonnet) + underLimit (the daily allowance) on a signed-in reader; one call a question, at most ASK.MAX_TOKENS; nothing landed or cached (SEAM:ASK_RECORD)',
+    'makeImage': 'the make service (SEAM:MAKE_SERVICE, ED1): fal through the queue, one image a call, against the house month in KV (makeSpend, MAKE_HOUSE_CAP_USD, $10 by default); a refused or failed make refunds and returns the typographic fallback; called by the admin slot doors (slotRoute) only',
+    'imageLook': 'Workers AI vision, one image a call inside LAKE_LOOK.MS and LAKE_LOOK.BYTES, inside the included neurons; callers: imageCheck and storyTell (the admin slot doors) and imageDescribePass (the 30-minute slice, LAKE_LOOK.PER_RUN a slice and PER_DAY a day in KV, or the admin desk {run: describe}) (SEAM:LAKE_LOOK)',
+    'imageSimilar': 'Workers AI embeddings over at most 40 story descriptions a draft; called by the admin /reads/slot-make door only (SEAM:LAKE_LOOK)',
+    'slotBrief': 'claudeGate on the frame tier (Haiku, its own cap), one call a brief; called by the admin /reads/slot-brief door only (SEAM:READ_SLOTS)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")
@@ -302,6 +307,19 @@ for f in worker_js:
     elif json.loads(_pm.group(1)) != load(_mf):
         FAIL.append(f"[prompt] {f}: READ_METHOD differs from {_mf}; run tools/sync_method.py")
     print(f"  prompt  {f}: READ_METHOD {'in sync' if os.path.exists(_mf) and json.loads(_pm.group(1)) == load(_mf) else 'DRIFT'}")
+
+# ── 11b. Brief sync (SEAM:BRIEF_SYNC, ED1) ───────────────────────────────
+# The brief every house image is made from is the brief in the repo, byte for byte.
+# Edit templates/IMAGE_BRIEF.md, then run tools/sync_brief.py.
+_bf = "templates/IMAGE_BRIEF.md"
+for f in worker_js:
+    _pb = re.search(r'^const IMAGE_BRIEF = (".*");(?=\s+// SEAM:BRIEF_SYNC)', load(f), re.M)
+    if not _pb: continue
+    if not os.path.exists(_bf):
+        FAIL.append(f"[brief] {_bf} missing")
+    elif json.loads(_pb.group(1)) != load(_bf):
+        FAIL.append(f"[brief] {f}: IMAGE_BRIEF differs from {_bf}; run tools/sync_brief.py")
+    print(f"  brief   {f}: IMAGE_BRIEF {'in sync' if os.path.exists(_bf) and json.loads(_pb.group(1)) == load(_bf) else 'DRIFT'}")
 
 # ── 12. The bench (SEAM:BENCH) ───────────────────────────────────────────
 # The writer's slices (the laws, the prompts, the room) are hashed exactly as tools/bench/writer_hash.mjs hashes them. When the

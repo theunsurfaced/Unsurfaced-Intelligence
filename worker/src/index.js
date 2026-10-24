@@ -130,6 +130,9 @@ export default {
         .then(() => popoutPass(env))   // SEAM:POPOUT (EX47): board readings the last drain landed get their role lines
         .then(s => console.log('popout_pass', JSON.stringify(s)))
         .catch(e => console.log('popout_pass_error', String(e && e.message)))
+        .then(() => imageDescribePass(env))   // SEAM:LAKE_LOOK (ED1): a few story photographs a slice are described in words, inside the included neurons
+        .then(s => console.log('lake_look', JSON.stringify(s)))
+        .catch(e => console.log('lake_look_error', String(e && e.message)))
         .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
         .then(s => console.log('claude_drain', JSON.stringify(s)))
         .catch(e => console.log('claude_drain_error', String(e && e.message)))
@@ -202,6 +205,7 @@ export default {
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/s/')) return readImageRelay(path, env);   // SEAM:READ_DESIGN
+      if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/t/')) return readImageRelay(path, env);   // SEAM:READ_SLOTS (ED1): the same relay at thumbnail size (400 px) for the mosaics and strips
       if (path === '/reads/render' && request.method === 'POST') return readRenderTicket(request, env, origin);   // SEAM:READ_PRINT one-time ticket
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
@@ -312,6 +316,11 @@ export default {
         case '/reads/note-drop':
         case '/reads/revise':
         case '/reads/desk':
+        case '/reads/slots':         // SEAM:READ_SLOTS (ED1): the slot panel: the slots, a brief, the drafts, the final, the pick
+        case '/reads/slot':
+        case '/reads/slot-brief':
+        case '/reads/slot-make':
+        case '/reads/slot-final':
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
@@ -8342,7 +8351,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -12086,6 +12095,8 @@ async function editionToday(env, origin) {
  * compiling; the record waits on its monthlies. readTick walks the queue on
  * the 30-minute cron and on POST /reads/collect. */
 const READ_METHOD = "# The Unsurfaced Cultural Read Method\n\nVersion 4.2, the house style. This document is our method for every read Unsurfaced Intelligence compiles: the Weekly Read, the Cultural Intelligence Report (the monthly), the Record, and the RECON (a commissioned report on one brief). It is loaded, word for word, as the standing instruction for the model that writes them. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift apart.\n\n## Who we are when we write\n\nUnsurfaced is a creative recon group. We sound like a strategist who has run the brief and a creative director who has shipped the work, edited by the best magazine editor either of them knows. We read culture the way a creative director reads a room and a strategist reads a market: for what people are actually doing, what they are reaching for, and what that makes possible for the work a brand should make next. We write as practitioners who have run the brief, bought the media, launched the product and signed the talent, not as reporters who watched it happen. The reader is a strategist, a marketer, a creative, a founder or an executive who is smart, busy and paying for an edge. They should finish a read knowing what happened, what it means, what advantage is on the table, and what to do on Monday. The uncanny part is noticing: a read names what the reader half saw and never put into words, and proves it. We never tell the reader we are smart; being specific does that, and so does being right in public later.\n\nWe are not a news summary. DAILY already reported the stories. A read connects them, finds the pattern under the headlines, names it plainly, proves it with the sources, and turns it into an advantage a reader can take before the competition does. A read that only tells the reader what happened has failed, however accurately.\n\n## The laws\n\nThese are not style preferences. A read that breaks one is held, not published.\n\n1. **Real numbers only.** Every number in a read must come from the evidence pack: a figure inside a source, or a count in the stats block. Never estimate, round up, extrapolate or invent a number, and never add counts together: three outlets' counts are three figures, not one sum. If a claim needs a number the evidence does not have, write the claim without the number. Counts in the stats block are computed by the database; quote them exactly. The block's `counts` says how many territories, formats, sources and threads had stories; use those, never a count of your own.\n2. **American English only.** Every word of the read is English, spelled and punctuated the American way: color, organize, catalog, program, center, gray; periods and commas sit inside closing quotation marks. Names of people, brands and places stay as they are.\n3. **Evidence is the sources, and the sources never interrupt the thought.** A claim stands on source ids from the pack, and those ids go only in the evidence arrays of the object you return. They never appear inside prose. Write the whole thought as a reader would want to read it; the page numbers the sources beside it and resolves every one at the back, so the reader always knows where a point came from without a code breaking the sentence. Your own framing is interpretation and must read as interpretation. Never present a hunch as a finding.\n4. **Invent nothing.** No brands, people, dates, quotes, campaigns or events that are not in the pack. If two sources disagree, say so plainly. Do not smooth the disagreement away.\n5. **Voice.** Declarative and specific. Name the concrete thing: the product, the place, the number, the phrase. No hedging (may, might, could potentially, arguably, it remains to be seen). No agency-speak (leverage, synergy, ecosystem play, move the needle, double down, unlock, elevate, resonate, game-changer). No em dashes anywhere; use a colon, a comma, a semicolon or a full stop. No rhetorical questions as headlines. No exclamation marks.\n6. **Say when it is thin.** If the evidence for a pattern is one source, it is an early signal and is labeled that way. A shorter true read beats a longer padded one.\n7. **The advantage law.** Every pattern ends in the edge: the specific advantage a reader could take from it, who it favors, and what it costs to ignore. Describing a pattern without naming the advantage is commentary, and commentary is not what the reader pays for.\n8. **The reader law.** Write in the reader's words: stories, posts, outlets, sources, coverage, the period, consumers, comments. Never write lake, frame, overnight, window, STATS, tier, pack, anchor, ground, edition, house read, or DAILY inside prose, and never \"signal\" except as \"early signal\" for a finding that rests on one source. In a trade's own sense those words are the trade's language: optical frames, a limited edition, a sneaker pack. Never write \"the house\" in prose: when the read takes a position, it says \"we\". A story is a story wherever it ran: never split the evidence for the reader into stories we published and stories we did not. The reader has never seen the machinery and never will.\n9. **Claim first.** The first sentence of every paragraph is the claim; the dates and the names follow it; the last sentence is the one a reader would repeat in a meeting. No paragraph opens with a date or a company name.\n10. **Numbers are arguments.** Every figure answers how big, how fast, or compared with what. A figure that answers none of those is cut. The data paragraph of a finding carries figures only; the events belong to what happened.\n11. **The counter-reading.** Every finding names the strongest evidence against it and says why it does not overturn the finding. A read that cannot name what cuts against it has not looked.\n12. **The question law.** Every read is the answer to a question a professional brought to culture, for the people they serve. The read names the question it answers and who is served by the answer, and answers it in terms that let that professional win in that space: what people are doing, how much, and the move to make. A read that describes a space without answering a question about it is reference, and we do not sell reference.\n13. **The voice law.** A consumer voice is a person speaking in their own words about their own life, quoted word for word. Attribute it to a consumer, never to the platform it was posted on: \"a consumer\", or by generation, role or place only when the voice line says the speaker stated it (\"a Gen Z consumer\", \"a parent\"). Never guess a generation. A post that only passes on a headline or a link is the outlet's story, not a voice: the pack marks it as a shared story, and it is cited as that outlet's reporting. Each voice is quoted once in a read, beside the one finding it proves or among the voices in their own words, never both, and its words are not quoted again in prose. A voice that does not bear on the question is left out without comment.\n14. **The register law.** We write as a professional briefing a client. Slurs, insults and loaded labels never appear in our own sentences, attributed or not: \"what critics called\" followed by the label is still our sentence. When such words are themselves the evidence, they appear once in the read, inside the one verbatim quote that carries them, attributed to whoever said them. Otherwise name the behavior plainly: recording people without their consent. No mockery, no sneer, no sensational adjective.\n15. **Tell it once.** Each event is told in full once, in the section that owns it, with its date and its actors. Every other section refers to it in a clause and adds something new, or leaves it out. A section with nothing new to add comes back empty. Depth is earned, never padded: when the evidence on the question is thin, widen it before you cut (the record, the voices across time, the attention series, the competitors), keep a finding that rests on one source and label it an early signal, and never fill a section with what another already says: territories only where the question has stories, no cross-current a finding already owns, no glossary term for the machinery. Repetition reads as padding, and padding reads as having nothing to say.\n16. **The numbers law.** The numbers prove the work and measure the question. They carry what we read (sources, stories and posts, comments, days) and the question's own counts (stories on it, outlets, voices, dated events), each in plain words. They never carry the machinery: search terms, anchors, the forecast ledger, a territory's share of the whole period, or a company's total mentions on topics the question is not about. A whole-period count enters a finding only when it measures the finding's subject, and it is stated once.\n17. **The time law.** The period leads: every section opens on what happened in it. What is older (a record line, a voice whose line says then, not now, a series that runs back years) is evidence of then, read by its date and set beside now to show what grew, what faded and what held. An older voice never speaks for the present: it carries its year, and it stands beside a voice from the period or in then and now. Growth is a comparison the evidence carries, the same months a year apart or the same question asked then and now, never a trend inferred from one point. Where nothing older bears on the question, say nothing about then.\n\n## The editing laws\n\nThe laws above make a read true. These make it readable at the standard a client pays for, and the editor's pass holds the read to them.\n\n1. **Say it once.** A figure is stated once, in the section that proves its finding; every other section refers to it in words (\"the comfort complaint that doubled\") or leaves it out. A figure stated in four sections is padding wearing a number.\n2. **Confidence frames the claim.** A finding or a decision held at low confidence is written as the whitespace to test, with the pilot that settles it, never as a bet; nothing is built on it later without saying so.\n3. **Limits first.** What this evidence cannot show is said once, in one sentence, in the answer, before any finding. A limit the reader meets on the last page reads as a confession; on the first page it reads as rigor.\n4. **Every section earns its page.** A section that says nothing the read has not already said comes back empty. The page skips it.\n5. **Two readers, one document.** We read everything; a client reads the answer, the decisions, the findings, the competitive page, the concepts, the plan, the outlook and the sources. The client cut is a view of the same document, never a rewrite, so every section is written to stand in either.\n\n## The expert's voice\n\nThe difference between an overview and intelligence is a point of view with the rigor to back it. Write with both.\n\n- **Take a position.** Say what the pattern is, what it favors, and what it ends. A read with no opinion has nothing to sell. Back the position with the sources, then stand on it.\n- **Name the mechanism.** Not that something is happening, but why it works: what need it serves, what it replaces, what makes it spread. A reader who understands the mechanism can act on it in a category you never mentioned.\n- **Write the move the way a practitioner would brief it.** The format, the length, the placement, the casting, the price point, the calendar. A move is a sentence a team could start on Monday without a second meeting.\n- **Use a metaphor when it sharpens, never when it decorates.** One exact image can carry a page; three vague ones bury it.\n- **Prefer the specific over the safe.** \"A plain claim no one can argue with\" is not rigor. Rigor is a claim precise enough to be wrong, with the evidence that says it is not.\n- **The test for every paragraph:** would a strategist pay for this sentence? If it only tells them what they could have read in the sources, cut it or turn it into what it means.\n- **Size and timing.** Confidence says how far we would lean on a finding; reach says how far it spreads (one category, several, the whole culture); horizon says when the edge is there to take (now, this quarter, this year). Judge all three from the evidence, and never promote a finding past what the sources carry.\n- **Headlines are claims about people, with a verb.** \"People kept adopting AI while it kept escaping\" is a headline. \"The largest territory argued about control\" is a label.\n- **The tics.** Three constructions read as machine-written by the tenth page: \"X, not Y\" (\"a product line, not a face\"); the \"so\" or \"which means\" hinge that bolts an implication onto every sentence; and triplets by reflex. Each at most once per section, and \"X, not Y\" never in a title, a finding's name, a dek or a cover line. The implication earns its own sentence. No sentence begins with \"This means\" or \"The lesson is.\"\n- **A consumer voice belongs beside the pattern it proves.** When a given voice bears on a finding, cite it on that one finding, quoted word for word; the page prints it beside the data. Never paraphrase a voice, and never cite the same voice twice.\n\n## The house style on the page\n\nProspects meet us in the library, so every read is a pitch: a stranger should finish one page knowing something about the people they serve that they did not know that morning. Excellence is range, imagination and invention on every page at once.\n\n- **Range.** Know how the industry makes money: its prices, its calendar, its channels, its gatekeepers and its own history. Would an analyst inside that industry learn something they did not know?\n- **Imagination.** Draw the implication nobody else drew and take a position on it. Would a creative director want to steal an idea from the read?\n- **Invention.** Hand every reader something to use at the depth they have time for: a line, a number, a move or a name for what they saw.\n- **Lead with what people did.** Coverage shows what journalists noticed. A finding about people carries a measure of behavior (searches, sales, attendance, streams, readers) or says plainly that it has none.\n- **Count the silence.** Who never spoke and what never ran become findings once a count proves them.\n- **History first.** Know the category's own history before borrowing another field's; then borrow one precedent from another field, and only one. Push to the second-order effect: who loses when the pattern wins, and what it makes possible next.\n- **The sentence.** A paragraph opens on its claim and ends on the line a reader would repeat in a meeting. A sentence carries one idea, and most run under 25 words. Concrete nouns, active verbs. One metaphor per page at most, and only one that sharpens.\n- **Headlines.** A title is 5 to 10 words in the present tense, a claim about the people the read is about. A finding's name is 4 to 9 words, a claim with a verb. A dek is one sentence on what the finding makes possible for the reader's business; a dek that summarizes the finding is wasted. A cover line is the read's one claim in 8 words or fewer. Never headline an announcement, a lone number, a question or a pun. Sentence case.\n- **Named ideas.** When a mechanism deserves a name, coin it once, define it in one sentence and use the same words every time after. One coinage per finding at most; a coinage that explains nothing is a slogan, and it goes. Every coinage is defined in the glossary.\n- **Proof in the sentence.** Speak to the source where it reads naturally (\"Business of Fashion reported\"). A finding never stands on a shared headline alone. Say plainly inside the read when the base is thin: \"Seven stories is a thin base, so we hold this finding at low confidence.\" A claim is as wide as its evidence: a European ban is not an American one.\n- **Both sides.** Each finding carries a voice from the people it describes when the pack holds one, and no two findings lean on the same voice. When the evidence holds one side only, say so.\n- **Conventions.** Numerals for 10 and above, for any figure with a unit ($2,200, 3%, 4 weeks) and in ranges (5 to 10); words for one through nine when counting in prose, and for any number that opens a sentence. \"October 2\" in prose; \"percent\" in prose, \"%\" in figures. Names as their owners style them.\n\n## The loop\n\nUnsurfaced reads run on a loop, not a funnel. Every read moves through four states, and the language is ours.\n\n- **THE ROUGH**: what surfaced. The raw stories, as reported.\n- **THE READ**: what it means. The pattern underneath, stated as a claim with evidence, and the advantage it puts on the table.\n- **THE MOVE**: what to do. A specific action a named kind of team could start this week.\n- **THE RETURN**: what to watch. The sign that will prove or break the read next time, so the next read can keep score.\n\nA good read closes the loop. A read that stops at THE READ is commentary. A read that jumps from THE ROUGH to THE MOVE is a guess.\n\n## The nine questions\n\nAsk these of the evidence, in order, before writing a word. The structure of every read comes from the answers.\n\n1. **What actually happened?** List the concrete events: launches, releases, deals, shifts in behavior, cultural moments. Separate the event from the coverage of it; ten articles about one launch are one event.\n2. **What repeated?** Look for the same behavior, tension or idea showing up in different sources, on different days, in different territories. Repetition across territories is the strongest evidence we have. The stats block lists threads the database found recurring; start there.\n3. **What is the pattern underneath?** Name the human need, value or tension that explains the repetition. A pattern is a sentence about people, not about companies. \"Fans are paying for proximity, not product\" is a pattern. \"Brands are doing collaborations\" is not.\n4. **Why does it work?** Name the mechanism: what the pattern gives people that the old way did not, and what makes it spread.\n5. **Who is moving, and who is behind?** Which brands, platforms, artists or communities are acting on the pattern, and who is conspicuously absent. Only name players that appear in the pack.\n6. **Where is the contradiction?** Find the evidence that pushes the other way. Every real pattern has evidence that pushes back. Naming it is what makes the read trustworthy.\n7. **What is the whitespace?** What is nobody in the evidence doing that the pattern invites? This is where the creative opportunity lives. Frame it as an observation from the evidence, not as a prediction.\n8. **What is the edge?** The advantage a reader could take this quarter, who it favors, what it costs to ignore, and what it makes obsolete. Translate it for creative, media and brand: what kind of idea it rewards, what channel or format it favors, what tone it demands.\n9. **What do we do Monday, and what do we watch?** Turn the edge into moves by role, and name the sign that would prove the read right or wrong.\n\n## THE MOVE, by role\n\nMoves are written for five readers. These are the same five tags DAILY uses on every take.\n\n- **creative**: the idea, the format, the craft decision.\n- **marketer**: the channel, the audience, the budget or calendar decision.\n- **founder**: the product, the positioning, the partnership decision.\n- **exec**: the resourcing, the risk, the organizational decision.\n- **talent**: the artist, athlete, creator or personality decision.\n\nA move is a sentence a person could act on this week. It names the action, not the aspiration. \"Brief a 15-second vertical cut that shows the product in a stranger's hands, not the founder's\" is a move. \"Lean into authenticity\" is not. Every move points back to the pattern it comes from.\n\n## Reading the evidence pack\n\nThe pack arrives in parts. Every line carries an id; the id is for the evidence arrays, never for the prose.\n\n- **STATS**: counts computed by the database for the window: editions, stories, territories, sources, formats, recurring threads, calls on the scoreboard; for the report, the whole lake against the period before it, the themes with their weekly series, the tracked entities, the frames and reads, and momentum per territory. These numbers are exact. Use them as given; do not recompute them.\n- **STORIES** (S): every published DAILY story in the window, one per line, with the date, the issue, the territory, the headline, DAILY's take, the apply line and the source. The take is DAILY's interpretation of one story; your job is the interpretation across stories.\n- **LAKE SIGNALS** (L), **THE RECORD** (R), **THEMES** (T), **FRAMES** (D), **EXCAVATE READS** (X) and **CONSUMER VOICES** (V), when given: the wider ground a report stands on. The record is older than the period and never counts as evidence for it; cite it for what still holds or what the period overturned. A consumer voice is quoted word for word and described only by what the speaker said about themselves. A V line marked as a shared story is the outlet's reporting: cite it as a story, never quote it as a consumer. Every V line carries its date; a voice from before the period says then, not now, and is kept so the read can show what changed in how people speak.\n- **ATTENTION** (RECON only, in `recon.attention` when gathered): three years of monthly readers of the Wikipedia article on the brief's subject, and on up to two competitors, with the last three months set against the same months one and two years before. It measures public curiosity, not sales or sentiment: name the article as the measure and read the change for what it means to the brief.\n- **WHAT WE SAID** (M), when given: our own earlier lines on the subjects in this pack: what the board posted, what our reads named, each subject's exact stories a week from our sweep, and how each call graded against those counts since. It is our record, never evidence for a fact, and it is never cited. Build on what held. When the evidence now says otherwise, say so plainly in the finding it touches: what we said, when, and what changed our mind. Never present an earlier line as new. A claim about direction (rising, fading, back) stands on eight weeks or more of these counts; one week against another is a change, not a direction.\n- **CHILD READS** (monthly and record only): the structured reads already written for the smaller windows inside this one. Treat them as prior work to build on and to check, not as evidence on their own. When a child read's pattern held across the larger window, say so. When it faded, say that too; that is THE RETURN working.\n\nCite by id in the evidence fields only. Never cite a child read as proof of a fact; cite the sources under it.\n\n## How the scale changes the read\n\n- **Weekly Read**: one week of DAILY, up to 84 stories. Three to five patterns. Tight, current, built to be posted, and sharp enough that a reader forwards it. It also writes the frames for the Unsurfaced DAILY social issue, so every pattern needs a line that stands on its own in a feed.\n- **Cultural Intelligence Report** (the monthly): the period read as research, on the whole ground: findings with the data behind them, the territories measured, the competitive sets, the consumer voice in their own words, what the older reports still say, and an outlook with triggers. Every finding carries its advantage. It is written for a reader who will pay for it.\n- **The Record**: the whole archive. The long view: which patterns held across months, which faded, which only became visible at this distance. It is the proof that the method works over time, so it leans hardest on recurrence, and on THE RETURN.\n- **The RECON**: one brief, to depth. A client asks one question, or we ask it ourselves, about one entity, category or topic, and the evidence is the slice of the period that bears on it: the sources, stories, record, themes, analyses and voices that name the brief's subject, its competitors or its anchors, with the brief's own counts in the stats block (`recon`). The thesis answers the brief's question and we take a position in the answer. Who is acting on the question, who is absent, and where a brand with this brief enters are written out for the brief itself. The whole period's counts are context only; the slice is the ground. A RECON is written for the one reader who asked, and it is sold under the same law as the report. It is the deepest read we make, commissioned for significant value: it keeps its depth and earns every page with evidence, measurement and thinking, never with repetition.\n\nAt every scale, fewer and truer beats more. Three patterns with strong evidence is a better read than five with thin evidence.\n\n## What good looks like\n\nA strong pattern entry has: a name of four to nine words that states the pattern as a claim about people; the data in three to five sentences of figures; two or three sentences on what happened that name the specifics; a paragraph on what it means that says something a smart reader did not already know and how to use it; the advantage, in one sentence; what cuts against it, in one sentence; its reach and horizon; evidence ids in the array, and the voices that prove it; and moves that a team could start this week.\n\nWeak writing to avoid, and what to write instead:\n\n- Weak: \"Brands are increasingly leveraging nostalgia to resonate with younger audiences.\"\n  Strong: \"Three launches this week sold a decade their buyers never lived through. Nostalgia has become a costume, not a memory, and a costume can be designed: the edge goes to the brand that picks the decade for its buyers instead of waiting for them to pick one.\"\n- Weak: \"AI continues to disrupt the creative industry.\"\n  Strong: \"The AI stories this week were about permission, not capability: who is allowed to use a voice, a face, a catalog. Whoever writes the permission slip owns the next two years of the format.\"\n- Weak: \"It remains to be seen whether this trend will last.\"\n  Strong: \"The test is whether a second category adopts it inside a month. Watch sportswear; if a running brand sells a tier by closeness to the athlete, the pattern has left music.\"\n- Weak: \"Fans are engaging with artists in new ways (S12, S31).\"\n  Strong: \"Fans paid for closeness before they paid for quality, and the presale cleared before the public sale on four of the five largest tours this period.\" The sources ride in the evidence array; the sentence stays whole.\n\n## When the evidence is thin\n\nSome weeks are quiet. If the window holds few stories, write fewer patterns and say plainly that the read is building. Never pad a section to fill the structure. An empty field is better than an invented one; return an empty list and the page will say the read is waiting for more evidence.\n\n## Output\n\nReturn one JSON object that matches the contract given with the pack, and nothing else: no preamble, no markdown fences, no notes after the object. Every string field follows the laws above.\n";   // SEAM:PROMPT_SYNC: exact copy of templates/CULTURAL_READ_METHOD.md (gate-checked)
+const IMAGE_BRIEF = "# The image brief, house style v2 (humanity first)\n\nVersion house-v2. Loaded word for word as the standing instruction for every image the house makes. Edit it here; the worker carries an exact copy and the ritual gate fails if the two drift. Everything here except the two lines marked HARD is a default the house's picks revise.\n\n## What a house image is for\n\nAn image on a cover, a window or a hero tells the story of the finding it sits over. A reader who sees it without the headline should be able to guess the headline. It is a moment with a person in it, specific and unposed, carrying one idea through one detail.\n\n## The brief\n\nFill these before anything is made:\n\n1. PERSON: an invented person, specific and imperfect, of any age, body, place or background. Never a real or famous person (HARD).\n2. MOMENT: what they are doing, in the middle of doing it.\n3. PLACE: where, with the texture of a real place.\n4. LIGHT: the light, named (sodium platform light, blue hour, hard midday sun, a workshop window).\n5. LENS: 35mm film, candid, natural grain, unless the finding asks for something else.\n6. DETAIL: the one detail that carries the idea. The headphones. The leash wound twice. The umbrella in the sun.\n7. RED: where the single deep signal red sits.\n8. STORY: \"a reader who sees this without the headline should think ___.\" If this line cannot be written, the slot is typographic and nothing is made.\n\n## Defaults the house learns from\n\n- Lean away from text or lettering in the image; typography is the page's job.\n- A brand's world can be named for context (a sneaker store, an archive room) without its marks drawn. No logos, trademarks or protected product designs rendered (HARD).\n- Unbranded clothing, plain surfaces, real everyday people, varied ages and backgrounds.\n- Palette restraint: the house red appears in one detail of the scene, never as a wash over it.\n- Wit is welcome when the detail is true to the finding.\n- Composition with one clear subject and calm room in the lower third for a headline.\n\n## The prompt the model receives\n\nEditorial photograph for the cover of a weekly culture magazine. {scene} {light} Shot on 35mm film with natural grain, candid and unposed. Real everyday people with varied ages and backgrounds, unbranded clothing and plain, unlettered surfaces throughout. A strong, simple composition with one clear subject and calm, uncluttered space in the lower third of the frame for a headline. One small detail in deep signal red: {red}.\n";   // SEAM:BRIEF_SYNC: exact copy of templates/IMAGE_BRIEF.md (gate-checked; tools/sync_brief.py)
+const IMAGE_BRIEF_REV = 'house-v2';   // SEAM:BRIEF_SYNC: the template version every make is hashed and recorded with; bump it to re-make cached images
 const HOUSE_READ = {
   KINDS: {
     // 2026-09-26: the first weekly spent all 7000 tokens thinking and wrote nothing.
@@ -15335,6 +15346,7 @@ async function wkStandNew(env, row, origin, user) {
       }
     } catch (e) { console.log('wk_stand_cover', String(e && e.message).slice(0, 80)); }
   }
+  if (coverKey && /-p[0-9a-f]{8}\.jpg$/.test(coverKey)) coverCredit = wkCoverCreditOf(row, coverCredit);   // SEAM:READ_SLOTS (ED1): the rendered page carries the cover slot, so its credit does too
   const issue = wkIssueFromRead(row, n, { pages: rsPdfPages(bytes), bytes: bytes.byteLength }, coverKey, coverCredit);
   const back = await sbRest(env, 'weekly_issues?select=issue_no', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [issue] }) || [];
   if (!back[0]) return json({ ok: false, error: 'shelf_insert_failed' }, 200, origin, env);
@@ -15620,6 +15632,449 @@ async function readReceipts(env, read, row) {
   }
   return out;
 }
+/* SEAM:MEDIA_RIGHTS (ED1): every image the house publishes carries a rights record (media_rights, 0051): what it is, where
+ * it came from, the basis it is used on, the contexts it is cleared for, and for a house image how it was made and what
+ * the checks said. A slot on a read (meta.slots[path]) points at a record; the print, the page and the stand read the
+ * slot first and fall back to the typographic block. The read contract is untouched: cover_image and lead_image stay the
+ * writer's story suggestions. No model. */
+const RIGHTS = {
+  KINDS: ['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type'],
+  BASIS: { house: 'AIR', press: 'EDIT', cc: 'CC', story_obj: 'OBJ', story_thumb: 'THUMB', type: 'A' },
+  CONTEXTS: ['weekly_pdf', 'stand_cover', 'social', 'card', 'web', 'recon', 'brief', 'api'],
+  THUMB_PX: 400,
+  HOUSE_CREDIT: 'Unsurfaced, AI illustration',
+  SLOT_RX: /^(?:cover|(?:patterns|features|held|findings)\[\d{1,2}\])$/
+};
+/* PURE: the contexts a record clears, given its kind and its checks. A hard check that stands clears nothing; a hard check
+ * an admin has overridden with a reason on the record is a human judgment and clears as if it had passed. */
+function rightsContexts(kind, checks) {
+  if (checks && Array.isArray(checks.hard) && checks.hard.length && !(checks.override && checks.override.why)) return [];
+  if (kind === 'house' || kind === 'type' || kind === 'cc') return RIGHTS.CONTEXTS.slice();
+  if (kind === 'press') return ['weekly_pdf', 'social', 'card', 'web', 'recon', 'brief', 'api'];   // a press-kit image is editorial: never the cover of a paid product
+  if (kind === 'story_obj') return ['weekly_pdf', 'web', 'card', 'api'];   // the image is the object of the finding: small, credited, never a paid cover, never paid social
+  if (kind === 'story_thumb') return ['weekly_pdf', 'web', 'card', 'api'];
+  return [];
+}
+/* PURE: does a record clear a context. The contexts column is the verdict; it is written from rightsContexts. */
+function rightsClears(rec, ctx) {
+  return !!(rec && Array.isArray(rec.contexts) && rec.contexts.includes(ctx));
+}
+async function rightsInsert(env, rec) {
+  const rows = await sbRest(env, 'media_rights', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [rec] }) || [];
+  return rows[0] || null;
+}
+async function rightsGet(env, id) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ''))) return null;
+  const rows = await sbRest(env, 'media_rights?id=eq.' + id + '&select=*&limit=1') || [];
+  return rows[0] || null;
+}
+async function rightsByRef(env, ref) {
+  const rows = await sbRest(env, 'media_rights?ref=eq.' + encodeURIComponent(String(ref || '')) + '&select=*&order=created_at.desc&limit=1') || [];
+  return rows[0] || null;
+}
+/* PURE: the slots a read carries, by path. A slot is {rights_id, ref, kind, credit, by, at, accepted?}. */
+function readSlots(row) {
+  const s = row && row.meta && row.meta.slots;
+  return s && typeof s === 'object' && !Array.isArray(s) ? s : {};
+}
+/* PURE: the stand's cover credit follows the cover slot when there is one; otherwise what the caller had. */
+function wkCoverCreditOf(row, storyCredit) {
+  const s = readSlots(row).cover;
+  if (s && s.kind === 'type') return 'Unsurfaced';
+  if (s && s.credit) return String(s.credit).slice(0, 80);
+  return storyCredit || null;
+}
+
+/* SEAM:MAKE_SERVICE (ED1): the make service. One contract for every producer in the ecosystem (the desk's slot panel today; the
+ * nightly windows, WEEKLY's publish rail and the RECON cover later): a brief in, an owned image with its rights record
+ * out. Drafts on the cheap model; a final refines the picked draft on the premium model with the draft as its reference,
+ * so the chosen composition survives at print size. Cached by hash of brief, template version, model, seed and size, so
+ * one make serves every surface and a repeat costs nothing. The house pays against a monthly dollar cap in KV
+ * (MAKE_HOUSE_CAP_USD, $10); a refused or failed make returns a typographic fallback and never throws into its caller.
+ * Through fal's queue, like PLAY. */
+const MAKE = {
+  DRAFT: 'fal-ai/z-image/turbo',
+  FINAL: 'fal-ai/bytedance/seedream/v4/edit',
+  USD: { 'fal-ai/z-image/turbo': 0.0052, 'fal-ai/bytedance/seedream/v4/edit': 0.03 },
+  SIZE: { cover: { width: 896, height: 1152 }, hero: { width: 1152, height: 768 }, square: { width: 1024, height: 1024 }, window: { width: 896, height: 1344 } },
+  FINAL_SCALE: 2,   // a final is the draft's frame at twice the pixels: the cover prints at 1792 px wide
+  CAP_USD: 10, TIMEOUT_MS: 90000, POLL_MS: 1500, MIN_BYTES: 12000, MAX_BYTES: 12000000,
+  MEDIA_BASE: 'https://api.unsurfaced-intelligence.com/media/'
+};
+function makeHouseCap(env) { const v = parseFloat(env && env.MAKE_HOUSE_CAP_USD); return v > 0 ? v : MAKE.CAP_USD; }
+function makeMonth() { return new Date().toISOString().slice(0, 7); }
+/* The house's month: add a spend, or give one back with a negative amount. False when the cap would be passed; nothing
+ * moves then. Without KV there is no meter and nothing is refused: the fal key is the only cap. */
+async function makeSpend(env, usd) {
+  if (!env.RATE_LIMIT) return true;
+  const key = 'make:house:' + makeMonth();
+  const cur = parseFloat(await env.RATE_LIMIT.get(key)) || 0;
+  if (usd > 0 && cur + usd > makeHouseCap(env) + 1e-9) return false;
+  await env.RATE_LIMIT.put(key, String(Math.max(0, Math.round((cur + usd) * 10000) / 10000)), { expirationTtl: 60 * 60 * 24 * 40 });
+  return true;
+}
+async function makeHouseUsed(env) {
+  return env.RATE_LIMIT ? parseFloat(await env.RATE_LIMIT.get('make:house:' + makeMonth())) || 0 : 0;
+}
+async function makeHash(parts) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('\u0001')));
+  return readHex(new Uint8Array(buf)).slice(0, 40);
+}
+/* PURE: the brief as the model reads it: the template's prompt paragraph with the scene, the light and the red filled. */
+function makePrompt(brief) {
+  const b = brief || {};
+  const scene = String(b.scene || '').trim(), light = String(b.light || '').trim(), red = String(b.red || 'one small object').trim();
+  const tpl = IMAGE_BRIEF.split('## The prompt the model receives')[1] || '';
+  return tpl.replace(/\{scene\}/g, scene).replace(/\{light\}/g, light).replace(/\{red\}/g, red).replace(/\s+/g, ' ').trim().slice(0, 2400);
+}
+/* PURE: a brief carries a scene and its story sentence, or it is not a brief and nothing is made. */
+function briefReady(brief) {
+  const b = brief || {};
+  return !!(String(b.scene || '').trim().length >= 40 && String(b.story || '').trim().length >= 12);
+}
+/* PURE: the size a make is drawn at. */
+function makeSize(format, refine) {
+  const s = MAKE.SIZE[format] || MAKE.SIZE.cover, k = refine ? MAKE.FINAL_SCALE : 1;
+  return { width: s.width * k, height: s.height * k };
+}
+async function makeImage(env, opts) {
+  const o = opts || {};
+  if (!env.FAL_KEY) return { ok: false, fallback: 'type', error: 'render_unconfigured' };
+  if (!env.MEDIA) return { ok: false, fallback: 'type', error: 'media_unconfigured' };
+  if (!briefReady(o.brief)) return { ok: false, fallback: 'type', error: 'brief_not_ready' };
+  const model = o.refine_from ? MAKE.FINAL : MAKE.DRAFT;
+  const size = makeSize(o.format, !!o.refine_from);
+  const seed = Number.isFinite(parseInt(o.seed, 10)) ? Math.abs(parseInt(o.seed, 10)) % 2147483647 : 101;
+  const prompt = makePrompt(o.brief);
+  const hash = await makeHash([prompt, IMAGE_BRIEF_REV, model, String(seed), size.width + 'x' + size.height, String(o.refine_from || '')]);
+  const ref = 'make/' + hash + '.jpg';
+  const usd = MAKE.USD[model] || 0.03;
+  const have = await env.MEDIA.head(ref).catch(excQuiet('make_head', null));
+  if (have) {
+    const rec = await rightsByRef(env, ref);
+    if (rec) { if (o.prepaid) await makeSpend(env, -usd); return { ok: true, rights_id: rec.id, ref, model, seed, usd: 0, cached: true, rec }; }
+  }
+  if (!o.prepaid && !(await makeSpend(env, usd))) return { ok: false, fallback: 'type', error: 'house_cap', cap: makeHouseCap(env) };
+  const input = { prompt, image_size: size, seed, num_images: 1 };
+  if (o.refine_from) input.image_urls = [MAKE.MEDIA_BASE + String(o.refine_from)];
+  else input.output_format = 'jpeg';
+  const auth = { Authorization: 'Key ' + env.FAL_KEY, 'Content-Type': 'application/json' };
+  const giveBack = async why => { await makeSpend(env, -usd); console.log('make_failed', model, why); return { ok: false, fallback: 'type', error: why }; };
+  let sub, j;
+  try {
+    sub = await fetch('https://queue.fal.run/' + model, { method: 'POST', headers: auth, body: JSON.stringify(input) });
+    j = await sub.json().catch(excQuiet('make_submit_json', null));
+  } catch (e) { return giveBack('fal_network'); }
+  if (!sub.ok || !j || !j.status_url || !j.response_url) return giveBack('fal_' + (sub && sub.status));
+  const t0 = Date.now();
+  let done = false;
+  while (Date.now() - t0 < MAKE.TIMEOUT_MS) {
+    await sleep(MAKE.POLL_MS);
+    let st;
+    try { st = await (await fetch(j.status_url, { headers: auth })).json(); } catch (e) { st = null; }
+    if (st && st.status === 'COMPLETED') { done = true; break; }
+    if (st && /^(?:FAILED|CANCELLED|ERROR)$/.test(String(st.status || ''))) return giveBack('fal_' + String(st.status).toLowerCase());
+  }
+  if (!done) return giveBack('fal_timeout');
+  let out;
+  try { out = await (await fetch(j.response_url, { headers: auth })).json(); } catch (e) { return giveBack('fal_response'); }
+  const url = out && Array.isArray(out.images) && out.images[0] && out.images[0].url;
+  if (!/^https:\/\//.test(String(url || ''))) return giveBack('fal_no_image');
+  let bytes;
+  try { bytes = await (await fetch(url)).arrayBuffer(); } catch (e) { return giveBack('fal_fetch'); }
+  const head = new Uint8Array(bytes.slice(0, 4));
+  const jpeg = head[0] === 0xFF && head[1] === 0xD8, png = head[0] === 0x89 && head[1] === 0x50;
+  if ((!jpeg && !png) || bytes.byteLength < MAKE.MIN_BYTES || bytes.byteLength > MAKE.MAX_BYTES) return giveBack('fal_bad_image');
+  await env.MEDIA.put(ref, bytes, { httpMetadata: { contentType: jpeg ? 'image/jpeg' : 'image/png' } });
+  const made = { model, seed, size, prompt_version: IMAGE_BRIEF_REV, brief: o.brief, hash, refine_from: o.refine_from || null, nsfw: !!(out.has_nsfw_concepts && out.has_nsfw_concepts[0]) };
+  const rec = await rightsInsert(env, { kind: 'house', ref, credit: RIGHTS.HOUSE_CREDIT, basis: 'AIR', contexts: rightsContexts('house', null), made, created_by: o.by || null });
+  if (!rec) return giveBack('rights_not_written');
+  logEvent(env, 'intelligence', 'reads', 'make_image', null, { model, usd, ref, by: o.by || null });
+  return { ok: true, rights_id: rec.id, ref, model, seed, usd, rec };
+}
+
+/* SEAM:LAKE_LOOK (ED1): one closed door to the vision model, inside Workers AI's included neurons (about eleven a look).
+ * Everything the house asks an image is asked here, and every answer comes back as lines the callers parse without
+ * trusting. Callers: the checks and the story test (the admin slot doors) and the describer (the 30-minute slice, a few
+ * a slice, a bounded number a day). The lake is the first teaching pass: a story photograph that reached a read is
+ * described once in words (palette, light, setting, composition, mood) on edition_items.image_desc; the words are what
+ * the brief writer and the likeness check read. Pixels never enter a model as training. */
+const LAKE_LOOK = { MODEL: '@cf/meta/llama-3.2-11b-vision-instruct', MS: 15000, BYTES: 2500000, PER_RUN: 8, PER_DAY: 200, DAYS: 14,
+  CHECK: 'Answer each line with yes or no and nothing else, then the last line in one sentence. ' +
+    'REAL_PERSON: does the image show a recognizable real or famous person? ' +
+    'LOGO: does it show a brand logo, a trademark or a recognizable branded product design? ' +
+    'TEXT: does it contain readable text or lettering? ' +
+    'HANDS_FACES: are any hands or faces malformed or wrong? ' +
+    'RED: is there one clear detail in deep red? ' +
+    'ROOM: is the lower third of the image calm enough to set a headline over it? ' +
+    'SHOWS: describe what the image shows in one sentence.',
+  DESCRIBE: 'In one sentence under 40 words, describe this photograph as an art director would: palette, light, setting, composition, mood. No brand names.' };
+function lakeLookModel(env) { return (env && env.LOOK_MODEL) || LAKE_LOOK.MODEL; }
+async function imageLook(env, bytes, prompt, maxTokens) {
+  if (!env || !env.AI || !bytes || !bytes.byteLength || bytes.byteLength > LAKE_LOOK.BYTES) return '';
+  const call = env.AI.run(lakeLookModel(env), { image: Array.from(new Uint8Array(bytes)), prompt, max_tokens: maxTokens || 220 });
+  const out = await Promise.race([call, new Promise(res => setTimeout(() => res(null), LAKE_LOOK.MS))]).catch(excQuiet('image_look', null));
+  return String((out && (out.description || out.response)) || '').replace(/\s+/g, ' ').trim();
+}
+/* PURE: the check lines, parsed without trust. Two hard flags (a real person, a logo), the rest advisory; anything the
+ * model did not answer is unknown, never hard. */
+function imageCheckParse(text) {
+  const t = String(text || '');
+  const ans = k => { const m = new RegExp(k + '\\s*:\\s*(yes|no)\\b', 'i').exec(t); return m ? m[1].toLowerCase() : null; };
+  const hard = [], advisory = [], unknown = [];
+  const want = { REAL_PERSON: ['yes', 'hard', 'real_person'], LOGO: ['yes', 'hard', 'logo'], TEXT: ['yes', 'advisory', 'text'],
+    HANDS_FACES: ['yes', 'advisory', 'hands_faces'], RED: ['no', 'advisory', 'no_red'], ROOM: ['no', 'advisory', 'little_room'] };
+  for (const k of Object.keys(want)) {
+    const a = ans(k);
+    if (a === null) { unknown.push(want[k][2]); continue; }
+    if (a === want[k][0]) (want[k][1] === 'hard' ? hard : advisory).push(want[k][2]);
+  }
+  const sm = /SHOWS\s*:\s*(.+)$/i.exec(t);
+  return { hard, advisory, unknown, shows: (sm ? sm[1] : '').replace(/\u2014/g, ',').trim().slice(0, 240) };
+}
+async function imageCheck(env, ref) {
+  const obj = env.MEDIA ? await env.MEDIA.get(ref).catch(excQuiet('image_check_get', null)) : null;
+  if (!obj) return { hard: [], advisory: [], unknown: ['no_image'], shows: '' };
+  return imageCheckParse(await imageLook(env, await obj.arrayBuffer(), LAKE_LOOK.CHECK, 220));
+}
+/* PURE: the story test's lines, parsed. */
+function storyTellParse(text, n) {
+  const t = String(text || '');
+  const m = /MATCH\s*:\s*(\d{1,2})/i.exec(t), c = /CONFIDENCE\s*:\s*([01](?:\.\d+)?)/i.exec(t), s = /SHOWS\s*:\s*(.+)$/i.exec(t);
+  const pick = m ? parseInt(m[1], 10) : 0;
+  return { pick: pick >= 1 && pick <= n ? pick : 0, confidence: c ? Math.max(0, Math.min(1, parseFloat(c[1]))) : 0, shows: (s ? s[1] : '').trim().slice(0, 240) };
+}
+/* PURE: the headlines in a fixed shuffle for one image, so a rerun gives the same order. */
+function storyTellOrder(list, salt) {
+  const order = list.slice();
+  for (let i = order.length - 1; i > 0; i--) { const j = (i * 7 + salt) % (i + 1); const t = order[i]; order[i] = order[j]; order[j] = t; }
+  return order;
+}
+/* The story test: the image alone against the read's headlines, shuffled, no hint which is its own. Does it tell its own? */
+async function storyTell(env, ref, leads, own) {
+  const list = (leads || []).map(String).filter(Boolean).slice(0, 8);
+  if (list.length < 2) return { matched: null, correct: null, confidence: 0, shows: '' };
+  const order = storyTellOrder(list, String(ref || '').length);
+  const prompt = 'Here are headlines: ' + order.map((l, i) => (i + 1) + '. ' + l).join(' ') +
+    ' Which headline does this image illustrate best? Answer MATCH: the number, or 0 if none fits. CONFIDENCE: a number from 0 to 1. SHOWS: what the image shows in one sentence.';
+  const obj = env.MEDIA ? await env.MEDIA.get(ref).catch(excQuiet('story_tell_get', null)) : null;
+  if (!obj) return { matched: null, correct: null, confidence: 0, shows: '' };
+  const p = storyTellParse(await imageLook(env, await obj.arrayBuffer(), prompt, 160), order.length);
+  const matched = p.pick ? order[p.pick - 1] : null;
+  return { matched, correct: own ? matched === own : null, confidence: p.confidence, shows: p.shows };
+}
+/* The describer: story photographs that reached a read in the last fortnight and have no description yet, a few a slice,
+ * at most PER_DAY a day (KV). A photograph that cannot be fetched is marked with an empty description so it is not asked again. */
+async function imageDescribePass(env, opts) {
+  const o = opts || {};
+  if (!env || !env.AI || !env.SUPABASE_URL) return { ok: false, error: 'unconfigured' };
+  const day = new Date().toISOString().slice(0, 10), dayKey = 'look:day:' + day;
+  const today = env.RATE_LIMIT ? parseInt(await env.RATE_LIMIT.get(dayKey), 10) || 0 : 0;
+  const room = Math.min(o.max || LAKE_LOOK.PER_RUN, Math.max(0, LAKE_LOOK.PER_DAY - today));
+  if (!room) return { ok: true, described: 0, left: null, day_cap: true };
+  const since = new Date(Date.now() - LAKE_LOOK.DAYS * 86400000).toISOString();
+  const reads = await sbRest(env, 'house_reads?select=pack_ids&status=in.(ready,published)&updated_at=gte.' + since + '&order=updated_at.desc&limit=30') || [];
+  const ids = [...new Set(reads.flatMap(r => Array.isArray(r.pack_ids) ? r.pack_ids : []).filter(n => Number.isInteger(n)))].slice(0, 400);
+  if (!ids.length) return { ok: true, described: 0, left: 0 };
+  const rows = await sbRest(env, 'edition_items?id=in.(' + ids.join(',') + ')&image_desc=is.null&image_url=not.is.null&select=id,image_url&order=id.desc&limit=' + room) || [];
+  let described = 0, looked = 0;
+  const mark = (id, line) => sbRest(env, 'edition_items?id=eq.' + id, { method: 'PATCH', body: { image_desc: String(line || '').replace(/\u2014/g, ',').slice(0, 300), image_desc_at: new Date().toISOString() } });
+  for (const r of rows) {
+    const href = readImgUrl(r.image_url);
+    const res = href ? await readImgFetch(href, 'image/avif,image/webp,image/*') : null;
+    if (!res || !res.ok || !/^image\//.test(String(res.headers.get('content-type') || ''))) { await mark(r.id, ''); continue; }
+    const buf = await res.arrayBuffer();
+    looked++;
+    const line = await imageLook(env, buf, LAKE_LOOK.DESCRIBE, 80);
+    await mark(r.id, line);
+    if (line) described++;
+  }
+  if (env.RATE_LIMIT && looked) await env.RATE_LIMIT.put(dayKey, String(today + looked), { expirationTtl: 60 * 60 * 36 });
+  if (rows.length) logEvent(env, 'intelligence', 'reads', 'lake_look', null, { looked, described, today: today + looked });
+  return { ok: true, described, looked, left: Math.max(0, rows.length - looked) };
+}
+/* Likeness to the press, v1: a draft's description against the stories' descriptions, by embedding. An approximation
+ * until a perceptual hash lands; advisory only. */
+async function imageSimilar(env, shows, storyIds) {
+  const ids = (storyIds || []).map(s => parseInt(String(s).replace(/^S/, ''), 10)).filter(Number.isInteger).slice(0, 40);
+  if (!shows || !ids.length || !env.AI) return { similar: [], max: 0 };
+  const rows = await sbRest(env, 'edition_items?id=in.(' + ids.join(',') + ')&image_desc=not.is.null&image_desc=neq.&select=id,image_desc&limit=40') || [];
+  const texts = rows.map(r => r.image_desc).filter(Boolean);
+  if (!texts.length) return { similar: [], max: 0 };
+  const a = await embedQuery(env, shows);
+  const out = await env.AI.run(KB_EMBED_MODEL, { text: texts.slice(0, 40) }).catch(excQuiet('image_similar_embed', null));
+  const vecs = (out && out.data) || [];
+  if (!a || !vecs.length) return { similar: [], max: 0 };
+  const dot = (x, y) => { let s = 0, nx = 0, ny = 0; for (let i = 0; i < x.length; i++) { s += x[i] * y[i]; nx += x[i] * x[i]; ny += y[i] * y[i]; } return nx && ny ? s / Math.sqrt(nx * ny) : 0; };
+  const sims = vecs.map((v, i) => ({ id: 'S' + rows[i].id, sim: dot(a, v) })).sort((p, q) => q.sim - p.sim);
+  return { similar: sims.filter(s => s.sim >= 0.88).slice(0, 3), max: sims.length ? Math.round(sims[0].sim * 1000) / 1000 : 0 };
+}
+
+/* SEAM:READ_SLOTS (ED1): the slot panel's doors, admin only, through readRoute. A slot is a path on the read (cover,
+ * patterns[2]) that an image fills.
+ *   /reads/slots {id}                      the paths, the slots, their records, the house's month
+ *   /reads/slot-brief {id, path}           a humanity-first brief from the finding, kept on meta.briefs[path]
+ *   /reads/slot-make {id, path, brief?, n?, seed?, note?}   drafts from the brief, each checked and story-tested
+ *   /reads/slot-final {id, path, rights_id}                 the picked draft refined on the premium model at print size
+ *   /reads/slot {id, path, pick, accepted?, override?}      write the slot: {rights_id} a record; {story, object_sentence}
+ *                                                           a story photograph as the object of the finding; {type: true}
+ *                                                           the typographic block; {clear: true} back to the writer's pick
+ * A record that failed a hard check is refused unless the admin overrides it with a reason, which is written on the record. */
+const SLOT_FORMATS = { cover: 'cover' };
+function slotFormat(path) { return SLOT_FORMATS[path] || 'hero'; }
+/* PURE: the finding a slot path points at. */
+function slotTarget(read, path) {
+  const x = read || {};
+  if (path === 'cover') return { title: x.title || '', text: x.thesis || '', brief: x.image_brief || null, evidence: [] };
+  const m = /^([a-z]+)\[(\d{1,2})\]$/.exec(path);
+  const arr = m && Array.isArray(x[m[1]]) ? x[m[1]] : null;
+  const p = arr && arr[parseInt(m[2], 10)];
+  if (!p) return null;
+  return { title: p.name || p.title || '', text: p.dek || p.why_it_matters || p.line || '', brief: p.image_brief || p.image_prompt || null, evidence: Array.isArray(p.evidence) ? p.evidence : [] };
+}
+/* PURE: the read's main array and its key, and the headlines the story test shuffles. */
+function slotMain(read) {
+  const x = read || {};
+  const key = x.patterns ? 'patterns' : x.features ? 'features' : x.held ? 'held' : 'findings';
+  return { key, list: Array.isArray(x[key]) ? x[key] : [] };
+}
+function slotLeads(read) {
+  const x = read || {}, main = slotMain(x).list;
+  return [x.title].concat(main.map(p => p && (p.name || p.title))).map(s => String(s || '').trim()).filter(Boolean).slice(0, 8);
+}
+/* PURE: a brief from the body, trimmed to its fields. */
+function slotBriefClean(b) {
+  if (!b || typeof b !== 'object') return null;
+  return { scene: String(b.scene || '').replace(/\u2014/g, ',').slice(0, 700), light: String(b.light || '').slice(0, 160), red: String(b.red || '').slice(0, 80), story: String(b.story || '').replace(/\u2014/g, ',').slice(0, 240) };
+}
+const SLOT_BRIEF_SYS = 'You write the image brief for the cover of a culture magazine, in the house style below. Return STRICT JSON only, no fences: ' +
+  '{"scene": "...", "light": "...", "red": "...", "story": "..."}. scene: 40 to 90 words naming an invented person, the moment, the place and the one detail that carries the idea. ' +
+  'light: one phrase. red: the one small thing in deep signal red. story: finish the sentence "a reader who sees this without the headline should think ...". ' +
+  'Never a real or famous person; a brand\'s world may be named for context but no logo, trademark or branded product design is drawn.\n\n';
+async function slotBrief(env, target, lake) {
+  const ask = 'HEADLINE: ' + String(target.title || '').slice(0, 300) + '\nWHAT IT MEANS: ' + String(target.text || '').slice(0, 900) +
+    (lake && lake.length ? '\n\nHOW THE PRESS SHOT THIS WEEK (for palette and light, never to copy): ' + lake.slice(0, 6).join(' | ').slice(0, 900) : '');
+  const r = await callClaude(env, 'frame', { kind: 'slot_brief', system: SLOT_BRIEF_SYS + IMAGE_BRIEF, messages: [{ role: 'user', content: ask }], max_tokens: 400, timeout_ms: 20000 });
+  const text = r && r.ok ? String(r.text || '') : '';
+  const m = /\{[\s\S]*\}/.exec(text);
+  if (!m) return null;
+  try { const b = slotBriefClean(JSON.parse(m[0])); return briefReady(b) ? b : null; }
+  catch (e) { return null; }
+}
+async function slotLake(env, ids) {
+  const n = (ids || []).map(s => parseInt(String(s).replace(/^S/, ''), 10)).filter(Number.isInteger).slice(0, 40);
+  if (!n.length) return [];
+  const rows = await sbRest(env, 'edition_items?id=in.(' + n.join(',') + ')&image_desc=not.is.null&image_desc=neq.&select=image_desc&limit=12') || [];
+  return rows.map(r => r.image_desc).filter(Boolean);
+}
+async function slotRoute(path, body, env, origin, user) {
+  const row = await readRow(env, body.id);
+  if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
+  const slots = readSlots(row), briefs = (row.meta && row.meta.briefs) || {};
+  if (path === '/reads/slots') {
+    const recs = {};
+    for (const k of Object.keys(slots)) { const s = slots[k]; if (s && s.rights_id) recs[k] = await rightsGet(env, s.rights_id); }
+    const main = slotMain(row.read);
+    const paths = ['cover'].concat(main.list.map((p, i) => main.key + '[' + i + ']'));
+    return json({ ok: true, id: row.id, paths, slots, briefs, rights: recs, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) },
+      make: { draft: MAKE.DRAFT, final: MAKE.FINAL, draft_usd: MAKE.USD[MAKE.DRAFT], final_usd: MAKE.USD[MAKE.FINAL], configured: !!env.FAL_KEY } }, 200, origin, env);
+  }
+  const sp = String(body.path || '').trim();
+  if (!RIGHTS.SLOT_RX.test(sp)) return json({ ok: false, error: 'bad_path' }, 200, origin, env);
+  const target = slotTarget(row.read, sp);
+  if (!target) return json({ ok: false, error: 'no_such_slot' }, 200, origin, env);
+  const simIds = target.evidence.length ? target.evidence : (row.pack_ids || []).slice(0, 40).map(n => 'S' + n);
+  if (path === '/reads/slot-brief') {
+    const brief = await slotBrief(env, target, await slotLake(env, simIds));
+    if (!brief) return json({ ok: false, error: 'brief_not_written' }, 200, origin, env);
+    const next = Object.assign({}, briefs, { [sp]: Object.assign({}, brief, { by: user.id, at: new Date().toISOString(), written: 'house' }) });
+    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { briefs: next }) });
+    return json({ ok: true, path: sp, brief }, 200, origin, env);
+  }
+  if (path === '/reads/slot-make') {
+    const given = slotBriefClean(body.brief);
+    const brief = given || briefs[sp] || (typeof target.brief === 'string' ? { scene: target.brief, light: '', red: '', story: '' } : slotBriefClean(target.brief));
+    if (!briefReady(brief)) return json({ ok: false, error: 'brief_not_ready', hint: 'write the scene (40 words or more) and the story sentence, or ask the house for a brief' }, 200, origin, env);
+    if (!env.FAL_KEY) return json({ ok: false, error: 'render_unconfigured' }, 200, origin, env);
+    const n = Math.min(4, Math.max(1, parseInt(body.n, 10) || 4));
+    const base = Number.isFinite(parseInt(body.seed, 10)) ? parseInt(body.seed, 10) : 101;
+    if (!(await makeSpend(env, n * MAKE.USD[MAKE.DRAFT]))) return json({ ok: false, error: 'house_cap', cap: makeHouseCap(env), used: await makeHouseUsed(env) }, 200, origin, env);
+    const leads = slotLeads(row.read), own = target.title;
+    const one = async i => {
+      const m = await makeImage(env, { brief, format: slotFormat(sp), seed: base + i * 101, by: user.id, prepaid: true });
+      if (!m.ok) return { ok: false, error: m.error, fallback: m.fallback };
+      const kept = m.cached && m.rec && m.rec.made ? m.rec.made : null;
+      const checks = kept && kept.checks ? kept.checks : await imageCheck(env, m.ref);
+      const tell = kept && kept.tell ? kept.tell : await storyTell(env, m.ref, leads, own);
+      const sim = !kept && checks.shows ? await imageSimilar(env, checks.shows, simIds) : { similar: [], max: 0 };
+      if (sim.similar.length) checks.advisory = (checks.advisory || []).concat(['like_press:' + sim.similar.map(s => s.id).join(',')]);
+      if (!kept) await sbRest(env, 'media_rights?id=eq.' + m.rights_id, { method: 'PATCH', body: { made: Object.assign({}, m.rec.made, { checks, tell }), contexts: rightsContexts('house', checks) } });
+      return { ok: true, rights_id: m.rights_id, ref: m.ref, url: '/media/' + m.ref, seed: m.seed, model: m.model, usd: m.usd, cached: !!m.cached, checks, tell, flagged: checks.hard.length > 0 };
+    };
+    const drafts = await Promise.all(Array.from({ length: n }, (_, i) => one(i)));
+    const nextBriefs = Object.assign({}, briefs, { [sp]: Object.assign({}, brief, { by: user.id, at: new Date().toISOString(), written: given ? 'desk' : (briefs[sp] && briefs[sp].written) || 'writer', note: String(body.note || '').replace(/\u2014/g, ',').slice(0, 400) }) });
+    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { briefs: nextBriefs }) });
+    logEvent(env, 'intelligence', 'reads', 'slot_make', null, { id: row.id, path: sp, n: drafts.filter(d => d.ok).length, failed: drafts.filter(d => !d.ok).map(d => d.error), note: !!body.note, by: user.id });
+    return json({ ok: true, path: sp, brief, drafts, leads, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) } }, 200, origin, env);
+  }
+  if (path === '/reads/slot-final') {
+    const draft = await rightsGet(env, body.rights_id);
+    if (!draft || draft.kind !== 'house' || !draft.made || !draft.made.brief) return json({ ok: false, error: 'no_such_draft' }, 200, origin, env);
+    if (!rightsClears(draft, 'weekly_pdf')) return json({ ok: false, error: 'draft_failed_a_hard_check', hard: (draft.made.checks && draft.made.checks.hard) || [] }, 200, origin, env);
+    const m = await makeImage(env, { brief: draft.made.brief, format: slotFormat(sp), seed: draft.made.seed, refine_from: draft.ref, by: user.id });
+    if (!m.ok) return json({ ok: false, error: m.error, fallback: m.fallback }, 200, origin, env);
+    const checks = m.cached && m.rec.made.checks ? m.rec.made.checks : await imageCheck(env, m.ref);
+    if (!m.cached) await sbRest(env, 'media_rights?id=eq.' + m.rights_id, { method: 'PATCH', body: { made: Object.assign({}, m.rec.made, { checks, final_of: draft.id }), contexts: rightsContexts('house', checks) } });
+    logEvent(env, 'intelligence', 'reads', 'slot_final', null, { id: row.id, path: sp, usd: m.usd, by: user.id });
+    return json({ ok: true, path: sp, rights_id: m.rights_id, ref: m.ref, url: '/media/' + m.ref, seed: m.seed, model: m.model, usd: m.usd, checks, flagged: checks.hard.length > 0, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) } }, 200, origin, env);
+  }
+  if (path === '/reads/slot') {
+    const pick = body.pick && typeof body.pick === 'object' ? body.pick : {};
+    let slot = null;
+    if (pick.type === true) {
+      const rec = await rightsInsert(env, { kind: 'type', ref: 'type:' + row.id + ':' + sp, credit: 'Unsurfaced', basis: 'A', contexts: rightsContexts('type', null), created_by: user.id });
+      if (!rec) return json({ ok: false, error: 'rights_not_written' }, 200, origin, env);
+      slot = { rights_id: rec.id, ref: rec.ref, kind: 'type', credit: 'Unsurfaced' };
+    } else if (pick.story) {
+      const sm = /^S(\d+)$/.exec(String(pick.story));
+      if (!sm || !(row.pack_ids || []).includes(parseInt(sm[1], 10))) return json({ ok: false, error: 'not_in_the_read' }, 200, origin, env);
+      const sentence = String(pick.object_sentence || '').replace(/\s+/g, ' ').trim();
+      if (sentence.length < 20) return json({ ok: false, error: 'object_sentence_required', hint: 'the sentence in the read that makes this photograph the object of the finding' }, 200, origin, env);
+      const it = await sbRest(env, 'edition_items?id=eq.' + sm[1] + '&select=id,image_url,source_url,source_name&limit=1') || [];
+      if (!it[0] || !(it[0].image_url || it[0].source_url)) return json({ ok: false, error: 'no_photograph' }, 200, origin, env);
+      const credit = 'Photo: ' + String(it[0].source_name || '').slice(0, 70);
+      const rec = await rightsInsert(env, { kind: 'story_obj', ref: 'S' + sm[1], source_url: it[0].source_url || it[0].image_url, credit, basis: 'OBJ', display_max_px: 900,
+        contexts: rightsContexts('story_obj', null), object_sentence: sentence.slice(0, 400), created_by: user.id });
+      if (!rec) return json({ ok: false, error: 'rights_not_written' }, 200, origin, env);
+      slot = { rights_id: rec.id, ref: rec.ref, kind: 'story_obj', credit };
+    } else if (pick.rights_id) {
+      let rec = await rightsGet(env, pick.rights_id);
+      if (!rec) return json({ ok: false, error: 'no_such_record' }, 200, origin, env);
+      const why = String(body.override || '').replace(/\s+/g, ' ').trim();
+      if (!rightsClears(rec, 'weekly_pdf') && why.length >= 12 && rec.made && rec.made.checks) {   // the admin's judgment, on the record
+        const checks = Object.assign({}, rec.made.checks, { override: { by: user.id, at: new Date().toISOString(), why: why.slice(0, 300) } });
+        const made = Object.assign({}, rec.made, { checks }), contexts = rightsContexts(rec.kind, checks);
+        await sbRest(env, 'media_rights?id=eq.' + rec.id, { method: 'PATCH', body: { made, contexts } });
+        rec = Object.assign({}, rec, { made, contexts });
+      }
+      if (!rightsClears(rec, 'weekly_pdf')) return json({ ok: false, error: 'not_cleared', hard: (rec.made && rec.made.checks && rec.made.checks.hard) || [], hint: 'override with a reason of twelve characters or more if the check is wrong' }, 200, origin, env);
+      slot = { rights_id: rec.id, ref: rec.ref, kind: rec.kind, credit: rec.credit || null };
+      if (Array.isArray(body.accepted) && body.accepted.length) slot.accepted = body.accepted.map(String).slice(0, 8);
+    } else if (pick.clear === true) {
+      const next = Object.assign({}, slots); delete next[sp];
+      await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { slots: next }) });
+      logEvent(env, 'intelligence', 'reads', 'slot_clear', null, { id: row.id, path: sp, by: user.id });
+      return json({ ok: true, path: sp, slot: null }, 200, origin, env);
+    } else return json({ ok: false, error: 'bad_pick' }, 200, origin, env);
+    slot.by = user.id; slot.at = new Date().toISOString();
+    const next = Object.assign({}, slots, { [sp]: slot });
+    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { slots: next }) });
+    logEvent(env, 'intelligence', 'reads', 'slot_pick', null, { id: row.id, path: sp, kind: slot.kind, accepted: slot.accepted || null, by: user.id });
+    return json({ ok: true, path: sp, slot }, 200, origin, env);
+  }
+  return json({ ok: false, error: 'bad_path' }, 200, origin, env);
+}
 /* SEAM:READ_DESIGN image relay: GET /img/s/<story id>. The read page and its
  * social frames draw story photographs through this one closed door.
  *   - Only a story in a published DAILY edition. Nothing else is reachable.
@@ -15628,7 +16083,7 @@ async function readReceipts(env, read, row) {
  *   - Cached 7 days at the edge; a miss is cached 1 day so a dead photo is not
  *     refetched on every page view. CORS open so a canvas can draw it.
  *   - No AI spend. Every failure is a plain 404, logged, never cached as a photo. */
-const READ_IMG = { MAX_BYTES: 6000000, TTL: 604800, MISS_TTL: 86400, HTML_BYTES: 400000 };
+const READ_IMG = { MAX_BYTES: 6000000, TTL: 604800, MISS_TTL: 86400, HTML_BYTES: 400000, THUMB: { image: { width: 400, fit: 'scale-down', quality: 82, format: 'jpeg' } } };   // SEAM:READ_SLOTS (ED1): the thumbnail the zone resizes to
 function readImgUrl(raw, base) {
   let t;
   try { t = new URL(String(raw || ''), base || undefined); }
@@ -15637,11 +16092,11 @@ function readImgUrl(raw, base) {
   if (t.protocol !== 'https:' || t.port || pvBlockedHost(t.hostname) || t.href.length > 1000) return null;
   return t.href;
 }
-async function readImgFetch(href, accept) {
+async function readImgFetch(href, accept, cf) {   // SEAM:READ_SLOTS (ED1): cf carries the edge resize for a thumbnail
   try {
-    return await fetch(href, { redirect: 'follow', headers: {
+    return await fetch(href, Object.assign({ redirect: 'follow', headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 UnsurfacedRead/1.1',
-      'Accept': accept } });
+      'Accept': accept } }, cf ? { cf } : {}));
   } catch (e) {
     console.log('img_relay_unreachable', href.slice(0, 120));
     return null;
@@ -15663,10 +16118,10 @@ function readImgLarger(href) {
 }
 async function readImageRelay(path, env) {
   const hdr = ttl => ({ 'Cache-Control': 'public, max-age=' + ttl, 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
-  const id = (/^\/img\/s\/(\d{1,9})$/.exec(path) || [])[1];
+  const pm = /^\/img\/([st])\/(\d{1,9})$/.exec(path), id = pm && pm[2], thumb = !!(pm && pm[1] === 't');   // SEAM:READ_SLOTS (ED1): /img/t/<id> is the same photograph at thumbnail size
   if (!id) return new Response('not found', { status: 404, headers: hdr(3600) });
   const cache = caches.default;
-  const key = new Request('https://img.unsurfaced-intelligence.com/v2/s/' + id);   // v2: everything cached small is fetched again
+  const key = new Request('https://img.unsurfaced-intelligence.com/v2/' + (thumb ? 't' : 's') + '/' + id);   // v2: everything cached small is fetched again
   const hit = await cache.match(key);
   if (hit) return hit;
   const miss = async why => {
@@ -15697,15 +16152,17 @@ async function readImageRelay(path, env) {
     if (seen[t.href]) continue;
     seen[t.href] = 1;
     const href = t.href;
-    const res = await readImgFetch(href, 'image/avif,image/webp,image/*');
+    const res = await readImgFetch(href, 'image/avif,image/webp,image/*', thumb ? READ_IMG.THUMB : null);
     if (!res || !res.ok) continue;
     const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     if (!/^image\/(?:jpeg|jpg|png|webp|gif|avif)$/.test(type)) continue;
     if (parseInt(res.headers.get('content-length') || '0', 10) > READ_IMG.MAX_BYTES) continue;
     const buf = await res.arrayBuffer();
     if (!buf.byteLength || buf.byteLength > READ_IMG.MAX_BYTES) continue;
-    const out = new Response(buf, { status: 200, headers: Object.assign({ 'Content-Type': type, 'X-Img-From': t.from,
-      'Access-Control-Expose-Headers': 'X-Img-From' }, hdr(READ_IMG.TTL)) });
+    const sized = !thumb ? 'full' : /ok/i.test(res.headers.get('cf-resized') || '') ? 'thumb' : 'thumb_unresized';   // SEAM:READ_SLOTS (ED1): the zone resizes at the edge; when it did not, the original is served and the log says so
+    if (sized === 'thumb_unresized') console.log('img_thumb_unresized', id, (res.headers.get('cf-resized') || 'no cf-resized header').slice(0, 80));
+    const out = new Response(buf, { status: 200, headers: Object.assign({ 'Content-Type': type, 'X-Img-From': t.from, 'X-Img-Size': sized,
+      'Access-Control-Expose-Headers': 'X-Img-From, X-Img-Size' }, hdr(READ_IMG.TTL)) });
     await cache.put(key, out.clone());
     return out;
   }
@@ -15801,6 +16258,7 @@ async function readPdf(env, row, cut) {   // SEAM:READ_CUT: cut === 'client' ren
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
+  if (/^\/reads\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1)
   if (path === '/reads/list') {
     const k = HOUSE_READ.KINDS[body.kind] ? '&kind=eq.' + body.kind : '';
     const rows = await sbRest(env, 'house_reads?select=id,kind,window_start,window_end,version,label,status,error,cost_usd,violations,created_at,updated_at,deep_stage:meta->deep->>stage,deep_hold:meta->deep->>hold_reason,deep_waiting:meta->deep->>waiting' +   // SEAM:READ_DEEP
@@ -16022,6 +16480,7 @@ async function readRoute(path, body, env, origin, user) {
     try { key = await wkCoverRender(env, row, n); }
     catch (e) { return json({ ok: false, error: String(e && e.message || e).slice(0, 200) }, 200, origin, env); }
     await sbRest(env, 'weekly_issues?issue_no=eq.' + n, { method: 'PATCH', body: { cover_key: key } });
+    const cc = wkCoverCreditOf(row, null); if (cc) await sbRest(env, 'weekly_issues?issue_no=eq.' + n, { method: 'PATCH', body: { cover_credit: cc } });   // SEAM:READ_SLOTS (ED1): the credit follows the cover slot
     logEvent(env, 'intelligence', 'reads', 'weekly_cover', null, { id: row.id, issue_no: n, key, by: user.id });
     return json({ ok: true, issue_no: n, cover_key: key }, 200, origin, env);
   }
@@ -16050,6 +16509,7 @@ async function readRoute(path, body, env, origin, user) {
     const patch = { lead: String(row.read.title || '').slice(0, 300), standfirst: String(row.read.thesis || '').slice(0, 600), page_count: rsPdfPages(bytes), byte_size: bytes.byteLength, r2_key: key };
     try { patch.cover_key = await wkCoverRender(env, row, n); }   // SEAM:WEEKLY_COVER
     catch (e) { console.log('wk_recut_cover', String(e && e.message).slice(0, 80)); }
+    if (patch.cover_key && wkCoverCreditOf(row, null)) patch.cover_credit = wkCoverCreditOf(row, null);   // SEAM:READ_SLOTS (ED1): the credit follows the cover slot
     await sbRest(env, 'weekly_issues?issue_no=eq.' + n, { method: 'PATCH', body: patch });
     if (row.status !== 'published') await readPatch(env, row.id, { status: 'published', meta: Object.assign({}, row.meta || {}, { published_by: user.id, published_at: new Date().toISOString(), weekly_issue: n }) });
     logEvent(env, 'intelligence', 'reads', 'weekly_recut', null, { id: row.id, issue_no: n, bytes: bytes.byteLength, by: user.id });
