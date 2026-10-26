@@ -12,6 +12,7 @@ const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } p
 const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return src.slice(i, j); };
 const fnOf = (src, name) => { const i = src.indexOf('async function ' + name + '(') >= 0 ? src.indexOf('async function ' + name + '(') : src.indexOf('function ' + name + '('); const j = src.indexOf('\n}\n', i); return src.slice(i, j + 3); };
 const day = 864e5, NOW = Date.parse('2026-10-06T12:00:00Z'), ago = n => new Date(NOW - n * day).toISOString();
+Date.now = () => NOW;   // the proof runs on its own clock: fixtures are pinned to Oct 6, so the code under test must be too
 const lakeWhen = new Function(fnOf(w, 'lakeWhen') + '; return lakeWhen;')();   // the shipped one
 const ilikeOr = new Function(fnOf(w, 'ilikeOr') + '; return ilikeOr;')();
 const sweepWhen = new Function(fnOf(w, 'sweepWhen') + '; return sweepWhen;')();

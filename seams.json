@@ -1629,6 +1629,10 @@
   "SEAM:BRIEF_SYNC": {
    "file": "worker/src/index.js",
    "purpose": "ED1: IMAGE_BRIEF is byte-identical to templates/IMAGE_BRIEF.md (house style v2: humanity first, two HARD lines, the rest defaults the house learns from, the prompt paragraph the make service fills); the gate's step 11b fails on drift; tools/sync_brief.py re-syncs; IMAGE_BRIEF_REV is the version every make is hashed and recorded with"
+  },
+  "SEAM:IC_C4C": {
+   "file": "justiceinresidence/index.html",
+   "purpose": "In Community, Justice In Residence x Catalyst for Change (Oct 24, 2026, [alt_] Chicago): gallery-led page, hero, the four briefs (EAT, M.M.A.D., Territory, the City Council Committee on Environmental Protection and Energy), the founder card for Marlene Paez Dukes, From the room (20 photos by Johnnie R. Lovett) with a full-screen viewer, deep link ?p=, analytics events to dataLayer; static, no worker route, no model"
   }
  },
  "planned": [

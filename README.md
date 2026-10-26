@@ -12,6 +12,7 @@ surface. The ritual gate runs in CI on every push.
 /arcade/rps/            RPS
 /arcade/claw/           CLAW
 /arcade/pop-a-shot/     POP-A-SHOT
+/justiceinresidence/  JUSTICE IN RESIDENCE   (In Community page; launch steps in justiceinresidence/LAUNCH.md)
 /graymatterexperience/  GRAY MATTER x BROOKS   (In Conversation page; launch steps in graymatterexperience/LAUNCH.md)
 /worker/                unsurfaced-api     (Cloudflare Worker — build root /worker)
 /supabase/migrations/   0005–0007          (leaderboard · knowledge base · activity)
