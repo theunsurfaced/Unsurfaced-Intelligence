@@ -31,7 +31,7 @@ const rows = [
   { title: 'Nike earnings', url: 'https://c/1', source_name: 'Reuters', published_at: ago(9), captured_at: ago(9) },
   { title: 'Nike at the marathon', url: 'https://d/1', source_name: 'Hypebeast', published_at: ago(10), captured_at: ago(10) },
   { title: 'Old Nike story', url: 'https://e/1', source_name: 'Old', published_at: ago(120), captured_at: ago(30) },
-  { title: 'Nike launch next month', url: 'https://h/1', source_name: 'Future', published_at: new Date(NOW + 20 * day).toISOString(), captured_at: ago(1) },
+  { title: 'Nike launch next month', url: 'https://h/1', source_name: 'Future', published_at: new Date(Date.now() + 20 * day).toISOString(), captured_at: ago(1) },   // always in the future, on the real clock the room uses
   { title: 'Undated live capture', url: 'https://f/1', source_name: 'Live', captured_at: ago(1), momentum: { provenance: 'live_gather' } },
   { title: 'Undated sweep capture', url: 'https://g/1', source_name: 'Wire', captured_at: ago(3) }];
 const wk = B0.brandWeeks(rows, NOW);

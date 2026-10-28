@@ -215,7 +215,7 @@ ok(["/reads/slots", "/reads/slot", "/reads/slot-brief", "/reads/slot-make", "/re
 ok(w.indexOf("if (/^\\/reads\\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(") > w.indexOf('async function readRoute(') && w.indexOf("if (/^\\/reads\\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(") > w.indexOf("if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);", w.indexOf('async function readRoute(')),
   'W5 slotRoute is reached only after the admin check');
 const chain = w.slice(w.indexOf('.then(() => popoutPass(env))'), w.indexOf('.then(() => claudeBatchDrain(env))'));
-ok(chain.includes('.then(() => imageDescribePass(env))') && /which === 'describe' \? await imageDescribePass\(env, \{ max: Math\.min\(40, parseInt\(body\.max, 10\) \|\| 0\) \|\| undefined \}\) :/.test(w), 'W6 the describer runs in the 30-minute slice after the pop-out pass, and by hand as {run: describe}');
+ok(!chain.includes('.then(() => imageDescribePass(env))') && /which === 'describe' \? await imageDescribePass\(env, \{ max: Math\.min\(40, parseInt\(body\.max, 10\) \|\| 0\) \|\| undefined \}\) :/.test(w), 'W6 the describer is not between the pop-out pass and the drain (ED1d moved it last), and runs by hand as {run: describe}');
 const stand = between('async function wkStandNew(', '/* SEAM:READ_PRUNE PURE: may this version go?');
 ok(stand.includes('wkCoverCreditOf(row, coverCredit)') && stand.indexOf('wkCoverCreditOf(row, coverCredit)') < stand.indexOf('const issue = wkIssueFromRead('), 'W7 a new issue\'s cover credit follows the cover slot when the cover is the rendered page');
 const rep = w.slice(w.indexOf("if (path === '/reads/weekly-stand') {"), w.indexOf("if (path === '/reads/shelf') {"));
@@ -252,4 +252,9 @@ const media = between('async function serveMedia(', '\n}\n');
 ok(/headers\.set\('Access-Control-Allow-Origin', origin \|\| '\*'\);/.test(media) && /headers\.set\('Vary', 'Origin'\);/.test(media) && !/if \(origin\) headers\.set\('Access-Control-Allow-Origin'/.test(media),
   'W11 /media always carries the CORS header and varies on origin, so a cached plain load serves a crossorigin one (ED1c)');
 ok(/return '<img class="ph ph-wait"' \+ \(RT \? ' crossorigin="anonymous"' : ""\) \+ ' src="' \+ u \+ '"/.test(page), 'P11 a slot image asks for crossorigin only in render mode (ED1c)');
+const slice = w.slice(w.indexOf('await (runDailySpine(env,'), w.indexOf('  async fetch(request, env, ctx) {'));
+ok(slice.indexOf('imageDescribePass(env)') > slice.indexOf('claudeBatchDrain(env)') && slice.indexOf('imageDescribePass(env)') > slice.indexOf('readTick(env') && slice.indexOf('imageDescribePass(env)') > slice.indexOf('watchTick(env)') && (slice.match(/imageDescribePass\(env\)/g) || []).length === 1,
+  'W12 the describer runs last in the 30-minute chain, after the drain, the tick and the watch line (ED1d)');
+ok(/signal: AbortSignal\.timeout\(READ_IMG\.FETCH_MS\)/.test(between('async function readImgFetch(', '\n}\n')) && /FETCH_MS: 10000/.test(w), 'W13 every image fetch has a ten-second limit (ED1d)');
+ok(/PASS_MS: 20000/.test(w) && /if \(Date\.now\(\) - t0 > LAKE_LOOK\.PASS_MS\) break;/.test(between('async function imageDescribePass(', '\n}\n')), 'W14 the describer stops when its twenty-second budget is spent (ED1d)');
 console.log(`\nproof_slots: ${pass} checks passed`);

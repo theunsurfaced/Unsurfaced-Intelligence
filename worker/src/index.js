@@ -130,9 +130,6 @@ export default {
         .then(() => popoutPass(env))   // SEAM:POPOUT (EX47): board readings the last drain landed get their role lines
         .then(s => console.log('popout_pass', JSON.stringify(s)))
         .catch(e => console.log('popout_pass_error', String(e && e.message)))
-        .then(() => imageDescribePass(env))   // SEAM:LAKE_LOOK (ED1): a few story photographs a slice are described in words, inside the included neurons
-        .then(s => console.log('lake_look', JSON.stringify(s)))
-        .catch(e => console.log('lake_look_error', String(e && e.message)))
         .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
         .then(s => console.log('claude_drain', JSON.stringify(s)))
         .catch(e => console.log('claude_drain_error', String(e && e.message)))
@@ -141,7 +138,10 @@ export default {
         .catch(e => console.log('read_tick_error', String(e && e.message)))
         .then(() => watchTick(env))   // SEAM:WATCH_LINE: the line on the half hour, so a failure is heard within thirty minutes
         .then(s => console.log('watch_tick', JSON.stringify(s)))
-        .catch(e => console.log('watch_tick_error', String(e && e.message))));
+        .catch(e => console.log('watch_tick_error', String(e && e.message)))
+        .then(() => imageDescribePass(env))   // SEAM:LAKE_LOOK (ED1d): last, inside its own budget, so nothing it does holds the drain, the tick or the watch line
+        .then(s => console.log('lake_look', JSON.stringify(s)))
+        .catch(e => console.log('lake_look_error', String(e && e.message))));
     }
   },
   async fetch(request, env, ctx) {
@@ -15804,7 +15804,7 @@ async function makeImage(env, opts) {
  * a slice, a bounded number a day). The lake is the first teaching pass: a story photograph that reached a read is
  * described once in words (palette, light, setting, composition, mood) on edition_items.image_desc; the words are what
  * the brief writer and the likeness check read. Pixels never enter a model as training. */
-const LAKE_LOOK = { MODEL: '@cf/llava-hf/llava-1.5-7b-hf', MS: 15000, BYTES: 2500000, PER_RUN: 8, PER_DAY: 200, DAYS: 14,   // ED1b: the model EXCAVATE's look already runs here; one question a call
+const LAKE_LOOK = { MODEL: '@cf/llava-hf/llava-1.5-7b-hf', MS: 15000, BYTES: 2500000, PER_RUN: 8, PER_DAY: 200, DAYS: 14, PASS_MS: 20000,   // ED1d: the pass stops when its budget is spent   // ED1b: the model EXCAVATE's look already runs here; one question a call
   REAL: 'Is this a photograph of a recognizable real or famous person? Answer yes or no.',
   LOGO: 'Does this image show a brand logo, a trademark or a recognizable branded product design? Answer yes or no.',
   SHOWS: 'Describe what this image shows in one sentence under 30 words.',
@@ -15877,8 +15877,10 @@ async function imageDescribePass(env, opts) {
   if (!ids.length) return { ok: true, described: 0, left: 0 };
   const rows = await sbRest(env, 'edition_items?id=in.(' + ids.join(',') + ')&image_desc=is.null&image_url=not.is.null&select=id,image_url&order=id.desc&limit=' + room) || [];
   let described = 0, looked = 0;
+  const t0 = Date.now();   // SEAM:READ_SLOTS (ED1d): the pass's own clock
   const mark = (id, line) => sbRest(env, 'edition_items?id=eq.' + id, { method: 'PATCH', body: { image_desc: String(line || '').replace(/\u2014/g, ',').slice(0, 300), image_desc_at: new Date().toISOString() } });
   for (const r of rows) {
+    if (Date.now() - t0 > LAKE_LOOK.PASS_MS) break;   // the rest waits for the next slice
     const href = readImgUrl(r.image_url);
     const res = href ? await readImgFetch(href, 'image/avif,image/webp,image/*') : null;
     if (!res || !res.ok || !/^image\//.test(String(res.headers.get('content-type') || ''))) { await mark(r.id, ''); continue; }
@@ -16082,7 +16084,7 @@ async function slotRoute(path, body, env, origin, user) {
  *   - Cached 7 days at the edge; a miss is cached 1 day so a dead photo is not
  *     refetched on every page view. CORS open so a canvas can draw it.
  *   - No AI spend. Every failure is a plain 404, logged, never cached as a photo. */
-const READ_IMG = { MAX_BYTES: 6000000, TTL: 604800, MISS_TTL: 86400, HTML_BYTES: 400000, THUMB: { image: { width: 400, fit: 'scale-down', quality: 82, format: 'jpeg' } } };   // SEAM:READ_SLOTS (ED1): the thumbnail the zone resizes to
+const READ_IMG = { MAX_BYTES: 6000000, TTL: 604800, MISS_TTL: 86400, HTML_BYTES: 400000, FETCH_MS: 10000, THUMB: { image: { width: 400, fit: 'scale-down', quality: 82, format: 'jpeg' } } };   // SEAM:READ_SLOTS (ED1): the thumbnail the zone resizes to
 function readImgUrl(raw, base) {
   let t;
   try { t = new URL(String(raw || ''), base || undefined); }
@@ -16095,7 +16097,7 @@ async function readImgFetch(href, accept, cf) {   // SEAM:READ_SLOTS (ED1): cf c
   try {
     return await fetch(href, Object.assign({ redirect: 'follow', headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 UnsurfacedRead/1.1',
-      'Accept': accept } }, cf ? { cf } : {}));
+      'Accept': accept }, signal: AbortSignal.timeout(READ_IMG.FETCH_MS) }, cf ? { cf } : {}));   // SEAM:READ_SLOTS (ED1d): a host that never answers never holds a slice
   } catch (e) {
     console.log('img_relay_unreachable', href.slice(0, 120));
     return null;
