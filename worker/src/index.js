@@ -141,7 +141,10 @@ export default {
         .catch(e => console.log('watch_tick_error', String(e && e.message)))
         .then(() => imageDescribePass(env))   // SEAM:LAKE_LOOK (ED1d): last, inside its own budget, so nothing it does holds the drain, the tick or the watch line
         .then(s => console.log('lake_look', JSON.stringify(s)))
-        .catch(e => console.log('lake_look_error', String(e && e.message))));
+        .catch(e => console.log('lake_look_error', String(e && e.message)))
+        .then(() => entityResolvePass(env))   // SEAM:ENTITY_GRAPH (EX52b): the new rows linked to the graph and one backfill step, inside ENTITY.PASS_MS
+        .then(s => console.log('entity_resolve', JSON.stringify(s)))
+        .catch(e => console.log('entity_resolve_error', String(e && e.message))));
     }
   },
   async fetch(request, env, ctx) {
@@ -1880,6 +1883,124 @@ async function excReadPages(items, opts) {
 /* SEAM:EXC_MEASURE: what the lake can count about a frame, computed, never modeled. Twelve weeks of signal
  * counts, the last seven days against the seven before, distinct outlets, weeks touched, and the frame's share
  * of its territory this week. One query on titles (the frame's anchors), one on the territory. */
+/* ═══ SEAM:ENTITY_GRAPH (EX52b, arc 1): the graph and the resolver. An entity is a thing the lake can count: a brand, a person, a
+ * product, an organisation, with its names (the name and its aliases) and, when its name is also an ordinary word, the context
+ * words a story must carry too. The graph is seeded from what the house already knows: the board's frames (the entity, its
+ * competitors, the category) and the tracked brands with their aliases. The resolver is the database's own function
+ * (0052: resolve_signal_entities), run over a window of capture time: on the half hour for the new rows and, until twelve weeks
+ * are covered, one backfill step a slice. No model is asked in this arc; the scout's names are arc 2's v2. The measure still
+ * counts headlines in this arc; arc 2 switches it to the links. ═══ */
+const ENTITY = { BACKFILL_WEEKS: 12, STEP_H: 12, STEPS_PER_SLICE: 2, PASS_MS: 20000, FRAMES: 400, MIN_NAME: 3,
+  // names that are also ordinary words: a story must carry a context word before the match counts; the desk extends the list on the row
+  AMBIGUOUS: ['target', 'apple', 'gap', 'coach', 'guess', 'shell', 'visa', 'meta', 'tide', 'dove', 'sprite', 'subway', 'monster', 'champion', 'supreme', 'oracle', 'slack', 'zoom', 'discord', 'signal', 'twitch', 'vans', 'converse', 'boost', 'hinge', 'bumble', 'delta', 'united', 'frontier', 'spirit', 'mint', 'sage', 'pure', 'simple', 'total', 'general', 'national', 'american', 'first', 'next', 'pop', 'mars', 'shift', 'stripe', 'square', 'block', 'chime', 'ring', 'nest', 'arc', 'era', 'glow', 'rare', 'fresh', 'jet', 'wave', 'pilot', 'crocs', 'gold', 'crown', 'polo', 'puma', 'camel', 'dash', 'bolt', 'brilliant', 'honest', 'glossier', 'hims', 'hers', 'lively', 'allbirds', 'away', 'public', 'hyper', 'bark', 'wag', 'rover'],
+  CONTEXT: ['brand', 'company', 'retailer', 'store', 'stores', 'shoppers', 'customers', 'launch', 'launches', 'launched', 'campaign', 'ceo', 'earnings', 'sales', 'revenue', 'drop', 'collab', 'collaboration', 'sneaker', 'sneakers', 'shoe', 'shoes', 'app', 'stock', 'shares', 'quarter'] };
+/* PURE: the words a category or sector lends as context ("athletic footwear" lends athletic, footwear). */
+function entityContextWords(text) {
+  return [...new Set(String(text || '').toLowerCase().split(/[^a-z0-9&]+/).filter(x => x.length >= 4 && !/^(?:and|the|with|from|their|that|this|into|over|about)$/.test(x)))].slice(0, 8);
+}
+/* PURE: the entity rows a set of frames and tracks propose, keyed by lowercased name; aliases and context unioned across sources. */
+function entityProposals(frames, tracks) {
+  const out = new Map();
+  const put = (name, more) => {
+    const nm = String(name || '').replace(/\s+/g, ' ').trim(); if (nm.replace(/\s/g, '').length < ENTITY.MIN_NAME || (nm.match(/[\p{L}\p{N}]/gu) || []).length < 2) return;
+    const k = nm.toLowerCase(), cur = out.get(k) || { name: nm, kind: 'brand', aliases: [], category: null, context: [], ambiguous: ENTITY.AMBIGUOUS.includes(k), from_src: 'frame', track_id: null };
+    for (const a of (more.aliases || [])) { const al = String(a || '').replace(/\s+/g, ' ').trim(); if (al && al.toLowerCase() !== k && !cur.aliases.some(x => x.toLowerCase() === al.toLowerCase())) cur.aliases.push(al); }
+    if (!cur.category && more.category) cur.category = String(more.category).slice(0, 80);
+    for (const c of (more.context || [])) if (!cur.context.includes(c)) cur.context.push(c);
+    if (more.kind && cur.kind === 'brand') cur.kind = more.kind;
+    if (more.from_src === 'track') { cur.from_src = 'track'; cur.track_id = more.track_id || cur.track_id; }
+    out.set(k, cur);
+  };
+  for (const f of frames || []) {
+    const fr = (f && f.frame) || {}; const cat = fr.category || null; const ctx = entityContextWords(cat).concat(ENTITY.CONTEXT);
+    if (fr.entity) put(fr.entity, { category: cat, context: ctx });
+    for (const c of (fr.competitors || [])) put(c, { category: cat, context: ctx });
+  }
+  for (const t of tracks || []) {
+    if (!t || !t.name) continue;
+    const kind = ['brand', 'person', 'product', 'org', 'place'].includes(t.kind) ? t.kind : 'brand';
+    put(t.name, { aliases: t.aliases || [], category: t.sector || null, context: entityContextWords(t.sector).concat(ENTITY.CONTEXT), kind, from_src: 'track', track_id: t.id || null });
+  }
+  for (const v of out.values()) { if (!v.ambiguous) v.context = []; else v.context = v.context.slice(0, 24); }
+  return [...out.values()];
+}
+/* The graph seeded from the board's frames (the newest night of each) and the tracked brands: a new name is a row; a known name
+ * gains the aliases and the category it lacked. Run by the desk ({run: "entities"}) and before the half hour's resolve when the
+ * graph is empty. Nothing is removed here; the desk retires an entity by hand (active=false). */
+async function entitySeed(env) {
+  const rows = (await sbRest(env, 'door_reads?status=in.(ready,reused)&select=frame_key,night,frame&order=night.desc&limit=' + ENTITY.FRAMES).catch(excQuiet('entity_frames', []))) || [];
+  const newest = new Map(); for (const r of rows) if (r && r.frame_key && !newest.has(r.frame_key)) newest.set(r.frame_key, r);
+  const tracks = await loadTracks(env);
+  const want = entityProposals([...newest.values()], tracks);
+  const have = (await sbRest(env, 'entities?select=id,name,aliases,category,ambiguous,context,from_src,track_id&limit=5000').catch(excQuiet('entity_have', []))) || [];
+  const byName = new Map(have.map(e => [String(e.name).toLowerCase(), e]));
+  let made = 0, updated = 0;
+  for (const w of want) {
+    const e = byName.get(w.name.toLowerCase());
+    if (!e) {
+      const ins = await sbRest(env, 'entities', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { name: w.name, kind: w.kind, aliases: w.aliases, category: w.category, context: w.context, ambiguous: w.ambiguous, from_src: w.from_src, track_id: w.track_id } }).catch(excQuiet('entity_insert', null));
+      if (ins && ins.length) made++;
+      continue;
+    }
+    const aliases = [...new Set((e.aliases || []).concat(w.aliases.filter(a => !(e.aliases || []).some(x => String(x).toLowerCase() === a.toLowerCase()))))];
+    const patch = {};
+    if (aliases.length !== (e.aliases || []).length) patch.aliases = aliases;
+    if (!e.category && w.category) patch.category = w.category;
+    if (e.ambiguous && w.context.length && !(e.context || []).length) patch.context = w.context;
+    if (!e.track_id && w.track_id) patch.track_id = w.track_id;
+    if (Object.keys(patch).length) { patch.updated_at = new Date().toISOString(); await sbRest(env, 'entities?id=eq.' + e.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch }).catch(excQuiet('entity_patch')); updated++; }
+  }
+  return { frames: newest.size, tracks: tracks.length, proposed: want.length, had: have.length, made, updated };
+}
+/* PURE: the next backfill window from a cursor: a step of STEP_H hours, never past the half hour's first window. */
+function entityStep(bf, nowMs) {
+  const at = Date.parse(bf && bf.at) || (nowMs - ENTITY.BACKFILL_WEEKS * 7 * 864e5), until = Date.parse(bf && bf.until) || nowMs;
+  if (at >= until) return null;
+  return { since: new Date(at).toISOString(), until: new Date(Math.min(until, at + ENTITY.STEP_H * 36e5)).toISOString() };
+}
+async function entityResolveRun(env, since, until) {
+  const r = ((await sbRest(env, 'rpc/resolve_signal_entities', { method: 'POST', body: { p_since: since, p_until: until } })) || [])[0] || {};
+  return { seen: parseInt(r.signals_seen, 10) || 0, made: parseInt(r.links_made, 10) || 0, entities: parseInt(r.entities_run, 10) || 0 };
+}
+async function entityStateGet(env) {
+  const rows = (await sbRest(env, 'entity_resolve_state?select=k,v').catch(excQuiet('entity_state', []))) || [];
+  const st = {}; for (const r of rows) st[r.k] = r.v || {}; return st;
+}
+async function entityStatePut(env, k, v) {
+  await sbRest(env, 'entity_resolve_state?on_conflict=k', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: [{ k, v, updated_at: new Date().toISOString() }] }).catch(excQuiet('entity_state_put'));
+}
+/* The resolver on the half hour: the new rows since the cursor, then as many backfill steps as the budget allows (STEPS_PER_SLICE
+ * on the slice; the desk may ask for more with {run: "resolve", steps: N}). Every call is bounded by PASS_MS so nothing it does
+ * holds the slice. An empty graph is seeded first. */
+async function entityResolvePass(env, opts) {
+  const t0 = Date.now(), now = new Date(t0).toISOString();
+  const st = await entityStateGet(env);
+  let seeded = null;
+  if (!st.cursor || (opts && opts.seed)) seeded = await entitySeed(env);
+  const since = (st.cursor && st.cursor.until) || new Date(t0 - 36e5).toISOString();
+  let cur = null;
+  try { const r = await entityResolveRun(env, since, now); cur = Object.assign({ since, until: now, at: now }, r); await entityStatePut(env, 'cursor', cur); }
+  catch (e) { console.log('entity_resolve_error', String(e && e.message).slice(0, 120)); return { ok: false, error: 'resolve_failed', seeded }; }
+  let bf = st.backfill || { at: new Date(t0 - ENTITY.BACKFILL_WEEKS * 7 * 864e5).toISOString(), until: since, done: false, steps: 0, made: 0 };
+  const steps = Math.max(0, Math.min(200, parseInt(opts && opts.steps, 10) || ENTITY.STEPS_PER_SLICE));
+  let ran = 0;
+  while (!bf.done && ran < steps && Date.now() - t0 < ENTITY.PASS_MS) {
+    const w = entityStep(bf, t0);
+    if (!w) { bf.done = true; break; }
+    try { const r = await entityResolveRun(env, w.since, w.until); bf = Object.assign({}, bf, { at: w.until, steps: (bf.steps || 0) + 1, made: (bf.made || 0) + r.made, done: Date.parse(w.until) >= Date.parse(bf.until) }); ran++; }
+    catch (e) { console.log('entity_backfill_error', String(e && e.message).slice(0, 120)); break; }
+  }
+  if (ran || !st.backfill || bf.done !== !!st.backfill.done) await entityStatePut(env, 'backfill', bf);
+  return { ok: true, seeded, cursor: cur, backfill: bf, steps: ran, ms: Date.now() - t0 };
+}
+/* What the watch line says about the graph: how many entities, how many links in seven days, where the cursor and the backfill stand. */
+async function entityLine(env) {
+  const st = await entityStateGet(env);
+  const n = ((await sbRest(env, 'entities?select=id&active=eq.true&limit=5000').catch(excQuiet('entity_count', []))) || []).length;
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const links = ((await sbRest(env, 'signal_entities?select=signal_id&captured_at=gte.' + since + '&limit=20000').catch(excQuiet('entity_links', []))) || []).length;
+  return { entities: n, links_7d: links, cursor: st.cursor ? { until: st.cursor.until, made: st.cursor.made } : null, backfill: st.backfill ? { at: st.backfill.at, until: st.backfill.until, done: !!st.backfill.done, steps: st.backfill.steps || 0, made: st.backfill.made || 0 } : null };
+}
 const EXC_MEASURE = { WEEKS: 12, ROWS: 1500, TERR_ROWS: 3000 };
 function excMeasureAnchors(frame) {
   // The entity counts from three letters; a bare anchor needs five or a space, so "care" or "hair" alone never counts the whole lake.
@@ -8399,7 +8520,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -10255,6 +10376,9 @@ async function watchHealth(env) {
     const marks = (await sbRest(env, 'insight_marks?created_at=gte.' + since + '&select=mark,insight_id&limit=2000').catch(excQuiet('watch_marks', []))) || [];
     const counts = { held: 0, useful: 0, wrong: 0 }, by = {}; for (const m of marks) { if (counts[m.mark] != null) counts[m.mark]++; by[m.insight_id] = (by[m.insight_id] || 0) + 1; }
     out.marks = { week: counts, readings: Object.keys(by).sort((a, b) => by[b] - by[a]).slice(0, 5).map(id => ({ id, marks: by[id] })) }; } catch (e) { excQuiet('watch_marks')(e); }
+  // SEAM:ENTITY_GRAPH (EX52b): the graph on the line; a resolver that has not run for two hours trips
+  try { out.entities = await entityLine(env); const cu = out.entities.cursor && Date.parse(out.entities.cursor.until);
+    if (cu && now - cu > 2 * 36e5) out.trips.push({ kind: 'entity_stale', say: 'the entity resolver has not run for ' + Math.round((now - cu) / 36e5) + ' hours' }); } catch (e) { excQuiet('watch_entities')(e); }
   // the rails: the last reads' receipts name the rails that answered and the ones that stayed silent (exc_rails events, when logged)
   try {
     const rows = (await sbRest(env, 'activity_events?event=eq.exc_rails&select=created_at,meta&order=created_at.desc&limit=5').catch(excQuiet('watch_rails', []))) || [];

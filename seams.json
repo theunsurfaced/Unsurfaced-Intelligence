@@ -1642,6 +1642,10 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:FEED_INTAKE",
    "purpose": "KB1: the feed's file input and the evidence shelf's drop accept text, PDF, Word, Excel, OpenDocument, HTML, XML and images, fifteen megabytes at the door; Make this a RECON carries the read's frame into the commission."
+  },
+  "SEAM:ENTITY_GRAPH": {
+   "file": "worker/src/index.js",
+   "purpose": "EX52b arc 1 (Oct 29, 2026): the entity graph (0052: entities with name, aliases, category, context, ambiguous; signal_entities with the capture time copied) seeded from the board's frames and the tracked brands (entitySeed); the resolver is the database's function resolve_signal_entities (whole-word, case-insensitive, an ambiguous name needs a context word), run on the half hour for the new rows (cursor) and one backfill step a slice until twelve weeks are covered (entityResolvePass, ENTITY.PASS_MS); the desk runs {run: entities} and {run: resolve, steps: N}; the watch carries entityLine and trips entity_stale. No model in this arc; the measure switches to the links in arc 2."
   }
  },
  "planned": [
