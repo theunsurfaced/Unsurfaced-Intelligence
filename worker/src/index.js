@@ -1409,7 +1409,8 @@ async function excProbe(env, f, query, hints) {
   out.readings = readings.slice().sort((a, b) => b.mass - a.mass).map(r => ({ kind: r.kind, entity: r.entity, category: r.category, audience: r.audience, anchors: r.anchors, question: r.question, why: r.why }));   // ordered by mass; the mass itself never leaves
   return out;
 }
-async function excFrameFor(env, query) {
+async function excFrameFor(env, query, opts) {
+  const budget = Math.max(1000, parseInt(opts && opts.timeout_ms, 10) || EXC_FRAME.TIMEOUT_MS), tries = opts && opts.retry ? 2 : 1;   // SEAM:EXC_FRAME (EX52a): the caller's clock; the night may try a slow call once more
   try {
     const qn = String(query || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
     if (!qn) return null;
@@ -1420,9 +1421,13 @@ async function excFrameFor(env, query) {
     const miss = async why => { console.log('exc_frame_miss', why); const ttl = /unframeable|claude_cap|claude_off|claude_unconfigured/.test(why) ? EXC_FRAME.MISS_TTL : EXC_FRAME.WOBBLE_TTL;
       if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(key, JSON.stringify({ _miss: 1, why }), { expirationTtl: ttl }); } catch (e) { excQuiet('frame_miss_cache')(e); } } return null; };
     const hints = await excNameHints(env, query).catch(excQuiet('name_hints', []));   // SEAM:EXC_NAME (EX41): the names, before the frame
-    const call = callClaude(env, 'frame', { system: EXC_FRAME_SYS, cache: true, prompt: 'Query: "' + String(query || '').replace(/\s+/g, ' ').trim().slice(0, 200) + '"' + excNamePrompt(hints), max_tokens: EXC_FRAME.MAX_TOKENS,   // SEAM:EXC_PROBE: the case kept
-      temperature: 0, kind: 'excavate_frame', timeout_ms: EXC_FRAME.TIMEOUT_MS });
-    const r = await Promise.race([call, new Promise(res => setTimeout(() => res({ ok: false, error: 'frame_slow' }), EXC_FRAME.TIMEOUT_MS + 300))]);
+    let r = null;
+    for (let t = 0; t < tries; t++) {
+      const call = callClaude(env, 'frame', { system: EXC_FRAME_SYS, cache: true, prompt: 'Query: "' + String(query || '').replace(/\s+/g, ' ').trim().slice(0, 200) + '"' + excNamePrompt(hints), max_tokens: EXC_FRAME.MAX_TOKENS,   // SEAM:EXC_PROBE: the case kept
+        temperature: 0, kind: 'excavate_frame', timeout_ms: budget });
+      r = await Promise.race([call, new Promise(res => setTimeout(() => res({ ok: false, error: 'frame_slow' }), budget + 300))]);
+      if (r && (r.ok || !/^(?:claude_network|frame_slow)$/.test(String(r.error || '')))) break;   // only a slow call earns the second try
+    }
     if (!r || !r.ok) return miss(String((r && r.error) || 'none'));
     const f0 = excFrameClean(extractJson(r.text || ''));
     if (!f0) return miss('unframeable');
@@ -9174,7 +9179,7 @@ async function memoryRecord(env) {
  * Every read is kept in door_reads, so a tile says what changed since last
  * night. A visitor pays nothing: tiles come from KV, the read from the table.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.4' };   // SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
+const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '3.4', FRAME_MS: 25000 };   // SEAM:EXC_FRAME (EX52a): FRAME_MS is the night's clock for a frame; a reader's wait keeps EXC_FRAME.TIMEOUT_MS. SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
 /* SEAM:RECORD_LAW: when a subject earns a read. New on the board: earned. Read before and the evidence changed: earned only when it
  * moved past the threshold since that read (stories this week up or down by MIN_DELTA, or velocity past MIN_VEL percent, or MIN_OUTLETS
  * new outlets); otherwise its last read stands (reused) and nothing is spent. At most CAP reads a night, the largest moves first; a
@@ -9371,7 +9376,7 @@ async function doorPass(env, opts) {
   let jobs = []; const rowsOut = [];   // SEAM:RECORD_LAW: the jobs are ranked and capped after the loop
   for (const cand of cands) {
     try {
-      const frame = excFrameClean(await excFrameFor(env, cand.query));
+      const frame = excFrameClean(await excFrameFor(env, cand.query, { timeout_ms: DOOR.FRAME_MS, retry: true }));   // SEAM:EXC_FRAME (EX52a): the night has time; a reader does not
       const ev = await doorEvidence(env, cand, frame, tiers);
       await doorQuotes(env, ev, frame, textLedger);   // SEAM:TERRITORIES (EX39): the article's own passage on the tier 1 and 2 lines
       const measures = frame ? await excMeasures(env, frame) : null;
@@ -11763,6 +11768,9 @@ async function callClaude(env, tier, req) {
       body: JSON.stringify(params), signal: AbortSignal.timeout(Math.min(parseInt(req && req.timeout_ms, 10) || CLAUDE.LIVE_TIMEOUT_MS, ceiling)) });
     j = await r.json().catch(() => null);
   } catch (e) {
+    await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',   // SEAM:CLAUDE_ROUTE (EX52a): a call aborted or never answered is a row too, so the ledger counts it
+      error: ('claude_network ' + String((e && e.name) || '') + ' ' + String((e && e.message) || '')).trim().slice(0, 300), est_usd: est, cost_usd: 0,
+      meta: Object.assign({}, (req && req.meta) || {}), ended_at: new Date().toISOString() }]);
     return { ok: false, error: 'claude_network' };
   }
   if (!r.ok || !j) {
