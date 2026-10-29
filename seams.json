@@ -772,7 +772,7 @@
   },
   "SEAM:EXC_MEASURE": {
    "file": "worker/src/index.js",
-   "purpose": "what the lake can count about a frame, computed, never modeled (excMeasures): twelve weeks of signal counts by title match on the frame's anchors, the last seven days against the seven before, distinct outlets, weeks touched, the frame's share of its territory this week, state by the field's own thresholds (clusterState) and shape (clusterShape); MEASURES head the prompt and count as grounded numbers; the read carries measures"
+   "purpose": "what the lake can count about a frame, computed, never modeled (excMeasures): twelve weeks of signal counts by title match on the frame's anchors, the last seven days against the seven before, distinct outlets, weeks touched, the frame's share of its territory this week, state by the field's own thresholds (clusterState) and shape (clusterShape); MEASURES head the prompt and count as grounded numbers; the read carries measures EX52a: the measure is context, never the claim: a quiet week reaches the writer in words, two quiet weeks no line; excMeasureClaim holds a door reading whose read line, finding or move names the count (status failed, error measure_claim), and the live read drops such a finding."
   },
   "SEAM:EXC_SCORE": {
    "file": "worker/src/index.js",
@@ -1293,7 +1293,7 @@
   },
   "SEAM:WATCH_LINE": {
    "file": "worker/src/index.js",
-   "purpose": "EX29 THE WATCH: the health line. watchHealth reads the ledgers the engine already keeps (last door pass and grade, the rails that stayed silent on the last reads from the gather's exc_rails events, this month's spend against every Claude cap, Perplexity's day, the writer's failures today, the last backup, the running version from CF_VERSION_METADATA) and names its trips; GET /watch/line (desk key, admin or editor) returns the line and the last twenty desk runs; watchTick runs it at the end of the 06:10 chain and on the half-hour drain. No model is asked."
+   "purpose": "EX29 THE WATCH: the health line. watchHealth reads the ledgers the engine already keeps (last door pass and grade, the rails that stayed silent on the last reads from the gather's exc_rails events, this month's spend against every Claude cap, Perplexity's day, the writer's failures today, the last backup, the running version from CF_VERSION_METADATA) and names its trips; GET /watch/line (desk key, admin or editor) returns the line and the last twenty desk runs; watchTick runs it at the end of the 06:10 chain and on the half-hour drain. No model is asked. EX52a: the line carries the door's cadence (watchDoorLine) and trips door_dark when the board has not compiled past the cadence; the readers' marks over seven days ride with it."
   },
   "SEAM:WATCH_ALERT": {
    "file": "worker/src/index.js",
@@ -1331,7 +1331,7 @@
   },
   "SEAM:READER_MARKS": {
    "file": "worker/src/index.js",
-   "purpose": "EX30: a reader marks a deployed insight held, useful or wrong (insight_marks, one per reader per insight; POST /excavate/mark, GET the counts and the reader's own); the counts are public with the insight and feed the bench's human score."
+   "purpose": "EX30: a reader marks a deployed insight held, useful or wrong (insight_marks, one per reader per insight; POST /excavate/mark, GET the counts and the reader's own); the counts are public with the insight and feed the bench's human score. EX52a: the marks ride the watch line (held, useful, wrong over seven days, the most-marked readings); the bench's human score is a later step."
   },
   "SEAM:READER_MARKS@excavate": {
    "file": "intelligence/index.html",

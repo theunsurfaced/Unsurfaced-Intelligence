@@ -133,7 +133,7 @@ ok(L.CLAUDE.TIERS.recon && L.CLAUDE.TIERS.recon.exact === true && L.CLAUDE.TIERS
 ok(R.HOUSE_READ.KINDS.weekly.max_tokens === 40000 && R.HOUSE_READ.KINDS.monthly.max_tokens === 56000, 'A2 the weekly and monthly have room again: 40,000 and 56,000 output tokens');
 ok(D.BUDGET_USD === 30 && D.BUDGET_MIN === 20 && D.COMPILE_RESERVE === 13 && D.REVISE_RESERVE === 4 && R.deepSpent({ spend: { plan: 1.25, rails: 0.5 } }) === 1.75 && R.deepRoom({ budget_usd: 2, spend: { plan: 1.5 } }, 0.5) && !R.deepRoom({ budget_usd: 2, spend: { plan: 1.5 } }, 0.51) && R.deepRoom({ spend: {} }, 29.9),
   'A3 the commission ceiling: $30 by default, $20 at the least (a whole RECON and its four passes fit); every stage asks whether its worst case still fits');
-ok(/meta: Object\.assign\(\{\}, \(req && req\.meta\) \|\| \{\}, \{ msg_id: j\.id \|\| null \}\)/.test(w) && /PPLX_RECON_DAILY_DOLLARS: 0\.5,/.test(w) && /SIGNAL_RECON_DAILY_DOLLARS: 1\.0,/.test(w) && /dk = \(recon \? 'pplxr:' : 'pplxd:'\) \+ day/.test(w) && /dk = \(recon \? 'sigr:' : 'sigd:'\) \+ day/.test(w) && /pplx_recon, exa_recon, caps/.test(w),
+ok(/meta: Object\.assign\(\{\}, \(req && req\.meta\) \|\| \{\}, \{ msg_id: j\.id \|\| null, ms: Date\.now\(\) - t0 \}\)/.test(w) && /PPLX_RECON_DAILY_DOLLARS: 0\.5,/.test(w) && /SIGNAL_RECON_DAILY_DOLLARS: 1\.0,/.test(w) && /dk = \(recon \? 'pplxr:' : 'pplxd:'\) \+ day/.test(w) && /dk = \(recon \? 'sigr:' : 'sigd:'\) \+ day/.test(w) && /pplx_recon, exa_recon, caps/.test(w),
   'A4 review: a live call carries its caller\'s tags (a RECON\'s id) onto its row; a RECON\'s gathers spend on Perplexity\'s and Exa\'s own RECON lanes, never the house\'s day, and the daily rail ledger records both');
 
 // ── P: the plan ────────────────────────────────────────────────────────

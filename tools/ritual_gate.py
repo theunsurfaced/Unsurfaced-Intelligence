@@ -186,6 +186,23 @@ for f in worker_js:
         FAIL.append(f"[voice] {f}:{_ln}: em dash in a string: {_lit[:80]}")
     print(f"  voice   {f}: {len(_vd)} dashed strings")
 
+# ── 7b. Voice law (the page's own strings, EX52a) ─────────────────────────
+# intelligence/index.html's classic script bodies are held to the same law: no em dash in a string the page
+# writes. Text the page quotes from a source is runtime data, never a literal, and is not touched.
+_pg = "intelligence/index.html"
+if os.path.exists(_pg):
+    _ph, _pn = load(_pg), 0
+    for _m in re.finditer(r"<script([^>]*)>(.*?)</script>", _ph, re.S):
+        _attrs, _body = _m.group(1), _m.group(2)
+        if any(k in _attrs for k in ("importmap", "octet-stream", "application/json")) or not _body.strip():
+            continue
+        _off = _ph[:_m.start(2)].count("\n")
+        _vd = jsscan.dash_strings(_body)
+        for _a, _b, _ln, _lit in _vd[:5]:
+            FAIL.append(f"[voice] {_pg}:{_off + _ln}: em dash in a string: {_lit[:80]}")
+        _pn += len(_vd)
+    print(f"  voice   {_pg}: {_pn} dashed strings")
+
 # ── 8. Swallow ratchet ───────────────────────────────────────────────────
 # An empty catch hides a failure. Some are deliberate (logging must never
 # break a request), so the count is not zero; it can only go down. Lower

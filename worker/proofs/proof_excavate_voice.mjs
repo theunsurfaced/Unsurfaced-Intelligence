@@ -23,10 +23,12 @@ ok(/question: parsed && typeof parsed\.question === 'string' \? parsed\.question
 // ── T ─────────────────────────────────────────────────────────────────
 const photoSrc = helper('doorPhoto', '/* SEAM:EXC_DOOR_VOICE: what the door says');
 const doorPhoto = new Function(photoSrc + '; return doorPhoto;')();
-ok(doorPhoto({ insights: [{ image: 'https://z/d.jpg', source: 'Unsurfaced Lake · Highsnobiety (T2)' }] }, []).credit === 'Highsnobiety' && doorPhoto({ insights: [] }, [{ image: 'https://z/e.jpg', source: 'Unsurfaced Lake · signal (T?)' }]).credit === 'signal', 'T1b a photograph is credited to the outlet by name; the lake label and the tier never reach a reader');
-ok(doorPhoto({ insights: [{ image: 'http://x/a.jpg', source: 'A' }, { image: 'https://x/b.jpg', source: 'Hypebeast' }] }, []).src === 'https://x/b.jpg' && doorPhoto({ insights: [] }, [{ image: 'https://y/c.jpg', source_name: 'Vogue' }]).credit === 'Vogue' && doorPhoto({ insights: [{ image: 'data:image/png;base64,xx' }] }, []) === null && doorPhoto(null, null) === null,
+ok(doorPhoto({ insights: [{ image: 'https://z/d.jpg', source: 'Unsurfaced Lake · Highsnobiety (T2)' }] }, []).credit === 'Highsnobiety' && doorPhoto({ insights: [] }, [{ image: 'https://z/e.jpg', source: 'Unsurfaced Lake · signal (T?)', tier: 2 }]).credit === 'signal', 'T1b a photograph is credited to the outlet by name; the lake label and the tier never reach a reader');
+ok(doorPhoto({ insights: [{ image: 'http://x/a.jpg', source: 'A' }, { image: 'https://x/b.jpg', source: 'Hypebeast' }] }, []).src === 'https://x/b.jpg' && doorPhoto({ insights: [] }, [{ image: 'https://y/c.jpg', source_name: 'Vogue', tier: 1 }]).credit === 'Vogue' && doorPhoto({ insights: [{ image: 'data:image/png;base64,xx' }] }, []) === null && doorPhoto(null, null) === null,
   'T1 the tile\'s photograph is the first https image a cited insight or an evidence line carries, credited to its outlet; http, data and nothing else');
 ok(doorPhoto({ insights: [{ image: 'https://x/brand-logo.png', source: 'A' }, { image: 'https://x/photo.jpg', source: 'B' }] }, []).src === 'https://x/photo.jpg' && doorPhoto({ insights: [{ image: 'https://x/favicon.ico', source: 'A' }] }, []) === null, 'T1c a logo, an icon or an avatar is never the photograph');
+ok(doorPhoto({ insights: [] }, [{ image: 'https://y/t3.jpg', source_name: 'Blog', tier: 3 }, { image: 'https://y/t2.jpg', source_name: 'Dezeen', tier: 2 }]).src === 'https://y/t2.jpg' && doorPhoto({ insights: [] }, [{ image: 'https://y/untiered.jpg', source_name: 'Nobody' }]) === null,
+  'T1d an evidence line\'s photograph needs a T0 to T2 outlet; a T3 or untiered line never dresses the tile (EX52a)');
 ok(/question: \(rd && rd\.question\) \|\| f\.question \|\| null,/.test(w) && /photo: doorPhoto\(rd, r\.evidence\),/.test(w), 'T2 the tile carries the question (the read\'s, else the frame\'s) and the photograph');
 
 // ── X ─────────────────────────────────────────────────────────────────

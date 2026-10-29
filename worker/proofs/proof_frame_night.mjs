@@ -17,10 +17,10 @@ const F = new Function('callClaude', 'sha256hex', 'excFrameClean', 'excNameHints
   callClaude, async s => 'h' + s.length, f => f && (f.entity || f.category) ? f : null, async () => [], () => '', t => { try { return JSON.parse(t); } catch (e) { return null; } }, async (e, f) => f,
   (where, v) => e => v, 'SYS', { log: (...a) => logs.push(a.join(' ')) });
 const env = { RATE_LIMIT: { get: async k => kv.has(k) ? kv.get(k) : null, put: async (k, v) => { kv.set(k, v); } } };
-ok(F.EXC_FRAME.TIMEOUT_MS === 4500 && F.DOOR.FRAME_MS === 25000, 'F1 a reader\'s frame keeps 4.5 seconds; the night gets 25');
+ok(F.EXC_FRAME.TIMEOUT_MS === 9000 && F.DOOR.FRAME_MS === 25000, 'F1 a reader\'s frame waits nine seconds (EX52a, decided Oct 28); the night gets 25');
 answers = [{ ok: true, text: '{"entity":"Costco","category":"retail"}' }];
 const f1 = await F.excFrameFor(env, 'Costco retail');
-ok(f1 && f1.entity === 'Costco' && calls.length === 1 && calls[0].timeout_ms === 4500, 'F2 without options the call runs on the reader\'s clock, once');
+ok(f1 && f1.entity === 'Costco' && calls.length === 1 && calls[0].timeout_ms === 9000, 'F2 without options the call runs on the reader\'s clock, once');
 kv.clear(); calls = []; answers = [{ ok: true, text: '{"entity":"Walmart","category":"retail"}' }];
 const f2 = await F.excFrameFor(env, 'Walmart retail', { timeout_ms: F.DOOR.FRAME_MS, retry: true });
 ok(f2 && f2.entity === 'Walmart' && calls.length === 1 && calls[0].timeout_ms === 25000, 'F3 the night\'s options set the clock; a call that answers is not repeated');
@@ -42,5 +42,5 @@ ok(/excFrameClean\(await excFrameFor\(env, cand\.query, \{ timeout_ms: DOOR\.FRA
 const cc = between('async function callClaude(', 'async function callClaudeStream(');
 ok(/catch \(e\) \{\n    await claudeRecord\(env, \[\{ tier, kind, mode: 'live', model: params\.model, status: 'failed',/.test(cc) && /error: \('claude_network ' \+/.test(cc) && /cost_usd: 0,/.test(cc.slice(cc.indexOf("catch (e) {"), cc.indexOf("return { ok: false, error: 'claude_network' }"))),
   'D2 a call aborted or never answered writes a failed row at cost 0 before callClaude returns claude_network');
-ok(!/excFrameFor\(env, [a-z.]+\)[^;]*timeout_ms/.test(between('async function synthesize(', 'async function excFrameFor(')), 'D3 the reader\'s live frame is untouched in this cut');
+ok(!/excFrameFor\(env, [a-z.]+\)[^;]*timeout_ms/.test(between('async function synthesize(', 'async function excFrameFor(')), 'D3 the reader\'s live frame takes its clock from EXC_FRAME, never an option of its own');
 console.log(`\nproof_frame_night: ${pass} checks passed`);

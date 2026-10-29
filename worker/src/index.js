@@ -1016,7 +1016,7 @@ async function synthesize(body, env, origin, hooks) {
         sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url
           : (/^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null)
       };
-    }).filter(x => x.title);
+    }).filter(x => x.title).filter(x => { const bad = typeof excMeasureClaim === 'function' && excMeasureClaim(x.title); if (bad) console.log('measure_claim_dropped', String(x.title).slice(0, 80)); return !bad; });   // SEAM:EXC_MEASURE (EX52a): a finding about the instrument is not a finding
     // SEAM:EXC_ACCURACY: room for a whole sentence; the 220 cut ended THE READ mid-clause.
     const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2)
       .map(x => excClip(x, 420)).filter(Boolean);
@@ -1627,7 +1627,7 @@ function excClip(v, n) {
 function excOutletKey(c) {
   let k = String((c && c.source) || '').toLowerCase().replace(/unsurfaced lake\s*[\u00b7·]\s*/g, '').replace(/\(t\d\)/g, '').replace(/\.(com|org|net|co|io|uk)\b.*$/, '').replace(/[^a-z0-9]+/g, '').replace(/^the(?=[a-z]{3,})/, '').trim();
   if (!k && c && c.url) { const m = String(c.url).match(/^https?:\/\/(?:www\.)?([^/]+)/i); k = m ? m[1].toLowerCase().replace(/\.(com|org|net|co|io|uk)\b.*$/, '').replace(/[^a-z0-9]+/g, '').replace(/^the(?=[a-z]{3,})/, '') : ''; }
-  return k || String((c && c.title) || '').toLowerCase().slice(0, 40);
+  return k || 'unknown';   // SEAM:EXC_FRAME (EX52a): sourceless lines are one outlet, never one per line, so they can never add up to High
 }
 // SEAM:EXC_RECORD: a strong older source (T0 or T1) is the record. It does not vanish from a finding's confidence
 // the way a dated blog does; it counts at half its tier's weight, so two 2024 studies make a Medium, never a High.
@@ -1682,7 +1682,7 @@ function excGround(text, evidence) {
  * phrases that mark an off-topic one, and a query phrased for each kind of rail. Cached a week per query.
  * A frame never blocks a read: no key, a cap, a slow answer or a bad reply all return null and the read
  * runs on the raw query exactly as before. */
-const EXC_FRAME = { TIMEOUT_MS: 4500, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 300, REV: 'p1', MAX_TOKENS: 1400, DOOR_SHARE: 0.5 };
+const EXC_FRAME = { TIMEOUT_MS: 9000, TTL: 604800, MISS_TTL: 3600, WOBBLE_TTL: 60, REV: 'p1', MAX_TOKENS: 1400, DOOR_SHARE: 0.5 };
 const EXC_FRAME_SYS = 'You frame a consumer-intelligence query for a research engine. Output STRICT JSON only, no fences. ' +
   'Shape: {"entity":"the named brand, person, product or place, or null","category":"1 to 3 words","audience":"1 to 3 words",' +
   '"market":"the country or region the query is about; US when it names none","competitors":["up to 5 named players this entity or category competes with in that market"],' +
@@ -1970,9 +1970,26 @@ async function excMeasures(env, frame) {
 }
 function excMeasureLine(m) {
   if (!m || !Array.isArray(m.series) || m.recent_7d == null) return '';
+  // SEAM:EXC_MEASURE (EX52a): a quiet week reaches the writer in words, never as a zero to narrate; two quiet weeks are no measure at all
+  if (!m.recent_7d && !m.prior_7d) return '';
+  if (!m.recent_7d) return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake): quiet on the lake this week, ' + m.prior_7d + ' signals the week before; distinct outlets: ' + m.outlets + '; weeks touched: ' + m.weeks_touched + ' of ' + m.weeks + '; state ' + m.state + '. The quiet week is context and never a claim: no figure for it may be stated, and no headline or move may be about the count.\n\n';
   return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake, exact): signals: ' + m.recent_7d + ' this week, ' + m.prior_7d + ' the week before' +
     (m.velocity_pct != null ? ' (' + (m.velocity_pct >= 0 ? '+' : '') + m.velocity_pct + '%)' : '') + '; distinct outlets: ' + m.outlets + '; weeks touched: ' + m.weeks_touched + ' of ' + m.weeks +
     (m.share_pct != null ? '; share of ' + String(m.territory || '').replace(/-/g, ' ') + ' signals this week: ' + m.share_pct + '%' : '') + '; state ' + m.state + (m.shape ? ', shape ' + m.shape : '') + '. Numbers from MEASURES may be stated as measured.\n\n';
+}
+/* SEAM:EXC_MEASURE (EX52a) PURE: a line whose subject is the instrument. The count, the signals, the coverage, the streak, the
+ * measure, the weeks touched: the writer may stand on them, never write about them. 'early signal' is the house's own phrase and passes. */
+function excMeasureClaim(text) {
+  const t = String(text || '').replace(/\bearly signals?\b/gi, ' ');
+  return /\b(?:\d+ signals?|signals? (?:counts?|fell|rose|dropped|climbed|doubled|halved|reads?|stands?|stood|flat|unchanged|this week|last week|the week)|(?:no|zero|few|fewer|more|most) signals|(?:signal|coverage|outlet|story) counts?|the count|coverage (?:reads?|fell|rose|dropped|climbed|is|was|stands?|stood|this week|last week)|(?:no|zero|thin|flat|quiet) coverage|streaks?|weeks? touched|of \d{1,2} weeks|reads (?:0|zero)|unchanged from (?:0|zero)|the measure|lake (?:reads?|counts?))\b/i.test(t);
+}
+/* PURE: the lines of a compiled reading that name the measure: the two read lines, every finding's title, every move's headline. */
+function excMeasureClaims(read) {
+  const out = [];
+  for (const l of ((read && read.read) || [])) if (excMeasureClaim(l)) out.push({ where: 'read', text: String(l).slice(0, 160) });
+  ((read && read.insights) || []).forEach((x, i) => { if (x && excMeasureClaim(x.title)) out.push({ where: 'insight ' + (i + 1), text: String(x.title).slice(0, 160) }); });
+  ((read && read.ideas) || []).forEach((x, i) => { if (x && excMeasureClaim(x.headline)) out.push({ where: 'move ' + (i + 1), text: String(x.headline).slice(0, 160) }); });
+  return out;
 }
 
 /* SEAM:EXC_SCORE: the harvest, as a number. Computed from the read itself so every evolution is measured against
@@ -9308,7 +9325,7 @@ function doorCompileRead(parsed, merged, frame, measures, night) {
     const ground = excGround([x.title, x.excerpt].join(' '), ns.map(n => merged[n - 1]).concat(pool));
     return { checks: ground, category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', title: String(x.title || '').slice(0, 120), excerpt: String(x.excerpt || '').slice(0, 400),
       confidence: ground.ungrounded.length ? 'Low' : excEarned(ns.map(n => merged[n - 1]), ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'), now),
-      evidence: ns, dated: datedOf(ns), source: String((first && first.source) || x.source || '').slice(0, 120), sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url : null, image: (first && first.image) || null };
+      evidence: ns, dated: datedOf(ns), source: String((first && first.source) || x.source || '').slice(0, 120), sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url : null, image: first && first.image && excTier(first) <= 2 ? first.image : null };   // SEAM:EXC_DOOR_VOICE (EX52a): a photograph only from a T0 to T2 source
   }).filter(x => x.title);
   const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2).map(x => excClip(x, 420)).filter(Boolean);
   const ideas = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 2).map(x => ({ type: String(x.type || 'Strategy').slice(0, 40), for: excShort(x.for), headline: String(x.headline || '').slice(0, 120), body: String(x.body || '').slice(0, 400),
@@ -9438,6 +9455,8 @@ async function doorLand(env, id, text, cost, stopReason) {
   const got = excReadOf(text || '');
   if (!got) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('door_land_patch')); return { id, status: 'failed' }; }
   const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
+  const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];   // SEAM:EXC_MEASURE (EX52a): a reading whose claim is the instrument is held, the way a thin one is: off the board, the reason on the row, the next night tries again
+  if (named.length) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: ('measure_claim: ' + named[0].where + ': ' + named[0].text).slice(0, 200), updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch')); console.log('door_measure_claim', id, named[0].text.slice(0, 80)); return { id, status: 'failed', held: 'measure_claim' }; }
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'ready', read, cost_usd: cost, error: null, updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch'));
   // SEAM:RECORD_LAW: a deployment develops the read before it; that read stays on the record, marked
   const prevId = row.meta && row.meta.prev_id;
@@ -9475,7 +9494,8 @@ function doorPhoto(rd, evidence) {
   // the credit is the outlet's name only: a lake line is labeled for the model ("Unsurfaced Lake · Hypebeast (T2)"), never for a reader
   const outlet = v => String(v || '').replace(/^Unsurfaced Lake\s*·\s*/i, '').replace(/\s*\(T[0-9?]\)\s*$/, '').trim().slice(0, 80) || null;
   for (const x of ((rd && rd.insights) || [])) if (x && ok(x.image)) return { src: x.image, credit: outlet(x.source) };
-  for (const e of (evidence || [])) if (e && ok(e.image)) return { src: e.image, credit: outlet(e.source || e.source_name) };
+  const tierOf = e => { const t = parseInt(e.tier != null ? e.tier : e.source_tier, 10); return Number.isFinite(t) ? t : 3; };   // EX52a: the stored line's tier, read here so the function stays pure; no tier is T3
+  for (const e of (evidence || [])) if (e && ok(e.image) && tierOf(e) <= 2) return { src: e.image, credit: outlet(e.source || e.source_name) };   // EX52a: a photograph only from a T0 to T2 line
   return null;
 }
 /* SEAM:EXC_DOOR_VOICE: what the door says beside the board, cached an hour. voices (SEAM:DOOR_VOICES): the board's own subjects'
@@ -10181,6 +10201,13 @@ async function seatsDesk(env, body) {   // {run:"seats", email, seats}: change a
   try { return await planSeatsSet(env, group, n); } catch (e) { return { ok: false, error: 'stripe', say: String((e && e.message) || '').slice(0, 160) }; }
 }
 const ACCESS = { KEY: 'knock:', TTL: 30 * 86400, WAIT_H: 24, MAX_PENDING: 50, ACTIONS: ['approve', 'hold', 'revoke'] };   // SEAM:ACCESS_KNOCK: the door's numbers
+/* SEAM:WATCH_LINE (EX52a) PURE: the door's cadence on the line. A skip is a skip, never a night; a gap past the cadence trips. */
+function watchDoorLine(every, lastNight, today, skipped) {
+  const gap = lastNight ? Math.round((Date.parse(today) - Date.parse(lastNight)) / 864e5) : null;
+  const dark = gap == null || gap > every + 1;
+  return { every, last_compiled: lastNight || null, gap_nights: gap, skipped: !!skipped,
+    trip: dark ? { kind: 'door_dark', say: (gap == null ? 'the board has never compiled' : 'the board has not compiled for ' + gap + ' nights') + ' (cadence every ' + every + ')' + (skipped ? '; last night was skipped by the cadence setting' : '') } : null };
+}
 async function watchHealth(env) {
   const now = Date.now(), today = new Date().toISOString().slice(0, 10), out = { at: new Date(now).toISOString(), version: null, cron: null, called: null, rails: null, spend: {}, pplx: null, writer: null, backup: null, trips: [] };
   try { out.version = env.CF_VERSION_METADATA ? { id: String(env.CF_VERSION_METADATA.id || '').slice(0, 36), tag: env.CF_VERSION_METADATA.tag || null } : null; } catch (e) { out.version = null; }
@@ -10193,6 +10220,16 @@ async function watchHealth(env) {
     else if (!(dp.meta && dp.meta.skipped) && (dp.meta && dp.meta.earned) > 0 && !(dp.meta.queued > 0)) out.trips.push({ kind: 'door_failed', say: 'last night ' + dp.meta.earned + ' readings were earned and none was written (' + (dp.meta.failed || 0) + ' failed)' }); }
   else out.trips.push({ kind: 'cron_missing', say: 'no nightly pass is on record' });
   const dc = await ev('door_called'); if (dc) out.called = Object.assign({ at: dc.created_at }, dc.meta || {});
+  // SEAM:WATCH_LINE (EX52a): the door's cadence and its last compiled night; a cadence secret can never sit unnoticed
+  try { const lastRow = ((await sbRest(env, 'door_reads?status=in.(ready,reused)&select=night&order=night.desc&limit=1').catch(excQuiet('watch_door_night', []))) || [])[0];
+    const dl = watchDoorLine(doorEvery(env), lastRow ? lastRow.night : null, today, dp && dp.meta && dp.meta.skipped);   // throws into the catch when a proof slices the watch alone; the line is then simply absent
+    out.door_cadence = { every: dl.every, house: DOOR.EVERY_D, last_compiled: dl.last_compiled, gap_nights: dl.gap_nights, skipped: dl.skipped };
+    if (dl.trip) out.trips.push(dl.trip); } catch (e) { excQuiet('watch_door_cadence')(e); }
+  // SEAM:READER_MARKS (EX52a): the readers' marks over seven days, on the line and the desk
+  try { const since = new Date(now - 7 * 864e5).toISOString();
+    const marks = (await sbRest(env, 'insight_marks?created_at=gte.' + since + '&select=mark,insight_id&limit=2000').catch(excQuiet('watch_marks', []))) || [];
+    const counts = { held: 0, useful: 0, wrong: 0 }, by = {}; for (const m of marks) { if (counts[m.mark] != null) counts[m.mark]++; by[m.insight_id] = (by[m.insight_id] || 0) + 1; }
+    out.marks = { week: counts, readings: Object.keys(by).sort((a, b) => by[b] - by[a]).slice(0, 5).map(id => ({ id, marks: by[id] })) }; } catch (e) { excQuiet('watch_marks')(e); }
   // the rails: the last reads' receipts name the rails that answered and the ones that stayed silent (exc_rails events, when logged)
   try {
     const rows = (await sbRest(env, 'activity_events?event=eq.exc_rails&select=created_at,meta&order=created_at.desc&limit=5').catch(excQuiet('watch_rails', []))) || [];
@@ -10745,7 +10782,7 @@ async function popoutPass(env, opts) {
   return out;
 }
 /* ═══ SEAM:READER_MARKS: a reader marks a deployed insight held, useful or wrong. One mark per reader per insight; the counts are public
- * with the insight; the marks feed the bench's human score and the record's own honesty. ═══ */
+ * with the insight; the marks ride the watch line and the desk's scoreboard (EX52a). The bench's human score is a later step. ═══ */
 const MARKS = ['held', 'useful', 'wrong'];
 async function markCounts(env, id) {
   const rows = (await sbRest(env, 'insight_marks?insight_id=eq.' + id + '&select=mark,user_id').catch(excQuiet('marks_rows', []))) || [];
@@ -11039,7 +11076,7 @@ async function excavateState(env) {
     const fast = moved.slice().sort((a, b) => b.measures.velocity_pct - a.measures.velocity_pct)[0], cool = moved.slice().sort((a, b) => a.measures.velocity_pct - b.measures.velocity_pct)[0];
     const pct = o.prior ? Math.round((o.recent - o.prior) / o.prior * 100) : (o.recent ? 100 : 0);
     return { territory: o.territory, name: INDUSTRY_NAMES[o.territory] || o.territory.replace(/-/g, ' '), velocity_pct: pct, state: stateOf(o.recent, o.prior), readings: mine.length, _move: o.recent - o.prior, _recent: o.recent,   // SEAM:QUIET_ENGINE (EX39b): named; nothing about the sources behind it
-      movers: { loud: loud ? { name: name(loud), n: loud.measures.recent_7d, id: loud.id } : null, fast: fast && fast.measures.velocity_pct > 0 ? { name: name(fast), pct: fast.measures.velocity_pct, id: fast.id } : null, cool: cool && cool.measures.velocity_pct < 0 ? { name: name(cool), pct: cool.measures.velocity_pct, id: cool.id } : null } };
+      movers: { loud: loud && loud.measures.recent_7d >= 1 ? { name: name(loud), n: loud.measures.recent_7d, id: loud.id } : null /* EX52a: nobody is most covered with no story */, fast: fast && fast.measures.velocity_pct > 0 ? { name: name(fast), pct: fast.measures.velocity_pct, id: fast.id } : null, cool: cool && cool.measures.velocity_pct < 0 ? { name: name(cool), pct: cool.measures.velocity_pct, id: cool.id } : null } };
   }).sort((a, b) => b._move - a._move || b._recent - a._recent).map(x => { delete x._move; delete x._recent; return x; });
   const out = { at: iso(now), territories };
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(STATE.KEY, JSON.stringify(out), { expirationTtl: STATE.TTL }); } catch (e) { excQuiet('state_put')(e); } }
@@ -11762,6 +11799,7 @@ async function callClaude(env, tier, req) {
   if (!gate.ok) return gate;
   const kind = String((req && req.kind) || 'live').slice(0, 40);
   let r = null, j = null;
+  const t0 = Date.now();   // SEAM:CLAUDE_ROUTE (EX52a): the call's duration rides every row as meta.ms
   try {
     const ceiling = tier === 'recon' ? CLAUDE.RECON_TIMEOUT_MS : CLAUDE.LIVE_TIMEOUT_MS;   // SEAM:READ_DEEP
     r = await fetch(CLAUDE.API + '/messages', { method: 'POST', headers: claudeHeaders(env),
@@ -11770,21 +11808,21 @@ async function callClaude(env, tier, req) {
   } catch (e) {
     await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',   // SEAM:CLAUDE_ROUTE (EX52a): a call aborted or never answered is a row too, so the ledger counts it
       error: ('claude_network ' + String((e && e.name) || '') + ' ' + String((e && e.message) || '')).trim().slice(0, 300), est_usd: est, cost_usd: 0,
-      meta: Object.assign({}, (req && req.meta) || {}), ended_at: new Date().toISOString() }]);
+      meta: Object.assign({}, (req && req.meta) || {}, { ms: Date.now() - t0 }), ended_at: new Date().toISOString() }]);
     return { ok: false, error: 'claude_network' };
   }
   if (!r.ok || !j) {
     const detail = String((j && j.error && j.error.message) || '').slice(0, 300);
     await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'failed',
       error: ('claude_' + r.status + ' ' + detail).slice(0, 300), est_usd: est, cost_usd: 0,
-      meta: Object.assign({}, (req && req.meta) || {}), ended_at: new Date().toISOString() }]);
+      meta: Object.assign({}, (req && req.meta) || {}, { ms: Date.now() - t0 }), ended_at: new Date().toISOString() }]);
     return { ok: false, error: 'claude_' + r.status, detail };
   }
   const usage = j.usage || {}, cost = claudeCost(params.model, usage, false), text = claudeText(j);
   await claudeLedgerAdd(env, tier, cost);
   const ids = await claudeRecord(env, [{ tier, kind, mode: 'live', model: params.model, status: 'done',
     result: text, usage, stop_reason: j.stop_reason || null, est_usd: est, cost_usd: cost,
-    meta: Object.assign({}, (req && req.meta) || {}, { msg_id: j.id || null }), ended_at: new Date().toISOString() }]);   // SEAM:READ_DEEP: a caller's tags (a RECON's id) ride the row
+    meta: Object.assign({}, (req && req.meta) || {}, { msg_id: j.id || null, ms: Date.now() - t0 }), ended_at: new Date().toISOString() }]);   // SEAM:READ_DEEP: a caller's tags (a RECON's id) ride the row; EX52a: and the call's duration
   return { ok: true, text, usage, cost_usd: cost, stop_reason: j.stop_reason || null, blocks: (j.content || []).map(b => b && b.type).filter(Boolean).join(','),
     truncated: j.stop_reason === 'max_tokens', job_id: ids && ids[0] || null };
 }

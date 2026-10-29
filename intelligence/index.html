@@ -3153,7 +3153,7 @@ async function _sbResetPassword() {
     showToast('Password updated ✓');
   } catch (e) {
     _lgSetLoading('lg-reset-btn', false);
-    _lgSetError('Could not update password — please try again');
+    _lgSetError('Could not update password: please try again');
   }
 }
 
@@ -3266,7 +3266,7 @@ async function _sbOpenMine(role) {
   const o = document.getElementById('mine-app'); if (o) { o.classList.add('show'); o.setAttribute('aria-hidden', 'false'); }
   document.body.style.overflow = 'hidden';
   const stage = document.getElementById('mine-stage'); if (stage) stage.innerHTML = '<p class="mr-p">Loading…</p>';
-  try { await mineHydrate(role); } catch (e) { if (stage) stage.innerHTML = '<p class="mr-p">Could not load your data — check your connection and try again.</p>'; return; }
+  try { await mineHydrate(role); } catch (e) { if (stage) stage.innerHTML = '<p class="mr-p">Could not load your data: check your connection and try again.</p>'; return; }
   if (role === 'admin') return mineRoute('a-home');
   if (role === 'client') return mineRoute((mineDB.clientStudies || []).length === 1
     ? 'c-study' : 'c-home', (mineDB.clientStudies || []).length === 1 ? mineDB.clientStudies[0].id : null);
@@ -3345,7 +3345,7 @@ async function _sbSaveStudy(launch) {
   if (!isEdit && !me) { showToast('Studies are created from a partner account'); return; }
   // hard rail: reward on a launched study with responses in is a promise — it does not move
   if (isEdit && original.status !== 'draft' && mResponsesFor(d.id).length && (d.pay || 0) !== (original.pay || 0)) {
-    showToast('Reward is locked once responses exist — $' + (original.pay || 0) + ' stands'); return;
+    showToast('Reward is locked once responses exist: $' + (original.pay || 0) + ' stands'); return;
   }
   const row = { title: d.title, goal: d.goal, type: d.type, pay_cents: (d.pay || 0) * 100, target_n: d.targetN || null, audience: d.audience, status: launch ? 'live' : (isEdit ? original.status : 'draft'), public_listing: !!(d.publicListing && d.audience === 'open'), asset_key: d.asset ? (d.asset.key || null) : null, asset_name: d.asset ? d.asset.name : null };
   let studyId = isEdit ? d.id : null;
@@ -3357,7 +3357,7 @@ async function _sbSaveStudy(launch) {
     const origQ = original.questions || [];
     for (const oq of origQ) {
       const nq = d.questions.find(x => x.id === oq.id);
-      if (!nq) { showToast('Questions can\u2019t be removed once responses exist \u2014 collected answers are receipts'); return; }
+      if (!nq) { showToast('Questions can\u2019t be removed once responses exist: collected answers are receipts'); return; }
       if (nq.type !== oq.type) { showToast('Question types are locked once responses exist'); return; }
     }
   }
@@ -3367,7 +3367,7 @@ async function _sbSaveStudy(launch) {
     if (!hasResp) { if (keepIds.length) await _sb.from('study_question').delete().eq('study_id', studyId).not('id', 'in', '(' + keepIds.join(',') + ')'); else await _sb.from('study_question').delete().eq('study_id', studyId); }
     for (let i = 0; i < d.questions.length; i++) {
       const q = d.questions[i];
-      if (keepIds.indexOf(q.id) >= 0) { const { data: ud } = await _sb.from('study_question').update({ ord: i, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null, asset_key: q.assetKey || null, asset_name: q.assetName || null }).eq('id', q.id).select('id'); if (!ud || !ud.length) { showToast('Question update was blocked \u2014 run migration 0019'); return; } }
+      if (keepIds.indexOf(q.id) >= 0) { const { data: ud } = await _sb.from('study_question').update({ ord: i, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null, asset_key: q.assetKey || null, asset_name: q.assetName || null }).eq('id', q.id).select('id'); if (!ud || !ud.length) { showToast('Question update was blocked: run migration 0019'); return; } }
       else { await _sb.from('study_question').insert({ study_id: studyId, ord: i, type: q.type, prompt: q.prompt, options: q.options || [], pass_options: q.passOptions || null, asset_key: q.assetKey || null, asset_name: q.assetName || null }); }
     }
     // invites: only rewritten when the editor actually holds invite data (admin hydrate never loads invites — leave them standing)
@@ -3431,7 +3431,7 @@ async function _sbDeleteStudy(id) {
   if (hasResp) {
     const { error } = await _sb.from('study').update({ status: 'archived' }).eq('id', id);
     if (error) { showToast('Archive failed: ' + error.message); return; }
-    showToast('Study archived — responses kept');
+    showToast('Study archived: responses kept');
   } else {
     await _sb.from('study_question').delete().eq('study_id', id);
     await _sb.from('study_invite').delete().eq('study_id', id);
@@ -3452,7 +3452,7 @@ async function _sbPickAsset(input) {
     mineSaveDraftMeta(); mineState.draft.asset = { name: f.name, key: d.data.key };
     try { mineMedia['__live'] = URL.createObjectURL(f); } catch (e) {}
     mineRoute('p-new');
-  } catch (e) { showToast('Upload failed — try again'); }
+  } catch (e) { showToast('Upload failed: try again'); }
 }
 
 
@@ -3572,7 +3572,8 @@ function _renderLive(q, data){
       confidence: ['High','Medium','Low'].includes(ins.confidence)?ins.confidence:'Low',
       source: ins.source||'Excavate analysis',
       sourceUrl: ins.sourceUrl||null,
-      dated: ins.dated||null, meaning: ins.meaning||null, implication: ins.implication||null, evidence: ins.evidence||[], checks: ins.checks||null
+      dated: ins.dated||null, meaning: ins.meaning||null, implication: ins.implication||null, evidence: ins.evidence||[], checks: ins.checks||null,
+      image: ins.image||null   // EX52a: the door's per-finding photograph (a T0 to T2 source) rides to the card
     }));
     ideas = (Array.isArray(syn.ideas)&&syn.ideas.length)
       ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||'',from:Number.isInteger(d.from)?d.from:null,
@@ -3590,13 +3591,16 @@ function _renderLive(q, data){
   if(synthd) window._readFailed=null;
   const sources=(data.sources&&data.sources.length)?data.sources:_liveSources(data.connectors,q);
   // SEAM:EXC_FRAME: the read's window, lane, frame, relevance and timing reach the page; they were compiled and then dropped here.
-  renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',
+  renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',depth:syn&&syn.depth||null,   // EX52a: depth rides, so a quick read says QUICK READ
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
     measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null, client_lines:syn&&syn.client_lines||0},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
-    if(pill) pill.innerHTML='<div class="mode-pill basic">LIVE SOURCES — AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
+    const lane=syn&&syn.model&&syn.model.lane;   // SEAM:EXC_DOOR_VOICE (EX52a): an overnight reading is named as one, with the night it was compiled; a live read keeps its count
+    if(pill) pill.innerHTML=lane==='overnight'
+      ?'<div class="mode-pill basic">OVERNIGHT READ · COMPILED '+_utcStamp(syn.compiled_at)+' · '+(((syn.relevance&&syn.relevance.kept)||0))+' LINES READ</div>'
+      :'<div class="mode-pill basic">LIVE SOURCES · AI-SYNTHESIZED · '+(((syn&&syn._sourceCount)||items.length))+' SIGNALS FUSED</div>';
   }
   return synthd;
 }
@@ -3697,7 +3701,7 @@ function goDeeper() {
 async function runLiveSearch(q){
   _depthRender();   // SEAM:EXC_DEPTH
   showLoader(q,'live',[
-    'Excavating open data — consumer, market, culture & brand',
+    'Excavating open data: consumer, market, culture & brand',
     'Reading research, community, news & innovation signal',
     'Compiling the grounded evidence corpus',
     'Fusing signals with Excavate AI (server-side)',
@@ -3707,7 +3711,7 @@ async function runLiveSearch(q){
     const g = await _excGather(q);
     if(!g.items.length){
       hideLoader();
-      showToast('No signals returned — showing open-source data');
+      showToast('No signals returned: showing open-source data');
       runBasicSearch(q);
       return;
     }
@@ -3729,12 +3733,12 @@ async function runLiveSearch(q){
     _inDoors(window._intent&&window._intent.frame);   // SEAM:EXC_INTENT: the task opens its door beside the read
     { const gd=document.getElementById('intent-doors'); if(gd&&synthesis&&synthesis.depth==='quick'){ gd.insertAdjacentHTML('afterbegin','<button class="btn-go-deeper" type="button" onclick="goDeeper()">Go deeper: the full read</button>'); gd.style.display=''; }
       if(gd&&synthesis&&synthesis.thin){ gd.insertAdjacentHTML('afterbegin','<div class="read-thin">This read is building on '+safe(String(synthesis.thin))+' lines on the question. The findings are the few the evidence carries; '+(synthesis.depth==='quick'?'the full read widens the ground.':'a wider frame (the category, a competitor) would add to it.')+'</div>'); gd.style.display=''; } }   // SEAM:EXC_DEPTH; SEAM:EXC_THIN
-    if(!synthesis) showToast('AI fusion unavailable — showing the structured signals');
+    if(!synthesis) showToast('AI fusion unavailable: showing the structured signals');
     else if(synthesis.partial){ const _pn={ideas:'moves',brief:'brief',read:'two-line read'}; showToast('This read landed before its '+(synthesis.partial.missing||[]).map(m=>_pn[m]||m).join(' and ')+' finished. Run it again for the whole read.'); }   // SEAM:EXC_STALL
     _renderLive(q, { items:g.items, synthesis, sources:g.sources });
   } catch(e){
     hideLoader();
-    showToast('Live pipeline unavailable — showing open-source data');
+    showToast('Live pipeline unavailable: showing open-source data');
     runBasicSearch(q);
   }
 }
@@ -3744,12 +3748,13 @@ async function runLiveSearch(q){
 // ════════════════════════════════════════════
 let stepTimer=null, progressVal=0, progressTimer=null;
 
-function showLoader(q,mode,steps){
+function showLoader(q,mode,steps,label){
   const ss=document.getElementById('searching-state');
   ss.style.display='block';
+  { const fl=document.getElementById('fetch-label'); if(fl) fl.textContent='Gathering'; }   // EX52a: never the last read's "Complete." under a new one
   const rings=document.getElementById('loader-rings');
   rings.innerHTML='<div class="loader-ring r1"></div><div class="loader-ring r2"></div><div class="loader-ring r3"></div>';
-  document.getElementById('loader-label').textContent=mode==='live'?'READING THE SOURCES':'GATHERING SOURCES';
+  document.getElementById('loader-label').textContent=label||(mode==='live'?'READING THE SOURCES':'GATHERING SOURCES');   // EX52a: a door read names itself
   const qEl=document.getElementById('loader-query');
   qEl.textContent='"'+q+'"';
   qEl.className='loader-query basic';
@@ -3936,7 +3941,7 @@ function buildBasicSynthesis(q, raw){
     const related=wikiSearch?.query?.search?.slice(0,3).map(s=>s.title).join(', ')||'';
     insights.push({
       category:classifyText(wiki.extract,q),
-      title:wiki.title+' — Knowledge Graph Overview',
+      title:wiki.title+' · Knowledge Graph Overview',
       excerpt:wiki.extract.slice(0,320)+(wiki.extract.length>320?'…':'')+(related?` Related topics: ${related}.`:''),
       stat:stats.length?'↑ '+stats[0]:wiki.description?'↑ '+wiki.description.slice(0,30):'↑ Established category',
       confidence:'High',
@@ -3948,7 +3953,7 @@ function buildBasicSynthesis(q, raw){
     sources.push({num:sourceIdx++,label:'Wikipedia Search',desc:'Full-text article search · open access',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(top.title)}`,display:'en.wikipedia.org'});
     insights.push({
       category:classifyText(top.snippet||'',q),
-      title:top.title+' — Wikipedia Signal',
+      title:top.title+' · Wikipedia Signal',
       excerpt:(top.snippet||'').replace(/<[^>]*>/g,'')+`. This topic appears in ${wikiSearch.query.searchinfo?.totalhits?.toLocaleString()||'multiple'} Wikipedia articles, indicating established encyclopedic coverage.`,
       stat:'↑ '+wikiSearch.query.searchinfo?.totalhits?.toLocaleString()+' article mentions',
       confidence:'Medium',source:'Wikipedia',
@@ -4004,7 +4009,7 @@ function buildBasicSynthesis(q, raw){
     insights.push({
       category:'market',
       title:`Practitioner Discourse: ${hn.nbHits?.toLocaleString()||'Multiple'} HN Discussions Found`,
-      excerpt:`Hacker News surfaces ${hn.nbHits?.toLocaleString()} discussions on this topic. Top story: "${(top.title||'').slice(0,120)}" with ${top.points||0} points and ${top.num_comments||0} comments. Combined engagement across top discussions: ${totalPts.toLocaleString()} points, ${totalComments.toLocaleString()} comments — indicating ${totalPts>500?'strong':'moderate'} practitioner and investor interest. Coverage spans: ${domains.join(', ')}.`,
+      excerpt:`Hacker News surfaces ${hn.nbHits?.toLocaleString()} discussions on this topic. Top story: "${(top.title||'').slice(0,120)}" with ${top.points||0} points and ${top.num_comments||0} comments. Combined engagement across top discussions: ${totalPts.toLocaleString()} points, ${totalComments.toLocaleString()} comments, indicating ${totalPts>500?'strong':'moderate'} practitioner and investor interest. Coverage spans: ${domains.join(', ')}.`,
       stat:totalPts.toLocaleString()+' community points',
       confidence:'Medium',source:'Hacker News',
       sourceUrl:`https://news.ycombinator.com/item?id=${top.objectID}`,
@@ -4021,7 +4026,7 @@ function buildBasicSynthesis(q, raw){
     insights.push({
       category:'culture',
       title:`Global News Signal: ${arts.length}+ Articles in Past 30 Days`,
-      excerpt:`GDELT's global news database surfaces ${gdelt.articles.length} articles on this topic from the past month. Coverage across: ${domains.join(', ')}. Recent headlines: "${titles.join('" and "')}". Global news frequency is a leading indicator of mainstream cultural momentum and category heat — this volume suggests ${gdelt.articles.length>5?'elevated':'emerging'} media attention.`,
+      excerpt:`GDELT's global news database surfaces ${gdelt.articles.length} articles on this topic from the past month. Coverage across: ${domains.join(', ')}. Recent headlines: "${titles.join('" and "')}". Global news frequency is a leading indicator of mainstream cultural momentum and category heat: this volume suggests ${gdelt.articles.length>5?'elevated':'emerging'} media attention.`,
       stat:gdelt.articles.length+' news articles (30d)',
       confidence:'Medium',source:'GDELT News',
       sourceUrl:'https://www.gdeltproject.org/',
@@ -4054,7 +4059,7 @@ function buildBasicSynthesis(q, raw){
     insights.push({
       category:'consumer',
       title:`Knowledge Graph Entities: ${wd.search.length} Related Concepts Mapped`,
-      excerpt:`Wikidata's knowledge graph identifies ${entities.length} structured entities related to "${q}": ${entities.map(e=>e.label+(e.description?' ('+e.description.slice(0,40)+')':'')).join('; ')}. This structured entity mapping reveals the conceptual landscape and related categories — critical for understanding the full scope of brand and consumer territory.`,
+      excerpt:`Wikidata's knowledge graph identifies ${entities.length} structured entities related to "${q}": ${entities.map(e=>e.label+(e.description?' ('+e.description.slice(0,40)+')':'')).join('; ')}. This structured entity mapping reveals the conceptual landscape and related categories: critical for understanding the full scope of brand and consumer territory.`,
       stat:entities.length+' knowledge entities',
       confidence:'Medium',source:'Wikidata',
       sourceUrl:`https://www.wikidata.org/w/index.php?search=${encodeURIComponent(q)}`,
@@ -4068,7 +4073,7 @@ function buildBasicSynthesis(q, raw){
     insights.push({
       category:cat||'consumer',
       title:`Evidence thin: "${q.split(' ').slice(0,4).join(' ')}"`,
-      excerpt:`The open sources answered lightly here — not enough corroboration to state findings. That is a signal in itself: this conversation is early, niche, or living on closed platforms. Add a track and let the lake accumulate.`,
+      excerpt:`The open sources answered lightly here, not enough corroboration to state findings. That is a signal in itself: this conversation is early, niche, or living on closed platforms. Add a track and let the lake accumulate.`,
       stat:'insufficient evidence',confidence:'Low',source:'Excavate',sourceUrl:null,
     });
   }
@@ -4146,11 +4151,11 @@ async function renderVoiceStrip(q){
   let cut;
   if (pct != null && v.about_estimate != null && pct < 50) {
     cut = `<strong>${v.mentions} posts matched. About ${v.about_estimate} are actually about
-       “${safe(entity)}”.</strong> The other ${100 - pct}% use the words for something else —
+       “${safe(entity)}”.</strong> The other ${100 - pct}% use the words for something else: 
        an idiom, a surname, a coincidence. Read from ${v.about_sample_of}.`;
   } else if (pct != null && v.about_estimate != null) {
     cut = `<strong>${v.mentions} posts from ${v.authors} accounts</strong> in the last
-       ${v.window_days} days — ${pct}% of a ${v.about_sample_of}-post read was on topic.`;
+       ${v.window_days} days: ${pct}% of a ${v.about_sample_of}-post read was on topic.`;
   } else {
     cut = `<strong>${v.mentions} posts from ${v.authors} accounts</strong> in the last ${v.window_days} days.`;
   }
@@ -4179,9 +4184,12 @@ async function renderVoiceStrip(q){
 
 /* EX33c: one receipt behind every count on the page and in the download. sources: the distinct outlets the read cites;
    lines: what the writer read; findings and moves: what it wrote. The badge, the header, the receipts rail and the paper all read from here. */
+/* PURE (EX52a): a stored time said in UTC, the way the house compiled it; never the browser's clock. */
+function _utcStamp(iso){ const d=new Date(iso||''); return isNaN(d)?'':d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'UTC'}).toUpperCase()+' UTC'; }
 function _receiptOf(data){
   const norm=x=>String(x||'').toLowerCase().replace(/^unsurfaced lake\s*·\s*/,'').replace(/\s*\(t[0-9?]\)\s*$/,'').replace(/^www\./,'').replace(/\.(org|com|net|co|io|gov|edu)$/,'').replace(/[^a-z0-9]/g,'');
   const seen=new Set(); for(const sv of (data&&data.sources)||[]){ const k=norm(sv&&(sv.display||sv.label)); if(k) seen.add(k); }
+  if(!seen.size) for(const ins of (data&&data.insights)||[]){ const k=norm(ins&&ins.source); if(k&&k!=='excavateanalysis') seen.add(k); }   // EX52a: a reading with no source list still counts the outlets its findings cite; 0 SOURCES under cited findings was the page's error
   const rel=(data&&data.relevance)||null;
   return { sources: seen.size, lines: rel&&rel.kept!=null?rel.kept:((data&&data.lines)||[]).length, findings: ((data&&data.insights)||[]).length, moves: ((data&&data.ideas)||[]).filter(x=>x&&x.headline).length };
 }
@@ -4196,7 +4204,8 @@ function renderResults(q, data, mode){
 
   document.getElementById('live-results').style.display='block';
   document.getElementById('results-query').textContent=q;
-  document.getElementById('results-meta').textContent=(rc.sources+(rc.sources===1?' SOURCE · ':' SOURCES · ')+rc.findings+(rc.findings===1?' FINDING · ':' FINDINGS · ')+(mode==='live'?(data.depth==='quick'?'QUICK READ':'FULL READ'):'GATHERED, NOT READ')+' · ')+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
+  const _ov=!!(data.model&&data.model.lane==='overnight');   // EX52a: an overnight reading carries the night it was compiled, in UTC; the browser's clock is not when it was read
+  document.getElementById('results-meta').textContent=(rc.sources+(rc.sources===1?' SOURCE · ':' SOURCES · ')+rc.findings+(rc.findings===1?' FINDING · ':' FINDINGS · ')+(mode==='live'?(_ov?'OVERNIGHT READ':(data.depth==='quick'?'QUICK READ':'FULL READ')):'GATHERED, NOT READ')+' · ')+(_ov&&data.compiled_at?_utcStamp(data.compiled_at):new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase());
 
   const pill=document.getElementById('results-mode-pill');
   pill.innerHTML=mode==='live'
@@ -4204,7 +4213,7 @@ function renderResults(q, data, mode){
     :'<div class="mode-pill basic">GATHERED, NOT READ</div>';
 
   renderVoiceStrip(q);   // fire and forget: the strip never blocks the page
-  document.getElementById('res-sources').textContent=rc.sources||'—';
+  document.getElementById('res-sources').textContent=rc.sources||'·';
   document.getElementById('res-insights').textContent=rc.findings;
   document.getElementById('res-ideas').textContent=rc.moves;
   { const jump=document.getElementById('read-jump'); if(jump) jump.style.display=mode==='live'?'':'none'; }
@@ -4231,7 +4240,7 @@ function renderResults(q, data, mode){
   _renderVoices(window._gatherMeta&&window._gatherMeta.meta);   // SEAM:EXC_VOICES: the aggregate lines when the gather is older
 
   if(data.brief){
-    document.getElementById('builder-result').innerHTML=`<strong>THE READ — ${safe(q)}:</strong> ${safe(data.brief)}`;
+    document.getElementById('builder-result').innerHTML=`<strong>THE READ · ${safe(q)}:</strong> ${safe(data.brief)}`;
   }
   window.scrollTo({top:document.getElementById('live-results').offsetTop-80,behavior:'smooth'});
   _saveReport(q, data, mode);
@@ -4480,7 +4489,7 @@ function downloadReport(id) {
   const ins = rpt.insights || [];
   const clbls = {consumer:'Consumer Behavior',market:'Market Dynamics',culture:'Cultural Signal',brand:'Brand Health'};
   const ideas = rpt.ideas || [];
-  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + rpt.type + ': ' + rpt.query + ' — Excavate</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Georgia,serif;color:#1a1a1a;background:#fff;max-width:780px;margin:0 auto;padding:64px 52px;line-height:1.75;}@media print{body{padding:40px;}}.brand{font-family:Courier New,monospace;font-size:10px;letter-spacing:.22em;color:#FF3B3B;margin-bottom:5px;text-transform:uppercase;}.meta{font-family:Courier New,monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:36px;padding-bottom:20px;border-bottom:1px solid #eee;}h1{font-size:36px;line-height:1.1;margin-bottom:10px;color:#0a0a0f;}h2{font-size:22px;font-weight:700;margin:32px 0 12px;color:#0a0a0f;border-bottom:2px solid #FF3B3B;padding-bottom:6px;}p{font-size:14px;color:#444;margin-bottom:14px;line-height:1.75;}.exec{background:#f8f8f8;border-left:4px solid #FF3B3B;padding:20px 24px;margin:24px 0;font-style:italic;font-size:14px;color:#333;line-height:1.75;}.disc{background:#fffbf0;border:1px solid #f5a55a;border-left:4px solid #f5a55a;padding:14px 18px;font-size:12px;color:#666;margin-bottom:32px;line-height:1.65;}.finding{padding:16px 0;border-bottom:1px solid #eee;}.finding:last-child{border-bottom:none;}.fcat{font-family:Courier New,monospace;font-size:9px;color:#FF3B3B;letter-spacing:.16em;text-transform:uppercase;margin-bottom:5px;}.ftitle{font-size:17px;font-weight:700;color:#0a0a0f;margin-bottom:6px;line-height:1.3;}.ftext{font-size:13px;color:#555;line-height:1.7;margin-bottom:5px;}.fstat{font-family:Courier New,monospace;font-size:11px;color:#FF3B3B;font-weight:700;}.idea{padding:14px;background:#f9f9f9;margin-bottom:10px;border-left:3px solid #eee;}.itype{font-family:Courier New,monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px;}.ihl{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:5px;}.ibody{font-size:13px;color:#555;line-height:1.65;}.srcrow{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#444;}.srcrow a{color:#5AC8F5;text-decoration:none;}ol li{font-size:14px;color:#444;margin-bottom:9px;padding-left:4px;}.footer{margin-top:60px;padding-top:20px;border-top:1px solid #eee;font-family:Courier New,monospace;font-size:9px;color:#bbb;text-align:center;letter-spacing:.1em;line-height:1.8;}</style></head><body>'
+  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + rpt.type + ': ' + rpt.query + ' · Excavate</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Georgia,serif;color:#1a1a1a;background:#fff;max-width:780px;margin:0 auto;padding:64px 52px;line-height:1.75;}@media print{body{padding:40px;}}.brand{font-family:Courier New,monospace;font-size:10px;letter-spacing:.22em;color:#FF3B3B;margin-bottom:5px;text-transform:uppercase;}.meta{font-family:Courier New,monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:36px;padding-bottom:20px;border-bottom:1px solid #eee;}h1{font-size:36px;line-height:1.1;margin-bottom:10px;color:#0a0a0f;}h2{font-size:22px;font-weight:700;margin:32px 0 12px;color:#0a0a0f;border-bottom:2px solid #FF3B3B;padding-bottom:6px;}p{font-size:14px;color:#444;margin-bottom:14px;line-height:1.75;}.exec{background:#f8f8f8;border-left:4px solid #FF3B3B;padding:20px 24px;margin:24px 0;font-style:italic;font-size:14px;color:#333;line-height:1.75;}.disc{background:#fffbf0;border:1px solid #f5a55a;border-left:4px solid #f5a55a;padding:14px 18px;font-size:12px;color:#666;margin-bottom:32px;line-height:1.65;}.finding{padding:16px 0;border-bottom:1px solid #eee;}.finding:last-child{border-bottom:none;}.fcat{font-family:Courier New,monospace;font-size:9px;color:#FF3B3B;letter-spacing:.16em;text-transform:uppercase;margin-bottom:5px;}.ftitle{font-size:17px;font-weight:700;color:#0a0a0f;margin-bottom:6px;line-height:1.3;}.ftext{font-size:13px;color:#555;line-height:1.7;margin-bottom:5px;}.fstat{font-family:Courier New,monospace;font-size:11px;color:#FF3B3B;font-weight:700;}.idea{padding:14px;background:#f9f9f9;margin-bottom:10px;border-left:3px solid #eee;}.itype{font-family:Courier New,monospace;font-size:9px;color:#aaa;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px;}.ihl{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:5px;}.ibody{font-size:13px;color:#555;line-height:1.65;}.srcrow{padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#444;}.srcrow a{color:#5AC8F5;text-decoration:none;}ol li{font-size:14px;color:#444;margin-bottom:9px;padding-left:4px;}.footer{margin-top:60px;padding-top:20px;border-top:1px solid #eee;font-family:Courier New,monospace;font-size:9px;color:#bbb;text-align:center;letter-spacing:.1em;line-height:1.8;}</style></head><body>'
     + '<div class="brand">Excavate by Unsurfaced™</div>'
     + '<div class="meta">' + rpt.type.toUpperCase() + '  ·  ' + rpt.mode.toUpperCase() + ' SEARCH  ·  Generated ' + ds + '</div>'
     + '<h1>' + rpt.query + '</h1>'
@@ -4491,13 +4500,13 @@ function downloadReport(id) {
     + '<h2>Strategic Opportunities</h2>'
     + ideas.map(function(idea) { return '<div class="idea"><div class="itype">' + idea.type + '</div><div class="ihl">' + idea.headline + '</div><div class="ibody">' + idea.body + '</div></div>'; }).join('')
     + '<h2>Data Sources</h2>'
-    + '<div class="srcrow"><strong>Wikipedia REST API</strong> — Encyclopedic knowledge · <a href="https://en.wikipedia.org">en.wikipedia.org</a></div>'
-    + '<div class="srcrow"><strong>OpenAlex API</strong> — 250M+ open-access papers · <a href="https://openalex.org">openalex.org</a></div>'
-    + '<div class="srcrow"><strong>arXiv API</strong> — Cornell preprint research · <a href="https://arxiv.org">arxiv.org</a></div>'
-    + '<div class="srcrow"><strong>Hacker News Algolia API</strong> — Practitioner discourse · <a href="https://news.ycombinator.com">news.ycombinator.com</a></div>'
-    + '<div class="srcrow"><strong>GDELT Project API</strong> — Global news archive · <a href="https://gdeltproject.org">gdeltproject.org</a></div>'
-    + '<div class="srcrow"><strong>Semantic Scholar API</strong> — Allen AI index · <a href="https://semanticscholar.org">semanticscholar.org</a></div>'
-    + '<div class="srcrow"><strong>Wikidata API</strong> — Knowledge graph entities · <a href="https://wikidata.org">wikidata.org</a></div>'
+    + '<div class="srcrow"><strong>Wikipedia REST API</strong>: Encyclopedic knowledge · <a href="https://en.wikipedia.org">en.wikipedia.org</a></div>'
+    + '<div class="srcrow"><strong>OpenAlex API</strong>: 250M+ open-access papers · <a href="https://openalex.org">openalex.org</a></div>'
+    + '<div class="srcrow"><strong>arXiv API</strong>: Cornell preprint research · <a href="https://arxiv.org">arxiv.org</a></div>'
+    + '<div class="srcrow"><strong>Hacker News Algolia API</strong>: Practitioner discourse · <a href="https://news.ycombinator.com">news.ycombinator.com</a></div>'
+    + '<div class="srcrow"><strong>GDELT Project API</strong>: Global news archive · <a href="https://gdeltproject.org">gdeltproject.org</a></div>'
+    + '<div class="srcrow"><strong>Semantic Scholar API</strong>: Allen AI index · <a href="https://semanticscholar.org">semanticscholar.org</a></div>'
+    + '<div class="srcrow"><strong>Wikidata API</strong>: Knowledge graph entities · <a href="https://wikidata.org">wikidata.org</a></div>'
     + '<h2>Recommendations</h2><ol>'
     + '<li>Validate open signals with primary consumer research through MINE before committing budget</li>'
     + '<li>Map organic community touchpoints before committing paid media budget</li>'
@@ -4524,7 +4533,7 @@ function downloadBrief(id) {
     + '<h2>Strategic Direction</h2>'
     + '<p>Based on signal synthesis across Wikipedia, OpenAlex, arXiv, Hacker News, GDELT, Semantic Scholar, and Wikidata, the highest-leverage opportunity is entering existing conversations around &quot;' + rpt.query + '&quot; with educationally-positioned content before paid media investment.</p>'
     + '<h2>90-Day Action Plan</h2><ol>'
-    + '<li><strong>Week 1–2:</strong> Map organic community touchpoints — identify forums, groups, and newsletters where this topic is already discussed</li>'
+    + '<li><strong>Week 1–2:</strong> Map organic community touchpoints: identify forums, groups, and newsletters where this topic is already discussed</li>'
     + '<li><strong>Week 3–4:</strong> Commission thought-leadership content grounded in academic research findings</li>'
     + '<li><strong>Month 2:</strong> Launch creator seeding program targeting highest-engagement communities</li>'
     + '<li><strong>Month 3:</strong> Evaluate paid amplification based on earned media performance signals</li>'
@@ -4914,10 +4923,10 @@ async function _lakePublish(sid) {
   if (!confirm('Publish this study\u2019s floor-cleared findings to the lake as tier-0 signal? Republishing updates the same entry.')) return;
   try {
     const d = await api('mine/publish-signal', { study_id: sid });
-    if (d && d.ok) showToast('Published \u2014 \u201c' + d.published.title.slice(0, 40) + '\u201d is now lake signal (' + d.published.n + ' responses)');
-    else showToast(d && d.error === 'below_floor' ? 'Below the floor \u2014 the lake only takes floor-cleared findings'
-      : d && d.error === 'admin_only' ? 'Admin only' : 'Publish failed \u2014 ' + ((d && d.error) || 'try again'));
-  } catch (e) { showToast('Publish failed \u2014 try again'); }
+    if (d && d.ok) showToast('Published: \u201c' + d.published.title.slice(0, 40) + '\u201d is now lake signal (' + d.published.n + ' responses)');
+    else showToast(d && d.error === 'below_floor' ? 'Below the floor: the lake only takes floor-cleared findings'
+      : d && d.error === 'admin_only' ? 'Admin only' : 'Publish failed: ' + ((d && d.error) || 'try again'));
+  } catch (e) { showToast('Publish failed: try again'); }
 }
 async function _dashReadLoad(config, data) {
   const box = document.getElementById('idb-read');
@@ -5747,7 +5756,7 @@ function _synthesiseLens(q, cat, raw) {
     const url = wiki.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(q)}`;
     sources.push({ num:si++, label:'Wikipedia', desc:`${catLabel} context`, url, display:'wikipedia.org' });
     insights.push({
-      category:cat, title:`${wiki.title} — ${catLabel} Overview`,
+      category:cat, title:`${wiki.title} · ${catLabel} Overview`,
       excerpt: wiki.extract.slice(0,340) + (wiki.extract.length>340?'…':''),
       stat: '↑ ' + (wiki.description||'Established topic').slice(0,50),
       confidence:'High', source:'Wikipedia', sourceUrl:url,
@@ -5758,7 +5767,7 @@ function _synthesiseLens(q, cat, raw) {
     const total = wSrch.query.searchinfo?.totalhits;
     sources.push({ num:si++, label:'Wikipedia', desc:`${catLabel} context`, url, display:'wikipedia.org' });
     insights.push({
-      category:cat, title:`${top.title} — ${catLabel} Signal`,
+      category:cat, title:`${top.title} · ${catLabel} Signal`,
       excerpt: (top.snippet||'').replace(/<[^>]*>/g,'') + `. ${total?.toLocaleString()||'Multiple'} Wikipedia articles indexed.`,
       stat: total ? `${total.toLocaleString()} articles` : '↑ Signal detected',
       confidence:'Medium', source:'Wikipedia', sourceUrl:url,
@@ -5792,7 +5801,7 @@ function _synthesiseLens(q, cat, raw) {
     sources.push({ num:si++, label:'CrossRef', desc:'127M DOI citation records', url, display:'crossref.org' });
     insights.push({
       category:cat, title:`Research signal: "${title.slice(0,72)}"`,
-      excerpt: `${venue}${year?' ('+year+')':''} — ${top['is-referenced-by-count']?.toLocaleString()||0} citations. CrossRef indexes ${cr.message.total?.toLocaleString()||'thousands of'} works on this topic. Top authors: ${(top.author||[]).slice(0,3).map(a=>`${a.given||''} ${a.family||''}`.trim()).filter(Boolean).join(', ')||'multiple'}. Citation networks reveal which research actually influences practice — not just what gets published.`,
+      excerpt: `${venue}${year?' ('+year+')':''}: ${top['is-referenced-by-count']?.toLocaleString()||0} citations. CrossRef indexes ${cr.message.total?.toLocaleString()||'thousands of'} works on this topic. Top authors: ${(top.author||[]).slice(0,3).map(a=>`${a.given||''} ${a.family||''}`.trim()).filter(Boolean).join(', ')||'multiple'}. Citation networks reveal which research actually influences practice, not just what gets published.`,
       stat: `${cites.toLocaleString()}× citations · ${cr.message.total?.toLocaleString()||''} works indexed`,
       confidence:'High', source:'CrossRef', sourceUrl:url,
     });
@@ -5829,10 +5838,10 @@ function _synthesiseLens(q, cat, raw) {
   if (ax?.entries?.length) {
     const top = ax.entries[0];
     const url = `https://arxiv.org/search/?query=${encodeURIComponent(q)}`;
-    sources.push({ num:si++, label:'arXiv', desc:'Preprint research — frontier findings', url, display:'arxiv.org' });
+    sources.push({ num:si++, label:'arXiv', desc:'Preprint research: frontier findings', url, display:'arxiv.org' });
     insights.push({
       category:cat, title:`Frontier Research: "${(top.title||'').slice(0,72)}"`,
-      excerpt: `${top.published||''} · ${top.authors||''}. ${(top.summary||'').slice(0,240)}… ${ax.total?.toLocaleString()||''} preprints indexed — arXiv captures research 12–18 months before peer-reviewed publication.`,
+      excerpt: `${top.published||''} · ${top.authors||''}. ${(top.summary||'').slice(0,240)}… ${ax.total?.toLocaleString()||''} preprints indexed: arXiv captures research 12–18 months before peer-reviewed publication.`,
       stat: `${ax.total?.toLocaleString()||''} preprints · frontier signal`,
       confidence:'High', source:'arXiv', sourceUrl:top.id||url,
     });
@@ -5847,7 +5856,7 @@ function _synthesiseLens(q, cat, raw) {
     sources.push({ num:si++, label:'Hacker News', desc:'Practitioner & operator discourse', url, display:'news.ycombinator.com' });
     insights.push({
       category:cat, title:`Practitioner Signal: ${hn.nbHits?.toLocaleString()||''} Discussions`,
-      excerpt: `Practitioners are discussing: ${titles}. ${pts.toLocaleString()} combined community points signal ${pts>1000?'strong':'active'} operator interest. Hacker News discourse surfaces what builders, investors, and operators actually think — before it reaches mainstream coverage.`,
+      excerpt: `Practitioners are discussing: ${titles}. ${pts.toLocaleString()} combined community points signal ${pts>1000?'strong':'active'} operator interest. Hacker News discourse surfaces what builders, investors, and operators actually think: before it reaches mainstream coverage.`,
       stat: `${pts.toLocaleString()} community points · ${hn.nbHits?.toLocaleString()||''} discussions`,
       confidence:'Medium', source:'Hacker News', sourceUrl:`https://news.ycombinator.com/item?id=${top.objectID}`,
     });
@@ -5864,7 +5873,7 @@ function _synthesiseLens(q, cat, raw) {
       sources.push({ num:si++, label:'Reddit', desc:'Unfiltered community voice', url, display:'reddit.com' });
       insights.push({
         category:cat, title:`Community Voice: ${reddit.data.dist||posts.length} Reddit Discussions`,
-        excerpt: `Real consumer discourse: ${titles}. ${pts.toLocaleString()} total upvotes across communities. Reddit captures raw, unfiltered consumer opinion before brand management intervenes — the signal that precedes the survey. Subreddit: r/${top.subreddit||'search'}.`,
+        excerpt: `Real consumer discourse: ${titles}. ${pts.toLocaleString()} total upvotes across communities. Reddit captures raw, unfiltered consumer opinion before brand management intervenes: the signal that precedes the survey. Subreddit: r/${top.subreddit||'search'}.`,
         stat: `${pts.toLocaleString()} upvotes · ${reddit.data.dist||posts.length} discussions`,
         confidence:'Medium', source:'Reddit', sourceUrl:top.url?`https://reddit.com${top.permalink||''}`:url,
       });
@@ -5890,7 +5899,7 @@ function _synthesiseLens(q, cat, raw) {
     const top  = pats[0];
     const assignees = [...new Set(pats.flatMap(p=>(p.assignees||[]).map(a=>a.assignee_organization||'')).filter(Boolean))].slice(0,4);
     const url  = `https://patentsview.org/search/real/patent/query`;
-    sources.push({ num:si++, label:'USPTO PatentsView', desc:'8M US patents — innovation signal', url, display:'patentsview.org' });
+    sources.push({ num:si++, label:'USPTO PatentsView', desc:'8M US patents: innovation signal', url, display:'patentsview.org' });
     insights.push({
       category:cat, title:`Innovation Signal: "${(top.patent_title||'').slice(0,68)}"`,
       excerpt: `US patent data reveals the innovation frontier: "${(top.patent_title||'').slice(0,90)}" (${(top.patent_date||'').slice(0,4)}). Patent holders: ${assignees.join(', ')||'multiple assignees'}. ${patents.total_patent_count?.toLocaleString()||pats.length} patents filed. Patent volume, assignee concentration, and filing velocity is the leading indicator of where competitive investment is actually flowing.`,
@@ -5906,7 +5915,7 @@ function _synthesiseLens(q, cat, raw) {
     sources.push({ num:si++, label:'GDELT', desc:'Global news event database', url, display:'gdeltproject.org' });
     insights.push({
       category:cat, title:`Media Signal: ${gd.articles.length} Global News Articles`,
-      excerpt: `Recent headlines: ${titles.join('; ')}. ${gd.articles.length} articles across ${new Set(gd.articles.map(a=>a.domain||'')).size} news sources indicate ${gd.articles.length>8?'elevated':'emerging'} media attention. GDELT monitors 100+ countries and 65 languages — global media volume is a leading indicator of cultural momentum.`,
+      excerpt: `Recent headlines: ${titles.join('; ')}. ${gd.articles.length} articles across ${new Set(gd.articles.map(a=>a.domain||'')).size} news sources indicate ${gd.articles.length>8?'elevated':'emerging'} media attention. GDELT monitors 100+ countries and 65 languages: global media volume is a leading indicator of cultural momentum.`,
       stat: `${gd.articles.length} articles · ${new Set(gd.articles.map(a=>a.domain||'')).size} news sources`,
       confidence:'Medium', source:'GDELT News', sourceUrl:url,
     });
@@ -5921,7 +5930,7 @@ function _synthesiseLens(q, cat, raw) {
     sources.push({ num:si++, label:'The Guardian', desc:'2M+ quality journalism articles', url, display:'theguardian.com' });
     insights.push({
       category:cat, title:`Quality Journalism: ${guardian.response.total?.toLocaleString()||''} Guardian Articles`,
-      excerpt: `Editorial coverage: ${titles}. ${guardian.response.total?.toLocaleString()||''} Guardian articles signal sustained journalistic investment — topics that have crossed from niche to mainstream public accountability. Quality journalism coverage is a lagging cultural validator and early regulatory attention indicator.`,
+      excerpt: `Editorial coverage: ${titles}. ${guardian.response.total?.toLocaleString()||''} Guardian articles signal sustained journalistic investment: topics that have crossed from niche to mainstream public accountability. Quality journalism coverage is a lagging cultural validator and early regulatory attention indicator.`,
       stat: `${guardian.response.total?.toLocaleString()||''} Guardian articles indexed`,
       confidence:'Medium', source:'The Guardian', sourceUrl:url,
     });
@@ -5933,10 +5942,10 @@ function _synthesiseLens(q, cat, raw) {
     const top    = docs[0];
     const recent = docs.filter(d=>(d.first_publish_year||0)>2018).length;
     const url    = `https://openlibrary.org/search?q=${encodeURIComponent(q)}`;
-    sources.push({ num:si++, label:'Open Library', desc:'20M books — cultural production signal', url, display:'openlibrary.org' });
+    sources.push({ num:si++, label:'Open Library', desc:'20M books: cultural production signal', url, display:'openlibrary.org' });
     insights.push({
       category:cat, title:`Publishing Signal: ${ol.numFound?.toLocaleString()||''} Books on This Topic`,
-      excerpt: `Open Library indexes ${ol.numFound?.toLocaleString()||''} books related to this topic. ${recent} published since 2018 — ${recent>5?'strong':'emerging'} recent publishing momentum. Top: "${(top.title||'').slice(0,70)}" by ${(top.author_name||[]).slice(0,2).join(' & ')||'various'} (${top.first_publish_year||''}). Commercial book publication follows proven consumer demand — publishing velocity is a validated cultural signal.`,
+      excerpt: `Open Library indexes ${ol.numFound?.toLocaleString()||''} books related to this topic. ${recent} published since 2018: ${recent>5?'strong':'emerging'} recent publishing momentum. Top: "${(top.title||'').slice(0,70)}" by ${(top.author_name||[]).slice(0,2).join(' & ')||'various'} (${top.first_publish_year||''}). Commercial book publication follows proven consumer demand: publishing velocity is a validated cultural signal.`,
       stat: `${ol.numFound?.toLocaleString()||''} books · ${recent} since 2018`,
       confidence:'Medium', source:'Open Library', sourceUrl:url,
     });
@@ -5950,7 +5959,7 @@ function _synthesiseLens(q, cat, raw) {
     sources.push({ num:si++, label:'OpenAlex Concepts', desc:'Research topic classification graph', url, display:'openalex.org' });
     insights.push({
       category:cat, title:`Research Landscape: "${(top.display_name||'').slice(0,60)}" & Adjacent Fields`,
-      excerpt: `OpenAlex concept map: ${cs.map(c=>`${c.display_name} (${c.works_count?.toLocaleString()||0} works)`).join(', ')}. The concept graph reveals adjacent research disciplines, emerging sub-fields, and the intellectual territory surrounding this topic — critical for white space identification and thought leadership positioning.`,
+      excerpt: `OpenAlex concept map: ${cs.map(c=>`${c.display_name} (${c.works_count?.toLocaleString()||0} works)`).join(', ')}. The concept graph reveals adjacent research disciplines, emerging sub-fields, and the intellectual territory surrounding this topic: critical for white space identification and thought leadership positioning.`,
       stat: `${top.works_count?.toLocaleString()||''} works in primary concept`,
       confidence:'High', source:'OpenAlex Concepts', sourceUrl:url,
     });
@@ -5963,7 +5972,7 @@ function _synthesiseLens(q, cat, raw) {
     sources.push({ num:si++, label:'Wikidata', desc:'Structured entity knowledge graph', url, display:'wikidata.org' });
     insights.push({
       category:cat, title:`Entity Map: ${ents.length} Structured Knowledge Entities`,
-      excerpt: `Wikidata entity graph: ${ents.map(e=>e.label+(e.description?' ('+e.description.slice(0,36)+')':'')).join('; ')}. Structured entity data reveals the conceptual architecture of this topic — how institutions, people, places, and concepts interrelate — enabling precision positioning against competitive entities.`,
+      excerpt: `Wikidata entity graph: ${ents.map(e=>e.label+(e.description?' ('+e.description.slice(0,36)+')':'')).join('; ')}. Structured entity data reveals the conceptual architecture of this topic, how institutions, people, places, and concepts interrelate, enabling precision positioning against competitive entities.`,
       stat: `${ents.length} entities mapped · ${wd.search.length} entity matches`,
       confidence:'Medium', source:'Wikidata', sourceUrl:url,
     });
@@ -5976,7 +5985,7 @@ function _synthesiseLens(q, cat, raw) {
   if (!insights.length) {
     insights.push({
       category:cat, title:`${catLabel}: evidence thin for "${q.split(' ').slice(0,4).join(' ')}"`,
-      excerpt: `The open sources answered lightly on this lens — not enough corroboration to state a finding. That is itself a signal: the conversation here is early, niche, or happening on closed platforms. Add a track and let the lake accumulate.`,
+      excerpt: `The open sources answered lightly on this lens, not enough corroboration to state a finding. That is itself a signal: the conversation here is early, niche, or happening on closed platforms. Add a track and let the lake accumulate.`,
       stat: 'insufficient evidence', confidence:'Low', source:'Excavate', sourceUrl:null,
     });
   }
@@ -5997,17 +6006,17 @@ function _buildLensIdeas(q, cat) {
       {type:'Trust Signal',        headline:'Proof Before Promise',             body:'Consumer trust is the rate-limiting factor. Lead creative with third-party validation and authentic testimonials before making brand claims. Trust earned early multiplies downstream conversion.'},
     ],
     market: [
-      {type:'Market Entry',       headline:'Find White Space First',            body:`Market dynamics for "${q}" reveal category gaps and underserved segments. Map competitive positioning against unmet consumer needs — the intersection of high demand and low density is your entry point.`},
+      {type:'Market Entry',       headline:'Find White Space First',            body:`Market dynamics for "${q}" reveal category gaps and underserved segments. Map competitive positioning against unmet consumer needs: the intersection of high demand and low density is your entry point.`},
       {type:'Category Development',headline:'Grow the Category, Own the Narrative',body:'Brands that invest in educating consumers about the category earn outsized share in emerging segments and set the terms of competition before rivals arrive.'},
-      {type:'Competitive Intel',  headline:'Track Signals Your Rivals Miss',    body:'Market data surfaces early indicators of competitive movement. Build a signal-monitoring program tracking patent filings, job postings, and academic research — a 90-day lead on category shifts.'},
+      {type:'Competitive Intel',  headline:'Track Signals Your Rivals Miss',    body:'Market data surfaces early indicators of competitive movement. Build a signal-monitoring program tracking patent filings, job postings, and academic research: a 90-day lead on category shifts.'},
     ],
     culture: [
       {type:'Cultural Positioning',headline:'Earn the Culture Before You Buy It',body:`Cultural signals for "${q}" reveal an active community narrative with defined values. Brands that genuinely contribute earn permanent positioning; brands that buy in get temporary access and lasting skepticism.`},
-      {type:'Creator Strategy',   headline:'Seed With Authentic Voices',        body:'Cultural momentum is creator-led. Identify micro-communities where this culture originates — not the largest platforms but the most credible — and seed with creators who are already participants, not spokespeople.'},
-      {type:'Cultural Timing',    headline:'The Moment Has a Window — Map It Now',body:'Cultural signals peak and diffuse. Research the velocity curve: emerging, accelerating, or maturing? Enter at acceleration for maximum earned resonance at minimum paid cost.'},
+      {type:'Creator Strategy',   headline:'Seed With Authentic Voices',        body:'Cultural momentum is creator-led. Identify micro-communities where this culture originates, not the largest platforms but the most credible, and seed with creators who are already participants, not spokespeople.'},
+      {type:'Cultural Timing',    headline:'The Moment Has a Window: Map It Now',body:'Cultural signals peak and diffuse. Research the velocity curve: emerging, accelerating, or maturing? Enter at acceleration for maximum earned resonance at minimum paid cost.'},
     ],
     brand: [
-      {type:'Brand Equity',       headline:'Build What Cannot Be Bought Later', body:`Brand health signals for "${q}" reveal the equity dimensions — trust, relevance, differentiation — that drive category premium. The dimension with the widest gap versus category leader deserves disproportionate investment.`},
+      {type:'Brand Equity',       headline:'Build What Cannot Be Bought Later', body:`Brand health signals for "${q}" reveal the equity dimensions, trust, relevance, differentiation, that drive category premium. The dimension with the widest gap versus category leader deserves disproportionate investment.`},
       {type:'Perception Gap',     headline:'Close the Gap Between Reality and Belief',body:'Brand research surfaces perception gaps between what brands do and what consumers believe. The priority is documented behavior change communicated through proof-points, not promises.'},
       {type:'Advertising Effectiveness',headline:'Invest in What Compounds, Not Just Converts',body:'Marketing effectiveness research shows brand-building spend has longer payback windows but substantially higher long-term ROI. 60:40 brand-to-performance is the evidence-based starting ratio.'},
     ],
@@ -6024,8 +6033,8 @@ function _buildSignalTruth(q, lenses) {
   const velocity    = highConf>8?'strong':highConf>4?'active':'emerging';
 
   return {
-    headline: `"${q.split(' ').slice(0,4).join(' ')}" — ${velocity==='strong'?'High-Velocity Cross-Signal Intelligence':velocity==='active'?'Active Intelligence Signal Detected':'Emerging Signal — Monitor Closely'}`,
-    body: `Cross-signal synthesis across all four lenses surfaces ${highConf} high-confidence findings from ${totalSrc} data sources. ${velocity==='strong'?'Strong convergence indicates significant strategic weight.':velocity==='active'?'Active signals indicate meaningful opportunity.':'Signal is emerging — evidence is thin, track it before acting.'} `,
+    headline: `"${q.split(' ').slice(0,4).join(' ')}": ${velocity==='strong'?'High-Velocity Cross-Signal Intelligence':velocity==='active'?'Active Intelligence Signal Detected':'Emerging Signal: Monitor Closely'}`,
+    body: `Cross-signal synthesis across all four lenses surfaces ${highConf} high-confidence findings from ${totalSrc} data sources. ${velocity==='strong'?'Strong convergence indicates significant strategic weight.':velocity==='active'?'Active signals indicate meaningful opportunity.':'Signal is emerging: evidence is thin, track it before acting.'} `,
     allInsights, allIdeas, allSources, velocity,
   };
 }
@@ -6075,7 +6084,7 @@ function _fillLensPanels(lenses, truth){
     const data=lenses[cat]||{insights:[],ideas:[],sources:[]};
     const insights=data.insights||[], ideas=data.ideas||[];
     const badge=document.getElementById('rlb-count-'+cat);
-    if(badge) badge.textContent=insights.length||'—';
+    if(badge) badge.textContent=insights.length||'·';
     const grid=document.getElementById('results-grid-'+cat);
     if(grid) grid.innerHTML=insights.map((ins,i)=>card(ins,i,cat)).join('')||`<p style="color:var(--text3);font-family:'Space Mono',monospace;font-size:11px;padding:24px 0">No ${safe(CAT_LABELS[cat])} finding compiled for this query. The evidence did not land on this lens.</p>`;
     const ideasEl=document.getElementById('lens-ideas-'+cat);
@@ -6097,8 +6106,8 @@ function _fillLensPanels(lenses, truth){
     ms.innerHTML=(mv.length||dr)?`<div class="moves-head"><span class="moves-title">The moves</span><span class="moves-sub">${mv.length} earned${dr?' · '+dr+' did not meet the bar: no evidence, or nothing concrete':''}</span></div><div class="moves-grid">${mv.map(m=>_moveCard(m,all)).join('')}</div>`:''; }
   if(tI) tI.innerHTML=(truth.allIdeas||[]).slice(0,6).map(m=>_moveCard(m,all)).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">The evidence on this query is too thin to name a move.</div></div>`;
   const badge=document.getElementById('rlb-count-truth');
-  if(badge) badge.textContent=all.length||'—';
-  const bAll=document.getElementById('rlb-count-all'); if(bAll) bAll.textContent=all.length||'—';
+  if(badge) badge.textContent=all.length||'·';
+  const bAll=document.getElementById('rlb-count-all'); if(bAll) bAll.textContent=all.length||'·';
   // SEAM:READ_BRIEF: one grid, strongest first (confidence, then the newest evidence), each card carrying its lens.
   const allGrid=document.getElementById('results-grid-all');
   if(allGrid){ const rankC={High:3,Medium:2,Low:1};
@@ -6110,7 +6119,8 @@ function _fillLensPanels(lenses, truth){
    same URL, else the same source name, else nothing. Never a stock image, never a guess. */
 function _attachImages(insights, items){
   const byUrl=new Map(), bySrc=new Map();
-  (items||[]).forEach(it=>{ if(!it||!it.image) return; if(it.url) byUrl.set(it.url,it); const k=(it.source||it.source_name||'').toLowerCase(); if(k&&!bySrc.has(k)) bySrc.set(k,it); });
+  const tierOf=it=>{ const t=parseInt(it.source_tier!=null?it.source_tier:it.tier,10); return Number.isFinite(t)?t:3; };   // EX52a: no tier is T3
+  (items||[]).forEach(it=>{ if(!it||!it.image||tierOf(it)>2) return; if(it.url) byUrl.set(it.url,it); const k=(it.source||it.source_name||'').toLowerCase(); if(k&&!bySrc.has(k)) bySrc.set(k,it); });   // EX52a: a photograph only from a T0 to T2 source
   (insights||[]).forEach(ins=>{
     if(ins.image) return;
     const hit=(ins.sourceUrl&&byUrl.get(ins.sourceUrl))||bySrc.get((ins.source||'').toLowerCase());
@@ -6372,16 +6382,16 @@ function _renderResultsV2(q, lenses, truth, mode) {
   document.getElementById('live-results').style.display  = 'block';
   _dashShow(false);
   document.getElementById('results-query').textContent = q;
-  document.getElementById('results-meta').textContent  = 'OPEN-SOURCE INTELLIGENCE — 5-LENS PARALLEL SEARCH · '+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
+  document.getElementById('results-meta').textContent  = 'OPEN-SOURCE INTELLIGENCE: 5-LENS PARALLEL SEARCH · '+new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}).toUpperCase();
 
   const pill=document.getElementById('results-mode-pill');
   if(pill) pill.innerHTML='<div class="mode-pill basic">5-LENS · CONSUMER · MARKET · CULTURE · BRAND · TRUTH</div>';
 
   const totalIns=CATS.reduce((n,c)=>n+(lenses[c]?.insights?.length||0),0);
   const totalSrc=CATS.reduce((n,c)=>n+(lenses[c]?.sources?.length||0),0);
-  document.getElementById('res-sources').textContent  = totalSrc||'—';
+  document.getElementById('res-sources').textContent  = totalSrc||'·';
   document.getElementById('res-insights').textContent = totalIns;
-  document.getElementById('res-ideas').textContent    = truth.allIdeas?.length||'—';
+  document.getElementById('res-ideas').textContent    = truth.allIdeas?.length||'·';
 
   const strip=document.getElementById('results-sources-strip');
   if(strip){
@@ -6394,7 +6404,7 @@ function _renderResultsV2(q, lenses, truth, mode) {
   _fillLensPanels(lenses, truth);
   switchResultsLens('consumer');
   const br=document.getElementById('builder-result');
-  if(br&&truth.body) br.innerHTML=`<strong>Signal Truth — ${q}:</strong> ${truth.body}`;
+  if(br&&truth.body) br.innerHTML=`<strong>Signal Truth · ${q}:</strong> ${truth.body}`;
   window.scrollTo({top:document.getElementById('live-results').offsetTop-80,behavior:'smooth'});
 }
 
@@ -6485,7 +6495,7 @@ async function openInsightDashboard(config) {
        A hang now has a name and an exit instead of a locked screen. */
     const _diag = (t) => { const d = document.getElementById('idb-loading-diag'); if (d) d.textContent = t; };
     _diag('stage: searching open sources…');
-    const _wd = setTimeout(() => _diag('taking unusually long — a source may be stalled · CANCEL is safe, retry after'), 25000);
+    const _wd = setTimeout(() => _diag('taking unusually long: a source may be stalled · CANCEL is safe, retry after'), 25000);
     let data;
     try { data = await _runDashboardSearch(config, topicKey); }
     finally { clearTimeout(_wd); }
@@ -6565,7 +6575,7 @@ async function _runDashboardSearch(config, topicKey) {
   }
   return {...base, lenses:lensResults};
 
-  } catch(e) { return {insights:[],ideas:[],sources:[],brief:"Intelligence unavailable — check connection.",cat:"consumer",lenses:{}}; }
+  } catch(e) { return {insights:[],ideas:[],sources:[],brief:"Intelligence unavailable: check connection.",cat:"consumer",lenses:{}}; }
 }
 
 async function _runMatrixLensSearch(baseQ, cat, lensQ) {
@@ -6594,7 +6604,7 @@ function _renderDashboard(config, data) {
   const displayQ=config.title.split(':')[0]||config.query.split(' ').slice(0,4).join(' ');
   document.getElementById('idb-headline').textContent=config.title;
   document.getElementById('idb-deck').textContent=config.deck||data.brief||'';
-  document.getElementById('idb-eyebrow').textContent=(CAT_LABELS[config.cat]||'Consumer & Market')+' — Intelligence Overview';
+  document.getElementById('idb-eyebrow').textContent=(CAT_LABELS[config.cat]||'Consumer & Market')+' · Intelligence Overview';
   document.getElementById('idb-eyebrow').style.color=CAT_COLORS[config.cat]||'var(--accent)';
   const srcs=data.sources||[], ins=data.insights||[];
   const totalF=CATS.reduce((n,cat)=>n+(data.lenses?.[cat]?.insights?.length||0),0);
@@ -6727,7 +6737,7 @@ ${bodyHTML}
     URL.revokeObjectURL(url);
     showToast('Report downloaded to your Downloads folder ✓');
   } catch(e) {
-    showToast('Download failed — try again');
+    showToast('Download failed: try again');
   }
 }
 function closePDFPreview(){
@@ -6770,7 +6780,7 @@ function _buildResultsPDF(dateStr,timeStr){
   const lenses=window._lensResults||{};
   const totalIns=CATS.reduce((n,c)=>n+(lenses[c]?.insights?.length||0),0);
   const totalSrc=CATS.reduce((n,c)=>n+(lenses[c]?.sources?.length||0),0);
-  const truthCards=CATS.map(cat=>{const top=(lenses[cat]?.insights||[])[0]||{};return`<div class="pdf-truth-card ${cat}"><div class="pdf-truth-label">${CAT_LABELS[cat]}</div><div class="pdf-truth-finding">${(top.title||'No data').slice(0,80)}</div><div class="pdf-truth-stat">${top.stat||'—'}</div></div>`;}).join('');
+  const truthCards=CATS.map(cat=>{const top=(lenses[cat]?.insights||[])[0]||{};return`<div class="pdf-truth-card ${cat}"><div class="pdf-truth-label">${CAT_LABELS[cat]}</div><div class="pdf-truth-finding">${(top.title||'No data').slice(0,80)}</div><div class="pdf-truth-stat">${top.stat||'·'}</div></div>`;}).join('');
   const lensBlocks=CATS.map(cat=>{
     const data=lenses[cat]||{};
     const ins=(data.insights||[]).slice(0,4), ideas=(data.ideas||[]).slice(0,2);
@@ -6783,7 +6793,7 @@ function _buildDashboardPDF(config,data,dateStr,timeStr){
   const title=config?.title||'Intelligence Report';
   const srcs=data.sources||[];
   const overviewIns=(data.insights||[]).slice(0,4);
-  const truthCards=CATS.map(cat=>{const top=(data.lenses?.[cat]?.insights||[])[0]||{};return`<div class="pdf-truth-card ${cat}"><div class="pdf-truth-label">${CAT_LABELS[cat]}</div><div class="pdf-truth-finding">${(top.title||'No data').slice(0,80)}</div><div class="pdf-truth-stat">${top.stat||'—'}</div></div>`;}).join('');
+  const truthCards=CATS.map(cat=>{const top=(data.lenses?.[cat]?.insights||[])[0]||{};return`<div class="pdf-truth-card ${cat}"><div class="pdf-truth-label">${CAT_LABELS[cat]}</div><div class="pdf-truth-finding">${(top.title||'No data').slice(0,80)}</div><div class="pdf-truth-stat">${top.stat||'·'}</div></div>`;}).join('');
   const lensBlocks=CATS.map(cat=>{
     const ld=data.lenses?.[cat]||{};
     const ins=(ld.insights||[]).slice(0,3), ideas=(ld.ideas||[]).slice(0,2);
@@ -6791,8 +6801,8 @@ function _buildDashboardPDF(config,data,dateStr,timeStr){
     if(!ins.length&&!brief)return'';
     return`<div class="pdf-section-head">${CAT_LABELS[cat]}</div>${brief?`<p style="font-size:13px;color:#444;line-height:1.7;margin-bottom:14px;font-style:italic">${brief}</p>`:''}${ins.map(_pdfFinding).join('')}${ideas.map(_pdfIdea).join('')}`;
   }).join('');
-  const srcList=srcs.slice(0,8).map(s=>`<div style="padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px;color:#444;font-family:'Courier New',monospace">${s.label} — ${s.desc||''}</div>`).join('');
-  return`<div class="pdf-header"><div class="pdf-brand">Excavate by Unsurfaced™ — Intelligence Dashboard</div><div class="pdf-meta">INTELLIGENCE REPORT · ${dateStr} at ${timeStr}</div><div class="pdf-title">${title}</div><div class="pdf-deck">${config?.deck||data.brief||''}</div></div><div class="pdf-section-head">Intelligence Overview</div><div class="pdf-truth-grid">${truthCards}</div>${overviewIns.length?`<div class="pdf-section-head">Key Findings</div>${overviewIns.map(_pdfFinding).join('')}`:''}${lensBlocks}${srcs.length?`<div class="pdf-section-head">Data Sources</div>${srcList}`:''}<div class="pdf-footer">Excavate by Unsurfaced™ · Consumer & Market Intelligence · ${dateStr}<br>Verify all statistics against primary sources before strategic deployment.</div>`;
+  const srcList=srcs.slice(0,8).map(s=>`<div style="padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px;color:#444;font-family:'Courier New',monospace">${s.label}: ${s.desc||''}</div>`).join('');
+  return`<div class="pdf-header"><div class="pdf-brand">Excavate by Unsurfaced™: Intelligence Dashboard</div><div class="pdf-meta">INTELLIGENCE REPORT · ${dateStr} at ${timeStr}</div><div class="pdf-title">${title}</div><div class="pdf-deck">${config?.deck||data.brief||''}</div></div><div class="pdf-section-head">Intelligence Overview</div><div class="pdf-truth-grid">${truthCards}</div>${overviewIns.length?`<div class="pdf-section-head">Key Findings</div>${overviewIns.map(_pdfFinding).join('')}`:''}${lensBlocks}${srcs.length?`<div class="pdf-section-head">Data Sources</div>${srcList}`:''}<div class="pdf-footer">Excavate by Unsurfaced™ · Consumer & Market Intelligence · ${dateStr}<br>Verify all statistics against primary sources before strategic deployment.</div>`;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -6886,8 +6896,10 @@ function _dashShow(on) {   // SEAM:EXC_DOOR_VOICE: the board and the week's read
   const d = document.getElementById('main-dashboard'), w = document.getElementById('week-block'), hero = document.querySelector('#sec-explore .hero');
   if (d) d.style.display = on ? 'grid' : 'none';
   if (w) w.style.display = on && window._weekReady ? 'block' : 'none';
-  if (hero) hero.classList.toggle('solo', !(on && window._weekReady));
+  window._dashOn = on; _heroSolo();
 }
+/* EX52a: one place decides the hero's single column: the board is up and the week block has something to show (the week's read or the readings' rail). */
+function _heroSolo() { const hero = document.querySelector('#sec-explore .hero'); if (hero) hero.classList.toggle('solo', !(window._dashOn !== false && window._weekReady)); }
 function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visitor and New Report to a member
   const a = document.getElementById('nav-sign'), b = document.getElementById('nav-new-report');
   if (a) a.style.display = window._signedOut === false ? 'none' : '';
@@ -7180,12 +7192,12 @@ async function playGenerate(){
     } else {
       const d=await api('play/generate',{prompt,kind:_playKind});
       const div=document.createElement('div'); div.className='play-text';
-      div.textContent=(((d&&d.data&&d.data.text)||d.text||'').trim())||'(PLAY returned nothing — try rephrasing.)';
+      div.textContent=(((d&&d.data&&d.data.text)||d.text||'').trim())||'(PLAY returned nothing: try rephrasing.)';
       out.innerHTML=''; out.appendChild(div);
       const by=d&&d.data&&d.data.by; if(by){ const b=document.createElement('div'); b.className='play-by'; b.style.cssText='font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-top:8px'; b.textContent=(by==='claude'?'Written on Claude':'Written on the reserve model')+' · '; const a=document.createElement('a'); a.href='../play/'; a.textContent='Take it into the engine →'; a.onclick=()=>{ _playOpen(_playPkg(prompt,null)); return false; }; b.appendChild(a); out.appendChild(b); }
     }
   } catch(e){
-    out.innerHTML='<div class="play-err">PLAY couldn\'t generate that just now — the studio may be busy or the backend isn\'t connected yet. Try again in a moment.</div>';
+    out.innerHTML='<div class="play-err">PLAY couldn\'t generate that just now: the studio may be busy or the backend isn\'t connected yet. Try again in a moment.</div>';
   }
 }
 (function(){
@@ -7279,7 +7291,7 @@ const _MINE_SAMPLE=[
   {id:'R-230',age:'25-34',sentiment:3,stood:'The message',quote:"Calm energy is a nice angle, but everyone says that now."},
   {id:'R-238',age:'18-24',sentiment:5,stood:'The vibe',quote:"This feels like something my group would actually post."},
   {id:'R-242',age:'35-44',sentiment:3,stood:'The product',quote:"I'd try it once. Price would decide if I came back."},
-  {id:'R-250',age:'25-34',sentiment:4,stood:'The vibe',quote:"Understated and confident — the opposite of shouty wellness ads."},
+  {id:'R-250',age:'25-34',sentiment:4,stood:'The vibe',quote:"Understated and confident: the opposite of shouty wellness ads."},
   {id:'R-257',age:'18-24',sentiment:2,stood:'Nothing really',quote:"Pretty but forgettable. Didn't make me feel anything."},
 ];
 let _mpAuds=['18-24','25-34','35-44'];
@@ -7318,9 +7330,9 @@ function _mpStats(data){
 function _mpTemplate(brief,data){
   const s=_mpStats(data); const posPct=Math.round(s.pos/s.n*100); const top=s.themeArr[0];
   const crit=data.filter(r=>r.sentiment<=2);
-  const critLine=crit.length?`The clearest risk is clarity — ${crit.length} of ${s.n} found it good-looking but were left unsure what's being sold, or called it forgettable.`:'No strong detractors surfaced in this cut.';
+  const critLine=crit.length?`The clearest risk is clarity: ${crit.length} of ${s.n} found it good-looking but were left unsure what's being sold, or called it forgettable.`:'No strong detractors surfaced in this cut.';
   const b=brief.slice(0,80)+(brief.length>80?'…':'');
-  return `Across ${s.n} responses, reaction skews ${posPct}% positive (avg ${s.avg.toFixed(1)}/5). The strongest pull is "${top[0]}" (${top[1]} of ${s.n}) — the work earns its lift from mood and craft more than message. ${critLine} On your brief — ${b} — the read is: lean into the understated, post-worthy vibe that's already landing, and make the product itself unmistakable so curiosity converts to intent.`;
+  return `Across ${s.n} responses, reaction skews ${posPct}% positive (avg ${s.avg.toFixed(1)}/5). The strongest pull is "${top[0]}" (${top[1]} of ${s.n}): the work earns its lift from mood and craft more than message. ${critLine} On your brief, ${b}, the read is: lean into the understated, post-worthy vibe that's already landing, and make the product itself unmistakable so curiosity converts to intent.`;
 }
 function _mpDashHTML(brief,auds,data){
   const s=_mpStats(data); const posPct=Math.round(s.pos/s.n*100);
@@ -7483,7 +7495,7 @@ function _studyDuplicate(sid) {
       options: (q.options || []).slice(), passOptions: q.passOptions ? q.passOptions.slice() : null,
       assetKey: q.assetKey || null, assetName: q.assetName || null })) };
   mineState.qedit = null; mineState.qAsset = null;
-  showToast('Duplicated \u2014 same structure, fresh study, nothing shared');
+  showToast('Duplicated: same structure, fresh study, nothing shared');
   mineRoute('p-new');
 }
 function mineBar() {
@@ -7535,7 +7547,7 @@ function vCHome() {
     + '<span>' + safe(st.title) + '</span>'
     + '<span class="ma-muted">' + st.n + (st.target_n ? ' / ' + st.target_n : '') + ' responses \u00B7 ' + safe(st.status) + '</span></button>').join('');
   return '<span class="mr-eyebrow">Client \u00B7 Live results</span><h2 class="mr-h">Your studies.</h2>'
-    + '<p class="mr-p">Live reads on the research you commissioned \u2014 updated as responses arrive.</p>'
+    + '<p class="mr-p">Live reads on the research you commissioned: updated as responses arrive.</p>'
     + (list || empty('No studies are shared with this account yet. Ask your Unsurfaced contact for access.'));
 }
 
@@ -7553,7 +7565,7 @@ function vCStudy(sid) {
     : ((mineDB.clientStudies || []).length > 1
       ? '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'c-home\')">\u2190 Your studies</button>' : '');
   return back
-    + (mineState.cBack ? '<div class="ma-sum" style="margin:0 0 14px"><div class="ma-row-s" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase">Previewing as client \u2014 this is exactly what they see</div></div>' : '')
+    + (mineState.cBack ? '<div class="ma-sum" style="margin:0 0 14px"><div class="ma-row-s" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase">Previewing as client: this is exactly what they see</div></div>' : '')
     + '<span class="mr-eyebrow">Live results' + (st ? ' \u00B7 ' + safe(st.status) : '') + '</span>'
     + '<h2 class="mr-h">' + safe(st ? st.title : 'Your study') + '</h2>'
     + (st && st.goal ? '<p class="mr-p">' + safe(st.goal) + '</p>' : '')
@@ -7574,10 +7586,10 @@ async function _clientLoadResults(sid, quiet) {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify(bodyReq) });
     const d = await r.json();
-    if (!d || !d.ok) { if (!quiet) box.innerHTML = empty('Could not load results \u2014 check your connection.'); return; }
+    if (!d || !d.ok) { if (!quiet) box.innerHTML = empty('Could not load results: check your connection.'); return; }
     _clientCache = { sid, data: d, crosstab: bodyReq.crosstab || null, segment: bodyReq.segment || null, banner: bodyReq.banner || null };
     box.innerHTML = _clientResultsHtml(d);
-  } catch (e) { if (!quiet) box.innerHTML = empty('Could not load results \u2014 check your connection.'); }
+  } catch (e) { if (!quiet) box.innerHTML = empty('Could not load results: check your connection.'); }
 }
 
 function _clientResultsHtml(d) {
@@ -7615,7 +7627,7 @@ function _clientResultsHtml(d) {
     /* The floor, explained in the client's language rather than enforced in
        silence — a number they can hold us to instead of one they screenshot. */
     return h + '<div class="ma-sum" style="margin-top:14px"><div class="ma-q">Findings open at ' + d.floor + ' responses</div>'
-      + '<div class="ma-row-s">Early percentages mislead \u2014 at small counts a single response moves a result by whole points. '
+      + '<div class="ma-row-s">Early percentages mislead: at small counts a single response moves a result by whole points. '
       + 'The moment ' + d.floor + ' quality responses are in, every question\u2019s distribution appears here automatically. '
       + 'The study keeps collecting either way.</div></div>';
   }
@@ -7660,7 +7672,7 @@ function _clientResultsHtml(d) {
           : '')
       + '<div class="mr-priv" style="margin-top:4px">\u25B2 and \u25BC mark differences significant at p&lt;.05 against everyone outside that group.</div></div>';
   } else if (_clientCache && _clientCache.banner) {
-    h += '<div class="ma-sum"><div class="ma-row-s">No group in that question reaches the minimum cell size yet \u2014 comparisons appear once a group carries at least 5 responses.</div></div>';
+    h += '<div class="ma-sum"><div class="ma-row-s">No group in that question reaches the minimum cell size yet: comparisons appear once a group carries at least 5 responses.</div></div>';
   }
   for (const q of d.questions) {
     if (q.type === 'open') {
@@ -7679,7 +7691,7 @@ function _clientResultsHtml(d) {
       h += '<div class="ma-sum"><div class="ma-q">' + safe(q.prompt) + ' <span class="ma-muted">\u00B7 ' + q.answered + ' ranked</span></div>'
         + ord.map((k, i) => '<div class="mp-bar-row"><span class="mp-bar-label">' + (i + 1) + '. ' + safe(k) + '</span>'
             + '<span class="mp-bar-track"><span class="mp-bar-fill" style="width:' + Math.round(((q.first_pct || {})[k] || 0)) + '%"></span></span>'
-            + '<span class="mp-bar-n">avg ' + ((q.mean_rank || {})[k] != null ? q.mean_rank[k] : '\u2014') + '</span></div>').join('')
+            + '<span class="mp-bar-n">avg ' + ((q.mean_rank || {})[k] != null ? q.mean_rank[k] : '\u00b7') + '</span></div>').join('')
         + '<div class="mr-priv" style="margin-top:6px">Ordered by average rank. Bar shows share who put it first.</div>'
         + _clickBlock(q.clicks) + '</div>';
       continue;
@@ -7733,7 +7745,7 @@ function _clientResultsHtml(d) {
         + '</div>';
     }
   } else if (_clientCache && _clientCache.crosstab) {
-    h += '<div class="ma-sum"><div class="ma-row-s">No segment reaches the minimum cell size yet \u2014 cross-tabs appear when a segment carries at least 5 responses.</div></div>';
+    h += '<div class="ma-sum"><div class="ma-row-s">No segment reaches the minimum cell size yet: cross-tabs appear when a segment carries at least 5 responses.</div></div>';
   }
   return h;
 }
@@ -7763,7 +7775,7 @@ function _bannerRows(d, q, keys) {
           const s = cell.sig && cell.sig[k];
           const mark = s ? (s.dir === 'up' ? ' \u25B2' : ' \u25BC') : '';
           return '<td style="text-align:right;padding:4px 6px;border-top:1px solid rgba(255,255,255,.08);'
-            + (s ? 'font-weight:700' : '') + '">' + (p == null ? '\u2014' : p + '%') + mark + '</td>';
+            + (s ? 'font-weight:700' : '') + '">' + (p == null ? '\u00b7' : p + '%') + mark + '</td>';
         }).join('')
       + '<td style="text-align:right;padding:4px 6px;border-top:1px solid rgba(255,255,255,.08);opacity:.6">' + cell.n + '</td></tr>';
   }
@@ -7785,7 +7797,7 @@ function _clickBlock(cs) {
   };
   return '<div style="border-top:1px solid rgba(255,255,255,.08);margin-top:12px;padding-top:2px">'
     + '<div class="ma-muted" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;margin:8px 0 0">Behavior \u00B7 ' + cs.respondents + ' interacted \u00B7 ' + cs.total + ' clicks</div>'
-    + bar(cs.first, 'First click \u2014 what they did first')
+    + bar(cs.first, 'First click: what they did first')
     + bar(cs.top, 'Most touched')
     + '</div>';
 }
@@ -7810,7 +7822,7 @@ function _clientReport() {
     body += '<div class="q">' + esc(q.prompt) + '</div>';
     if (q.type === 'open') {
       body += (q.verbatims || []).slice(0, 20).map(v =>
-        '<div class="verb">\u201c' + esc(v.text) + '\u201d <span class="who">\u2014 ' + esc(v.who) + '</span></div>').join('');
+        '<div class="verb">\u201c' + esc(v.text) + '\u201d <span class="who">' + esc(v.who) + '</span></div>').join('');
     } else {
       const keys = Object.keys(q.counts || {}).sort((a, b) => q.counts[b] - q.counts[a]);
       body += keys.map(k => '<div class="row"><span>' + esc(k) + '</span><span><b>'
@@ -7825,7 +7837,7 @@ function _clientReport() {
   }
   const w = window.open('', '_blank');
   if (!w) { showToast('Allow pop-ups to download the report'); return; }
-  w.document.write('<!doctype html><html><head><title>' + esc(c.study.title) + ' \u2014 Unsurfaced</title><style>'
+  w.document.write('<!doctype html><html><head><title>' + esc(c.study.title) + ' \u00b7 Unsurfaced</title><style>'
     + 'body{font-family:system-ui,sans-serif;max-width:680px;margin:40px auto;padding:0 20px;color:#0A0A0A;line-height:1.5}'
     + 'h1{font-size:26px;margin:0 0 4px}.goal{color:#444;margin:0 0 6px}.meta{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.1em;border-bottom:3px solid #C41230;padding-bottom:14px}'
     + '.q{font-weight:700;margin:26px 0 8px;font-size:15px}.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee}'
@@ -7837,7 +7849,7 @@ function _clientReport() {
     + '<div style="font-weight:800;font-size:20px">UNSURFACED\u2122</div>'
     + '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#888;margin:0 0 22px">Consumer & Market Intelligence \u00B7 Live study report</div>'
     + body
-    + '<div class="foot">Generated from the live results room. Findings open at ' + c.floor + ' quality responses by design \u2014 early percentages mislead.</div>'
+    + '<div class="foot">Generated from the live results room. Findings open at ' + c.floor + ' quality responses by design: early percentages mislead.</div>'
     + '<div class="noprint" style="margin-top:22px"><button onclick="window.print()" style="background:#C41230;color:#fff;border:0;padding:12px 22px;font-weight:700;cursor:pointer">Print / Save as PDF</button></div>'
     + '</body></html>');
   w.document.close();
@@ -7859,7 +7871,7 @@ function _clientBanner(qid) {
 function _fieldRailRow(s, admin) {
   if (!sbEnabled() || !API_BASE) return '';
   if (!(s.pay > 0) || s.status === 'draft') return '';
-  return '<div class="ma-sec">Field the study \u2014 invited links</div>'
+  return '<div class="ma-sec">Field the study: invited links</div>'
     + '<div id="inv-mgr"><p class="mr-p ma-empty">Loading invites\u2026</p></div>';
 }
 
@@ -7876,11 +7888,11 @@ async function _invitesLoad(sid) {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/mine/invites', {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'list' }) });
-    if (!r.ok) return fail('The API answered ' + r.status + (r.status === 404 ? ' \u2014 the worker may not be deployed yet' : ''));
+    if (!r.ok) return fail('The API answered ' + r.status + (r.status === 404 ? ': the worker may not be deployed yet' : ''));
     const d = await r.json();
     if (!d || !d.ok) return fail(d && d.error === 'forbidden' ? 'This account cannot manage invites for this study' : 'Error: ' + ((d && d.error) || 'unknown'));
     box.innerHTML = _invitesHtml(sid, d);
-  } catch (e) { fail('Network error \u2014 check the connection'); }
+  } catch (e) { fail('Network error: check the connection'); }
 }
 
 function _invitesHtml(sid, d) {
@@ -7888,7 +7900,7 @@ function _invitesHtml(sid, d) {
   const head = '<div class="ma-metrics">' + metric(d.total || 0, 'Invited')
     + metric(t.sent || 0, 'Sent') + metric(t.responded || 0, 'Responded')
     + metric(t.screened || 0, 'Screened') + '</div>';
-  const paste = '<textarea id="inv-paste" class="mr-textarea" rows="3" placeholder="Paste emails \u2014 one per line, or comma separated. Names welcome: Ada Lovelace <ada@ex.com>"></textarea>'
+  const paste = '<textarea id="inv-paste" class="mr-textarea" rows="3" placeholder="Paste emails: one per line, or comma separated. Names welcome: Ada Lovelace <ada@ex.com>"></textarea>'
     + '<label class="u-trace" style="cursor:pointer;display:inline-block;margin:2px 0 6px">\u2913 import a CSV instead<input type="file" accept=".csv,.txt" style="display:none" onchange="_invitesCsv(this,\'' + sid + '\')"></label>'
     + '<div class="mr-nav" style="margin:8px 0 16px">'
     + '<button class="mr-btn mr-btn-primary" onclick="_invitesMint(\'' + sid + '\')">Mint links</button>'
@@ -7898,7 +7910,7 @@ function _invitesHtml(sid, d) {
             ? '<button class="mr-btn" onclick="_invitesSend(\'' + sid + '\',true)">Remind ' + t.sent + ' who haven\u2019t responded \u2192</button>'
             : ''))
     + '</div>'
-    + ((d.total || 0) === 0 ? '<p class="ma-muted" style="margin:-6px 0 14px">Minting creates the links. Sending is the second button \u2014 nothing leaves until you press it.</p>' : '');
+    + ((d.total || 0) === 0 ? '<p class="ma-muted" style="margin:-6px 0 14px">Minting creates the links. Sending is the second button: nothing leaves until you press it.</p>' : '');
   const rows = (d.invites || []).map(i =>
     '<div class="ma-row"><div><div class="ma-row-t">' + safe(i.email) + (i.name ? ' <span class="ma-muted">' + safe(i.name) + '</span>' : '') + '</div>'
     + '<div class="ma-row-s" style="font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase">' + safe(i.status) + '</div></div>'
@@ -7945,9 +7957,9 @@ function _invitesCsv(input, sid) {
         method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
         body: JSON.stringify({ study_id: sid, op: 'mint', list: people }) });
       const d = await r.json();
-      if (d && d.ok) { showToast(d.minted + ' minted' + (d.revived ? ' \u00B7 ' + d.revived + ' restored' : '') + ' from ' + people.length + ' contacts \u2014 review below, then Send'); _invitesLoad(sid); }
-      else showToast('Import failed \u2014 ' + ((d && d.error) || 'try again'));
-    } catch (e) { showToast('Import failed \u2014 try again'); }
+      if (d && d.ok) { showToast(d.minted + ' minted' + (d.revived ? ' \u00B7 ' + d.revived + ' restored' : '') + ' from ' + people.length + ' contacts: review below, then Send'); _invitesLoad(sid); }
+      else showToast('Import failed: ' + ((d && d.error) || 'try again'));
+    } catch (e) { showToast('Import failed: try again'); }
   };
   rd.readAsText(f);
   input.value = '';
@@ -7963,9 +7975,9 @@ async function _invitesMint(sid) {
     const d = await r.json();
     if (d && d.ok) { showToast(d.minted + ' new link' + (d.minted === 1 ? '' : 's') + ' minted'
       + (d.revived ? ' \u00B7 ' + d.revived + ' revoked restored' : '')
-      + ' \u2014 press Send to deliver them'); _invitesLoad(sid); }
-    else showToast(d && d.error === 'no_valid_emails' ? 'No valid emails in that list' : 'Mint failed \u2014 try again');
-  } catch (e) { showToast('Mint failed \u2014 try again'); }
+      + ': press Send to deliver them'); _invitesLoad(sid); }
+    else showToast(d && d.error === 'no_valid_emails' ? 'No valid emails in that list' : 'Mint failed: try again');
+  } catch (e) { showToast('Mint failed: try again'); }
 }
 
 async function _invitesSend(sid, retrySent) {
@@ -7978,15 +7990,15 @@ async function _invitesSend(sid, retrySent) {
     if (d && d.ok) {
       /* The provider's own words, surfaced. A failure that says nothing is how
          a whole evening gets spent looking in the wrong place. */
-      if (d.failed) showToast(d.sent + ' sent, ' + d.failed + ' failed \u2014 ' + (d.fail_detail || 'no reason given'));
+      if (d.failed) showToast(d.sent + ' sent, ' + d.failed + ' failed: ' + (d.fail_detail || 'no reason given'));
       else showToast(d.sent + ' invitation' + (d.sent === 1 ? '' : 's') + ' sent'
         + (d.remaining ? ' \u00B7 ' + d.remaining + ' still pending' : ''));
       _invitesLoad(sid);
     }
     else showToast(d && d.error === 'study_not_live' ? 'Launch the study before sending invites'
-      : d && d.error === 'mail_not_configured' ? 'Mail is not configured on the worker \u2014 RESEND_API_KEY is missing'
-      : 'Send failed \u2014 ' + ((d && d.error) || 'try again'));
-  } catch (e) { showToast('Send failed \u2014 try again'); }
+      : d && d.error === 'mail_not_configured' ? 'Mail is not configured on the worker: RESEND_API_KEY is missing'
+      : 'Send failed: ' + ((d && d.error) || 'try again'));
+  } catch (e) { showToast('Send failed: try again'); }
 }
 
 async function _inviteRevoke(sid, id) {
@@ -8006,9 +8018,9 @@ async function _inviteRestore(sid, id) {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'restore', invite_id: id }) });
     const d = await r.json();
-    showToast(d && d.ok ? 'Restored with a fresh link \u2014 send it when ready' : 'Restore failed \u2014 try again');
+    showToast(d && d.ok ? 'Restored with a fresh link: send it when ready' : 'Restore failed: try again');
     _invitesLoad(sid);
-  } catch (e) { showToast('Restore failed \u2014 try again'); }
+  } catch (e) { showToast('Restore failed: try again'); }
 }
 function _inviteCopy(btn, link) {
   try { navigator.clipboard.writeText(link).then(function () { showToast('Link copied'); }); }
@@ -8019,7 +8031,7 @@ function _inviteCopy(btn, link) {
 function _clientAccessRow(s, admin) {
   if (!sbEnabled() || !API_BASE) return '';
   if (s.status === 'draft') return '';
-  return '<div class="ma-sec" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">Client access \u2014 read-only, this study only'
+  return '<div class="ma-sec" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">Client access: read-only, this study only'
     + '<button class="mr-btn" style="font-size:11px" onclick="_clientPreview(\'' + s.id + '\')">Preview client view \u2192</button></div>'
     + '<div id="client-acc"><p class="mr-p ma-empty">Loading\u2026</p></div>';
 }
@@ -8033,7 +8045,7 @@ async function _clientListLoad(sid) {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'list' }) });
     if (!r.ok) { box.innerHTML = '<div class="ma-row"><div><div class="ma-row-t">Client access could not load</div>'
-      + '<div class="ma-row-s">The API answered ' + r.status + (r.status === 404 ? ' \u2014 the worker may not be deployed yet' : '') + '</div></div>'
+      + '<div class="ma-row-s">The API answered ' + r.status + (r.status === 404 ? ': the worker may not be deployed yet' : '') + '</div></div>'
       + '<button class="mr-btn" onclick="_clientListLoad(\'' + sid + '\')">Retry</button></div>'; return; }
     const d = await r.json();
     if (!d || !d.ok) { box.innerHTML = '<div class="ma-row"><div><div class="ma-row-t">Client access could not load</div>'
@@ -8059,11 +8071,11 @@ async function _clientGrant(sid) {
       method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh),
       body: JSON.stringify({ study_id: sid, op: 'grant', email: email.trim() }) });
     const d = await r.json();
-    if (d && d.ok) { showToast('Access granted \u2014 ' + d.granted + ' can watch live'); _clientListLoad(sid); }
+    if (d && d.ok) { showToast('Access granted: ' + d.granted + ' can watch live'); _clientListLoad(sid); }
     else showToast(d && d.error === 'no_account'
-      ? 'No account for that email yet \u2014 have the client sign up first, then grant'
-      : 'Grant failed \u2014 try again');
-  } catch (e) { showToast('Grant failed \u2014 try again'); }
+      ? 'No account for that email yet: have the client sign up first, then grant'
+      : 'Grant failed: try again');
+  } catch (e) { showToast('Grant failed: try again'); }
 }
 
 async function _clientRevoke(sid, id) {
@@ -8082,30 +8094,30 @@ async function _clientRevoke(sid, id) {
 async function _qualityMark(rid, status) {
   try {
     const { data, error } = await _sb.from('response').update({ quality_status: status }).eq('id', rid).select('id');
-    if (error || !data || !data.length) { showToast('Verdict did not stick \u2014 admin only'); return; }
+    if (error || !data || !data.length) { showToast('Verdict did not stick: admin only'); return; }
     const local = mineDB.responses.find(x => x.id === rid);
     if (local) local.qualityStatus = status;
-    showToast(status === 'clean' ? 'Marked clean' : 'Rejected \u2014 removed from the client read');
+    showToast(status === 'clean' ? 'Marked clean' : 'Rejected: removed from the client read');
     mineRoute(mineState.view, mineState.arg);
-  } catch (e) { showToast('Verdict failed \u2014 try again'); }
+  } catch (e) { showToast('Verdict failed: try again'); }
 }
 
 async function _responseDelete(rid) {
-  if (!confirm('Delete this response permanently? This is the withdrawal right \u2014 it cannot be undone.')) return;
+  if (!confirm('Delete this response permanently? This is the withdrawal right: it cannot be undone.')) return;
   try {
     const { data, error } = await _sb.from('response').delete().eq('id', rid).select('id');
-    if (error || !data || !data.length) { showToast('Delete did not stick \u2014 admin only'); return; }
+    if (error || !data || !data.length) { showToast('Delete did not stick: admin only'); return; }
     mineDB.responses = mineDB.responses.filter(x => x.id !== rid);
     showToast('Response deleted');
     mineRoute(mineState.view, mineState.arg);
-  } catch (e) { showToast('Delete failed \u2014 try again'); }
+  } catch (e) { showToast('Delete failed: try again'); }
 }
 
 /* SEAM:CLIENT_LENS — the report leads with the finding, ends with receipts. */
 function _reportAggregate(s, resp) {
   const live = resp.filter(r => r.qualityStatus !== 'rejected');
   if (!live.length) return '';
-  let h = '<div class="eb">The numbers \u2014 ' + live.length + ' quality responses</div>';
+  let h = '<div class="eb">The numbers: ' + live.length + ' quality responses</div>';
   for (const q of (s.questions || [])) {
     if (q.type === 'screener' || q.type === 'attention') continue;
     if (q.type === 'open') {
@@ -8113,7 +8125,7 @@ function _reportAggregate(s, resp) {
         .filter(x => x.text.length >= 12).slice(0, 6);
       if (!verbs.length) continue;
       h += '<div class="q">' + safe(q.prompt) + '</div>'
-        + verbs.map(x => '<div class="a" style="margin:4px 0">\u201c' + safe(x.text) + '\u201d <span class="meta">\u2014 ' + safe(x.who) + '</span></div>').join('');
+        + verbs.map(x => '<div class="a" style="margin:4px 0">\u201c' + safe(x.text) + '\u201d <span class="meta">' + safe(x.who) + '</span></div>').join('');
       continue;
     }
     const counts = {};
@@ -8189,7 +8201,7 @@ function mineRSignIn(id) { mineSession.responderId = id; mineSession.role = 'res
 function vRIntake() {
   return '<span class="mr-eyebrow">Responder · Set up</span>'
     + '<h2 class="mr-h">Tell us about you.</h2>'
-    + '<p class="mr-p">This is how we match you to studies you’ll actually care about — and how you get paid. Your details stay yours; brands only ever see an anonymous ID.</p>'
+    + '<p class="mr-p">This is how we match you to studies you’ll actually care about, and how you get paid. Your details stay yours; brands only ever see an anonymous ID.</p>'
     + field('ri-name', 'Name', 'First name is fine')
     + field('ri-email', 'Email', 'you@email.com', '', 'email')
     + selectF('ri-age', 'Age range', MINE_AGES, '25–34')
@@ -8261,7 +8273,7 @@ function vRStudy(id) {
     + '<h2 class="mr-h">' + safe(s.title) + '</h2>' + (s.goal ? '<p class="mr-p">' + safe(s.goal) + '</p>' : '')
     + assetHtml
     + (qs || empty('This study has no questions yet.'))
-    + '<label class="mr-check" style="margin-top:20px"><input type="checkbox" onchange="mineState.resp.consent=this.checked"> I consent to my response being used as research for this brand.' + ((s.pay || 0) > 0 ? ' I understand I\u2019ll be compensated after review.' : ' This is a free study \u2014 no compensation.') + '</label>'
+    + '<label class="mr-check" style="margin-top:20px"><input type="checkbox" onchange="mineState.resp.consent=this.checked"> I consent to my response being used as research for this brand.' + ((s.pay || 0) > 0 ? ' I understand I\u2019ll be compensated after review.' : ' This is a free study: no compensation.') + '</label>'
     + '<div class="mr-nav"><button class="mr-btn" onclick="mineRoute(\'r-home\')">Back</button><button class="mr-btn mr-btn-primary" onclick="mineSubmitResponse()">Submit response →</button></div>';
 }
 /* SEAM:INSTRUMENT — one body renderer for every new instrument, shared by the
@@ -8378,7 +8390,7 @@ function mineSubmitResponse() {
 }
 function vRDone() {
   if (mineState.lastScreened) return '<span class="mr-eyebrow">Screened</span><h2 class="mr-h">Not this one.</h2>'
-    + '<p class="mr-p">Thanks for your interest in \u201c' + safe(mineState.lastTitle || '') + '\u201d \u2014 this study is looking for a specific audience and your answers didn\u2019t match its criteria. Nothing was recorded. More studies are always coming.</p>'
+    + '<p class="mr-p">Thanks for your interest in \u201c' + safe(mineState.lastTitle || '') + '\u201d: this study is looking for a specific audience and your answers didn\u2019t match its criteria. Nothing was recorded. More studies are always coming.</p>'
     + '<div class="mr-nav"><button class="mr-btn mr-btn-primary" onclick="mineRoute(\'r-home\')">Back to studies \u2192</button></div>';
   return '<span class="mr-eyebrow" style="color:var(--accent4)">Submitted</span><h2 class="mr-h">Your voice is in.</h2>'
     + '<p class="mr-p">Thanks for responding to “' + safe(mineState.lastTitle || '') + '.” ' + (mineState.lastPay > 0 ? 'Your <b style="color:var(--accent4)">$' + mineState.lastPay + '</b> is pending review. ' : '') + 'You just helped a brand learn from a real person.</p>'
@@ -8472,8 +8484,8 @@ function vPHome() {
   return '<span class="mr-eyebrow">Partner · ' + safe(me.company) + '</span><h2 class="mr-h">Your research.</h2>'
     + '<div class="mr-nav" style="margin:0 0 6px"><button class="mr-btn mr-btn-primary" onclick="mineNewStudy()">+ New study</button><button class="mr-btn" onclick="mineRoute(\'p-contacts\')">Contacts (' + me.contacts.length + ')</button></div>'
     + '<div class="ma-sec">Studies</div>'
-    + (cards || empty('No studies yet. Create one — build a survey, or upload a video or audio for responders to react to.'))
-    + '<p class="mr-priv" style="margin-top:22px">You only ever see anonymous IDs and segments — never a responder’s name, contact, or payout.</p>';
+    + (cards || empty('No studies yet. Create one: build a survey, or upload a video or audio for responders to react to.'))
+    + '<p class="mr-priv" style="margin-top:22px">You only ever see anonymous IDs and segments, never a responder’s name, contact, or payout.</p>';
 }
 
 // ---- contacts ----
@@ -8485,7 +8497,7 @@ function vPContacts() {
     + '<p class="mr-p">Upload the people you want to hear from. When you launch a study to your contacts, only these responders are invited.</p>'
     + '<div class="ma-card2">' + field('ct-name', 'Name', 'Optional') + field('ct-email', 'Email', 'person@email.com', '', 'email')
     + '<button class="mr-btn mr-btn-primary" onclick="mineAddContact()">+ Add contact</button></div>'
-    + '<label class="mp-label" style="margin-top:18px">Or bulk upload — paste emails (one per line)</label>'
+    + '<label class="mp-label" style="margin-top:18px">Or bulk upload: paste emails (one per line)</label>'
     + '<textarea id="ct-bulk" class="mr-textarea" rows="3" placeholder="a@email.com&#10;b@email.com"></textarea>'
     + '<div class="mr-nav" style="margin-top:10px"><button class="mr-btn" onclick="mineBulkContacts()">Import list</button></div>'
     + '<div class="ma-sec">Your list (' + me.contacts.length + ')</div>' + (rows || empty('No contacts yet.'));
@@ -8670,7 +8682,7 @@ function mineMethodPick(id) {
   if (!d.title) d.title = m.name;
   mineState.qedit = null;
   mineRoute('p-new');
-  showToast(m.name + ' loaded \u2014 ' + d.questions.length + ' questions, all editable');
+  showToast(m.name + ' loaded: ' + d.questions.length + ' questions, all editable');
 }
 function mineMethodBlank() {
   const d = mineState.draft; if (!d) return;
@@ -8725,7 +8737,7 @@ function vPNew() {
     + '<select id="q-type" class="mr-field" onchange="mineQFormToggle()">'
     + [['single', 'Single choice'], ['multi', 'Multiple choice'], ['ab', 'Forced choice (A vs B)'], ['scale', 'Rating scale'], ['nps', 'NPS (0–10)'], ['rank', 'Rank order'], ['numeric', 'Number'], ['open', 'Open text'], ['screener', 'Screener (qualify)'], ['attention', 'Attention check (quality)']].map(o => '<option value="' + o[0] + '"' + (o[0] === formType ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>'
     + (sbEnabled() ? ('<div class="ma-clip" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0">'
-      + '<span id="q-asset-chip">' + (mineState.qAsset ? '\u25A6 ' + safe(mineState.qAsset.name) : 'No stimulus attached \u2014 image, video, audio, or an HTML page respondents click through')
+      + '<span id="q-asset-chip">' + (mineState.qAsset ? '\u25A6 ' + safe(mineState.qAsset.name) : 'No stimulus attached: image, video, audio, or an HTML page respondents click through')
       + '</span><span>' + (mineState.qAsset ? '<button class="u-trace" onclick="_qAssetClear()">remove</button> ' : '')
       + '<label class="u-trace" style="cursor:pointer">attach<input type="file" accept="image/*,video/*,audio/*,.html,.htm" style="display:none" onchange="_qAssetPick(this)"></label></span></div>') : '')
     + '<input id="q-prompt" class="mr-field" placeholder="Question prompt" value="' + safeAttr(qe ? qe.prompt : '') + '">'
@@ -8736,7 +8748,7 @@ function vPNew() {
   const audOpen = d.audience === 'open';
   const contactPick = !audOpen ? '<div class="ma-chiprow">' + (me.contacts.length ? me.contacts.map(c =>
     '<button class="mp-aud' + (d.contactEmails.indexOf(c.email) >= 0 ? ' on' : '') + '" onclick="mineToggleInvite(\'' + safeAttr(c.email) + '\',this)">' + safe(c.email) + '</button>').join('')
-    : '<span class="ma-muted">No contacts yet — <button class="u-trace" onclick="mineRoute(\'p-contacts\')">add some</button></span>') + '</div>' : '';
+    : '<span class="ma-muted">No contacts yet: <button class="u-trace" onclick="mineRoute(\'p-contacts\')">add some</button></span>') + '</div>' : '';
 
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineSaveDraftMeta();mineRoute(mineSession.role === \'admin\' ? \'a-home\' : \'p-home\')">← Back</button>'
     + '<span class="mr-eyebrow">New study</span><h2 class="mr-h">Build it.</h2>'
@@ -8744,12 +8756,12 @@ function vPNew() {
     + field('nd-title', 'Study title', 'e.g. React to our spring campaign', d.title)
     + area('nd-goal', 'What do you want to learn?', 'The decision this informs…', d.goal)
     + field('nd-pay', 'Reward per response ($)', '10', String(d.pay == null ? 10 : d.pay), 'number')
-    + '<p class="mr-priv" style="margin:-4px 0 8px">Set $0 to run a free study — responders volunteer, nothing is funded or paid out.</p>'
-    + field('nd-target', 'Target responses (optional)', 'e.g. 50 — study auto-closes when reached', d.targetN == null ? '' : String(d.targetN), 'number')
+    + '<p class="mr-priv" style="margin:-4px 0 8px">Set $0 to run a free study: responders volunteer, nothing is funded or paid out.</p>'
+    + field('nd-target', 'Target responses (optional)', 'e.g. 50: study auto-closes when reached', d.targetN == null ? '' : String(d.targetN), 'number')
     + '<label class="mr-check" style="margin-top:6px"><input type="checkbox" id="nd-public"' + (d.publicListing ? ' checked' : '') + '> List this study publicly on the MINE board <span style="color:var(--text3)">(open-audience studies only)</span></label>'
     + assetBlock
     + '<div class="ma-sec">Questions (' + d.questions.length + ')</div>'
-    + (qlist || empty('No questions yet — add your first below.')) + qform
+    + (qlist || empty('No questions yet: add your first below.')) + qform
     + '<div class="ma-sec">Who responds?</div>'
     + '<div class="ma-chiprow"><button class="mp-aud' + (audOpen ? ' on' : '') + '" onclick="mineDraftAud(\'open\')">Open to matched responders</button><button class="mp-aud' + (!audOpen ? ' on' : '') + '" onclick="mineDraftAud(\'contacts\')">Only my contacts</button></div>'
     + contactPick
@@ -8776,7 +8788,7 @@ function mineQFormToggle() {
   const pp = document.getElementById('q-pass');
   if (pp) {
     pp.style.display = (t === 'screener' || t === 'attention' || t === 'scale') ? '' : 'none';
-    pp.placeholder = t === 'attention' ? 'The correct answer (must match an option) \u2014 wrong answers flag, never reject'
+    pp.placeholder = t === 'attention' ? 'The correct answer (must match an option): wrong answers flag, never reject'
       : t === 'scale' ? 'Anchor labels: low, high (e.g. Not at all, Extremely)'
       : 'Qualifying answers (comma-separated, must match options)';
   }
@@ -8802,22 +8814,22 @@ async function _qAssetPick(input) {
       mineState.qAsset = { key: d.data.key, name: f.name };
       const chip = document.getElementById('q-asset-chip');
       if (chip) chip.textContent = '\u25A6 ' + f.name;
-      showToast('Stimulus attached \u2014 saves with the question');
-    } else showToast('Upload failed \u2014 try again');
-  } catch (e) { showToast('Upload failed \u2014 try again'); }
+      showToast('Stimulus attached: saves with the question');
+    } else showToast('Upload failed: try again');
+  } catch (e) { showToast('Upload failed: try again'); }
 }
 function _qAssetClear() { mineState.qAsset = null; const chip = document.getElementById('q-asset-chip'); if (chip) chip.textContent = 'No stimulus attached'; }
 function mineQSave() {
   const d = mineState.draft; const type = v('q-type'); const prompt = v('q-prompt');
   if (!prompt) { showToast('Add a question prompt'); return; }
-  let options = []; if (type === 'single' || type === 'multi' || type === 'screener' || type === 'attention') { options = ((document.getElementById('q-opts') || {}).value || '').split(/[\n,;]+/).map(s => s.trim()).filter(Boolean); if (options.length < 2) { showToast('Add at least two options \u2014 one per line or comma-separated'); return; } }
+  let options = []; if (type === 'single' || type === 'multi' || type === 'screener' || type === 'attention') { options = ((document.getElementById('q-opts') || {}).value || '').split(/[\n,;]+/).map(s => s.trim()).filter(Boolean); if (options.length < 2) { showToast('Add at least two options: one per line or comma-separated'); return; } }
   let passOptions = null;
   if (type === 'screener' || type === 'attention') {
     passOptions = (((document.getElementById('q-pass') || {}).value || '').split(',').map(s => s.trim()).filter(Boolean));
     passOptions = passOptions.filter(pv => options.indexOf(pv) >= 0);
     if (!passOptions.length) { showToast(type === 'screener'
       ? 'Screeners need at least one qualifying answer that matches an option'
-      : 'Attention checks need the correct answer \u2014 it must match an option'); return; }
+      : 'Attention checks need the correct answer: it must match an option'); return; }
   }
   mineSaveDraftMeta();
   const _qa = mineState.qAsset || null; mineState.qAsset = null;
@@ -8852,9 +8864,9 @@ function mineStudyDetail(s, backView, admin) {
   const summary = mineSummary(s, resp);
   const list = resp.map(r => mineResponseCard(s, r)).join('');
   const partner = mPartner(s.partnerId);
-  const lakeRow = (resp.length && sbEnabled() && API_BASE) ? ('<div class="ma-row"><div><div class="ma-row-t">The lake</div><div class="ma-row-s">Send this study\u2019s read and verbatims into the intelligence lake \u2014 EXCAVATE searches primary research beside cultural signal.</div></div><button class="mr-btn" onclick="mineLakeSync(\'' + s.id + '\')">Send to the lake</button></div>') : '';
-  const linkRow = (s.status === 'live') ? ('<div class="ma-row"><div><div class="ma-row-t">Response link</div><div class="ma-row-s">' + (s.pay > 0 ? 'Signed-in flow — the link routes takers through profile and Stripe payout as designed.' : 'Free study — anyone with the link responds with just an email and ZIP, no profile.') + '</div></div><button class="mr-btn" onclick="mineCopyLink(\'' + s.id + '\')">Copy link</button></div>') : '';
-  const listRow = (s.audience === 'open' && s.status !== 'draft') ? ('<div class="ma-row"><div><div class="ma-row-t">Public listing</div><div class="ma-row-s">' + (s.publicListing ? 'Live on the MINE board — anyone can find and take this study.' : 'Unlisted — only people with the link or an invite can take it.') + '</div></div><button class="mr-btn" onclick="mineToggleListing(\'' + s.id + '\')">' + (s.publicListing ? 'Unlist' : 'List publicly') + '</button></div>') : '';
+  const lakeRow = (resp.length && sbEnabled() && API_BASE) ? ('<div class="ma-row"><div><div class="ma-row-t">The lake</div><div class="ma-row-s">Send this study\u2019s read and verbatims into the intelligence lake: EXCAVATE searches primary research beside cultural signal.</div></div><button class="mr-btn" onclick="mineLakeSync(\'' + s.id + '\')">Send to the lake</button></div>') : '';
+  const linkRow = (s.status === 'live') ? ('<div class="ma-row"><div><div class="ma-row-t">Response link</div><div class="ma-row-s">' + (s.pay > 0 ? 'Signed-in flow: the link routes takers through profile and Stripe payout as designed.' : 'Free study: anyone with the link responds with just an email and ZIP, no profile.') + '</div></div><button class="mr-btn" onclick="mineCopyLink(\'' + s.id + '\')">Copy link</button></div>') : '';
+  const listRow = (s.audience === 'open' && s.status !== 'draft') ? ('<div class="ma-row"><div><div class="ma-row-t">Public listing</div><div class="ma-row-s">' + (s.publicListing ? 'Live on the MINE board: anyone can find and take this study.' : 'Unlisted: only people with the link or an invite can take it.') + '</div></div><button class="mr-btn" onclick="mineToggleListing(\'' + s.id + '\')">' + (s.publicListing ? 'Unlist' : 'List publicly') + '</button></div>') : '';
   return '<button class="mr-btn" style="margin-bottom:18px" onclick="mineRoute(\'' + backView + '\')">← Back</button>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span class="mr-eyebrow">' + mineTypeLabel(s.type) + ' · </span>' + mPill(s.status)
     + '<span style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -8866,13 +8878,13 @@ function mineStudyDetail(s, backView, admin) {
     + '<button class="mr-btn" style="color:var(--red,#FF3333)" onclick="mineDeleteStudy(\'' + s.id + '\')">' + (mResponsesFor(s.id).length ? 'Archive' : 'Delete') + '</button>'
     + '</span></div>'
     + '<h2 class="mr-h">' + safe(s.title) + '</h2>' + (s.goal ? '<p class="mr-p">' + safe(s.goal) + '</p>' : '')
-    + (admin ? '<p class="ma-muted">Partner: ' + safe(partner ? partner.company : '—') + '</p>' : '')
+    + (admin ? '<p class="ma-muted">Partner: ' + safe(partner ? partner.company : '·') + '</p>' : '')
     + '<div class="ma-metrics">' + metric(s.targetN ? resp.length + ' / ' + s.targetN : resp.length, 'Responses') + metric((s.questions || []).length, 'Questions') + metric(s.pay > 0 ? '$' + s.pay : 'Free', 'Per response') + metric(s.audience === 'open' ? 'Open' : 'Invited', 'Audience') + '</div>'
     + ((sbEnabled() && API_BASE) ? mineFundBlock(s, resp) : '')
     + (resp.length ? mineReadBlock(s, resp) : '')
     + (resp.length ? '<div class="ma-sec">What the data says</div>' + summary : '')
-    + linkRow + _fieldRailRow(s, admin) + _clientAccessRow(s, admin) + lakeRow + listRow + '<div class="ma-sec">Responses — every one is a receipt</div>'
-    + (list || empty('No responses yet. ' + (s.status === 'live' ? 'Live and waiting — responders who match will see it.' : 'Launch the study to start collecting.')));
+    + linkRow + _fieldRailRow(s, admin) + _clientAccessRow(s, admin) + lakeRow + listRow + '<div class="ma-sec">Responses: every one is a receipt</div>'
+    + (list || empty('No responses yet. ' + (s.status === 'live' ? 'Live and waiting: responders who match will see it.' : 'Launch the study to start collecting.')));
 }
 function mineSummary(s, resp) {
   if (!resp.length) return '';
@@ -8929,10 +8941,10 @@ function mineResponseCard(s, r) {
 // AI. Falls back to an honest computed read when the backend isn't connected.
 function mineReadBlock(s, resp) {
   const hint = API_BASE
-    ? 'Fused from every response by the same engine that powers Excavate — grounded in the quotes below, never invented.'
+    ? 'Fused from every response by the same engine that powers Excavate: grounded in the quotes below, never invented.'
     : 'Connect the studio backend (set API_BASE) for the AI-fused read. A computed summary is available now.';
   const inp = 'flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#E8E8EE;padding:11px 13px;border-radius:9px;font-size:13px;font-family:inherit;outline:none';
-  return '<div class="ma-sec">The Read — AI synthesis</div>'
+  return '<div class="ma-sec">The Read: AI synthesis</div>'
     + '<div id="mine-read" class="ma-sum" style="line-height:1.6">'
     +   '<p class="mr-p" style="margin:0 0 12px;color:var(--text3)">' + safe(hint) + '</p>'
     +   '<button class="mr-btn-primary" onclick="mineGenRead(\'' + s.id + '\')">Generate the Read</button> <button class="mr-btn" onclick="mineExportReport(\'' + s.id + '\')">Print report</button>'
@@ -8957,7 +8969,7 @@ async function mineGenRead(id) {
     const text = ((d && d.data && d.data.text) || '').trim();
     if (text) { const el = document.createElement('div'); el.style.whiteSpace = 'pre-wrap'; el.style.lineHeight = '1.65'; el.textContent = text; box.innerHTML = ''; box.appendChild(el); }
     else box.innerHTML = mineReadFallback(s, resp);
-  } catch (e) { box.innerHTML = mineReadFallback(s, resp); showToast('AI read unavailable — showing the computed summary'); }
+  } catch (e) { box.innerHTML = mineReadFallback(s, resp); showToast('AI read unavailable: showing the computed summary'); }
 }
 
 async function mineAskData(id) {
@@ -8976,7 +8988,7 @@ async function mineAskData(id) {
     const qEl = document.createElement('div'); qEl.className = 'ma-q'; qEl.style.marginTop = '4px'; qEl.textContent = '“' + q + '”';
     const aEl = document.createElement('div'); aEl.style.whiteSpace = 'pre-wrap'; aEl.style.lineHeight = '1.65'; aEl.style.marginTop = '6px'; aEl.textContent = text;
     ans.innerHTML = ''; ans.appendChild(qEl); ans.appendChild(aEl);
-  } catch (e) { ans.innerHTML = '<p class="mr-p">Couldn\'t answer that just now — try again.</p>'; }
+  } catch (e) { ans.innerHTML = '<p class="mr-p">Couldn\'t answer that just now: try again.</p>'; }
 }
 
 // Honest, computed fallback read (no AI) — every figure traces to real responses.
@@ -8985,14 +8997,14 @@ function mineReadFallback(s, resp) {
   (s.questions || []).forEach(q => {
     if (q.type === 'open') {
       const n = resp.filter(r => String(r.answers[q.id] || '').trim()).length;
-      if (n) parts.push('“' + q.prompt + '” — ' + n + ' left open feedback.');
+      if (n) parts.push('“' + q.prompt + '”: ' + n + ' left open feedback.');
     } else if (q.type === 'scale') {
       const vals = resp.map(r => parseFloat(r.answers[q.id])).filter(x => !isNaN(x));
-      if (vals.length) parts.push('“' + q.prompt + '” — average ' + (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) + '/5 across ' + vals.length + '.');
+      if (vals.length) parts.push('“' + q.prompt + '”: average ' + (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) + '/5 across ' + vals.length + '.');
     } else {
       const counts = {}; resp.forEach(r => { const a = r.answers[q.id]; (Array.isArray(a) ? a : [a]).forEach(x => { if (x != null) counts[x] = (counts[x] || 0) + 1; }); });
       const top = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-      if (top) parts.push('“' + q.prompt + '” — most chose “' + top + '” (' + counts[top] + ').');
+      if (top) parts.push('“' + q.prompt + '”: most chose “' + top + '” (' + counts[top] + ').');
     }
   });
   const note = API_BASE ? '' : ' Connect the studio backend for the AI-fused narrative read.';
@@ -9004,7 +9016,7 @@ function mineReadFallback(s, resp) {
 function minePayoutCard() {
   return '<div class="ma-sec">Payouts</div>'
     + '<div class="ma-row"><div><div class="ma-row-t">Get paid for your responses</div>'
-    + '<div class="ma-row-s">Secure payouts via Stripe — <span id="mine-payout-pill" class="uai-status st-dev" style="font-size:9px">Checking…</span></div></div>'
+    + '<div class="ma-row-s">Secure payouts via Stripe: <span id="mine-payout-pill" class="uai-status st-dev" style="font-size:9px">Checking…</span></div></div>'
     + '<button id="mine-payout-btn" class="mr-btn" onclick="minePayoutSetup()">Set up payouts</button></div>';
 }
 async function minePayoutSetup() {
@@ -9038,15 +9050,15 @@ async function minePayResponse(responseId, studyId) {
       showToast('Responder paid ✓');
       mineRoute(mineSession.role === 'admin' ? 'a-study' : 'p-study', studyId);
     } else showToast(_payErr(d && d.error));
-  } catch (e) { showToast('Payment failed — try again'); }
+  } catch (e) { showToast('Payment failed: try again'); }
 }
 function _payErr(code) {
-  return code === 'study_unfunded' ? 'This study’s budget is used up — fund more responses'
+  return code === 'study_unfunded' ? 'This study’s budget is used up: fund more responses'
     : code === 'responder_not_onboarded' ? 'Responder hasn’t set up payouts yet'
     : code === 'already_paid' ? 'Already paid'
     : code === 'payments_unconfigured' ? 'Payments aren’t configured on the backend yet'
     : code === 'forbidden' ? 'You can only pay responses to your own studies'
-    : code === 'transfer_failed' ? 'Payment provider declined — check your Stripe balance'
+    : code === 'transfer_failed' ? 'Payment provider declined: check your Stripe balance'
     : 'Payment could not be completed';
 }
 
@@ -9054,7 +9066,7 @@ function _payErr(code) {
 // ── MINE: partner pre-funds a study's response budget (Stripe Checkout) ──────
 function mineFundBlock(s, resp) {
   /* SEAM:FREE_STUDY — $0 studies never touch the funding rail. No Stripe object exists for free. */
-  if (!(s.pay > 0)) return '<div class="ma-sec">Response budget</div><div class="ma-row"><div><div class="ma-row-t">Free study</div><div class="ma-row-s">Responders volunteer — no funding, no payouts, no Stripe.</div></div></div>';
+  if (!(s.pay > 0)) return '<div class="ma-sec">Response budget</div><div class="ma-row"><div><div class="ma-row-t">Free study</div><div class="ma-row-s">Responders volunteer: no funding, no payouts, no Stripe.</div></div></div>';
   const funded = Math.round(s.fundedCents || 0) / 100;
   const paidOut = (resp || []).filter(r => r.status === 'paid').length * (s.pay || 0);
   const remaining = funded - paidOut;
@@ -9062,7 +9074,7 @@ function mineFundBlock(s, resp) {
   const inp = 'width:62px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#E8E8EE;padding:8px;border-radius:8px;font-family:inherit;font-size:13px;outline:none';
   return '<div class="ma-sec">Response budget</div>'
     + '<div class="ma-metrics">' + metric('$' + funded, 'Funded') + metric('$' + paidOut, 'Paid out') + metric('$' + remaining, 'Remaining') + '</div>'
-    + (low ? '<p class="mr-p" style="color:var(--accent4);margin:-6px 0 10px">Budget runs out at the next payout — fund more to keep paying responders.</p>' : '')
+    + (low ? '<p class="mr-p" style="color:var(--accent4);margin:-6px 0 10px">Budget runs out at the next payout: fund more to keep paying responders.</p>' : '')
     + '<div class="ma-row"><div><div class="ma-row-t">Fund more responses</div><div class="ma-row-s">$' + (s.pay || 0) + ' each · pre-pay so responders get paid instantly</div></div>'
     + '<span style="display:flex;gap:8px;align-items:center"><input id="mine-fund-qty" type="number" min="1" value="10" style="' + inp + '">'
     + '<button class="mr-btn mr-btn-primary" onclick="mineFundStudy(\'' + s.id + '\')">Fund →</button></span></div>';
@@ -9082,7 +9094,7 @@ async function mineFundStudy(id) {
 function _handleReturnFlags() {
   try {
     const p = new URLSearchParams(window.location.search);
-    if (p.has('funded')) showToast(p.get('funded') === 'cancel' ? 'Checkout cancelled' : 'Payment received — funding your study…');
+    if (p.has('funded')) showToast(p.get('funded') === 'cancel' ? 'Checkout cancelled' : 'Payment received: funding your study…');
     else if (p.has('payout')) showToast(p.get('payout') === 'done' ? 'Payout setup complete' : 'Payout setup saved');
     if (p.has('studio')) { try { sessionStorage.setItem('uai_pending_studio', '1'); } catch (e3) {} p.delete('studio'); const q1 = p.toString(); history.replaceState({}, '', window.location.pathname + (q1 ? '?' + q1 : '')); }
     if (p.has('insight')) { const _iid = String(p.get('insight') || '').slice(0, 40); if (/^[0-9a-f-]{36}$/.test(_iid)) setTimeout(() => { try { openFeaturedCard(_iid); } catch (e5) {} }, 1200); p.delete('insight'); const q2 = p.toString(); history.replaceState({}, '', window.location.pathname + (q2 ? '?' + q2 : '')); }   // SEAM:RECORD_SCROLL: a permalink
@@ -9104,8 +9116,8 @@ async function mineLakeSync(id) {
   const read = (document.getElementById('mine-read') || {}).innerText || '';
   try {
     const d = await api('mine/lake-sync', { study_id: id, read: read.indexOf('Generate the Read') < 0 ? read.slice(0, 500) : '' });
-    showToast(d && d.ok ? (d.note || 'Sent to the lake') : 'Sync failed \u2014 ' + ((d && d.error) || 'try again'));
-  } catch (e) { showToast('Sync failed \u2014 try again'); }
+    showToast(d && d.ok ? (d.note || 'Sent to the lake') : 'Sync failed: ' + ((d && d.error) || 'try again'));
+  } catch (e) { showToast('Sync failed: try again'); }
 }
 /* SEAM:MINE_SCALE — the report is the deliverable a partner forwards; print owns the PDF */
 function mineExportReport(id) {
@@ -9118,14 +9130,14 @@ function mineExportReport(id) {
     const qa = Object.keys(r.answers || {}).map(k => '<div class="q">' + safe(qmap[k] || 'Question') + '</div><div class="a">' + safe(Array.isArray(r.answers[k]) ? r.answers[k].join(', ') : String(r.answers[k])) + '</div>').join('');
     return '<div class="rc"><span class="who">' + safe(r.anon || 'anon') + '</span>' + (r.segments && r.segments.length ? ' <span class="seg">\u00B7 ' + safe(r.segments.join(', ')) + '</span>' : '') + '<div class="qa">' + qa + '</div></div>';
   }).join('');
-  const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + safe(s.title) + ' \u2014 Unsurfaced MINE report</title><style>' + css + '</style></head><body>'
+  const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + safe(s.title) + ' \u00b7 Unsurfaced MINE report</title><style>' + css + '</style></head><body>'
     + '<div class="wm">Unsurfaced</div><div class="rule"></div>'
     + '<div class="eb">MINE Research Report \u00B7 ' + new Date().toLocaleDateString() + '</div>'
     + '<h1>' + safe(s.title) + '</h1><div class="meta">' + safe(s.goal || '') + '</div>'
     + '<div class="eb">Study</div><div class="meta">' + resp.length + (s.targetN ? ' / ' + s.targetN : '') + ' responses \u00B7 ' + (s.pay > 0 ? '$' + s.pay + ' per response' : 'Free study') + ' \u00B7 ' + safe(s.status) + '</div>'
     + (read && read.indexOf('Generate the Read') < 0 ? '<div class="eb">The Read</div><div>' + safe(read).replace(/\n/g, '<br>') + '</div>' : '')
     + _reportAggregate(s, resp)
-    + '<div class="eb">Responses \u2014 every one is a receipt</div>' + (rows || '<div class="meta">No responses yet.</div>')
+    + '<div class="eb">Responses: every one is a receipt</div>' + (rows || '<div class="meta">No responses yet.</div>')
     + '<div class="ft">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence \u00B7 The read is free. The moves are yours.</div>'
     + '<button onclick="window.print()" style="margin-top:24px;padding:10px 18px;font-family:inherit">Print / Save as PDF</button></body></html>';
   const wnd = window.open('', '_blank'); if (!wnd) { showToast('Allow pop-ups to export the report'); return; }
@@ -9144,7 +9156,7 @@ async function mineCopyLink(id) {
       if (d && d.ok && d.url) { url = d.url; if (s && d.slug) s.slug = d.slug; }
     }
   } catch (e) {}
-  const done = () => showToast('Link copied \u2014 ' + url.replace(/^https?:\/\//, ''));
+  const done = () => showToast('Link copied: ' + url.replace(/^https?:\/\//, ''));
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(() => window.prompt('Copy the response link:', url));
   else window.prompt('Copy the response link:', url);
 }
@@ -9184,7 +9196,7 @@ function _draftPreview() {
   _guestRender();
   setTimeout(() => { const w = document.querySelector('#guestwrap .sb');
     if (w) w.insertAdjacentHTML('afterbegin',
-      '<div style="background:var(--red,#C41230);color:#fff;font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding:6px 10px;margin:0 0 14px">Preview \u2014 exactly what respondents see \u00B7 nothing records</div>'); }, 0);
+      '<div style="background:var(--red,#C41230);color:#fff;font-family:\'Space Mono\',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding:6px 10px;margin:0 0 14px">Preview: exactly what respondents see \u00B7 nothing records</div>'); }, 0);
 }
 async function _tokenMaybeOpen(tok) {
   if (!tok || !API_BASE) return;
@@ -9195,7 +9207,7 @@ async function _tokenMaybeOpen(tok) {
       const code = d && d.error;
       showToast(code === 'already_responded' ? 'This invitation has already been used'
         : code === 'token_revoked' ? 'This invitation is no longer active'
-        : code === 'study_closed' ? 'This study has closed \u2014 thank you'
+        : code === 'study_closed' ? 'This study has closed: thank you'
         : 'This invitation link is not valid');
       return;
     }
@@ -9216,7 +9228,7 @@ function _guestProgress() {
   const qs = _guest.s.questions || [];
   const done = qs.filter(q => { const a = _guest.answers[q.id];
     return a != null && (!Array.isArray(a) || a.length) && String(a).trim() !== ''; }).length;
-  el.textContent = done + ' of ' + qs.length + ' answered' + (done === qs.length && qs.length ? ' \u2014 ready to submit' : '');
+  el.textContent = done + ' of ' + qs.length + ' answered' + (done === qs.length && qs.length ? ': ready to submit' : '');
 }
 function _guestSet(qid, val, multi) {
   if (!_guest) return;
@@ -9264,7 +9276,7 @@ function _stimExpand(btn) {
   const bar = document.createElement('div');
   bar.id = 'stim-fullbar';
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:var(--z-system-top);display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#0A0A0A;color:#FAF7F2;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase';
-  bar.innerHTML = '<span>\u25A6 Interactive stimulus \u2014 your clicks are part of the study</span><button class="mr-btn" style="font-size:10px;padding:5px 12px" onclick="_stimCollapse()">Close \u2715</button>';
+  bar.innerHTML = '<span>\u25A6 Interactive stimulus: your clicks are part of the study</span><button class="mr-btn" style="font-size:10px;padding:5px 12px" onclick="_stimCollapse()">Close \u2715</button>';
   document.body.appendChild(bar);
   frame.setAttribute('style', 'position:fixed;top:42px;left:0;width:100vw;height:calc(100vh - 42px);z-index:var(--z-system);border:0;border-radius:0;background:#fff;margin:0');
   document.body.style.overflow = 'hidden';
@@ -9317,7 +9329,7 @@ function _assetHtml(key, name, tall, qid) {
      in place — the parent relationship, and every click, survives. */
   if (kind === 'html') return ''
     + '<div class="ma-clip" style="margin:8px 0 4px;display:flex;justify-content:space-between;align-items:center;gap:8px">'
-    + '<span>\u25A6 ' + safe(name || 'Interactive page') + ' \u2014 live, click through it</span>'
+    + '<span>\u25A6 ' + safe(name || 'Interactive page') + ': live, click through it</span>'
     + '<button class="u-trace" onclick="_stimExpand(this)">full screen \u2197</button></div>'
     + '<iframe class="ma-media stim-frame"' + (qid ? ' data-qid="' + safeAttr(qid) + '"' : '') + ' src="' + safeAttr(u) + '" sandbox="allow-scripts allow-forms allow-popups" '
     + 'style="width:100%;height:' + (tall ? '560' : '420') + 'px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#fff;margin:0 0 10px" loading="lazy"></iframe>';
@@ -9345,8 +9357,8 @@ function _guestRender() {
   if (_guest.done) {
     /* SEAM:MINE_SCALE — the panel loop: every guest who finishes is a recruited panelist */
     wrap.innerHTML = _guest.screened
-      ? '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Not this one.</h2><div class="sb-sub">This study is looking for a specific audience and your answers didn\u2019t match its criteria \u2014 nothing was recorded. Join the panel and the right studies find you.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>'
-      : '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Your voice is in.</h2><div class="sb-sub">Thanks for responding to \u201c' + safe(s.title) + '\u201d \u2014 you just helped a brand learn from a real person.</div><div class="sb-sub" style="margin-top:10px">Want to get <b>paid</b> for the next one? Join the panel \u2014 your email carries over.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>';
+      ? '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Not this one.</h2><div class="sb-sub">This study is looking for a specific audience and your answers didn\u2019t match its criteria: nothing was recorded. Join the panel and the right studies find you.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>'
+      : '<div class="sb" role="dialog" aria-modal="true"><div class="sb-eyebrow">MINE \u00B7 Free study</div><h2>Your voice is in.</h2><div class="sb-sub">Thanks for responding to \u201c' + safe(s.title) + '\u201d: you just helped a brand learn from a real person.</div><div class="sb-sub" style="margin-top:10px">Want to get <b>paid</b> for the next one? Join the panel: your email carries over.</div><button class="mr-btn mr-btn-primary" style="margin-top:14px" onclick="_guestJoinPanel()">Join the panel \u2192</button> <button class="mr-btn" style="margin-top:14px" onclick="_guestClose()">Done</button></div>';
     return;
   }
   const media = s.asset_key ? _assetHtml(s.asset_key, s.asset_name || (s.type === 'video' ? 'video.mp4' : s.type === 'audio' ? 'audio.mp3' : ''), true) : '';
@@ -9362,8 +9374,8 @@ function _guestRender() {
     : '<div style="font-weight:700;margin:18px 0 4px">Your email</div><input id="guest-email" type="email" placeholder="you@example.com" style="' + inp + '" value="' + safeAttr(_guest.email || '') + '">'
       + '<div style="font-weight:700;margin:6px 0 4px">ZIP code</div><input id="guest-zip" type="text" inputmode="numeric" maxlength="5" placeholder="60452" style="' + inp + '" value="' + safeAttr(_guest.zip || '') + '">';
   const _consentLine = _tk
-    ? 'I am 18 or older and I consent to my response \u2014 including how I interact with any pages or materials shown \u2014 being used as research for this brand. I can withdraw and request deletion at any time.'
-    : 'I consent to my response \u2014 including how I interact with any pages or materials shown \u2014 being used as research. This is a free study \u2014 no compensation.';
+    ? 'I am 18 or older and I consent to my response, including how I interact with any pages or materials shown, being used as research for this brand. I can withdraw and request deletion at any time.'
+    : 'I consent to my response, including how I interact with any pages or materials shown, being used as research. This is a free study: no compensation.';
   wrap.innerHTML = '<div class="sb" role="dialog" aria-modal="true"><button class="sb-close" onclick="_guestClose()">CLOSE \u2715</button>'
     + '<div class="sb-eyebrow">MINE \u00B7 ' + (_tk ? ('Invited study' + (_pay ? ' \u00B7 ' + _pay : '')) : 'Free study') + '</div><h2>' + safe(s.title) + '</h2>'
     + (s.goal ? '<div class="sb-sub">' + safe(s.goal) + '</div>' : '')
@@ -9376,7 +9388,7 @@ function _guestRender() {
 }
 async function _guestSubmit() {
   const s = _guest.s;
-  if (_guest.preview) { showToast('Preview only \u2014 launch the study to collect real responses'); return; }
+  if (_guest.preview) { showToast('Preview only: launch the study to collect real responses'); return; }
   /* SEAM:FIELD_RAIL — the invited branch. duration_ms is the honest read of
      how long this took; the worker's quality scan uses it to catch a farmed
      response. Nothing here decides anything — the scan flags, an admin
@@ -9398,10 +9410,10 @@ async function _guestSubmit() {
       if (d && d.ok) { _guest.done = true; _guest.screened = !!(d.data && d.data.screened); _guestRender(); return; }
       const code = d && d.error;
       showToast(code === 'already_responded' ? 'This invitation has already been used'
-        : code === 'study_closed' ? 'This study has closed \u2014 thank you'
+        : code === 'study_closed' ? 'This study has closed: thank you'
         : code === 'consent_required' ? 'Please confirm consent to continue'
-        : 'Submit failed \u2014 try again');
-    } catch (e) { showToast('Submit failed \u2014 try again'); }
+        : 'Submit failed: try again');
+    } catch (e) { showToast('Submit failed: try again'); }
     return;
   }
   const email = (document.getElementById('guest-email') || {}).value || '';
@@ -9419,10 +9431,10 @@ async function _guestSubmit() {
     if (d && d.ok) { _guest.done = true; _guest.screened = !!(d.data && d.data.screened); _guestRender(); try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {} return; }
     const code = d && d.error;
     showToast(code === 'already_responded' ? 'This email already responded to this study'
-      : code === 'paid_study' ? 'This is a paid study \u2014 sign up to take it and get paid'
+      : code === 'paid_study' ? 'This is a paid study: sign up to take it and get paid'
       : code === 'rate_limited' ? 'Too many submissions from this connection today'
-      : 'Submit failed \u2014 try again');
-  } catch (e) { showToast('Submit failed \u2014 try again'); }
+      : 'Submit failed: try again');
+  } catch (e) { showToast('Submit failed: try again'); }
 }
 function _guestJoinPanel() {
   const em = (_guest && _guest.email) || '';
@@ -9432,7 +9444,7 @@ function _guestJoinPanel() {
   _gateForDoor(null);
   const su = document.querySelector('.lg-tab[data-tab=signup], .lg-tab:nth-child(2)'); if (su) su.click();
   const f = document.querySelector('#login-gate input[type=email]'); if (f) { f.value = em; f.focus(); }
-  showToast('Create your account \u2014 your responses ride with this email.');
+  showToast('Create your account: your responses ride with this email.');
 }
 function _guestClose() { const w = document.getElementById('guestwrap'); if (w) w.remove(); document.body.style.overflow = ''; _guest = null; window._clickStore = null; }
 /* SEAM:GUEST_LINK — the signed-in half of the link. __minePendingLaunch only ever
@@ -9460,7 +9472,7 @@ async function _pendingStudyAfterAuth(tries) {
   try { sessionStorage.removeItem('mine_pending_study'); } catch (e) {}
   await _sbOpenMine(role);
   if (typeof mStudy === 'function' && mStudy(id)) { mineRoute(role === 'admin' ? 'a-study' : 'p-study', id); }
-  else showToast("That study isn't in your view \u2014 open the link in a private window to respond as a guest.");
+  else showToast("That study isn't in your view: open the link in a private window to respond as a guest.");
 }
 function mineDeleteStudy(id) {
   const s = mStudy(id); if (!s) return; const hasResp = mResponsesFor(id).length > 0;
@@ -9468,14 +9480,14 @@ function mineDeleteStudy(id) {
   if (!window.confirm(q)) return;
   if (sbEnabled()) return _sbDeleteStudy(id);
   const isAdmin = mineSession.role === 'admin';
-  if (hasResp) { s.status = 'archived'; showToast('Study archived — responses kept'); }
+  if (hasResp) { s.status = 'archived'; showToast('Study archived: responses kept'); }
   else { mineDB.studies = mineDB.studies.filter(x => x.id !== id); showToast('Study deleted'); }
   mineSave(); mineRoute(isAdmin ? 'a-home' : 'p-home'); }
 
 // ============================ ADMIN (master) ==========================
 function vAHome() {
   const r = mineDB.responders, p = mineDB.partners, st = mineDB.studies, rs = mineDB.responses;
-  const studies = st.map(s => { const pt = mPartner(s.partnerId); return '<div class="ma-row"><div><div class="ma-row-t">' + safe(s.title) + '</div><div class="ma-row-s">' + safe(pt ? pt.company : '—') + ' · ' + mineTypeLabel(s.type) + ' · ' + mPill(s.status) + '</div></div><div style="display:flex;gap:10px;align-items:center"><span class="ma-muted">' + mResponsesFor(s.id).length + ' resp</span><button class="mr-btn" onclick="mineRoute(\'a-study\',\'' + s.id + '\')">Open</button></div></div>'; }).join('');
+  const studies = st.map(s => { const pt = mPartner(s.partnerId); return '<div class="ma-row"><div><div class="ma-row-t">' + safe(s.title) + '</div><div class="ma-row-s">' + safe(pt ? pt.company : '·') + ' · ' + mineTypeLabel(s.type) + ' · ' + mPill(s.status) + '</div></div><div style="display:flex;gap:10px;align-items:center"><span class="ma-muted">' + mResponsesFor(s.id).length + ' resp</span><button class="mr-btn" onclick="mineRoute(\'a-study\',\'' + s.id + '\')">Open</button></div></div>'; }).join('');
   const responders = r.map(x => '<div class="ma-row"><div><div class="ma-row-t">' + safe(x.name) + ' <span class="ma-muted">' + safe(x.anon) + '</span></div><div class="ma-row-s">' + safe(x.email) + ' · ' + safe((x.interests || []).slice(0, 3).join(', ')) + '</div></div><span class="ma-muted">' + mineDB.responses.filter(z => z.responderId === x.id).length + ' responses</span></div>').join('');
   const partners = p.map(x => '<div class="ma-row"><div><div class="ma-row-t">' + safe(x.company) + '</div><div class="ma-row-s">' + safe(x.contactName) + ' · ' + safe(x.email) + '</div></div><span class="ma-muted">' + st.filter(z => z.partnerId === x.id).length + ' studies</span></div>').join('');
   return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><span class="mr-eyebrow" style="color:var(--accent4)">Research Ops · Master</span><button class="mr-btn" onclick="mineConfirmReset()">Reset all data</button></div>'
@@ -10010,7 +10022,7 @@ const _FEATURED_POOL = {
     { id:'value-paradox',    title:'The Value Paradox',
       subtitle:'Premiumisation and Trade-Down Happening Simultaneously',
       query:'consumer premiumisation trade down value paradox spending behaviour',
-      deck:'Consumers are spending more on some categories and less on others — the middle is collapsing.',
+      deck:'Consumers are spending more on some categories and less on others: the middle is collapsing.',
       hook:'Simultaneous premiumisation and trade-down is fragmenting category dynamics across income brackets.',
       stat:'↑ Market signal', bar:71 },
     { id:'wellness-anxiety', title:'Wellness Anxiety',
@@ -10029,7 +10041,7 @@ const _FEATURED_POOL = {
       subtitle:'The Collapse of the Path-to-Purchase',
       query:'social commerce TikTok shop Instagram purchase discovery consumer',
       deck:'Discovery, consideration, and purchase have collapsed into a single social moment.',
-      hook:'The traditional purchase funnel is obsolete — discovery and transaction now occur in the same scroll.',
+      hook:'The traditional purchase funnel is obsolete: discovery and transaction now occur in the same scroll.',
       stat:'↑ Fast signal', bar:89 },
     { id:'gen-alpha',        title:'Gen Alpha Influence',
       subtitle:'The First AI-Native Consumer Generation',
@@ -10085,13 +10097,13 @@ const _FEATURED_POOL = {
       subtitle:'Why Every Brand Needs a Sports Strategy',
       query:'sports marketing investment brand ROI cultural capital athlete partnership',
       deck:'Sports has become the dominant cultural currency for brand relevance in 2024 and beyond.',
-      hook:'Live sports is the only remaining appointment-viewing context — scarcity is repricing sports inventory.',
+      hook:'Live sports is the only remaining appointment-viewing context: scarcity is repricing sports inventory.',
       stat:'↑ Strong signal', bar:85 },
     { id:'subscription-fatigue', title:'Subscription Fatigue',
       subtitle:'The Recurring Revenue Model Under Pressure',
       query:'subscription fatigue consumer cancellation churn retention model brand',
       deck:'Consumer subscription fatigue is restructuring recurring revenue models across entertainment, retail, and SaaS.',
-      hook:'The average consumer now holds more active subscriptions than they can recall — cancellation intent is rising.',
+      hook:'The average consumer now holds more active subscriptions than they can recall: cancellation intent is rising.',
       stat:'↑ Active signal', bar:74 },
   ],
   culture: [
@@ -10099,13 +10111,13 @@ const _FEATURED_POOL = {
       subtitle:'Athletes Outperforming Celebrities in Brand Affinity',
       query:'sports identity fandom cultural capital athlete brand affinity celebrity',
       deck:'Athletes are outperforming celebrities in brand affinity and cultural credibility.',
-      hook:'Sport has become the dominant secular community structure — athlete partnerships are outperforming celebrity endorsement.',
+      hook:'Sport has become the dominant secular community structure: athlete partnerships are outperforming celebrity endorsement.',
       stat:'↑ Culture signal', bar:67 },
     { id:'nostalgia-cycle', title:'Nostalgia Economics',
       subtitle:'Why Retromania Is a Strategic Signal, Not a Trend',
       query:'nostalgia consumer culture brand retro Y2K millennial heritage marketing',
       deck:'Nostalgia is operating as a structural consumer orientation, not a passing aesthetic trend.',
-      hook:'Cyclical nostalgia patterns are accelerating — the revival lag is visibly compressing in digital-native cohorts.',
+      hook:'Cyclical nostalgia patterns are accelerating: the revival lag is visibly compressing in digital-native cohorts.',
       stat:'↑ Culture signal', bar:73 },
     { id:'fandom-brand',    title:'Fandom as Brand Infrastructure',
       subtitle:'Community Ownership as Competitive Moat',
@@ -10116,7 +10128,7 @@ const _FEATURED_POOL = {
     { id:'tiktok-culture',  title:'TikTok Cultural Architecture',
       subtitle:'How Algorithm Culture Is Reshaping Consumer Taste',
       query:'TikTok algorithm culture consumer taste formation trend cycle brand',
-      deck:'TikTok is the dominant cultural taste formation engine — brand relevance now requires platform fluency.',
+      deck:'TikTok is the dominant cultural taste formation engine: brand relevance now requires platform fluency.',
       hook:'TikTok-originated trends are reaching mainstream consumer adoption faster than any prior cultural channel.',
       stat:'↑ Fast signal', bar:94 },
     { id:'masculinity-shift', title:'Masculinity Redefined',
@@ -10128,20 +10140,20 @@ const _FEATURED_POOL = {
     { id:'female-power',    title:'The Female Economy',
       subtitle:'The Most Underserved Consumer Market in History',
       query:'female consumer economy spending power brand women underserved market',
-      deck:'Women control 85% of consumer purchasing decisions — yet most brands still under-serve this market.',
+      deck:'Women control 85% of consumer purchasing decisions, yet most brands still under-serve this market.',
       hook:'Female consumers are self-organising away from brands that fail to reflect their actual values and experience.',
       stat:'↑ Strong signal', bar:88 },
     { id:'quiet-luxury',    title:'Quiet Luxury',
       subtitle:'Conspicuous Restraint as Status Signal',
       query:'quiet luxury consumer aesthetic brand understated status culture logoless',
       deck:'Quiet luxury as cultural aesthetic reflects a shift in how affluent consumers signal status and identity.',
-      hook:'Anti-logoism is the new status signal — conspicuous restraint commands premium perception over heritage branding.',
+      hook:'Anti-logoism is the new status signal: conspicuous restraint commands premium perception over heritage branding.',
       stat:'↑ Active signal', bar:76 },
     { id:'ai-culture',      title:'AI & Human Creativity',
       subtitle:'Consumer Attitudes Toward AI-Generated Content',
       query:'AI creative consumer attitude culture authenticity human generated content',
       deck:'Consumer attitudes toward AI-generated creative content are forming faster than brand strategies can respond.',
-      hook:'Consumer tolerance for AI content varies dramatically by category — authenticity expectations are category-specific.',
+      hook:'Consumer tolerance for AI content varies dramatically by category: authenticity expectations are category-specific.',
       stat:'↑ Fast signal', bar:82 },
   ],
   brand: [
@@ -10149,12 +10161,12 @@ const _FEATURED_POOL = {
       subtitle:'Brand Consideration Threshold Drops Below 6 Seconds',
       query:'consumer attention span advertising recall brand consideration threshold',
       deck:'The effective attention window for brand consideration has compressed to under six seconds.',
-      hook:'Compressed consideration windows require complete creative rethinking — most brand assets are built for a longer attention era.',
+      hook:'Compressed consideration windows require complete creative rethinking: most brand assets are built for a longer attention era.',
       stat:'↑ Brand signal', bar:59 },
     { id:'brand-trust',     title:'The Trust Hierarchy',
       subtitle:'Which Brands Consumers Actually Trust in 2024',
       query:'consumer brand trust hierarchy credibility perception Edelman trust barometer',
-      deck:'Brand trust hierarchies have shifted dramatically — institutional credibility no longer transfers to brands.',
+      deck:'Brand trust hierarchies have shifted dramatically: institutional credibility no longer transfers to brands.',
       hook:'Trust is now earned through demonstrated values, not purchased through advertising spend.',
       stat:'↑ Strong signal', bar:86 },
     { id:'purpose-fatigue', title:'Purpose Fatigue',
@@ -10173,13 +10185,13 @@ const _FEATURED_POOL = {
       subtitle:'The Platform Risk Every CMO Is Managing',
       query:'brand safety advertising platform risk consumer sentiment media placement',
       deck:'Platform content adjacency risk has become a primary CMO concern as brand safety incidents accelerate.',
-      hook:'Brand adjacency incidents cause measurable purchase-intent decline — and recovery is slow, not instant.',
+      hook:'Brand adjacency incidents cause measurable purchase-intent decline, and recovery is slow, not instant.',
       stat:'↑ Risk signal', bar:72 },
     { id:'gen-z-brand',     title:'Gen Z Brand Expectations',
       subtitle:'The New Rules of Brand Relevance',
       query:'Gen Z brand expectations cultural values diversity authenticity marketing',
       deck:'Gen Z applies fundamentally different brand evaluation criteria than any previous consumer cohort.',
-      hook:'Gen Z applies immediate, unforgiving cultural competence tests to brand behaviour — failures are permanent.',
+      hook:'Gen Z applies immediate, unforgiving cultural competence tests to brand behaviour: failures are permanent.',
       stat:'↑ Strong signal', bar:90 },
     { id:'brand-collabs',   title:'Collaboration Culture',
       subtitle:'Why Brand Partnerships Are Outperforming Solo Campaigns',
@@ -10190,8 +10202,8 @@ const _FEATURED_POOL = {
     { id:'employer-brand',  title:'Employer Brand Imperative',
       subtitle:'How Talent Magnetism Shapes Consumer Perception',
       query:'employer brand consumer perception talent attraction brand equity recruitment',
-      deck:'Employer brand and consumer brand perception are converging — talent and customer audiences overlap significantly.',
-      hook:'Employer brand strength now tracks closely with consumer sentiment — they are no longer separate functions.',
+      deck:'Employer brand and consumer brand perception are converging: talent and customer audiences overlap significantly.',
+      hook:'Employer brand strength now tracks closely with consumer sentiment: they are no longer separate functions.',
       stat:'↑ Strong signal', bar:77 },
   ],
 };
@@ -10445,7 +10457,7 @@ function _renderLakeCard(card, i) {
         <span class="card-stat">${card.stat || ''}</span>
         <span style="color:var(--text3)">Open the read →</span>
       </div>
-      ${'' /* SEAM:HUB_FEED — the recurrence bar was relative to the set, not a measurement; the receipts above carry the counts */}
+      ${'' /* SEAM:HUB_FEED: the recurrence bar was relative to the set, not a measurement; the receipts above carry the counts */}
     </div>`;
 }
 
@@ -10605,10 +10617,9 @@ function _renderDoorGrid(door, proposed) {
 /* SEAM:EXC_DOOR_VOICE: this week's read with its photograph and the three movers: the most covered, the fastest rise and the
    sharpest fall among the board's subjects, each a figure the database counted, chosen and never summed. */
 function _renderWeek(data) {
-  const el = document.getElementById('week-block'), hero = document.querySelector('#sec-explore .hero'); if (!el) return;
+  const el = document.getElementById('week-block'); if (!el) return;
   const read = String((data.field && data.field.read) || '').trim(), tiles = (data.door && data.door.tiles) || [];
-  if (!read && !tiles.length) { const lw = document.getElementById('lead-week'); if (lw) lw.style.display = 'none'; if (!(window._leadIds && window._leadIds.size)) el.style.display = 'none'; if (hero) hero.classList.add('solo'); _leadWire(); return; }   // SEAM:LEAD_SCROLL: the rail stays when readings are on it
-  if (hero) hero.classList.remove('solo');
+  if (!read && !tiles.length) { const lw = document.getElementById('lead-week'); if (lw) lw.style.display = 'none'; if (!(window._leadIds && window._leadIds.size)) el.style.display = 'none'; window._weekReady = !!(window._leadIds && window._leadIds.size); _heroSolo(); _leadWire(); return; }   // SEAM:LEAD_SCROLL: the rail stays when readings are on it
   const parts = read.split(/(?<=\.)\s+/).filter(Boolean);
   document.getElementById('week-h2').textContent = parts[0] || '';
   document.getElementById('week-p').textContent = parts.slice(1).join(' ');
@@ -10622,7 +10633,7 @@ function _renderWeek(data) {
   const cool = moved.slice().sort((a, b) => a.measures.velocity_pct - b.measures.velocity_pct)[0];
   const name = t => safe((t.frame && (t.frame.entity || t.frame.category)) || t.title || '');
   const mv = [];
-  if (loud) mv.push(`<div><b data-from="${loud.measures.prior_7d || 0}" data-to="${loud.measures.recent_7d}">${loud.measures.prior_7d || 0}</b><span>Most covered: ${name(loud)}, stories this week</span></div>`);
+  if (loud && loud.measures.recent_7d >= 1) mv.push(`<div><b data-from="${loud.measures.prior_7d || 0}" data-to="${loud.measures.recent_7d}">${loud.measures.prior_7d || 0}</b><span>Most covered: ${name(loud)}, stories this week</span></div>`);
   if (fast && fast.measures.velocity_pct > 0) mv.push(`<div><b><span data-from="0" data-to="${fast.measures.velocity_pct}">0</span><small>%</small></b><span>Fastest rise: ${name(fast)}, on last week</span></div>`);
   if (cool && cool.measures.velocity_pct < 0) mv.push(`<div><b><span data-from="0" data-to="${Math.abs(cool.measures.velocity_pct)}">0</span><small>%</small></b><span>Sharpest fall: ${name(cool)}, on last week</span></div>`);
   document.getElementById('week-movers').innerHTML = mv.join('');
@@ -10630,7 +10641,7 @@ function _renderWeek(data) {
   const fig = document.getElementById('week-photo');
   if (ph) { document.getElementById('week-img').src = ph.src; document.getElementById('week-credit').textContent = ph.credit ? 'Photo: ' + ph.credit : ''; fig.style.display = 'block'; el.classList.remove('nophoto'); }
   else { fig.style.display = 'none'; el.classList.add('nophoto'); }
-  el.style.display = ''; window._weekReady = true;
+  el.style.display = ''; window._weekReady = true; _heroSolo();
   const lw = document.getElementById('lead-week'); if (lw) lw.style.display = '';   // SEAM:LEAD_SCROLL: the week's read leads when it is here
   _leadWire();
   setTimeout(() => el.querySelectorAll('[data-to]').forEach(n => _countUp(n, Number(n.getAttribute('data-from')) || 0, Number(n.getAttribute('data-to')) || 0, 1000)), 400);
@@ -10682,7 +10693,7 @@ function _renderRecord(record) {
 async function _openDoorRead(t) {
   const q = String((t.frame && t.frame.query) || t.title || '').trim();
   closeInsightDashboard(); closePDFPreview();
-  showLoader(q || 'the subject', 'live', ['Opening the reading', 'Placing its evidence', 'Rendering']);
+  showLoader(t.title || q || 'the subject', 'live', ['Opening the reading', 'Placing its evidence', 'Rendering'], 'OPENING THE OVERNIGHT READ');   // EX52a
   try {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/door/read?id=' + encodeURIComponent(t.id), { headers: await _authHeader() });
     const j = r.ok ? await r.json() : null;
@@ -10692,6 +10703,7 @@ async function _openDoorRead(t) {
     window._doorOpen = { id: t.id, query: q, frame: j.data.frame || null };
     _dashShow(false); document.getElementById('error-banner').style.display = 'none';
     _renderLive(q, { items: [], synthesis: j.data, sources: [] });
+    { const h = document.getElementById('results-query'); if (h && t.title) h.textContent = t.title; }   // EX52a: the heading is the subject as the board names it; the rail's search string stays the question underneath (Go deeper, the RECON)
     _reachBlock(t.id);   // SEAM:ROLE_IMPLICATIONS / SEAM:READER_MARKS / SEAM:EVIDENCE_PACK
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (e) { hideLoader(); showToast('Could not open that read'); }
@@ -10854,7 +10866,8 @@ async function _reachBlock(id) {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/roles?id=' + encodeURIComponent(id), { headers: await _authHeader() });
     const j = r.ok ? await r.json() : null; const box = document.getElementById('reach-imps'); if (!box) return;
     if (!j || !j.ok || !(j.implications || []).length) { box.innerHTML = '<span class="pm-none">' + (j && j.error === 'auth_required' ? 'Sign in and set your role to read the implications for it.' : j && j.error === 'not_written' ? safe(j.say || 'The implications for your role are written overnight.') : 'No implications were written for this reading.') + '</span>'; return; }
-    box.innerHTML = `<div class="reach-role">${j.fallback ? 'for every role' : 'for ' + safe(j.role)}</div>` + j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');   // SEAM:POPOUT
+    { const old = el.querySelector('.reach-role'); if (old) old.remove(); box.insertAdjacentHTML('beforebegin', `<div class="reach-role">${j.fallback ? 'for every role' : 'for ' + safe(j.role)}</div>`); }   // EX52a: the role line stands above the three columns, not inside the first
+    box.innerHTML = j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');   // SEAM:POPOUT
   } catch (e) { const box = document.getElementById('reach-imps'); if (box) box.innerHTML = '<span class="pm-none">The implications did not load.</span>'; }
 }
 /* SEAM:INSIGHT_PANEL: the panel on the claim. Ask the panel drafts a three-question MINE study from the reading (reviewed and launched in
@@ -11175,7 +11188,7 @@ async function _askSubmit(ev) {
    sources' photographs, the twelve-week series and the ids, so a current can show the faces of the readings it runs across, the pulse of
    their coverage summed, and open any of them. Nothing is fetched. */
 function _curResolve(c, tiles) {
-  const by = new Map(); for (const t of (tiles || [])) { if (t && t.label) by.set(String(t.label).toLowerCase(), t); }
+  const by = new Map(); for (const t of (tiles || [])) { if (!t || !t.label) continue; const k = String(t.label).toLowerCase(), prev = by.get(k); if (!prev || String(t.deployed || '') > String(prev.deployed || '')) by.set(k, t); }   // EX52a: the newest deployment of a subject is its face, whatever order the record arrives in
   const subs = (c.subjects || []).map(s => { const t = by.get(String(s).toLowerCase()) || null; return { name: s, tile: t, short: t && t.frame && (t.frame.entity || t.frame.category) ? String(t.frame.entity || t.frame.category) : String(s).replace(/\s+in\s+.*$/, '') }; });
   const seen = new Set(), faces = [];
   for (const s of subs) { const ph = s.tile && s.tile.photo && s.tile.photo.src; if (ph && !seen.has(ph)) { seen.add(ph); faces.push({ src: ph, credit: s.tile.photo.credit || '', id: s.tile.id, name: s.short }); } if (faces.length >= 3) break; }
@@ -11198,7 +11211,7 @@ function _renderCurrents(cur, tilesIn) {
   const face = (c) => {
     const r = _curResolve(c, tiles);
     // every current has a face: the readings' photographs when they carry one; else their pulse drawn large; else the subjects' names set large
-    const faces = r.faces.length ? `<div class="rec-cur-faces n${r.faces.length}">${r.faces.map(f => `<button type="button" class="face" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(f.id)}')" title="${safeAttr(f.name + (f.credit ? ' · Photo: ' + f.credit : ''))}"><img src="${safeAttr(f.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></button>`).join('')}</div>`
+    const faces = r.faces.length ? `<div class="rec-cur-faces n${r.faces.length}">${r.faces.map(f => `<button type="button" class="face" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(f.id)}')" title="${safeAttr(f.name + (f.credit ? ' · Photo: ' + f.credit : ''))}"><img src="${safeAttr(f.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="const b=this.closest('.rec-cur-faces');this.parentNode.remove();if(b&&!b.children.length)b.remove()"></button>`).join('')}</div>`
       : r.series ? `<div class="rec-cur-faces big-pulse">${_pulse(r.series)}<small>Coverage across its readings, twelve weeks</small></div>`
       : `<div class="rec-cur-faces names"><div>${r.subs.slice(0, 4).map(s => `<span>${safe(s.short)}</span>`).join('')}</div></div>`;
     const pulse = r.faces.length && r.series ? `<div class="rec-cur-pulse">${_pulse(r.series)}<small>Coverage across its readings, twelve weeks</small></div>` : '';
@@ -11237,7 +11250,7 @@ function _leadRender(rec) {
       <h2>${safe(t.claim || t.title)}</h2>${t.dek ? `<p>${safe(t.dek)}</p>` : ''}
       <div class="lead-measure">${_recMeasureLine(m)}</div>${_leadBet(t)}
       <div class="lead-acts"><button type="button" class="btn-go-deeper" onclick="openFeaturedCard('${safeAttr(t.id)}')">Open the reading</button></div></div></article>`; }).join(''));
-  const sec = document.getElementById('week-block'); if (sec && pick.length) { sec.style.display = ''; const hero = document.querySelector('#sec-explore .hero'); if (hero) hero.classList.remove('solo'); }
+  const sec = document.getElementById('week-block'); if (sec && pick.length) { sec.style.display = ''; window._weekReady = true; _heroSolo(); }   // EX52a: the readings' rail is something to show
   const lw = document.getElementById('lead-week'), h2 = document.getElementById('week-h2'); if (lw && !(h2 && h2.textContent.trim())) lw.style.display = 'none';   // no week's read yet: the readings lead
   _leadWire();
 }
@@ -11649,7 +11662,7 @@ function renderTrendingNow() {
       '<button class="kb-btn" id="kbGo">Feed it</button>' +
       '<div class="kb-status" id="kbStatus"></div>' +
       '<div class="kb-list"><label style="margin-top:0">Test the recall</label>' +
-      '<input type="text" id="kbQ" placeholder="Ask what it knows \u2014 top matches with similarity"><div id="kbHits"></div></div>' +
+      '<input type="text" id="kbQ" placeholder="Ask what it knows: top matches with similarity"><div id="kbHits"></div></div>' +
       '<div class="kb-list"><label style="margin-top:0">Recent drops</label><div id="kbRows"></div></div></div>';
     document.body.appendChild(w);
     w.addEventListener("click", function (e) { if (e.target === w) hide(); });
@@ -11667,14 +11680,14 @@ function renderTrendingNow() {
     var btn = document.getElementById("kbGo");
     var text = document.getElementById("kbText").value.trim();
     var url = document.getElementById("kbUrl").value.trim();
-    if (!text && !url) { stat("NOTHING TO FEED \u2014 paste text or drop a link."); return; }
+    if (!text && !url) { stat("NOTHING TO FEED: paste text or drop a link."); return; }
     btn.disabled = true; stat("FEEDING\u2026");
     try {
       var d = await api("knowledge/submit", { text: text, url: url || undefined,
         tags: document.getElementById("kbTags").value, target: document.getElementById("kbTarget").value,
         title: document.getElementById("kbTitle").value, shareable: document.getElementById("kbShare").checked, assets: document.getElementById("kbAssets").checked });   /* SEAM:FEED_BRIDGE */
       if (d && d.ok) { stat(kbSaid(d)); document.getElementById("kbText").value = ""; document.getElementById("kbUrl").value = ""; document.getElementById("kbTitle").value = ""; list(); }
-      else stat("REFUSED \u2014 " + esc3((d && d.error) || "unknown"));
+      else stat("REFUSED: " + esc3((d && d.error) || "unknown"));
     } catch (e) { stat(kbErr(e)); }
     btn.disabled = false;
   }
@@ -11692,7 +11705,7 @@ function renderTrendingNow() {
         headers: Object.assign({ "content-type": f.type || "text/plain", "x-filename": f.name }, auth), body: f });
       var d = await r.json();
       if (d && d.ok) { stat(kbSaid(d) + " Original archived."); list(); }
-      else stat("REFUSED \u2014 " + esc3((d && d.error) || r.status));
+      else stat("REFUSED: " + esc3((d && d.error) || r.status));
     } catch (e) { stat(kbErr(e)); }
     inp.target.value = "";
   }
@@ -11757,15 +11770,15 @@ function renderTrendingNow() {
       var rows = (d && d.rows) || [];
       document.getElementById("kbHits").innerHTML = rows.length ? rows.map(function (r) {
         return '<div class="kb-hit"><b>' + Math.round((r.similarity || 0) * 100) + '%</b>' + esc3(String(r.content).slice(0, 220)) + '\u2026</div>';
-      }).join("") : '<div class="kb-hit">No recall \u2014 feed it more.</div>';
+      }).join("") : '<div class="kb-hit">No recall: feed it more.</div>';
     } catch (e) { document.getElementById("kbHits").innerHTML = '<div class="kb-hit">' + kbErr(e) + '</div>'; }
   }
   function kbErr(e) {
     var s = String(e || "");
-    if (s.indexOf("404") > -1) return "WORKER STALE \u2014 paste the new worker-index.js into Cloudflare and Deploy.";
-    if (s.indexOf("403") > -1) return "ADMIN ONLY \u2014 this account cannot feed the base.";
-    if (s.indexOf("401") > -1) return "SIGNED OUT \u2014 sign in again.";
-    return "UNREACHABLE \u2014 network or API down.";
+    if (s.indexOf("404") > -1) return "WORKER STALE: paste the new worker-index.js into Cloudflare and Deploy.";
+    if (s.indexOf("403") > -1) return "ADMIN ONLY: this account cannot feed the base.";
+    if (s.indexOf("401") > -1) return "SIGNED OUT: sign in again.";
+    return "UNREACHABLE: network or API down.";
   }
   window.__kbErr = kbErr;
   document.addEventListener("click", function (e) {
@@ -11802,7 +11815,7 @@ function renderTrendingNow() {
       '<button class="sb-close" id="sbClose">CLOSE \u2715</button>' +
       '<div class="sb-eyebrow">MINE \u00B7 Open studies</div>' +
       '<h2>Take a study. Get paid.</h2>' +
-      '<div class="sb-sub">Real briefs from real partners \u2014 listed by choice, rewarded per response.</div>' +
+      '<div class="sb-sub">Real briefs from real partners: listed by choice, rewarded per response.</div>' +
       '<div class="sb-grid" id="sbGrid"><div class="sb-empty">SURFACING THE SHELF\u2026</div></div></div>';
     document.body.appendChild(w);
     w.addEventListener("click", function (e) { if (e.target === w) closeSb(); });
@@ -11837,11 +11850,11 @@ function renderTrendingNow() {
     grid.innerHTML = '<div class="sb-empty">SURFACING THE SHELF\u2026</div>';
     var studies = await loadStudies();
     var authed = await signedIn();
-    if (!studies.length) { grid.innerHTML = '<div class="sb-empty">Nothing on the shelf this week \u2014 partners list studies here when they open them to everyone.</div>'; return; }
+    if (!studies.length) { grid.innerHTML = '<div class="sb-empty">Nothing on the shelf this week: partners list studies here when they open them to everyone.</div>'; return; }
     grid.innerHTML = studies.map(function (s) {
       return '<div class="sb-card"><div class="sb-card-top"><span class="sb-pay">' + (s.pay > 0 ? '$' + e4(s.pay) + ' PER RESPONSE' : 'FREE STUDY') + '</span><span class="sb-type">' + typeLabel(s.type) + '</span></div>' +
         '<h3>' + e4(s.title) + '</h3><p>' + e4(s.goal || "") + '</p>' +
-        '<button class="sb-btn" data-take="' + e4(s.id) + '" data-pay="' + (s.pay || 0) + '">' + (authed ? 'Take this study \u2192' : ((s.pay || 0) > 0 ? 'Sign up to take this study \u2192' : 'Respond free \u2014 no account \u2192')) + '</button></div>';
+        '<button class="sb-btn" data-take="' + e4(s.id) + '" data-pay="' + (s.pay || 0) + '">' + (authed ? 'Take this study \u2192' : ((s.pay || 0) > 0 ? 'Sign up to take this study \u2192' : 'Respond free: no account \u2192')) + '</button></div>';
     }).join("");
     var btns = grid.querySelectorAll("[data-take]");
     for (var i = 0; i < btns.length; i++) btns[i].addEventListener("click", function (e) {
@@ -11853,7 +11866,7 @@ function renderTrendingNow() {
       closeSb();
       if (authed) { if (typeof openMine === "function") openMine("responder"); }
       else {
-        if (typeof showToast === "function") showToast("Create your account \u2014 the study opens right after.");
+        if (typeof showToast === "function") showToast("Create your account: the study opens right after.");
         var su = document.querySelector(".lg-tab[data-tab=signup], .lg-tab:nth-child(2)");
         if (su) su.click();
         var em = document.querySelector("#login-gate input[type=email]");
@@ -14126,7 +14139,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
       '<button class="st-close" id="stClose">CLOSE \u2715</button>' +
       '<div class="st-eyebrow">STUDIO \u00B7 Declassified culture</div>' +
       '<h2>The download counter.</h2>' +
-      '<div class="st-sub">One hero per story \u2014 the engine picks the format and says why. The lead carries two. Ship or kill.</div>' +
+      '<div class="st-sub">One hero per story: the engine picks the format and says why. The lead carries two. Ship or kill.</div>' +
       '<div class="st-actions"><button class="st-btn primary" id="stCut">Cut today\u2019s manifest</button>' +
       '<button class="st-btn" id="stRefresh">Refresh queue</button></div>' +
       '<div id="stStrip"></div>' +
@@ -14137,7 +14150,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     document.getElementById("stRefresh").addEventListener("click", load);
     document.getElementById("stCut").addEventListener("click", async function () {
       this.disabled = true;
-      try { var d = await api("studio/generate", {}); showToast(d && d.ok ? (d.skipped ? "Today\u2019s manifest already cut" : "Manifest cut \u2014 " + d.pieces + " pieces") : "Cut failed: " + ((d && d.error) || "unknown")); } catch (e) { showToast("Cut failed \u2014 " + (String(e).indexOf("403") > -1 ? "admin only" : "unreachable")); }
+      try { var d = await api("studio/generate", {}); showToast(d && d.ok ? (d.skipped ? "Today\u2019s manifest already cut" : "Manifest cut: " + d.pieces + " pieces") : "Cut failed: " + ((d && d.error) || "unknown")); } catch (e) { showToast("Cut failed: " + (String(e).indexOf("403") > -1 ? "admin only" : "unreachable")); }
       this.disabled = false; load();
     });
     return w;
@@ -14173,7 +14186,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     var fr = await framesFor(piece);
     if (!fr) return null;
     if (fr.kind === "motion") {
-      showToast("Encoding the reel \u2014 ten seconds of tape\u2026");
+      showToast("Encoding the reel: ten seconds of tape\u2026");
       var mp4 = await buildMp4(fr.program, function (f, t) {});
       if (!mp4) { showToast("Motion renders in Chrome or Edge (WebCodecs)"); return null; }
       return { blob: mp4, ext: "mp4" };
@@ -14214,14 +14227,14 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     q.innerHTML = '<div class="st-empty">RAISING THE COUNTER\u2026</div>';
     var d;
     try { d = await api("studio/manifest", { days: 7 }); }
-    catch (e) { q.innerHTML = '<div class="st-empty">' + (String(e).indexOf("403") > -1 ? "STAFF ONLY." : String(e).indexOf("404") > -1 ? "WORKER STALE \u2014 paste and deploy the new worker." : "UNREACHABLE.") + '</div>'; return; }
+    catch (e) { q.innerHTML = '<div class="st-empty">' + (String(e).indexOf("403") > -1 ? "STAFF ONLY." : String(e).indexOf("404") > -1 ? "WORKER STALE: paste and deploy the new worker." : "UNREACHABLE.") + '</div>'; return; }
     var rows = (d && d.pieces) || [];
-    if (!rows.length) { q.innerHTML = '<div class="st-empty">Nothing on the counter \u2014 cut today\u2019s manifest.</div>'; return; }
+    if (!rows.length) { q.innerHTML = '<div class="st-empty">Nothing on the counter: cut today\u2019s manifest.</div>'; return; }
     var byDay = {};
     rows.forEach(function (r) { (byDay[r.day] = byDay[r.day] || []).push(r); });
     function storyKey(r) { return r.format === "the_six" ? 0 : ((r.payload && r.payload.story) || 1); }
     function storyHead(k, sample) {
-      if (k === 0) return '<div class="st-story"><span class="st-beat culture">EDITION</span><h3>THE SIX \u2014 the whole issue</h3></div>';
+      if (k === 0) return '<div class="st-story"><span class="st-beat culture">EDITION</span><h3>THE SIX: the whole issue</h3></div>';
       var b = e5((sample.payload && sample.payload.beat) || 'culture');
       return '<div class="st-story"><span class="st-beat ' + b + '">' + b + '</span><h3>' + e5((sample.payload && sample.payload.headline) || 'Story ' + k) + '</h3></div>';
     }
@@ -14269,7 +14282,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
     });
     document.querySelectorAll("[data-kill]").forEach(function (b) {
       b.addEventListener("click", async function () {
-        try { await api("studio/kill", { id: +b.getAttribute("data-kill") }); showToast("Killed \u2014 gone from the queue"); load(); } catch (e) { showToast("Failed"); }
+        try { await api("studio/kill", { id: +b.getAttribute("data-kill") }); showToast("Killed: gone from the queue"); load(); } catch (e) { showToast("Failed"); }
       });
     });
     document.querySelectorAll("[data-dl]").forEach(function (b) {
@@ -14293,8 +14306,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
           var res = await fetch(API_BASE.replace(/\/$/, "") + "/studio/archive?id=" + id + "&ext=" + (r ? r.ext : "png"),
             { method: "POST", headers: auth, body: r ? r.blob : null });
           var dd = await res.json();
-          showToast(dd && dd.ok ? "Deployed \u2014 archived to the ledger" : "Archive failed: " + ((dd && dd.error) || res.status));
-        } catch (e) { showToast("Archive failed \u2014 unreachable"); }
+          showToast(dd && dd.ok ? "Deployed: archived to the ledger" : "Archive failed: " + ((dd && dd.error) || res.status));
+        } catch (e) { showToast("Archive failed: unreachable"); }
         b.disabled = false; load();
       });
     });
@@ -14312,7 +14325,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
       rows.forEach(function (p) { if (p.payload && p.payload.headline) cutHeads[p.payload.headline] = 1; });
       var rest = items.filter(function (it) { return it.headline && !cutHeads[it.headline]; });
       if (!rest.length) return;
-      el.innerHTML = '<div class="st-strip"><div class="st-strip-label">From today\u2019s edition \u2014 the slate proposed, you dispose</div>' +
+      el.innerHTML = '<div class="st-strip"><div class="st-strip-label">From today\u2019s edition: the slate proposed, you dispose</div>' +
         rest.map(function (it) {
           var b = e5(String(it.beat || 'culture'));
           return '<div class="st-strip-row"><span class="st-beat ' + b + '">' + b + '</span>' +
@@ -14324,8 +14337,8 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
           btn.disabled = true;
           try {
             var dd = await api("studio/cut-story", { item_id: +btn.getAttribute("data-cut") });
-            showToast(dd && dd.ok ? (dd.skipped ? "Already on the counter" : "Cut \u2014 3 pieces on the " + dd.beat + " beat") : "Cut failed: " + ((dd && dd.error) || "unknown"));
-          } catch (e) { showToast("Cut failed \u2014 " + (String(e).indexOf("403") > -1 ? "admin only" : "unreachable")); }
+            showToast(dd && dd.ok ? (dd.skipped ? "Already on the counter" : "Cut: 3 pieces on the " + dd.beat + " beat") : "Cut failed: " + ((dd && dd.error) || "unknown"));
+          } catch (e) { showToast("Cut failed: " + (String(e).indexOf("403") > -1 ? "admin only" : "unreachable")); }
           load();
         });
       });
@@ -14345,7 +14358,7 @@ if (typeof module === "object" && typeof module.exports === "object") Object.ass
         btn.className = "lg-studio"; btn.id = "lgStudio"; btn.textContent = "STUDIO \u2301";
         btn.addEventListener("click", function () {
           try { sessionStorage.setItem("uai_pending_studio", "1"); } catch (e) {}
-          if (typeof showToast === "function") showToast("Sign in \u2014 STUDIO opens right after.");
+          if (typeof showToast === "function") showToast("Sign in: STUDIO opens right after.");
         });
         gate.appendChild(btn);
       }
