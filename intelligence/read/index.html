@@ -415,10 +415,18 @@
       call("/reads/cover", { id: row.id, sid: im.getAttribute("data-sid") }).then(function (d) { if (d && d.ok) openRead(row.id); else alert("The house refused: " + ((d && d.error) || "no answer") + "."); });
     }; });
   }
+  /* SEAM:EDIT_DESK (ED2a): a panel that opens is brought under the bar, wherever the reader was on the page; a panel that only
+     re-renders (a draft made, a line saved) stays where it is. */
+  function panelReveal(el, was) {
+    if (!el || !el.innerHTML || was) return;
+    var bar = document.querySelector(".bar"), top = el.getBoundingClientRect().top + window.pageYOffset - ((bar ? bar.offsetHeight : 60) + 12);
+    try { window.scrollTo({ top: Math.max(0, top), behavior: "smooth" }); } catch (e) { window.scrollTo(0, Math.max(0, top)); }
+  }
   function standPanel(html) {
     var el = document.getElementById("stand-panel");
     if (!el) { el = document.createElement("div"); el.id = "stand-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
-    el.innerHTML = html ? '<div style="border:1px solid #3A3A3A;background:#141414;color:#FAF7F2;padding:14px 20px;margin:12px 0 18px;font-size:13px;line-height:1.6;display:flex;gap:14px;align-items:center;flex-wrap:wrap">' + html + "</div>" : "";
+    var was = el.innerHTML; el.innerHTML = html ? '<div style="border:1px solid #3A3A3A;background:#141414;color:#FAF7F2;padding:14px 20px;margin:12px 0 18px;font-size:13px;line-height:1.6;display:flex;gap:14px;align-items:center;flex-wrap:wrap">' + html + "</div>" : "";   /* ED2a */
+    panelReveal(el, was);
   }
   function standShow(row, issue, note) {
     var st = issue ? issue.status : "none";
@@ -525,7 +533,8 @@
   function linesPanel(html) {
     var el = document.getElementById("lines-panel");
     if (!el) { el = document.createElement("div"); el.id = "lines-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
-    el.innerHTML = html ? '<div class="slots lines" style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.5">' + html + "</div>" : "";
+    var was = el.innerHTML; el.innerHTML = html ? '<div class="slots lines" style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.5">' + html + "</div>" : "";   /* ED2a */
+    panelReveal(el, was);
     var heads = el.querySelectorAll(".pf-head"); for (var m = 0; m < heads.length; m++) heads[m].style.cssText = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px";
   }
   function lineLabel(p) {
@@ -578,7 +587,8 @@
   function slotsPanel(html) {
     var el = document.getElementById("slots-panel");
     if (!el) { el = document.createElement("div"); el.id = "slots-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
-    el.innerHTML = html ? '<div class="slots" style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px">' + html + "</div>" : "";
+    var was = el.innerHTML; el.innerHTML = html ? '<div class="slots" style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px">' + html + "</div>" : "";   /* ED2a */
+    panelReveal(el, was);
     var heads = el.querySelectorAll(".pf-head"); for (var m = 0; m < heads.length; m++) heads[m].style.cssText = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px";
   }
   function slotsOpen(row, note) {
@@ -716,7 +726,8 @@
   function deskPanel(html) {   /* SEAM:READ_DESK */
     var el = document.getElementById("desk-panel");
     if (!el) { el = document.createElement("div"); el.id = "desk-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
-    el.innerHTML = html ? '<div style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.55">' + html + "</div>" : "";
+    var was = el.innerHTML; el.innerHTML = html ? '<div style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.55">' + html + "</div>" : "";   /* ED2a */
+    panelReveal(el, was);
     var rows = el.querySelectorAll(".pf-row"); for (var i = 0; i < rows.length; i++) rows[i].style.cssText = "padding:6px 0;border-top:1px solid rgba(20,20,20,.12)";
     var paths = el.querySelectorAll(".pf-path"); for (var j = 0; j < paths.length; j++) paths[j].style.cssText += ";color:#C41230;margin-right:8px";
     var bars = el.querySelectorAll(".pf-bar"); for (var k = 0; k < bars.length; k++) bars[k].style.cssText = "margin-top:14px;padding-top:10px;border-top:1px solid rgba(20,20,20,.18)";
@@ -753,7 +764,8 @@
   function deepPanel(html) {
     var el = document.getElementById("deep-panel");
     if (!el) { el = document.createElement("div"); el.id = "deep-panel"; el.className = "noprint"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
-    el.innerHTML = html ? '<div style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.55">' + html + "</div>" : "";
+    var was = el.innerHTML; el.innerHTML = html ? '<div style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.55">' + html + "</div>" : "";   /* ED2a */
+    panelReveal(el, was);
   }
   function deepShow(row) {
     var d = row && row.meta && row.meta.deep; if (!d || row.kind !== "recon") { deepPanel(""); return; }
