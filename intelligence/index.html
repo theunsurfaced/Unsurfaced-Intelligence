@@ -6280,7 +6280,7 @@ function _renderReadBlock(q, data, mode){
     const tiles=[[n(ms.recent_7d),'this week'+(vel?' <em>'+n(vel)+'</em>':'')],[n(ms.prior_7d),'the week before'],[n(ms.outlets),ms.outlets===1?'outlet':'outlets'],[n(ms.weeks_touched)+'<small>/'+n(ms.weeks||12)+'</small>','weeks touched']];
     if(ms.share_pct!=null) tiles.push([n(ms.share_pct)+'<small>%</small>','of '+n(String(ms.territory||'territory').replace(/-/g,' '))+' this week']);
     tiles.push([`<span class="rb-state ${n(ms.state||'STEADY')}">${n(String(ms.state||'STEADY').toLowerCase())}</span>`,ms.shape?'state · '+n(String(ms.shape).toLowerCase()):'state']);
-    _msHtml=`<div class="rb-measures" id="read-measured"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of coverage on this frame</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div>${_competitorRow(ms)}</div>`;
+    _msHtml=`<div class="rb-measures" id="read-measured"><div class="rb-spark">${_sparkline(ms.series,320,64)}<span class="rb-spark-cap">${n(ms.weeks||12)} weeks of coverage on this frame${_measuredFrom(ms)?' <span class="dot">&middot;</span> '+n(_measuredFrom(ms)):''}</span></div><div class="rb-tiles">${tiles.map(t=>`<div class="rb-tile"><span class="rb-tile-n">${t[0]}</span><span class="rb-tile-k">${t[1]}</span></div>`).join('')}</div>${_competitorRow(ms)}</div>`;
   }
   // SEAM:EXC_TIMELINE: the evidence drawn, and the images the evidence itself carried.
   const evLines=Array.isArray(data.lines)?data.lines:[];
@@ -6763,7 +6763,7 @@ function _buildReadPDF(q, syn, dateStr, timeStr){
   const read=Array.isArray(syn.read)?syn.read.filter(Boolean):[];
   const f=syn.frame||{}; const who=[f.entity||f.category,f.audience,f.market].filter(Boolean).map(e).join(' \u00b7 ');
   const m=syn.measures||null, rc=_receiptOf(syn), w=syn.watch||null;
-  const meas=m&&m.recent_7d!=null?`<p class="pdf-meas">Measured: ${e(m.recent_7d)} stories this week, ${e(m.prior_7d)} the week before${m.velocity_pct!=null?' ('+(m.velocity_pct>=0?'+':'')+e(m.velocity_pct)+'%)':''}; ${e(m.outlets)} outlets; ${e(m.weeks_touched)} of ${e(m.weeks||12)} weeks on record; ${e(rc.sources)} sources cited.</p>`:'';
+  const meas=m&&m.recent_7d!=null?`<p class="pdf-meas">Measured: ${e(m.recent_7d)} stories this week, ${e(m.prior_7d)} the week before${m.velocity_pct!=null?' ('+(m.velocity_pct>=0?'+':'')+e(m.velocity_pct)+'%)':''}; ${e(m.outlets)} outlets; ${e(m.weeks_touched)} of ${e(m.weeks||12)} weeks on record${_measuredFrom(m)?' ('+e(_measuredFrom(m))+')':''}; ${e(rc.sources)} sources cited.</p>`:'';
   const bet=w&&w.claim?`<p class="pdf-bet"><b>Check by ${e(_recDay(w.by))}:</b> ${e(String(w.claim).replace(/[\s.]+$/,''))}.</p>`:'';
   const ins=(syn.insights||[]).slice(0,8).map(x=>`<div class="pdf-finding"><div class="pdf-finding-cat">${e(x.confidence||'')} confidence${x.dated&&x.dated.newest?' \u00b7 evidence to '+e(x.dated.newest):''}${x.stance==='counter'?' \u00b7 against the consensus':''}</div><div class="pdf-finding-title">${e(_cleanTitle(String(x.title||'').replace(/^Where the house disagrees:\s*/i,'')))}</div><div class="pdf-finding-excerpt">${e(x.excerpt)}</div>${x.source?`<div class="pdf-finding-meta">${e(_cleanSource(x.source))}</div>`:''}</div>`).join('');
   const mv=(syn.ideas||[]).filter(x=>x&&x.headline).slice(0,6).map(x=>`<div class="pdf-idea"><div class="pdf-idea-type">${e(x.type||'Move')}${x.for?' \u00b7 for '+e(x.for):''}</div><div class="pdf-idea-title">${e(x.headline)}</div><div class="pdf-idea-body">${e(x.body)}${x.proof?' <i>Proof: '+e(x.proof)+'</i>':''}</div></div>`).join('');
@@ -10483,6 +10483,7 @@ function _doorMeasureRow(m, since) {
   if (m.share_pct != null) bits.push(`<span><b>${safe(String(m.share_pct))}%</b> of ${safe(String(m.territory || 'its area').replace(/-/g, ' '))} coverage</span>`);
   // SEAM:DOOR_CADENCE: the delta is since the last reading, not last night; a carried tile says a new reading is compiling (the door's last batch may be a week old)
   if (since && since.recent_delta) bits.push(`<span>${since.recent_delta > 0 ? '+' : ''}${safe(String(since.recent_delta))} stories since the last reading</span>`);
+  if (_measuredFrom(m)) bits.push(`<span>${safe(_measuredFrom(m))}</span>`);   // EX52b
   return `<div class="figures">${bits.filter(Boolean).join('')}</div>`;
 }
 function _pulse(series) {
@@ -11122,11 +11123,19 @@ function _recWatch(t) {
   return `<div class="rec-watch open"><i>Check by ${safe(_recDay(w.by))}</i> ${what}</div>`;
 }
 /* EX33b: the figures once, in one line; the stats block is retired to the reading's receipt. */
+/* SEAM:ENTITY_MEASURE (EX52b) PURE: what the window covers when the entity's links are not yet whole; nothing when they are. */
+function _measuredFrom(m) {
+  if (!m || m.coverage_weeks == null) return '';
+  const W = Number(m.weeks) || 12; if (Number(m.coverage_weeks) >= W) return '';
+  const d = m.measured_from ? new Date(m.measured_from + 'T12:00:00Z') : null;
+  return 'measured from ' + (d && !isNaN(d) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'this week') + ', ' + String(Number(m.coverage_weeks) || 0) + ' of ' + String(W) + ' weeks counted';
+}
 function _recMeasureLine(m) {
   if (!m) return '';
   const v = m.velocity_pct, r = Number(m.recent_7d) || 0;
   const vel = v == null ? '' : v > 0 ? `<span class="up">up ${safe(String(v))}%</span>` : v < 0 ? `<span>down ${safe(String(Math.abs(v)))}%</span>` : '<span>flat</span>';
   const bits = [r ? `<b>${safe(String(r))}</b> ${r === 1 ? 'story' : 'stories'} this week` : 'no stories this week', m.outlets ? `<b>${safe(String(m.outlets))}</b> ${Number(m.outlets) === 1 ? 'outlet' : 'outlets'}` : '', vel, `${safe(String(m.weeks_touched || 0))} of ${safe(String(m.weeks || 12))} weeks`];
+  if (_measuredFrom(m)) bits.push(safe(_measuredFrom(m)));   // EX52b
   return bits.filter(Boolean).join(' <span class="dot">&middot;</span> ');
 }
 function _recFoot(t) {

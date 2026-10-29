@@ -51,5 +51,5 @@ ok(/which === 'resolve' \? await entityResolvePass\(env, \{ steps: parseInt\(bod
 const wh = between(w, 'async function watchHealth(env) {', 'async function watchTick(');
 ok(/out\.entities = await entityLine\(env\);/.test(wh) && /kind: 'entity_stale'/.test(wh) && /now - cu > 2 \* 36e5/.test(wh), 'W3 the watch line carries the graph and trips when the resolver has not run for two hours');
 ok(!/env\.AI\.run|callClaude|queue\.fal\.run/.test(between(w, 'const ENTITY = {', 'const EXC_MEASURE = {')), 'W4 nothing in the arc asks a model');
-ok(/ilikeOr\(anchors\)/.test(between(w, 'async function excMeasures(', 'function excMeasureLine(')), 'W5 the measure still counts headlines in this arc; arc 2 switches it to the links');
+ok(!/ilikeOr\(anchors\)/.test(between(w, 'async function excMeasures(', 'function excMeasureLine(')) && /entityResolveName\(env, name, \{ create: true/.test(between(w, 'async function excMeasures(', 'function excMeasureLine(')), 'W5 the measure counts the links (arc 2); the ilike measure is gone');
 console.log(`\nproof_entities: ${pass} checks passed`);

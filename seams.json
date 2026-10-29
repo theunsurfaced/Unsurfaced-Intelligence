@@ -1646,6 +1646,15 @@
   "SEAM:ENTITY_GRAPH": {
    "file": "worker/src/index.js",
    "purpose": "EX52b arc 1 (Oct 29, 2026): the entity graph (0052: entities with name, aliases, category, context, ambiguous; signal_entities with the capture time copied) seeded from the board's frames and the tracked brands (entitySeed); the resolver is the database's function resolve_signal_entities (whole-word, case-insensitive, an ambiguous name needs a context word), run on the half hour for the new rows (cursor) and one backfill step a slice until twelve weeks are covered (entityResolvePass, ENTITY.PASS_MS); the desk runs {run: entities} and {run: resolve, steps: N}; the watch carries entityLine and trips entity_stale. No model in this arc; the measure switches to the links in arc 2."
+  },
+  "SEAM:ENTITY_MEASURE": {
+   "file": "worker/src/index.js",
+   "purpose": "EX52b arc 2 (Oct 29, 2026): the measure counts the links, never a headline's letters: the frame's entity is looked up in the graph by name or alias (entityMap, cached ten minutes); a name the graph lacks is added from the frame and backfilled alone over the twelve weeks before it is counted (entityResolveName, 0053: resolve_signal_entities with p_entity, entities.resolved_from); the rows come from entity_counts under the sweep rule; every measure carries measured_from and coverage_weeks (entityCoverage) and the writer's MEASURES line says the coverage when the window is not yet whole. The territory share and the competitive set are counted the same way. The ilike measure is gone."
+  },
+  "SEAM:ENTITY_MEASURE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ENTITY_MEASURE",
+   "purpose": "EX52b arc 2: _measuredFrom says 'measured from <date>, N of 12 weeks counted' on the record tile line, the door tile row, the read block's sparkline caption and the PDF's measured line while an entity's window is not yet whole; nothing when it is."
   }
  },
  "planned": [

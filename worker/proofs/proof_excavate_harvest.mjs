@@ -393,8 +393,8 @@ ok(/maxResults=' \+ VOICES\.PER_VIDEO/.test(w) && /vids\.slice\(0, VOICES\.VIDEO
 // the lines and the competitors
 ok(/lines: merged\.map\(\(c, i\) => \{ const d = excWhen\(c\); return \{ n: i \+ 1, title/.test(w) && /competitor: c\.entity \? String\(c\.entity\)\.slice\(0, 40\) : null, counter: c\.stance === 'against', record: excRecord\(c, now\)/.test(w) && /image: \/\^https:\\\/\\\/\/\.test\(String\(c\.image \|\| ''\)\)/.test(w),
   'V10 every read carries its lines, small: number, title, date, band, tier, lens, source, url, an https image, and the marks (competitor, counter, record, gap, page, facts)');
-ok(/const rows2 = \(await sbRest\(env, 'signals\?status=neq\.rejected&' \+ ilikeOr\(names\)/.test(w) && /m\.competitors = names\.map\(nm => \{ const k = nm\.toLowerCase\(\); const mm = excMeasureFrom\(rows2\.filter\(r => String\(r\.title \|\| ''\)\.toLowerCase\(\)\.includes\(k\)\)/.test(w),
-  'V11 the measures count up to five competitors the same way, in one query bucketed by name, on the same twelve weeks');
+ok(/const ents = await Promise\.all\(names\.map\(nm => entityResolveName\(env, nm, \{ create: true/.test(w) && /m\.competitors = names\.map\(\(nm, i\) => \{ const mm = excMeasureFrom\(sets\[i\], \[\], Date\.now\(\)\);/.test(w) && /slice\(0, ENTITY_MEASURE\.MAX_COMPETITORS\)/.test(w),
+  'V11 the measures count up to five competitors the same way, each from its own links in the graph, on the same twelve weeks (EX52b)');
 
 // ── W: the page ───────────────────────────────────────────────────────────
 ok(/function _timeline\(lines, W\)/.test(page) && /function _competitorRow\(ms\)/.test(page) && /function _voicesPull\(voices, k\)/.test(page) && /function _renderVoices\(meta\)/.test(page) && /class="rb-pics"/.test(page) && /class="move-play"/.test(page) && /lines:syn&&syn\.lines\|\|null/.test(page) && /image:it\.image\|\|null \}\);/.test(page),

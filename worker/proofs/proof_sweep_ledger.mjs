@@ -47,7 +47,7 @@ ok(paths.length === 10 && paths.every(p => /status=in\.\(connected,published\)&c
 const tr = fnOf('tracksRefresh'), au = fnOf('audiencesRefresh'), em = fnOf('excMeasures'), cf = fnOf('composeFromLake');
 ok(/const sw = await sweepOnly\(env\);/.test(tr) && /if \(sw\) for \(let i = 0; i < tracks\.length; i \+= MEMORY\.TRACK_CHUNK\)/.test(tr) && /s\.title ilike tp\.pat and s\.research = false and s\.status <> 'rejected'/.test(fs.readFileSync('supabase/migrations/0040_memory.sql', 'utf-8')), 'S7 a tracked brand counts the sweep (the database\'s rollup reads research = false only, and is asked only when the sweep is known)');
 ok(/const sw = await sweepOnly\(env\);/.test(au) && /ilikeOr\(c\.terms\) \+ sw \+ '&captured_at=gte\.'/.test(au), 'S8 a cohort counts the sweep');
-ok((em.match(/\+ sw \+ '&captured_at=gte\./g) || []).length === 3, 'S9 a read\'s measures (the subject, its territory, its competitors) never count what its own search brought in');
+ok((em.match(/\+ sw \+ '&captured_at=gte\./g) || []).length === 1 && (em.match(/entityRows\(env, [a-z.]+, since, !!sw\)/g) || []).length === 2 && /filter\(r => r && !\(sweep && r\.research\)\)/.test(fnOf('entityRows')), 'S9 a read\'s measures (the subject and its competitors through the links, its territory through the lake) never count what its own search brought in (EX52b)');
 ok(/`signals\?status=in\.\(connected,filtered\)&captured_at=gte\.\$\{since\}` \+ sw \+/.test(cf), 'S10 DAILY picks from the sweep: a RECON\'s gathers never become the paper');
 // the sweep's refound: run it
 let flips = [];

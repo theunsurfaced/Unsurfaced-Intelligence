@@ -2060,15 +2060,63 @@ function excMeasureFrom(rows, terrRows, nowMs, hint) {
   return { weeks, series, recent_7d: recent, prior_7d: prior, velocity_pct, outlets: outlets.size, weeks_touched: weekSet.size, territory,
     share_pct: terrWeek && agree && (recentTop > 0 || recent === 0) ? Math.min(100, Math.round((recentTop / terrWeek) * 100)) : null, territory_week: terrWeek, territory_agree: agree, newest: newest ? String(newest).slice(0, 10) : null, state, shape: clusterShape(series.slice(-8)), n: (rows || []).length };
 }
+/* SEAM:ENTITY_MEASURE (EX52b, arc 2): the measure counts the links, never a headline's letters. The frame's entity is looked up in
+ * the graph by name or alias (a map cached ten minutes); a name the graph lacks is added from the frame and backfilled alone over
+ * the twelve weeks before it is counted, so a first-time frame waits a few seconds once and never reads zero as a fact. Every
+ * measure carries measured_from and coverage_weeks: until the backfill has covered the window, the page and the writer say so. */
+const ENTITY_MEASURE = { MAP_KEY: 'ent:map:v1', MAP_TTL: 600, MAX_COMPETITORS: 5 };
+async function entityMap(env) {
+  try { if (env.RATE_LIMIT) { const hit = await env.RATE_LIMIT.get(ENTITY_MEASURE.MAP_KEY); if (hit) return JSON.parse(hit); } } catch (e) { excQuiet('entity_map_cache')(e); }
+  const rows = (await sbRest(env, 'entities?active=eq.true&select=id,name,aliases,resolved_from&limit=5000').catch(excQuiet('entity_map', []))) || [];
+  const map = {};
+  for (const r of rows) { for (const nm of [r.name].concat(r.aliases || [])) { const k = String(nm || '').toLowerCase().replace(/\s+/g, ' ').trim(); if (k && !map[k]) map[k] = { id: r.id, name: r.name, resolved_from: r.resolved_from || null }; } }
+  try { if (env.RATE_LIMIT) await env.RATE_LIMIT.put(ENTITY_MEASURE.MAP_KEY, JSON.stringify(map), { expirationTtl: ENTITY_MEASURE.MAP_TTL }); } catch (e) { excQuiet('entity_map_put')(e); }
+  return map;
+}
+/* The entity a name stands for: {id, name, resolved_from}, or null. With create, a name the graph lacks becomes a row (from the
+ * frame's words, the way entitySeed makes one) and is backfilled alone over the window at once; the map cache is dropped. */
+async function entityResolveName(env, name, opts) {
+  const k = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim(); if (k.replace(/\s/g, '').length < ENTITY.MIN_NAME) return null;
+  const map = await entityMap(env);
+  if (map[k]) return map[k];
+  if (!(opts && opts.create)) return null;
+  const want = entityProposals([{ frame: { entity: name, category: (opts && opts.category) || null, competitors: [] } }], [])[0];
+  if (!want) return null;
+  const since = new Date(Date.now() - ENTITY.BACKFILL_WEEKS * 7 * 864e5).toISOString();
+  const ins = ((await sbRest(env, 'entities', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { name: want.name, kind: want.kind, aliases: want.aliases, category: want.category, context: want.context, ambiguous: want.ambiguous, from_src: 'frame', resolved_from: since } }).catch(excQuiet('entity_create', []))) || [])[0];
+  if (!ins || !ins.id) { const again = await entityMap(env); return again[k] || null; }   // a race with another worker: the row is theirs, the name is ours too
+  try { await sbRest(env, 'rpc/resolve_signal_entities', { method: 'POST', body: { p_since: since, p_until: new Date().toISOString(), p_entity: ins.id } }); }
+  catch (e) { console.log('entity_backfill_one_error', String(e && e.message).slice(0, 120)); }
+  try { if (env.RATE_LIMIT) await env.RATE_LIMIT.delete(ENTITY_MEASURE.MAP_KEY); } catch (e) { excQuiet('entity_map_drop')(e); }
+  return { id: ins.id, name: ins.name, resolved_from: since };
+}
+/* The twelve weeks of links for one entity, as the rows the measure reads (the sweep rule kept: a research row is not counted). */
+async function entityRows(env, id, since, sweep) {
+  const rows = (await sbRest(env, 'rpc/entity_counts', { method: 'POST', body: { p_entity: id, p_since: since, p_until: new Date().toISOString() } }).catch(excQuiet('entity_rows', []))) || [];
+  return rows.filter(r => r && !(sweep && r.research)).map(r => ({ id: r.signal_id, title: r.title, url: r.url, source_name: r.source_name, source_tier: r.source_tier, territory: r.territory, published_at: r.published_at, captured_at: r.captured_at }));
+}
+/* PURE: what the window covers for an entity, as a date and a count of weeks, never more than the window. An entity with its own
+ * resolved_from is covered from there. While the shared backfill is still walking, the window is covered at both ends (the older
+ * weeks it has reached, and the recent weeks the half hour has kept since it began) with a gap between; the date given is where the
+ * recent, unbroken coverage begins. A finished backfill covers the whole window. */
+function entityCoverage(resolvedFrom, backfill, nowMs, weeks) {
+  const now = nowMs || Date.now(), W = weeks || EXC_MEASURE.WEEKS, wk = 7 * 864e5, start = now - W * wk;
+  const day = t => new Date(t).toISOString().slice(0, 10), clamp = t => Math.max(start, Math.min(now, t));
+  if (resolvedFrom) { const from = clamp(Date.parse(resolvedFrom) || start); return { measured_from: day(from), coverage_weeks: Math.min(W, Math.round((now - from) / wk)) }; }
+  if (backfill && !backfill.done && backfill.at && backfill.until) {
+    const at = clamp(Date.parse(backfill.at) || start), until = clamp(Date.parse(backfill.until) || now);
+    return { measured_from: day(until), coverage_weeks: Math.min(W, Math.round((Math.max(0, at - start) + Math.max(0, now - until)) / wk)), gap: [day(at), day(until)] };
+  }
+  return { measured_from: day(start), coverage_weeks: W };
+}
 async function excMeasures(env, frame) {
-  const anchors = excMeasureAnchors(frame);
-  if (!anchors.length || ilikeOr(anchors) === 'id=is.null') return null;   // nothing we can find in a headline: no measures, never zeros
+  const name = String((frame && frame.entity) || '').replace(/\s+/g, ' ').trim();
+  if (name.replace(/\s/g, '').length < ENTITY.MIN_NAME) return null;   // a frame with no entity has no measure: never zeros, and a category is not a thing the lake counts by name
+  const ent = await entityResolveName(env, name, { create: true, category: frame && frame.category });
+  if (!ent) return null;
   const since = new Date(Date.now() - EXC_MEASURE.WEEKS * 7 * 864e5).toISOString();
-  const sel = 'select=id,title,url,source_name,source_tier,territory,published_at,captured_at';
   const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: a read's measures never count what its own search brought in
-  let rows = [];
-  try { rows = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(anchors) + sw + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + EXC_MEASURE.ROWS + '&' + sel)) || []; }
-  catch (e) { console.log('exc_measure_error', String(e && e.message).slice(0, 80)); return null; }
+  const rows = await entityRows(env, ent.id, since, !!sw);
   const hint = excTerritoryOf(frame);
   const m0 = excMeasureFrom(rows, [], Date.now(), hint);
   let terrRows = [];
@@ -2077,15 +2125,16 @@ async function excMeasures(env, frame) {
     try { terrRows = (await sbRest(env, 'signals?status=neq.rejected&territory=eq.' + encodeURIComponent(m0.territory) + sw + '&captured_at=gte.' + wk + '&limit=' + EXC_MEASURE.TERR_ROWS + '&select=id,published_at,captured_at')) || []; } catch (e) { terrRows = []; }
   }
   const m = excMeasureFrom(rows, terrRows, Date.now(), hint);
-  m.anchors = anchors;
+  m.anchors = [ent.name]; m.entity_id = ent.id; m.entity = ent.name;
   m.sweep = !!sw;   // SEAM:SWEEP_MEASURE: counted on the sweep only
+  let bf = null; try { bf = (await entityStateGet(env)).backfill || null; } catch (e) { bf = null; }
+  Object.assign(m, entityCoverage(ent.resolved_from, bf, Date.now(), EXC_MEASURE.WEEKS));
   // SEAM:EXC_COMPETE: the competitive set, counted the same way over the same twelve weeks, so the page can draw them on one scale.
-  const names = ((frame && frame.competitors) || []).map(x => String(x || '').trim()).filter(x => x.length >= 3 && ilikeOr([x]) !== 'id=is.null').slice(0, 5);
+  const names = ((frame && frame.competitors) || []).map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => x.replace(/\s/g, '').length >= ENTITY.MIN_NAME && x.toLowerCase() !== name.toLowerCase()).slice(0, ENTITY_MEASURE.MAX_COMPETITORS);
   if (names.length) {
-    // One query for the whole set, bucketed here by the name each title carries; a title naming two of them counts for both.
-    // Newest first across the set, so a loud name can crowd a quiet one's older weeks; 600 rows a name leaves room.
-    const rows2 = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(names) + sw + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + (600 * names.length) + '&select=id,title,url,source_name,territory,published_at,captured_at').catch(excQuiet('measure_competitor', []))) || [];
-    m.competitors = names.map(nm => { const k = nm.toLowerCase(); const mm = excMeasureFrom(rows2.filter(r => String(r.title || '').toLowerCase().includes(k)), [], Date.now()); return { name: nm, series: mm.series, recent_7d: mm.recent_7d, prior_7d: mm.prior_7d, outlets: mm.outlets, weeks_touched: mm.weeks_touched, n: mm.n }; });
+    const ents = await Promise.all(names.map(nm => entityResolveName(env, nm, { create: true, category: frame && frame.category }).catch(excQuiet('measure_competitor', null))));
+    const sets = await Promise.all(ents.map(e => e ? entityRows(env, e.id, since, !!sw).catch(excQuiet('measure_competitor_rows', [])) : Promise.resolve([])));
+    m.competitors = names.map((nm, i) => { const mm = excMeasureFrom(sets[i], [], Date.now()); const cov = ents[i] ? entityCoverage(ents[i].resolved_from, bf, Date.now(), EXC_MEASURE.WEEKS) : null; return Object.assign({ name: ents[i] ? ents[i].name : nm, series: mm.series, recent_7d: mm.recent_7d, prior_7d: mm.prior_7d, outlets: mm.outlets, weeks_touched: mm.weeks_touched, n: mm.n }, cov || {}); });
   }
   return m;
 }
@@ -2093,10 +2142,11 @@ function excMeasureLine(m) {
   if (!m || !Array.isArray(m.series) || m.recent_7d == null) return '';
   // SEAM:EXC_MEASURE (EX52a): a quiet week reaches the writer in words, never as a zero to narrate; two quiet weeks are no measure at all
   if (!m.recent_7d && !m.prior_7d) return '';
-  if (!m.recent_7d) return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake): quiet on the lake this week, ' + m.prior_7d + ' signals the week before; distinct outlets: ' + m.outlets + '; weeks touched: ' + m.weeks_touched + ' of ' + m.weeks + '; state ' + m.state + '. The quiet week is context and never a claim: no figure for it may be stated, and no headline or move may be about the count.\n\n';
+  const cov = m.coverage_weeks != null && m.weeks && m.coverage_weeks < m.weeks ? ' Coverage: counted from ' + m.measured_from + ', ' + m.coverage_weeks + ' of ' + m.weeks + ' weeks; the earlier weeks are not counted yet, so the series is not a decline and no figure may be stated for them.' : '';   // SEAM:ENTITY_MEASURE (EX52b)
+  if (!m.recent_7d) return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake): quiet on the lake this week, ' + m.prior_7d + ' signals the week before; distinct outlets: ' + m.outlets + '; weeks touched: ' + m.weeks_touched + ' of ' + m.weeks + '; state ' + m.state + '. The quiet week is context and never a claim: no figure for it may be stated, and no headline or move may be about the count.' + cov + '\n\n';
   return 'MEASURES (computed by the database over ' + m.weeks + ' weeks of the lake, exact): signals: ' + m.recent_7d + ' this week, ' + m.prior_7d + ' the week before' +
     (m.velocity_pct != null ? ' (' + (m.velocity_pct >= 0 ? '+' : '') + m.velocity_pct + '%)' : '') + '; distinct outlets: ' + m.outlets + '; weeks touched: ' + m.weeks_touched + ' of ' + m.weeks +
-    (m.share_pct != null ? '; share of ' + String(m.territory || '').replace(/-/g, ' ') + ' signals this week: ' + m.share_pct + '%' : '') + '; state ' + m.state + (m.shape ? ', shape ' + m.shape : '') + '. Numbers from MEASURES may be stated as measured.\n\n';
+    (m.share_pct != null ? '; share of ' + String(m.territory || '').replace(/-/g, ' ') + ' signals this week: ' + m.share_pct + '%' : '') + '; state ' + m.state + (m.shape ? ', shape ' + m.shape : '') + '. Numbers from MEASURES may be stated as measured.' + cov + '\n\n';
 }
 /* SEAM:EXC_MEASURE (EX52a) PURE: a line whose subject is the instrument. The count, the signals, the coverage, the streak, the
  * measure, the weeks touched: the writer may stand on them, never write about them. 'early signal' is the house's own phrase and passes. */

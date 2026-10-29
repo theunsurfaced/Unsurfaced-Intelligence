@@ -110,8 +110,8 @@ ok(roomU.ok && roomU.coverage === null && roomU.stories.length === 0 && !kvU['br
 let kvP = {};
 const RP = mkRoom({ sbRest: async (e, p) => { if (/^subject_weeks\?/.test(p)) throw new Error('sb_503'); return /^signals\?/.test(p) ? rows : []; }, loadTracks: async () => tracks });
 const roomP = await RP.excavateBrand(new Request('https://x/excavate/brand?id=11111111-1111-1111-1111-111111111111'), { RATE_LIMIT: { get: async k => kvP[k] || null, put: async (k, v) => { kvP[k] = v; } } }, '');
-ok(roomP.ok && roomP.partial === true && roomP.coverage && !kvP['brand:v3:11111111-1111-1111-1111-111111111111'] && /if \(!anchors\.length \|\| ilikeOr\(anchors\) === 'id=is\.null'\) return null;/.test(fnOf(w, 'excMeasures')) && /ilikeOr\(\[x\]\) !== 'id=is\.null'\)\.slice\(0, 5\)/.test(fnOf(w, 'excMeasures')),
-  'B10c a room with a part that failed to load is shown, never kept; a read whose names cannot be found in a headline gets no measures (never zeros), and such a competitor is left out');
+ok(roomP.ok && roomP.partial === true && roomP.coverage && !kvP['brand:v3:11111111-1111-1111-1111-111111111111'] && /if \(name\.replace\(\/\\s\/g, ''\)\.length < ENTITY\.MIN_NAME\) return null;/.test(fnOf(w, 'excMeasures')) && /x\.toLowerCase\(\) !== name\.toLowerCase\(\)\)\.slice\(0, ENTITY_MEASURE\.MAX_COMPETITORS\)/.test(fnOf(w, 'excMeasures')),
+  'B10c a room with a part that failed to load is shown, never kept; a read with no entity to count gets no measures (never zeros), and a competitor under three letters or the entity itself is left out (EX52b)');
 const tr = fnOf(w, 'tracksRefresh');
 // tracksRefresh, run: a capped brand, a future-dated story, a blip that keeps the last count
 const trSrc = fnOf(w, 'tracksRefresh');
