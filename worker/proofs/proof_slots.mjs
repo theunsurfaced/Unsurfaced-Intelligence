@@ -19,12 +19,12 @@ const revLine = between('const IMAGE_BRIEF_REV = ', '\n') + '\n';
 // ── fakes ─────────────────────────────────────────────────────────────
 let sb = [], fixtures = {}, events = [], kv = new Map(), r2 = new Map(), fetches = [], claudeAnswer = null;
 // ED1b: the look's fakes answer by question, in queues, so parallel calls land in any order
-let AI = { real: [], logo: [], shows: [], tell: [], describe: [], embed: [] };
+let AI = { real: [], logo: [], shows: [], tell: [], describe: [], embed: [], text: [] };   // ED2: the lettering question
 const aiFor = (model, input) => {
   if (model.includes('bge')) return { data: AI.embed.shift() || [] };
   const q = String(input.prompt || '');
-  const k = /real or famous person/.test(q) ? 'real' : /brand logo/.test(q) ? 'logo' : /Which headline/.test(q) ? 'tell' : /art director/.test(q) ? 'describe' : 'shows';
-  const a = AI[k].shift(); return { response: a == null ? '' : a };
+  const k = /real or famous person/.test(q) ? 'real' : /brand logo/.test(q) ? 'logo' : /lettering/.test(q) ? 'text' : /Which headline/.test(q) ? 'tell' : /art director/.test(q) ? 'describe' : 'shows';
+  const a = k === 'text' && !AI.text.length ? 'No' : AI[k].shift(); return { response: a == null ? '' : a };   // ED2: no lettering unless a test says so
 };
 const sbRest = async (env, path, opts) => { sb.push({ path, opts }); for (const k of Object.keys(fixtures)) if (path.startsWith(k)) return fixtures[k](path, opts); return []; };
 const env = {
@@ -120,7 +120,10 @@ ok(R.imageYes('Yes') === true && R.imageYes(' no, it does not') === false && R.i
   'L2 a yes or no is read from the start of the answer; anything else is unknown, never hard');
 AI.real = ['No'], AI.logo = ['Yes, a swoosh'], AI.shows = ['A man holds a brake lever to the light.'];
 const c1 = await R.imageCheck(env, m1.ref);
-ok(c1.hard.join() === 'logo' && c1.advisory.length === 0 && c1.unknown.length === 0 && c1.shows === 'A man holds a brake lever to the light.', 'L3 the checks: two hard questions and one sentence, asked at once, the verdict in the record\'s shape');
+ok(c1.hard.join() === 'logo' && c1.advisory.length === 0 && c1.unknown.length === 0 && c1.shows === 'A man holds a brake lever to the light.', 'L3 the checks: three hard questions and one sentence, asked at once, the verdict in the record\'s shape');
+AI.real = ['No'], AI.logo = ['No'], AI.text = ['Yes, a street sign reads OPEN'], AI.shows = ['A shop front.'];
+const c1b = await R.imageCheck(env, m1.ref);
+ok(c1b.hard.join() === 'lettering' && c1b.unknown.length === 0, 'L3b lettering in the image is a hard check (ED2): the copy is the writer\'s');
 AI.real = ['I cannot tell.'], AI.logo = [''], AI.shows = [''];
 const c2 = await R.imageCheck(env, m1.ref);
 ok(c2.hard.length === 0 && c2.unknown.join() === 'real_person,logo' && c2.shows === '' && (await R.imageCheck(env, 'make/none.jpg')).unknown.join() === 'no_image', 'L4 what the model did not answer is unknown; no image is unknown too');

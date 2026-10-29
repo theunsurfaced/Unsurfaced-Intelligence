@@ -26,7 +26,7 @@ reset(); answer = { body: jpeg(400000), type: 'image/jpeg' };
 const key = await C.wkCoverRender(env, { id: 41 }, 5);
 const c = calls[0];
 ok(c.url === 'https://api.cloudflare.com/client/v4/accounts/acct/browser-rendering/screenshot', 'C1 renders through the Browser Rendering screenshot endpoint');
-ok(c.body.selector === 'section.page.cover' && /<section class="page cover">/.test(page), 'C2 captures exactly the print page\'s cover section, the PDF\'s page one');
+ok(c.body.selector === 'section.page.cover' && /<section class="page cover' \+ \(coverSlot && coverSlot\.kind === "type" \? " type" : ""\) \+ '">/.test(page), 'C2 captures exactly the print page\'s cover section, the PDF\'s page one (the class carries the typographic mark on both layouts since ED2)');
 ok(c.body.viewport.width === 816 && c.body.viewport.height === 1056 && c.body.viewport.deviceScaleFactor === 2, 'C3 letter size at 96 px a inch, twice the pixels');
 ok(c.body.screenshotOptions.type === 'jpeg' && c.body.screenshotOptions.quality === 86, 'C4 a JPEG at quality 86');
 ok(c.body.addStyleTag[0].content.includes('.bar,.social,.noprint{display:none!important}') && c.body.addStyleTag[0].content.includes('.page.cover{min-height:11in!important}'),

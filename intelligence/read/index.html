@@ -517,6 +517,64 @@
      the slot; on the stand, replace the issue or render its cover again. Two hard lines (a real person, a logo) refuse a
      draft unless the house overrides them with a reason on the record; everything else is a note to accept or remake. */
   var SL = { data: null, path: "cover", drafts: {}, pick: null };
+  /* SEAM:EDIT_DESK (ED2): THE LINES. Every line of the read an editor may change, with what it says now; a save is one direct edit
+     on the worker (no model, the law run, a refusal shown with the reason and an override box); every save is a new version and
+     the page opens it. A revert is a new version equal to the one before. Locked lines (figures, evidence, calls, the window, images)
+     are not offered. */
+  var LN = { data: null, open: {} };
+  function linesPanel(html) {
+    var el = document.getElementById("lines-panel");
+    if (!el) { el = document.createElement("div"); el.id = "lines-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
+    el.innerHTML = html ? '<div class="slots lines" style="border:1px solid #141414;background:#FAF7F2;color:#141414;padding:16px 20px;margin:12px 0 18px;font-size:13px;line-height:1.5">' + html + "</div>" : "";
+    var heads = el.querySelectorAll(".pf-head"); for (var m = 0; m < heads.length; m++) heads[m].style.cssText = "font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px";
+  }
+  function lineLabel(p) {
+    return String(p).replace(/\[(\d+)\]/g, function (m, i) { return " " + (Number(i) + 1); }).replace(/\./g, " · ").replace(/_/g, " ");
+  }
+  function linesOpen(row, note) {
+    call("/reads/lines", { id: row.id }).then(function (d) {
+      if (!d || !d.ok) { linesPanel('<div class="pf-head">THE LINES</div>' + esc(d && d.error === "forbidden" ? "The lines are the house's to edit." : "The lines could not load: " + ((d && d.error) || "no answer") + ".")); return; }
+      LN.data = d; linesShow(row, note);
+    }).catch(function () { linesPanel('<div class="pf-head">THE LINES</div>The house did not answer.'); });
+  }
+  function linesShow(row, note) {
+    var d = LN.data, lines = d.lines || [], edits = d.edits || [];
+    var head = '<div class="pf-head">THE LINES</div>' +
+      '<div class="sp-house">Version ' + esc(String(d.version || row.version || "")) + (d.plan ? " · " + esc(String(d.plan)) : "") + (d.revised_from ? ' · from version ' + esc(String((row.meta && row.meta.revised_from_version) || "")) + ' <button class="btn" id="ln-revert" data-to="' + esc(String(d.revised_from)) + '">Revert to the version before</button>' : "") +
+        " &nbsp;·&nbsp; " + lines.length + " lines you may change; figures, evidence, calls, the window and the images are not edited by hand. Every save is a new version; nothing is deleted.</div>" +
+      (note ? '<div class="sp-note" style="margin:6px 0 10px;padding:8px 10px;border-left:3px solid #C41230;background:#fff;opacity:1">' + esc(note) + "</div>" : "") +
+      (edits.length ? '<div class="sp-note" style="margin:4px 0 10px">Edits on this read: ' + edits.slice(-6).map(function (e) { return e.revert_to ? "revert by " + esc(e.by || "") : esc(lineLabel(e.path)) + " by " + esc(e.by || "") + (e.override ? " (override: " + esc(e.override.why || "") + ")" : ""); }).join("; ") + "</div>" : "");
+    var body = lines.map(function (l, i) {
+      return '<div class="ln-row" style="padding:8px 0;border-top:1px solid rgba(20,20,20,.12)"><label style="display:block;font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px">' + esc(lineLabel(l.path)) + "</label>" +
+        '<textarea class="ln-text" data-path="' + esc(l.path) + '" rows="' + (l.text.length > 220 ? 4 : 2) + '" style="width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid rgba(20,20,20,.3);background:#fff;color:#141414">' + esc(l.text) + "</textarea>" +
+        '<div class="ln-act" style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" data-save="' + esc(l.path) + '">Save this line</button><span class="ln-say" data-say="' + esc(l.path) + '"></span></div></div>';
+    }).join("");
+    linesPanel(head + body);
+    linesBind(row);
+  }
+  function linesSave(row, p, override) {
+    var ta = document.querySelector('.ln-text[data-path="' + p.replace(/"/g, '\\"') + '"]'), say = document.querySelector('.ln-say[data-say="' + p.replace(/"/g, '\\"') + '"]');
+    if (!ta) return;
+    var bodyReq = { id: row.id, path: p, text: ta.value };
+    if (override) bodyReq.override = override;
+    if (say) say.textContent = "Saving.";
+    call("/reads/edit", bodyReq).then(function (d) {
+      if (d && d.ok) { if (say) say.textContent = "Saved as version " + d.version + (d.override ? " with an override on the record" : "") + "."; openRead(d.id); return; }
+      if (d && d.error === "law") {
+        if (say) say.innerHTML = esc(d.say || "The law refuses this line.") + ' <input class="ln-why" data-why="' + esc(p) + '" placeholder="Your reason, twelve characters or more" style="font:inherit;font-size:12px;padding:4px 6px;width:280px;border:1px solid rgba(20,20,20,.3)"> <button class="btn" data-over="' + esc(p) + '">Save with the override</button>';
+        var ob = say.querySelector("[data-over]"); if (ob) ob.onclick = function () { var w = say.querySelector(".ln-why"); linesSave(row, p, w ? w.value : ""); };
+        return;
+      }
+      if (say) say.textContent = d && d.error === "em_dash" ? (d.say || "No em dash.") : d && d.error === "unchanged" ? "Unchanged." : d && d.error === "locked_path" ? (d.say || "Locked.") : "The house refused: " + ((d && d.error) || "no answer") + ".";
+    }).catch(function () { if (say) say.textContent = "The house did not answer."; });
+  }
+  function linesBind(row) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-save]"), function (bt) { bt.onclick = function () { linesSave(row, bt.getAttribute("data-save"), ""); }; });
+    var rv = document.getElementById("ln-revert"); if (rv) rv.onclick = function () {
+      if (!window.confirm("Revert to the version before? A new version equal to it is written; nothing is deleted.")) return;
+      call("/reads/revert", { id: row.id, to: rv.getAttribute("data-to") }).then(function (d) { if (d && d.ok) openRead(d.id); else linesShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
+    };
+  }
   function slotsPanel(html) {
     var el = document.getElementById("slots-panel");
     if (!el) { el = document.createElement("div"); el.id = "slots-panel"; el.style.cssText = "max-width:1100px;margin:0 auto;padding:0 24px"; app.parentNode.insertBefore(el, app); }
@@ -555,6 +613,7 @@
     var x = row.read || {};
     var paths = d.paths.map(function (q) { return '<button class="sp-path' + (q === p ? " on" : "") + (d.slots[q] ? " has" : "") + '" data-path="' + esc(q) + '">' + esc(slotLabel(row, q)) + "</button>"; }).join("");
     var cur = slot ? (slot.kind === "type" ? "Typographic: no image, the headline carries the page."
+      : slot.kind === "own" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">Your own photograph · ' + esc(slot.credit || "")
       : slot.kind === "house" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">House image · ' + esc(slot.credit || "") + (rec && rec.made && rec.made.model ? " · " + esc(String(rec.made.model).split("/").slice(-2).join("/")) : "")
       : '<img src="' + API + "/img/t/" + esc(String(slot.ref).slice(1)) + '" style="width:120px;vertical-align:middle;margin-right:10px">' + esc(slot.credit || "") + " · the object of the finding" + (rec && rec.object_sentence ? ': “' + esc(rec.object_sentence) + '”' : ""))
       : "Not filled: the page shows the writer's pick (the lead photograph), as before.";
@@ -579,6 +638,8 @@
         return '<div class="sp-draft' + (p === "cover" ? "" : " hero") + (SL.pick === dr.rights_id ? " on" : "") + '"><img src="' + API + esc(dr.url) + '" data-full="' + API + esc(dr.url) + '"><div class="k">seed ' + esc(String(dr.seed)) + (dr.cached ? " · kept" : "") + (dr.final ? " · FINAL" : "") + "<br>" + slotChecksHtml(dr.checks || {}, dr.tell) + "</div>" +
           '<div class="row">' + (dr.flagged ? '<button class="btn" data-use="' + i + '" data-over="1" title="Overrides a hard check with your reason, on the record">Use anyway</button>' : '<button class="btn" data-use="' + i + '">Use this</button>' + (dr.final ? "" : '<button class="btn red" data-final="' + i + '">Make the final</button>')) + "</div></div>";
       }).join("") + "</div>" : "") +
+      '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">YOUR OWN PHOTOGRAPH</b><div class="sp-note">The house vouches for it: no checks are run; the credit and the release note ride the record. JPEG, PNG or WebP under 10 MB.</div>' +   /* SEAM:EDIT_DESK (ED2) */
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><input type="file" id="sp-own" accept="image/jpeg,image/png,image/webp"><input id="sp-own-credit" placeholder="Credit (Photo: Name)" style="font:inherit;font-size:12px;padding:4px 6px;width:200px"><input id="sp-own-release" placeholder="Release note, if a person is in it" style="font:inherit;font-size:12px;padding:4px 6px;width:260px"><button class="btn" id="sp-own-use">Upload and use it</button></div></div>' +
       (ids.length ? '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">A PHOTOGRAPH FROM THE STORIES</b><div class="sp-note">Only when the image itself is what the finding is about. Pick one, then write the sentence in the read that makes it so.</div><div class="sp-stories">' +
         ids.map(function (s) { return '<img src="' + API + "/img/t/" + s.slice(1) + '" data-sid="' + s + '" class="' + (slot && slot.ref === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div>" +
         '<div id="sp-objrow" style="display:none;margin-top:8px"><input class="sp-obj" id="sp-obj" placeholder="The sentence in the read this photograph is the object of"><div style="margin-top:6px"><button class="btn" id="sp-objset">Set it as the object of the finding</button> <span class="sp-note" id="sp-objwhich"></span></div></div></div>' : "") +
@@ -591,6 +652,17 @@
   }
   function slotsBind(row) {
     var p = SL.path;
+    var ou = document.getElementById("sp-own-use"); if (ou) ou.onclick = function () {   /* SEAM:EDIT_DESK (ED2): the house's own photograph, uploaded and set */
+      var fi = document.getElementById("sp-own"), f = fi && fi.files && fi.files[0]; if (!f) { slotsShow(row, "Choose a photograph first."); return; }
+      if (f.size > 10000000) { slotsShow(row, "Under 10 MB, please."); return; }
+      var credit = document.getElementById("sp-own-credit").value, release = document.getElementById("sp-own-release").value;
+      slotsShow(row, "Uploading your photograph.");
+      fetch(API + "/reads/slot-upload", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": f.type || "application/octet-stream", "x-filename": f.name, "x-credit": credit, "x-release": release }, body: f })
+        .then(function (r) { return r.json(); }).then(function (d) {
+          if (!d || !d.ok) { slotsShow(row, "The house refused the photograph: " + ((d && (d.say || d.error)) || "no answer") + "."); return; }
+          return call("/reads/slot", { id: row.id, path: p, pick: { rights_id: d.rights_id } }).then(function (d2) { if (d2 && d2.ok) { slotsOpen(row, "Your photograph is set. The next PDF carries it; on the stand, replace the issue or render its cover again."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d2 && d2.error) || "no answer") + "."); });
+        }).catch(function () { slotsShow(row, "The house did not answer."); });
+    };
     Array.prototype.forEach.call(document.querySelectorAll(".sp-path"), function (bt) { bt.onclick = function () { SL.path = bt.getAttribute("data-path"); SL.pick = null; slotsShow(row, null); }; });
     var ask = document.getElementById("sp-ask"); if (ask) ask.onclick = function () {
       ask.disabled = true; ask.textContent = "The house is writing";
@@ -1114,13 +1186,14 @@
     var readFull = typeof cs.read_full === "number" ? cs.read_full : cs.cards;
     var bigs = (deepC ? [[allS, "Stories"], [readFull, "Read in full"], [deepC.read, "Comments read"], [win.days, "Days"]] : recon ? [[allS, "Stories"], [cs.outlets, "Outlets"], [win.days, "Days"]] : [[lake.signals, "Stories and posts read"], [lake.outlets, "Outlets"], [daily.stories, "Stories published"], [win.days, "Days"]])
       .filter(function (n) { return typeof n[0] === "number"; }).map(function (n) { return "<div><b>" + rpNum(n[0]) + "</b><span>" + n[1] + "</span></div>"; }).join("");
-    h += '<section class="page cover">' + (coverS ? '<div class="photo">' + photo(coverS, "cover", coverPool.slice(1)) + '</div><div class="shade"></div>' : "") +
+    var coverSlot = H.slotOf ? H.slotOf("cover") : null, coverHtml = coverSlot ? H.slotImg(coverSlot, "cover") : (coverS ? photo(coverS, "cover", coverPool.slice(1)) : "");   /* SEAM:READ_SLOTS (ED2): the house's slot wins over the writer's cover */
+    h += '<section class="page cover' + (coverSlot && coverSlot.kind === "type" ? " type" : "") + '">' + (coverHtml ? '<div class="photo">' + coverHtml + '</div><div class="shade"></div>' : "") +
       '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + (recon ? esc("Unsurfaced " + (issue || "RECON")) : esc(KIND.report) + (issue ? " · " + esc(issue) : "")) + (cut ? " · Client cut" : "") + "</div>" +   /* SEAM:READ_CUT */
       (recon && recon.text ? '<div class="rp-sub" style="margin-bottom:10px">The brief: ' + esc(recon.text) + "</div>" : "") +
       "<h1>" + esc(x.title) + "</h1>" + (x.subtitle ? '<p class="rp-dek">' + esc(x.subtitle) + "</p>" : "") + '<p class="thesis">' + esc(x.thesis) + "</p>" +
       (x.ground_line ? '<div class="rp-sub">' + esc(x.ground_line) + "</div>" : "") + (bigs ? '<div class="nums">' + bigs + "</div>" : "") +
       '<div class="foot"><span>' + esc(issue || "Unsurfaced Intelligence") + "</span><span>" + fmtDate(row.window_start) + " · " + fmtDate(row.window_end) + "</span>" +
-      (coverS ? '<span class="cvcredit">Cover: ' + esc(rc[coverS].source_name || "") + "</span>" : "") + "</div></div></section>";
+      (coverSlot ? (coverSlot.kind !== "type" && coverSlot.credit ? '<span class="cvcredit">Cover: ' + esc(String(coverSlot.credit).replace(/^Photo: /, "")) + "</span>" : "") : coverS ? '<span class="cvcredit">Cover: ' + esc(rc[coverS].source_name || "") + "</span>" : "") + "</div></div></section>";   /* SEAM:READ_SLOTS (ED2) */
 
     /* How to read + contents */
     h += inner('<div class="how' + (contents.length > 15 ? " long" : "") + (contents.length > 20 ? " longer" : "") + '"><div><div class="kicker">How to read this report</div><div class="loop">' +
@@ -1172,6 +1245,7 @@
         var ev = (f.evidence || []).filter(real);
         var lead = (f.lead_image && real(f.lead_image) && img(f.lead_image)) ? f.lead_image : pickImage(ev, used);
         if (lead) used[lead] = 1;
+        var fslot = H.slotOf ? H.slotOf((x.patterns ? "patterns" : x.features ? "features" : x.held ? "held" : "findings") + "[" + i + "]") : null;   /* SEAM:READ_SLOTS (ED2): the slot paths, as the worker names them */
         var seenImg = {}; if (lead && img(lead)) seenImg[img(lead)] = 1;
         var rest = ev.filter(function (s) { var u = s !== lead && img(s); if (!u || seenImg[u]) return false; seenImg[u] = 1; return true; }).slice(0, 4);   /* distinct images only */
         var sup = f.supports || {};
@@ -1182,7 +1256,7 @@
         if (sup.weeks) recur.push("<b>" + sup.weeks + "</b> week" + (sup.weeks === 1 ? "" : "s"));
         if (sup.territories && sup.territories.length) recur.push("<b>" + sup.territories.length + "</b> territor" + (sup.territories.length === 1 ? "y" : "ies") + " · " + esc(sup.territories.map(function (t) { return String(t).replace(/-/g, " "); }).join(", ")));
         var shown = ev.slice(0, 10), hidden = ev.length - shown.length;
-        h += inner((lead ? '<div class="hero">' + photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) + '<span class="tag">Finding ' + (i + 1) + " of " + findings.length + '</span><div class="credit">' + H.credit(lead) + "</div></div>" : '<div class="hero none"></div>') +
+        h += inner((fslot ? (fslot.kind === "type" ? '<div class="hero none"></div>' : '<div class="hero">' + H.slotImg(fslot, "hero") + '<span class="tag">Finding ' + (i + 1) + " of " + findings.length + '</span><div class="credit">' + esc(fslot.credit || "") + "</div></div>") : lead ? '<div class="hero">' + photo(lead, "hero", ev.filter(function (a) { return !used[a]; }).concat(ev)) + '<span class="tag">Finding ' + (i + 1) + " of " + findings.length + '</span><div class="credit">' + H.credit(lead) + "</div></div>" : '<div class="hero none"></div>') +
           '<div class="pname">' + esc(f.name) + "</div>" +
           '<div style="margin:0 0 14px">' + (f.strength === "signal" ? '<span class="rp-chip">Early signal</span> ' : '<span class="rp-chip">Pattern</span> ') +
             (f.confidence ? '<span class="rp-chip ' + esc(f.confidence) + '">' + esc(f.confidence) + " confidence</span> " : "") +
@@ -1596,7 +1670,8 @@
       if (row.status !== "compiling") btns.push('<button class="btn" id="prune">Delete this version</button>');   // SEAM:READ_PRUNE: the house refuses the newest cut and the cut the stand carries; a published cut a newer one replaced may go
       if (x.title) btns.push('<button class="btn" id="proof">Proofread</button>');   // READ_PROOF: show every fix before it is applied
       if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="desk">The desk</button>');   // SEAM:READ_DESK: notes, revise, standing inputs
-      if (x.title && row.status !== "compiling" && row.kind !== "report" && row.kind !== "recon") btns.push('<button class="btn" id="slots">The slots</button>');   // SEAM:READ_SLOTS: the cover and every finding's image, the house's to fill (reports follow in ED2)
+      if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="slots">The slots</button>');   // SEAM:READ_SLOTS: the cover and every finding's image, the house's to fill; reports and RECONs since ED2
+      if (x.title && row.status !== "compiling") btns.push('<button class="btn" id="lines">The lines</button>');   // SEAM:EDIT_DESK (ED2): every line, edited by hand inside the laws
       if (x.title) btns.push('<button class="btn" id="pin-folio">Pin to folio</button>');   // SEAM:READ_FOLIO
       actions.innerHTML = btns.join(" ");
       /* SEAM:READ_FOLIO: a house read pinned to the open folio brings the stories and lines its claims cite, and its words as a prior view. */
@@ -1637,7 +1712,7 @@
       function slotOf(path) { var s = SLOTS[path]; return s && s.kind ? s : null; }
       function slotImg(s, slot) {
         if (!s || s.kind === "type") return "";
-        var u = s.kind === "house" ? API + "/media/" + s.ref : (/^S\d+$/.test(String(s.ref)) ? API + "/img/s/" + String(s.ref).slice(1) + IMGV : null);
+        var u = (s.kind === "house" || s.kind === "own") ? API + "/media/" + s.ref : (/^S\d+$/.test(String(s.ref)) ? API + "/img/s/" + String(s.ref).slice(1) + IMGV : null);   /* ED2: the house's own photograph */
         if (!u) return "";
         return '<img class="ph ph-wait"' + (RT ? ' crossorigin="anonymous"' : "") + ' src="' + u + '" alt="" loading="eager" referrerpolicy="no-referrer" data-s="' + esc(s.ref) + '" data-first="' + esc(s.ref) + '" data-min="' + MIN.slot + '" data-alts="" onload="phCheck(this)" onerror="phNext(this)||phGone(this)">';
       }
@@ -1668,7 +1743,7 @@
 
       if (row.kind === "report" || row.kind === "recon") {   // SEAM:READ_REPORT: the research layout has its own builder, same helpers, same paper (SEAM:READ_RECON rides it)
         document.title = "Unsurfaced Intelligence · " + row.label;
-        var rp = reportDoc(CUT ? readCut(x) : x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq,
+        var rp = reportDoc(CUT ? readCut(x) : x, st, rc, row, { esc: esc, inner: inner, band: band, photo: photo, evline: evline, pickImage: pickImage, img: img, credit: credit, real: real, uniq: uniq, slotOf: slotOf, slotImg: slotImg,   /* SEAM:READ_SLOTS (ED2): the slots reach the research layout */
           stat: stat, fmtDate: fmtDate, pad: pad, firstSentence: firstSentence, mark: mark, capHtml: capHtml, ROLES: ROLES, cited: cited, used: used, cut: CUT });   /* SEAM:READ_CUT: the view the address asks for */
         app.innerHTML = '<div class="doc">' + revHtml(row) + (row.status === "held" ? '<div class="hold noprint">HELD FOR REVIEW. ' + esc((row.violations || []).join(" · ")) + "</div>" : (RT ? "" : deskNotesHtml(row))) + rp.html + "</div>";
         if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
@@ -1919,6 +1994,11 @@
     };
     /* SEAM:READ_DESK: the editors' desk. Notes pinned to the read (or to one path in it), Revise under the open notes
        (a new version from the same pack, at any state), and the standing inputs for this kind and for every kind. */
+    var ln = document.getElementById("lines"); if (ln) ln.onclick = function () {   /* SEAM:EDIT_DESK (ED2) */
+      var el = document.getElementById("lines-panel"); if (el && el.innerHTML) { linesPanel(""); return; }
+      linesPanel('<div class="pf-head">Opening the lines</div>');
+      linesOpen(row, null);
+    };
     var sl = document.getElementById("slots"); if (sl) sl.onclick = function () {   /* SEAM:READ_SLOTS */
       var el = document.getElementById("slots-panel"); if (el && el.innerHTML) { slotsPanel(""); return; }
       slotsPanel('<div class="pf-head">Opening the slots</div>');

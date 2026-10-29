@@ -237,7 +237,7 @@ export default {
       if (request.method === 'GET' && path === '/play/budget') return playBudget(env, origin, user);
       if (request.method === 'GET' && path.startsWith('/play/handoff/')) return playHandoffGet(decodeURIComponent(path.slice('/play/handoff/'.length)), env, origin, user);   // SEAM:PLAY_HANDOFF
 
-      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref') ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref' && path !== '/reads/slot-upload') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return meterRun(env, origin, user, 'play.words', () => playGenerate(body, env, origin));   // SEAM:PLANS
         case '/play/interpret':      return playInterpret(body, env, origin, user);   // SEAM:PLAY_BRIEF
@@ -324,7 +324,11 @@ export default {
         case '/reads/slot-brief':
         case '/reads/slot-make':
         case '/reads/slot-final':
+        case '/reads/lines':         // SEAM:EDIT_DESK (ED2): the lines an editor may change, one direct edit, a revert
+        case '/reads/edit':
+        case '/reads/revert':
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
+        case '/reads/slot-upload':   return slotUpload(request, env, origin, user);   // SEAM:EDIT_DESK (ED2): the house's own photograph, raw body
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
         case '/pay/responder':       return payResponder(body, env, origin, user);
@@ -15890,8 +15894,9 @@ async function readReceipts(env, read, row) {
  * slot first and fall back to the typographic block. The read contract is untouched: cover_image and lead_image stay the
  * writer's story suggestions. No model. */
 const RIGHTS = {
-  KINDS: ['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type'],
-  BASIS: { house: 'AIR', press: 'EDIT', cc: 'CC', story_obj: 'OBJ', story_thumb: 'THUMB', type: 'A' },
+  KINDS: ['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type', 'own'],   // ED2: own, the house's photograph
+  BASIS: { house: 'AIR', press: 'EDIT', cc: 'CC', story_obj: 'OBJ', story_thumb: 'THUMB', type: 'A', own: 'A' },
+  OWN_BYTES: 10000000,
   CONTEXTS: ['weekly_pdf', 'stand_cover', 'social', 'card', 'web', 'recon', 'brief', 'api'],
   THUMB_PX: 400,
   HOUSE_CREDIT: 'Unsurfaced, AI illustration',
@@ -15901,7 +15906,7 @@ const RIGHTS = {
  * an admin has overridden with a reason on the record is a human judgment and clears as if it had passed. */
 function rightsContexts(kind, checks) {
   if (checks && Array.isArray(checks.hard) && checks.hard.length && !(checks.override && checks.override.why)) return [];
-  if (kind === 'house' || kind === 'type' || kind === 'cc') return RIGHTS.CONTEXTS.slice();
+  if (kind === 'house' || kind === 'type' || kind === 'cc' || kind === 'own') return RIGHTS.CONTEXTS.slice();   // ED2: the house's own photograph clears every context
   if (kind === 'press') return ['weekly_pdf', 'social', 'card', 'web', 'recon', 'brief', 'api'];   // a press-kit image is editorial: never the cover of a paid product
   if (kind === 'story_obj') return ['weekly_pdf', 'web', 'card', 'api'];   // the image is the object of the finding: small, credited, never a paid cover, never paid social
   if (kind === 'story_thumb') return ['weekly_pdf', 'web', 'card', 'api'];
@@ -16059,6 +16064,7 @@ const LAKE_LOOK = { MODEL: '@cf/llava-hf/llava-1.5-7b-hf', MS: 15000, BYTES: 250
   REAL: 'Is this a photograph of a recognizable real or famous person? Answer yes or no.',
   LOGO: 'Does this image show a brand logo, a trademark or a recognizable branded product design? Answer yes or no.',
   SHOWS: 'Describe what this image shows in one sentence under 30 words.',
+  TEXT: 'Is there any text, lettering, writing or signage visible in this image? Answer yes or no.',   // ED2: the copy is the writer's; the image carries none
   DESCRIBE: 'In one sentence under 40 words, describe this photograph as an art director would: palette, light, setting, composition, mood. No brand names.' };
 function lakeLookModel(env) { return (env && env.LOOK_MODEL) || LAKE_LOOK.MODEL; }
 async function imageLook(env, bytes, prompt, maxTokens) {
@@ -16080,11 +16086,12 @@ async function imageCheck(env, ref) {
   const obj = env.MEDIA ? await env.MEDIA.get(ref).catch(excQuiet('image_check_get', null)) : null;
   if (!obj) return { hard: [], advisory: [], unknown: ['no_image'], shows: '' };
   const bytes = await obj.arrayBuffer();
-  const [real, logo, shows] = await Promise.all([imageLook(env, bytes, LAKE_LOOK.REAL, 8), imageLook(env, bytes, LAKE_LOOK.LOGO, 8), imageLook(env, bytes, LAKE_LOOK.SHOWS, 80)]);
+  const [real, logo, shows, text] = await Promise.all([imageLook(env, bytes, LAKE_LOOK.REAL, 8), imageLook(env, bytes, LAKE_LOOK.LOGO, 8), imageLook(env, bytes, LAKE_LOOK.SHOWS, 80), imageLook(env, bytes, LAKE_LOOK.TEXT, 8)]);
   const hard = [], unknown = [];
-  const r = imageYes(real), l = imageYes(logo);
+  const r = imageYes(real), l = imageYes(logo), t = imageYes(text);
   if (r === true) hard.push('real_person'); else if (r === null) unknown.push('real_person');
   if (l === true) hard.push('logo'); else if (l === null) unknown.push('logo');
+  if (t === true) hard.push('lettering'); else if (t === null) unknown.push('lettering');   // ED2: lettering is hard; the copy is written by the writer
   return { hard, advisory: [], unknown, shows: String(shows || '').replace(/\u2014/g, ',').trim().slice(0, 240) };
 }
 /* PURE: the story test's answer, read as the first number in it. */
@@ -16219,6 +16226,100 @@ async function slotLake(env, ids) {
   const rows = await sbRest(env, 'edition_items?id=in.(' + n.join(',') + ')&image_desc=not.is.null&image_desc=neq.&select=image_desc&limit=12') || [];
   return rows.map(r => r.image_desc).filter(Boolean);
 }
+/* ═══ SEAM:EDIT_DESK (ED2): the editor. A line of a written read is changed in place, by hand, with no model: the edited read runs
+ * the landing law, and what the edit itself breaks (a figure the evidence does not give, a missing title) refuses it unless the
+ * editor overrides with a reason, which is written on the version for the record to see. A locked path (a figure, the evidence, a
+ * call's claim and date, the window, an image) is never edited here. Every edit is a new version of the row, the slots and
+ * briefs carried, so nothing is lost and nothing is deleted; a revert is a new version equal to the chosen one. ═══ */
+const READ_LINES = { MAX: 2400, KEEP: 80,
+  LOCKED: /(?:^|\.)(?:stat|numbers|evidence|supports|quotes|voices|then|now|id|from|n|kind|verdict|confidence|window|lead_image|cover_image|image_prompt|check_by|date|dated|grade|graded|status)(?:\[\d+\])?$|^(?:social|territories|measures|lake|bet|call|calls|watch|signals|sources|receipts)(?:\[|\.|$)/ };
+/* PURE: may this path be edited by hand? */
+function readEditable(path) { return READ_DESK.SCOPE_RX.test(String(path || '')) && !READ_LINES.LOCKED.test(String(path || '')); }
+/* PURE: the string paths of a read an editor may change, with what they say now. */
+function readEditLines(read) {
+  const out = [];
+  readWalk(read, (v, path) => { if (typeof v === 'string' && v.trim() && readEditable(path)) out.push({ path, text: v }); return v; }, '');
+  return out;
+}
+/* PURE: which of the law's findings this edit caused: the ones on its own path, and a title or thesis gone missing. */
+function readEditFatal(fatal, path) { return (fatal || []).filter(f => String(f).indexOf(':' + path + ':') >= 0 || /^missing_title_or_thesis/.test(String(f))); }
+/* PURE: the keys of a row's meta a new version carries: the kind's own (an issue number, a RECON's brief), the slots and the briefs. */
+const READ_CARRY = ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue', 'pack', 'proof', 'deep', 'renders', 'slots', 'briefs'];
+function readCarry(meta) { const c = {}; for (const k of READ_CARRY) if (meta && meta[k] != null) c[k] = meta[k]; return c; }
+async function readEditRoute(path, body, env, origin, user) {
+  const row = await readRow(env, body.id);
+  if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
+  if (row.status === 'compiling' || row.status === 'queued') return json({ ok: false, error: 'still_compiling' }, 200, origin, env);
+  const by = String(user.email || user.id).replace(/@.*$/, ''), at = new Date().toISOString();
+  if (path === '/reads/lines') return json({ ok: true, id: row.id, version: row.version, lines: readEditLines(row.read), edits: ((row.meta && row.meta.edits) || []).slice(-READ_LINES.KEEP), revised_from: (row.meta && row.meta.revised_from) || null, plan: (row.meta && row.meta.plan) || null }, 200, origin, env);
+  if (path === '/reads/revert') {
+    const to = await readRow(env, body.to);
+    if (!to || !to.read || !to.read.title || to.kind !== row.kind || to.window_start !== row.window_start || to.window_end !== row.window_end) return json({ ok: false, error: 'no_such_version' }, 200, origin, env);
+    const { row: nx } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(readCarry(to.meta), { plan: 'revert', revised_from: row.id, revised_from_version: row.version, reverted_to: to.id, reverted_to_version: to.version, revised_by: by }));
+    if (!nx) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
+    await readPatch(env, nx.id, { status: to.status === 'held' ? 'held' : 'ready', read: to.read, violations: to.violations || [], stats: to.stats || {}, pack_ids: to.pack_ids || [], label: row.label, cost_usd: 0, error: to.status === 'held' ? 'held_for_review' : null,
+      meta: Object.assign({}, nx.meta || {}, { edits: ((row.meta && row.meta.edits) || []).slice(-READ_LINES.KEEP).concat([{ path: null, revert_to: to.id, by, at }]) }) });
+    logEvent(env, 'intelligence', 'reads', 'read_revert', null, { id: nx.id, from: row.id, to: to.id, kind: row.kind, by });
+    return json({ ok: true, id: nx.id, from: row.id, to: to.id, version: nx.version }, 200, origin, env);
+  }
+  // /reads/edit
+  const p = String(body.path || '').trim();
+  if (!readEditable(p)) return json({ ok: false, error: 'locked_path', say: 'A figure, the evidence, a call, the window and the images are not edited by hand.' }, 200, origin, env);
+  const before = readPathGet(row.read, p);
+  if (typeof before !== 'string') return json({ ok: false, error: 'not_a_line' }, 200, origin, env);
+  const text = String(body.text || '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').trim();
+  if (!text) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  if (text.length > READ_LINES.MAX) return json({ ok: false, error: 'too_long', max: READ_LINES.MAX }, 200, origin, env);
+  if (/\u2014/.test(text)) return json({ ok: false, error: 'em_dash', say: 'The house voice has no em dash: a colon, a comma or a full stop.' }, 200, origin, env);
+  if (text === before) return json({ ok: false, error: 'unchanged' }, 200, origin, env);
+  const read = JSON.parse(JSON.stringify(row.read));
+  if (!readPathSet(read, p, text)) return json({ ok: false, error: 'not_a_line' }, 200, origin, env);
+  const items = await readWindowItems(env, row.window_start, row.window_end);
+  const v = readValidate(row.kind, readAmerican(read).read, readGroundOf(row, items), row.pack_ids || [], readReportExtraIds(row.meta && row.meta.pack));
+  const mine = readEditFatal(v.fatal, p);
+  const override = String(body.override || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (mine.length && override.length < 12) return json({ ok: false, error: 'law', fatal: mine, say: 'The law refuses this line: ' + mine.join('; ') + '. Override with a reason of twelve characters or more, and the reason stands on the version.' }, 200, origin, env);
+  const out = v.read || read;
+  const kept = (Array.isArray(row.violations) ? row.violations : []).filter(x => !READ_CLEAR.FATAL.test(String(x)) || String(x).indexOf(':' + p + ':') < 0);   // the edit's own path is re-judged; the rest stands
+  const violations = (mine.length ? mine.map(f => f + ':overridden') : []).concat(kept.filter(x => mine.indexOf(x) < 0), v.notes);
+  const holds = violations.filter(x => READ_CLEAR.FATAL.test(String(x)) && !/:overridden$/.test(String(x)));
+  const { row: nx } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(readCarry(row.meta), { plan: 'edit', revised_from: row.id, revised_from_version: row.version, revised_by: by }));
+  if (!nx) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
+  const edit = { path: p, before: before.slice(0, 1200), after: text.slice(0, 1200), by, at, override: mine.length ? { why: override, fatal: mine } : null };
+  const st = holds.length ? 'held' : 'ready';
+  await readPatch(env, nx.id, { status: st, read: out, violations, stats: row.stats || {}, pack_ids: row.pack_ids || [], label: row.label, cost_usd: 0, error: st === 'held' ? 'held_for_review' : null,
+    meta: Object.assign({}, nx.meta || {}, { notes: (row.meta && row.meta.notes) || [], edits: ((row.meta && row.meta.edits) || []).slice(-READ_LINES.KEEP).concat([edit]), diff: readProofDiff(row.read, out).slice(0, READ_LINE.DIFF_MAX) }) });
+  logEvent(env, 'intelligence', 'reads', 'read_edit', null, { id: nx.id, from: row.id, kind: row.kind, path: p, override: !!edit.override, status: st, by });
+  return json({ ok: true, id: nx.id, from: row.id, version: nx.version, path: p, status: st, override: edit.override, notes: v.notes }, 200, origin, env);
+}
+/* SEAM:EDIT_DESK (ED2): the house's own photograph. An admin's upload (JPEG, PNG or WebP by its own bytes, under RIGHTS.OWN_BYTES) is
+ * kept in R2 under own/<hash> and written as a rights record of kind own, basis A, cleared for every context, with the credit and the
+ * release note the admin gave. The AI checks are not run: the house vouches for its own photograph. */
+function ownImageType(bytes) {
+  const b = new Uint8Array(bytes.slice(0, 16));
+  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return { ext: 'jpg', mime: 'image/jpeg' };
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return { ext: 'png', mime: 'image/png' };
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return { ext: 'webp', mime: 'image/webp' };
+  return null;
+}
+async function slotUpload(request, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  if (!env.MEDIA) return json({ ok: false, error: 'media_unconfigured' }, 200, origin, env);
+  const raw = await request.arrayBuffer();
+  if (raw.byteLength > RIGHTS.OWN_BYTES) return json({ ok: false, error: 'too_large', max: RIGHTS.OWN_BYTES }, 200, origin, env);
+  const type = ownImageType(raw);
+  if (!type) return json({ ok: false, error: 'not_an_image', say: 'A JPEG, PNG or WebP photograph.' }, 200, origin, env);
+  const digest = await crypto.subtle.digest('SHA-256', raw), hash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 40), ref = 'own/' + hash + '.' + type.ext;
+  const credit = String(request.headers.get('x-credit') || '').replace(/[\u2014\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Photo: Unsurfaced';
+  const release = String(request.headers.get('x-release') || '').replace(/[\u2014\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240) || null;
+  const name = String(request.headers.get('x-filename') || '').replace(/[^\w .()-]/g, '_').slice(0, 120) || null;
+  await env.MEDIA.put(ref, raw, { httpMetadata: { contentType: type.mime } });
+  const rec = await rightsInsert(env, { kind: 'own', ref, credit, basis: 'A', contexts: rightsContexts('own', null), made: { own: true, bytes: raw.byteLength, name, release, by: user.id, at: new Date().toISOString() }, created_by: user.id });
+  if (!rec) return json({ ok: false, error: 'rights_not_written' }, 200, origin, env);
+  logEvent(env, 'intelligence', 'reads', 'slot_upload', null, { rights_id: rec.id, bytes: raw.byteLength, credit, release: !!release, by: user.id });
+  return json({ ok: true, rights_id: rec.id, ref, url: '/media/' + ref, credit, release, kind: 'own' }, 200, origin, env);
+}
 async function slotRoute(path, body, env, origin, user) {
   const row = await readRow(env, body.id);
   if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
@@ -16253,8 +16354,9 @@ async function slotRoute(path, body, env, origin, user) {
     const base = Number.isFinite(parseInt(body.seed, 10)) ? parseInt(body.seed, 10) : 101;
     if (!(await makeSpend(env, n * MAKE.USD[MAKE.DRAFT]))) return json({ ok: false, error: 'house_cap', cap: makeHouseCap(env), used: await makeHouseUsed(env) }, 200, origin, env);
     const leads = slotLeads(row.read), own = target.title;
-    const one = async i => {
-      const m = await makeImage(env, { brief, format: slotFormat(sp), seed: base + i * 7919, frame: MAKE_FRAMES[i % MAKE_FRAMES.length], by: user.id, prepaid: true });
+    const one = async (i, again) => {   // ED2: a draft that fails only on lettering is made once more, the no-lettering line first and a new seed
+      const b2 = again ? Object.assign({}, brief, { scene: 'No lettering, signage or writing anywhere in the frame. ' + String(brief.scene || '') }) : brief;
+      const m = await makeImage(env, { brief: b2, format: slotFormat(sp), seed: base + i * 7919 + (again ? 104729 : 0), frame: MAKE_FRAMES[i % MAKE_FRAMES.length], by: user.id, prepaid: true });
       if (!m.ok) return { ok: false, error: m.error, fallback: m.fallback };
       const kept = m.cached && m.rec && m.rec.made ? m.rec.made : null;
       const checks = kept && kept.checks ? kept.checks : await imageCheck(env, m.ref);
@@ -16262,7 +16364,8 @@ async function slotRoute(path, body, env, origin, user) {
       const sim = !kept && checks.shows ? await imageSimilar(env, checks.shows, simIds) : { similar: [], max: 0 };
       if (sim.similar.length) checks.advisory = (checks.advisory || []).concat(['like_press:' + sim.similar.map(s => s.id).join(',')]);
       if (!kept) await sbRest(env, 'media_rights?id=eq.' + m.rights_id, { method: 'PATCH', body: { made: Object.assign({}, m.rec.made, { checks, tell }), contexts: rightsContexts('house', checks) } });
-      return { ok: true, rights_id: m.rights_id, ref: m.ref, url: '/media/' + m.ref, seed: m.seed, model: m.model, usd: m.usd, cached: !!m.cached, checks, tell, flagged: checks.hard.length > 0 };
+      if (!again && checks.hard.length === 1 && checks.hard[0] === 'lettering' && (await makeSpend(env, MAKE.USD[MAKE.DRAFT]))) { const r2 = await one(i, true); if (r2.ok) { r2.remade = 'lettering'; return r2; } }   // ED2
+      return { ok: true, rights_id: m.rights_id, ref: m.ref, url: '/media/' + m.ref, seed: m.seed, model: m.model, usd: m.usd, cached: !!m.cached, checks, tell, flagged: checks.hard.length > 0, remade: again ? 'lettering' : null };
     };
     const drafts = await Promise.all(Array.from({ length: n }, (_, i) => one(i)));
     const nextBriefs = Object.assign({}, briefs, { [sp]: Object.assign({}, brief, { by: user.id, at: new Date().toISOString(), written: given ? 'desk' : (briefs[sp] && briefs[sp].written) || 'writer', note: String(body.note || '').replace(/\u2014/g, ',').slice(0, 400) }) });
@@ -16512,6 +16615,7 @@ async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
   if (/^\/reads\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1)
+  if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)
   if (path === '/reads/list') {
     const k = HOUSE_READ.KINDS[body.kind] ? '&kind=eq.' + body.kind : '';
     const rows = await sbRest(env, 'house_reads?select=id,kind,window_start,window_end,version,label,status,error,cost_usd,violations,created_at,updated_at,deep_stage:meta->deep->>stage,deep_hold:meta->deep->>hold_reason,deep_waiting:meta->deep->>waiting' +   // SEAM:READ_DEEP
@@ -16868,7 +16972,7 @@ async function readRoute(path, body, env, origin, user) {
     if (all.length && !plan.whole.length && body.lane !== 'full' && row.kind !== 'recon') {
       const e = await readLineRun(env, row, plan);
       if (!e.ok) return json({ ok: false, error: e.error, lane: 'line', retry: 'full', cost_usd: e.cost_usd || 0 }, 200, origin, env);
-      const carryL = {}; for (const k of ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue', 'pack', 'proof']) if (row.meta && row.meta[k] != null) carryL[k] = row.meta[k];
+      const carryL = readCarry(row.meta);   // ED2: the slots and the briefs ride to the new version too
       const by = String(user.email || user.id).replace(/@.*$/, '');
       const { row: nx } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(carryL, { plan: 'revise', lane: 'line', revised_from: row.id, revised_from_version: row.version, revised_by: by }));
       if (!nx) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);
@@ -16888,7 +16992,7 @@ async function readRoute(path, body, env, origin, user) {
     const ddBudget = dd ? (Number.isFinite(askedB) ? Math.max(READ_DEEP.BUDGET_MIN, Math.min(READ_DEEP.BUDGET_MAX, askedB)) : (Number(dd.budget_usd) || READ_DEEP.BUDGET_USD)) : null;
     if (dd && !deepRoom(Object.assign({}, dd, { budget_usd: ddBudget }), READ_DEEP.REVISE_RESERVE + READ_DEEP.DESK_USD))   // a revision is one pass
       return json({ ok: false, error: 'budget_too_low', spent: deepSpent(dd), budget: ddBudget }, 200, origin, env);
-    const carry = {}; for (const k of ['issue_no', 'month', 'recon_no', 'brief', 'gather', 'stand_issue', 'deep', 'renders']) if (row.meta && row.meta[k] != null) carry[k] = row.meta[k];   // SEAM:READ_DEEP: the revision stands on the same evidence (SEAM:READ_THINK: a concept drawn once is never drawn again)
+    const carry = readCarry(row.meta);   // ED2: the slots and the briefs ride to the new version too   // SEAM:READ_DEEP: the revision stands on the same evidence (SEAM:READ_THINK: a concept drawn once is never drawn again)
     if (dd) carry.deep = Object.assign({}, dd, { budget_usd: ddBudget, stage: 'revising', lease: null });   // a revision is never "compiled" until it lands
     const { row: next } = await readQueue(env, row.kind, { start: row.window_start, end: row.window_end, label: row.label }, Object.assign(carry, { plan: 'revise', revised_from: row.id, revised_from_version: row.version, revised_by: String(user.email || user.id).replace(/@.*$/, ''), notes: notes.map(n => Object.assign({}, n, { status: 'applying' })) }));
     if (!next) return json({ ok: false, error: 'queue_failed' }, 200, origin, env);

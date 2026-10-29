@@ -1655,6 +1655,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:ENTITY_MEASURE",
    "purpose": "EX52b arc 2: _measuredFrom says 'measured from <date>, N of 12 weeks counted' on the record tile line, the door tile row, the read block's sparkline caption and the PDF's measured line while an entity's window is not yet whole; nothing when it is."
+  },
+  "SEAM:EDIT_DESK": {
+   "file": "worker/src/index.js",
+   "purpose": "ED2 (Oct 29, 2026): the editor. /reads/lines lists every string path an admin may change (readEditable: never a figure, the evidence, a call, the window or an image); /reads/edit changes one line by hand, no model: the edited read runs readValidate, what the edit itself breaks refuses it unless an override of twelve characters or more is given and written on the version (meta.edits[].override), an em dash is refused outright; every edit and every revert (/reads/revert) is a new version of the row with the slots and briefs carried (READ_CARRY, which the two revise lanes now use too). /reads/slot-upload keeps the house's own photograph in R2 (own/<hash>, JPEG, PNG or WebP by its bytes, RIGHTS.OWN_BYTES) as a rights record of kind own, basis A, every context, no AI checks. Lettering is imageCheck's third hard question and slot-make remakes a lettered draft once."
+  },
+  "SEAM:EDIT_DESK@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:EDIT_DESK",
+   "purpose": "ED2: THE LINES panel (every editable line as a textarea; Save this line; the law's refusal with an override box; revert to the version before); YOUR OWN PHOTOGRAPH in the slot panel (upload, credit, release note, set on the slot); the own kind rendered through /media; the slots button and the slot paths on reports and RECONs (the research layout reads the cover and every finding's slot)."
   }
  },
  "planned": [
