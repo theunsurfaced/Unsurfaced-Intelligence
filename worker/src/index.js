@@ -4867,29 +4867,54 @@ async function kbSubmit(body, env, origin, user) {
     return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
   }
 }
+/* SEAM:FEED_INTAKE (KB1): one door for every document the house takes in. A text file is read as it is. A PDF, a Word or Excel
+ * file, an OpenDocument, HTML, XML or an image is converted to Markdown by Cloudflare's conversion inside the AI binding: the
+ * documents spend nothing, an image spends two models inside the included neurons. The text is what the house indexes; the
+ * original is kept beside it where the route keeps originals. Nothing here is a model's reading of the document. */
+const DOC_INTAKE = { MAX_BYTES: 15000000, TEXT: /\.(txt|md|markdown|csv|json)$/i,
+  CONVERT: /\.(pdf|docx|xlsx|xlsm|xlsb|xls|et|odt|ods|html?|xml|numbers|jpe?g|png|webp|gif|bmp|svg)$/i,
+  MIME: { pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xls: 'application/vnd.ms-excel', odt: 'application/vnd.oasis.opendocument.text', ods: 'application/vnd.oasis.opendocument.spreadsheet', html: 'text/html', htm: 'text/html', xml: 'application/xml',
+    numbers: 'application/vnd.apple.numbers', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml', txt: 'text/plain', md: 'text/markdown', markdown: 'text/markdown', csv: 'text/csv', json: 'application/json' } };
+function docKind(name) { const ext = String(name || '').split('.').pop().toLowerCase(); return /^(txt|text)$/.test(ext) ? 'text' : /^(markdown)$/.test(ext) ? 'md' : /^(jpe?g|png|webp|gif|bmp|svg)$/.test(ext) ? 'image' : /^(xlsm|xlsb|xls|et)$/.test(ext) ? 'xlsx' : /^(htm)$/.test(ext) ? 'html' : ext || 'text'; }
+async function docText(env, name, ctype, raw) {
+  const n = String(name || '');
+  if (DOC_INTAKE.TEXT.test(n)) return { ok: true, text: new TextDecoder('utf-8', { fatal: false }).decode(raw), how: 'text', mime: DOC_INTAKE.MIME[n.split('.').pop().toLowerCase()] || 'text/plain' };
+  if (!DOC_INTAKE.CONVERT.test(n)) return { ok: false, error: 'unsupported_type' };
+  if (!env.AI || typeof env.AI.toMarkdown !== 'function') return { ok: false, error: 'convert_unconfigured' };
+  const ext = n.split('.').pop().toLowerCase(), mime = DOC_INTAKE.MIME[ext] || String(ctype || '') || 'application/octet-stream';
+  try {
+    const res = await env.AI.toMarkdown({ name: n, blob: new Blob([raw], { type: mime }) });   // SPENDERS: docText; an image spends two models, a document none
+    const r = Array.isArray(res) ? res[0] : res;
+    if (!r || r.format === 'error' || r.data == null) { console.log('doc_convert_refused', ext, String((r && r.error) || 'no data').slice(0, 120)); return { ok: false, error: 'convert_failed', detail: String((r && r.error) || '').slice(0, 160) }; }
+    return { ok: true, text: String(r.data), how: 'markdown', mime, tokens: Number.isFinite(r.tokens) ? r.tokens : null };
+  } catch (e) { console.log('doc_convert_error', ext, String(e && e.message).slice(0, 120)); return { ok: false, error: 'convert_failed', detail: String(e && e.message || '').slice(0, 160) }; }
+}
 async function kbFile(request, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   const u = new URL(request.url);
   const target = kbTarget(u.searchParams.get('target')), tags = kbTags(u.searchParams.get('tags'));
   const drop = kbDrop(k => u.searchParams.get(k));   // SEAM:FEED_BRIDGE
   const name = (request.headers.get('x-filename') || 'drop.txt').replace(/[^\w.-]/g, '_');
-  if (!/\.(txt|md|markdown|csv|json)$/i.test(name))
-    return json({ ok: false, error: 'text_files_only' }, 200, origin, env);
+  if (!DOC_INTAKE.TEXT.test(name) && !DOC_INTAKE.CONVERT.test(name))
+    return json({ ok: false, error: 'unsupported_type', say: 'Text, PDF, Word, Excel, OpenDocument, HTML, XML or an image.' }, 200, origin, env);   // SEAM:FEED_INTAKE (KB1)
   const raw = await request.arrayBuffer();
-  if (raw.byteLength > 1500000) return json({ ok: false, error: 'too_large' }, 200, origin, env);
-  const text = new TextDecoder('utf-8', { fatal: false }).decode(raw).slice(0, 60000);
+  if (raw.byteLength > DOC_INTAKE.MAX_BYTES) return json({ ok: false, error: 'too_large', max: DOC_INTAKE.MAX_BYTES }, 200, origin, env);
+  const got = await docText(env, name, request.headers.get('content-type'), raw);
+  if (!got.ok) return json({ ok: false, error: got.error, detail: got.detail || null }, 200, origin, env);
+  const text = String(got.text || '').slice(0, 60000);   // the chunker caps at sixty parts; the original keeps the rest
   if (!text.trim()) return json({ ok: false, error: 'empty' }, 200, origin, env);
   let file_ref = null;
   if (env.MEDIA) {
     file_ref = `knowledge/${user.id}/${Date.now()}-${name}`;
-    await env.MEDIA.put(file_ref, raw, { httpMetadata: { contentType: 'text/plain' } });
+    await env.MEDIA.put(file_ref, raw, { httpMetadata: { contentType: got.mime || 'application/octet-stream' } });   // KB1: the original as what it is
   }
   const chunks = kbChunk(text);
   try {
     const vecs = await kbEmbed(env, chunks);
     const added = await kbInsert(env, user, chunks, vecs, { tags, target, file_ref, drop_key: drop.drop_key, title: drop.title || name.replace(/\.[a-z]+$/i, ''), shareable: drop.shareable });
     const fx = await kbAfter(env, Object.assign({}, drop, { title: drop.title || name.replace(/\.[a-z]+$/i, ''), chunks, target, tags, text }));   // SEAM:FEED_BRIDGE
-    return json(Object.assign({ ok: true, added, target, tags, file_ref, drop_key: drop.drop_key, shareable: drop.shareable }, fx), 200, origin, env);
+    return json(Object.assign({ ok: true, added, target, tags, file_ref, drop_key: drop.drop_key, shareable: drop.shareable, how: got.how, kind: docKind(name) }, fx), 200, origin, env);
   } catch (e) {
     return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
   }
@@ -10511,7 +10536,7 @@ async function insightPanelResults(request, env, origin) {
  * chunks under the reader's id (client_evidence, migration 0043). A read on the reader's frames takes the chunks that name the frame as
  * first-party lines (tier 1, source "Client evidence: <title>"), past the relevance gate because the reader chose them, under a law
  * that says what they are. Never on a public read, never on the bench. ═══ */
-const CLIENT_EV = { MAX_BYTES: 400000, CHUNK: 700, MAX_CHUNKS: 400, MAX_LINES: 12, MAX_ITEMS: 40, KINDS: ['text', 'csv', 'md', 'json'] };
+const CLIENT_EV = { MAX_BYTES: 400000, CHUNK: 700, MAX_CHUNKS: 400, MAX_LINES: 12, MAX_ITEMS: 40, KINDS: ['text', 'csv', 'md', 'json', 'pdf', 'docx', 'xlsx', 'odt', 'ods', 'html', 'xml', 'numbers', 'image'] };   // KB1: every kind the intake door reads
 const EXC_CLIENT_LAW = 'CLIENT EVIDENCE: lines whose source begins "Client evidence" were supplied by the reader (their own tracker, deck or report). Treat them as first-party and cite them like any line; when the open evidence disagrees with them, one finding says so plainly; never silently prefer either.';
 function clientChunks(text) {
   const t = String(text || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
@@ -10536,7 +10561,13 @@ async function clientEvidenceRoute(request, env, origin) {
   const ctype = String(request.headers.get('content-type') || '');
   let title = '', text = '', kind = 'text', hint = null;
   if (/application\/json/.test(ctype)) { let b = {}; try { b = await request.json(); } catch (e) { b = {}; } title = String(b.title || '').slice(0, 120); text = String(b.text || ''); hint = b.hint ? String(b.hint).slice(0, 160) : null; kind = CLIENT_EV.KINDS.includes(b.kind) ? b.kind : 'text'; }
-  else { title = String(request.headers.get('x-filename') || 'evidence').replace(/[^\w .()-]/g, '_').slice(0, 120); const ext = (title.split('.').pop() || '').toLowerCase(); kind = ext === 'csv' ? 'csv' : ext === 'md' ? 'md' : ext === 'json' ? 'json' : 'text'; if (!/^text\/|application\/json|text\/csv|text\/markdown/.test(ctype) && !['csv', 'md', 'json', 'txt'].includes(ext)) return json({ ok: false, error: 'text_only', say: 'Paste the text, or upload a .txt, .md, .csv or .json file. A PDF or a deck is read best as its exported text.' }, 200, origin, env); text = await request.text(); hint = request.headers.get('x-hint') ? String(request.headers.get('x-hint')).slice(0, 160) : null; }
+  else { title = String(request.headers.get('x-filename') || 'evidence').replace(/[^\w .()-]/g, '_').slice(0, 120); kind = docKind(title); if (!CLIENT_EV.KINDS.includes(kind)) kind = 'text';
+    if (!DOC_INTAKE.TEXT.test(title) && !DOC_INTAKE.CONVERT.test(title)) return json({ ok: false, error: 'unsupported_type', say: 'Paste the text, or upload a text file, a PDF, a Word or Excel file, an OpenDocument, HTML or an image.' }, 200, origin, env);   // SEAM:FEED_INTAKE (KB1)
+    const raw = await request.arrayBuffer();
+    if (raw.byteLength > DOC_INTAKE.MAX_BYTES) return json({ ok: false, error: 'too_large', max: DOC_INTAKE.MAX_BYTES }, 200, origin, env);
+    const got = await docText(env, title, ctype, raw);
+    if (!got.ok) return json({ ok: false, error: got.error, say: got.error === 'convert_failed' ? 'The document could not be read. Export it as text and upload that.' : 'That file type is not read yet.' }, 200, origin, env);
+    text = String(got.text || ''); hint = request.headers.get('x-hint') ? String(request.headers.get('x-hint')).slice(0, 160) : null; }
   if (text.length > CLIENT_EV.MAX_BYTES) return json({ ok: false, error: 'too_large', max: CLIENT_EV.MAX_BYTES }, 200, origin, env);
   const chunks = clientChunks(text);
   if (!chunks.length || !title) return json({ ok: false, error: 'empty' }, 200, origin, env);

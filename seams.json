@@ -1633,6 +1633,15 @@
   "SEAM:IC_C4C": {
    "file": "justiceinresidence/index.html",
    "purpose": "In Community, Justice In Residence x Catalyst for Change (Oct 24, 2026, [alt_] Chicago): gallery-led page, hero, the four briefs (EAT, M.M.A.D., Territory, the City Council Committee on Environmental Protection and Energy), the founder card for Marlene Paez Dukes, From the room (20 photos by Johnnie R. Lovett) with a full-screen viewer, deep link ?p=, analytics events to dataLayer; static, no worker route, no model"
+  },
+  "SEAM:FEED_INTAKE": {
+   "file": "worker/src/index.js",
+   "purpose": "KB1 (Oct 29, 2026): one door for every document the house takes in (docText): a text file read as it is; PDF, Word, Excel, OpenDocument, HTML, XML and images converted to Markdown by Cloudflare's conversion inside the AI binding (documents spend nothing, an image two models); /knowledge/file keeps the original in R2 with its own content type; /client/evidence takes the same types; the page's two file inputs accept them. Recordings are not read yet."
+  },
+  "SEAM:FEED_INTAKE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:FEED_INTAKE",
+   "purpose": "KB1: the feed's file input and the evidence shelf's drop accept text, PDF, Word, Excel, OpenDocument, HTML, XML and images, fifteen megabytes at the door; Make this a RECON carries the read's frame into the commission."
   }
  },
  "planned": [

@@ -5398,7 +5398,9 @@ async function _cmCollect() {
 function makeReconFromRead() {
   const L = window._liveLast; if (!L || !L.q) return showToast('Run a search first');
   const fr = (L.synthesis && L.synthesis.frame) || {};
-  openCommission({ brief: String(L.q), from: String(L.q), decisions: ['', '', '', '', ''] });
+  // KB1: the read already has its frame; it rides into the commission whole, so the Commission button is there at once and the house is not asked to frame the same question twice. Read the frame again stays.
+  const framed = (fr.entity || fr.category) ? Object.assign({ competitors: [], anchors: [], exclude: [] }, fr, { competitors: (fr.competitors || []).slice(0, _CM_LIMIT.competitors), anchors: (fr.anchors || []).slice(0, _CM_LIMIT.anchors), exclude: (fr.exclude || []).slice(0, _CM_LIMIT.exclude) }) : null;
+  openCommission({ brief: String(L.q), from: String(L.q), decisions: ['', '', '', '', ''], frame: framed, framedFor: framed ? String(L.q).replace(/\s+/g, ' ').trim() : '' });
   if (fr.audience || (fr.competitors || []).length) window._cm.said = 'The read framed this for ' + [fr.audience, (fr.competitors || []).length ? 'against ' + fr.competitors.join(', ') : ''].filter(Boolean).join(', ') + '. Read the frame to confirm it.';
   _cmRender();
 }
@@ -10764,8 +10766,8 @@ async function _profileOpen() {
     <details class="rm-panel rm-fold" id="rm-shelf"${first ? '' : ' open'}><summary><span class="rm-k">YOUR SHELF</span><span class="rm-hint" id="rm-shelf-hint">your own evidence</span></summary>
       <p class="rm-line">A read on your frames takes your own lines in as first-party evidence and says how many it stood on.</p>
       <label class="rm-drop" id="rm-drop" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');_evidenceUpload({ files: event.dataTransfer.files })">
-        <span class="rm-drop-k">Drop a file here, or choose one</span><span class="rm-drop-s">.txt .md .csv .json today; PDF, decks and recordings next</span>
-        <input type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" onchange="_evidenceUpload(this)" style="display:none"></label>
+        <span class="rm-drop-k">Drop a file here, or choose one</span><span class="rm-drop-s">text, PDF, Word, Excel, OpenDocument, HTML or an image; recordings next</span>
+        <input type="file" accept=".txt,.md,.csv,.json,.pdf,.docx,.xlsx,.xlsm,.xlsb,.xls,.odt,.ods,.html,.htm,.xml,.numbers,.jpg,.jpeg,.png,.webp,.gif,.bmp,.svg" onchange="_evidenceUpload(this)" style="display:none"></label><!-- SEAM:FEED_INTAKE (KB1) -->
       <div class="pm-follows rm-shelf-list" id="pm-evidence-list"></div>
       <details class="rm-more"><summary>Paste text instead</summary>
         <input id="pm-ev-title" placeholder="Title (your tracker, deck or report)"><input id="pm-ev-hint" placeholder="What it is about (a brand, a category), optional">
@@ -11005,7 +11007,7 @@ async function _evidencePaste() {
 }
 async function _evidenceUpload(input) {
   const f = input && input.files && input.files[0]; if (!f) return;
-  if (f.size > 400000) { showToast('Under 400 KB of text, please'); input.value = ''; return; }
+  if (f.size > 15000000) { showToast('Under 15 MB, please'); input.value = ''; return; }   // KB1: a PDF or a deck is bytes; the text it yields is capped on the worker
   const hint = (document.getElementById('pm-ev-hint') || {}).value || '';
   try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/client/evidence', { method: 'POST', headers: Object.assign({ 'Content-Type': f.type || 'text/plain', 'x-filename': f.name, 'x-hint': hint.trim() }, await _authHeader()), body: f }); const d = r.ok ? await r.json() : null;
     showToast(d && d.ok ? 'Kept: ' + d.item.chunks + ' parts' : (d && d.say) || 'Could not keep it'); if (d && d.ok) _evidenceList(); } catch (e) { showToast('Could not keep it'); }
@@ -11653,7 +11655,7 @@ function renderTrendingNow() {
       '<div class="kb-sub">Your data \u2192 embedded on our account \u2192 the knowledge base and the lake, where every read can cite it, counted in nothing. Internal unless you mark it shareable. Never a free model.</div>' +
       '<label>Paste text</label><textarea id="kbText" placeholder="Notes, research, transcripts, positioning docs\u2026"></textarea>' +
       '<div class="kb-row"><div><label>Or a link</label><input type="url" id="kbUrl" placeholder="https://\u2026 (readable core is extracted)"></div>' +
-      '<div><label>Or a text file</label><label class="kb-file">\uFF0B .txt .md .csv .json<input type="file" id="kbFile" accept=".txt,.md,.markdown,.csv,.json" hidden></label></div></div>' +
+      '<div><label>Or a file</label><label class="kb-file">\uFF0B text, PDF, Word, Excel, HTML, image<input type="file" id="kbFile" accept=".txt,.md,.markdown,.csv,.json,.pdf,.docx,.xlsx,.xlsm,.xlsb,.xls,.odt,.ods,.html,.htm,.xml,.numbers,.jpg,.jpeg,.png,.webp,.gif,.bmp,.svg" hidden></label></div></div>' +   /* SEAM:FEED_INTAKE (KB1) */
       '<div class="kb-row"><div><label>Tags (comma-separated)</label><input type="text" id="kbTags" placeholder="brand, q3, fieldnotes"></div>' +
       '<div><label>Target</label><select id="kbTarget"><option value="both">BOTH</option><option value="daily">DAILY</option><option value="intelligence">INTELLIGENCE</option></select></div></div>' +
       '<div class="kb-row"><div><label>Title (how the drop is cited)</label><input type="text" id="kbTitle" placeholder="Optional: the drop\u2019s name in reads and STUDIO"></div>' +   /* SEAM:FEED_BRIDGE */
