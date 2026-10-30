@@ -1703,6 +1703,15 @@
   "SEAM:DAILY_VOICE": {
    "file": "worker/src/index.js",
    "purpose": "VX1c THE VOICE, DAILY (Oct 30, 2026): the third writer under Method 5.0's voice. DAILY_POV.stages.voice is the stance in DAILY's register (a creative who was in the room; THE SENTENCE at twenty words; the contrast turn only with things a person could point at; the mechanism label, which means and the quotable closer as faults; two of Fresco's sentences as the register; the lesson on the turn; the words of practice); the take is what happened with the names in it then the one line that lets it land; the apply line one short sentence with the audience tag law kept; the legacy editor reads the same voice and its why-now triad is gone with every key, cap and count kept. dailyVoiceNotes writes the edition's voice faults to editions.meta.voice (0057) and a count to the log at publish: notes, never a hold, no desk, no spend."
+  },
+  "SEAM:ASSETS": {
+   "file": "worker/src/index.js",
+   "purpose": "AS1 THE ASSETS (Oct 30, 2026): PLAY's renders are rights records (kind play; the model, the prompt, the seconds, the project and the user on the record, written when a render finishes and backfilled from R2 by the desk's assets_play run), cleared for nothing until the slots' hard checks run on a PLAY image at pick time (playRecordChecked, the same override as a draft); a video lists and downloads and never sits in a slot; /reads/assets takes for_slot and kind; every record downloads through /media/<ref>?download=1."
+  },
+  "SEAM:ASSETS@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:ASSETS",
+   "purpose": "AS1: THE SLOTS gains FROM THE ASSETS (the records a slot may be filled from, Use it through /reads/slot, a failed check asks for the override's reason); THE ASSETS room shows PLAY's records with their model and prompt, plays a video, and every card downloads; the page's CSP allows media from the API."
   }
  },
  "planned": [

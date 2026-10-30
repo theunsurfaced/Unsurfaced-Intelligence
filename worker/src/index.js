@@ -664,7 +664,8 @@ async function playRender(body, env, origin, user) {
     return json({ ok: false, error: 'fal_' + r.status, detail: String((j && (j.detail || j.message)) || '').slice(0, 300) }, 502, origin, env);
   const project = String(body.project || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'engine';
   const rec = { model, kind: pool.kind, status_url: j.status_url, response_url: j.response_url,
-    user: user.id, project, unit: String(body.unit || '').slice(0, 40), at: Date.now(), meter: meter.ref || null, credits: meter.credits || 0 };
+    user: user.id, project, unit: String(body.unit || '').slice(0, 40), at: Date.now(), meter: meter.ref || null, credits: meter.credits || 0,
+    prompt, seconds: pool.kind === 'video' ? seconds : null };   // SEAM:ASSETS (AS1): the prompt and the seconds ride to the record a finished render writes
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + j.request_id, JSON.stringify(rec), { expirationTtl: 259200 });
   await logEvent(env, 'play', null, 'render_submit', null, { pool: String(body.pool), model });
   return json({ ok: true, request_id: j.request_id }, 200, origin, env);
@@ -703,6 +704,7 @@ async function playRenderStatus(reqId, env, origin, user) {
     }
   }
   rec.asset = asset;
+  if (asset !== url) await playRightsWrite(env, rec, key, reqId).catch(excQuiet('play_rights', null));   // SEAM:ASSETS (AS1): a render the house holds is a rights record
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + reqId, JSON.stringify(rec), { expirationTtl: 259200 });
   await logEvent(env, 'play', null, 'render_done', null, { model: rec.model, kind: rec.kind });
   return json({ ok: true, status: 'done', asset }, 200, origin, env);
@@ -8410,7 +8412,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'assets_play' ? await playAssetsBackfill(env, { steps: parseInt(body.steps, 10) || undefined, again: !!body.again }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -16203,8 +16205,8 @@ async function readReceipts(env, read, row) {
  * slot first and fall back to the typographic block. The read contract is untouched: cover_image and lead_image stay the
  * writer's story suggestions. No model. */
 const RIGHTS = {
-  KINDS: ['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type', 'own'],   // ED2: own, the house's photograph
-  BASIS: { house: 'AIR', press: 'EDIT', cc: 'CC', story_obj: 'OBJ', story_thumb: 'THUMB', type: 'A', own: 'A' },
+  KINDS: ['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type', 'own', 'play'],   // ED2: own, the house's photograph; AS1: play, a PLAY render
+  BASIS: { house: 'AIR', press: 'EDIT', cc: 'CC', story_obj: 'OBJ', story_thumb: 'THUMB', type: 'A', own: 'A', play: 'AIR' },
   OWN_BYTES: 10000000,
   CONTEXTS: ['weekly_pdf', 'stand_cover', 'social', 'card', 'web', 'recon', 'brief', 'api'],
   THUMB_PX: 400,
@@ -16215,6 +16217,7 @@ const RIGHTS = {
  * an admin has overridden with a reason on the record is a human judgment and clears as if it had passed. */
 function rightsContexts(kind, checks) {
   if (checks && Array.isArray(checks.hard) && checks.hard.length && !(checks.override && checks.override.why)) return [];
+  if (kind === 'play') return checks && Array.isArray(checks.hard) ? RIGHTS.CONTEXTS.slice() : [];   // SEAM:ASSETS (AS1): a PLAY render clears nothing until the slots' checks have run on it
   if (kind === 'house' || kind === 'type' || kind === 'cc' || kind === 'own') return RIGHTS.CONTEXTS.slice();   // ED2: the house's own photograph clears every context
   if (kind === 'press') return ['weekly_pdf', 'social', 'card', 'web', 'recon', 'brief', 'api'];   // a press-kit image is editorial: never the cover of a paid product
   if (kind === 'story_obj') return ['weekly_pdf', 'web', 'card', 'api'];   // the image is the object of the finding: small, credited, never a paid cover, never paid social
@@ -16237,6 +16240,106 @@ async function rightsGet(env, id) {
 async function rightsByRef(env, ref) {
   const rows = await sbRest(env, 'media_rights?ref=eq.' + encodeURIComponent(String(ref || '')) + '&select=*&order=created_at.desc&limit=1') || [];
   return rows[0] || null;
+}
+/* ═══ SEAM:ASSETS (AS1 THE ASSETS): PLAY's renders are rights records too, a slot can be filled from a record the house already
+ * holds, and every record downloads. A finished PLAY render (image or video) writes a media_rights row of kind play with the model,
+ * the prompt, the seconds, the project and the user on it, cleared for nothing until it is checked: a PLAY image set on a read's
+ * slot runs the slots' hard checks at pick time the way a house draft does (imageCheck, the look's questions), with the same
+ * override; a video lists and downloads and never sits in a slot. Renders made before this cut get their records from the desk
+ * ({run: "assets_play", steps: N}), which lists R2 by prefix one page a step with its cursor in entity_resolve_state; idempotent
+ * on the ref. Nothing here spends on a model except the pick-time check, which is the slots' own, already registered. ═══ */
+const PLAY_ASSETS = { CREDIT: 'Unsurfaced PLAY', PREFIX: 'play/', PAGE: 100, STEPS: 5, STEPS_MAX: 50, PASS_MS: 20000, CURSOR_KEY: 'assets_play', PROMPT_MAX: 2500, FILE_RX: /\.(?:jpe?g|png|webp|mp4|webm|mov)$/i, VIDEO_RX: /\.(?:mp4|webm|mov)$/i };
+/* PURE: is a record a video: by what its maker said, else by its key. */
+function playIsVideo(rec) {
+  const m = rec && rec.made && typeof rec.made === 'object' ? rec.made : {};
+  return m.kind === 'video' || PLAY_ASSETS.VIDEO_RX.test(String((rec && rec.ref) || ''));
+}
+/* PURE: a Supabase user id, or null. */
+function playUserId(s) { return /^[0-9a-f-]{36}$/i.test(String(s || '')) ? String(s) : null; }
+/* PURE: the rights record a finished render writes: kind play, the R2 key as the ref, the prompt kept, cleared for nothing yet. */
+function playRightsRecord(rec, key, reqId, at) {
+  const r = rec || {};
+  const video = r.kind === 'video' || PLAY_ASSETS.VIDEO_RX.test(String(key || ''));
+  return { kind: 'play', ref: String(key || ''), credit: PLAY_ASSETS.CREDIT, basis: RIGHTS.BASIS.play, contexts: [],
+    made: { play: true, model: r.model || null, kind: video ? 'video' : 'image', seconds: video && r.seconds ? Number(r.seconds) : null,
+      prompt: r.prompt ? String(r.prompt).slice(0, PLAY_ASSETS.PROMPT_MAX) : null, project: r.project || null, unit: r.unit || null,
+      request_id: String(reqId || ''), user: r.user || null, at: at || new Date().toISOString() },
+    created_by: playUserId(r.user) };
+}
+/* PURE: the record a render made before this cut gets from its key alone: play/<user>/<project>/<request id>.<ext>. The prompt is
+ * unknown; the key says who, which project, which kind. Null for a key that is not a render. */
+function playBackfillRecord(key, uploaded) {
+  const k = String(key || ''), parts = k.split('/');
+  if (parts.length < 4 || parts[0] !== 'play' || !PLAY_ASSETS.FILE_RX.test(k)) return null;
+  const file = parts[parts.length - 1], user = parts[1], project = parts.slice(2, -1).join('/');
+  const at = uploaded ? new Date(uploaded).toISOString() : new Date().toISOString();
+  const out = { kind: 'play', ref: k, credit: PLAY_ASSETS.CREDIT, basis: RIGHTS.BASIS.play, contexts: [],
+    made: { play: true, backfilled: true, model: null, kind: PLAY_ASSETS.VIDEO_RX.test(k) ? 'video' : 'image', seconds: null, prompt: null,
+      project: project || null, unit: null, request_id: file.replace(/\.[^.]+$/, ''), user: playUserId(user), at },
+    created_by: playUserId(user) };
+  if (uploaded) out.created_at = at;
+  return out;
+}
+/* PURE: the keys of a page with no record yet, as records. */
+function playBackfillFresh(objects, haveRefs) {
+  const have = new Set(haveRefs || []);
+  return (objects || []).filter(o => o && o.key && PLAY_ASSETS.FILE_RX.test(o.key) && !have.has(o.key)).map(o => playBackfillRecord(o.key, o.uploaded)).filter(Boolean);
+}
+function playChunks(ids, n) { const out = []; for (let i = 0; i < ids.length; i += n) out.push(ids.slice(i, i + n)); return out; }
+/* A finished render's record, written once per key. */
+async function playRightsWrite(env, rec, key, reqId) {
+  const have = await rightsByRef(env, key);
+  if (have) return have;
+  return rightsInsert(env, playRightsRecord(rec, key, reqId));
+}
+/* A PLAY image set on a slot: the slots' hard checks run once, on the record, at pick time; the verdict is written as the
+ * contexts, the way a house draft's are. A record already checked is returned as it is; nothing but kind play is touched. */
+async function playRecordChecked(env, rec) {
+  if (!rec || rec.kind !== 'play') return rec;
+  if (rec.made && rec.made.checks) return rec;
+  const checks = await imageCheck(env, rec.ref);
+  const made = Object.assign({}, rec.made || {}, { checks, checked_at: new Date().toISOString() }), contexts = rightsContexts('play', checks);
+  await sbRest(env, 'media_rights?id=eq.' + rec.id, { method: 'PATCH', body: { made, contexts } });
+  return Object.assign({}, rec, { made, contexts });
+}
+/* The desk's backfill ({run: "assets_play", steps: N}): one R2 page a step, records for the keys that have none, the cursor kept
+ * in entity_resolve_state under assets_play; a finished pass answers done until asked again with {again: true}. */
+async function playAssetsBackfill(env, opts) {
+  const steps = Math.min(PLAY_ASSETS.STEPS_MAX, Math.max(1, parseInt(opts && opts.steps, 10) || PLAY_ASSETS.STEPS));
+  if (!env.MEDIA) return { ok: false, error: 'media_unconfigured' };
+  const state = (await entityStateGet(env))[PLAY_ASSETS.CURSOR_KEY] || {};
+  if (state.done && !(opts && opts.again)) return { ok: true, done: true, listed: state.listed || 0, written: state.written || 0, steps: 0 };
+  let cursor = (!state.done && state.cursor) || undefined, listed = state.done ? 0 : (state.listed || 0), written = state.done ? 0 : (state.written || 0), done = false, n = 0;
+  const t0 = Date.now();
+  while (n < steps && Date.now() - t0 < PLAY_ASSETS.PASS_MS) {
+    const page = await env.MEDIA.list(Object.assign({ prefix: PLAY_ASSETS.PREFIX, limit: PLAY_ASSETS.PAGE }, cursor ? { cursor } : {}));
+    const objects = (page && page.objects) || [];
+    listed += objects.length; n++;
+    const keys = objects.map(o => o.key).filter(k => PLAY_ASSETS.FILE_RX.test(k));
+    if (keys.length) {
+      let have = [];
+      for (const part of playChunks(keys, 40)) {
+        const rows = (await sbRest(env, 'media_rights?kind=eq.play&select=ref&ref=in.' + encodeURIComponent('(' + part.map(k => '"' + k.replace(/"/g, '') + '"').join(',') + ')')).catch(excQuiet('assets_play_have', []))) || [];
+        have = have.concat(rows.map(r => r.ref));
+      }
+      const fresh = playBackfillFresh(objects, have);
+      if (fresh.length) {
+        const ins = (await sbRest(env, 'media_rights', { method: 'POST', headers: { Prefer: 'return=representation' }, body: fresh }).catch(excQuiet('assets_play_insert', []))) || [];
+        written += ins.length;
+      }
+    }
+    if (!(page && page.truncated)) { done = true; cursor = undefined; break; }
+    cursor = page.cursor;
+  }
+  await entityStatePut(env, PLAY_ASSETS.CURSOR_KEY, { cursor: cursor || null, listed, written, done, at: new Date().toISOString() });
+  logEvent(env, 'intelligence', 'reads', 'assets_play', null, { steps: n, listed, written, done });
+  return { ok: true, steps: n, listed, written, done, cursor: cursor || null };
+}
+/* PURE: the records a slot may be filled from: an image cleared for the page, or a PLAY image (checked when it is set); never a
+ * typographic block, a story's own photograph (those belong to one read), or a video. */
+function houseAssetsForSlot(assets) {
+  return (assets || []).filter(a => a && a.kind !== 'type' && a.kind !== 'story_obj' && a.kind !== 'story_thumb' && !(a.made && a.made.kind === 'video')
+    && (a.kind === 'play' ? !(a.made && a.made.hard && !a.made.overridden) : (Array.isArray(a.contexts) && a.contexts.includes('weekly_pdf'))));
 }
 /* PURE: the slots a read carries, by path. A slot is {rights_id, ref, kind, credit, by, at, accepted?}. */
 function readSlots(row) {
@@ -16715,6 +16818,10 @@ async function slotRoute(path, body, env, origin, user) {
     } else if (pick.rights_id) {
       let rec = await rightsGet(env, pick.rights_id);
       if (!rec) return json({ ok: false, error: 'no_such_record' }, 200, origin, env);
+      if (rec.kind === 'play') {   // SEAM:ASSETS (AS1): a PLAY image is checked at pick time the way a draft was at make time; a video never sits in a slot
+        if (playIsVideo(rec)) return json({ ok: false, error: 'video_not_a_slot', hint: 'a video lists and downloads; a slot takes an image' }, 200, origin, env);
+        rec = await playRecordChecked(env, rec);
+      }
       const why = String(body.override || '').replace(/\s+/g, ' ').trim();
       if (!rightsClears(rec, 'weekly_pdf') && why.length >= 12 && rec.made && rec.made.checks) {   // the admin's judgment, on the record
         const checks = Object.assign({}, rec.made.checks, { override: { by: user.id, at: new Date().toISOString(), why: why.slice(0, 300) } });
@@ -16971,7 +17078,7 @@ function houseNightRows(rows, marks, claims) {
   return order.map(n => nights[n]);
 }
 function houseChunks(ids, n) { const out = []; for (let i = 0; i < ids.length; i += n) out.push(ids.slice(i, i + n)); return out; }
-async function houseAssets(env) {
+async function houseAssets(env, opts) {   // AS1: opts.for_slot narrows to the records a slot may be filled from; opts.kind to one kind
   const recs = (await sbRest(env, 'media_rights?select=id,kind,ref,source_url,credit,basis,contexts,display_max_px,object_sentence,made,created_at&order=created_at.desc&limit=' + HOUSE.ASSETS).catch(excQuiet('house_assets', []))) || [];
   const reads = (await sbRest(env, 'house_reads?select=id,kind,label,version,status,slots:meta->slots&meta->slots=not.is.null&order=created_at.desc&limit=' + HOUSE.READS).catch(excQuiet('house_asset_reads', []))) || [];
   const use = houseAssetUse(reads), counts = {};
@@ -16981,10 +17088,13 @@ async function houseAssets(env) {
     return { id: r.id, kind: r.kind, ref: r.ref, url: houseAssetUrl(r), credit: r.credit || null, basis: r.basis, contexts: Array.isArray(r.contexts) ? r.contexts : [],
       max_px: r.display_max_px || null, object_sentence: r.object_sentence || null, created_at: r.created_at,
       made: { name: made.name || null, bytes: made.bytes || null, release: made.release || null, model: made.model || null, own: !!made.own,
+        kind: made.kind || null, prompt: made.prompt ? String(made.prompt).slice(0, 400) : null, project: made.project || null, seconds: made.seconds || null, backfilled: !!made.backfilled, checked: !!made.checks,   // AS1: what PLAY's record carries
         hard: made.checks && Array.isArray(made.checks.hard) ? made.checks.hard.length : 0, overridden: !!(made.checks && made.checks.override && made.checks.override.why) },
       used: use[r.id] || [] };
   });
-  return { assets, counts, reads_scanned: reads.length };
+  const o = opts || {};
+  const kept = o.for_slot ? houseAssetsForSlot(assets) : o.kind ? assets.filter(a => a.kind === String(o.kind)) : assets;   // AS1
+  return { assets: kept, counts, reads_scanned: reads.length };
 }
 async function houseNights(env, nights) {
   const n = Math.max(1, Math.min(HOUSE.NIGHTS_MAX, parseInt(nights, 10) || HOUSE.NIGHTS));
@@ -16999,7 +17109,7 @@ async function houseNights(env, nights) {
   return { since, nights: houseNightRows(rows, marks, claims) };
 }
 async function houseRoute(path, body, env, origin, user) {
-  if (path === '/reads/assets') return json(Object.assign({ ok: true }, await houseAssets(env)), 200, origin, env);
+  if (path === '/reads/assets') return json(Object.assign({ ok: true }, await houseAssets(env, { for_slot: !!(body && body.for_slot), kind: body && body.kind })), 200, origin, env);   // AS1
   if (path === '/reads/nights') return json(Object.assign({ ok: true }, await houseNights(env, body && body.nights)), 200, origin, env);
   return json({ ok: false, error: 'not_found' }, 404, origin, env);
 }

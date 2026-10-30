@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://cloudflareinsights.com; ">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://api.unsurfaced-intelligence.com; connect-src 'self' https://*.supabase.co https://api.unsurfaced-intelligence.com https://cloudflareinsights.com; ">
 <title>Unsurfaced Intelligence · The Read</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -249,6 +249,7 @@
   .slots { font-size: 13px; line-height: 1.55; } .slots .sp-paths { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; } .slots .sp-path { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 5px 9px; border: 1px solid rgba(20,20,20,.3); cursor: pointer; background: transparent; color: inherit; } .slots .sp-path.on { background: #141414; color: #FAF7F2; border-color: #141414; } .slots .sp-path.has::after { content: " \25CF"; color: #C41230; }
   .slots .sp-brief { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 10px 0; } .slots .sp-brief label { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .15em; text-transform: uppercase; opacity: .7; margin-bottom: 3px; } .slots .sp-brief textarea, .slots .sp-brief input, .slots .sp-obj { width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px; padding: 6px 8px; border: 1px solid rgba(20,20,20,.3); background: #fff; color: #141414; } .slots .sp-brief textarea { min-height: 64px; resize: vertical; } .slots .sp-brief .wide { grid-column: 1 / -1; }
   .slots .sp-drafts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; } .slots .sp-draft { border: 1px solid rgba(20,20,20,.15); padding: 6px; background: #fff; } .slots .sp-draft img { width: 100%; aspect-ratio: 7 / 9; object-fit: cover; display: block; background: #1A1A1A; cursor: zoom-in; } .slots .sp-draft.hero img { aspect-ratio: 3 / 2; } .slots .sp-draft.on { outline: 3px solid #C41230; } .slots .sp-draft .k { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-top: 6px; line-height: 1.5; } .slots .sp-draft .k b { color: #C41230; } .slots .sp-draft .k .ok { color: #2E7D4F; } .slots .sp-draft .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .slots .sp-assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 6px; } .slots .sp-asset { border: 1px solid rgba(20,20,20,.15); padding: 6px; background: #fff; min-width: 0; } .slots .sp-asset.on { outline: 3px solid #C41230; } .slots .sp-asset .pic { height: 84px; background: #1A1A1A; overflow: hidden; } .slots .sp-asset .pic img { width: 100%; height: 84px; object-fit: cover; display: block; } .slots .sp-asset .k { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-top: 6px; line-height: 1.5; word-break: break-word; } .slots .sp-asset .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }   /* SEAM:ASSETS (AS1) */
   .slots .sp-stories { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .slots .sp-stories img { width: 84px; height: 56px; object-fit: cover; cursor: pointer; border: 2px solid transparent; opacity: .85; } .slots .sp-stories img:hover, .slots .sp-stories img.on { border-color: #C41230; opacity: 1; }
   .slots .sp-house { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; } .slots .btn { border-color: rgba(20,20,20,.6); color: #141414; } .slots .btn.red { color: #FAF7F2; } .slots .sp-note { font-size: 12px; opacity: .8; margin-top: 6px; }
   .cover.type .in::before { content: ""; position: absolute; left: 0.7in; top: 0.75in; width: 0.8in; height: 0.8in; border: 3px solid var(--red); }
@@ -396,6 +397,7 @@
   .hs-asset .c { padding: 10px 14px 0; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--ivory); line-height: 1.6; word-break: break-word; }
   .hs-asset .u { padding: 4px 14px 0; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #9A9A9A; line-height: 1.6; }
   .hs-asset .u a { color: #B8B2A6; }
+  .hs-asset .dl { padding: 10px 14px 0; }   /* SEAM:ASSETS (AS1): every record downloads */
   .hs-up { border: 1px solid #2A2A2A; padding: 16px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .hs-up label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
   .hs-up input[type=text] { font: inherit; font-size: 12px; padding: 7px 9px; border: 1px solid #3A3A3A; background: #141414; color: var(--ivory); min-width: 180px; }
@@ -700,6 +702,7 @@
     var paths = d.paths.map(function (q) { return '<button class="sp-path' + (q === p ? " on" : "") + (d.slots[q] ? " has" : "") + '" data-path="' + esc(q) + '">' + esc(slotLabel(row, q)) + "</button>"; }).join("");
     var cur = slot ? (slot.kind === "type" ? "Typographic: no image, the headline carries the page."
       : slot.kind === "own" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">Your own photograph · ' + esc(slot.credit || "")
+      : slot.kind === "play" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">PLAY render · ' + esc(slot.credit || "") + (rec && rec.made && rec.made.model ? " · " + esc(String(rec.made.model).split("/").slice(-2).join("/")) : "")   /* SEAM:ASSETS (AS1) */
       : slot.kind === "house" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">House image · ' + esc(slot.credit || "") + (rec && rec.made && rec.made.model ? " · " + esc(String(rec.made.model).split("/").slice(-2).join("/")) : "")
       : '<img src="' + API + "/img/t/" + esc(String(slot.ref).slice(1)) + '" style="width:120px;vertical-align:middle;margin-right:10px">' + esc(slot.credit || "") + " · the object of the finding" + (rec && rec.object_sentence ? ': “' + esc(rec.object_sentence) + '”' : ""))
       : "Not filled: the page shows the writer's pick (the lead photograph), as before.";
@@ -726,12 +729,14 @@
       }).join("") + "</div>" : "") +
       '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">YOUR OWN PHOTOGRAPH</b><div class="sp-note">The house vouches for it: no checks are run; the credit and the release note ride the record. JPEG, PNG or WebP under 10 MB.</div>' +   /* SEAM:EDIT_DESK (ED2) */
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><input type="file" id="sp-own" accept="image/jpeg,image/png,image/webp"><input id="sp-own-credit" placeholder="Credit (Photo: Name)" style="font:inherit;font-size:12px;padding:4px 6px;width:200px"><input id="sp-own-release" placeholder="Release note, if a person is in it" style="font:inherit;font-size:12px;padding:4px 6px;width:260px"><button class="btn" id="sp-own-use">Upload and use it</button></div></div>' +
+      '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">FROM THE ASSETS</b><div class="sp-note">A record the house already holds: its drafts, your own photographs, PLAY\'s renders (checked the moment one is set). Newest first; every one downloads.</div><div class="sp-assets" id="sp-assets"><span class="sp-note">Reading the records.</span></div></div>' +   /* SEAM:ASSETS (AS1) */
       (ids.length ? '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">A PHOTOGRAPH FROM THE STORIES</b><div class="sp-note">Only when the image itself is what the finding is about. Pick one, then write the sentence in the read that makes it so.</div><div class="sp-stories">' +
         ids.map(function (s) { return '<img src="' + API + "/img/t/" + s.slice(1) + '" data-sid="' + s + '" class="' + (slot && slot.ref === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div>" +
         '<div id="sp-objrow" style="display:none;margin-top:8px"><input class="sp-obj" id="sp-obj" placeholder="The sentence in the read this photograph is the object of"><div style="margin-top:6px"><button class="btn" id="sp-objset">Set it as the object of the finding</button> <span class="sp-note" id="sp-objwhich"></span></div></div></div>' : "") +
       "";
     slotsPanel(html);
     slotsBind(row);
+    slotsAssets(row);   /* SEAM:ASSETS (AS1): the records a slot may be filled from */
   }
   function slotBriefRead() {
     return { scene: document.getElementById("sp-scene").value, light: document.getElementById("sp-light").value, red: document.getElementById("sp-red").value, story: document.getElementById("sp-story").value };
@@ -1829,16 +1834,72 @@
       var line = Object.keys(counts).sort().map(function (k) { return counts[k] + " " + k; }).join(" · ");
       houseShell("assets", '<div class="hs-up"><label>Your own photograph</label><input type="file" id="hs-own" accept="image/jpeg,image/png,image/webp"><input type="text" id="hs-own-credit" placeholder="Credit (Photo: Unsurfaced)"><input type="text" id="hs-own-release" placeholder="Release note, if any"><button class="btn red" id="hs-own-use">Keep it as a record</button></div>' +
         '<div class="hs-say" id="hs-say">' + esc(note || "") + "</div>" +
-        '<div class="hs-note">' + rows.length + " records, newest first" + (line ? " · " + esc(line) : "") + ". A JPEG, PNG or WebP under 10 MB becomes a record of kind own, cleared for every context, with your credit and release on it; set it on a read from THE SLOTS.</div>" +
+        '<div class="hs-note">' + rows.length + " records, newest first" + (line ? " · " + esc(line) : "") + ". A JPEG, PNG or WebP under 10 MB becomes a record of kind own, cleared for every context, with your credit and release on it; set it on a read from THE SLOTS. PLAY's renders arrive here on their own, the prompt kept, checked the moment one is set on a read. Every record downloads.</div>" +
         (rows.length ? '<div class="hs-assets">' + rows.map(function (a) {
-          var pic = a.url ? '<img src="' + API + esc(a.url) + '" alt="" loading="lazy">' : '<span class="ty">' + esc(a.kind === "type" ? "typographic block" : "no picture") + "</span>";
+          var pic = assetPicHtml(a, 150), dl = assetDownloadUrl(a), made = a.made || {};   /* SEAM:ASSETS (AS1) */
           var used = (a.used || []).map(function (u) { return '<a href="./?id=' + esc(String(u.id)) + '">' + esc((KIND[u.kind] || u.kind) + " " + (u.label || "") + " v" + u.version) + "</a> · " + esc(u.path); }).join("<br>");
           return '<div class="hs-asset"><div class="pic">' + pic + '</div><div class="r"><span class="status">' + esc(a.kind) + "</span><span>basis " + esc(a.basis || "") + "</span><span>" + (a.contexts || []).length + " contexts</span>" + (a.made && a.made.hard && !a.made.overridden ? '<span class="status s-held">check failed</span>' : "") + "</div>" +
             '<div class="c">' + esc(a.credit || "no credit") + (a.made && a.made.name ? "<br>" + esc(a.made.name) : "") + (a.made && a.made.release ? "<br>release: " + esc(a.made.release) : "") + "</div>" +
-            '<div class="u">' + (used ? "used in<br>" + used : "not on a read yet") + "<br>" + esc(String(a.created_at || "").slice(0, 10)) + "</div></div>";
+            '<div class="u">' + (used ? "used in<br>" + used : "not on a read yet") + "<br>" + esc(String(a.created_at || "").slice(0, 10)) + "</div>" +
+            (a.kind === "play" ? '<div class="c">' + esc(String(made.model || "").split("/").slice(-2).join("/") || (made.backfilled ? "before the record" : "")) + (made.project ? " · " + esc(made.project) : "") + (made.seconds ? " · " + esc(String(made.seconds)) + " s" : "") + (made.kind === "video" ? " · video" : made.checked ? " · checked" : made.hard ? "" : " · checked when set") + (made.prompt ? '<br><span style="color:#9A9A9A">' + esc(String(made.prompt).slice(0, 120)) + (String(made.prompt).length > 120 ? "…" : "") + "</span>" : "") + "</div>" : "") +   /* SEAM:ASSETS (AS1) */
+            (dl ? '<div class="dl"><a class="btn" href="' + esc(dl) + '">Download</a></div>' : "") + "</div>";
         }).join("") + "</div>" : '<div class="sub">No record yet.</div>'));
       var bt = document.getElementById("hs-own-use"); if (bt) bt.onclick = assetsUpload;
     }).catch(function () { houseShell("assets", '<div class="hs-note">The house did not answer.</div>'); });
+  }
+  /* SEAM:ASSETS (AS1): every record downloads, and a slot can be filled from a record the house already holds. The download rides
+     /media/<ref>?download=1&name=<file>: the API is another origin, so the server says attachment and the browser saves. A story's
+     photograph comes through the relay and is not a file of ours, so it has no download. */
+  function assetFileName(a) {
+    var ref = String((a && a.ref) || ""), m = /\.([a-z0-9]{2,4})$/i.exec(ref), ext = m ? m[1].toLowerCase() : "jpg";
+    var day = String((a && a.created_at) || "").slice(0, 10) || "undated", id = String((a && a.id) || "").slice(0, 8);
+    return ("unsurfaced-" + String((a && a.kind) || "asset") + "-" + day + "-" + id + "." + ext).replace(/[^A-Za-z0-9._-]/g, "");
+  }
+  function assetDownloadUrl(a) {
+    if (!a || !a.url || a.url.indexOf("/media/") !== 0) return null;
+    return API + a.url + "?download=1&name=" + encodeURIComponent(assetFileName(a));
+  }
+  function assetIsVideo(a) { return !!(a && ((a.made && a.made.kind === "video") || /\.(?:mp4|webm|mov)$/i.test(String(a.ref || "")))); }
+  function assetPicHtml(a, h) {
+    if (!a || !a.url) return '<span class="ty">' + esc(a && a.kind === "type" ? "typographic block" : "no picture") + "</span>";
+    if (assetIsVideo(a)) return '<video src="' + API + esc(a.url) + '" muted playsinline preload="metadata" style="width:100%;height:' + (h || 150) + 'px;object-fit:cover;background:#000"></video>';
+    return '<img src="' + API + esc(a.url) + '" alt="" loading="lazy">';
+  }
+  /* THE SLOTS, FROM THE ASSETS: the records a slot may be filled from, newest first; Use it writes the slot through /reads/slot
+     with the record's id, so a PLAY image is checked as it is set and a failed check asks for the reason an override needs. */
+  function slotsAssets(row) {
+    var box = document.getElementById("sp-assets"); if (!box) return;
+    call("/reads/assets", { for_slot: true }).then(function (d) {
+      if (!d || !d.ok) { box.innerHTML = '<span class="sp-note">The assets could not load: ' + esc((d && d.error) || "no answer") + ".</span>"; return; }
+      var rows = (d.assets || []).slice(0, 48), p = SL.path, slot = SL.data && SL.data.slots && SL.data.slots[p];
+      if (!rows.length) { box.innerHTML = '<span class="sp-note">No record the page may carry yet: make a draft, upload a photograph, or render in PLAY.</span>'; return; }
+      box.innerHTML = rows.map(function (a) {
+        var made = a.made || {}, tag = a.kind === "play" ? (made.hard && !made.overridden ? "play · check failed" : made.checked ? "play · checked" : "play · checked when set") : a.kind;
+        var dl = assetDownloadUrl(a);
+        return '<div class="sp-asset' + (slot && slot.rights_id === a.id ? " on" : "") + '" data-arid="' + esc(a.id) + '">' +
+          '<div class="pic">' + assetPicHtml(a, 84) + "</div>" +
+          '<div class="k">' + esc(tag) + "<br>" + esc(String(a.credit || "").slice(0, 40)) + (made.model ? "<br>" + esc(String(made.model).split("/").slice(-2).join("/")) : "") + "</div>" +
+          '<div class="row"><button class="btn" data-ause="' + esc(a.id) + '">Use it</button>' + (dl ? '<a class="btn" href="' + esc(dl) + '">Download</a>' : "") + "</div></div>";
+      }).join("");
+      Array.prototype.forEach.call(box.querySelectorAll("[data-ause]"), function (bt) { bt.onclick = function () { slotsUseAsset(row, bt.getAttribute("data-ause"), rows, ""); }; });
+    }).catch(function () { box.innerHTML = '<span class="sp-note">The house did not answer.</span>'; });
+  }
+  function slotsUseAsset(row, rid, rows, why) {
+    var a = null; for (var i = 0; i < rows.length; i++) if (rows[i].id === rid) a = rows[i];
+    var body = { id: row.id, path: SL.path, pick: { rights_id: rid } };
+    if (why) body.override = why;
+    slotsShow(row, a && a.kind === "play" && !(a.made && a.made.checked) ? "Checking the render the way a draft is checked, about twenty seconds." : "Setting the slot.");
+    call("/reads/slot", body).then(function (d) {
+      if (d && d.ok) { SL.pick = rid; slotsOpen(row, "Set from the assets. The next PDF carries it; on the stand, replace the issue or render its cover again."); openRead(row.id); return; }
+      if (d && d.error === "not_cleared") {
+        var hard = (d.hard || []).join(", ").replace(/_/g, " ");
+        var w = window.prompt("This record failed a hard check (" + hard + "). Why is the check wrong? Your reason goes on the record, twelve characters or more.");
+        if (w && w.trim().length >= 12) { slotsUseAsset(row, rid, rows, w.trim()); return; }
+        slotsShow(row, "Not set: the check stands (" + hard + ")."); return;
+      }
+      if (d && d.error === "video_not_a_slot") { slotsShow(row, "A video lists and downloads; a slot takes an image."); return; }
+      slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + ".");
+    }).catch(function () { slotsShow(row, "The house did not answer."); });
   }
   function assetsUpload() {
     var fi = document.getElementById("hs-own"), f = fi && fi.files && fi.files[0], say = document.getElementById("hs-say");

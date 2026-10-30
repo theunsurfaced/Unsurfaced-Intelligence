@@ -37,7 +37,7 @@ ok(O(buf([0xFF, 0xD8, 0xFF, 0xE0])).ext === 'jpg' && O(buf([0x89, 0x50, 0x4E, 0x
 const up = between(w, 'async function slotUpload(', 'async function slotRoute(');
 ok(/callerIsAdmin\(env, user\.id\)/.test(up) && /raw\.byteLength > RIGHTS\.OWN_BYTES/.test(up) && /ref = 'own\/' \+ hash \+ '\.' \+ type\.ext/.test(up) && /kind: 'own', ref, credit, basis: 'A', contexts: rightsContexts\('own', null\)/.test(up) && /release/.test(up) && !/imageCheck\(/.test(up), 'O2 an admin\'s upload is kept under own/<hash> as a rights record of kind own, basis A, with the credit and the release note, and no AI check is run');
 ok(/case '\/reads\/slot-upload':   return slotUpload\(request, env, origin, user\);/.test(w) && /path !== '\/reads\/slot-upload'\) \? await safeJson\(request\)/.test(w), 'O3 the upload reads the raw body');
-ok(/KINDS: \['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type', 'own'\]/.test(w) && /own: 'A'/.test(w) && /OWN_BYTES: 10000000/.test(w) && /kind === 'own'\) return RIGHTS\.CONTEXTS\.slice\(\);/.test(w), 'O4 the own kind clears every context, ten megabytes at the door');
+ok(/KINDS: \['house', 'press', 'cc', 'story_obj', 'story_thumb', 'type', 'own', 'play'\]/.test(w) && /own: 'A'/.test(w) && /OWN_BYTES: 10000000/.test(w) && /kind === 'own'\) return RIGHTS\.CONTEXTS\.slice\(\);/.test(w), 'O4 the own kind clears every context, ten megabytes at the door');
 ok(/check \(kind in \('house', 'press', 'cc', 'story_obj', 'story_thumb', 'type', 'own'\)\)/.test(sql) && /drop constraint if exists media_rights_kind_check/.test(sql), 'O5 the migration lets the record carry the own kind');
 
 // ── L: lettering ──────────────────────────────────────────────────────
