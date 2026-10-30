@@ -1699,6 +1699,10 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:DAY_FRAMES",
    "purpose": "RD1b: the read page draws a day's frames as it draws an issue's. framesSection is the one frames section (the WEEKLY's social() goes through it); the painter's cover takes the day's own second line; the DAILY room's day opened reads /reads/day-frames and shows the set (Write the day's frames when none, Write again when held or asked), the carousel PDF, the PNGs and the reel; the reel (reelProgram, pure: each frame held 84 frames then 6 black, the out black with the red dot and the wordmark, 1080 x 1350 at 30 fps) is encoded in the browser by WebCodecs and the vendored mp4-muxer in its own file, ./mp4-muxer.js, on WEEKLY issues and DAILY days alike; the feed room offers Make a frame now and says which days carry a drop's frame."
+  },
+  "SEAM:DAILY_VOICE": {
+   "file": "worker/src/index.js",
+   "purpose": "VX1c THE VOICE, DAILY (Oct 30, 2026): the third writer under Method 5.0's voice. DAILY_POV.stages.voice is the stance in DAILY's register (a creative who was in the room; THE SENTENCE at twenty words; the contrast turn only with things a person could point at; the mechanism label, which means and the quotable closer as faults; two of Fresco's sentences as the register; the lesson on the turn; the words of practice); the take is what happened with the names in it then the one line that lets it land; the apply line one short sentence with the audience tag law kept; the legacy editor reads the same voice and its why-now triad is gone with every key, cap and count kept. dailyVoiceNotes writes the edition's voice faults to editions.meta.voice (0057) and a count to the log at publish: notes, never a hold, no desk, no spend."
   }
  },
  "planned": [

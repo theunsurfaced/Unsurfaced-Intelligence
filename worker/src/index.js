@@ -5242,7 +5242,7 @@ const DAILY_BEATS = [
  * read the same law. Registry note: a feed is a candidate until its first
  * successful capture — a dead feed must never kill the pipeline. ═══ */
 const DAILY_POV = {
-  version: 'pov-2026-07',
+  version: 'pov-2026-10',   // VX1c: a new voice is a new POV
   territories: [
     'advertising-marketing','technology-innovation','artificial-intelligence',
     'business-economics','entrepreneurship-creator','music','fashion-beauty',
@@ -5440,8 +5440,10 @@ const DAILY_POV = {
     filter: 'You are the FILTER stage of a cultural-intelligence pipeline. Given one captured signal (title, summary, source), output ONLY JSON: {"territory": <one of the configured territories>, "novelty": <0-5, 0=routine 5=genuinely new behavior or condition>, "announcement": <true if routine PR/launch language with no behavioral evidence>, "note": <at most 12 words on what is actually new>}. No prose outside the JSON.',
     filter_batch: 'You are the FILTER stage of a cultural-intelligence pipeline. You are given several captured signals, each numbered. Output ONLY a JSON array with one object per signal, in order: {"i": <number>, "territory": <one of the configured territories>, "novelty": <0-5, 0=routine 5=genuinely new behavior or condition>, "announcement": <true if routine PR/launch language with no behavioral evidence>, "note": <at most 12 words on what is actually new>}. No prose outside the JSON.',
     connect: 'Given a small set of signals from different territories, name the one pattern connecting them in at most 2 sentences: a behavior, tension or value appearing in multiple places at once. If no real connection exists, output exactly NONE. Never force it.',
-    interpret: 'You write the take for Unsurfaced DAILY. 2-4 sentences. Move through the arc without naming its parts: the observable shift, the human tension underneath it, the new expectation forming, and the possibility it opens. Use only facts present in the evidence; if you infer, say so plainly. Declarative, specific, zero hype. The reader should finish smarter, not busier.',
-    apply: 'One sentence: why this matters right now and what it could unlock. End with exactly one audience tag in brackets from: [creative] [founder] [marketer] [exec] [talent].'
+    /* SEAM:DAILY_VOICE (VX1c): the voice is the same creative who writes the house reads and the readings, in DAILY's shortest register. */
+    voice: 'You write for Unsurfaced DAILY as a creative who was in the room: the drop, the show, the stoop, the group chat, the restaurant where the menu changed. You write for people who were there too, or wish they had been, and who are paid to act on what you saw. THE SENTENCE: short, none past twenty words; one idea in each. Say what happened with the names in it, then the one line that lets it land, and only when the fact does not already say it. Concrete nouns: the product, the place, the person, the price, the hour. A contrast ("X, not Y") only when both sides are things a person could point at, never two category words. Never "the mechanism", never "which means", never a closing line written to be quoted, never "should focus on", "leverage" or "stay competitive". No hedging. Never use the em dash character. THE REGISTER, from our own hand: "Michael Jordan\'s last NBA game came before any Gen Alpha consumer was born. Legacy does not transfer on its own." "The threat isn\'t pricing. It isn\'t product quality. It\'s cultural distance." Form: "The remasters changed material this week where before they changed color." Person: "Nike\'s remasters used to mean a new colorway. This week they meant a new material: the Air Max 95 in leather." Our words where they fit, never as decoration: proof, earned, show up, the room, the drop, ritual, insider.',
+    interpret: 'You write the take: two to four sentences, none past twenty words. What happened, with the names in it, from the evidence only; then the one line that lets it land, if the fact does not already say it. If you infer, say so plainly. Declarative, specific, zero hype.',
+    apply: 'One sentence, under twenty words, on what this changes for the people in it. End with exactly one audience tag in brackets from: [creative] [founder] [marketer] [exec] [talent].'
   },
   momentum: {
     scale: '0-5 each',
@@ -5476,6 +5478,38 @@ const DAILY_POV = {
     features_prefer: 'read'
   }
 };
+
+/* ═══ SEAM:DAILY_VOICE (VX1c): DAILY's sentences, checked against the faults Method 5.0 names, as notes and never a hold. DAILY
+ * publishes once a day and its editor already rewrites, so there is no desk here: the notes are counted for a week first. In lake
+ * mode the headline and the standfirst are the source's own words (the title, the summary's first sentences), so only the take
+ * and the apply line are the house's and only they are checked; in legacy mode the editor wrote all of them. The sentence
+ * splitter and the three pattern faults are the house's own (houseSentences, houseVoiceNotesOf); where a proof's slice carries
+ * this block without them, the length and the chain are still counted and the rest is skipped. ═══ */
+const DAILY_VOICE = { LONG: 20, MAX: 40, WRITTEN: { lake: ['take', 'apply'], legacy: ['headline', 'standfirst', 'take', 'apply'] } };
+/* PURE: the voice faults of one edition's items, each a note: voice:<fault>:items[i].<field>[:n]. */
+function dailyVoiceNotes(items, mode) {
+  const out = [], fields = DAILY_VOICE.WRITTEN[mode === 'lake' ? 'lake' : 'legacy'];
+  const split = typeof houseSentences === 'function' ? houseSentences : s => String(s || '').split(/(?<=[.!?])\s+(?=[A-Z"“(])/).map(x => x.trim()).filter(Boolean);
+  const house = typeof houseVoiceNotesOf === 'function' ? houseVoiceNotesOf : () => [];
+  (Array.isArray(items) ? items : []).forEach((it, i) => {
+    for (const f of fields) {
+      const where = 'items[' + i + '].' + f, own = String((it && it[f]) || '').replace(/"[^"]*"|“[^”]*”/g, ' ').replace(/\[(?:creative|founder|marketer|exec|talent)\]/gi, ' ');
+      if (!own.trim() || out.length >= DAILY_VOICE.MAX) continue;
+      let longest = 0, chain = false;
+      for (const sen of split(own)) {
+        const n = sen.split(/\s+/).filter(Boolean).length; if (n > longest) longest = n;
+        if ((sen.match(/;/g) || []).length >= 2) chain = true;
+      }
+      if (longest > DAILY_VOICE.LONG) out.push('voice:long_sentence:' + where + ':' + longest);
+      if (chain) out.push('voice:semicolon_chain:' + where);
+      for (const n of house('daily.' + f, own)) {
+        const m = /^style:(edge_template|mechanism_sentence|abstract_contrast):/.exec(n);
+        if (m) out.push('voice:' + m[1] + ':' + where);
+      }
+    }
+  });
+  return out.slice(0, DAILY_VOICE.MAX);
+}
 
 /* GET /daily/pov — the public doctrine. Front-end, STUDIO and EXCAVATE
  * read the same law the pipeline runs on. */
@@ -5919,7 +5953,7 @@ async function composeFromLake(env, today) {
     let take = '', apply = null;
     try {
       const reply = await callModel(env, 't3', [
-        { role: 'system', content: DAILY_POV.stages.interpret + ' Then, on its own final line: ' + DAILY_POV.stages.apply },
+        { role: 'system', content: DAILY_POV.stages.voice + ' ' + DAILY_POV.stages.interpret + ' Then, on its own final line: ' + DAILY_POV.stages.apply },   // SEAM:DAILY_VOICE (VX1c)
         { role: 'user', content: 'TITLE: ' + c.title + '\nSUMMARY: ' + (c.summary || '(none)') +
           '\nSOURCE: ' + c.source_name + ' (tier ' + c.source_tier + ')\nTERRITORY: ' + c.territory }
       ], { max_tokens: 320 });
@@ -17846,18 +17880,16 @@ async function runDailyPipeline(env, opts) {
     `{source:${String(c.source || '').slice(0, 80)}|url:${String(c.url || '').slice(0, 200)}}`
   ).join('\n');
 
-  const sys = 'You are the editor of Unsurfaced Daily, a cultural-intelligence brief. You do not summarize the news: ' +
-    'you INTERPRET it: why now, who benefits, what the second-order effect is. From the numbered evidence, select the ' +
-    '6 most significant stories across different beats. For each, write a sharp interpretive take. Ground every item in ' +
-    'the evidence; never invent facts, sources, or URLs. Copy each item\'s source_name and source_url VERBATIM from the ' +
-    'evidence item you used. Output STRICT JSON only, no markdown fences, no prose outside the JSON.';
+  const sys = 'You are the editor of Unsurfaced DAILY, a cultural-intelligence brief. ' + DAILY_POV.stages.voice +   // SEAM:DAILY_VOICE (VX1c): the fallback composer writes in the same voice
+    ' From the numbered evidence, select the 6 most significant stories across different beats. For each: a headline that is a claim about people with a verb; a standfirst that says what happened with the names in it; a take of two or three short sentences, none past twenty words: what happened and the one thing it changes, if the fact does not already say it. ' +
+    'Ground every item in the evidence; never invent facts, sources, or URLs. Copy each item\'s source_name and source_url VERBATIM from the evidence item you used. Output STRICT JSON only, no markdown fences, no prose outside the JSON.';
 
   const usr = `DATE: ${today}\n\nEVIDENCE:\n${evidence}\n\n` +
     'Return JSON exactly shaped as:\n' +
     '{"lead_headline":"<the day\'s single most important line, <=12 words>",' +
     '"items":[{"kicker":"<2-4 word beat label, uppercase>","headline":"<=12-word headline",' +
-    '"standfirst":"<=20-word framing line","take":"2-3 sentences of interpretation: why now, who benefits, ' +
-    'what\'s the second-order effect","source_name":"copied verbatim from evidence","source_url":"copied verbatim from evidence"}]}\n' +
+    '"standfirst":"<=20-word framing line","take":"2-3 short sentences, none past twenty words: what happened, with the names in it, and the one thing it changes if the fact does not already say it",' +
+    '"source_name":"copied verbatim from evidence","source_url":"copied verbatim from evidence"}]}\n' +
     'Exactly 6 items across distinct beats. JSON only.';
 
   let parsed = null;
@@ -17932,6 +17964,14 @@ async function publishEdition(env, today, existing, leadHeadline, items, mode, s
     method: 'PATCH',
     body: { status: 'published', headline: leadHeadline, published_at: new Date().toISOString() }
   });
+
+  // SEAM:DAILY_VOICE (VX1c): the edition's voice faults, as notes on the row (editions.meta.voice, 0058) and a count in the log;
+  // never a hold, and a failure here never touches the publish above.
+  try {
+    const voice = typeof dailyVoiceNotes === 'function' ? dailyVoiceNotes(items, mode) : [];
+    await sbRest(env, `editions?id=eq.${edId}`, { method: 'PATCH', body: { meta: { voice: { n: voice.length, notes: voice, at: new Date().toISOString() } } } });
+    logEvent(env, 'daily', null, 'edition_voice', null, { date: today, n: voice.length });
+  } catch (e) { console.log('daily_voice_error', String(e && e.message).slice(0, 80)); }
 
   // provenance thread: the lake learns which of its signals made the paper.
   try {
