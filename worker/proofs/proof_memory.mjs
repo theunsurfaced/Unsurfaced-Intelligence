@@ -293,7 +293,7 @@ ok(/\.then\(\(\) => memoryDaily\(env\)\)   \/\/ SEAM:MEMORY/.test(w) && /which =
   'Z1 the daily run after the board\'s pass, the desk\'s {run: memory} and {run: windows}, the timeline\'s door');
 ok(/\(memo \? '\\n\\n' \+ memo : ''\) \+   \/\/ SEAM:MEMORY/.test(w) && /memoryReadBrief\(env, items, stats\)/.test(w) && /prompt: excDoorPrompt\(frame, evidence, measures, memo\.get\(cand\.key\) \|\| '', night\)/.test(w) && /WHAT WE SAID BEFORE \(our own earlier lines on this subject/.test(fnOf('excDoorPrompt')),
   'Z2 every read and every tile read is handed what we said before on its subjects, after its evidence and never as evidence');
-ok(/- \*\*WHAT WE SAID\*\* \(M\), when given: our own earlier lines/.test(method) && /Version 4\.2, the house style\./.test(method) && /stands on eight weeks or more of these counts/.test(method) && !/[\u2014\u2013]/.test(method.split('- **WHAT WE SAID**')[1].split('\n')[0]),
+ok(/- \*\*WHAT WE SAID\*\* \(M\), when given: our own earlier lines/.test(method) && /Version 5\.0, the house style\./.test(method) && /stands on eight weeks or more of these counts/.test(method) && !/[\u2014\u2013]/.test(method.split('- **WHAT WE SAID**')[1].split('\n')[0]),
   'Z3 the Method (4.2) reads the M lines: our record, never evidence; say plainly when we changed our mind; a direction stands on eight weeks or more');
 ok(/typeof caseLive === 'function' && caseLive\(env\) && themes\.length/.test(w) && /typeof caseLive === 'function' && caseLive\(env\) && tiles\.length/.test(w) && /t\.state !== 'CONTESTED'/.test(w),
   'Z4 the case windows reach the board and the tiles only when live; a contested subject stays contested');

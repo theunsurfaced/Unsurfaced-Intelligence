@@ -81,8 +81,8 @@ ok(cs.shares === 1 && cs.voices_read === 52 && cs.voices_now === 5 && cs.voices_
 
 // ── C ─────────────────────────────────────────────────────────────────
 const C = R.READ_CONTRACT.recon;
-ok(/^CONTRACT \(recon\)\. This is a commissioned research report, a RECON, that answers one brief/.test(C) && /THE BRIEF LAW/.test(C) && /"brief_answer": 2 to 3 sentences/.test(C) && /"for_the_brief": \{"who_is_in"/.test(C) && /"where_to_enter"/.test(C) &&
-  /"findings": 5 to 8 objects, each standing on its own evidence \(a finding that rests on one source is kept and labeled strength "signal"\),/.test(C) && /"executive_summary": 6 to 8 objects/.test(C) && /THE DEPTH LAW: a RECON is the deepest read we make/.test(C) && /"by_the_numbers": 5 to 10 objects/.test(C) && /8 to 16 consumer voices on the brief/.test(C) && !/fewer when the brief's slice is thin|a thin slice makes a short/.test(C) && /"competitive_sets": 1 to 6 objects, the brief's competitors first,/.test(C) && /STATS\.recon\.attention, when present/.test(C) && /"recon\.attention\.yoy_pct"/.test(C) && /THE TIME LAW/.test(C) && /STATS\.recon counts that slice/.test(C) && !/CONTRACT \(report\)/.test(C) && !/—/.test(C),
+ok(/^CONTRACT \(recon\)\. This is a commissioned research report, a RECON, that answers one brief/.test(C) && /THE BRIEF LAW/.test(C) && /"brief_answer": the answer to the brief's question and the position we take, in short sentences, three at most/.test(C) && /"for_the_brief": \{"who_is_in"/.test(C) && /"where_to_enter"/.test(C) &&
+  /"findings": 5 to 8 objects, each standing on its own evidence \(a finding that rests on one source is kept and labeled strength "signal"\),/.test(C) && /"executive_summary": up to 8 objects/.test(C) && /THE DEPTH LAW: a RECON is the deepest read we make/.test(C) && /"by_the_numbers": 5 to 10 objects/.test(C) && /8 to 16 consumer voices on the brief/.test(C) && !/fewer when the brief's slice is thin|a thin slice makes a short/.test(C) && /"competitive_sets": 1 to 6 objects, the brief's competitors first,/.test(C) && /STATS\.recon\.attention, when present/.test(C) && /"recon\.attention\.yoy_pct"/.test(C) && /THE TIME LAW/.test(C) && /STATS\.recon counts that slice/.test(C) && !/CONTRACT \(report\)/.test(C) && !/—/.test(C),
   'C1 the RECON contract is the report\'s, answering the brief: brief law, brief_answer, for_the_brief, the depth law (5 to 8 findings, an early signal kept and labeled, never a short read for a thin slice), competitors first, STATS.recon first, the attention series read for growth under the time law; no em dash');
 
 // ── R ─────────────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ ok(t2.refused === 1 && fp && /^thin_slice:4\+1$/.test(fp.error) && !submitted.le
 ok(/if \(row\.kind === 'recon' && !\(row\.meta && row\.meta\.gather\)\)/.test(w), 'T6 a recon row that already carries its gather receipt is not gathered twice');
 
 // ── L ─────────────────────────────────────────────────────────────────
-const finding = { name: 'n', advantage: 'a', trigger: 't', against: { line: 'x' }, reach: 'category', horizon: 'now', voices: ['V1'], supports: { outlets: 2 }, moves: { creative: 1, marketer: 1, founder: 1, exec: 1, talent: 1 } };
+const finding = { name: 'n', advantage: 'a', trigger: 't', against: { line: 'x', evidence: ['S1'] }, reach: 'category', horizon: 'now', voices: ['V1'], supports: { outlets: 2 }, moves: { creative: 1, marketer: 1, founder: 1, exec: 1, talent: 1 } };   // VX1: a counter-reading stands on evidence
 const sellRow = { kind: 'recon', status: 'ready', version: 1, window_start: '2026-07-07', window_end: '2026-10-04', violations: [], stats: { lake: { shape: {}, prior_comparable: false } },
   meta: { recon_no: 1, brief: { text: 'FIELD' }, proof: { lane: 'live' } }, read: { title: 't', thesis: 'th', brief_answer: 'yes', for_the_brief: { who_is_in: 'a', who_is_absent: 'b', where_to_enter: 'c' }, findings: [finding, finding] } };
 ok(R.readSellable(sellRow).ok, 'L1 a RECON with the report\'s receipts plus the brief, its number and its answer is sellable');
@@ -169,7 +169,7 @@ ok(/recon: "RECON" \}/.test(page) && /var groups = \{ recon: \[\], report: \[\],
   'P1 the page renders a RECON in the report layout: the brief on the cover and the one-page section, the question\'s own figures (stories, outlets, days), the answer in place of the thesis, For the brief after the findings, no stand bar');
 
 // ── G ─────────────────────────────────────────────────────────────────
-ok(/^Version (?:3\.[1-9]|4\.\d)/m.test(method) && /- \*\*The RECON\*\*: one brief, to depth\./.test(method) && /12\. \*\*The question law\.\*\*/.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)) && !/—/.test(method),
+ok(/^Version (?:3\.[1-9]|4\.\d|5\.\d)/m.test(method) && /- \*\*The RECON\*\*: one brief, to depth\./.test(method) && /12\. \*\*The question law\.\*\*/.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)) && !/—/.test(method),
   'G1 the Method names the RECON and the question law, and the worker carries the exact text');
 
 console.log('\nproof_read_recon: ' + pass + ' checks PASS');

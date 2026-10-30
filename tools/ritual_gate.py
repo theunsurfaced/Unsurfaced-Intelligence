@@ -280,6 +280,7 @@ SPENDERS = {
     'imageSimilar': 'Workers AI embeddings over at most 40 story descriptions a draft; called by the admin /reads/slot-make door only (SEAM:LAKE_LOOK)',
     'docText': 'Workers AI Markdown Conversion (SEAM:FEED_INTAKE): a document spends nothing, an image spends two models inside the included neurons; DOC_INTAKE.MAX_BYTES at the door; callers: kbFile (admin) and clientEvidenceRoute (signed in), one file a call',
     'slotBrief': 'claudeGate on the frame tier (Haiku, its own cap), one call a brief; called by the admin /reads/slot-brief door only (SEAM:READ_SLOTS)',
+    'houseVoicePart': 'claudeGate on the live tier, one call per line a voice note sits on, at most HOUSE_VOICE.MAX_LINES a landing; called by houseVoiceRun only, from readLand (the batch drain) on a WEEKLY, monthly or record landing with nothing fatal (SEAM:HOUSE_VOICE, VX1)',
 }
 _SP_MARK = re.compile(r"env\.AI\.run\(|env\.AI\.toMarkdown\(|(?<!function )callModel\(|(?<!function )callClaude\(|(?<!function )claudeBatchSubmit\(|queue\.fal\.run|api\.perplexity\.ai|api\.exa\.ai|api\.tavily\.com|CLAUDE\.API \+")
 _SP_DECL = re.compile(r"^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(|^\s{2,6}(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{\s*$")

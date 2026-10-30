@@ -128,7 +128,7 @@ ok(/<style id="arrival-room">/.test(page) && /body::before\{display:none\}/.test
 ok(!/style="color:var\(--deep2\)">◆ Spaces/.test(page) && /#nav-spaces::first-letter\{color:var\(--room-red\)\}/.test(page), 'P10 the nav\'s diamond is the house red, not purple');
 
 // ── M ─────────────────────────────────────────────────────────────────
-ok(/^Version 4\.\d, the house style\./m.test(method) && /12\. \*\*The question law\.\*\* Every read is the answer to a question a professional brought to culture, for the people they serve\./.test(method) && /we do not sell reference\./.test(method) && !/the house does not/.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)),
+ok(/^Version 5\.\d, the house style\./m.test(method) && /12\. \*\*The question law\.\*\* Every read is the answer to a question a professional brought to culture, for the people they serve\./.test(method) && /we do not sell reference\./.test(method) && !/the house does not/.test(method) && w.includes(JSON.stringify(method).slice(1, -1).slice(0, 400)),
   'M1 Method 4 (the house style) carries the question law in our own voice, and the worker carries the exact text');
 
 console.log('\nproof_excavate_voice: ' + pass + ' checks PASS');

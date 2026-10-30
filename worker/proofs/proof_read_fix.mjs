@@ -79,7 +79,7 @@ ok(/case '\/reads\/delete':/.test(w) && /id="prune">Delete this version/.test(pa
 // ── SEAM:SELL_LAW: may this read carry a price? ──
 const good = () => ({ id: 9, kind: 'report', status: 'ready', version: 5, window_start: '2026-07-08', window_end: '2026-10-03', violations: ['proofread:12'], meta: { issue_no: 1, proof: { lane: 'live', reason: null, changes: 12 } },
   stats: { lake: { shape: { music: {} }, prior_comparable: false } },
-  read: { title: 't', thesis: 't', findings: [1, 2].map(i => ({ name: 'f' + i, advantage: 'e', trigger: 't', against: { line: 'a', evidence: [] }, reach: 'category', horizon: 'now', voices: ['V1'], supports: { outlets: 3 },
+  read: { title: 't', thesis: 't', findings: [1, 2].map(i => ({ name: 'f' + i, advantage: 'e', trigger: 't', against: { line: 'a', evidence: ['S1'] }, reach: 'category', horizon: 'now', voices: ['V1'], supports: { outlets: 3 },   // VX1: a counter-reading stands on evidence
     moves: { creative: 'c', marketer: 'm', founder: 'f', exec: 'e', talent: 't' } })) } });
 ok(R.readSellable(good()).ok === true && R.readSellable(good()).fails.length === 0, 'S1 a read whose receipts say everything may carry a price');
 let g = good(); g.status = 'held'; g.violations = ['number_not_in_evidence:x:570', 'proofread:0']; g.meta.proof = { lane: null, reason: 'claude_network' };
@@ -88,9 +88,9 @@ ok(sf.includes('not_ready:held') && sf.includes('holds_remain') && sf.includes('
 g = good(); g.violations = ['house_word:findings[5].what_the_data_shows:the Lake', 'id_in_prose:findings[4].x:V1', 'proofread:3']; g.stats = { lake: {} }; g.read.findings[0].voices = []; g.read.findings[1].voices = [];
 sf = R.readSellable(g).fails;
 ok(sf.includes('reader_law:2') && sf.includes('no_shape') && sf.includes('voices:0_of_2'), 'S3 house words in the prose, a missing shape and no consumer voices on the findings each keep a price off it');
-g = good(); delete g.read.findings[1].against; g.read.findings[1].reach = null; g.read.findings[1].moves.talent = ''; g.read.findings[1].supports.outlets = 1; delete g.meta.issue_no;
+g = good(); g.read.findings[1].against = { line: 'A counter-reading with nothing under it.', evidence: [] }; g.read.findings[1].reach = null; g.read.findings[1].moves = { creative: '', marketer: '', founder: '', exec: '', talent: '' }; g.read.findings[1].supports.outlets = 1; delete g.meta.issue_no;
 sf = R.readSellable(g).fails;
-ok(sf.includes('finding_2:against+reach_horizon+moves+outlets') && sf.includes('no_issue_no') && !sf.some(f => /^finding_1/.test(f)), 'S4 a finding missing its counter-reading, reach, a move or a second outlet is named by number; an unnumbered issue cannot be sold');
+ok(sf.includes('finding_2:against+reach_horizon+moves+outlets') && sf.includes('no_issue_no') && !sf.some(f => /^finding_1/.test(f)), 'S4 a finding with a counter-reading on no evidence, no reach, no earned move or a second outlet is named by number (VX1: one earned move is enough, an empty counter-reading is allowed); an unnumbered issue cannot be sold');
 ok(R.readSellable(null).fails.includes('not_written') && R.SELL_LAW.VOICED_FINDINGS === 2, 'S5 nothing written, nothing sold');
 fixtures = { 'house_reads?id=eq.': () => [good()], 'report_issues?issue_no=eq.1&select=house_read_id': () => [{ house_read_id: 9 }], 'report_issues?issue_no=eq.1': () => [{ issue_no: 1, status: 'draft' }], 'editions?': () => [], 'edition_items?': () => [] };
 sb = [];

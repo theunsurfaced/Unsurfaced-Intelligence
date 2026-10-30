@@ -16,10 +16,10 @@ const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } p
 const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return src.slice(i, j); };
 
 // ── M ─────────────────────────────────────────────────────────────────
-ok(/^Version (?:3\.[1-9]|4\.\d)/m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.1 or later and takes the ids out of the prose');
-ok(/\*\*The advantage law\.\*\*/.test(method) && /\*\*The reader law\.\*\*/.test(method) && /## The expert's voice/.test(method) && /Take a position\./.test(method) && /Name the mechanism\./.test(method) && /would a strategist pay for this sentence\?/.test(method),
-  'M2 the advantage law, the reader law and the expert\'s voice are in the Method');
-ok(/## The nine questions/.test(method) && /\*\*Why does it work\?\*\*/.test(method) && /\*\*What is the edge\?\*\*/.test(method), 'M3 the nine questions ask why it works and what the edge is');
+ok(/^Version (?:3\.[1-9]|4\.\d|5\.\d)/m.test(method) && /Evidence is the sources, and the sources never interrupt the thought\./.test(method) && /They never appear inside prose\./.test(method), 'M1 the Method is 3.1 or later and takes the ids out of the prose');
+ok(/\*\*The use law\.\*\*/.test(method) && /\*\*The reader law\.\*\*/.test(method) && /## The expert's voice/.test(method) && /Take a position\./.test(method) && /Know how it works\./.test(method) && /would a strategist pay for it, and would a creative say it out loud\?/.test(method),
+  'M2 the use law (Method 5.0: the advantage law rewritten), the reader law and the expert\'s voice are in the Method');
+ok(/## The nine questions/.test(method) && /\*\*Why does it work\?\*\*/.test(method) && /\*\*What is it for\?\*\*/.test(method), 'M3 the nine questions ask why it works and what it is for (Method 5.0: the edge question rewritten as use)');
 ok(!/\(S12, S31, S40\)/.test(method) && /The sources ride in the evidence array; the sentence stays whole\./.test(method), 'M4 the examples no longer teach inline ids');
 ok(/Cultural Intelligence Report\*\* \(the monthly\)/.test(method) && /LAKE SIGNALS\*\* \(L\)/.test(method), 'M5 the Method knows the report is the monthly and names the report\'s pack parts');
 ok(!/—/.test(method), 'M6 no em dash in the Method');
@@ -28,11 +28,11 @@ ok(synced && JSON.parse(synced) === method, 'M7 the worker carries the Method by
 
 // ── C ─────────────────────────────────────────────────────────────────
 const C = new Function(between(w, 'const READ_CONTRACT = {', 'function readIso(') + '; return READ_CONTRACT;')();
-ok(/"advantage": one sentence naming the edge a reader could take, who it favors, and what it costs to ignore/.test(C.weekly) && /"what_happened": 2 to 3 sentences naming the specifics, no ids/.test(C.weekly) && /how to use it, the mechanism named, no ids/.test(C.weekly),
-  'C1 the weekly asks for the advantage, short what-happened without ids, and meaning with the mechanism');
-ok(/"advantage": one sentence naming the edge/.test(C.monthly) && /"what_happened": 2 to 3 sentences, no ids/.test(C.monthly), 'C2 the monthly too');
-ok(/"advantage": one sentence naming the edge/.test(C.record), 'C3 and the record');
-ok(/"advantage": one sentence naming the edge a reader could take from this finding/.test(C.report) && /THE READER LAW/.test(C.report), 'C4 the report\'s findings carry the advantage beside the reader law');
+ok(/"advantage": one plain sentence in your own shape on what a reader could do with this pattern/.test(C.weekly) && /"what_happened": the specifics, named, in two or three short sentences at most, no ids/.test(C.weekly) && /with how it works written into them, one verdict, never a label such as the mechanism, no ids/.test(C.weekly),
+  'C1 the weekly asks for the use in the writer\'s own shape, short what-happened without ids, and meaning with how it works written in (Method 5.0)');
+ok(/"advantage": one plain sentence on what a reader could do with it, never the edge template/.test(C.monthly) && /"what_happened": the specifics, in short sentences, no ids/.test(C.monthly), 'C2 the monthly too');
+ok(/"advantage": one plain sentence on what a reader could do with it, never the edge template/.test(C.record), 'C3 and the record');
+ok(/"advantage": one plain sentence in your own shape on what a reader could do with this finding/.test(C.report) && /THE READER LAW/.test(C.report), 'C4 the report\'s findings carry the use beside the reader law');
 ok(!Object.values(C).join('').includes('—'), 'C5 no em dash in any contract');
 
 // ── L ─────────────────────────────────────────────────────────────────

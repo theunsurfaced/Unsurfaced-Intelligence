@@ -1701,6 +1701,10 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:FEED_INTAKE",
    "purpose": "KB1's intake on the feed's file input, in the house (RD1a): text, PDF, Word, Excel, OpenDocument, HTML, XML and images"
+  },
+  "SEAM:HOUSE_VOICE": {
+   "file": "worker/src/index.js",
+   "purpose": "VX1 THE VOICE (Oct 30, 2026): the house voice, checked and fixed. readStyle notes the sentence faults the Method 5.0 names (long_sentence past thirty words in a long field, semicolon_chain, edge_template, mechanism_sentence, abstract_contrast), never a hold; the voice desk (houseVoiceRun) rewrites the noted lines of a WEEKLY, monthly or record landing one live-tier call a line, accepted only when every figure and S-id holds, nothing grew, no dash, and the fault is gone; the receipt rides meta.voice. The RECON's editor fixes the same notes. The sell law asks one earned move per finding and a counter-reading on evidence or none."
   }
  },
  "planned": [
