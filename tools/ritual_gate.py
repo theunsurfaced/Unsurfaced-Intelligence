@@ -207,7 +207,7 @@ if os.path.exists(_pg):
 # An empty catch hides a failure. Some are deliberate (logging must never
 # break a request), so the count is not zero; it can only go down. Lower
 # SWALLOW_CEILING whenever a cut removes some.
-SWALLOW_CEILING = 124
+SWALLOW_CEILING = 122
 for f in worker_js:
     _s = load(f)
     _sw = len(re.findall(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}", _s)) + len(re.findall(r"\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\{\s*\}|null|undefined|\[\]|''|false)\s*\)", _s))
@@ -247,8 +247,6 @@ SPENDERS = {
     'playAssemble': 'renderBudget',
     'pvTranslate': 'pvTranslateAllowed: per-IP hourly + house daily meter',
     'synthesize': 'underLimit (DAILY_LIMIT) on /excavate/*',
-    'studioCaption': 'cron-bounded manifest + admin cut-story',
-    'studioMemeLines': 'cron-bounded manifest + admin cut-story',
     'readSubmit': 'claudeGate via claudeBatchSubmit (doc tier cap; a deep RECON sends its first pass through deepThinkSend, on the recon tier, inside its commission ceiling on the worst case of all four passes, and only from deepCompile\'s claim); admin route or readTick only',
     'deepThinkSend': 'claudeBatchSubmit on the recon tier (exact $150 cap) inside the commission ceiling on its own estimate, the worst case of every pass after it and the copy desk; called by readSubmit (from deepCompile\'s claim) and the pass stages under the row\'s lease; a pass already sent is adopted from claude_jobs, never sent twice; at most 1 + READ_THINK.RESENDS sends a pass (SEAM:READ_THINK)',
     'deepRenders': 'Workers AI image model (flux-1-schnell) on a landed RECON written in passes only (readLand, from the drain or an adoption): at most READ_THINK.RENDERS images a landing, and a brief already drawn for the RECON is never drawn again (SEAM:READ_THINK)',
@@ -259,7 +257,8 @@ SPENDERS = {
     'deepExtract': 'Tavily extract (FIELD_API_KEY credits, a credit for every five pages) on the deep read stage only, inside the commission ceiling checked before it runs; pages read are kept, so a retry never pays twice (SEAM:READ_DEEP)',
     'fieldRail': 'excavateAuth + on request only (field: true); one Tavily search a call against FIELD_API_KEY\'s monthly credits (SEAM:EXCAVATE_WIRE)',
     'deepOutletTypes': 'claudeGate on the recon tier; a Haiku call per READ_DEEP.OUTLET.CHUNK outlets neither the registry nor the learned map (one KV entry) knows, at most READ_DEEP.OUTLET.MAX a RECON (SEAM:READ_DEEP)',
-    'kbDraft': 'callModel on Workers AI (sensitive tier, our account), one call per drop cut into STUDIO; called by kbCut only, from a shareable drop at /knowledge/submit, /knowledge/file (assets) or the admin /knowledge/cut door (SEAM:FEED_BRIDGE)',
+    'kbDraft': 'callModel on Workers AI (sensitive tier, our account), one call per drop made a frame; called by kbFrame only, from a shareable drop at /knowledge/submit, /knowledge/file (assets) or the admin /knowledge/cut door (SEAM:FEED_BRIDGE)',
+    'dayFramesWrite': 'claudeGate on the doc tier, one call a day (two when a set is refused once) after DAILY publishes (publishEdition) or from the DAILY room by an admin (/reads/day-frames make or remake); DAY_FRAMES.MAX_TOKENS of room; a day whose frames exist is never written again unless asked (SEAM:DAY_FRAMES)',
     'readLinePart': 'claudeGate on the live tier, one call per line a desk note is pinned to; called by readLineRun only, from the admin /reads/revise door when every note is pinned to a line; at most READ_LINE.MAX_LINES lines a revision (SEAM:READ_LINE)',
     'readClearPart': 'claudeGate on the live tier, one call per line held on a figure the evidence does not give; called by readClearRun only, from the admin /reads/clear door; at most READ_CLEAR.MAX_LINES lines a press (SEAM:READ_CLEAR)',
     'readProofPart': 'claudeGate on the live tier per part; called by readProof only, which readLand (the batch drain) and the admin /reads/proof door call; READ_PROOF.PARALLEL parts at once',

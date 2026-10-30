@@ -15,13 +15,14 @@ let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
 
 // ── V: voice in the strings people read ────────────────────────────────
-const sel = w.slice(w.indexOf('function studioSelect('), w.indexOf('function studioSlate('));
-ok(sel.length > 100 && !/—|\\u2014/.test(sel), 'V1 STUDIO selection reasons carry no em dash');
-const safe = w.slice(w.indexOf('function studioSafeCaption('), w.indexOf('function studioAngle('));
-ok(/String\(item\.headline \|\| ''\) \+ '\. '/.test(safe), 'V2 fallback caption joins headline and take with a sentence break');
-const sv0 = w.indexOf('const STUDIO_VOICE');
-const sv = w.slice(sv0, w.indexOf(';\n', sv0));
-ok(sv.length > 200 && !/\\u2014|—/.test(sv), 'V3 STUDIO_VOICE teaches no em dash');
+const dfc0 = w.indexOf('const DAY_FRAMES_CONTRACT');
+const dfc = w.slice(dfc0, w.indexOf(';\n', dfc0));
+ok(dfc.length > 200 && !/—|\\u2014/.test(dfc), 'V1 the day\'s frames contract carries no em dash (RD1b)');
+const kbs0 = w.indexOf('const KB_DRAFT_SYS');
+const kbs = w.slice(kbs0, w.indexOf(';\n', kbs0));
+ok(kbs.length > 200 && !/—|\\u2014/.test(kbs) && /Never an em dash/.test(kbs), 'V2 the feed\'s frame draft teaches no em dash');
+const dfb = w.slice(w.indexOf('/* ═══ SEAM:DAY_FRAMES'), w.indexOf('/* SEAM:ARCHIVE'));
+ok(dfb.length > 1000 && !/'[^'\n]*—[^'\n]*'/.test(dfb), 'V3 no string in the day\'s frames block carries an em dash');
 
 // ── extraction ─────────────────────────────────────────────────────────
 const a = w.indexOf('const PV_LANG_CODES');

@@ -179,6 +179,9 @@
   /* Social frames */
   .social { max-width: 1100px; margin: 0 auto 80px; padding: 0 20px; }
   .social h2 { font-family: var(--mono); font-size: 12px; letter-spacing: 4px; color: var(--red); text-transform: uppercase; margin-bottom: 14px; }
+  .hs-frames { max-width: 1100px; margin: 0 auto 40px; padding: 0 20px; }   /* SEAM:DAY_FRAMES (RD1b) */
+  .fr-h { font-family: var(--mono); font-size: 12px; letter-spacing: 4px; color: var(--red); text-transform: uppercase; margin: 34px 0 12px; font-weight: 400; }
+  .fr-say { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: #9A9A9A; margin-left: 8px; }
   .frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; }
   .frames figure { border: 1px solid #2A2A2A; }
   .frames canvas { width: 100%; height: auto; display: block; }
@@ -438,6 +441,7 @@
 <main id="app"><div class="msg">Loading the read.</div></main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./mp4-muxer.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1789,6 +1793,7 @@
             (it.standfirst ? "<p>" + esc(it.standfirst) + "</p>" : "") +
             '<div class="s">' + esc(it.source_name || "") + (it.source_url ? ' · <a href="' + esc(it.source_url) + '" target="_blank" rel="noopener">source</a>' : "") + "</div></article>";
         }).join(""));
+      dayFramesPanel(ed, items, app);   /* SEAM:DAY_FRAMES (RD1b): the day's frames under the stories */
     }).catch(function () { houseShell("daily", '<div class="hs-note">The edition could not load.</div>'); });
   }
   /* THE NIGHTS: the door's rows by night, held and failed rows included, which the public record never carries. */
@@ -1863,7 +1868,7 @@
       '<div><label>Target</label><select id="kbTarget"><option value="both">BOTH</option><option value="daily">DAILY</option><option value="intelligence">INTELLIGENCE</option></select></div></div>' +
       '<div class="kb-row"><div><label>Title (how the drop is cited)</label><input type="text" id="kbTitle" placeholder="Optional: the drop’s name in reads"></div>' +   /* SEAM:FEED_BRIDGE */
       '<div><label>Where it goes</label><label class="kb-check"><input type="checkbox" id="kbShare"> Shareable: may become public assets</label>' +
-      '<label class="kb-check"><input type="checkbox" id="kbAssets"> Make STUDIO assets now</label></div></div>' +
+      '<label class="kb-check"><input type="checkbox" id="kbAssets"> Make a frame now</label></div></div>' +
       '<button class="kb-btn" id="kbGo">Feed it</button>' +
       '<div class="kb-status" id="kbStatus"></div>' +
       '<div class="kb-list"><label style="margin-top:0">Test the recall</label>' +
@@ -1907,9 +1912,10 @@
   function kbSaid(d) {
     var s = "LIVE: " + d.added + " chunk" + (d.added === 1 ? "" : "s") + " in the base.";
     if (d.lake) s += d.lake.skipped ? " DAILY only: not in the lake." : " " + (d.lake.lake || 0) + " in the lake, citable by every read.";
-    if (d.studio) s += d.studio.ok ? " STUDIO: a " + String(d.studio.format || "").replace(/_/g, " ") + " for " + d.studio.platform + " was cut." :
-      d.studio.error === "internal" ? " STUDIO: held, the drop is internal. Mark it shareable to cut it." :
-      d.studio.error === "target_intelligence" ? " STUDIO: this drop is for INTELLIGENCE only." : " STUDIO refused: " + d.studio.error + ".";
+    if (d.frame) s += d.frame.ok ? " FRAME: on the day's set, No. " + d.frame.issue_no + "." :
+      d.frame.error === "internal" ? " FRAME: held, the drop is internal. Mark it shareable to make a frame." :
+      d.frame.error === "target_intelligence" ? " FRAME: this drop is for INTELLIGENCE only." :
+      d.frame.error === "no_edition" ? " FRAME: no published day to land on yet." : " FRAME refused: " + d.frame.error + ".";
     return s;
   }
   /* SEAM:FEED_BRIDGE: drops listed as drops (one key, every chunk); older rows stand alone. */
@@ -1929,7 +1935,7 @@
           (x.key ? '<div class="kb-used" data-used-out="' + esc(x.key) + '"></div>' : "") + "</div>" +
           '<span class="kb-chip ' + esc(x.status) + '">' + esc(x.target) + " · " + (x.n > 1 ? x.n + " chunks · " : "") + (x.shareable ? "shareable" : "internal") + "</span>" +
           (x.key ? '<button class="kb-x" data-used="' + esc(x.key) + '" title="Where it was used">USED</button>' +
-            '<button class="kb-x" data-cut="' + esc(x.key) + '" data-share="' + (x.shareable ? 1 : 0) + '" title="Make STUDIO assets">ASSETS</button>' : "") +
+            '<button class="kb-x" data-cut="' + esc(x.key) + '" data-share="' + (x.shareable ? 1 : 0) + '" title="Make a frame">FRAME</button>' : "") +
           '<button class="kb-x" ' + (x.key ? 'data-drop="' + esc(x.key) + '"' : 'data-id="' + x.id + '"') + ' title="Remove">✕</button></div>';
       }).join("") : '<div class="kb-item"><div class="c">Nothing fed yet. The base is hungry.</div></div>';
       Array.prototype.forEach.call(document.querySelectorAll("#kbRows [data-id]"), function (b) { b.addEventListener("click", function () { api("knowledge/delete", { id: +b.getAttribute("data-id") }).then(kbList, function (e) { kbStat(kbErr(e)); }); }); });
@@ -1941,14 +1947,14 @@
         o.textContent = "LOOKING…";
         api("knowledge/used", { drop_key: key }).then(function (u) {
           if (!u || !u.ok) { o.textContent = "UNKNOWN: " + ((u && u.error) || "no answer"); return; }
-          o.innerHTML = "LAKE: " + u.lake + " row" + (u.lake === 1 ? "" : "s") + " · STUDIO: " + (u.studio && u.studio.length ? u.studio.map(function (p) { return esc(String(p.format || "").replace(/_/g, " ") + " (" + p.status + ")"); }).join(", ") : "none") +
+          o.innerHTML = "LAKE: " + u.lake + " row" + (u.lake === 1 ? "" : "s") + " · FRAMES: " + (u.frames && u.frames.length ? u.frames.map(function (p) { return esc("No. " + p.issue_no + " (" + p.date + ")"); }).join(", ") : "none") +
             " · READS: " + (u.reads && u.reads.length ? u.reads.map(function (r) { return '<a href="./?id=' + esc(String(r.id)) + '">' + esc(r.label + " v" + r.version) + "</a>"; }).join(", ") : "none yet");
         }).catch(function (e) { o.textContent = kbErr(e); }); }); });
       Array.prototype.forEach.call(document.querySelectorAll("#kbRows [data-cut]"), function (b) { b.addEventListener("click", function () {
         var key = b.getAttribute("data-cut"), shared = b.getAttribute("data-share") === "1";
-        if (!shared && !window.confirm("This drop is internal. Mark it shareable and cut it into a STUDIO asset? The asset can be posted publicly.")) return;
-        b.disabled = true; kbStat("CUTTING THE DROP…");
-        api("knowledge/cut", { drop_key: key, shareable: true }).then(function (c) { kbStat(kbSaid({ added: 0, studio: c }).replace(/^LIVE: 0 chunks in the base\. /, "")); kbList(); }, function (e) { kbStat(kbErr(e)); b.disabled = false; }); }); });
+        if (!shared && !window.confirm("This drop is internal. Mark it shareable and make it a frame on the day's set? The frame can be posted publicly.")) return;
+        b.disabled = true; kbStat("MAKING THE FRAME…");
+        api("knowledge/cut", { drop_key: key, shareable: true }).then(function (c) { kbStat(kbSaid({ added: 0, frame: c }).replace(/^LIVE: 0 chunks in the base\. /, "")); kbList(); }, function (e) { kbStat(kbErr(e)); b.disabled = false; }); }); });
     }).catch(function (e) { out.innerHTML = '<div class="kb-item"><div class="c">' + esc(kbErr(e)) + "</div></div>"; });
   }
   function kbSearch() {
@@ -2488,7 +2494,7 @@
       c.fillStyle = C.red; c.beginPath(); c.arc(96, 560, 12, 0, 7); c.fill();
       c.fillStyle = C.ivory; var y = wrap(c, data.headline, 84, 680, 912, 116, 1.0, 5, "800 {s}px Syne");
       c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText(label.toUpperCase(), 84, Math.min(y + 40, 1180));
-      c.fillStyle = C.ivory; c.font = "400 22px 'Space Mono'"; c.fillText("THE WEEKLY READ · SWIPE", 84, 1270);
+      c.fillStyle = C.ivory; c.font = "400 22px 'Space Mono'"; c.fillText(String(data.sub || "THE WEEKLY READ · SWIPE"), 84, 1270);   /* SEAM:DAY_FRAMES (RD1b): the day's own line */
     } else if (kind === "closer") {
       c.fillStyle = C.ivory; wrap(c, "The read is free. The moves are yours.", 84, 560, 912, 100, 1.05, 4, "800 {s}px Syne");
       c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText("UNSURFACED-INTELLIGENCE.COM/DAILY", 84, 1270);
@@ -2504,22 +2510,26 @@
     }
     return cv;
   }
-  function social(row, s, rc, img, coverPool) {
-    var fonts = ["800 80px Syne", "700 24px 'Space Mono'", "400 24px 'Space Mono'"];
-    var pools = s.frames.map(function (f) { return (f.evidence || []).filter(function (x) { return rc[x]; }); });
-    Promise.all(fonts.map(function (f) { return document.fonts.load(f); }).concat([loadSharp(coverPool, img)], pools.map(function (p) { return loadSharp(p, img); }))).then(function (res) {
-      var cv0 = res[fonts.length], got = res.slice(fonts.length + 1), label = row.label;
+  /* SEAM:DAY_FRAMES (RD1b THE DAY'S FRAMES): one frames section for an issue and for a day. The painter is the WEEKLY's; what
+     changes is where the copy and the photographs come from. o: { label, sub, slug, h2, s: {cover_line, frames[], caption},
+     pools: one list of story ids a frame may draw its photograph from, coverPool, img(id), credit(id), mount, extra } */
+  function framesSection(o) {
+    var s = o.s, fonts = ["800 80px Syne", "700 24px 'Space Mono'", "400 24px 'Space Mono'"];
+    var pools = o.pools || s.frames.map(function () { return []; });
+    return Promise.all(fonts.map(function (f) { return document.fonts.load(f); }).concat([loadSharp(o.coverPool || [], o.img)], pools.map(function (p) { return loadSharp(p, o.img); }))).then(function (res) {
+      var cv0 = res[fonts.length], got = res.slice(fonts.length + 1), label = o.label;
       var coverIm = cv0 && cv0.im, ims = got.map(function (g) { return g && g.im; }), pick = got.map(function (g) { return g && g.s; });
-      var frames = [frame("cover", { headline: s.cover_line, n: "" }, label, coverIm)];
+      var frames = [frame("cover", { headline: s.cover_line, n: "", sub: o.sub }, label, coverIm)];
       s.frames.forEach(function (f, i) { frames.push(frame("story", { kicker: f.kicker, headline: f.headline, line: f.line, n: (i + 1) + " / " + s.frames.length,
-        credit: ims[i] && pick[i] ? "Photo: " + (rc[pick[i]].source_name || "") : "" }, label, ims[i])); });
+        credit: ims[i] && pick[i] ? (o.credit ? o.credit(pick[i]) : "") : "" }, label, ims[i])); });
       frames.push(frame("closer", { n: "" }, label, null));
       var wrapEl = document.createElement("section"); wrapEl.className = "social";
-      wrapEl.innerHTML = '<h2>The Unsurfaced DAILY issue · ' + frames.length + ' frames, 1080 × 1350</h2><div class="frames"></div>' +
-        '<button class="btn red" id="carousel">Download carousel PDF (LinkedIn)</button> <button class="btn" id="pngs">Download all PNGs (Instagram)</button>' +
+      wrapEl.innerHTML = '<h2>' + esc(o.h2 || "The frames") + ' · ' + frames.length + ' frames, 1080 × 1350</h2><div class="frames"></div>' +
+        '<button class="btn red" data-fr="carousel">Download carousel PDF (LinkedIn)</button> <button class="btn" data-fr="pngs">Download all PNGs (Instagram)</button> ' +
+        '<button class="btn" data-fr="reel">Render the reel (MP4)</button> <span class="fr-say" data-fr="say"></span>' + (o.extra || "") +
         '<div class="cap">' + esc(s.caption || "") + "</div>";
-      app.appendChild(wrapEl);
-      var grid = wrapEl.querySelector(".frames"), slug = "unsurfaced-daily-" + String(row.window_start);
+      (o.mount || app).appendChild(wrapEl);
+      var grid = wrapEl.querySelector(".frames"), slug = o.slug;
       frames.forEach(function (cv, i) {
         var fig = document.createElement("figure"); fig.appendChild(cv);
         var cap = document.createElement("figcaption"), a = document.createElement("a");
@@ -2527,14 +2537,120 @@
         try { a.href = cv.toDataURL("image/png"); } catch (e) { a.textContent = "PNG blocked"; }
         cap.innerHTML = "<span>" + pad(i + 1) + "</span>"; cap.appendChild(a); fig.appendChild(cap); grid.appendChild(fig);
       });
-      document.getElementById("pngs").onclick = function () {
+      wrapEl.querySelector('[data-fr="pngs"]').onclick = function () {
         grid.querySelectorAll("a.btn").forEach(function (a, i) { setTimeout(function () { a.click(); }, i * 400); });
       };
-      document.getElementById("carousel").onclick = function () {
+      wrapEl.querySelector('[data-fr="carousel"]').onclick = function () {
         var blob = pdfOf(frames), a = document.createElement("a");
         a.href = URL.createObjectURL(blob); a.download = slug + "-carousel.pdf"; a.click();
       };
+      var rb = wrapEl.querySelector('[data-fr="reel"]'), say = wrapEl.querySelector('[data-fr="say"]');
+      rb.onclick = function () { reelRender(frames, slug, rb, say); };
+      return wrapEl;
     });
+  }
+  /* The WEEKLY issue's frames, as before: the copy from the read, the photographs from its receipts. */
+  function social(row, s, rc, img, coverPool) {
+    return framesSection({ label: row.label, sub: "THE WEEKLY READ · SWIPE", slug: "unsurfaced-daily-" + String(row.window_start), h2: "The Unsurfaced DAILY issue", s: s,
+      pools: s.frames.map(function (f) { return (f.evidence || []).filter(function (x) { return rc[x]; }); }), coverPool: coverPool, img: img,
+      credit: function (sid) { return "Photo: " + ((rc[sid] && rc[sid].source_name) || ""); } });
+  }
+  /* ── The reel: the frames in motion, encoded in this browser ────────── */
+  /* PURE: the reel's frame program over n frames. The doctrine's motion language: typographic, cut on the beat, holds
+     confident, type arrives like a stamp, never a slide. Each frame holds HOLD frames, then GAP black frames; the out is
+     black with the red dot and the wordmark. ops: fill, frame (an index), dot, text. */
+  var REEL = { W: 1080, H: 1350, FPS: 30, HOLD: 84, GAP: 6, OUT: 36 };
+  function reelProgram(n) {
+    var per = REEL.HOLD + REEL.GAP, total = n * per + REEL.OUT;
+    return { w: REEL.W, h: REEL.H, fps: REEL.FPS, total: total, at: function (f) {
+      var ops = [{ op: "fill", color: C.void }];
+      if (f >= n * per) {
+        ops.push({ op: "dot", x: 540, y: 640, r: 14, color: C.red });
+        ops.push({ op: "text", text: "UNSURFACED™ DAILY", x: 540, y: 720, size: 30, weight: "700", color: C.ivory, align: "center" });
+        return ops;
+      }
+      var i = Math.floor(f / per), k = f - i * per;
+      if (k < REEL.HOLD) ops.push({ op: "frame", i: i });
+      return ops;
+    } };
+  }
+  function reelPaint(canvas, frames, w, h, ops) {
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    var c = canvas.getContext("2d");
+    ops.forEach(function (o) {
+      if (o.op === "fill") { c.fillStyle = o.color; c.fillRect(0, 0, w, h); }
+      else if (o.op === "frame") { if (frames[o.i]) c.drawImage(frames[o.i], 0, 0, w, h); }
+      else if (o.op === "dot") { c.fillStyle = o.color; c.beginPath(); c.arc(o.x, o.y, o.r, 0, 7); c.fill(); }
+      else if (o.op === "text") { c.fillStyle = o.color; c.font = o.weight + " " + o.size + "px 'Space Mono'"; c.textAlign = o.align || "left"; c.fillText(o.text, o.x, o.y); c.textAlign = "left"; }
+    });
+  }
+  /* WebCodecs plus the vendored mp4-muxer (./mp4-muxer.js). Null when this browser cannot encode. */
+  async function buildMp4(program, paint, onTick) {
+    if (typeof VideoEncoder === "undefined" || !window.Mp4Muxer) return null;
+    var target = new Mp4Muxer.ArrayBufferTarget();
+    var muxer = new Mp4Muxer.Muxer({ target: target, fastStart: "in-memory", video: { codec: "avc", width: program.w, height: program.h } });
+    var encoder = new VideoEncoder({ output: function (chunk, meta) { muxer.addVideoChunk(chunk, meta); }, error: function (e) { console.log("encode_error", e); } });
+    encoder.configure({ codec: "avc1.640028", width: program.w, height: program.h, bitrate: 9000000, framerate: program.fps });
+    var canvas = document.createElement("canvas");
+    for (var f = 0; f < program.total; f++) {
+      paint(canvas, program.w, program.h, program.at(f));
+      var vf = new VideoFrame(canvas, { timestamp: Math.round(f * 1e6 / program.fps), duration: Math.round(1e6 / program.fps) });
+      encoder.encode(vf, { keyFrame: f % 60 === 0 });
+      vf.close();
+      if (onTick && f % 30 === 0) onTick(f, program.total);
+      if (f % 30 === 29) await new Promise(function (r) { setTimeout(r, 0); });
+    }
+    await encoder.flush();
+    muxer.finalize();
+    return new Blob([target.buffer], { type: "video/mp4" });
+  }
+  function reelRender(frames, slug, btn, say) {
+    if (btn.disabled) return;
+    btn.disabled = true; if (say) say.textContent = "Encoding.";
+    var program = reelProgram(frames.length);
+    buildMp4(program, function (cv, w, h, ops) { reelPaint(cv, frames, w, h, ops); }, function (f, total) { if (say) say.textContent = "Encoding " + Math.round(100 * f / total) + "%."; })
+      .then(function (blob) {
+        if (!blob) { if (say) say.textContent = "This browser cannot encode video here. Chrome or Edge can."; btn.disabled = false; return; }
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = slug + "-reel.mp4"; a.click();
+        if (say) say.textContent = "The reel: " + frames.length + " frames, " + Math.round(program.total / program.fps) + " seconds, 1080 × 1350.";
+        btn.disabled = false;
+      }).catch(function (e) { if (say) say.textContent = "The reel could not be encoded: " + String(e && e.message || e).slice(0, 80); btn.disabled = false; });
+  }
+  /* ── The day's frames in the DAILY room ─────────────────────────────── */
+  function dayFramesCall(issue, body) { return call("/reads/day-frames", Object.assign({ issue: issue }, body || {})); }
+  function dayFramesPanel(ed, items, mount) {
+    var panel = document.createElement("div"); panel.className = "hs-frames"; panel.innerHTML = '<div class="hs-note">Reading the day\'s frames.</div>';
+    mount.appendChild(panel);
+    dayFramesCall(ed.issue_no).then(function (d) { dayFramesShow(ed, items, panel, d && d.ok ? d.frames : null, d && !d.ok ? d.error : null); })
+      .catch(function () { dayFramesShow(ed, items, panel, null, "no answer"); });
+  }
+  function dayFramesShow(ed, items, panel, fr, err) {
+    var byId = {}; items.forEach(function (it) { byId[String(it.id)] = it; });
+    var head = '<h2 class="fr-h">The frames</h2>';
+    var written = fr && fr.status && fr.status !== "feed_only";
+    var note = err ? "The frames could not load: " + err + "." :
+      !fr ? "No frames yet for this day. The writer prepares them after DAILY publishes; write them now if the morning missed." :
+      fr.status === "held" ? "Held: " + (fr.hold || []).join(", ") + ". Nothing is drawn from a held set; write it again." :
+      fr.status === "feed_only" ? "A drop from the feed sits on this day; the writer's frames are not written yet." :
+      "Written " + (fr.at ? hsDay(String(fr.at).slice(0, 10)) : "") + " by " + esc(fr.by || "") + (fr.cost_usd != null ? ", $" + Number(fr.cost_usd).toFixed(2) : "") + ". The WEEKLY grammar on the day: a cover, one frame per story over its photograph, a closer.";
+    var btn = !fr || fr.status === "feed_only" ? '<button class="btn red" data-df="make">Write the day\'s frames</button>' : '<button class="btn" data-df="remake">Write the frames again</button>';
+    panel.innerHTML = head + '<div class="hs-note">' + note + "</div>" + btn + ' <span class="fr-say" data-df="say"></span>';
+    var b = panel.querySelector("[data-df]"), say = panel.querySelector('[data-df="say"]');
+    b.onclick = function () {
+      b.disabled = true; say.textContent = "Writing, about a minute.";
+      dayFramesCall(ed.issue_no, b.getAttribute("data-df") === "remake" ? { remake: true } : { make: true }).then(function (d) {
+        if (!d || !d.ok) { say.textContent = "The house refused: " + ((d && d.error) || "no answer") + "."; b.disabled = false; return; }
+        dayFramesShow(ed, items, panel, d.frames, null);
+      }).catch(function () { say.textContent = "The house did not answer."; b.disabled = false; });
+    };
+    if (!written || fr.status !== "ready" || !(fr.frames || []).length) return;
+    var frames = fr.frames.filter(function (f) { return f && f.headline; });
+    framesSection({ label: "DAILY · No. " + ed.issue_no + " · " + hsDay(ed.date), sub: "THE DAILY · " + hsDay(ed.date).toUpperCase() + " · SWIPE",
+      slug: "unsurfaced-daily-" + String(ed.date), h2: "The day\'s frames", s: { cover_line: fr.cover_line, frames: frames, caption: fr.caption },
+      pools: frames.map(function (f) { return f.item_id ? [String(f.item_id)] : []; }), coverPool: items.map(function (it) { return String(it.id); }),
+      img: function (id) { return byId[String(id)] ? API + "/img/s/" + String(id) : null; },
+      credit: function (id) { return "Photo: " + ((byId[String(id)] && byId[String(id)].source_name) || ""); }, mount: panel });
   }
   /* Minimal PDF: one JPEG page per frame (DCTDecode), the LinkedIn document-post shape. */
   function pdfOf(frames) {

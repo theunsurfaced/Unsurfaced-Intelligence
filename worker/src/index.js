@@ -239,7 +239,7 @@ export default {
       if (request.method === 'GET' && path === '/play/budget') return playBudget(env, origin, user);
       if (request.method === 'GET' && path.startsWith('/play/handoff/')) return playHandoffGet(decodeURIComponent(path.slice('/play/handoff/'.length)), env, origin, user);   // SEAM:PLAY_HANDOFF
 
-      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/studio/archive' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref' && path !== '/reads/slot-upload') ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref' && path !== '/reads/slot-upload') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return meterRun(env, origin, user, 'play.words', () => playGenerate(body, env, origin));   // SEAM:PLANS
         case '/play/interpret':      return playInterpret(body, env, origin, user);   // SEAM:PLAY_BRIEF
@@ -270,12 +270,6 @@ export default {
         case '/plan/invite/accept':
         case '/plan/member/remove': return planBillingRoute(path, request, env, origin, user, body);
         case '/asks':               return askTeamRoute(request, env, origin, user, body);   // SEAM:ASK_TEAM (EX48): ask the team; your asks; yes to an offer
-        case '/studio/manifest':     return studioManifest(body, env, origin, user);
-        case '/studio/generate':     return studioGenerate(env, origin, user);
-        case '/studio/cut-story':    return studioCutStory(body, env, origin, user);
-        case '/studio/update':       return studioUpdate(body, env, origin, user);
-        case '/studio/kill':         return studioKill(body, env, origin, user);
-        case '/studio/archive':      return studioArchive(request, env, origin, user);
         case '/arcade/admin/state':     return arcAdminState(env, origin, user);
         case '/arcade/admin/rotate':    return arcAdminRotate(body, env, origin, user);
         case '/arcade/admin/prize':     return arcAdminPrize(body, env, origin, user);
@@ -331,6 +325,7 @@ export default {
         case '/reads/revert':
         case '/reads/assets':        // SEAM:HOUSE (RD1a): the assets and the nights, the house's own shelves
         case '/reads/nights':
+        case '/reads/day-frames':    // SEAM:DAY_FRAMES (RD1b): a day's frames, read or written
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/reads/slot-upload':   return slotUpload(request, env, origin, user);   // SEAM:EDIT_DESK (ED2): the house's own photograph, raw body
         case '/pay/onboard':         return payOnboard(env, origin, user);
@@ -4670,20 +4665,9 @@ function logEvent(env, platform, space, event, sessionId, meta) {
   } catch { return Promise.resolve(); }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
- * SEAM:STUDIO — the content engine. After DAILY publishes, the engine
- * cuts the day's manifest into content_pieces: what to say, where, from
- * which data. Rendering happens in the admin's browser (the house
- * renderer); binaries archive to R2 only at deploy. Doctrine:
- * templates/DOCTRINE.md — evidence that surfaced, not content made.
- * Caps are law: one hero piece per story, chosen by story shape;
- * only the lead carries an alt. The engine selects; the admin disposes.
- * ═══════════════════════════════════════════════════════════════════ */
-const STUDIO_VOICE = 'Voice: declarative, specific, a little dangerous. Use ONLY facts, numbers, and dates that appear in the finding text: inventing a date, figure, name, or event is the one unforgivable move. If the finding has no number, write without one. '
-  + 'Never explain the joke. Banned: engagement-bait ("you won\'t believe", "stop scrolling"), '
-  + 'emoji soup, listicle cadence, hashtag walls. Write like the reader is smart and busy. '
-  + 'Editorial standard: meaning over novelty; evidence over hype; tension over generality; '
-  + 'utility over performance: end where the reader can use what they now see.';
+/* ═══ THE KNIFE (what remains of STUDIO after RD1b THE DAY'S FRAMES, Oct 30, 2026): the length contract and the grounding checks, pure
+ * text functions the DAILY composer and the feed's frame use. STUDIO's engine (the slate, the still, THE SIX, the meme, the kinetic
+ * take, the counter and its routes) retired on Oct 30, 2026; its table stays as the archive, untouched. The day's frames are SEAM:DAY_FRAMES. ═══ */
 /* THE LENGTH CONTRACT \u2014 copy composes to the box; the box never cuts
  * the copy. studioTrimClean is the only knife: within budget \u2192 untouched;
  * over \u2192 cut at the last sentence end inside budget; no sentence end \u2192
@@ -4720,269 +4704,6 @@ function studioFabricated(text, ground) {
   const money = String(text || '').match(/[\u20AC$\u00A3]\s?[\d.,]+\s?(?:million|billion|[MBK]\b)?|\b[\d.,]+\s(?:million|billion)\b/gi) || [];
   for (const m of money) if (!g.includes(m.trim())) return 'money:' + m.trim();
   return null;
-}
-function studioSafeCaption(platform, item) {
-  const base = String(item.headline || '') + '. ' + studioTrimClean(item.take, 160);
-  if (platform === 'linkedin') return base + (item.source_name ? '\nSource: ' + item.source_name : '');
-  return base + '\n\n#unsurfaced #' + String(item.kicker || 'signal').toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-/* the composer's format steers the caption's angle — additive, silent on
- * legacy items (no format field → no extra instruction). */
-function studioAngle(item) {
-  switch (item && item.format) {
-    case 'number':      return ' Anchor the caption on the number in the finding: the stat is the hook.';
-    case 'read':        return ' Frame it as one pattern showing up in more than one place at once.';
-    case 'signal':      return ' Frame it as an early signal from the edge: say plainly that it is early.';
-    case 'provocation': return ' Lead with the open question the finding leaves behind.';
-    case 'drop':        return ' Read the release through identity and behavior, never through PR.';
-    default:            return '';
-  }
-}
-async function studioCaption(env, platform, item) {
-  const budget = platform === 'linkedin' ? 600 : platform === 'instagram' ? 500 : 300;
-  const contract = ' Land the whole caption within ' + budget + ' characters. Complete every sentence: if it will not fit, drop an idea, never a sentence.';
-  const dialect = (platform === 'linkedin'
-    ? 'LinkedIn dialect: the finding leads; 2-3 sentences arguing it; no hashtags.'
-    : platform === 'instagram'
-      ? 'Instagram dialect: one sharp line, then one context line. End with up to 5 chosen hashtags on their own line.'
-      : 'TikTok dialect: hook under 12 words, then one payoff line. Up to 4 hashtags.') + contract;
-  try {
-    const ground = studioGround(item);
-    const user = `Finding: ${item.headline}\n${item.standfirst || ''}\nThe take: ${item.take || ''}\nSource: ${item.source_name || ''}`;
-    let out = await callModel(env, 't1', [
-      { role: 'system', content: 'You write social captions for Unsurfaced, a creative recon group publishing daily cultural intelligence. ' + STUDIO_VOICE + ' ' + dialect + studioAngle(item) + ' Output only the caption text.' },
-      { role: 'user', content: user }
-    ], { max_tokens: 400 });
-    let cap = studioTrimClean(out, budget);
-    if (studioFabricated(cap, ground) || !studioComplete(cap)) {
-      out = await callModel(env, 't1', [
-        { role: 'system', content: 'Rewrite the caption using ONLY the facts in the finding. Remove every date, figure, and name that the finding does not contain. Finish every sentence: no fragments. ' + dialect + ' Output only the caption text.' },
-        { role: 'user', content: user + '\n\nCaption to fix: ' + cap }
-      ], { max_tokens: 400 });
-      cap = studioTrimClean(out, budget);
-    }
-    if (!cap || studioFabricated(cap, ground) || !studioComplete(cap)) cap = studioSafeCaption(platform, item);
-    return cap;
-  } catch (e) { return studioSafeCaption(platform, item); }
-}
-async function studioMemeLines(env, item) {
-  try {
-    const out = await callModel(env, 't1', [
-      { role: 'system', content: 'You write two-line house memes for Unsurfaced. ' + STUDIO_VOICE + ' Formats: "verdict" (line1 = the finding stated flat, line2 = the deadpan read) or "vs" (line1 = the signal, line2 = the noise it replaces). No emoji ever. line1 within 90 characters, line2 within 110: complete phrases only, never cut a thought. Output ONLY JSON: {"mformat":"verdict"|"vs","line1":"...","line2":"..."}' },
-      { role: 'user', content: `Finding: ${item.headline}\nThe take: ${item.take || ''}` }
-    ], { max_tokens: 140 });
-    const j = JSON.parse(String(out).replace(/```json|```/g, '').trim());
-    if (j && j.line1) {
-      const ground = studioGround(item);
-      if (!studioFabricated(String(j.line1) + ' ' + String(j.line2 || ''), ground))
-        return { mformat: j.mformat === 'vs' ? 'vs' : 'verdict',
-          line1: studioTrimClean(j.line1, 90), line2: studioTrimClean(j.line2, 110) };
-    }
-  } catch (e) {}
-  return { mformat: 'verdict', line1: studioTrimClean(item.headline, 90),
-    line2: studioTrimClean(item.take, 110) };
-}
-/* PURE: the selector. One hero per story \u2014 the editorial format the
- * composer stamped picks the piece format and its native platform, and
- * the reason ships in the payload so the counter shows its work.
- * Scoreboard, never the playbook: the reason is the read, not the rubric. */
-function studioSelect(it) {
-  switch (it && it.editorial_format || it && it.format) {
-    case 'number':      return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
-      why: 'number-led finding: the stat card is the hero' };
-    case 'provocation': return { format: 'hand_meme',    platform: 'instagram', lane: 'durable',
-      why: 'open question: the meme grammar carries it' };
-    case 'drop':        return { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable',
-      why: 'release energy: motion is the native read' };
-    case 'read':        return { format: 'kinetic_take', platform: 'tiktok',    lane: 'perishable',
-      why: 'pattern across places: the moving take' };
-    case 'signal':      return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
-      why: 'early signal: the flat card, stated plainly' };
-    default:            return { format: 'signal_still', platform: 'instagram', lane: 'perishable',
-      why: 'dispatch: the still carries the finding' };
-  }
-}
-/* PURE: the slate walk. First story per unseen territory; territory-less
- * editions fall back to the beat walk; still thin → fill by order. The
- * LEAD (item 0) always seats first. */
-function studioSlate(items) {
-  const slate = [], seenT = new Set(), seenB = new Set();
-  for (const it of (items || [])) {
-    const t = it.territory || null;
-    if (t && !seenT.has(t)) { seenT.add(t); slate.push(it); }
-    if (slate.length === 3) return slate;
-  }
-  for (const it of (items || [])) {
-    if (slate.length === 3) break;
-    if (slate.includes(it)) continue;
-    const b = it.beat || null;
-    if (b && !seenB.has(b)) { seenB.add(b); slate.push(it); }
-  }
-  for (const it of (items || [])) {
-    if (slate.length === 3) break;
-    if (!slate.includes(it)) slate.push(it);
-  }
-  return slate;
-}
-
-async function buildStudioManifest(env, day, issueNo, items) {
-  try {
-    const existing = await sbRest(env, `content_pieces?day=eq.${day}&select=id&limit=1`);
-    if (existing && existing.length) return { ok: true, skipped: 'manifest-exists' };
-    const lead = items && items[0];
-    if (!lead) return { ok: false, error: 'no_items' };
-    // THE SLATE — three stories across distinct TERRITORIES (the 12-story law),
-    // beats as the fallback lens, order as the floor. Deterministic and free.
-    const slate = studioSlate(items);
-    const base = (it, story) => ({ issue_no: issueNo, date: day, kicker: it.kicker, headline: it.headline,
-      take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story,
-      territory: it.territory || null, editorial_format: it.format || 'dispatch',
-      apply: it.apply || null, momentum: it.momentum || null, story_id: it.id || null });   // SEAM:STUDIO_LOOK: the story's photograph rides the relay
-    const sixPayload = { issue_no: issueNo, date: day,
-      slides: (items || []).slice(0, 6).map(it => ({
-        kicker: it.kicker, headline: it.headline, take: it.take, source_name: it.source_name,
-        territory: it.territory || null, editorial_format: it.format || null, story_id: it.id || null })) };   // SEAM:STUDIO_LOOK
-    // The slate walk: 2 edition anchors + hero per story (lead carries an alt).
-    // Six pieces on a full slate, down from seventeen. Caps are code, not comment.
-    const MATRIX = [
-      { format: 'the_six', platform: 'instagram', lane: 'perishable', it: null, story: 0,
-        why: 'the edition anchor: carousel-native feed' },
-      { format: 'the_six', platform: 'linkedin',  lane: 'perishable', it: null, story: 0,
-        why: 'the edition anchor: document-post native' },
-    ];
-    if (slate[0]) {
-      const hero = studioSelect(slate[0]);
-      MATRIX.push({ format: hero.format, platform: hero.platform, lane: hero.lane, it: slate[0], story: 1, why: hero.why });
-      MATRIX.push({ format: 'signal_still', platform: 'linkedin', lane: 'perishable', it: slate[0], story: 1,
-        why: 'the lead carries two: the LinkedIn read' });
-    }
-    [slate[1], slate[2]].forEach((it, i) => { if (it) {
-      const hero = studioSelect(it);
-      MATRIX.push({ format: hero.format, platform: hero.platform, lane: hero.lane, it, story: 2 + i, why: hero.why });
-    } });
-    const memeByStory = {};
-    for (const cell of MATRIX) if (cell.it && cell.format === 'hand_meme' && !memeByStory[cell.it.headline])
-      memeByStory[cell.it.headline] = await studioMemeLines(env, cell.it);
-    const pieces = [];
-    for (const cell of MATRIX) {
-      const it = cell.it || lead;
-      let payload;
-      if (cell.format === 'the_six') payload = Object.assign({}, sixPayload, { selection: cell.why });
-      else if (cell.format === 'hand_meme') payload = Object.assign(base(it, cell.story), memeByStory[it.headline] || {}, { selection: cell.why });
-      else payload = Object.assign(base(it, cell.story), { selection: cell.why });
-      pieces.push({ day, lane: cell.lane, format: cell.format, platform: cell.platform, status: 'draft',
-        copy: { caption: await studioCaption(env, cell.platform, it) }, payload });
-    }
-    await sbRest(env, 'content_pieces', { method: 'POST', body: pieces });
-    logEvent(env, 'intelligence', 'studio', 'manifest_cut', null, { day, pieces: pieces.length });
-    return { ok: true, pieces: pieces.length };
-  } catch (e) {
-    return { ok: false, error: String(e && e.message).slice(0, 200) };
-  }
-}
-async function studioCutStory(body, env, origin, user) {
-  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const itemId = parseInt(body.item_id, 10);
-  if (!itemId) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
-  const rows = await sbRest(env, `edition_items?id=eq.${itemId}&select=*`);
-  const it = rows && rows[0];
-  if (!it) return json({ ok: false, error: 'not_found' }, 200, origin, env);
-  const eds = await sbRest(env, `editions?id=eq.${it.edition_id}&select=issue_no,date`);
-  const ed = (eds && eds[0]) || {};
-  const day = ed.date || new Date().toISOString().slice(0, 10);
-  const dupe = await sbRest(env, `content_pieces?day=eq.${day}&payload->>headline=eq.${encodeURIComponent(it.headline)}&select=id&limit=1`);
-  if (dupe && dupe.length) return json({ ok: true, skipped: 'story-already-cut' }, 200, origin, env);
-  const hero = studioSelect(it);
-  const base = { issue_no: ed.issue_no, date: day, kicker: it.kicker, headline: it.headline,
-    take: it.take, source_name: it.source_name, beat: it.beat || 'culture', story: 9,
-    territory: it.territory || null, editorial_format: it.format || 'dispatch',
-    apply: it.apply || null, momentum: it.momentum || null, story_id: it.id || null,   // SEAM:STUDIO_LOOK
-    selection: 'admin cut: ' + hero.why };
-  const payload = hero.format === 'hand_meme'
-    ? Object.assign({}, base, await studioMemeLines(env, it)) : base;
-  const pieces = [
-    { day, lane: hero.lane, format: hero.format, platform: hero.platform, status: 'draft',
-      copy: { caption: await studioCaption(env, hero.platform, it) }, payload },
-  ];
-  await sbRest(env, 'content_pieces', { method: 'POST', body: pieces });
-  logEvent(env, 'intelligence', 'studio', 'story_cut', null, { item: itemId, beat: base.beat, format: hero.format });
-  return json({ ok: true, pieces: 1, beat: base.beat, format: hero.format }, 200, origin, env);
-}
-async function studioManifest(body, env, origin, user) {
-  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const days = Math.min(parseInt(body.days, 10) || 7, 30);
-  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-  const rows = await sbRest(env,
-    `content_pieces?day=gte.${since}&status=neq.killed&order=day.desc,id.asc&select=id,day,lane,format,platform,copy,payload,status,deployed_at,post_url,archive_key`);
-  return json({ ok: true, pieces: rows || [] }, 200, origin, env);
-}
-async function studioGenerate(env, origin, user) {
-  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const eds = await sbRest(env, 'editions?status=eq.published&order=date.desc&limit=1');
-  const ed = eds && eds[0];
-  if (!ed) return json({ ok: false, error: 'no_edition' }, 200, origin, env);
-  const items = await sbRest(env, `edition_items?edition_id=eq.${ed.id}&order=ord.asc`);
-  const r = await buildStudioManifest(env, ed.date, ed.issue_no, items || []);
-  return json(r, 200, origin, env);
-}
-async function studioUpdate(body, env, origin, user) {
-  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const id = parseInt(body.id, 10);
-  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
-  const patch = {};
-  if (body.copy && typeof body.copy === 'object') patch.copy = body.copy;
-  if (['draft', 'approved', 'killed'].includes(body.status)) patch.status = body.status;
-  if (!Object.keys(patch).length) return json({ ok: false, error: 'empty_patch' }, 200, origin, env);
-  await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: patch });
-  return json({ ok: true, id }, 200, origin, env);
-}
-/* KILL means kill \u2014 the piece leaves the shared queue for every admin.
- * Never-deployed drafts hard-delete (no ledger value); anything that
- * shipped soft-kills to status='killed' \u2014 the record of what went out
- * is never erased. The queue query excludes killed, so both paths
- * vanish from the list, persistently. */
-async function studioKill(body, env, origin, user) {
-  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const id = parseInt(body.id, 10);
-  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
-  const rows = await sbRest(env, `content_pieces?id=eq.${id}&select=id,deployed_at,status`);
-  const piece = rows && rows[0];
-  if (!piece) return json({ ok: true, id, gone: 'already' }, 200, origin, env);
-  let mode;
-  if (piece.deployed_at) {
-    await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: { status: 'killed' } });
-    mode = 'soft';
-  } else {
-    await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'DELETE' });
-    mode = 'hard';
-  }
-  logEvent(env, 'intelligence', 'studio', 'piece_killed', null, { id, mode });
-  return json({ ok: true, id, mode }, 200, origin, env);
-}
-async function studioArchive(request, env, origin, user) {
-  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
-  const u = new URL(request.url);
-  const id = parseInt(u.searchParams.get('id'), 10);
-  const ext = (u.searchParams.get('ext') || 'png').replace(/[^a-z0-9]/gi, '').slice(0, 4);
-  const postUrl = (u.searchParams.get('post_url') || '').slice(0, 400);
-  if (!id) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
-  const rows = await sbRest(env, `content_pieces?id=eq.${id}&select=id,day,format`);
-  const piece = rows && rows[0];
-  if (!piece) return json({ ok: false, error: 'not_found' }, 200, origin, env);
-  let archive_key = null;
-  const raw = await request.arrayBuffer();
-  if (raw && raw.byteLength > 0 && env.MEDIA) {
-    if (raw.byteLength > 60000000) return json({ ok: false, error: 'too_large' }, 200, origin, env);
-    archive_key = `studio/${piece.day}/${piece.id}-${piece.format}.${ext}`;
-    await env.MEDIA.put(archive_key, raw, { httpMetadata: {
-      contentType: ext === 'mp4' ? 'video/mp4' : ext === 'zip' ? 'application/zip' : ext === 'pdf' ? 'application/pdf' : 'image/png' } });
-  }
-  const patch = { status: 'deployed', deployed_at: new Date().toISOString() };
-  if (archive_key) patch.archive_key = archive_key;
-  if (postUrl) patch.post_url = postUrl;
-  await sbRest(env, `content_pieces?id=eq.${id}`, { method: 'PATCH', body: patch });
-  logEvent(env, 'intelligence', 'studio', 'piece_deployed', null, { id, format: piece.format, archived: !!archive_key });
-  return json({ ok: true, id, archive_key }, 200, origin, env);
 }
 
 /* ═══ SEAM:STUDYBOARD — the public study board. Anyone may read the
@@ -5117,7 +4838,7 @@ async function kbSubmit(body, env, origin, user) {
   try {
     const vecs = await kbEmbed(env, chunks);
     const added = await kbInsert(env, user, chunks, vecs, { tags, target, source_url, drop_key: drop.drop_key, title: drop.title, shareable: drop.shareable });
-    const fx = await kbAfter(env, Object.assign({}, drop, { chunks, target, tags, source_url, text }));   // SEAM:FEED_BRIDGE: the lake, then STUDIO when asked
+    const fx = await kbAfter(env, Object.assign({}, drop, { chunks, target, tags, source_url, text }));   // SEAM:FEED_BRIDGE: the lake, then a frame on the day's set when asked (RD1b)
     return json(Object.assign({ ok: true, added, target, tags, drop_key: drop.drop_key, shareable: drop.shareable }, fx), 200, origin, env);
   } catch (e) {
     await sbRest(env, 'knowledge_base', { method: 'POST', body: [{
@@ -5197,14 +4918,14 @@ async function kbSearch(body, env, origin, user) {
 /* SEAM:FEED_BRIDGE (EX45 THE FEED): one drop, every destination. Until Oct 13 a FEED drop landed in knowledge_base and
  * nothing read it but the recall test. Now every drop has a key, a title and a shareable flag (0047). A drop for INTELLIGENCE
  * or BOTH is mirrored into the lake as `recon_feed`: research by 0038's rule, so every read, RECON and ask can find and cite it
- * as house material, and it counts in no measure. A shareable drop for DAILY or BOTH can be cut into STUDIO: the desk drafts one
- * finding from the drop (no figure, date or name the drop does not give), studioSelect picks the format and studioCaption
- * writes the caption under STUDIO's voice; the piece carries source feed and the drop key. Internal is the default: an
- * unshared drop feeds the reads and never a public asset. */
+ * as house material, and it counts in no measure. A shareable drop for DAILY or BOTH can become a frame (RD1b): the desk drafts
+ * one frame from the drop in the house voice (a kicker, a headline, a line; no figure, date or name the drop does not give) and
+ * kbFrame lands it on the latest published day's set (editions.frames) from the desk, with the drop key, where the read page draws
+ * it with the day's others. Internal is the default: an unshared drop feeds the reads and never a public frame. */
 const KB_FEED = { BASE: 'https://unsurfaced-intelligence.com/', SOURCE: 'Unsurfaced desk', TIER: 2, LAKE_MAX: 40, DRAFT_TOKENS: 900, GROUND: 6000, KEY_RX: /^d[a-z0-9]{6,20}$/ };
-const KB_DRAFT_SYS = 'You are the STUDIO desk at Unsurfaced. Turn the founder\'s drop below into one finding for a social asset. ' + STUDIO_VOICE + ' ' +
-  'Return one JSON object and nothing else: {"kicker": at most 3 words, "headline": at most 12 words stated as a claim, "take": at most 230 characters, ' +
-  '"apply": at most 160 characters on how a reader uses it, "format": one of "number" (a figure from the drop leads), "provocation" (an open question), "signal" (an early sign) or "dispatch"}. ' +
+const KB_DRAFT_SYS = 'You are the desk at Unsurfaced. Turn the founder\'s drop below into one frame for the day\'s social set. ' +
+  'Write as a creative who was in the room: short sentences, the names in them, one verdict, no hedging, no agency-speak. ' +
+  'Return one JSON object and nothing else: {"kicker": at most 3 words, "headline": at most 12 words, a sentence a person would say, "line": at most 25 words on what happened, from the drop}. ' +
   'Every figure, date and name you print must appear in the drop. Never an em dash. No preamble, no fences.';
 /* PURE: the drop's own fields, from a JSON body or a file upload's query string. */
 function kbDrop(get) {
@@ -5241,48 +4962,44 @@ function kbNumsOK(text, ground) {
 }
 async function kbDraft(env, d) {
   const ground = String(d.text || (d.chunks || []).join('\n\n')).slice(0, KB_FEED.GROUND);
-  let r;   // STUDIO stays on Workers AI (SEAM:CLAUDE_ROUTE): the drop is internal data, so it rides the sensitive tier on our account
+  let r;   // the draft stays on Workers AI (SEAM:CLAUDE_ROUTE): the drop is internal data, so it rides the sensitive tier on our account
   try {
     const text = await callModel(env, 't1', [{ role: 'system', content: KB_DRAFT_SYS },
       { role: 'user', content: 'THE DROP' + (d.title ? ' (' + d.title + ')' : '') + ':\n' + ground }], { max_tokens: KB_FEED.DRAFT_TOKENS, sensitive: true });
     r = { ok: true, text, cost_usd: 0 };
   } catch (e) { return { ok: false, error: 'draft_call_failed:' + String(e && e.message || e).slice(0, 60) }; }
   const j = parseModelJson(r.text) || extractJson(r.text);
-  if (!j || typeof j.headline !== 'string' || typeof j.take !== 'string') return { ok: false, error: 'draft_unparsable', cost_usd: r.cost_usd || 0 };
-  const clean = (x, n) => studioTrimClean(String(x || '').replace(/\s+/g, ' ').replace(/—/g, ':').trim(), n);
-  const it = { kicker: clean(j.kicker || 'From the desk', 40), headline: clean(j.headline, 120), take: clean(j.take, 230), apply: clean(j.apply, 160),
-    format: ['number', 'provocation', 'signal', 'dispatch'].includes(j.format) ? j.format : 'dispatch' };
-  const all = [it.kicker, it.headline, it.take, it.apply].join(' ');
-  if (!it.headline || !it.take) return { ok: false, error: 'draft_empty', cost_usd: r.cost_usd || 0 };
+  if (!j || typeof j.headline !== 'string' || typeof (j.line || j.take) !== 'string') return { ok: false, error: 'draft_unparsable', cost_usd: r.cost_usd || 0 };
+  const clean = (x, n) => dayFramesWords(String(x || '').replace(/—/g, ':'), n);   // RD1b: the frame's caps, in words
+  const it = { kicker: clean(j.kicker || 'From the desk', DAY_FRAMES.WORDS.kicker), headline: clean(j.headline, DAY_FRAMES.WORDS.headline), line: clean(j.line || j.take, DAY_FRAMES.WORDS.line) };
+  const all = [it.kicker, it.headline, it.line].join(' ');
+  if (!it.headline || !it.line) return { ok: false, error: 'draft_empty', cost_usd: r.cost_usd || 0 };
   if (!kbNumsOK(all, ground) || studioFabricated(all, ground)) return { ok: false, error: 'draft_invented_a_figure', cost_usd: r.cost_usd || 0 };
   return { ok: true, item: it, ground, cost_usd: r.cost_usd || 0 };
 }
-async function kbCut(env, d) {
+/* RD1b: the drop's frame on the latest published day's set. A day the writer has not reached holds it alone (status feed_only),
+ * so the writer still comes and keeps it; asked twice, the drop's frame is replaced, never doubled. */
+async function kbFrame(env, d) {
   if (!['daily', 'both'].includes(d.target)) return { ok: false, error: 'target_intelligence' };
   if (!d.shareable) return { ok: false, error: 'internal' };
   const dr = await kbDraft(env, d);
   if (!dr.ok) return dr;
-  const day = new Date().toISOString().slice(0, 10);
-  const item = Object.assign({}, dr.item, { standfirst: dr.ground.slice(0, 600), source_name: KB_FEED.SOURCE, editorial_format: dr.item.format,
-    beat: 'culture', territory: territoryGuess(dr.item.headline + ' ' + dr.item.take), date: day });
-  const hero = studioSelect(item);
-  const story = 100 + String(d.drop_key).split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 800;
-  const base = { issue_no: null, date: day, kicker: item.kicker, headline: item.headline, take: item.take, source_name: KB_FEED.SOURCE,
-    beat: item.beat, story, territory: item.territory, editorial_format: item.format, apply: item.apply || null, momentum: null,
-    story_id: null, source: 'feed', drop_key: d.drop_key, selection: 'feed drop: ' + hero.why };
-  const payload = hero.format === 'hand_meme' ? Object.assign({}, base, await studioMemeLines(env, item)) : base;
-  const piece = { day, lane: hero.lane, format: hero.format, platform: hero.platform, status: 'draft',
-    copy: { caption: await studioCaption(env, hero.platform, item) }, payload };
-  await sbRest(env, 'content_pieces', { method: 'POST', body: [piece] });
-  logEvent(env, 'intelligence', 'studio', 'feed_cut', null, { drop: d.drop_key, format: hero.format, platform: hero.platform });
-  return { ok: true, pieces: 1, format: hero.format, platform: hero.platform, headline: item.headline, cost_usd: dr.cost_usd };
+  const eds = await sbRest(env, 'editions?status=eq.published&order=date.desc&limit=1&select=id,issue_no,date,frames') || [];
+  const ed = eds[0];
+  if (!ed) return { ok: false, error: 'no_edition' };
+  const prev = ed.frames && typeof ed.frames === 'object' ? ed.frames : { v: DAY_FRAMES.V, status: 'feed_only', cover_line: '', frames: [], caption: '' };
+  const frame = Object.assign({}, dr.item, { item_id: null, source_name: KB_FEED.SOURCE, from: 'feed', drop_key: d.drop_key, at: new Date().toISOString() });
+  const frames = (Array.isArray(prev.frames) ? prev.frames : []).filter(f => !(f && f.from === 'feed' && f.drop_key === d.drop_key)).concat([frame]);
+  await sbRest(env, 'editions?id=eq.' + ed.id, { method: 'PATCH', body: { frames: Object.assign({}, prev, { frames }) } });
+  logEvent(env, 'intelligence', 'feed', 'feed_frame', null, { drop: d.drop_key, issue_no: ed.issue_no });
+  return { ok: true, frame: 1, issue_no: ed.issue_no, date: ed.date, headline: dr.item.headline, cost_usd: dr.cost_usd };
 }
-/* After a drop lands: the lake copy, then the cut when asked. Neither can lose the drop itself. */
+/* After a drop lands: the lake copy, then the frame when asked. Neither can lose the drop itself. */
 async function kbAfter(env, d) {
   const out = {};
   try { out.lake = await kbMirror(env, d); } catch (e) { out.lake = { lake: 0, error: String(e && e.message || e).slice(0, 80) }; }
   if (d.assets) {
-    try { out.studio = await kbCut(env, d); } catch (e) { out.studio = { ok: false, error: String(e && e.message || e).slice(0, 80) }; }
+    try { out.frame = await kbFrame(env, d); } catch (e) { out.frame = { ok: false, error: String(e && e.message || e).slice(0, 80) }; }
   }
   return out;
 }
@@ -5298,7 +5015,7 @@ async function kbCutRoute(body, env, origin, user) {
     await sbRest(env, 'knowledge_base?drop_key=eq.' + key, { method: 'PATCH', body: { shareable: true } });
     shareable = true;
   }
-  const r = await kbCut(env, { drop_key: key, title: rows[0].title || null, target: rows[0].target, shareable, chunks: rows.map(x => x.content), text: rows.map(x => x.content).join('\n\n') });
+  const r = await kbFrame(env, { drop_key: key, title: rows[0].title || null, target: rows[0].target, shareable, chunks: rows.map(x => x.content), text: rows.map(x => x.content).join('\n\n') });
   return json(Object.assign({ drop_key: key, shareable }, r), 200, origin, env);
 }
 async function kbUsed(body, env, origin, user) {
@@ -5308,12 +5025,12 @@ async function kbUsed(body, env, origin, user) {
   const rows = await sbRest(env, 'knowledge_base?drop_key=eq.' + key + '&select=title,content,target,shareable&order=id.asc&limit=1') || [];
   if (!rows.length) return json({ ok: false, error: 'not_found' }, 200, origin, env);
   const lake = await sbRest(env, 'signals?momentum->>query=eq.' + encodeURIComponent('feed:' + key) + '&select=id,status&limit=100') || [];
-  const studio = await sbRest(env, 'content_pieces?payload->>drop_key=eq.' + key + '&select=id,day,format,platform,status&order=id.desc&limit=20') || [];
+  const frames = await sbRest(env, 'editions?frames->frames=cs.' + encodeURIComponent('[{"drop_key":"' + key + '"}]') + '&select=issue_no,date&order=date.desc&limit=20') || [];   // RD1b: the days whose set carries the drop's frame
   const title = rows[0].title || kbTitleOf(rows[0].content);
   const words = String(title).replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 6);
   const reads = words.length >= 2 ? (await sbRest(env, 'house_reads?meta->pack->>text=ilike.' + encodeURIComponent('*' + words.join('*') + '*') +
     '&select=id,kind,label,version,status&order=id.desc&limit=12') || []) : [];
-  return json({ ok: true, drop_key: key, title, target: rows[0].target, shareable: !!rows[0].shareable, lake: lake.length, studio, reads }, 200, origin, env);
+  return json({ ok: true, drop_key: key, title, target: rows[0].target, shareable: !!rows[0].shareable, lake: lake.length, reads, frames: frames }, 200, origin, env);
 }
 async function kbDelete(body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
@@ -17255,7 +16972,8 @@ async function houseRoute(path, body, env, origin, user) {
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
-  if (path === '/reads/assets' || path === '/reads/nights') return houseRoute(path, body, env, origin, user);   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
+  if (path === '/reads/assets' || path === '/reads/nights') return houseRoute(path, body, env, origin, user);
+  if (path === '/reads/day-frames') return dayFramesRoute(body, env, origin, user);   // SEAM:DAY_FRAMES (RD1b)   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
   if (/^\/reads\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1)
   if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)
   if (path === '/reads/list') {
@@ -17781,6 +17499,114 @@ async function readRoute(path, body, env, origin, user) {
   return json(Object.assign({ id: row.id, kind, window: win, version: row.version, replaces: prev ? prev.id : null }, sub), 200, origin, env);
 }
 
+/* ═══ SEAM:DAY_FRAMES (RD1b THE DAY'S FRAMES): a DAILY day's frame copy, written the way the WEEKLY's is. After DAILY publishes
+ * (publishEdition, the 06:10 UTC cron) the house writer reads the day's stories under Method 5.0 and the day's contract and
+ * returns a cover line, one frame per story (a kicker, a headline a person would say with the names in it, a line of what
+ * happened) and a caption; the copy is kept on the edition row (editions.frames, 0057) with its cost and is drawn in the browser
+ * in the WEEKLY grammar from the DAILY room in READ (the frames, the carousel PDF, the PNGs, the reel). Every figure, date and name
+ * must be in the stories: a set that invents one is written again once, then held with the reason. A day whose frames exist is not
+ * written again unless an admin asks from the row. A feed drop lands on the latest day's set as a frame of its own (kbFrame) and
+ * survives a rewrite. One call a day on the doc tier, cents; nothing else is spent. ═══ */
+const DAY_FRAMES = { TIER: 'doc', MAX_TOKENS: 2400, EFFORT: 'low', TIMEOUT_MS: 90000, ITEMS_MAX: 8, MIN_FRAMES: 3,
+  WORDS: { cover_line: 8, kicker: 3, headline: 12, line: 25 }, CAPTION: 600, TAKE: 420, V: 1 };
+const DAY_FRAMES_CONTRACT = 'CONTRACT (a DAILY day\'s frames). Return one JSON object with exactly these keys: ' +
+  '"cover_line": at most 8 words, the day said as a claim about people; ' +
+  '"frames": one object per story, in the order given, {"item": the story\'s number as given, "kicker": at most 3 words, ' +
+  '"headline": at most 12 words, a sentence a person would say with the names in it, "line": at most 25 words on what happened, from the story\'s own text}; ' +
+  '"caption": at most 600 characters, no hashtags, the day in two or three short sentences. ' +
+  'Every figure, date and name you write must appear in the stories as given. Frames are the Unsurfaced DAILY social issue: each one stands alone in a feed. ' +
+  'Return only the JSON object.';
+/* PURE: the words a frame field keeps, by the contract's caps; the painter wraps what remains. */
+function dayFramesWords(text, n) {
+  const words = String(text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  return words.slice(0, n).join(' ');
+}
+/* PURE: the stories as the writer reads them, numbered in the edition's order. */
+function dayFramesPrompt(ed, items) {
+  const rows = (items || []).slice(0, DAY_FRAMES.ITEMS_MAX).map((it, i) =>
+    (i + 1) + '. ' + (it.kicker ? '[' + String(it.kicker).toUpperCase() + '] ' : '') + String(it.headline || '').trim() +
+    (it.standfirst ? '\n   ' + String(it.standfirst).trim() : '') +
+    (it.take ? '\n   ' + studioTrimClean(String(it.take).replace(/\s+/g, ' ').trim(), DAY_FRAMES.TAKE) : '') +
+    '\n   Source: ' + (it.source_name || 'unknown') + (it.territory ? ' · ' + it.territory : ''));
+  return 'THE DAY: Unsurfaced DAILY No. ' + (ed.issue_no || '') + ', ' + (ed.date || '') + (ed.headline ? '. Lead: ' + ed.headline : '') +
+    '\n\nTHE STORIES (' + rows.length + '):\n' + rows.join('\n\n') +
+    '\n\nWrite the day\'s frames. Return only the JSON object.';
+}
+/* PURE: the ground every figure must come from: the stories' own words and the day's date. */
+function dayFramesGround(ed, items) {
+  return [ed.date, ed.headline].concat((items || []).map(studioGround)).map(x => String(x || '')).join(' ');
+}
+/* PURE: the writer's object checked against the contract and the stories. Caps are cut, never refused; a frame that names no
+ * story the day has is dropped; a figure, a year or a sum the stories never gave is a hold. */
+function dayFramesShape(j, ed, items) {
+  const list = (items || []).slice(0, DAY_FRAMES.ITEMS_MAX), ground = dayFramesGround(ed, items), hold = [];
+  if (!j || typeof j !== 'object') return { ok: false, hold: ['unparsable'] };
+  const frames = [];
+  for (const f of (Array.isArray(j.frames) ? j.frames : [])) {
+    const n = parseInt(f && f.item, 10), it = n >= 1 && n <= list.length ? list[n - 1] : null;
+    if (!it || !f.headline) continue;
+    frames.push({ item_id: it.id || null, kicker: dayFramesWords(f.kicker || it.kicker || '', DAY_FRAMES.WORDS.kicker),
+      headline: dayFramesWords(f.headline, DAY_FRAMES.WORDS.headline), line: dayFramesWords(f.line || '', DAY_FRAMES.WORDS.line),
+      source_name: it.source_name || null, from: 'writer' });
+  }
+  const out = { v: DAY_FRAMES.V, cover_line: dayFramesWords(j.cover_line || '', DAY_FRAMES.WORDS.cover_line), frames,
+    caption: String(j.caption || '').replace(/\s+/g, ' ').replace(/#\w+/g, '').trim().slice(0, DAY_FRAMES.CAPTION) };
+  if (!out.cover_line) hold.push('no_cover_line');
+  if (frames.length < Math.min(DAY_FRAMES.MIN_FRAMES, list.length)) hold.push('frames:' + frames.length + ' of ' + list.length);
+  const all = [out.cover_line, out.caption].concat(frames.map(f => [f.kicker, f.headline, f.line].join(' '))).join(' ');
+  if (/\u2014/.test(all)) hold.push('em_dash');
+  if (!kbNumsOK(all, ground)) hold.push('figure_not_in_stories');
+  const fab = studioFabricated(all, ground);
+  if (fab) hold.push('invented:' + fab);
+  return { ok: hold.length === 0, hold, set: out };
+}
+/* PURE: the feed's frames on a set survive the writer's rewrite. */
+function dayFramesMerge(fresh, prev) {
+  const feed = (prev && Array.isArray(prev.frames) ? prev.frames : []).filter(f => f && f.from === 'feed');
+  return Object.assign({}, fresh, { frames: (fresh.frames || []).concat(feed) });
+}
+async function dayFramesWrite(env, ed, items, by) {
+  const list = (items || []).filter(it => it && it.headline).slice(0, DAY_FRAMES.ITEMS_MAX);
+  if (!list.length) return { ok: false, error: 'no_stories' };
+  const prompt = dayFramesPrompt(ed, list);
+  let shaped = null, cost = 0, model = null, last = null;
+  for (let pass = 0; pass < 2 && !(shaped && shaped.ok); pass++) {
+    const r = await callClaude(env, DAY_FRAMES.TIER, { kind: 'daily_frames', system: READ_METHOD + '\n\n' + DAY_FRAMES_CONTRACT, cache: true,
+      prompt: prompt + (shaped && shaped.hold && shaped.hold.length ? '\n\nThe last attempt was refused: ' + shaped.hold.join(', ') + '. Every figure, date and name must be in the stories above.' : ''),
+      max_tokens: DAY_FRAMES.MAX_TOKENS, thinking: { type: 'adaptive' }, output_config: { effort: DAY_FRAMES.EFFORT }, timeout_ms: DAY_FRAMES.TIMEOUT_MS,
+      meta: { edition_id: ed.id, issue_no: ed.issue_no, by: by || 'cron' } });
+    if (!r.ok) return { ok: false, error: r.error || 'claude_failed', cost_usd: cost };
+    cost += r.cost_usd || 0; model = CLAUDE.TIERS[DAY_FRAMES.TIER].model; last = r.text;
+    shaped = dayFramesShape(parseModelJson(r.text) || extractJson(r.text), ed, list);
+  }
+  const set = Object.assign(dayFramesMerge(shaped.set || { v: DAY_FRAMES.V, cover_line: '', frames: [], caption: '' }, ed.frames),
+    { status: shaped.ok ? 'ready' : 'held', hold: shaped.ok ? null : shaped.hold, at: new Date().toISOString(), by: by || 'cron', model, cost_usd: Math.round(cost * 10000) / 10000, voice: 'Method 5.0' });
+  await sbRest(env, 'editions?id=eq.' + ed.id, { method: 'PATCH', body: { frames: set } });
+  logEvent(env, 'daily', null, 'day_frames', null, { issue_no: ed.issue_no, status: set.status, frames: set.frames.length, cost_usd: set.cost_usd, by: set.by });
+  return { ok: true, status: set.status, frames: set, cost_usd: set.cost_usd, raw: shaped.ok ? undefined : String(last || '').slice(0, 300) };
+}
+/* The day's frames exist or are written; never twice unless asked. */
+async function dayFramesEnsure(env, ed, items, opts) {
+  const o = opts || {};
+  if (ed && ed.frames && ed.frames.status && ed.frames.status !== 'feed_only' && !o.force) return { ok: true, status: ed.frames.status, frames: ed.frames, existing: true };   // a set the feed started alone still waits for the writer
+  return dayFramesWrite(env, ed, items, o.by);
+}
+/* POST /reads/day-frames {issue, make?, remake?}: the day's frames as they stand; make writes them when none exist; remake writes
+ * them again. Admin only, through readRoute. */
+async function dayFramesRoute(body, env, origin, user) {
+  const n = parseInt(body && body.issue, 10);
+  if (!n) return json({ ok: false, error: 'bad_issue' }, 200, origin, env);
+  const eds = await sbRest(env, 'editions?issue_no=eq.' + n + '&status=eq.published&select=id,issue_no,date,headline,frames&limit=1') || [];
+  const ed = eds[0];
+  if (!ed) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const want = body.remake === true ? 'remake' : body.make === true ? 'make' : null;
+  if (!want) return json({ ok: true, edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' }, frames: ed.frames || null }, 200, origin, env);
+  const items = await sbRest(env, 'edition_items?edition_id=eq.' + ed.id + '&order=ord.asc&select=id,ord,kicker,headline,standfirst,take,source_name,source_url,territory,format') || [];
+  const by = String((user && user.email) || (user && user.id) || 'admin').replace(/@.*$/, '');
+  const r = await dayFramesEnsure(env, ed, items, { force: want === 'remake', by });
+  return json(Object.assign({ edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' } }, r), 200, origin, env);
+}
+
 /* SEAM:ARCHIVE — the back-issue shelf. Every published edition stays
  * readable forever: a public index (issue, date, lead headline) and a
  * public by-issue reader in the exact shape /api/edition/today serves,
@@ -18078,8 +17904,8 @@ async function runDailyPipeline(env, opts) {
 }
 
 /* publishEdition — create/reuse today's edition, replace items, mark
- * published, backlink lake signals when items carry signal_id, cut the
- * STUDIO manifest. One door for both composers. */
+ * published, backlink lake signals when items carry signal_id, write the
+ * day's frames (SEAM:DAY_FRAMES). One door for both composers. */
 async function publishEdition(env, today, existing, leadHeadline, items, mode, spine) {
   let edId, issueNo;
   if (existing && existing[0]) {
@@ -18118,7 +17944,7 @@ async function publishEdition(env, today, existing, leadHeadline, items, mode, s
   } catch (e) {}
 
   logEvent(env, 'daily', null, 'edition_published', null, { issue_no: issueNo, items: items.length, mode });
-  await buildStudioManifest(env, today, issueNo, items).catch(() => {});
+  await dayFramesEnsure(env, { id: edId, issue_no: issueNo, date: today, headline: leadHeadline }, createdItems, { by: 'cron' }).catch(e => console.log('day_frames_error', String(e && e.message || e).slice(0, 120)));   // SEAM:DAY_FRAMES (RD1b): a failure never fails the publish
   return { ok: true, date: today, issue_no: issueNo, items: items.length, mode, spine };
 }
 

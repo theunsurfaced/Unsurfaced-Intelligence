@@ -87,8 +87,8 @@ ok(days >= 59 && days <= 61, 'B9 the window is capped at sixty nights');
 ok(/if \(path === '\/reads\/assets' \|\| path === '\/reads\/nights'\) return houseRoute\(path, body, env, origin, user\);/.test(w), 'C1 readRoute hands the two lists to the house, after the admin check');
 const rr = between(w, 'async function readRoute(path, body, env, origin, user) {', "if (path === '/reads/list')");
 ok(/callerIsAdmin\(env, user\.id\)/.test(rr) && rr.indexOf('callerIsAdmin') < rr.indexOf('houseRoute'), 'C2 the admin check comes first');
-ok(/case '\/reads\/assets':\s*\/\/ SEAM:HOUSE[^\n]*\n\s+case '\/reads\/nights':\s*\n\s+case '\/reads\/pdf':\s+return readRoute\(/.test(w), 'C3 the router carries both paths to readRoute');
-ok(/buildStudioManifest\(/.test(w) && /async function studioCaption\(/.test(w), 'C4 the STUDIO worker block and the cron\'s cut stay in this arc (RD1b stops them)');
+ok(/case '\/reads\/assets':\s*\/\/ SEAM:HOUSE[^\n]*\n\s+case '\/reads\/nights':\s*\n\s+case '\/reads\/day-frames':[^\n]*\n\s+case '\/reads\/pdf':\s+return readRoute\(/.test(w), 'C3 the router carries both paths to readRoute (and the day\'s frames since RD1b)');
+ok(!/buildStudioManifest\(/.test(w) && !/async function studioCaption\(/.test(w) && /dayFramesEnsure\(env, \{ id: edId/.test(w), 'C4 the STUDIO worker block and the cron\'s cut are gone; the publish writes the day\'s frames (RD1b)');
 
 // ── D: the house page ────────────────────────────────────────────────────────────────────────────────────────────
 const hb = between(house, 'SEAM:HOUSE (RD1a): READ is the house.', '  function library(');
@@ -119,7 +119,7 @@ ok(!/id="stOpen"/.test(page) && !/function mountStaffDoor/.test(page) && !/p\.ha
 ok(!/id="kbText"/.test(page) && !/\.kbwrap\{/.test(page) && !/function kbSaid\(d\)/.test(page) && !/SEAM:KNOWLEDGE/.test(page) && !/SEAM:FEED_BRIDGE/.test(page), 'E2 the FEED panel and its styles left the page with their seams');
 ok(/<a class="uai-back" style="position:static;text-decoration:none;display:inline-block" id="kbOpen" href="read\/\?room=feed" title="The feed, in the house" hidden>Feed ⌁<\/a>/.test(page), 'E3 the Feed door is a link into the house, hidden until the house confirms an admin');
 ok(/api\("whoami", \{\}\)\.then\(function \(d\) \{\n\s+var b = document\.getElementById\("kbOpen"\);\n\s+if \(d && d\.ok && d\.admin && b\) b\.hidden = false;/.test(page) && /else if \(d && d\.ok && !d\.admin\) return;/.test(page), 'E4 the reveal still asks the base, and stops asking once a non-admin is confirmed');
-ok(/mp4-muxer v5\.2\.2/.test(page) && /async function framesFor\(piece\)/.test(page) && /SEAM:STUDIO_LOOK/.test(page) && /SEAM:FEED_INTAKE/.test(page), 'E5 the muxer, the paint programs and the evidence shelf\'s intake stay on the page for RD1b');
+ok(!/mp4-muxer v5\.2\.2/.test(page) && !/async function framesFor\(piece\)/.test(page) && !/SEAM:STUDIO_LOOK/.test(page) && /SEAM:FEED_INTAKE/.test(page), 'E5 the muxer and the paint programs left the page with RD1b; the evidence shelf\'s intake stays');
 ok(/href="read\/">READ<small>the house: reads, DAILY, the nights, the assets, the feed<\/small>/.test(page), 'E6 the nav names the house');
 ok(/<li id="nav-read-li" style="display:none"><a class="nlb" id="nav-read" href="read\/">READ/.test(page), 'E7 the READ door keeps its id and its admin reveal');
 
@@ -128,6 +128,6 @@ const reg = seams.registry;
 ok(reg['SEAM:HOUSE'] && reg['SEAM:HOUSE'].file === 'worker/src/index.js' && reg['SEAM:HOUSE@read'] && reg['SEAM:HOUSE@read'].file === 'intelligence/read/index.html' && reg['SEAM:HOUSE@intelligence'] && reg['SEAM:HOUSE@intelligence'].file === 'intelligence/index.html', 'F1 SEAM:HOUSE is registered where it lives');
 ok(reg['SEAM:KNOWLEDGE@read'] && reg['SEAM:KNOWLEDGE@read'].file === 'intelligence/read/index.html' && reg['SEAM:FEED_BRIDGE@read'] && reg['SEAM:FEED_BRIDGE@read'].file === 'intelligence/read/index.html' && reg['SEAM:FEED_INTAKE@read'] && reg['SEAM:FEED_INTAKE@read'].file === 'intelligence/read/index.html',
   'F2 the feed\'s seams moved with it');
-ok(!reg['SEAM:KNOWLEDGE@intelligence'] && !reg['SEAM:FEED_BRIDGE@intelligence'] && reg['SEAM:FEED_INTAKE@intelligence'] && reg['SEAM:STUDIO@intelligence'] && reg['SEAM:KNOWLEDGE@worker'], 'F3 the Intelligence page keeps the seams it still carries and no other');
+ok(!reg['SEAM:KNOWLEDGE@intelligence'] && !reg['SEAM:FEED_BRIDGE@intelligence'] && reg['SEAM:FEED_INTAKE@intelligence'] && !reg['SEAM:STUDIO@intelligence'] && reg['SEAM:KNOWLEDGE@worker'], 'F3 the Intelligence page keeps the seams it still carries and no other');
 
 console.log(`\nproof_house: ${pass} checks passed`);

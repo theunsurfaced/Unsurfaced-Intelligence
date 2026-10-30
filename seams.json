@@ -69,16 +69,6 @@
    "tag": "SEAM:STUDYBOARD",
    "purpose": "board overlay, third MINE door, gate affordance, partner listing toggle, take bridge"
   },
-  "SEAM:STUDIO@worker": {
-   "file": "worker/src/index.js",
-   "tag": "SEAM:STUDIO",
-   "purpose": "content engine: manifest cut on cron, voice layer, admin routes, deploy archive"
-  },
-  "SEAM:STUDIO@intelligence": {
-   "file": "intelligence/index.html",
-   "tag": "SEAM:STUDIO",
-   "purpose": "house renderer + download counter: paint-op templates, store-zip, three-ring reveal"
-  },
   "SEAM:ARCHIVE@worker": {
    "file": "worker/src/index.js",
    "tag": "SEAM:ARCHIVE",
@@ -1540,16 +1530,7 @@
   },
   "SEAM:FEED_BRIDGE": {
    "file": "worker/src/index.js",
-   "purpose": "one drop, every destination (EX45): kbDrop gives every FEED drop a key, a title and a shareable flag (0047); kbMirror copies a drop for INTELLIGENCE or BOTH into the lake as recon_feed (research by 0038's rule: citable by every read, RECON and ask, counted in no measure; one row a chunk, source Unsurfaced desk, tier 2); kbCut cuts a shareable drop for DAILY or BOTH into STUDIO (kbDraft on the live tier drafts kicker, headline, take, apply and format from the drop, refused when a figure is not in the drop; studioSelect, studioCaption; the piece carries source feed and the drop key); an internal drop is never cut. /knowledge/cut makes assets later (and may mark the drop shareable); /knowledge/used says where a drop went (lake rows, STUDIO pieces, reads whose pack cites it); /knowledge/delete with a drop_key removes the drop and its lake copies"
-  },
-  "SEAM:STUDIO_LOOK": {
-   "file": "intelligence/index.html",
-   "purpose": "STUDIO drawn in the Weekly's hand (EX45): stStory is the Weekly's story frame as a paint program (the story's photograph through /img/s, the fade into black, kicker, Syne headline, cream take following it, red rule, counter, label and source); signal_still is one story frame; THE SIX opens on a full-bleed photograph under a 62 percent dim and closes on the house line; studioPreload and stLoaded keep only sharp photographs (600px wide or more) so a missing one falls back to the type layout; studioPaint gains the image, shade and follow ops; framesFor loads the photographs before the template runs; no em dash on any asset"
-  },
-  "SEAM:STUDIO_LOOK@worker": {
-   "file": "worker/src/index.js",
-   "tag": "SEAM:STUDIO_LOOK",
-   "purpose": "every STUDIO payload carries its story id (the still, the meme, the admin cut and each slide of THE SIX) so the page can draw the story's own photograph"
+   "purpose": "one drop, every destination (EX45): kbDrop gives every FEED drop a key, a title and a shareable flag (0047); kbMirror copies a drop for INTELLIGENCE or BOTH into the lake as recon_feed (research by 0038's rule: citable by every read, RECON and ask, counted in no measure; one row a chunk, source Unsurfaced desk, tier 2); kbFrame makes a shareable drop for DAILY or BOTH a frame on the latest day's set (RD1b: kbDraft on Workers AI drafts kicker, headline and line from the drop in the house voice, refused when a figure is not in the drop; the frame carries from feed and the drop key, editions.frames); an internal drop is never made a frame. /knowledge/cut makes assets later (and may mark the drop shareable); /knowledge/used says where a drop went (lake rows, the days whose frames carry it, reads whose pack cites it); /knowledge/delete with a drop_key removes the drop and its lake copies"
   },
   "SEAM:PLANS": {
    "file": "worker/src/index.js",
@@ -1685,7 +1666,7 @@
   "SEAM:HOUSE@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:HOUSE",
-   "purpose": "RD1a: the Feed door is a link into the house (read/?room=feed), revealed for admins by whoami as the panel was; the FEED panel, its styles, the STUDIO overlay's button, staff door, deep link and opener left this page (the STUDIO paint programs, the muxer and the worker block stay for RD1b)."
+   "purpose": "RD1a: the Feed door is a link into the house (read/?room=feed), revealed for admins by whoami as the panel was; the FEED panel, its styles, the STUDIO overlay's button, staff door, deep link and opener left this page; RD1b took the STUDIO paint programs, the counter and the muxer with it (the muxer lives beside the read page now)."
   },
   "SEAM:KNOWLEDGE@read": {
    "file": "intelligence/read/index.html",
@@ -1695,7 +1676,7 @@
   "SEAM:FEED_BRIDGE@read": {
    "file": "intelligence/read/index.html",
    "tag": "SEAM:FEED_BRIDGE",
-   "purpose": "the feed in the house (RD1a): a title, Shareable and Make STUDIO assets on every drop (paste, link or file); the answer says what the drop did (base, lake, STUDIO, or why STUDIO held it); drops listed as drops with USED (lake rows, STUDIO pieces, reads), ASSETS (cut now, marking an internal drop shareable after a confirm) and remove"
+   "purpose": "the feed in the house (RD1a, RD1b): a title, Shareable and Make a frame now on every drop (paste, link or file); the answer says what the drop did (base, lake, a frame on the day's set, or why the frame was held); drops listed as drops with USED (lake rows, the days whose frames carry it, reads), FRAME (make one now, marking an internal drop shareable after a confirm) and remove"
   },
   "SEAM:FEED_INTAKE@read": {
    "file": "intelligence/read/index.html",
@@ -1709,6 +1690,15 @@
   "SEAM:EXC_HOUSE_VOICE": {
    "file": "worker/src/index.js",
    "purpose": "VX1b THE VOICE, EXCAVATE (Oct 30, 2026): the reading desk under Method 5.0's voice. EXC_VOICE_SYS is the stance (a creative who was in the room), THE SENTENCE at the ROOM LAW's twenty-five words, the contrast turn only with concrete nouns, the mechanism label, the edge template and the quotable closer as faults, four of Fresco's sentences as the register; the prompt descriptions of the live read, the door and the moves pass ask for what the evidence earns, every key kept. excVoiceNotes writes the reading's voice faults (long_sentence, semicolon_chain, edge_template, mechanism_sentence, abstract_contrast) as notes on the stored door read (read.voice) and the live ledger row (meta.voice) and receipt; never a hold, no desk. DOOR.VOICE 5.0: every tile recompiles once."
+  },
+  "SEAM:DAY_FRAMES": {
+   "file": "worker/src/index.js",
+   "purpose": "RD1b THE DAY'S FRAMES (Oct 30, 2026): a DAILY day's frame copy in the WEEKLY grammar. After DAILY publishes (publishEdition) the house writer reads the day's stories under Method 5.0 and the day's contract (DAY_FRAMES_CONTRACT: a cover line of 8 words, one frame per story with kicker 3, headline 12 and line 25 words, a caption of 600 characters) in one doc-tier call (dayFramesWrite, cents); the set is shaped against the stories (dayFramesShape: caps cut, a frame naming no story dropped, a figure, year or sum the stories never gave a hold, one rewrite then held), kept on editions.frames (0057) with its cost, author and the Method's version, and never written again unless an admin asks (dayFramesEnsure; /reads/day-frames make or remake). The feed's frame (kbFrame) lands on the latest day's set from the desk and survives a rewrite (dayFramesMerge). STUDIO's engine, routes and manifest retired; the knife stays."
+  },
+  "SEAM:DAY_FRAMES@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:DAY_FRAMES",
+   "purpose": "RD1b: the read page draws a day's frames as it draws an issue's. framesSection is the one frames section (the WEEKLY's social() goes through it); the painter's cover takes the day's own second line; the DAILY room's day opened reads /reads/day-frames and shows the set (Write the day's frames when none, Write again when held or asked), the carousel PDF, the PNGs and the reel; the reel (reelProgram, pure: each frame held 84 frames then 6 black, the out black with the red dot and the wordmark, 1080 x 1350 at 30 fps) is encoded in the browser by WebCodecs and the vendored mp4-muxer in its own file, ./mp4-muxer.js, on WEEKLY issues and DAILY days alike; the feed room offers Make a frame now and says which days carry a drop's frame."
   }
  },
  "planned": [
