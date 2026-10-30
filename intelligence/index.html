@@ -3577,7 +3577,7 @@ function _renderLive(q, data){
     }));
     ideas = (Array.isArray(syn.ideas)&&syn.ideas.length)
       ? syn.ideas.slice(0,6).map((d,i)=>({num:'0'+(i+1),type:d.type||'Strategy',headline:d.headline||'',body:d.body||'',from:Number.isInteger(d.from)?d.from:null,
-          for:d.for||null, because:d.because||'', proof:d.proof||'', measure:d.measure||'', risk:d.risk||'', evidence:d.evidence||[], dated:d.dated||null, checks:d.checks||null}))   // SEAM:READ_QUALITY — a move keeps its finding
+          for:d.for||null, because:d.because||'', proof:d.proof||'', measure:d.measure||'', risk:d.risk||'', evidence:d.evidence||[], dated:d.dated||null, checks:d.checks||null, stands:Array.isArray(d.stands)?d.stands:null, single:!!d.single_source}))   // SEAM:READ_QUALITY — a move keeps its finding; SEAM:CLAIMS (EX53): and what it stands on
       : [];   // SEAM:ONE_RAIL — no move is invented; the compiler earns it or the section says so
     brief = syn.brief || 'The interpretation did not finish in this pass; the findings and the moves above stand on their own evidence.';   // SEAM:EXC_THIN: never the placeholder under a written read
     synthd=true;
@@ -3592,7 +3592,7 @@ function _renderLive(q, data){
   const sources=(data.sources&&data.sources.length)?data.sources:_liveSources(data.connectors,q);
   // SEAM:EXC_FRAME: the read's window, lane, frame, relevance and timing reach the page; they were compiled and then dropped here.
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',depth:syn&&syn.depth||null,   // EX52a: depth rides, so a quick read says QUICK READ
-    window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, compiled_at:syn&&syn.compiled_at||null,
+    window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, moves_pass:syn&&syn.moves_pass||null, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
     measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null, client_lines:syn&&syn.client_lines||0},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
@@ -4234,7 +4234,7 @@ function renderResults(q, data, mode){
   const lenses={}; CATS.forEach((c,ci)=>{ lenses[c]={ insights:_ins.filter(x=>(CATS.includes(x.category)?x.category:'consumer')===c), ideas:_ideas.filter(x=>Number.isInteger(x.from)&&_ins[x.from]&&(CATS.includes(_ins[x.from].category)?_ins[x.from].category:'consumer')===c), sources:[] }; });   // EXCAVATE_MEANING: a lens shows the moves from its own findings
   const readLines=Array.isArray(data.read)?data.read:[];
   window._lastFrame=data.frame||null;
-  const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources, dropped:data.moves_dropped||0 };
+  const truth={ headline: readLines[0]||'', body: readLines[1]||(data.brief||''), allInsights:_ins, allIdeas:_ideas, allSources:lastSources, dropped:data.moves_dropped||0, pass:data.moves_pass||null };   // SEAM:CLAIMS (EX53)
   _fillLensPanels(lenses, truth);
   _renderTruthClaims(window._gatherItems||[]);
   _renderVoices(window._gatherMeta&&window._gatherMeta.meta);   // SEAM:EXC_VOICES: the aggregate lines when the gather is older
@@ -6062,6 +6062,7 @@ function _moveCard(m, all){
     ${m.dated&&m.dated.newest?`<div class="move-when ${safe(m.dated.band||'')}">EVIDENCE · ${safe(m.dated.band||'')} · NEWEST ${safe(m.dated.newest)}</div>`:''}
     ${m.checks&&Array.isArray(m.checks.ungrounded)&&m.checks.ungrounded.length?`<div class="move-when" style="color:var(--accent)">UNVERIFIED FIGURE · ${m.checks.ungrounded.map(safe).join(', ')}</div>`:''}
     ${src?`<div class="lens-idea-from">FROM · ${safe(src.title)}</div>`:''}
+    ${Array.isArray(m.stands)&&m.stands.length?`<div class="lens-idea-from">STANDS ON · ${m.stands.slice(0,3).map(s=>safe((s.date||'')+(s.date?': ':'')+(s.claim||''))).join(' · ')}</div>`:''}${m.single?`<div class="move-when" style="color:var(--text3)">SINGLE SOURCE · one finding stands behind this move</div>`:''}
     <a class="move-play" href="../play/" onclick="return _playMove(${(window._playMoves=window._playMoves||[]).push(m)-1})" title="PLAY makes an imagined visual of this move, on the read's insight. Imagined, never evidence.">Picture this move in PLAY →</a></div>`;   // SEAM:PLAY_HANDOFF
 }
 // EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
@@ -6105,7 +6106,7 @@ function _fillLensPanels(lenses, truth){
   // EXCAVATE_MEANING: one THE MOVES section closes All Lenses; each move reads as a brief.
   const ms=document.getElementById('moves-section');
   if(ms){ const mv=truth.allIdeas||[], dr=truth.dropped||0;
-    ms.innerHTML=(mv.length||dr)?`<div class="moves-head"><span class="moves-title">The moves</span><span class="moves-sub">${mv.length} earned${dr?' · '+dr+' did not meet the bar: no evidence, or nothing concrete':''}</span></div><div class="moves-grid">${mv.map(m=>_moveCard(m,all)).join('')}</div>`:''; }
+    ms.innerHTML=(mv.length||dr)?`<div class="moves-head"><span class="moves-title">The moves</span><span class="moves-sub">${mv.length} earned${dr?' · '+dr+' did not meet the bar: no evidence, or nothing concrete':''}${truth.pass&&truth.pass.used?' · built on '+Number(truth.pass.corpus||0)+' findings the house holds on this subject':''}</span></div><div class="moves-grid">${mv.map(m=>_moveCard(m,all)).join('')}</div>`:''; }
   if(tI) tI.innerHTML=(truth.allIdeas||[]).slice(0,6).map(m=>_moveCard(m,all)).join('')||`<div class="lens-idea-card" style="opacity:.7"><div class="lens-idea-type">NO MOVE EARNED YET</div><div class="lens-idea-body">The evidence on this query is too thin to name a move.</div></div>`;
   const badge=document.getElementById('rlb-count-truth');
   if(badge) badge.textContent=all.length||'·';

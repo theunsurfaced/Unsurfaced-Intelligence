@@ -1664,6 +1664,15 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:EDIT_DESK",
    "purpose": "ED2: THE LINES panel (every editable line as a textarea; Save this line; the law's refusal with an override box; revert to the version before); YOUR OWN PHOTOGRAPH in the slot panel (upload, credit, release note, set on the slot); the own kind rendered through /media; the slots button and the slot paths on reports and RECONs (the research layout reads the cover and every finding's slot)."
+  },
+  "SEAM:CLAIMS": {
+   "file": "worker/src/index.js",
+   "purpose": "EX53 (Oct 29, 2026): findings as rows. One finding of one reading is one row of claims (0055: the sentence, the excerpt, the lens, the confidence, the band and dates, the lines with their tiers, the frame, the reading it came from, marks, grade) linked to the graph by claim_entities (the entity the frame names and every entity the claim's words carry: link_claim_entities). Written when a deployment lands (doorLand) and beside the live ledger (claimsOf, claimsWrite); graded by doorCalled (claimsGrade); marked by markRoute (claimsMarks); the record's history migrated by parsing from the desk ({run: claims, steps: N}: claimsMigratePass, two keyset cursors in entity_resolve_state, an upsert so a re-run is a no-op, no model). The record answers first at claim granularity: excHouseLines reads claim_corpus (deployed claims on the entity, newest first) and falls back to the reading-level query. The moves pass (excMovesPass) runs on a full read when the house holds CLAIMS.MIN_CORPUS claims on the frame's entity: one call on the live tier through excCompile (claudeGate; no reserve; inside the read's wall clock) writes the moves from this reading and the corpus, each naming the findings it stands on; a move naming nothing is dropped, a single-finding move is single_source and ranked last, the MOVE LAW's anchor rule runs on each; three or more replace the writer's moves, otherwise the writer's stand (excMovesShape, pure). entityProposals does not seed a frame name with no uppercase letter."
+  },
+  "SEAM:CLAIMS@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:CLAIMS",
+   "purpose": "EX53: the move card says what it stands on (STANDS ON: the corpus claims by date) and when it is single-source; the moves head says how many findings the house held when the pass ran."
   }
  },
  "planned": [

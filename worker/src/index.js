@@ -907,7 +907,7 @@ async function synthesize(body, env, origin, hooks) {
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give 6-8 insights spread across the categories the evidence supports, and 4-6 ideas. JSON only.';
     const house = typeof excHouseLines === 'function' ? await excHouseLines(env, frame0).catch(excQuiet('house_lines', [])) : [];   // SEAM:EXC_HOUSE
-    const houseBlock = house.length ? 'WHAT THE HOUSE DEPLOYED (our own dated insights on this subject; context for continuity, never evidence, never a source to cite; if the evidence now says otherwise, say so plainly):\n' + house.map(h => h.deployed + ': ' + h.claim + (h.called ? ' [' + h.called + ']' : '')).join('\n') + '\n\n' : '';
+    const houseBlock = house.length ? 'WHAT THE HOUSE DEPLOYED (our own dated insights on this subject; context for continuity, never evidence, never a source to cite; if the evidence now says otherwise, say so plainly):\n' + house.map(h => h.deployed + ': ' + h.claim + (h.confidence ? ' (' + h.confidence + ')' : '') + (h.called ? ' [' + h.called + ']' : '')).join('\n') + '\n\n' : '';
     const usr = excFrameBlock(frame0) + excMeasureLine(measures) + houseBlock + (isReport ? excReportPrompt(query, evidence) : usrPlain);   // SEAM:EXC_FRAME + SEAM:EXC_MEASURE + SEAM:EXC_HOUSE
 
     // SEAM:ONE_RAIL, now SEAM:EXC_INTEL: THE READ compiles on the live lane (Sonnet 5) and never fails: the reserve model stands behind it.
@@ -1038,7 +1038,14 @@ async function synthesize(body, env, origin, hooks) {
     })).filter(x => x.headline);
     // SEAM:EXCAVATE_MEANING: the move law, enforced. Weak moves are dropped and counted, never shown.
     const guard = isReport ? excMoveGuard(ideasAll, query) : { kept: ideasAll, dropped: 0 };
-    const ideas = guard.kept, movesDropped = guard.dropped;
+    let ideas = guard.kept; const movesDropped = guard.dropped;
+    // SEAM:CLAIMS (EX53): the moves pass reads the corpus on the frame. A full read only; when the house holds claims on the entity, one
+    // more call writes the moves from this reading and everything the house already holds; three or more replace the writer's.
+    let movesPass = null;
+    if (isReport && !quick && !thin && frame0 && !body.bench && typeof excMovesPass === 'function') {
+      try { const mp = await excMovesPass(env, { frame: frame0, query, insights, measures, leftMs: writeLeft() }); if (mp) { movesPass = mp.pass; if (mp.ideas) ideas = mp.ideas; } }
+      catch (e) { console.log('exc_moves_pass_error', String(e && e.message).slice(0, 120)); }
+    }
     const frameIn = (parsed.frame && typeof parsed.frame === 'object') ? parsed.frame : {};
     // SEAM:EXC_FRAME: the read names its market and competitive set; the model's own labels win where it gave them.
     const frame = (isReport || frame0) ? Object.assign({}, frame0 || {}, { category: excShort(frameIn.category) || (frame0 && frame0.category) || null,
@@ -1054,13 +1061,14 @@ async function synthesize(body, env, origin, hooks) {
       readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
-        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL: the ledger knows a partial read
+        evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, moves_dropped: movesDropped, moves_pass: movesPass, partial,   // SEAM:EXC_STALL: the ledger knows a partial read; SEAM:CLAIMS: and the moves pass
           window: excWindow(merged, now), widened: !!plan.widened, model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cost_usd: compiled.cost_usd } } });   // SEAM:EXC_INTEL
       const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: a.signalType === 'social' ? 'discourse' : (a.signalType || 'news'), published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: Math.max(1, excTier(c)), kind: c.kind || c.lens || 'open', published_at: c.published_at || null, rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
+      if (readId && typeof claimsWrite === 'function') await claimsWrite(env, claimsOf('read', readId, { insights }, merged, frame0 || frame, new Date(now).toISOString(), measures, null, new Date(now).toISOString()));   // SEAM:CLAIMS (EX53): the read's findings as rows
     } catch (e) {}
-    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, partial,   // SEAM:EXC_STALL
+    const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, frame, moves_dropped: movesDropped, moves_pass: movesPass, partial,   // SEAM:EXC_STALL; SEAM:CLAIMS (EX53): the moves pass on the receipt
       depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
       thin: thin ? merged.length : null,   // SEAM:EXC_THIN: the page says the read is building
       blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND: computed from what is configured
@@ -1907,6 +1915,7 @@ function entityProposals(frames, tracks) {
   const out = new Map();
   const put = (name, more) => {
     const nm = String(name || '').replace(/\s+/g, ' ').trim(); if (nm.replace(/\s/g, '').length < ENTITY.MIN_NAME || (nm.match(/[\p{L}\p{N}]/gu) || []).length < 2) return;
+    if (more.from_src !== 'track' && !/\p{Lu}/u.test(nm)) return;   // EX53: a frame's name with no uppercase letter is a noun (music publishers), not a name; a tracked brand keeps the house's spelling
     const k = nm.toLowerCase(), cur = out.get(k) || { name: nm, kind: 'brand', aliases: [], category: null, context: [], ambiguous: ENTITY.AMBIGUOUS.includes(k), from_src: 'frame', track_id: null };
     for (const a of (more.aliases || [])) { const al = String(a || '').replace(/\s+/g, ' ').trim(); if (al && al.toLowerCase() !== k && !cur.aliases.some(x => x.toLowerCase() === al.toLowerCase())) cur.aliases.push(al); }
     if (!cur.category && more.category) cur.category = String(more.category).slice(0, 80);
@@ -8574,7 +8583,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9649,7 +9658,7 @@ async function doorPass(env, opts) {
 }
 /* Called by claudeBatchDrain when a door_read job lands. */
 async function doorLand(env, id, text, cost, stopReason) {
-  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame,measures,evidence,status,night,meta').catch(excQuiet('door_rows', []))) || [];
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,frame,measures,evidence,status,night,meta').catch(excQuiet('door_rows', []))) || [];
   const row = rows[0]; if (!row) return { skipped: 'no_row' };
   const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));   // the image survives the round trip, so a cited insight carries its photograph
   const got = excReadOf(text || '');
@@ -9658,6 +9667,7 @@ async function doorLand(env, id, text, cost, stopReason) {
   const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];   // SEAM:EXC_MEASURE (EX52a): a reading whose claim is the instrument is held, the way a thin one is: off the board, the reason on the row, the next night tries again
   if (named.length) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: ('measure_claim: ' + named[0].where + ': ' + named[0].text).slice(0, 200), updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch')); console.log('door_measure_claim', id, named[0].text.slice(0, 80)); return { id, status: 'failed', held: 'measure_claim' }; }
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'ready', read, cost_usd: cost, error: null, updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch'));
+  if (typeof claimsWrite === 'function') await claimsWrite(env, claimsOf('door', id, read, merged, row.frame, row.night, row.measures, row.frame_key, new Date().toISOString()));   // SEAM:CLAIMS (EX53): the deployment's findings as rows
   // SEAM:RECORD_LAW: a deployment develops the read before it; that read stays on the record, marked
   const prevId = row.meta && row.meta.prev_id;
   if (prevId && /^[0-9a-f-]{36}$/.test(String(prevId))) {
@@ -11013,6 +11023,7 @@ async function markRoute(request, env, origin) {
   if (!/^[0-9a-f-]{36}$/.test(iid) || !MARKS.includes(mark)) return json({ ok: false, error: 'bad_mark' }, 200, origin, env);
   await sbRest(env, 'insight_marks?on_conflict=insight_id,user_id', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: { insight_id: iid, user_id: user.id, mark } }).catch(excQuiet('mark_put'));
   const m = await markCounts(env, iid);
+  if (typeof claimsMarks === 'function') await claimsMarks(env, iid, m.counts);   // SEAM:CLAIMS (EX53)
   return json({ ok: true, id: iid, counts: m.counts, mine: mark }, 200, origin, env);
 }
 /* ═══ SEAM:REACH_PUSH: the push. Each night after the grade, every reader whose tracked brands or followed frames deployed an insight
@@ -11232,6 +11243,7 @@ async function doorCalled(env) {
     const called = g ? Object.assign(g, { at: new Date().toISOString() }) : { verdict: 'unmeasured', by: w.by, at: new Date().toISOString() };
     out[called.verdict === 'held' ? 'held' : called.verdict === 'missed' ? 'missed' : 'unmeasured']++;
     await sbRest(env, 'door_reads?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, r.meta || {}, { called }) } }).catch(excQuiet('called_patch'));
+    if (typeof claimsGrade === 'function') await claimsGrade(env, r.id, called);   // SEAM:CLAIMS (EX53)
   }
   if (out.checked && env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(RECORD.KEY); } catch (e) { excQuiet('record_bust')(e); } }
   logEvent(env, 'intelligence', 'door', 'door_called', null, out);
@@ -11368,10 +11380,184 @@ async function insightSharePage(path, env, embed) {
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="article"><meta property="og:image" content="${img}"><meta property="og:url" content="${esc(base + '/i/' + id)}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${esc(dest)}"><link rel="canonical" href="${esc(dest)}"></head><body style="font-family:system-ui;background:#0b0b0b;color:#eee;padding:40px"><p>${title}</p><p>${desc}</p><p><a style="color:#fff" href="${esc(dest)}">Open the reading</a></p></body></html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
+/* ═══ SEAM:CLAIMS (EX53): findings as rows. One finding of one reading is one row of claims (0055): the sentence, the excerpt, the
+ * lens, the confidence the ground earned, the band and dates of the lines it stands on, the lines with their tiers, the frame, the
+ * reading it came from (an overnight deployment or a live read), its marks and its grade; claim_entities links it to the graph (the
+ * entity its frame names, and every entity its own words carry: link_claim_entities). Claims are written when a reading lands
+ * (doorLand; the live synth beside the ledger), graded when the reading's watch is called, marked when the reading is marked, and
+ * the record's history is migrated by parsing from the desk ({run: claims, steps: N}): no model, an upsert on (src, reading_id,
+ * idx), so a re-run is a no-op. The record answers first from this table (excHouseLines reads claim_corpus); the moves pass
+ * (excMovesPass) reads the corpus on the frame and writes the moves from it, one call on the live tier through excCompile. ═══ */
+const CLAIMS = { STEP: 20, STEPS: 4, MAX_STEPS: 200, PASS_MS: 20000, LINES: 8, TEXT: 120, EXCERPT: 400,
+  HOUSE: 8, HOUSE_NIGHTS: 120, CORPUS: 40, MIN_CORPUS: 4,                 // the record answers first: eight deployed claims for the writer; forty for the moves pass
+  MOVES_MS: 40000, MOVES_MIN_MS: 8000, MOVES_TOKENS: 2600, MOVES_MIN: 3, MOVES_MAX: 5 };   // the pass is one call inside the read's wall clock; three moves or the writer's stand
+/* PURE: the insights of a reading as claim rows. lines are the evidence lines the numbers point at (a door row's evidence, a live
+ * read's merged lines); a reading whose lines are not stored (a migrated live read) keeps the one source each finding named. */
+function claimsOf(src, readingId, read, lines, frame, night, measures, frameKey, writtenAt) {
+  const ins = read && Array.isArray(read.insights) ? read.insights : [];
+  const ls = Array.isArray(lines) ? lines : [], f = frame || {}, m = measures || {};
+  const day = v => { const d = v ? new Date(v) : null; return d && !isNaN(d) ? d.toISOString().slice(0, 10) : null; };
+  const tierOf = c => { const t = parseInt(c && (c.tier != null ? c.tier : c.source_tier), 10); return Number.isFinite(t) ? Math.min(4, Math.max(0, t)) : null; };
+  const nightIso = /^\d{4}-\d{2}-\d{2}$/.test(String(night || '')) ? String(night) : (day(night) || new Date().toISOString().slice(0, 10));
+  const onRecord = src === 'door' && nightIso >= RECORD.SINCE && ((Number(m.recent_7d) || 0) > 0 || (Number(m.outlets) || 0) > 0 || ls.length >= DOOR.MIN_EVIDENCE);
+  const out = [];
+  ins.forEach((x, i) => {
+    if (!x || typeof x !== 'object') return;
+    const claim = String(x.title || '').replace(/\s+/g, ' ').trim().slice(0, CLAIMS.TEXT); if (!claim) return;
+    const ns = (Array.isArray(x.evidence) ? x.evidence : []).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= ls.length).filter((n, k, a) => a.indexOf(n) === k).slice(0, CLAIMS.LINES);
+    const d = x.dated && typeof x.dated === 'object' ? x.dated : {};
+    let picked = ns.map(n => { const c = ls[n - 1] || {}; return { n, title: String(c.title || '').slice(0, 100), url: /^https?:\/\//.test(String(c.url || '')) ? String(c.url).slice(0, 300) : null, source: String(c.source || c.source_name || '').slice(0, 60), tier: tierOf(c), date: day(c.published_at || c.date || null) }; });
+    if (!picked.length && (x.source || x.sourceUrl)) picked = [{ n: null, title: null, url: /^https?:\/\//.test(String(x.sourceUrl || '')) ? String(x.sourceUrl).slice(0, 300) : null, source: String(x.source || '').slice(0, 60), tier: null, date: day(d.newest) }];
+    const tiers = {}; for (const p of picked) if (p.tier != null) { const k = String(p.tier); tiers[k] = (tiers[k] || 0) + 1; }
+    out.push({ src, reading_id: String(readingId), idx: i, frame_key: frameKey || null, night: nightIso, written_at: writtenAt || new Date().toISOString(),
+      claim, excerpt: String(x.excerpt || '').replace(/\s+/g, ' ').trim().slice(0, CLAIMS.EXCERPT) || null,
+      lens: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', confidence: ['High', 'Medium', 'Low'].includes(x.confidence) ? x.confidence : 'Low',
+      band: d.band ? String(d.band).slice(0, 12) : null, newest: day(d.newest), oldest: day(d.oldest), lines: picked, tiers,
+      frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, question: f.question || null },
+      meaning: x.meaning && typeof x.meaning === 'object' ? x.meaning : null, on_record: onRecord });
+  });
+  return out;
+}
+/* The rows written (an upsert on the reading and the finding's place; a re-parse changes nothing but the text) and linked to the
+ * graph. Never throws into its caller: a claims failure never fails a reading. */
+async function claimsWrite(env, rows) {
+  if (!Array.isArray(rows) || !rows.length) return { wrote: 0, linked: 0 };
+  try {
+    const at = new Date().toISOString();
+    const back = (await sbRest(env, 'claims?on_conflict=src,reading_id,idx&select=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: rows.map(r => Object.assign({}, r, { updated_at: at })) })) || [];
+    const ids = back.map(b => b && b.id).filter(Boolean);
+    let linked = 0;
+    if (ids.length) { const l = ((await sbRest(env, 'rpc/link_claim_entities', { method: 'POST', body: { p_claims: ids } })) || [])[0] || {}; linked = parseInt(l.links_made, 10) || 0; }
+    return { wrote: ids.length, linked };
+  } catch (e) { console.log('claims_write_error', String(e && e.message).slice(0, 120)); return { wrote: 0, linked: 0, error: String(e && e.message).slice(0, 80) }; }
+}
+/* The reading's grade and marks, carried onto its claims. */
+async function claimsGrade(env, readingId, called) {
+  if (!readingId || !called || !called.verdict) return;
+  await sbRest(env, 'claims?src=eq.door&reading_id=eq.' + encodeURIComponent(String(readingId)), { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { grade: String(called.verdict).slice(0, 20), graded_at: called.at || new Date().toISOString(), updated_at: new Date().toISOString() } }).catch(excQuiet('claims_grade'));
+}
+async function claimsMarks(env, readingId, counts) {
+  if (!readingId || !counts) return;
+  await sbRest(env, 'claims?src=eq.door&reading_id=eq.' + encodeURIComponent(String(readingId)), { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { marks: counts, updated_at: new Date().toISOString() } }).catch(excQuiet('claims_marks'));
+}
+/* The migration by parsing, from the desk: the record's deployments (door_reads, status ready, oldest first) and then the live
+ * reads (reads, oldest first), STEP rows a step, steps a call, inside PASS_MS; two keyset cursors in entity_resolve_state
+ * (claims_door, claims_read). Idempotent: the upsert. No model. */
+async function claimsMigratePass(env, opts) {
+  const t0 = Date.now(), steps = Math.max(1, Math.min(CLAIMS.MAX_STEPS, parseInt(opts && opts.steps, 10) || CLAIMS.STEPS));
+  const st = await entityStateGet(env);
+  const door = Object.assign({ after_night: null, after_id: null, rows: 0, claims: 0, done: false }, st.claims_door || {});
+  const read = Object.assign({ after_at: null, after_id: null, rows: 0, claims: 0, done: false }, st.claims_read || {});
+  const out = { steps: 0, wrote: 0, linked: 0 };
+  while (out.steps < steps && Date.now() - t0 < CLAIMS.PASS_MS) {
+    if (!door.done) {
+      const key = door.after_night ? '&or=(night.gt.' + door.after_night + ',and(night.eq.' + door.after_night + ',id.gt.' + door.after_id + '))' : '';
+      const rows = (await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null' + key + '&select=id,frame_key,night,frame,measures,read,evidence,updated_at&order=night.asc,id.asc&limit=' + CLAIMS.STEP).catch(excQuiet('claims_door_rows', []))) || [];
+      if (!rows.length) door.done = true;
+      else {
+        let batch = []; for (const r of rows) batch = batch.concat(claimsOf('door', r.id, r.read, r.evidence || [], r.frame, r.night, r.measures, r.frame_key, r.updated_at));
+        const w = await claimsWrite(env, batch);
+        door.rows += rows.length; door.claims += w.wrote; out.wrote += w.wrote; out.linked += w.linked;
+        const last = rows[rows.length - 1]; door.after_night = last.night; door.after_id = last.id;
+      }
+      await entityStatePut(env, 'claims_door', door); out.steps++; continue;
+    }
+    if (!read.done) {
+      const key = read.after_at ? '&or=(created_at.gt.' + encodeURIComponent(read.after_at) + ',and(created_at.eq.' + encodeURIComponent(read.after_at) + ',id.gt.' + read.after_id + '))' : '';
+      const rows = (await sbRest(env, 'reads?select=id,insights,meta,created_at' + key + '&order=created_at.asc,id.asc&limit=' + CLAIMS.STEP).catch(excQuiet('claims_read_rows', []))) || [];
+      if (!rows.length) read.done = true;
+      else {
+        let batch = []; for (const r of rows) batch = batch.concat(claimsOf('read', r.id, { insights: r.insights }, [], r.meta && r.meta.frame, r.created_at, null, null, r.created_at));
+        const w = await claimsWrite(env, batch);
+        read.rows += rows.length; read.claims += w.wrote; out.wrote += w.wrote; out.linked += w.linked;
+        const last = rows[rows.length - 1]; read.after_at = last.created_at; read.after_id = last.id;
+      }
+      await entityStatePut(env, 'claims_read', read); out.steps++; continue;
+    }
+    break;
+  }
+  Object.assign(out, { door, read, done: door.done && read.done, ms: Date.now() - t0 });
+  await logEvent(env, 'intelligence', 'claims', 'claims_pass', null, out);
+  return out;
+}
+/* The corpus on a frame: the claims linked to the entity the frame names (the graph's name or alias; no row is created for a
+ * frame that has not been written yet). deployed reads the record's deployments only; otherwise everything the house knows. */
+async function claimsCorpus(env, frame, opts) {
+  const f = frame || {}, name = String(f.entity || '').replace(/\s+/g, ' ').trim();
+  if (name.replace(/\s/g, '').length < ENTITY.MIN_NAME || typeof entityResolveName !== 'function') return { entity: null, rows: [] };
+  const ent = await entityResolveName(env, name, {}).catch(excQuiet('claims_entity', null));
+  if (!ent || !ent.id) return { entity: null, rows: [] };
+  const since = opts && opts.nights ? new Date(Date.now() - opts.nights * 864e5).toISOString().slice(0, 10) : null;
+  const rows = (await sbRest(env, 'rpc/claim_corpus', { method: 'POST', body: { p_entities: [ent.id], p_deployed: !!(opts && opts.deployed), p_since: since, p_limit: (opts && opts.limit) || CLAIMS.CORPUS } }).catch(excQuiet('claims_corpus', []))) || [];
+  return { entity: ent, rows: rows.filter(r => r && r.claim) };
+}
+/* PURE: the moves pass's prompt: the frame, the measure as context, this reading's findings as F1.., the house's corpus as C1..
+ * with dates, confidence and grades, and the ask. The MOVE LAW rides the system prompt with the voice. */
+function excMovesPrompt(frame, query, insights, corpus, measures) {
+  const fl = (insights || []).map((x, i) => 'F' + (i + 1) + ' [' + (x.confidence || 'Low') + (x.dated && x.dated.newest ? ', ' + x.dated.newest : '') + '] ' + String(x.title || '') + (x.excerpt ? ' ' + String(x.excerpt).slice(0, 200) : '')).join('\n');
+  const cl = (corpus || []).map((r, i) => 'C' + (i + 1) + ' [' + (r.night || 'undated') + ', ' + (r.confidence || 'Low') + (r.grade ? ', the call ' + r.grade : '') + (r.src === 'door' ? ', deployed' : ', a live read') + '] ' + String(r.claim || '') + (r.excerpt ? ' ' + String(r.excerpt).slice(0, 160) : '')).join('\n');
+  return (typeof excFrameBlock === 'function' ? excFrameBlock(frame) : '') + '\n' + (measures && typeof excMeasureLine === 'function' ? excMeasureLine(measures) : '') +
+    'THE QUESTION: ' + String(query || '').slice(0, 200) + '\n\n' +
+    'THIS READING\'S FINDINGS (F1..):\n' + fl + '\n\n' +
+    'WHAT THE HOUSE ALREADY HOLDS ON THIS SUBJECT (C1..; our own dated findings from earlier readings; "the call held" or "missed" says how the bet behind that reading turned out):\n' + cl + '\n\n' +
+    'Write the moves from the whole corpus: this reading and what the house already holds, in time order where it matters. A move stands on every finding that supports it, named by label; a move on two or more findings is stronger than one on a single finding, and a single-finding move says so in "because". Never restate a finding as a move; never give a count or a measure as the reason. ' +
+    'Return JSON exactly shaped as: {"moves":[{"type":"Positioning|Product|Campaign|Content|Partnership|Channel|Pricing","headline":"<=9 words","body":"1-2 sentences: the concrete action and the mechanism it stands on","for":"the team or role that runs it, 1 to 4 words","because":"why now, from the findings named","proof":"the finding or evidence that proves the mechanism works","measure":"what to watch to know it worked, and by when","risk":"what would make it wrong","from":["F2","C5"]}]}. Three to five moves, strongest first. JSON only, no fences.';
+}
+/* PURE: the pass's moves, enforced. A move names the findings it stands on (F for this reading, C for the corpus): one naming
+ * nothing is dropped; one naming a single finding is single-source and ranked last; the MOVE LAW's anchor rule runs on each as it
+ * runs on the writer's (excAnchors, EXC_GENERIC). from resolves to the first finding's index for the page; stands carries the
+ * corpus claims by date. */
+function excMovesShape(parsed, insights, corpus, query) {
+  const mv = parsed && Array.isArray(parsed.moves) ? parsed.moves : parsed && Array.isArray(parsed.ideas) ? parsed.ideas : [];
+  const ins = insights || [], cs = corpus || [], out = []; let dropped = 0, single = 0;
+  for (const x of mv.slice(0, 8)) {
+    if (!x || typeof x !== 'object' || !x.headline) continue;
+    const refs = (Array.isArray(x.from) ? x.from : [x.from]).map(v => String(v == null ? '' : v).toUpperCase().trim()).filter(Boolean);
+    const F = [], C = [];
+    for (const ref of refs) { const m = /^([FC])\s*(\d{1,3})$/.exec(ref); if (!m) continue; const n = parseInt(m[2], 10) - 1; if (m[1] === 'F' && ins[n] && !F.includes(n)) F.push(n); if (m[1] === 'C' && cs[n] && !C.includes(n)) C.push(n); }
+    if (!F.length && !C.length) { dropped++; continue; }
+    const headline = String(x.headline || '').slice(0, 120), body = String(x.body || '').slice(0, 400), proof = String(x.proof || '').slice(0, 280);
+    const a = excAnchors([headline, body, proof].join('. '), query), generic = EXC_GENERIC.test(headline + ' ' + body);
+    if (!(a >= 1 && !(generic && a < 2))) { dropped++; continue; }
+    const stands = C.map(n => ({ id: cs[n].id || null, date: cs[n].night || null, claim: String(cs[n].claim || '').slice(0, 140), grade: cs[n].grade || null }));
+    const evidence = [...new Set(F.reduce((acc, n) => acc.concat(Array.isArray(ins[n].evidence) ? ins[n].evidence : []), []))].slice(0, 8);
+    const dated = F.length && ins[F[0]].dated ? ins[F[0]].dated : (stands[0] && stands[0].date ? { newest: stands[0].date, oldest: stands[stands.length - 1].date, band: 'RECORD', dated: stands.length } : null);
+    const move = { type: String(x.type || 'Strategy').slice(0, 40), headline, body, from: F.length ? F[0] : null, for: excShort(x.for), because: String(x.because || '').slice(0, 280), proof,
+      measure: String(x.measure || '').slice(0, 240), risk: String(x.risk || '').slice(0, 240), evidence, dated, findings: F, stands, single_source: (F.length + C.length) < 2 };
+    if (move.single_source) single++;
+    out.push(move);
+  }
+  out.sort((p, q) => (p.single_source ? 1 : 0) - (q.single_source ? 1 : 0));
+  return { kept: out.slice(0, CLAIMS.MOVES_MAX), wrote: mv.length, dropped, single };
+}
+/* The moves pass: on a full read, when the house holds MIN_CORPUS claims on the frame's entity, one call on the live tier (through
+ * excCompile: the live cap and the kill switch; no reserve: the pass is the live lane's or nothing) writes the moves from the
+ * whole corpus. Three or more that survive replace the writer's; otherwise the writer's stand and the pass says why. */
+async function excMovesPass(env, o) {
+  const t0 = Date.now(), frame = o && o.frame, ins = (o && o.insights) || [];
+  if (!frame || !frame.entity || ins.length < 2) return null;
+  const c = await claimsCorpus(env, frame, { deployed: false, limit: CLAIMS.CORPUS }).catch(excQuiet('moves_corpus', { entity: null, rows: [] }));
+  const corpus = c.rows || [];
+  if (corpus.length < CLAIMS.MIN_CORPUS) return { pass: { corpus: corpus.length, used: false, why: corpus.length ? 'thin_corpus' : (c.entity ? 'no_claims' : 'no_entity'), ms: Date.now() - t0 }, ideas: null };
+  const room = Math.min(CLAIMS.MOVES_MS, Number(o.leftMs) > 0 ? Number(o.leftMs) : CLAIMS.MOVES_MS);
+  if (room < CLAIMS.MOVES_MIN_MS) return { pass: { corpus: corpus.length, used: false, why: 'no_time', ms: Date.now() - t0 }, ideas: null };
+  const r = await excCompile(env, { system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_NUMBER_LAW, prompt: excMovesPrompt(frame, o.query, ins, corpus, o.measures), max_tokens: CLAIMS.MOVES_TOKENS, kind: 'excavate_moves', timeout_ms: room, noReserve: true, thinking: { type: 'disabled' } });
+  const parsed = extractJson(r.text || '') || excSalvage(r.text || '', 0);
+  const shaped = excMovesShape(parsed, ins, corpus, o.query);
+  const used = shaped.kept.length >= CLAIMS.MOVES_MIN;
+  const pass = { corpus: corpus.length, wrote: shaped.wrote, kept: shaped.kept.length, single: shaped.single, dropped: shaped.dropped, used, why: used ? null : (r.lane === 'none' ? String(r.reason || 'no_answer') : 'few_moves'), lane: r.lane, ms: Date.now() - t0, usd: r.cost_usd || 0 };
+  console.log('exc_moves_pass', JSON.stringify(pass));
+  return { pass, ideas: used ? shaped.kept : null };
+}
 /* SEAM:EXC_HOUSE: the house's own deployed insights on a frame (the entity, else the category), last 120 nights, newest first, three at
  * most. Context for a live read and a line on its receipt; never evidence. */
 async function excHouseLines(env, frame) {
-  const f = frame || {}; const key = f.entity ? 'entity' : f.category ? 'category' : null;
+  const f = frame || {};
+  if (f.entity && typeof claimsCorpus === 'function') {   // SEAM:CLAIMS (EX53): the record answers first at claim granularity: the deployed claims on the entity, newest first
+    const c = await claimsCorpus(env, f, { deployed: true, limit: CLAIMS.HOUSE, nights: CLAIMS.HOUSE_NIGHTS }).catch(excQuiet('house_claims', { entity: null, rows: [] }));
+    if (c && c.rows && c.rows.length) return c.rows.map(r => ({ id: r.reading_id, claim_id: r.id, deployed: r.night, claim: String(r.claim || '').slice(0, 240), confidence: r.confidence || null, move: null, called: r.grade || null }));
+  }
+  const key = f.entity ? 'entity' : f.category ? 'category' : null;   // the reading-level fallback: before the migration reaches the subject, or an entity the graph lacks
   if (!key) return [];
   const val = String(f[key] || '').trim(); if (val.length < 3) return [];
   const since = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
