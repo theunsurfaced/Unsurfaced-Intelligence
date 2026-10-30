@@ -1712,6 +1712,15 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:ASSETS",
    "purpose": "AS1: THE SLOTS gains FROM THE ASSETS (the records a slot may be filled from, Use it through /reads/slot, a failed check asks for the override's reason); THE ASSETS room shows PLAY's records with their model and prompt, plays a video, and every card downloads; the page's CSP allows media from the API."
+  },
+  "SEAM:MORNING_SHELF": {
+   "file": "worker/src/index.js",
+   "purpose": "RD1d THE MORNING SHELF (Oct 30, 2026): the nights list carries the morning's facts (per night the door_pass record, the excavate_frame calls inside the pass's window with the night's clock, the spend as rows plus frames, the cadence; per row the cost, the voice notes, the claims' confidence mix, develops and developed_by, the measure's movement since the last night, the hold's reason, the house's notes, the entity id for the room), one night alone by date, and one admin door /reads/night-note that pins a house note on a door row in the desk's note shape, idempotent on its text, no model. Nothing publishes, promotes or pulls."
+  },
+  "SEAM:MORNING_SHELF@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:MORNING_SHELF",
+   "purpose": "RD1d: the nights room as the morning shelf (the window of nights with the pass, the frames and the spend on each head, the newest night open; a night alone as the morning read with held and failed first, filters by status and subject, the room behind a subject, the reading on the record, a house note pinned from the row)."
   }
  },
  "planned": [

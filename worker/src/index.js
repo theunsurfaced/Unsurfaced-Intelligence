@@ -323,6 +323,7 @@ export default {
         case '/reads/lines':         // SEAM:EDIT_DESK (ED2): the lines an editor may change, one direct edit, a revert
         case '/reads/edit':
         case '/reads/revert':
+        case '/reads/night-note':    // SEAM:MORNING_SHELF (RD1d): a house note pinned on a door row
         case '/reads/assets':        // SEAM:HOUSE (RD1a): the assets and the nights, the house's own shelves
         case '/reads/nights':
         case '/reads/day-frames':    // SEAM:DAY_FRAMES (RD1b): a day's frames, read or written
@@ -17056,10 +17057,10 @@ function houseAssetUse(reads) {
   return by;
 }
 /* PURE: the door's rows grouped by night, newest first, each row with its measure, grade, marks and claims count. */
-function houseNightRows(rows, marks, claims) {
-  const mk = {}, ck = {};
+function houseNightRows(rows, marks, claims, ents) {   // SEAM:MORNING_SHELF (RD1d): ents, the graph's names to ids, for the room behind a subject
+  const mk = {}, ck = {}, cl = {};
   for (const m of marks || []) { const k = m.insight_id; if (!k) continue; mk[k] = mk[k] || { held: 0, useful: 0, wrong: 0 }; if (mk[k][m.mark] != null) mk[k][m.mark]++; }
-  for (const c of claims || []) { if (c && c.reading_id) ck[c.reading_id] = (ck[c.reading_id] || 0) + 1; }
+  for (const c of claims || []) { if (c && c.reading_id) { ck[c.reading_id] = (ck[c.reading_id] || 0) + 1; (cl[c.reading_id] = cl[c.reading_id] || []).push(c); } }
   const nights = {}, order = [];
   for (const r of rows || []) {
     const n = String(r.night || ''); if (!n) continue;
@@ -17072,7 +17073,14 @@ function houseNightRows(rows, marks, claims) {
       error: r.error ? String(r.error).slice(0, 160) : null, recent_7d: m.recent_7d != null ? m.recent_7d : null, outlets: m.outlets != null ? m.outlets : null,
       measured_from: m.measured_from || null, coverage_weeks: m.coverage_weeks != null ? m.coverage_weeks : null,
       grade: called && called.verdict ? called.verdict : null, check_by: called && called.by ? called.by : null,
-      marks: mk[r.id] || { held: 0, useful: 0, wrong: 0 }, claims: ck[r.id] || 0 });
+      marks: mk[r.id] || { held: 0, useful: 0, wrong: 0 }, claims: ck[r.id] || 0,
+      // SEAM:MORNING_SHELF (RD1d): the morning's facts on the row
+      cost_usd: Math.round((Number(r.cost_usd) || 0) * 1e4) / 1e4, voice: Array.isArray(r.voice) ? r.voice.length : (r.read && Array.isArray(r.read.voice) ? r.read.voice.length : 0),
+      claims_mix: typeof houseClaimsMix === 'function' ? houseClaimsMix(cl[r.id]) : null, develops: (r.meta && r.meta.prev_night) || null, developed_by: (r.meta && r.meta.developed_night) || null,
+      since: r.meta && r.meta.since && typeof r.meta.since === 'object' ? { recent_delta: r.meta.since.recent_delta != null ? Number(r.meta.since.recent_delta) : null, outlets_delta: r.meta.since.outlets_delta != null ? Number(r.meta.since.outlets_delta) : null } : null,
+      thin: st === 'failed' && String(r.error || '') === 'thin_evidence',
+      notes: (() => { const ns = (r.meta && Array.isArray(r.meta.notes) ? r.meta.notes : []).filter(x => x && x.status !== 'applied'); return { open: ns.length, last: ns.length ? String(ns[ns.length - 1].text || '').slice(0, 160) : null }; })(),
+      entity_id: (() => { const k = String(fr.entity || '').toLowerCase().replace(/\s+/g, ' ').trim(); const e = ents && k ? ents[k] : null; return e && e.id ? e.id : null; })() });
   }
   order.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   return order.map(n => nights[n]);
@@ -17096,27 +17104,136 @@ async function houseAssets(env, opts) {   // AS1: opts.for_slot narrows to the r
   const kept = o.for_slot ? houseAssetsForSlot(assets) : o.kind ? assets.filter(a => a.kind === String(o.kind)) : assets;   // AS1
   return { assets: kept, counts, reads_scanned: reads.length };
 }
-async function houseNights(env, nights) {
+async function houseNights(env, nights, night) {   // SEAM:MORNING_SHELF (RD1d): night, one date, opens that night alone as the morning read
+  const one = /^\d{4}-\d{2}-\d{2}$/.test(String(night || '')) ? String(night) : null;
   const n = Math.max(1, Math.min(HOUSE.NIGHTS_MAX, parseInt(nights, 10) || HOUSE.NIGHTS));
-  const since = new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
-  const rows = (await sbRest(env, 'door_reads?night=gte.' + since + '&select=id,frame_key,night,status,error,frame,measures,meta,cost_usd&order=night.desc,id.asc&limit=' + HOUSE.NIGHT_ROWS).catch(excQuiet('house_nights', []))) || [];
+  const since = one || new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const rows = (await sbRest(env, 'door_reads?night=' + (one ? 'eq.' : 'gte.') + since + '&select=id,frame_key,night,status,error,frame,measures,meta,cost_usd,voice:read->voice&order=night.desc,id.asc&limit=' + HOUSE.NIGHT_ROWS).catch(excQuiet('house_nights', []))) || [];
   const ids = rows.map(r => r.id).filter(Boolean);
   let marks = [], claims = [];
   for (const part of houseChunks(ids, HOUSE.CHUNK)) {
     marks = marks.concat((await sbRest(env, 'insight_marks?insight_id=in.(' + part.join(',') + ')&select=insight_id,mark').catch(excQuiet('house_marks', []))) || []);
-    claims = claims.concat((await sbRest(env, 'claims?src=eq.door&reading_id=in.(' + part.join(',') + ')&select=reading_id').catch(excQuiet('house_claims', []))) || []);
+    claims = claims.concat((await sbRest(env, 'claims?src=eq.door&reading_id=in.(' + part.join(',') + ')&select=reading_id,confidence').catch(excQuiet('house_claims', []))) || []);
   }
-  return { since, nights: houseNightRows(rows, marks, claims) };
+  // SEAM:MORNING_SHELF (RD1d): the pass's record and the frame calls of the window, the graph's names, the cadence
+  const t0 = since + 'T00:00:00Z';
+  const ledger = rows.length ? (await sbRest(env, 'claude_jobs?kind=eq.' + MORNING.FRAME_KIND + '&created_at=gte.' + t0 + '&select=status,cost_usd,created_at,ms:meta->>ms&order=created_at.desc&limit=' + MORNING.LEDGER_ROWS).catch(excQuiet('house_ledger', []))) || [] : [];
+  const passes = rows.length ? (await sbRest(env, 'activity_events?event=eq.door_pass&created_at=gte.' + t0 + '&select=created_at,meta&order=created_at.desc&limit=' + MORNING.PASSES).catch(excQuiet('house_passes', []))) || [] : [];
+  let ents = {};
+  if (rows.length && typeof entityMap === 'function') { try { ents = (await entityMap(env)) || {}; } catch (e) { ents = {}; } }
+  const clock = typeof DOOR === 'object' && DOOR && Number(DOOR.FRAME_MS) ? Number(DOOR.FRAME_MS) : 25000;
+  let cadence = null;
+  if (typeof watchDoorLine === 'function' && typeof doorEvery === 'function') {
+    try { const last = rows.find(r => r.status === 'ready' || r.status === 'reused'), lp = passes[0] || null;
+      const dl = watchDoorLine(doorEvery(env), last ? last.night : null, new Date().toISOString().slice(0, 10), !!(lp && lp.meta && lp.meta.skipped));
+      cadence = { every: dl.every, last_compiled: dl.last_compiled, gap_nights: dl.gap_nights, skipped: dl.skipped, trip: dl.trip ? dl.trip.say : null }; } catch (e) { cadence = null; }
+  }
+  return { since, night: one, windows: MORNING.WINDOWS, nights: houseNightRows(rows, marks, claims, ents).map(g => houseMorningNight(g, passes, ledger, clock)), cadence };
+}
+/* ═══ SEAM:MORNING_SHELF (RD1d THE MORNING SHELF): the nights room carries the morning's facts. Per night: the pass's own record
+ * (earned, queued, kept, reused, thin, waiting, failed, skipped, the publish error), the frame calls inside the pass's window
+ * (asked, answered inside the night's clock, slow, failed, the p95), and the night's spend (the rows' cost plus the frames').
+ * Per deployment: the cost, the voice notes, the claims' confidence mix, what it develops and what developed it, the measure's
+ * movement since the last night, the hold's reason, the house's notes, and the entity behind it for the room. A house note is
+ * pinned on a door row through one admin door, idempotent, no model. Publish, promote, pull and "Pass and send" wait for the
+ * net arc; this shelf reads. ═══ */
+const MORNING = { FRAME_KIND: 'excavate_frame', WINDOW_MS: 25 * 60e3, LEDGER_ROWS: 3000, PASSES: 120, NOTE_MAX: 600, NOTES_MAX: 24, WINDOWS: [7, 14, 30, 60] };
+/* PURE: a percentile of a list of numbers, by rank; null for an empty list. */
+function housePct(nums, p) {
+  const xs = (nums || []).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!xs.length) return null;
+  return xs[Math.min(xs.length - 1, Math.max(0, Math.ceil((p / 100) * xs.length) - 1))];
+}
+/* PURE: the pass record that belongs to a night: the door_pass event written on that UTC date, the latest one when there were two. */
+function houseNightPass(passes, night) {
+  const hits = (passes || []).filter(e => e && e.created_at && String(e.created_at).slice(0, 10) === String(night)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const e = hits[0]; if (!e) return null;
+  const m = e.meta && typeof e.meta === 'object' ? e.meta : {};
+  const num = k => (m[k] == null ? null : Number(m[k]) || 0);
+  return { at: e.created_at, runs: hits.length, earned: num('earned'), cap: num('cap'), queued: num('queued'), kept: num('kept'), reused: num('reused'), unmoved: num('unmoved'), thin: num('thin'),
+    waiting: num('waiting'), failed: num('failed'), skipped: !!m.skipped, usd_est: m.usd == null ? null : Math.round((Number(m.usd) || 0) * 1e4) / 1e4,
+    publish_error: m.publish_error ? String(m.publish_error).slice(0, 160) : null, error: m.error ? String(m.error).slice(0, 160) : null };
+}
+/* PURE: the frame calls that belong to a night's pass: the ledger rows inside the window that ends at the pass's record. Answered is
+ * a call that came back inside the night's clock; slow is one that answered after it; failed never answered. Null without a pass. */
+function houseNightFrames(ledger, passAt, clockMs) {
+  if (!passAt) return null;
+  const end = Date.parse(passAt), start = end - MORNING.WINDOW_MS;
+  if (!Number.isFinite(end)) return null;
+  const rows = (ledger || []).filter(r => { const t = Date.parse(r && r.created_at); return Number.isFinite(t) && t >= start && t <= end; });
+  const ms = rows.map(r => Number(r.ms)).filter(Number.isFinite);
+  let answered = 0, slow = 0, failed = 0, cost = 0;
+  for (const r of rows) {
+    const m = Number(r.ms);
+    if (String(r.status) === 'done') { if (Number.isFinite(m) && clockMs && m > clockMs) slow++; else answered++; } else failed++;
+    cost += Number(r.cost_usd) || 0;
+  }
+  return { asked: rows.length, answered, slow, failed, p95_ms: housePct(ms, 95), cost_usd: Math.round(cost * 1e4) / 1e4 };
+}
+/* PURE: the confidence mix of a row's claims. */
+function houseClaimsMix(list) {
+  const mix = { High: 0, Medium: 0, Low: 0 };
+  for (const c of list || []) { const k = String((c && c.confidence) || ''); if (mix[k] != null) mix[k]++; }
+  return mix;
+}
+/* PURE: the morning's order for a night's rows: held and failed first (the reasons a reader acts on), then the deployments, then
+ * the reused; inside each, by subject. */
+function houseMorningOrder(rows) {
+  const rank = r => (r.held ? 0 : r.status === 'failed' ? 1 : r.status === 'ready' ? 2 : r.status === 'reused' ? 3 : 4);
+  return (rows || []).slice().sort((a, b) => rank(a) - rank(b) || String(a.entity || a.key || '').localeCompare(String(b.entity || b.key || '')));
+}
+/* PURE: a house note pinned on a door row, in the shape the reads' desk keeps (n, by, at, scope, text, status). The same open text
+ * twice is one note: a second pin of it adds nothing. */
+function houseNoteAdd(notes, text, by, at) {
+  const list = Array.isArray(notes) ? notes.filter(Boolean) : [];
+  const t = String(text || '').replace(/\s+/g, ' ').trim().slice(0, MORNING.NOTE_MAX);
+  if (t.length < 3) return { notes: list, note: null, added: false, error: 'note_too_short' };
+  if (t.indexOf(String.fromCharCode(0x2014)) >= 0) return { notes: list, note: null, added: false, error: 'em_dash' };   // the house voice has no em dash; the code point, so this block carries neither the glyph nor its escape
+  const same = list.find(x => x && x.status !== 'applied' && String(x.text || '') === t);
+  if (same) return { notes: list, note: same, added: false, error: null };
+  const n = { n: list.reduce((m, x) => Math.max(m, (x && x.n) || 0), 0) + 1, by: String(by || 'editor'), at: String(at || new Date().toISOString()), scope: '', text: t, status: 'open' };
+  const kept = list.slice(-(MORNING.NOTES_MAX - 1)).concat([n]);
+  return { notes: kept, note: n, added: true, error: null };
+}
+/* PURE: the morning's facts for one night's rows, given the pass record and the frame ledger: the spend and the frames on the head. */
+function houseMorningNight(g, passes, ledger, clockMs) {
+  const pass = houseNightPass(passes, g.night), frames = houseNightFrames(ledger, pass ? pass.at : null, clockMs);
+  const spend = Math.round(((Number(g.cost_usd) || 0) + (frames ? frames.cost_usd : 0)) * 1e4) / 1e4;
+  return Object.assign({}, g, { pass, frames, spend_usd: spend, rows: houseMorningOrder(g.rows) });
+}
+async function houseNoteRoute(body, env, origin, user) {
+  const id = String((body && body.id) || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,night,meta').catch(excQuiet('night_note_row', []))) || [];
+  const row = rows[0]; if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const notes = (row.meta && Array.isArray(row.meta.notes)) ? row.meta.notes : [];
+  const by = String((user && (user.email || user.id)) || 'editor').replace(/@.*$/, ''), at = new Date().toISOString();
+  if (body && body.drop) {
+    const n = parseInt(body.n, 10), hit = notes.find(x => x && x.n === n);
+    if (!hit) return json({ ok: false, error: 'no_such_note' }, 200, origin, env);
+    if (hit.status === 'applied') return json({ ok: false, error: 'already_applied' }, 200, origin, env);
+    const kept = notes.filter(x => x !== hit);
+    await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, row.meta || {}, { notes: kept }) } });
+    return json({ ok: true, id, open: kept.filter(x => x && x.status !== 'applied').length }, 200, origin, env);
+  }
+  const r = houseNoteAdd(notes, body && body.text, by, at);
+  if (r.error) return json({ ok: false, error: r.error }, 200, origin, env);
+  if (r.added) {
+    await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, row.meta || {}, { notes: r.notes }) } });
+    if (typeof logEvent === 'function') logEvent(env, 'intelligence', 'door', 'night_note', null, { id, night: row.night, n: r.note.n, by });
+  }
+  return json({ ok: true, id, note: r.note, added: r.added, open: r.notes.filter(x => x && x.status !== 'applied').length }, 200, origin, env);
 }
 async function houseRoute(path, body, env, origin, user) {
   if (path === '/reads/assets') return json(Object.assign({ ok: true }, await houseAssets(env, { for_slot: !!(body && body.for_slot), kind: body && body.kind })), 200, origin, env);   // AS1
-  if (path === '/reads/nights') return json(Object.assign({ ok: true }, await houseNights(env, body && body.nights)), 200, origin, env);
+  if (path === '/reads/nights') return json(Object.assign({ ok: true }, await houseNights(env, body && body.nights, body && body.night)), 200, origin, env);   // RD1d: one night opens alone
   return json({ ok: false, error: 'not_found' }, 404, origin, env);
 }
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
   if (path === '/reads/assets' || path === '/reads/nights') return houseRoute(path, body, env, origin, user);
+  if (path === '/reads/night-note') return houseNoteRoute(body, env, origin, user);   // SEAM:MORNING_SHELF (RD1d): a house note on a door row
   if (path === '/reads/day-frames') return dayFramesRoute(body, env, origin, user);   // SEAM:DAY_FRAMES (RD1b)   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
   if (/^\/reads\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1)
   if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)

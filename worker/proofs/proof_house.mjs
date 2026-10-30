@@ -65,8 +65,8 @@ const fakeDb = async (env, path) => {
 const F = mk({ sbRest: fakeDb });
 const nn = await F.houseNights({}, 7);
 ok(qs[0].startsWith('door_reads?night=gte.') && /order=night\.desc,id\.asc/.test(qs[0]) && /select=id,frame_key,night,status,error,frame,measures,meta,cost_usd/.test(qs[0]) && !/read,/.test(qs[0].replace('frame_key,', '')), 'B1 the nights read the door\'s rows by night, status and measure, never the read itself');
-ok(qs.some(q => /^insight_marks\?insight_id=in\.\(a1,a2,a3,a4,a5\)&select=insight_id,mark$/.test(q)) && qs.some(q => /^claims\?src=eq\.door&reading_id=in\.\(a1,a2,a3,a4,a5\)&select=reading_id$/.test(q)), 'B2 marks and claims are counted by the rows\' ids, in chunks');
-ok(nn.since && nn.nights.length === 2 && nn.nights[0].rows[0].marks.useful === 1 && nn.nights[0].rows[1].claims === 1, 'B3 the marks and claims land on their rows');
+ok(qs.some(q => /^insight_marks\?insight_id=in\.\(a1,a2,a3,a4,a5\)&select=insight_id,mark$/.test(q)) && qs.some(q => /^claims\?src=eq\.door&reading_id=in\.\(a1,a2,a3,a4,a5\)&select=reading_id,confidence$/.test(q)), 'B2 marks and claims are counted by the rows\' ids, in chunks');
+ok(nn.since && nn.nights.length === 2 && nn.nights[0].rows.find(r => r.id === 'a1').marks.useful === 1 && nn.nights[0].rows.find(r => r.id === 'a2').claims === 1, 'B3 the marks and claims land on their rows (found by id: RD1d orders a night held and failed first)');
 qs.length = 0;
 const aa = await F.houseAssets({});
 ok(/^media_rights\?select=id,kind,ref,source_url,credit,basis,contexts,display_max_px,object_sentence,made,created_at&order=created_at\.desc&limit=240$/.test(qs[0]) && /^house_reads\?select=id,kind,label,version,status,slots:meta->slots&meta->slots=not\.is\.null/.test(qs[1]),
@@ -100,8 +100,8 @@ ok(/function library\(kinds\) \{/.test(house) && /if \(!groups\[k\]\.length \|\|
 ok(/<a class="btn" href="\.\/" id="house-link">The house<\/a>/.test(house) && /function houseBack\(room\)/.test(house) && /document\.title = "Unsurfaced DAILY · " \+ row\.label;\n\s+houseBack\(ROOM\);/.test(house), 'D5 one bar; an open read\'s back link returns to the room it came from');
 ok(/<nav class="hs-doors" aria-label="The house">/.test(house) && /Every read we have compiled, newest first/.test(house), 'D6 the doors strip is on every shelf; the door\'s own line stands');
 ok(/houseGet\("\/api\/edition\/archive"\)/.test(house) && /houseGet\("\/api\/edition\?issue=" \+ encodeURIComponent\(String\(n\)\)\)/.test(house) && /href="\.\/\?room=daily&issue=/.test(house) && /it\.standfirst/.test(house) && /it\.source_url/.test(house), 'D7 DAILY lists the editions from the public routes and opens a day\'s stories as the reader sees them');
-ok(/call\("\/reads\/nights", \{ nights: 14 \}\)/.test(house) && /<th>Subject<\/th><th>Status<\/th><th>7 days<\/th><th>Outlets<\/th><th>Counted<\/th><th>Grade<\/th><th>Marks<\/th><th>Claims<\/th>/.test(house) && /class="hs-scroll"/.test(house) && /href="\.\.\/\?insight=' \+ esc\(r\.id\)/.test(house),
-  'D8 the nights room reads fourteen nights, one table a night in a scroll box, and opens a deployment on the record');
+ok(/call\("\/reads\/nights", \{ nights: N \}\)/.test(house) && /<th>Subject<\/th><th>Status<\/th><th>7 days<\/th><th>Outlets<\/th><th>Counted<\/th><th>Grade<\/th><th>Marks<\/th><th>Claims<\/th><th>Voice<\/th><th>Cost<\/th><th>Notes<\/th>/.test(house) && /class="hs-scroll"/.test(house) && /href="\.\.\/\?insight=' \+ esc\(r\.id\)/.test(house),
+  'D8 the nights room reads a window of nights (fourteen by default), the scan in a scroll box with the morning\'s columns, and opens a deployment on the record (RD1d)');
 ok(/call\("\/reads\/assets", \{\}\)/.test(house) && /fetch\(API \+ "\/reads\/slot-upload", \{ method: "POST", headers: \{ Authorization: "Bearer " \+ token, "Content-Type": f\.type \|\| "application\/octet-stream", "x-filename": f\.name, "x-credit": credit, "x-release": release \}, body: f \}\)/.test(house) && /if \(f\.size > 10000000\)/.test(house) && /not on a read yet/.test(house),
   'D9 the assets room lists every record with where it is used, and uploads the house\'s own photograph through THE SLOTS\' door');
 ok(!/data-delete|knowledge\/purge|media_rights\?.*DELETE/.test(hb), 'D10 nothing on the house\'s new shelves deletes a record');

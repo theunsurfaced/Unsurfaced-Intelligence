@@ -399,6 +399,23 @@
   .hs-asset .u a { color: #B8B2A6; }
   .hs-asset .dl { padding: 10px 14px 0; }   /* SEAM:ASSETS (AS1): every record downloads */
   .hs-up { border: 1px solid #2A2A2A; padding: 16px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  /* SEAM:MORNING_SHELF (RD1d): the morning shelf */
+  .hs-pass { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; line-height: 1.7; color: #9A9A9A; }
+  .hs-bad { color: #F2994A; } .hs-cadence { color: #B8B2A6; }
+  .hs-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+  .hs-filters a, .hs-filters button { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #B8B2A6; background: transparent; border: 1px solid #2A2A2A; padding: 7px 10px; text-decoration: none; cursor: pointer; }
+  .hs-filters a.on, .hs-filters button.on { color: var(--ivory); border-color: var(--red); }
+  .hs-filters input { font-family: var(--mono); font-size: 11px; padding: 7px 10px; background: transparent; color: var(--ivory); border: 1px solid #2A2A2A; min-width: 160px; }
+  table.hs-scan { min-width: 1040px; } table.hs-scan th, table.hs-scan td { padding-left: 6px; padding-right: 6px; }
+  table.hs-table td small { display: block; font-size: 10px; letter-spacing: .5px; color: #9A9A9A; margin-top: 2px; }
+  table.hs-table td small.hs-reason { color: #F2994A; max-width: 200px; white-space: normal; }
+  .hs-held { color: #F2994A; } .hs-failed { color: #EB5757; } .hs-rise { color: #6FCF97; } .hs-fall { color: #F2994A; }
+  table.hs-table td small.hs-rise { display: inline; margin: 0 0 0 4px; color: #6FCF97; } table.hs-table td small.hs-fall { display: inline; margin: 0 0 0 4px; color: #F2994A; }
+  .hs-notebtn { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; background: transparent; color: #B8B2A6; border: 1px solid #2A2A2A; padding: 3px 6px; cursor: pointer; margin-left: 4px; }
+  .hs-noteform { display: block; margin-top: 6px; } .hs-noteform:empty { display: none; }
+  .hs-noteform input { font-family: var(--mono); font-size: 11px; padding: 5px 8px; background: transparent; color: var(--ivory); border: 1px solid #3A3A3A; width: 260px; max-width: 100%; }
+  .hs-say { font-family: var(--mono); font-size: 10px; color: #9A9A9A; margin-left: 6px; }
+  td.hs-empty { color: #9A9A9A; }
   .hs-up label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
   .hs-up input[type=text] { font: inherit; font-size: 12px; padding: 7px 9px; border: 1px solid #3A3A3A; background: #141414; color: var(--ivory); min-width: 180px; }
   .hs-up input[type=file] { font-family: var(--mono); font-size: 10px; color: #B8B2A6; max-width: 100%; }
@@ -1739,7 +1756,7 @@
     weekly: { name: "WEEKLY", door: "WEEKLY", kinds: ["weekly"], sub: "The Weekly Read, every issue and every cut" },
     record: { name: "The Record", door: "The Record", kinds: ["record", "monthly"], sub: "The Record and the Monthly Read" },
     daily: { name: "DAILY", door: "DAILY", sub: "Every edition, by day, as the reader sees it" },
-    nights: { name: "The nights", door: "The nights", sub: "What the door deployed, night by night: the measure, the grade, the marks, the claims" },
+    nights: { name: "The nights", door: "The nights", sub: "The morning shelf: what the door deployed, night by night, with the pass, the frames, the spend, the grade, the marks, the claims and the notes" },
     assets: { name: "The assets", door: "The assets", sub: "Every image with its rights, and the reads that carry it" },
     feed: { name: "The feed", door: "The feed", sub: "Your data, embedded on our account, cited by every read" }
   };
@@ -1801,28 +1818,120 @@
       dayFramesPanel(ed, items, app);   /* SEAM:DAY_FRAMES (RD1b): the day's frames under the stories */
     }).catch(function () { houseShell("daily", '<div class="hs-note">The edition could not load.</div>'); });
   }
-  /* THE NIGHTS: the door's rows by night, held and failed rows included, which the public record never carries. */
+  /* THE NIGHTS, the morning shelf (SEAM:MORNING_SHELF, RD1d): the door's nights with the morning's facts. The shelf lists the
+     nights newest first with the pass's record, the frames and the spend on each head, the newest night open as the morning read;
+     a night opened (?night=) is the scan: held and failed first with their reasons, then the deployments, then the reused, with
+     the measure and its movement, the grade, the marks, the claims and their confidence, the voice notes, the cost, the house's
+     notes, a door to the reading and to the subject's room. Publish, promote, pull and "Pass and send" wait for the net arc. */
+  var NIGHTS_WINDOWS = [7, 14, 30, 60];
+  var MN = { data: null, filter: "all", who: "" };
+  function nightsWindow() { var n = parseInt(Q.get("nights"), 10); return NIGHTS_WINDOWS.indexOf(n) >= 0 ? n : 14; }
+  function hsUsd(n) { return "$" + (Number(n) || 0).toFixed(2); }
+  function hsPlural(n, one, many) { return n + " " + (n === 1 ? one : many); }
   function nightsRoom() {
+    if (Q.get("night")) return nightMorning(Q.get("night"));
+    var N = nightsWindow();
     houseShell("nights", '<div class="hs-note">Reading the nights.</div>');
-    call("/reads/nights", { nights: 14 }).then(function (d) {
+    call("/reads/nights", { nights: N }).then(function (d) {
       if (!d || !d.ok) { houseShell("nights", '<div class="hs-note">The nights could not load: ' + esc((d && d.error) || "no answer") + ".</div>"); return; }
-      var nights = d.nights || [];
-      houseShell("nights", '<div class="hs-note">Fourteen nights, newest first, since ' + esc(d.since || "") + '. A held row is a deployment the measure-claim law stopped; a failed one did not compile. Grade is what the watch called; marks are the readers’; claims are the findings the house holds from it.</div>' +
-        (nights.length ? nights.map(function (g) {
-          var c = g.counts || {};
-          return '<div class="hs-night"><h3>' + esc(g.night) + "</h3><span>" + hsNum(c.ready) + " deployed · " + hsNum(c.reused) + " reused · " + hsNum(c.held) + " held · " + hsNum(c.failed) + " failed</span><span>$" + (Number(g.cost_usd) || 0).toFixed(2) + "</span></div>" +
-            '<div class="hs-scroll"><table class="hs-table"><thead><tr><th>Subject</th><th>Status</th><th>7 days</th><th>Outlets</th><th>Counted</th><th>Grade</th><th>Marks</th><th>Claims</th><th></th></tr></thead><tbody>' +
-            (g.rows || []).map(function (r) {
-              var cov = r.measured_from ? "from " + esc(String(r.measured_from).slice(0, 10)) + (r.coverage_weeks != null ? " · " + r.coverage_weeks + " of 12 wks" : "") : r.coverage_weeks != null ? r.coverage_weeks + " of 12 wks" : "·";
-              var m = r.marks || {};
-              return "<tr><td class=\"e\">" + esc(r.entity || r.key || "") + (r.category ? "<small>" + esc(r.category) + "</small>" : "") + "</td>" +
-                "<td" + (r.error ? ' title="' + esc(r.error) + '"' : "") + ">" + esc(r.held ? "held" : r.status) + "</td><td>" + hsNum(r.recent_7d) + "</td><td>" + hsNum(r.outlets) + "</td><td>" + cov + "</td>" +
-                '<td class="hs-grade-' + esc(r.grade || "none") + '">' + esc(r.grade || "·") + (r.check_by ? "<br><small>by " + esc(String(r.check_by).slice(0, 10)) + "</small>" : "") + "</td>" +
-                "<td>" + (m.held || 0) + " held · " + (m.useful || 0) + " useful · " + (m.wrong || 0) + " wrong</td><td>" + hsNum(r.claims) + "</td>" +
-                "<td>" + (r.status === "ready" || r.status === "reused" ? '<a href="../?insight=' + esc(r.id) + '">Open</a>' : "") + "</td></tr>";
-            }).join("") + "</tbody></table></div>";
-        }).join("") : '<div class="sub">No night in the window.</div>'));
+      MN.data = d;
+      var nights = d.nights || [], c = d.cadence;
+      houseShell("nights", '<div class="hs-note">' + N + " nights, newest first, since " + esc(d.since || "") + ". A night's head carries what the pass did, how the frames answered inside the night's clock, and what the night cost. The newest night is open as the morning read; every other night opens on its own page." +
+        (c ? ' <span class="hs-cadence">Cadence: every ' + esc(String(c.every)) + (c.every === 1 ? " night" : " nights") + (c.last_compiled ? ", last compiled " + esc(String(c.last_compiled)) : ", never compiled") + (c.gap_nights != null ? ", " + esc(String(c.gap_nights)) + (c.gap_nights === 1 ? " night ago" : " nights ago") : "") + (c.trip ? ". " + esc(c.trip) : "") + "</span>" : "") + "</div>" +
+        '<div class="hs-filters">' + NIGHTS_WINDOWS.map(function (n) { return '<a class="' + (n === N ? "on" : "") + '" href="./?room=nights&nights=' + n + '">' + n + " nights</a>"; }).join("") + "</div>" +
+        (nights.length ? nights.map(function (g, i) { return nightHead(g, i === 0) + (i === 0 ? nightScan(g) : ""); }).join("") : '<div class="sub">No night in the window.</div>'));
+      if (nights.length) nightBind(nights[0]);
     }).catch(function () { houseShell("nights", '<div class="hs-note">The house did not answer.</div>'); });
+  }
+  function nightMorning(date) {
+    houseShell("nights", '<div class="hs-note">Reading the night of ' + esc(date) + ".</div>");
+    call("/reads/nights", { night: date }).then(function (d) {
+      if (!d || !d.ok) { houseShell("nights", '<div class="hs-note">The night could not load: ' + esc((d && d.error) || "no answer") + ".</div>"); return; }
+      MN.data = d;
+      var g = (d.nights || [])[0];
+      if (!g) { houseShell("nights", '<div class="hs-note">No row for the night of ' + esc(date) + '.</div><a class="btn" href="./?room=nights">Every night</a>'); return; }
+      houseShell("nights", '<div class="hs-note">The morning read for the night of ' + esc(hsDay(g.night)) + ": held and failed rows first with their reasons, then the deployments, then the reused. Open a row on the record; a subject's name opens its room; a note pins to the row for the pass to act on.</div>" +
+        nightHead(g, true) + nightScan(g) + '<div class="hs-note" style="margin-top:14px"><a href="./?room=nights">Every night</a></div>');
+      nightBind(g);
+    }).catch(function () { houseShell("nights", '<div class="hs-note">The house did not answer.</div>'); });
+  }
+  function nightHead(g, open) {
+    var c = g.counts || {}, p = g.pass, f = g.frames;
+    var passLine = p ? (p.skipped ? "skipped by the cadence" : hsPlural(p.earned || 0, "reading earned", "readings earned") + " · " + (p.queued || 0) + " queued · " + (p.kept || 0) + " kept · " + (p.reused || 0) + " reused · " + (p.thin || 0) + " thin" + (p.waiting ? " · " + p.waiting + " waiting" : "") + (p.failed ? " · " + p.failed + " failed" : "")) +
+      (p.publish_error ? ' · <span class="hs-bad">did not republish: ' + esc(p.publish_error) + "</span>" : "") + (p.error ? ' · <span class="hs-bad">stopped early: ' + esc(p.error) + "</span>" : "") + (p.runs > 1 ? " · ran " + p.runs + " times" : "") : "no pass on record for this night";
+    var frameLine = f ? f.asked + " frames asked · " + f.answered + " answered in the clock" + (f.slow ? " · " + f.slow + " slow" : "") + (f.failed ? ' · <span class="hs-bad">' + f.failed + " failed</span>" : "") + (f.p95_ms != null ? " · p95 " + (f.p95_ms / 1000).toFixed(1) + " s" : "") : "frames unknown without a pass";
+    return '<div class="hs-night"><h3>' + (open ? esc(hsDay(g.night)) : '<a href="./?room=nights&night=' + esc(g.night) + '">' + esc(hsDay(g.night)) + "</a>") + "</h3><span>" + hsNum(c.ready) + " deployed · " + hsNum(c.reused) + " reused · " + hsNum(c.held) + " held · " + hsNum(c.failed) + " failed</span><span>" + hsUsd(g.spend_usd != null ? g.spend_usd : g.cost_usd) + " the night" + (f && f.cost_usd ? " (" + hsUsd(g.cost_usd) + " readings, " + hsUsd(f.cost_usd) + " frames)" : "") + "</span>" +
+      (open ? "" : '<span><a href="./?room=nights&night=' + esc(g.night) + '">Open the morning</a></span>') + "</div>" +
+      '<div class="hs-pass"><span>The pass: ' + passLine + "</span><span>" + frameLine + "</span></div>";
+  }
+  function nightRowShown(r) {
+    var f = MN.filter, w = MN.who.toLowerCase();
+    if (f === "held" && !(r.held || r.status === "failed")) return false;
+    if (f === "ready" && r.status !== "ready") return false;
+    if (f === "reused" && r.status !== "reused") return false;
+    if (w && String((r.entity || "") + " " + (r.category || "") + " " + (r.key || "")).toLowerCase().indexOf(w) < 0) return false;
+    return true;
+  }
+  function nightScan(g) {
+    var rows = (g.rows || []).filter(nightRowShown);
+    var filters = [["all", "All"], ["held", "Held and failed"], ["ready", "Deployed"], ["reused", "Reused"]].map(function (x) { return '<button type="button" class="' + (MN.filter === x[0] ? "on" : "") + '" data-nf="' + x[0] + '">' + x[1] + "</button>"; }).join("");
+    return '<div class="hs-filters" id="night-filters">' + filters + '<input type="search" id="night-who" placeholder="A subject" value="' + esc(MN.who) + '" aria-label="Filter by subject"></div>' +
+      '<div class="hs-scroll"><table class="hs-table hs-scan"><thead><tr><th>Subject</th><th>Status</th><th>7 days</th><th>Outlets</th><th>Counted</th><th>Grade</th><th>Marks</th><th>Claims</th><th>Voice</th><th>Cost</th><th>Notes</th><th></th></tr></thead><tbody>' +
+      (rows.length ? rows.map(nightRowHtml).join("") : '<tr><td colspan="12" class="hs-empty">No row matches.</td></tr>') + "</tbody></table></div>";
+  }
+  function nightRowHtml(r) {
+    var cov = r.measured_from ? "from " + esc(String(r.measured_from).slice(0, 10)) + (r.coverage_weeks != null ? " · " + r.coverage_weeks + " of 12 wks" : "") : r.coverage_weeks != null ? r.coverage_weeks + " of 12 wks" : "·";
+    var m = r.marks || {}, mix = r.claims_mix || {}, s = r.since || {}, nt = r.notes || {};
+    var delta = s.recent_delta != null ? ' <small class="' + (s.recent_delta > 0 ? "hs-rise" : s.recent_delta < 0 ? "hs-fall" : "") + '">' + (s.recent_delta > 0 ? "+" : "") + s.recent_delta + "</small>" : "";
+    var status = r.held ? '<span class="hs-held">held</span><small class="hs-reason">' + esc(String(r.error || "").replace(/^measure_claim:\s*/, "the measure, said: ")) + "</small>"
+      : r.status === "failed" ? '<span class="hs-failed">failed</span><small class="hs-reason">' + esc(r.thin ? "thin evidence" : r.error || "did not compile") + "</small>"
+      : r.status === "reused" ? "reused" + (r.develops ? "<small>evidence unchanged since " + esc(String(r.develops)) + "</small>" : "")
+      : esc(r.status) + (r.develops ? "<small>develops " + esc(String(r.develops)) + "</small>" : "") + (r.developed_by ? "<small>developed " + esc(String(r.developed_by)) + "</small>" : "");
+    var subject = r.entity_id ? '<a href="../#room=' + esc(r.entity_id) + '" title="The room">' + esc(r.entity || r.key || "") + "</a>" : esc(r.entity || r.key || "");
+    return '<tr data-row="' + esc(r.id) + '"><td class="e">' + subject + (r.category ? "<small>" + esc(r.category) + "</small>" : "") + "</td>" +
+      "<td>" + status + "</td><td>" + hsNum(r.recent_7d) + delta + "</td><td>" + hsNum(r.outlets) + (s.outlets_delta ? ' <small class="' + (s.outlets_delta > 0 ? "hs-rise" : "hs-fall") + '">' + (s.outlets_delta > 0 ? "+" : "") + s.outlets_delta + "</small>" : "") + "</td><td>" + cov + "</td>" +
+      '<td class="hs-grade-' + esc(r.grade || "none") + '">' + esc(r.grade || "·") + (r.check_by ? "<br><small>by " + esc(String(r.check_by).slice(0, 10)) + "</small>" : "") + "</td>" +
+      "<td>" + (m.held || 0) + " held · " + (m.useful || 0) + " useful · " + (m.wrong || 0) + " wrong</td>" +
+      "<td>" + hsNum(r.claims) + (r.claims ? "<small>" + (mix.High || 0) + " high · " + (mix.Medium || 0) + " medium · " + (mix.Low || 0) + " low</small>" : "") + "</td>" +
+      "<td>" + (r.voice ? hsPlural(r.voice, "note", "notes") : "clean") + "</td><td>" + hsUsd(r.cost_usd) + "</td>" +
+      '<td class="hs-notes">' + (nt.open ? '<span title="' + esc(nt.last || "") + '">' + hsPlural(nt.open, "note", "notes") + "</span>" : "·") + ' <button type="button" class="hs-notebtn" data-note="' + esc(r.id) + '">Note</button><span class="hs-noteform" data-form="' + esc(r.id) + '"></span></td>' +
+      "<td>" + (r.status === "ready" || r.status === "reused" ? '<a href="../?insight=' + esc(r.id) + '">Open</a>' : "") + "</td></tr>";
+  }
+  function nightBind(g) {
+    var fb = document.getElementById("night-filters"); if (!fb) return;
+    Array.prototype.forEach.call(fb.querySelectorAll("[data-nf]"), function (b) { b.onclick = function () { MN.filter = b.getAttribute("data-nf"); nightRerender(g); }; });
+    var who = document.getElementById("night-who"); if (who) who.oninput = function () { MN.who = who.value || ""; nightRerender(g, true); };
+    Array.prototype.forEach.call(app.querySelectorAll(".hs-notebtn"), function (b) {
+      b.onclick = function () {
+        var id = b.getAttribute("data-note"), f = app.querySelector('.hs-noteform[data-form="' + id + '"]'); if (!f) return;
+        if (f.innerHTML) { f.innerHTML = ""; return; }
+        f.innerHTML = '<input type="text" maxlength="600" placeholder="A note for the pass, in the house voice" aria-label="A house note"> <button type="button" class="btn">Pin it</button><span class="hs-say"></span>';
+        var inp = f.querySelector("input"), bt = f.querySelector("button"), say = f.querySelector(".hs-say");
+        bt.onclick = function () {
+          var text = inp.value || ""; if (text.trim().length < 3) { say.textContent = "Three characters at least."; return; }
+          say.textContent = "Pinning.";
+          call("/reads/night-note", { id: id, text: text }).then(function (d) {
+            if (!d || !d.ok) { say.textContent = d && d.error === "em_dash" ? "The house voice has no em dash." : "The house refused: " + ((d && d.error) || "no answer") + "."; return; }
+            var row = (g.rows || []).filter(function (r) { return r.id === id; })[0];
+            if (row) { row.notes = { open: d.open, last: d.note ? d.note.text : (row.notes && row.notes.last) || "" }; }
+            say.textContent = d.added ? "Pinned as note " + d.note.n + "." : "Already pinned.";
+            setTimeout(function () { nightRerender(g); }, 600);
+          }).catch(function () { say.textContent = "The house did not answer."; });
+        };
+        inp.focus();
+      };
+    });
+  }
+  function nightRerender(g, keepFocus) {
+    var box = app.querySelector(".hs-scan"); if (!box) return;
+    var wrap = box.parentNode, filters = document.getElementById("night-filters");
+    var html = nightScan(g), tmp = document.createElement("div"); tmp.innerHTML = html;
+    var newFilters = tmp.querySelector("#night-filters"), newScroll = tmp.querySelector(".hs-scroll");
+    if (filters && newFilters && !keepFocus) filters.replaceWith(newFilters);
+    else if (filters && newFilters) { Array.prototype.forEach.call(filters.querySelectorAll("[data-nf]"), function (b) { b.className = b.getAttribute("data-nf") === MN.filter ? "on" : ""; }); }
+    if (wrap && newScroll) wrap.replaceWith(newScroll);
+    nightBind(g);
+    if (keepFocus) { var who = document.getElementById("night-who"); if (who) { who.focus(); try { who.setSelectionRange(who.value.length, who.value.length); } catch (e) { /* a search input may refuse a selection */ } } }
   }
   /* THE ASSETS: every rights record, its picture, its credit and basis, the contexts it clears, the reads that carry it;
      the house's own photograph uploaded here through the same door THE SLOTS use. Nothing is deleted. */
