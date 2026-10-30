@@ -207,7 +207,7 @@ ok(table.filter(r => r.status === 'compiling').length === 2 && th2.status === 'f
   'D3 every row keeps its frame (whole), its measures, its evidence pack and the batch it waits on, and the pack includes the news top-up');
 ok(th1.evidence.filter(e => e.image).length === 1 && th1.evidence.find(e => e.image).image === 'https://img.example/curl0.jpg' && th1.evidence.every(e => 'image' in e),
   'D3b each stored line keeps its https image (an http one is dropped), so the photograph survives into the landing');
-ok(/^v3\.4~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '3.4',
+ok(/^v5\.0~/.test(D.doorStamp([{ sid: 's1', published_at: ago(1) }])) && D.DOOR.VOICE === '5.0',
   'D3c the reuse stamp carries the door\'s voice version');
 const landedText = JSON.stringify({ read: ['Texture-first shelving now owns 30% of fashion beauty signals this week.', 'Put the curl line on the endcap.'], insights: [{ category: 'market', title: 'Shelves sort by curl', excerpt: 'Curl aisle story 0 says so.', evidence: [1] }, { category: 'consumer', title: 'Buyers read labels', excerpt: 'x', evidence: [2] }, { category: 'brand', title: 'Being leads', excerpt: 'x', evidence: [3] }], ideas: [{ type: 'Channel', for: 'retail', headline: 'Pitch the curl endcap to Target', body: 'b', because: 'c', proof: 'p', evidence: [1], from: 0 }], brief: 'Where it is.' });
 const q7 = quiet();

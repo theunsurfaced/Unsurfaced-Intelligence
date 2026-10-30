@@ -25,7 +25,7 @@ ok(JSON.stringify(L.doorPlaceOf([{ place: 'United States' }, { place: 'United St
 
 // ── B: the pass ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const pass_ = between(w, 'async function doorPass(env, opts) {', 'async function doorLand(');
-ok(/const DOOR = \{ WANT: 30, KEY: 'door:v2'/.test(w) && /EVERY_D: 1, VOICE: '3\.4'/.test(w), 'B1 the candidate pool is thirty, the door runs nightly, the voice carries the laws of EX33a');
+ok(/const DOOR = \{ WANT: 30, KEY: 'door:v2'/.test(w) && /EVERY_D: 1, VOICE: '5\.0'/.test(w), 'B1 the candidate pool is thirty, the door runs nightly, the voice carries Method 5.0 (VX1b)');
 ok(/const voiceChanged = !!\(prev && prev\.stamp && !String\(prev\.stamp\)\.startsWith\('v' \+ DOOR\.VOICE \+ '~'\)\);/.test(pass_) && /const size = voiceChanged \? Infinity : doorMoveSize\(prev, base\.meta\.since, measures\);/.test(pass_) && /if \(prev && prev\.read && size === 0\) \{ out\.reused\+\+; out\.unmoved = \(out\.unmoved \|\| 0\) \+ 1;/.test(pass_),
   'B2 a subject whose evidence changed but did not move keeps its last read and spends nothing; a new voice is a new read');
 ok(/jobs\.sort\(\(a, b\) => \(b\.size === Infinity \? 1e9 : b\.size\) - \(a\.size === Infinity \? 1e9 : a\.size\)\);/.test(pass_) && /for \(const j of jobs\.slice\(DOOR_LAW\.CAP\)\) \{ if \(j\.prev && j\.prev\.read\) \{ out\.reused\+\+; rowsOut\.push\(Object\.assign\(j\.base, \{ status: 'reused', read: j\.prev\.read \}\)\); \} else out\.waiting = \(out\.waiting \|\| 0\) \+ 1; \}/.test(pass_) && /jobs = jobs\.slice\(0, DOOR_LAW\.CAP\);/.test(pass_) && /out\.earned = jobs\.length; out\.cap = DOOR_LAW\.CAP;/.test(pass_),

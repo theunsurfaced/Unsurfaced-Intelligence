@@ -1,10 +1,10 @@
 {
- "at": "2026-10-09T23:29:25.633Z",
- "base": "https://e3c3a5da-unsurfaced-api.office-173.workers.dev",
- "writer_hash": "1501390223bf3ee7f220cf8e2baeb16e503f3cb6b9dc4e4b4cf73ba272731a92",
+ "at": "2026-10-30T15:41:27.605Z",
+ "base": "https://4e286187-unsurfaced-api.office-173.workers.dev",
+ "writer_hash": "6d3e8f46d8dcec97e19b938f69e55802124941a7bf6771803eb1a12183f450c0",
  "packs": 5,
- "ok": 5,
- "mean": 74,
+ "ok": 4,
+ "mean": 78,
  "human_mean": null,
  "floor": 70,
  "runs": [
@@ -12,126 +12,105 @@
    "id": "q01",
    "query": "Jordan Brand and Gen Z",
    "ok": true,
-   "score": 64,
-   "code": 90,
+   "score": 70,
+   "code": 100,
    "reader": 26,
    "human": null,
-   "failed_checks": [
-    "headline_pure"
-   ],
+   "failed_checks": [],
    "notes": [
-    "The $100 billion valuation claim appears twice identically in the read; the brief repeats 'scarcity engineering' and 'generational loyalty' across findings without new evidence",
-    "Confidence ratings contradict themselves—'Medium' confidence findings (82% repurchase intent, generational loyalty) lack source attribution while 'Low' confidence claims (87% awareness, 41% liking) ar",
-    "The brief recommends 'nostalgia marketing campaign' but the frame explicitly excludes '1980s history' and 'retro nostalgia'—the move violates the stated frame boundaries",
-    "Moves cite Drake, Travis Scott, Kanye West collaborations and a '2011 Last Dance campaign' with no dates, sources, or evidence these resonated specifically with Gen Z (not Millennials or older cohorts"
+    "Finding 1 cites 87% awareness but conflates it with Gen Z resonance—the stat covers all US consumers, not the named audience; confidence marked 'Low' but conclusion treats it as settled fact",
+    "Finding 2 uses abstract claim 'monetize nostalgia' without evidence shown; 'Low' confidence assigned but recommendation (nostalgia marketing) proceeds as if validated",
+    "Move 1 cites Travis Scott collab as proof of limited-drop strategy but provides no data on Gen Z uptake, resale behavior, or whether this outperforms competitors' drops",
+    "Brief excludes 'Michael Jordan legacy' and 'retro nostalgia' yet entire strategy rests on nostalgia; the frame constraint is violated by the findings and moves themselves"
    ],
    "read": [
-    "Gen Z consumers drive Jordan Brand's valuation to $100 billion.",
-    "The brand's valuation surpassed $100 billion, per Networth News."
+    "Jordan Brand stays relevant with Gen Z consumers",
+    "87% brand awareness among US consumers, with 41% liking the brand (Statista)"
    ],
-   "findings": 6,
+   "findings": 3,
    "moves": 2,
-   "ms": 273231,
+   "ms": 268407,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   {
    "id": "q04",
    "query": "Gen Z and hair care",
-   "ok": true,
-   "score": 73,
-   "code": 100,
-   "reader": 32,
-   "human": null,
-   "failed_checks": [],
-   "notes": [
-    "Ingredient-focused routines stated in finding 1, then restated as scalp-focused in finding 4, then as natural/organic in finding 2—same concept recycled across three findings",
-    "Confidence ratings (Medium, Low, Low, Low, Low, Low) contradict the brief's confident prescriptions; no finding earns the certainty the moves demand",
-    "Brands named (Ursa Major, Nécessaire, Sienna Naturals, La Pink, Brillare) lack evidence trails—no data shown for why they resonate, sales figures, or Gen Z adoption rates",
-    "The 59% non-permanent hair color stat is the only quantified claim but sits orphaned; no finding integrates it, and moves ignore it entirely"
-   ],
-   "read": [
-    "Gen Z prioritizes ingredient-focused hair care routines for everyday use.",
-    "59% of Gen Z prefer non-permanent hair color options, per Technavio as reported by accio.com."
-   ],
-   "findings": 6,
-   "moves": 3,
-   "ms": 275700,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+   "ok": false,
+   "error": "fetch failed"
   },
   {
    "id": "q08",
    "query": "luxury in Lagos",
    "ok": true,
-   "score": 82,
+   "score": 80,
    "code": 100,
-   "reader": 54,
+   "reader": 50,
    "human": null,
    "failed_checks": [],
    "notes": [
-    "David Wej named twice in findings (title + excerpt); Wear It All Luxury named three times across findings; repetition violates the frame's own anchors by cycling names instead of building insight",
-    "Low-confidence findings (Polo Towers watch monopoly, Harrods prestige play, steady coverage metric) are stated as fact in moves without hedging; confidence tags buried in findings, not carried into re",
-    "Evidence cannot show *why* homegrown tailors outpace imports, *who* the affluent buyers are, or *how much* they spend; brief jumps to 'loudest story' without establishing baseline or competitor set th",
-    "Harrods move and Brand63Africa finding sit outside Nigeria market entirely; frame asks what resonates in Lagos, but move 3 markets a London window to Lagos consumers—scope creep unchecked"
+    "Polo Towers finding repeated across brief, findings, and moves without new evidence; single address cited three times as proof of same claim",
+    "Confidence labels (Medium, Low) do not map to sentence hedging—'one Victoria Island tower gates Lagos's watch trade' states certainty a Low confidence should not permit",
+    "Real estate trust debt (finding 5) introduced in brief but never connected to luxury goods frame; appears off-frame as structural safety, not consumption behavior",
+    "Harrods placement (finding 4, move 4) names a 2026 future event as evidence of current Lagos resonance; temporal anchor missing from frame period"
    ],
    "read": [
-    "Lagos's wealthy chase homegrown tailors over imported flash",
-    "Signals held at 10 this week, up 11% from 9 the week before, tracked across 21 outlets in all 12 weeks measured."
+    "Lagos's elite treat bespoke fashion as the main luxury stage.",
+    "Clothing stores make up 64% of Lagos's luxury store listings, per Exa Places."
    ],
-   "findings": 7,
-   "moves": 4,
-   "ms": 249628,
+   "findings": 6,
+   "moves": 5,
+   "ms": 122814,
    "model": "claude-sonnet-5"
   },
   {
    "id": "q13",
    "query": "Formula 1 and American audiences",
    "ok": true,
-   "score": 70,
-   "code": 90,
-   "reader": 40,
+   "score": 75,
+   "code": 80,
+   "reader": 68,
    "human": null,
    "failed_checks": [
-    "headline_pure"
+    "headline_pure",
+    "numbers_in_evidence"
    ],
    "notes": [
-    "Apple TV shift stated in finding 1, finding 2, and both moves—repetition across all sections",
-    "Confidence labeled 'Low' for Multiview claim but move treats it as proven benefit without hedging language",
-    "No evidence shown that American viewers actually 'adopt' or value Apple TV; read only states the platform exists as broadcaster",
-    "Moves assume exclusive content drives retention but read contains zero data on viewer retention, churn, or content preferences"
+    "Finding 2 calls a GM Authority poll 'Low' confidence but treats it as fact in the brief and moves—the poll question itself is not evidence of fan intent, only that the question was asked.",
+    "Move 2 proposes F1.com publish 'subscriber-retention readout' but no evidence shows F1 has disclosed or will disclose Apple TV subscriber numbers; the move assumes access to data the read does not est",
+    "Brief claims 'American attitudes toward F1 right now are attitudes toward Apple TV' but the read contains no direct quote or finding from American fans stating this; it is inference, not evidence.",
+    "Finding 4 correctly names the absence of NASCAR/IndyCar comparison but then Finding 5 restates the same absence in different words, violating the 'say it once' rule."
    ],
    "read": [
-    "American viewers tune into Apple TV for Formula 1",
-    "Apple TV became the official U.S. home of Formula 1 in 2026, replacing ESPN, with a live championship package including practice sessions, qualifying, and Grands Prix."
+    "American F1 fans now need an Apple TV subscription to watch.",
+    "Apple TV signed a five-year deal to become F1's exclusive US broadcaster, per documentarytube.com, replacing ESPN starting in 2026."
    ],
-   "findings": 3,
-   "moves": 2,
-   "ms": 265718,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+   "findings": 5,
+   "moves": 4,
+   "ms": 240628,
+   "model": "claude-sonnet-5"
   },
   {
    "id": "q17",
    "query": "Erewhon and premium grocery",
    "ok": true,
-   "score": 80,
-   "code": 90,
-   "reader": 66,
+   "score": 87,
+   "code": 100,
+   "reader": 68,
    "human": null,
-   "failed_checks": [
-    "numbers_in_evidence"
-   ],
+   "failed_checks": [],
    "notes": [
-    "Finding 1 states 'refuses the supermarket model entirely' but evidence only shows Erewhon did not try to compete with traditional supermarkets—a narrower claim than total refusal; confidence rated Low",
-    "Move 1 asks for a price comparison that the brief itself identifies as missing, but the read provides no evidence that such a comparison would change positioning perception or close any gap that matte",
-    "Finding 7 conflates Forbes skepticism ('success or satire') with trade coverage treating pricing as genius, but does not say whether either framing moves the needle with the named audience (affluent h",
-    "Moves 2, 3, and 4 extrapolate from single instances (one apartment deal, one museum tie-in, three brand launches) to repeatable strategy without evidence that replication will work or that the audienc"
+    "Finding 1 claims Whole Foods is 'skipped by name entirely' but the frame itself names Whole Foods as the primary comparison thread—the absence of head-to-head coverage is real, but framed as evasion r",
+    "Finding 4 rates 'Low' confidence on Ventura expansion but the move built on it is stated as actionable strategy without hedging the weakness forward into the recommendation.",
+    "Brief repeats 'luxury brand' concept twice (NeverLater + Vogue) and 'exclusive launchpad' twice (Inc. + move headline) without flagging the overlap.",
+    "Move 3 (museum/developer partnerships) rests on exactly two data points (Mercer + LACMA) but scales to 'quarterly' cadence without evidence the pattern is repeatable or intentional rather than opportu"
    ],
    "read": [
-    "Shoppers treat Erewhon as the ultimate status flex this fall.",
-    "Coverage of Erewhon spiked to 3 stories this week, up from 0 the week before, measured across 6 outlets this month."
+    "Erewhon's shoppers treat grocery shopping as a status ritual",
+    "Osinsights.org reports a 24-pack of Erewhon spring water sells for around $80, pricing itself far past traditional grocery norms"
    ],
-   "findings": 7,
+   "findings": 6,
    "moves": 4,
-   "ms": 244304,
+   "ms": 229799,
    "model": "claude-sonnet-5"
   }
  ]
