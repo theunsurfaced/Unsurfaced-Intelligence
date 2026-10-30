@@ -1737,6 +1737,24 @@ nav .nav-right .nav-sign{font-family:'Space Mono',monospace;font-size:calc(11.5p
 .lib-row small{display:block;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);margin-top:4px}
 .lib-row .open{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-ivory);border-bottom:1px solid var(--room-red);white-space:nowrap}
 /* SEAM:BRAND_ROOM: the brands and their rooms */
+/* SEAM:ENTITY_ROOM (RM1): the record's readings, the claims and the tiers in a room */
+.rrds{display:grid;gap:calc(12px*var(--k))}
+.rrd{background:var(--room-card);border:1px solid var(--room-rule);padding:calc(16px*var(--k)) calc(20px*var(--k))}
+.rrd-meta,.rcl-meta{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);letter-spacing:.02em}
+.rrd h3{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(19px*var(--k));line-height:1.2;letter-spacing:-.02em;color:var(--room-ivory);margin:calc(6px*var(--k)) 0 0;overflow-wrap:anywhere}
+.rrd .move{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-fg2);margin:calc(8px*var(--k)) 0 0}
+.rrd-marks{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);margin-top:calc(8px*var(--k))}
+.rrd-open{margin-top:calc(12px*var(--k));background:none;border:0;border-bottom:1px solid var(--room-red);color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:700;font-size:calc(13px*var(--k));padding:0;cursor:pointer}
+.rcls{display:grid;gap:calc(10px*var(--k))}
+.rcl{border-top:1px solid var(--room-rule);padding-top:calc(10px*var(--k))}
+.rcl p{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));line-height:1.45;color:var(--room-ivory);margin:calc(4px*var(--k)) 0 0;overflow-wrap:anywhere}
+.rcl details{margin-top:calc(4px*var(--k))}
+.rcl summary{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg3);cursor:pointer}
+.rcl .rcl-ex{font-size:calc(13.5px*var(--k));color:var(--room-fg2)}
+.rtiers{width:100%;border-collapse:collapse;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));color:var(--room-fg2)}
+.rtiers th,.rtiers td{text-align:left;padding:calc(8px*var(--k)) calc(10px*var(--k)) calc(8px*var(--k)) 0;border-top:1px solid var(--room-rule);vertical-align:top}
+.rtiers th{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.08em;text-transform:uppercase;color:var(--room-fg3);border-top:0}
+@media (max-width:640px){.rtiers td:last-child{overflow-wrap:anywhere}}
 .bfind{display:flex;max-width:calc(560px*var(--k));border:1px solid var(--room-ivory);margin-top:calc(24px*var(--k))}
 .bfind input{flex:1;min-width:0;background:transparent;border:0;color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:500;font-size:calc(16px*var(--k));padding:calc(13px*var(--k)) calc(16px*var(--k));outline:none;caret-color:var(--room-red)}
 .bfind input:focus{outline:2px solid var(--room-red);outline-offset:-2px}
@@ -2782,16 +2800,16 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
   <div class="lib brands-room" id="brands-list">
     <header class="lib-head">
       <div class="room-dateline">Brands</div>
-      <h1>Every brand we watch, measured every week.</h1>
-      <p>Open a brand for its weeks of coverage, three years of the attention people pay it, the brands it competes with and what people say about it.</p>
-      <form class="bfind" onsubmit="event.preventDefault();_brandFind()">
-        <input type="text" id="brand-find" placeholder="Find a brand we watch" autocomplete="off" aria-label="Find a brand we watch">
+      <h1>Every subject we watch, counted every week.</h1>
+      <p>Open a subject for its weeks of coverage, what we deployed on it and how each call turned out, every finding we wrote about it, who carries it, three years of the attention people pay it and the subjects it competes with.</p>
+      <form class="bfind" onsubmit="event.preventDefault();_roomFind()">
+        <input type="text" id="brand-find" placeholder="Find a subject we watch" autocomplete="off" aria-label="Find a subject we watch">
         <button type="submit">Open</button>
       </form>
       <div class="bfind-note" id="brand-find-note" aria-live="polite"></div>
     </header>
     <section class="room-sec">
-      <div class="room-head"><h2>The brands we watch</h2><div class="sub">Stories a week for the last twelve weeks, counted on our regular sweep by the date each was published.</div></div>
+      <div class="room-head"><h2>The subjects we watch</h2><div class="sub">Stories a week for the last twelve weeks, counted on what names each subject, by the date each was published, on our regular sweep.</div></div>
       <div class="bgrid" id="brand-grid"><p class="lib-empty">Opening the brands.</p></div>
     </section>
   </div>
@@ -4579,8 +4597,9 @@ function _day(d, year) { const t = d ? new Date(String(d).slice(0, 10) + 'T12:00
 function _month(m) { const t = m ? new Date(m + '-15T12:00:00Z') : null; return t && !isNaN(t) ? t.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''; }
 // A brand's id as the server writes it (a uuid in lower case), else '': nothing else is ever written into a handler or an address.
 function _uuid(id) { const v = String(id || '').toLowerCase(); return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v) ? v : ''; }
-function _brandHash() { const m = /#brand=([0-9a-fA-F-]{36})(?:$|[&?])/.exec(location.hash || ''); return m ? _uuid(m[1]) : ''; }
+function _brandHash() { const m = /#(?:brand|room)=([0-9a-fA-F-]{36})(?:$|[&?])/.exec(location.hash || ''); return m ? _uuid(m[1]) : ''; }   // SEAM:ENTITY_ROOM (RM1): #room= is the rooms' address; #brand= still opens the subject behind the track
 async function initBrandsPage() {
+  if (typeof initRoomsPage === 'function') return initRoomsPage();   // SEAM:ENTITY_ROOM (RM1): the rooms on the graph
   if (Date.now() - _brands.at > 300000) {
     _brands.loading = true;
     try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/tracks', { cache: 'no-store' }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _brands.tracks = j.tracks || []; _brands.at = Date.now(); } } catch (e) { /* the grid says so */ }
@@ -4593,6 +4612,7 @@ async function initBrandsPage() {
 }
 // Back and Forward move between the brands and a room; an address typed by hand opens its room.
 function _brandRoute() {
+  if (typeof _roomRoute === 'function') return _roomRoute();   // SEAM:ENTITY_ROOM (RM1)
   if (window._signedOut) return;
   const id = _brandHash(), sec = document.getElementById('sec-brands');
   if (!sec || !sec.classList.contains('active')) { if (id) navTo('brands'); return; }
@@ -4634,6 +4654,7 @@ function _brandFind() {
   note.innerHTML = `We do not watch ${safe(q)} yet.<button type="button" onclick="trackThis(${safeAttr(JSON.stringify(q))})">Watch ${safe(q)}</button><button type="button" onclick="setSearch(${safeAttr(JSON.stringify(q))});navTo('explore');runSearch()">Read it now</button>`;
 }
 function _closeBrand(quiet) {
+  if (typeof _closeRoom === 'function') return _closeRoom(quiet);   // SEAM:ENTITY_ROOM (RM1)
   const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room) return;
   const was = _brands.open;
   room.style.display = 'none'; room.innerHTML = ''; list.style.display = 'block'; _brands.open = null; _brands.room = null;
@@ -4644,6 +4665,7 @@ function _closeBrand(quiet) {
   if (was) { const c = document.querySelector('.bcard[data-id="' + was + '"]'); if (c && !quiet) c.focus({ preventScroll: false }); }
 }
 async function _openBrand(id, fromAddress) {
+  if (typeof _openRoom === 'function') return _openRoom(id, fromAddress, 'track');   // SEAM:ENTITY_ROOM (RM1): the subject behind the track
   id = _uuid(id);
   const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room || !id) return;
   const fromRoom = !!_brands.open;
@@ -4904,11 +4926,173 @@ async function trackThis(name) {
     const hh = await _authHeader(); if (!hh.Authorization) { showToast('Sign in to watch a brand'); return; }
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/track', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh), body: JSON.stringify({ name, query: name }) });
     const j = r.ok ? await r.json() : null;
-    if (j && j.ok) { showToast('Watching ' + name + '. Its weeks start counting on the next run.'); _brands.at = 0; if (document.getElementById('sec-brands')?.classList.contains('active')) initBrandsPage(); }
+    if (j && j.ok) { showToast('Watching ' + name + '. Its weeks start counting on the next run.'); _brands.at = 0; if (typeof _rooms === 'object') _rooms.at = 0; if (document.getElementById('sec-brands')?.classList.contains('active')) initBrandsPage(); }
     else showToast((j && j.error === 'auth_required') ? 'Sign in to watch a brand' : (j && j.error === 'exists_or_denied') ? 'We already watch ' + name : 'Could not watch that brand');
   } catch (e) { showToast('Could not watch that brand'); }
 }
 
+/* SEAM:ENTITY_ROOM (RM1): the rooms on the graph. The Brands page lists every subject we watch (GET /excavate/rooms: counted on
+   what names it, twelve weeks each) and opens a room per subject (GET /excavate/room?id=): the counts and how far back they reach,
+   tonight's reading, the record on it with the grades and the marks, the claims newest first, the readings counted, the weeks, the
+   outlets by tier, the attention, its set, the latest stories. The old brand functions stay for their charts; a #brand= address
+   opens the subject behind the track. */
+const _rooms = { list: [], at: 0, open: null, room: null, loading: false };
+const _ROOM_KINDS = { brand: 'Brand', person: 'Person', product: 'Product', org: 'Organisation', place: 'Place', other: 'Other' };
+function _roomKind(k) { return _ROOM_KINDS[String(k || '').toLowerCase()] || 'Brand'; }
+// The address of an open room: #room=<entity id>, or the older #brand=<track id> (the subject behind the track opens).
+function _roomHash() {
+  const m = /#(room|brand)=([0-9a-fA-F-]{36})(?:$|[&?])/.exec(location.hash || ''); if (!m) return null;
+  const id = _uuid(m[2]); return id ? { by: m[1] === 'brand' ? 'track' : 'id', id } : null;
+}
+async function initRoomsPage() {
+  if (Date.now() - _rooms.at > 300000) {
+    _rooms.loading = true;
+    try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/rooms', { cache: 'no-store' }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _rooms.list = j.rooms || []; _rooms.at = Date.now(); } } catch (e) { /* the grid says so */ }
+    _rooms.loading = false;
+  }
+  _renderRoomGrid();
+  const h = _roomHash();
+  if (h) { if (_rooms.open !== h.id) _openRoom(h.id, true, h.by); } else _closeRoom(true);
+}
+function _roomRoute() {
+  if (window._signedOut) return;
+  const h = _roomHash(), sec = document.getElementById('sec-brands');
+  if (!sec || !sec.classList.contains('active')) { if (h) navTo('brands'); return; }
+  if (h && h.id !== _rooms.open) _openRoom(h.id, true, h.by); else if (!h && _rooms.open) _closeRoom(true);
+}
+function _renderRoomGrid() {
+  const grid = document.getElementById('brand-grid'); if (!grid) return;
+  const list = (_rooms.list || []).filter(x => _uuid(x.id));
+  if (!_rooms.at) { grid.innerHTML = '<p class="lib-empty">The rooms did not answer. Refresh in a moment.</p>'; return; }
+  const card = x => { const c = x.counts || {}, id = _uuid(x.id);
+    const figs = c.captures_30d == null || !Array.isArray(x.weeks) ? '<span>Counted from the next run.</span>'
+      : `<span><b>${_fmtN(c.captures_7d)}</b> in 7 days</span><span><b>${_fmtN(c.captures_30d)}</b> in 30 days</span><span><b>${_fmtN(c.outlets_30d)}</b> outlets</span><span>${x.latest ? 'latest ' + safe(_day(x.latest)) : 'no story yet'}</span>`;
+    const rec = x.deployments ? `<span><b>${_fmtN(x.deployments)}</b> ${x.deployments === 1 ? 'reading' : 'readings'} on record</span><span>${x.held || x.missed ? `${_fmtN(x.held)} held, ${_fmtN(x.missed)} missed` : 'being checked'}</span>` : '';
+    const cov = c.captures_30d != null && x.coverage_weeks != null && x.coverage_weeks < 12 ? `<span>counted from ${safe(_day(x.measured_from, true))}</span>` : '';
+    return `<article class="bcard" tabindex="0" role="button" data-id="${id}" aria-label="${safeAttr('Open the room for ' + (x.name || 'this subject'))}" onclick="_openRoom('${id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_openRoom('${id}')}">
+      ${_brandPhoto(x)}
+      <div class="who">${safe(_roomKind(x.kind))}${x.category ? ' · ' + safe(x.category) : ''}</div>
+      <h3>${safe(x.name)}</h3>
+      ${_pulseWeeks(x.weeks)}
+      <div class="figures">${figs}${rec}${cov}</div>
+      <div class="foot"><span>Open the room</span></div>
+    </article>`; };
+  grid.innerHTML = (list.length ? list.map(card).join('') : '<p class="lib-empty">No subject is watched yet.</p>')
+    + `<div class="bcard watch"><p>Watch a brand we do not follow yet. Its weeks start counting on the next run.</p><form class="bfind" onsubmit="event.preventDefault();trackThis(this.querySelector('input').value)"><input type="text" placeholder="Brand name" aria-label="Brand name"><button type="submit">Watch</button></form></div>`;
+  if (typeof _drawPulses === 'function') _drawPulses();
+}
+function _roomFind() {
+  const q = String((document.getElementById('brand-find') || {}).value || '').trim(), note = document.getElementById('brand-find-note'); if (!q || !note) return;
+  if (!_rooms.at) { note.textContent = _rooms.loading ? 'The rooms are still loading. Try again in a moment.' : 'The rooms did not load. Refresh in a moment.'; return; }
+  const k = q.toLowerCase(), all = (_rooms.list || []).filter(x => _uuid(x.id)), names = x => [x.name].concat(x.aliases || []).map(n => String(n || '').toLowerCase());
+  const hit = all.find(x => names(x).some(n => n === k)) || (k.length >= 2 && all.find(x => names(x).some(n => n.startsWith(k)))) || (k.length >= 3 && all.find(x => names(x).some(n => n.includes(k))));
+  if (hit) { note.textContent = ''; _openRoom(hit.id); return; }
+  note.innerHTML = `We do not watch ${safe(q)} yet.<button type="button" onclick="trackThis(${safeAttr(JSON.stringify(q))})">Watch ${safe(q)}</button><button type="button" onclick="setSearch(${safeAttr(JSON.stringify(q))});navTo('explore');runSearch()">Read it now</button>`;
+}
+function _closeRoom(quiet) {
+  const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room) return;
+  const was = _rooms.open;
+  room.style.display = 'none'; room.innerHTML = ''; list.style.display = 'block'; _rooms.open = null; _rooms.room = null;
+  if (!quiet && _roomHash()) { try { if (history.state && history.state.room === was) history.back(); else history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* the address stays */ } }
+  if (was) { const c = document.querySelector('.bcard[data-id="' + was + '"]'); if (c && !quiet) c.focus({ preventScroll: false }); }
+}
+// Opens a room by its entity id, or (by = 'track') by the track behind it; the address becomes #room=<entity id> once the room answers.
+async function _openRoom(id, fromAddress, by) {
+  id = _uuid(id);
+  const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room || !id) return;
+  const fromRoom = !!_rooms.open;
+  _rooms.open = id; _rooms.room = null;
+  list.style.display = 'none'; room.style.display = 'block';
+  room.innerHTML = '<button class="broom-back" onclick="_closeRoom()">&larr; All subjects</button><p class="lib-empty" role="status">Opening the room.</p>';
+  if (!fromAddress) { try { if (fromRoom && _roomHash()) history.replaceState({ room: id }, '', location.pathname + location.search + '#room=' + id); else history.pushState({ room: id }, '', location.pathname + location.search + '#room=' + id); } catch (e) { /* the address stays */ } }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  let j = null;
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/room?' + (by === 'track' ? 'track=' : 'id=') + encodeURIComponent(id), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  if (_rooms.open !== id) return;
+  if (!j || !j.ok) { room.innerHTML = '<button class="broom-back" onclick="_closeRoom()">&larr; All subjects</button><p class="lib-empty" role="status">' + (j && j.error === 'no_room' ? 'We do not watch that subject.' : 'The room did not answer. Refresh in a moment.') + '</p>'; return; }
+  if (by === 'track' && j.room && _uuid(j.room.id) && _uuid(j.room.id) !== id) { _rooms.open = _uuid(j.room.id); try { history.replaceState({ room: _rooms.open }, '', location.pathname + location.search + '#room=' + _rooms.open); } catch (e) { /* the address stays */ } }
+  _rooms.room = j; _paintRoom(room, j, true);
+}
+function _paintRoom(room, j, focus) {
+  try { room.innerHTML = _renderRoom(j); }
+  catch (e) { console.warn('room', e); room.innerHTML = '<button class="broom-back" onclick="_closeRoom()">&larr; All subjects</button><p class="lib-empty" role="status">The room could not be drawn. Refresh in a moment.</p>'; return; }
+  _wireColumns(room.querySelector('.viz.cols')); _wireLines(room.querySelector('.viz.lines')); if (typeof _drawPulses === 'function') _drawPulses();
+  if (focus) { const h = room.querySelector('h1'); if (h) h.focus({ preventScroll: true }); }
+  _fillRoomRecord(room, j);
+}
+async function _fillRoomRecord(room, j) {
+  const sec = room.querySelector('#brand-record'), slot = sec && sec.querySelector('.tl-slot'); if (!slot) return;
+  const key = sec.getAttribute('data-key'), id = (j.room || {}).id;
+  const tl = await _tlFetch(key);
+  if (_rooms.open !== _uuid(id) || !slot.isConnected) return;
+  if (!tl || !tl.ok) { if (/Opening the record/.test(slot.textContent)) slot.innerHTML = '<p class="room-more">' + (tl && tl.error === 'not_counted' ? 'These weeks are still being filled. Look again later today.' : 'The weeks did not answer. Refresh in a moment.') + '</p>'; return; }
+  if (tl.empty) { if (/Opening the record/.test(slot.textContent)) slot.innerHTML = '<p class="room-more">The weeks start now: every week from here on is counted and kept.</p>'; return; }
+  slot.innerHTML = _renderTimeline(tl, { inline: true });
+  _wireColumns(slot.querySelector('.viz.cols'));
+}
+try { window.matchMedia('(max-width: 640px)').addEventListener('change', () => { const room = document.getElementById('brand-room'); if (_rooms.room && _rooms.open === _uuid((_rooms.room.room || {}).id) && room && room.style.display === 'block') _paintRoom(room, _rooms.room); }); } catch (e) { /* older browsers keep the first drawing */ }
+function _roomOpenReading(id) { id = _uuid(id); if (!id) return; if (typeof _openDoorRead === 'function') { try { _openDoorRead({ id, title: '', frame: null }); return; } catch (e) { /* the address opens it */ } } location.href = location.pathname + '?insight=' + id; }
+function _roomGrade(g, by) { return g === 'held' ? 'the call held' : g === 'missed' ? 'the call missed' : g === 'unmeasured' ? 'not measured' : by ? 'checked by ' + _day(by, true) : ''; }
+function _roomMarks(m) { if (!m) return ''; const parts = []; if (m.held) parts.push(_fmtN(m.held) + ' held'); if (m.useful) parts.push(_fmtN(m.useful) + ' useful'); if (m.wrong) parts.push(_fmtN(m.wrong) + ' wrong'); return parts.length ? 'Readers: ' + parts.join(', ') : ''; }
+// A quote from the board's voices, credited by what the speaker said of themselves, else Consumer, with the likes.
+function _roomQuote(v) {
+  const s0 = v.self || {}, id = [s0.generation, s0.role ? (s0.generation ? 'a ' : 'A ') + s0.role : null].filter(Boolean);
+  return `<figure class="quote"><p>“${safe(v.text)}”</p><cite>${safe((id.length ? id : ['Consumer']).concat(v.likes ? [_fmtN(v.likes) + (v.likes === 1 ? ' like' : ' likes')] : []).join(', '))}</cite></figure>`;
+}
+function _renderRoom(j) {
+  const r = j.room || {}, m = j.measure || {}, wk = Array.isArray(j.weeks) && j.weeks.length >= 2 ? j.weeks : null, t = r.track || {}, a = j.attention || null, st = a && a.stats;
+  const photo = _brandPhoto({ image: t.image }, 'bph');
+  const total = wk ? wk.reduce((s, x) => s + (x.n || 0), 0) : 0;
+  const delta = m.recent_7d != null && m.prior_7d != null ? (m.recent_7d === m.prior_7d ? 'the same as the week before' : (m.recent_7d > m.prior_7d ? 'up ' : 'down ') + _fmtN(Math.abs(m.recent_7d - m.prior_7d)) + ' on the week before') : '';
+  const short = r.coverage_weeks != null && r.coverage_weeks < 12;
+  const stats = (m.recent_7d != null ? _brandStat(_fmtN(m.recent_7d), 'stories in the last 7 days', delta) : '') + _brandStat(_fmtN(total), short ? 'stories in ' + r.coverage_weeks + ' counted weeks' : 'stories in twelve weeks', null) + _brandStat(_fmtN(m.outlets || 0), 'outlets in twelve weeks', null)
+    + (m.weeks_touched != null ? _brandStat(_fmtN(m.weeks_touched) + ' of 12', 'weeks with a story', null) : '')
+    + (st && st.recent_3m != null ? _brandStat(_fmtC(st.recent_3m), 'views of its Wikipedia article, last three months', st.yoy_pct != null ? (st.yoy_pct === 0 ? 'level with' : (st.yoy_pct > 0 ? 'up ' : 'down ') + Math.abs(st.yoy_pct) + '% on') + ' the same months last year' : null) : '');
+  const head = `<button class="broom-back" onclick="_closeRoom()">&larr; All subjects</button>
+    <header class="broom-head${photo ? '' : ' nophoto'}">${photo ? photo.replace('</figure>', (t.image_license ? `<figcaption>Image: ${safe(t.image_license)}</figcaption>` : '') + '</figure>') : ''}
+      <div><div class="room-dateline">${safe(_roomKind(r.kind))}${r.category ? ' · ' + safe(r.category) : ''} · counted ${safe(_day(r.measured_at, true))}</div><h1 tabindex="-1">${safe(r.name)}</h1>${t.description ? `<p class="desc">${safe(t.description)}</p>` : ''}<div class="bstats">${stats}</div>${short ? `<p class="room-more">Counted from ${safe(_day(r.measured_from, true))}: ${_fmtN(r.coverage_weeks)} of 12 weeks. The earlier weeks are not counted yet, so a low early column is not a fall.</p>` : ''}</div>
+    </header>`;
+  const b = j.board, board = b && b.claim ? `<section class="room-sec bboard"><div class="room-head"><h2>On the board this week</h2><div class="sub">Our reading of ${safe(r.name)} for the week of ${safe(_day(b.night, true))}.</div></div>
+      <h3>${safe(b.claim)}</h3>${b.move ? `<p class="move">${safe(b.move)}</p>` : ''}${b.question ? `<p class="q">Answers: ${safe(b.question)}</p>` : ''}
+      ${(b.voices || []).length ? `<div class="bquotes">${b.voices.slice(0, 3).map(_roomQuote).join('')}</div>` : ''}</section>` : '';
+  const rc = j.record || { deployments: 0, readings: [] };
+  const recLine = rc.deployments ? `${_fmtN(rc.deployments)} ${rc.deployments === 1 ? 'reading' : 'readings'} on record since ${safe(_day(rc.since, true))}: ${_fmtN(rc.held)} held, ${_fmtN(rc.missed)} missed, ${_fmtN(rc.open)} being checked.${rc.earlier ? ` ${_fmtN(rc.earlier)} earlier ${rc.earlier === 1 ? 'reading stands' : 'readings stand'} outside the record.` : ''}` : (rc.earlier ? `${_fmtN(rc.earlier)} earlier ${rc.earlier === 1 ? 'reading stands' : 'readings stand'} outside the record; nothing on it yet.` : `Nothing on the record for ${safe(r.name)} yet.`);
+  const record = `<section class="room-sec" id="room-record"><div class="room-head"><h2>The record</h2><div class="sub">What we deployed on ${safe(r.name)}, each with its call and how it turned out.</div></div>
+      <p class="room-more">${recLine}</p>
+      ${(rc.readings || []).length ? `<div class="rrds">${rc.readings.map(x => `<article class="rrd"><div class="rrd-meta">${safe(_day(x.night, true))}${x.grade || x.check_by ? ' · ' + safe(_roomGrade(x.grade, x.check_by)) : ''}${x.findings ? ' · ' + _fmtN(x.findings) + (x.findings === 1 ? ' finding' : ' findings') : ''}</div><h3>${safe(x.claim || '')}</h3>${x.move ? `<p class="move">${safe(x.move)}</p>` : ''}${_roomMarks(x.marks) ? `<div class="rrd-marks">${safe(_roomMarks(x.marks))}</div>` : ''}<button type="button" class="rrd-open" onclick="_roomOpenReading('${_uuid(x.id)}')">Open the reading</button></article>`).join('')}</div>` : ''}</section>`;
+  const cls = Array.isArray(j.claims) ? j.claims : [];
+  const claims = cls.length ? `<section class="room-sec"><div class="room-head"><h2>The claims</h2><div class="sub">Every finding we have written about ${safe(r.name)}, newest first, with the confidence it earned and how its call turned out.</div></div>
+      <div class="rcls">${cls.map(c => `<div class="rcl"><div class="rcl-meta">${safe(_day(c.night, true))} · ${c.src === 'door' ? 'deployed' : 'a live read'}${c.confidence ? ' · ' + safe(c.confidence) : ''}${c.grade ? ' · ' + safe(_roomGrade(c.grade, null)) : ''}${c.how === 'frame' ? '' : ' · named in the finding'}</div><p>${safe(c.claim)}</p>${c.excerpt ? `<details><summary>What it rests on</summary><p class="rcl-ex">${safe(c.excerpt)}</p></details>` : ''}</div>`).join('')}</div></section>` : '';
+  const rd = j.readings || {};
+  const readings = rd.door || rd.live ? `<p class="room-more">${_fmtN(rd.door || 0)} ${rd.door === 1 ? 'reading' : 'readings'} on the board and ${_fmtN(rd.live || 0)} live ${rd.live === 1 ? 'read' : 'reads'} name ${safe(r.name)}${rd.latest_live ? `; the latest live read on ${safe(_day(rd.latest_live, true))}` : ''}.</p>` : '';
+  const cov = wk ? `<section class="room-sec"><div class="room-head"><h2>Coverage, week by week</h2><div class="sub">Stories that name ${safe(r.name)} each week for twelve weeks, by the date each was published, on our regular sweep.</div></div>
+      ${_brandColumns(wk)}
+      <p class="viz-note">${total ? `${_fmtN(total)} ${total === 1 ? 'story' : 'stories'} from ${_fmtN(m.outlets || 0)} ${m.outlets === 1 ? 'outlet' : 'outlets'} in twelve weeks.` : `No story naming ${safe(r.name)} in twelve weeks of our sweep.`}${short ? ` Counted from ${safe(_day(r.measured_from, true))}.` : ''}</p>
+      <details class="viz-table"><summary>See the numbers</summary><table><tr><th>Week of</th><th>Stories</th><th>Outlets</th></tr>${wk.map(w => `<tr><td>${safe(_day(w.start, true))}</td><td>${_fmtN(w.n)}</td><td>${_fmtN(w.outlets)}</td></tr>`).join('')}</table></details></section>` : '';
+  const v = j.voices || {}, tiers = Array.isArray(v.tiers) ? v.tiers : [];
+  const tierName = x => x == null ? 'Unranked' : x === 0 ? 'Tier 0: the record' : x === 1 ? 'Tier 1: daily reporting' : x === 2 ? 'Tier 2: specialist depth' : x === 3 ? 'Tier 3: the edge' : 'Tier 4: primary evidence';
+  const voices = tiers.length ? `<section class="room-sec"><div class="room-head"><h2>The voices</h2><div class="sub">Who carried ${safe(r.name)} in twelve weeks, by tier: ${_fmtN(v.outlets || 0)} ${v.outlets === 1 ? 'outlet' : 'outlets'} behind ${_fmtN(v.stories || 0)} ${v.stories === 1 ? 'story' : 'stories'}.</div></div>
+      <table class="rtiers"><tr><th>Tier</th><th>Outlets</th><th>Stories</th><th>Most often</th></tr>${tiers.map(x => `<tr><td>${safe(tierName(x.tier))}</td><td>${_fmtN(x.outlets)}</td><td>${_fmtN(x.stories)}</td><td>${(x.names || []).map(n => safe(n.name) + ' (' + _fmtN(n.n) + ')').join(', ')}</td></tr>`).join('')}</table></section>` : '';
+  const lines = a && Array.isArray(a.series) && a.series.length ? _brandLines(a) : '';
+  const att = lines ? `<section class="room-sec"><div class="room-head"><h2>Attention, three years</h2><div class="sub">Views of each subject's Wikipedia article, month by month, against up to two of its set.</div></div>
+      ${lines}
+      ${st ? `<p class="viz-note">${st.recent_3m != null ? `${_fmtN(st.recent_3m)} views in the last three months${st.yoy_pct != null ? `, ${st.yoy_pct === 0 ? 'level with' : (st.yoy_pct > 0 ? 'up ' : 'down ') + Math.abs(st.yoy_pct) + '% on'} the same months last year` : ''}${st.two_year_pct != null ? ` and ${st.two_year_pct === 0 ? 'level with' : (st.two_year_pct > 0 ? 'up ' : 'down ') + Math.abs(st.two_year_pct) + '% on'} two years before` : ''}.` : ''}${st.peak_month ? ` The peak was ${safe(_month(st.peak_month))}, ${_fmtN(st.peak_views)} views.` : ''}</p>` : ''}
+      <div class="viz-src">Source: Wikimedia pageviews, English Wikipedia, people only. Article: ${safe((a.series.find(x => x.role === 'subject') || {}).article || '')}.</div></section>` : '';
+  const self = { id: r.id, name: r.name, self: true, n7: m.recent_7d, n30: null, weeks: m.series || null };
+  const nums = x => x.n30 == null && x.self ? `<span class="n">${_fmtN(x.n7 || 0)}<small>7 days</small></span><span class="n">${_fmtN(total)}<small>12 weeks</small></span><span class="n">${_fmtN(m.outlets || 0)}<small>outlets, 12 weeks</small></span>`
+    : x.n30 == null || !Array.isArray(x.weeks) ? '<span class="n"><small>counted from the next run</small></span><span class="n"></span><span class="n"></span>'
+    : `<span class="n">${_fmtN(x.n7)}<small>7 days</small></span><span class="n">${_fmtN(x.n30)}<small>30 days</small></span><span class="n">${x.outlets_30d == null ? '' : _fmtN(x.outlets_30d)}<small>${x.outlets_30d == null ? '' : 'outlets, 30 days'}</small></span>`;
+  const row = x => { const id = _uuid(x.id), inner = `<b>${safe(x.name)}</b>${_pulseWeeks(x.weeks) || '<span></span>'}${nums(x)}`;
+    return x.self ? `<div class="brow self">${inner}</div>` : id ? `<button type="button" class="brow" onclick="_openRoom('${id}')" aria-label="${safeAttr('Open the room for ' + (x.name || 'this subject'))}">${inner}</button>` : ''; };
+  const set = (j.set || []).length ? `<section class="room-sec"><div class="room-head"><h2>Against its set</h2><div class="sub">The subjects we watch in ${safe(r.category || 'its category')}, all on the same count.</div></div>
+      <div class="bset">${[self].concat(j.set).map(row).join('')}</div></section>` : '';
+  const stories = (j.stories || []).length ? `<section class="room-sec"><div class="room-head"><h2>The latest stories</h2><div class="sub">The newest coverage naming ${safe(r.name)}, each linked to its outlet.</div></div>
+      <div class="bstories">${j.stories.map(x => `<a class="bstory${x.image ? '' : ' nophoto'}" href="${safeUrl(x.url)}" target="_blank" rel="noopener">${x.image ? `<img src="${safeAttr(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('nophoto');this.remove()">` : ''}<div><small>${safe(x.source || '')}${x.tier != null ? ' · T' + _fmtN(x.tier) : ''} · ${safe(_day(x.date, true))}</small><span>${safe(x.title)}</span></div></a>`).join('')}</div></section>` : '';
+  const ledLine = j.ledger ? `${_fmtN(j.ledger.weeks)} ${j.ledger.weeks === 1 ? 'week' : 'weeks'} counted since ${safe(_day(j.ledger.since, true))}${j.ledger.on_board ? `, ${_fmtN(j.ledger.on_board)} of them on the board` : ''}.` : '';
+  const led = t.id && _tlKey('track:' + t.id) ? `<section class="room-sec" id="brand-record" data-key="${_tlKey('track:' + t.id)}"><div class="room-head"><h2>The weeks</h2><div class="sub">Every week we counted ${safe(r.name)} and the weeks it stood on our board.</div></div><div class="tl-slot">${ledLine ? `<p class="room-more">${ledLine}</p>` : '<p class="lib-empty">Opening the record.</p>'}</div></section>` : (ledLine ? `<p class="room-more">${ledLine}</p>` : '');
+  const cta = `<section class="partners"><p>Commission a RECON on ${safe(r.name)}: the deep read, built on demand, with every source, every count and the moves it implies.</p><a href="mailto:hello@unsurfaced-intelligence.com?subject=${encodeURIComponent('RECON: ' + (r.name || ''))}">Commission a RECON</a></section>`;
+  return head + board + record + claims + readings + cov + voices + att + set + stories + led + cta;
+}
 /* SEAM:MOAT_1 (retired on this page in EX19): the brand dashboard and its measured block are gone; a brand's measured weeks live
  * in its room (SEAM:BRAND_ROOM). The worker's computed brand signal stays for the reads that ask for it. */
 /* SEAM:DASH_READ — the dashboard learns judgment. After render, the base

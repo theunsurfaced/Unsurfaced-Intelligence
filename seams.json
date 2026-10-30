@@ -1673,6 +1673,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:CLAIMS",
    "purpose": "EX53: the move card says what it stands on (STANDS ON: the corpus claims by date) and when it is single-source; the moves head says how many findings the house held when the pass ran."
+  },
+  "SEAM:ENTITY_ROOM": {
+   "file": "worker/src/index.js",
+   "purpose": "RM1 (Oct 29, 2026): the rooms on the graph. Every active entity has a room (GET /excavate/room?id=<entity id>; ?track=<track id> and the page's #brand= address open the entity behind a track): its measure counted on its links with the measure's own function (excMeasureFrom over the same rows the board reads, research out on the sweep, rejected out, lakeWhen dates) with measured_from and coverage_weeks; twelve weeks with their outlets (roomWeeksOf); the voices behind them by tier (roomVoicesOf); the newest stories with their photographs (roomStoriesOf); the record on it (the door's readings whose frame names it, as tiles, under the record law, with grades and marks from their claims: roomRecordOf, roomTileIs); the claims on it (claim_corpus, newest first, with how each was linked); the readings counted from the claims' links (roomReadingsOf); the board's reading tonight with the people's voices; the entities sharing its category on the same count; three years of attention (brandAttention over the entity); the ledger's weeks for an entity with a track. The list (GET /excavate/rooms) is every active entity on one database call per hundred (entity_rollup, 0056: the same counting rule in SQL, plus each entity's claims, deployments, held and missed). Public like the record; the list kept ten minutes, a room thirty (never a partial one); no model. A brand watched from the page becomes an entity at once (excavateTrackAdd). /excavate/tracks and /excavate/brand stay for the feed."
+  },
+  "SEAM:ENTITY_ROOM@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ENTITY_ROOM",
+   "purpose": "RM1: the Brands page lists the rooms (every subject on the links: kind and category, the pulse of twelve weeks, 7 and 30 days, outlets, the latest story, the record's count) and opens one (the counts with how far back they reach, on the board this week, the record with grades and marks and a way to open each reading, the claims newest first, the readings counted, coverage week by week, the voices by tier, attention, its set, the latest stories, the ledger's weeks, the RECON line). The old brand functions hand over (initBrandsPage, _brandRoute, _openBrand, _closeBrand) and keep their charts; #room=<entity id> is the address, #brand=<track id> still opens."
   }
  },
  "planned": [

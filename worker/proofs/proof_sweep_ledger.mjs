@@ -63,8 +63,8 @@ ok(/await sweepRefound\(env, rows, fresh\);/.test(fnOf('spineCapture')) && /\(aw
 // the RECON in flight is untouched: its research reads the lake as it always did. Every place the sweep is asked for, by function:
 const enclosing = i => { const head = w.slice(0, i); const m = [...head.matchAll(/^(?:async )?function (\w+)\(/gm)].pop(); return m ? m[1] : null; };
 const askers = new Set([...w.matchAll(/await sweepOnly\(env\)/g)].map(m => enclosing(m.index)));
-ok([...askers].sort().join(',') === 'audiencesRefresh,brandRoom,composeFromLake,dailyLakePublic,excMeasures,excReadingMass,fetchRecurrenceRows,tracksRefresh',
-  'S13 the sweep is asked for in exactly eight places: the board\'s recurrence, tracked brands, a brand\'s room, cohorts, a read\'s measures, the probe\'s mass (EX42), DAILY\'s picks and the public ticker');
+ok([...askers].sort().join(',') === 'audiencesRefresh,brandRoom,composeFromLake,dailyLakePublic,excMeasures,excReadingMass,fetchRecurrenceRows,roomOf,tracksRefresh',
+  'S13 the sweep is asked for in exactly nine places: the board\'s recurrence, tracked brands, a brand\'s room, an entity\'s room (RM1), cohorts, a read\'s measures, the probe\'s mass (EX42), DAILY\'s picks and the public ticker');
 const flaggers = new Set([...w.matchAll(/await sweepReady\(env\)/g)].map(m => enclosing(m.index)));
 ok([...flaggers].sort().join(',') === 'excavatePropose,sweepOnly,sweepRefound',
   'S14 the column is asked about only by the sweep\'s refound, the ledger\'s sweep note and sweepOnly: a RECON\'s stages, a read\'s pack and a tile\'s evidence read the whole lake, research included');
@@ -235,7 +235,7 @@ ok(/<cite>Consumer, 1 like<\/cite>/.test(elx.track.innerHTML) && /about the subj
 const stand = fs.readFileSync('weekly/index.html', 'utf-8');
 ok(/if \(location\.hash === '#report' && report\.issue\) setTimeout\(function \(\) \{ \$\('report'\)\.scrollIntoView\(/.test(stand), 'P12e the stand scrolls to the report when the Library sends a reader there');
 const brands = between(page, '<div id="sec-brands" class="page-section">', '<!-- ══ AUDIENCES ══ -->');
-ok(!/[—]/.test(brands) && !/\blake\b/.test(brands) && /Every brand we watch, measured every week\./.test(brands), 'P13 the Brands page loses its dashes and its machinery word');
+ok(!/[—]/.test(brands) && !/\blake\b/.test(brands) && /Every subject we watch, counted every week\./.test(brands), 'P13 the Brands page loses its dashes and its machinery word (RM1: the subjects\' words)');
 
 // ── Z: migration, seams, gate ─────────────────────────────────────────────
 ok(/set lock_timeout = '5s';/.test(mig) && /alter table public\.signals add column if not exists research boolean not null default false;/.test(mig) && !/update public\.signals/.test(mig),

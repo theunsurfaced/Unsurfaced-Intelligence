@@ -201,6 +201,8 @@ export default {
       if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
       if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
+      if (path === '/excavate/rooms' && request.method === 'GET') return excavateRooms(env, origin);                 // SEAM:ENTITY_ROOM (RM1): every entity on the links
+      if (path === '/excavate/room' && request.method === 'GET') return excavateRoom(request, env, origin);          // SEAM:ENTITY_ROOM (RM1): one subject in one place
       if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
       if (path === '/excavate/timeline' && request.method === 'GET') return excavateTimeline(request, env, origin);  // SEAM:MEMORY
       if (path === '/excavate/track' && request.method === 'POST') return excavateTrackAdd(request, env, origin);    // SEAM:TRACKS (signed in)
@@ -2093,10 +2095,11 @@ async function entityResolveName(env, name, opts) {
   const map = await entityMap(env);
   if (map[k]) return map[k];
   if (!(opts && opts.create)) return null;
-  const want = entityProposals([{ frame: { entity: name, category: (opts && opts.category) || null, competitors: [] } }], [])[0];
+  const tr = opts && opts.track && opts.track.id ? opts.track : null;   // SEAM:ENTITY_ROOM (RM1): a watched brand proposes itself as a track: the house's spelling stands, from_src track, its track_id on the row
+  const want = (tr ? entityProposals([], [{ id: tr.id, name, aliases: tr.aliases || [], sector: tr.sector || (opts && opts.category) || null, kind: tr.kind }]) : entityProposals([{ frame: { entity: name, category: (opts && opts.category) || null, competitors: [] } }], []))[0];
   if (!want) return null;
   const since = new Date(Date.now() - ENTITY.BACKFILL_WEEKS * 7 * 864e5).toISOString();
-  const ins = ((await sbRest(env, 'entities', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { name: want.name, kind: want.kind, aliases: want.aliases, category: want.category, context: want.context, ambiguous: want.ambiguous, from_src: 'frame', resolved_from: since } }).catch(excQuiet('entity_create', []))) || [])[0];
+  const ins = ((await sbRest(env, 'entities', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { name: want.name, kind: want.kind, aliases: want.aliases, category: want.category, context: want.context, ambiguous: want.ambiguous, from_src: want.from_src || 'frame', track_id: want.track_id || null, resolved_from: since } }).catch(excQuiet('entity_create', []))) || [])[0];
   if (!ins || !ins.id) { const again = await entityMap(env); return again[k] || null; }   // a race with another worker: the row is theirs, the name is ours too
   try { await sbRest(env, 'rpc/resolve_signal_entities', { method: 'POST', body: { p_since: since, p_until: new Date().toISOString(), p_entity: ins.id } }); }
   catch (e) { console.log('entity_backfill_one_error', String(e && e.message).slice(0, 120)); }
@@ -11817,11 +11820,186 @@ async function excavateTrackAdd(request, env, origin) {
   try {
     const back = await sbRest(env, 'tracks?select=id,name', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [row] }) || [];
     if (!back[0]) return json({ ok: false, error: 'exists_or_denied' }, 200, origin, env);
+    // SEAM:ENTITY_ROOM (RM1): a watched brand is an entity at once (resolved, or made from the name the way a frame makes one, and backfilled
+    // alone), stamped with its track when it had none, so its room counts from the next half hour; the rooms' list is dropped.
+    if (typeof entityResolveName === 'function') { try { const ent = await entityResolveName(env, name, { create: true, category: row.sector, track: { id: back[0].id, name, aliases: row.aliases, sector: row.sector } }); if (ent && ent.id) await sbRest(env, 'entities?id=eq.' + ent.id + '&track_id=is.null', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { track_id: back[0].id, from_src: 'track', updated_at: new Date().toISOString() } }); if (typeof roomDropLists === 'function') await roomDropLists(env); } catch (e) { console.log('track_entity', String(e && e.message).slice(0, 60)); } }
     await logEvent(env, 'intelligence', 'excavate', 'track_add', user.id, { name });
     return json({ ok: true, track: back[0] }, 200, origin, env);
   } catch (e) { return json({ ok: false, error: 'insert_failed' }, 200, origin, env); }
 }
 
+/* ═══ SEAM:ENTITY_ROOM (RM1): the rooms on the graph. Every active entity has a room: the measure of one subject counted on its
+ * links with the measure's own function (so the room and the board are one counter), its twelve weeks with their outlets, the
+ * voices behind it (the outlets by tier), the newest stories, the record on it (the door's readings whose frame names it, under the
+ * record law, with their grades and marks), the claims on it (claim_corpus, newest first, with how each was linked), the readings
+ * counted (overnight and live), the board's reading tonight with the people's voices, the entities that share its category on the
+ * same count, three years of attention, and the ledger's weeks for an entity with a track. The list is every active entity on one
+ * database call (entity_rollup, 0056). Public, like the record; the list kept ten minutes and a room thirty; no model is asked. The
+ * room's JSON is the shape the Partner API will serve (EX51). /excavate/tracks and /excavate/brand stay for the feed. ═══ */
+const ROOMS = { KEY: 'room:v1:', LIST_KEY: 'rooms:v1', TTL: 1800, LIST_TTL: 600, WEEKS: 12, ROWS: 1500, STORIES: 6, CLAIMS: 40, READINGS: 40, SET: 8, RIVALS: 2, NAMES: 6, CHUNK: 100, LINKS: 3000 };
+const ROOM_KINDS = { brand: 'Brand', person: 'Person', product: 'Product', org: 'Organisation', place: 'Place', other: 'Other' };
+/* PURE: the signal rows behind an entity's links, as the measure reads them: a rejected row never, a research row not on the sweep. */
+function roomRowsOf(links, sweep) {
+  const out = [];
+  for (const l of links || []) {
+    const s = l && l.signal; if (!s || !s.id || s.status === 'rejected' || (sweep && s.research)) continue;
+    out.push({ id: s.id, title: s.title, url: s.url, source_name: s.source_name, source_tier: s.source_tier, territory: s.territory, published_at: s.published_at, captured_at: s.captured_at || l.captured_at, image: s.image || null, momentum: s.momentum || null, research: !!s.research });
+  }
+  return out;
+}
+/* PURE: twelve rolling weeks ending now, each with its stories and its outlets, by the date each row speaks for (the measure's rule). */
+function roomWeeksOf(rows, nowMs) {
+  const W = ROOMS.WEEKS, wk = 7 * 864e5, now = nowMs || Date.now();
+  const out = Array.from({ length: W }, (_, i) => ({ start: new Date(now - (W - i) * wk).toISOString().slice(0, 10), n: 0, outlets: new Set() }));
+  for (const r of rows || []) {
+    const w = lakeWhen(r); const t = w ? Date.parse(w) : NaN; if (!Number.isFinite(t)) continue;
+    const age = now - t; if (!(age >= 0) || age >= W * wk) continue;
+    const b = out[W - 1 - Math.floor(age / wk)]; b.n++; b.outlets.add(excOutletKey({ source: r.source_name, url: r.url }));
+  }
+  return out.map(b => ({ start: b.start, n: b.n, outlets: b.outlets.size }));
+}
+/* PURE: the voices behind the twelve weeks: for each tier, the distinct outlets, the stories and the most frequent names. */
+function roomVoicesOf(rows, nowMs) {
+  const now = nowMs || Date.now(), W = ROOMS.WEEKS * 7 * 864e5, byTier = {}, all = new Set();
+  let stories = 0;
+  for (const r of rows || []) {
+    const w = lakeWhen(r); const t = w ? Date.parse(w) : NaN; if (!Number.isFinite(t)) continue;
+    const age = now - t; if (!(age >= 0) || age >= W) continue;
+    const tier = Number.isFinite(parseInt(r.source_tier, 10)) ? Math.min(4, Math.max(0, parseInt(r.source_tier, 10))) : null;
+    const k = excOutletKey({ source: r.source_name, url: r.url }), name = String(r.source_name || '').trim() || k;
+    const tk = tier == null ? 'none' : String(tier), o = byTier[tk] || (byTier[tk] = { tier, outlets: new Set(), stories: 0, names: {} });
+    o.outlets.add(k); o.stories++; if (!o.names[k]) o.names[k] = { name, n: 0 }; o.names[k].n++; all.add(k); stories++;   // one outlet under two spellings is one name
+  }
+  const tiers = Object.values(byTier).sort((a, b) => (a.tier == null ? 9 : a.tier) - (b.tier == null ? 9 : b.tier))
+    .map(o => ({ tier: o.tier, outlets: o.outlets.size, stories: o.stories, names: Object.values(o.names).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name)).slice(0, ROOMS.NAMES) }));
+  return { outlets: all.size, stories, tiers };
+}
+/* PURE: the newest stories, one per headline, each with its outlet, tier, date and its own https photograph; never one dated after tomorrow. */
+function roomStoriesOf(rows, n, nowMs) {
+  const seen = new Set(), out = [], edge = (nowMs || Date.now()) + 864e5;
+  const list = (rows || []).filter(r => r && r.title && r.url && lakeWhen(r) && Date.parse(lakeWhen(r)) <= edge).sort((a, b) => Date.parse(lakeWhen(b)) - Date.parse(lakeWhen(a)));
+  for (const r of list) {
+    const k = String(r.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (seen.has(k)) continue; seen.add(k);
+    const tier = parseInt(r.source_tier, 10);
+    out.push({ title: String(r.title).slice(0, 220), url: String(r.url).slice(0, 600), source: String(r.source_name || '').slice(0, 80) || null, tier: Number.isFinite(tier) ? tier : null, date: String(lakeWhen(r)).slice(0, 10), image: /^https:\/\//.test(String(r.image || '')) ? String(r.image).slice(0, 600) : null });
+    if (out.length >= (n || ROOMS.STORIES)) break;
+  }
+  return out;
+}
+/* PURE: the record on a subject from its door tiles (doorTile): the deployments under the record law, newest first, each with its
+ * grade and its marks (from its claims); readings before the law or on no evidence are counted as earlier, never listed. */
+function roomRecordOf(tiles, marksBy) {
+  const law = t => t.deployed >= RECORD.SINCE && (((t.measures || {}).recent_7d || 0) > 0 || ((t.measures || {}).outlets || 0) > 0 || (t.evidence_n || 0) >= DOOR.MIN_EVIDENCE);
+  const all = (tiles || []).filter(t => t && t.id).sort((a, b) => String(b.deployed).localeCompare(String(a.deployed)));
+  const rec = all.filter(law), earlier = all.length - rec.length;
+  const readings = rec.slice(0, ROOMS.READINGS).map(t => ({ id: t.id, night: t.deployed, claim: t.claim || null, move: t.move || null, question: t.question || null, findings: t.findings || 0,
+    grade: t.called && t.called.verdict ? t.called.verdict : null, check_by: t.watch && t.watch.by ? t.watch.by : null, develops: t.develops || null,
+    marks: (marksBy && marksBy[t.id]) || null, photo: t.photo && t.photo.url ? { url: t.photo.url, credit: t.photo.credit || null } : null }));
+  const held = rec.filter(t => t.called && t.called.verdict === 'held').length, missed = rec.filter(t => t.called && t.called.verdict === 'missed').length;
+  return { deployments: rec.length, held, missed, open: rec.filter(t => t.watch && !(t.called && t.called.verdict)).length, since: rec.length ? rec[rec.length - 1].deployed : null, earlier, readings };
+}
+/* PURE: the readings counted from the claims' links: the overnight readings and the live reads, with the latest live read's day. */
+function roomReadingsOf(links) {
+  const door = new Set(), live = new Set(); let latest = null;
+  for (const l of links || []) { const c = l && l.claim; if (!c || !c.reading_id) continue; if (c.src === 'read') { live.add(c.reading_id); if (c.night && (!latest || c.night > latest)) latest = c.night; } else door.add(c.reading_id); }
+  return { door: door.size, live: live.size, latest_live: latest };
+}
+/* PURE: a list card from an entity, its rollup row and its track. Counts are null until the entity is counted, never a zero that was never measured. */
+function roomListRow(e, r, t, cov) {
+  return { id: e.id, name: e.name, kind: ROOM_KINDS[e.kind] ? e.kind : 'brand', category: e.category || (t && t.sector) || null, aliases: (e.aliases || []).slice(0, 8), from: e.from_src || 'frame', track_id: e.track_id || null,
+    image: t && /^https:\/\//.test(String(t.image || '')) ? t.image : null, image_license: (t && t.image_license) || null, measurable: true,
+    counts: r ? { captures_7d: r.n7 || 0, captures_30d: r.n30 || 0, outlets_30d: r.outlets30 || 0, floor7: false, floor30: false } : { captures_7d: null, captures_30d: null, outlets_30d: null, floor7: false, floor30: false },
+    weeks: r && Array.isArray(r.weeks) ? r.weeks.map(x => Number(x) || 0) : null, latest: (r && r.latest) || null,
+    claims: (r && r.claims) || 0, deployments: (r && r.deployed) || 0, held: (r && r.held) || 0, missed: (r && r.missed) || 0,
+    coverage_weeks: cov ? cov.coverage_weeks : null, measured_from: cov ? cov.measured_from : null };
+}
+/* PURE: does a door tile belong to this entity: its track key, or a frame whose entity is the name or an alias, case-blind. */
+function roomTileIs(t, e) {
+  if (!t || !e) return false;
+  if (e.track_id && t.key === 'track:' + e.track_id) return true;
+  const nm = String((t.frame && t.frame.entity) || '').toLowerCase().replace(/\s+/g, ' ').trim(); if (!nm) return false;
+  return [e.name].concat(e.aliases || []).some(x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim() === nm);
+}
+async function roomEntities(env) {
+  return (await sbRest(env, 'entities?active=eq.true&select=id,name,kind,aliases,category,from_src,track_id,resolved_from&order=name.asc&limit=5000').catch(excQuiet('room_entities', []))) || [];
+}
+/* The list: every active entity on the links, one database call per hundred; kept ten minutes. */
+async function roomList(env) {
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(ROOMS.LIST_KEY) : null; if (hit) return JSON.parse(hit); } catch (e) { excQuiet('rooms_get')(e); }
+  const now = Date.now(), ents = await roomEntities(env), tracks = await loadTracks(env), byTrack = new Map(tracks.map(t => [t.id, t]));
+  const roll = new Map(); let partial = false;
+  for (let i = 0; i < ents.length; i += ROOMS.CHUNK) {
+    try { for (const r of ((await sbRest(env, 'rpc/entity_rollup', { method: 'POST', body: { p_ids: ents.slice(i, i + ROOMS.CHUNK).map(e => e.id), p_now: new Date(now).toISOString() } })) || [])) roll.set(r.entity_id, r); }
+    catch (e) { console.log('rooms_rollup', String(e && e.message).slice(0, 60)); partial = true; }
+  }
+  let bf = null; try { bf = (await entityStateGet(env)).backfill || null; } catch (e) { bf = null; }
+  const rooms = ents.map(e => roomListRow(e, roll.get(e.id) || null, e.track_id ? byTrack.get(e.track_id) || null : null, entityCoverage(e.resolved_from, bf, now, ROOMS.WEEKS)))
+    .sort((a, b) => ((b.counts.captures_30d || 0) - (a.counts.captures_30d || 0)) || ((b.counts.captures_7d || 0) - (a.counts.captures_7d || 0)) || String(a.name).localeCompare(String(b.name)));
+  const out = { ok: true, at: new Date(now).toISOString(), rooms, partial };
+  if (env.RATE_LIMIT && !partial) { try { await env.RATE_LIMIT.put(ROOMS.LIST_KEY, JSON.stringify(out), { expirationTtl: ROOMS.LIST_TTL }); } catch (e) { excQuiet('rooms_put')(e); } }
+  return out;
+}
+async function roomDropLists(env) { if (!env.RATE_LIMIT) return; try { await env.RATE_LIMIT.delete(ROOMS.LIST_KEY); } catch (e) { excQuiet('rooms_drop')(e); } }
+/* One room: the subject in one place. partial says a part failed to load; a partial room is shown and never kept. */
+async function roomOf(env, e) {
+  const now = Date.now(), since = new Date(now - ROOMS.WEEKS * 7 * 864e5).toISOString();
+  const tracks = await loadTracks(env), t = e.track_id ? tracks.find(x => x.id === e.track_id) || null : null;
+  const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: the room counts the sweep, as the measure does
+  let partial = false;
+  let links = [];
+  try { links = (await sbRest(env, 'signal_entities?entity_id=eq.' + e.id + '&captured_at=gte.' + since + '&select=captured_at,signal:signals(id,title,url,source_name,source_tier,territory,published_at,captured_at,image,momentum,research,status)&order=captured_at.desc&limit=' + ROOMS.ROWS)) || []; }
+  catch (err) { console.log('room_links', String(err && err.message).slice(0, 60)); links = []; partial = true; }
+  const rows = roomRowsOf(links, !!sw);
+  const measure = excMeasureFrom(rows, [], now, typeof excTerritoryOf === 'function' ? excTerritoryOf({ entity: e.name, category: e.category }) : null);
+  let bf = null; try { bf = (await entityStateGet(env)).backfill || null; } catch (err) { bf = null; }
+  const cov = entityCoverage(e.resolved_from, bf, now, ROOMS.WEEKS);
+  let claims = [];
+  try { claims = ((await sbRest(env, 'rpc/claim_corpus', { method: 'POST', body: { p_entities: [e.id], p_deployed: false, p_since: null, p_limit: ROOMS.CLAIMS } })) || []).filter(c => c && c.claim); }
+  catch (err) { console.log('room_claims', String(err && err.message).slice(0, 60)); partial = true; }
+  let cl = [];
+  try { cl = (await sbRest(env, 'claim_entities?entity_id=eq.' + e.id + '&select=claim:claims(src,reading_id,night)&limit=' + ROOMS.LINKS)) || []; }
+  catch (err) { console.log('room_readings', String(err && err.message).slice(0, 60)); partial = true; }
+  const marksBy = {}; for (const c of claims) if (c.src === 'door' && c.marks && typeof c.marks === 'object' && Object.keys(c.marks).length) marksBy[c.reading_id] = c.marks;
+  let record = roomRecordOf([], marksBy);
+  try {
+    const names = [e.name].concat(e.aliases || []).map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => x.length >= 3).slice(0, 6);
+    const ors = (e.track_id ? ['frame_key.eq.' + encodeURIComponent('track:' + e.track_id)] : []).concat(names.map(n => 'frame->>entity.ilike.' + encodeURIComponent(n.replace(/[%_*,()"\\]/g, ' ').replace(/\s+/g, ' ').trim())));
+    const drs = ors.length ? ((await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&or=(' + ors.join(',') + ')&select=id,frame_key,night,status,frame,measures,read,evidence,meta&order=night.desc,created_at.desc&limit=' + ROOMS.READINGS)) || []) : [];
+    record = roomRecordOf(drs.map(doorTile).filter(tl => roomTileIs(tl, e)), marksBy);
+  } catch (err) { console.log('room_record', String(err && err.message).slice(0, 60)); partial = true; }
+  let board = null;
+  try { const door = await doorSet(env), tile = ((door && door.tiles) || []).find(x => roomTileIs(x, e)); if (tile) board = { id: tile.id, night: tile.night || null, claim: tile.claim || null, move: tile.move || null, question: tile.question || null, state: (tile.measures && tile.measures.state) || null, voices: (tile.voices || []).map(v => ({ text: v.text, likes: v.likes || 0, when: v.when || null, self: v.self || null })).slice(0, DOOR_VOICES.KEEP) }; }
+  catch (err) { excQuiet('room_board')(err); partial = true; }
+  let set = [];
+  try { const list = await roomList(env), cat = String(e.category || (t && t.sector) || '').toLowerCase().trim(); set = cat ? (list.rooms || []).filter(x => x.id !== e.id && String(x.category || '').toLowerCase().trim() === cat).slice(0, ROOMS.SET).map(x => ({ id: x.id, name: x.name, kind: x.kind, category: x.category, n7: x.counts.captures_7d, n30: x.counts.captures_30d, outlets_30d: x.counts.outlets_30d, weeks: x.weeks, floor7: false, floor30: false, measurable: true })) : []; }
+  catch (err) { excQuiet('room_set')(err); }
+  let attention = null;
+  try { attention = await brandAttention(env, { id: e.id, name: e.name, sector: (t && t.sector) || e.category || null, description: (t && t.description) || null }, set.slice(0, ROOMS.RIVALS)); } catch (err) { excQuiet('room_attention')(err); attention = null; }
+  let ledger = null;
+  if (e.track_id) { try { const led = (await sbRest(env, LEDGER.TABLE + '?subject_key=eq.' + encodeURIComponent('track:' + e.track_id) + '&select=week,door&order=week.asc&limit=260')) || []; if (led.length) ledger = { weeks: led.length, since: led[0].week, on_board: led.filter(r => r.door).length }; } catch (err) { excQuiet('room_ledger')(err); partial = true; } }
+  return { ok: true,
+    room: { id: e.id, name: e.name, kind: ROOM_KINDS[e.kind] ? e.kind : 'brand', category: e.category || (t && t.sector) || null, aliases: (e.aliases || []).slice(0, 8), ambiguous: !!e.ambiguous, from: e.from_src || 'frame',
+      track: t ? { id: t.id, sector: t.sector || null, description: t.description || null, image: /^https:\/\//.test(String(t.image || '')) ? t.image : null, image_license: t.image_license || null } : null,
+      measured_at: new Date(now).toISOString(), measured_from: cov.measured_from, coverage_weeks: cov.coverage_weeks, gap: cov.gap || null, sweep: !!sw },
+    measure: { weeks: measure.weeks, series: measure.series, recent_7d: measure.recent_7d, prior_7d: measure.prior_7d, velocity_pct: measure.velocity_pct, outlets: measure.outlets, weeks_touched: measure.weeks_touched, state: measure.state, shape: measure.shape, newest: measure.newest, n: measure.n, territory: measure.territory || null },
+    weeks: roomWeeksOf(rows, now), voices: roomVoicesOf(rows, now), stories: roomStoriesOf(rows, ROOMS.STORIES, now),
+    record, readings: roomReadingsOf(cl),
+    claims: claims.map(c => ({ id: c.id, src: c.src, reading_id: c.reading_id, night: c.night, claim: String(c.claim || '').slice(0, 240), excerpt: c.excerpt ? String(c.excerpt).slice(0, 400) : null, lens: c.lens || null, confidence: c.confidence || null, band: c.band || null, newest: c.newest || null, tiers: c.tiers || {}, grade: c.grade || null, marks: c.marks && Object.keys(c.marks).length ? c.marks : null, on_record: !!c.on_record, how: c.how || null })),
+    board, set, attention, ledger, partial };
+}
+async function excavateRooms(env, origin) { return json(await roomList(env), 200, origin, env); }
+async function excavateRoom(request, env, origin) {
+  const u = new URL(request.url), id = String(u.searchParams.get('id') || '').slice(0, 40).toLowerCase(), track = String(u.searchParams.get('track') || '').slice(0, 40).toLowerCase();
+  const isId = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v);
+  if (!isId(id) && !isId(track)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  let e = null;
+  try { e = ((await sbRest(env, 'entities?' + (isId(id) ? 'id=eq.' + id : 'track_id=eq.' + track) + '&active=eq.true&select=id,name,kind,aliases,category,ambiguous,from_src,track_id,resolved_from&limit=1')) || [])[0] || null; } catch (err) { e = null; }
+  if (!e) return json({ ok: false, error: 'no_room' }, 200, origin, env);
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(ROOMS.KEY + e.id) : null; if (hit) return json(Object.assign(JSON.parse(hit), { cached: true }), 200, origin, env); } catch (err) { excQuiet('room_cache')(err); }
+  const out = await roomOf(env, e);
+  if (env.RATE_LIMIT && !out.partial) { try { await env.RATE_LIMIT.put(ROOMS.KEY + e.id, JSON.stringify(out), { expirationTtl: ROOMS.TTL }); } catch (err) { excQuiet('room_cache_put')(err); } }
+  return json(out, 200, origin, env);
+}
 /* ═══ SEAM:AUDIENCES — cohorts on evidence: outlet coverage counts from the lake, dated and sourced. ═══ */
 const COHORTS = [
   { key: 'gen_alpha', label: 'Gen Alpha', terms: ['gen alpha', 'generation alpha'] },
