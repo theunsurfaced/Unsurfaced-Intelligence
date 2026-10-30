@@ -59,11 +59,6 @@
    "tag": "SEAM:KNOWLEDGE",
    "purpose": "feed doorway: chunk + embed (own account) + knowledge_base writes, admin-gated"
   },
-  "SEAM:KNOWLEDGE@intelligence": {
-   "file": "intelligence/index.html",
-   "tag": "SEAM:KNOWLEDGE",
-   "purpose": "FEED panel: paste/link/file in, recall test, recent drops"
-  },
   "SEAM:STUDYBOARD@worker": {
    "file": "worker/src/index.js",
    "tag": "SEAM:STUDYBOARD",
@@ -1547,11 +1542,6 @@
    "file": "worker/src/index.js",
    "purpose": "one drop, every destination (EX45): kbDrop gives every FEED drop a key, a title and a shareable flag (0047); kbMirror copies a drop for INTELLIGENCE or BOTH into the lake as recon_feed (research by 0038's rule: citable by every read, RECON and ask, counted in no measure; one row a chunk, source Unsurfaced desk, tier 2); kbCut cuts a shareable drop for DAILY or BOTH into STUDIO (kbDraft on the live tier drafts kicker, headline, take, apply and format from the drop, refused when a figure is not in the drop; studioSelect, studioCaption; the piece carries source feed and the drop key); an internal drop is never cut. /knowledge/cut makes assets later (and may mark the drop shareable); /knowledge/used says where a drop went (lake rows, STUDIO pieces, reads whose pack cites it); /knowledge/delete with a drop_key removes the drop and its lake copies"
   },
-  "SEAM:FEED_BRIDGE@intelligence": {
-   "file": "intelligence/index.html",
-   "tag": "SEAM:FEED_BRIDGE",
-   "purpose": "the FEED panel: a title, Shareable and Make STUDIO assets on every drop (paste, link or file); the answer says what the drop did (base, lake, STUDIO, or why STUDIO held it); drops listed as drops with USED (lake rows, STUDIO pieces, reads), ASSETS (cut now, marking an internal drop shareable after a confirm) and remove"
-  },
   "SEAM:STUDIO_LOOK": {
    "file": "intelligence/index.html",
    "purpose": "STUDIO drawn in the Weekly's hand (EX45): stStory is the Weekly's story frame as a paint program (the story's photograph through /img/s, the fade into black, kicker, Syne headline, cream take following it, red rule, counter, label and source); signal_still is one story frame; THE SIX opens on a full-bleed photograph under a 62 percent dim and closes on the house line; studioPreload and stLoaded keep only sharp photographs (600px wide or more) so a missing one falls back to the type layout; studioPaint gains the image, shade and follow ops; framesFor loads the photographs before the template runs; no em dash on any asset"
@@ -1682,6 +1672,35 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:ENTITY_ROOM",
    "purpose": "RM1: the Brands page lists the rooms (every subject on the links: kind and category, the pulse of twelve weeks, 7 and 30 days, outlets, the latest story, the record's count) and opens one (the counts with how far back they reach, on the board this week, the record with grades and marks and a way to open each reading, the claims newest first, the readings counted, coverage week by week, the voices by tier, attention, its set, the latest stories, the ledger's weeks, the RECON line). The old brand functions hand over (initBrandsPage, _brandRoute, _openBrand, _closeBrand) and keep their charts; #room=<entity id> is the address, #brand=<track id> still opens."
+  },
+  "SEAM:HOUSE": {
+   "file": "worker/src/index.js",
+   "purpose": "RD1a (Oct 29, 2026): READ is the house. Two admin lists through readRoute, neither spending, nothing written: POST /reads/assets (every media_rights record with its picture's address, credit, basis, contexts, its own photograph's name and release, a failed hard check, and the reads whose slots point at it) and POST /reads/nights (the door's rows by night, held and failed rows included, each with its subject, measure, coverage, grade, marks and claims count; fourteen nights by default, sixty at most). houseAssetUrl, houseAssetUse and houseNightRows are pure."
+  },
+  "SEAM:HOUSE@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:HOUSE",
+   "purpose": "RD1a: the house. One page routed by ?room= (reads, recon, report, weekly, record, daily, nights, assets, feed), the doors strip under the title on every shelf, the reads' rooms as the library filtered by kind, DAILY from the public edition routes (a row opens the day's stories as the reader sees them), the nights and the assets from the two admin lists (the house's own photograph uploaded through /reads/slot-upload and kept as a record), the feed as a room; an open read is as it was and its back link returns to the room it came from. The word room is not in the copy; the rooms are named by their function."
+  },
+  "SEAM:HOUSE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:HOUSE",
+   "purpose": "RD1a: the Feed door is a link into the house (read/?room=feed), revealed for admins by whoami as the panel was; the FEED panel, its styles, the STUDIO overlay's button, staff door, deep link and opener left this page (the STUDIO paint programs, the muxer and the worker block stay for RD1b)."
+  },
+  "SEAM:KNOWLEDGE@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:KNOWLEDGE",
+   "purpose": "THE FEED as a room of the house (RD1a): paste, link or file in, the recall test, the recent drops; the same routes as before"
+  },
+  "SEAM:FEED_BRIDGE@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:FEED_BRIDGE",
+   "purpose": "the feed in the house (RD1a): a title, Shareable and Make STUDIO assets on every drop (paste, link or file); the answer says what the drop did (base, lake, STUDIO, or why STUDIO held it); drops listed as drops with USED (lake rows, STUDIO pieces, reads), ASSETS (cut now, marking an internal drop shareable after a confirm) and remove"
+  },
+  "SEAM:FEED_INTAKE@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:FEED_INTAKE",
+   "purpose": "KB1's intake on the feed's file input, in the house (RD1a): text, PDF, Word, Excel, OpenDocument, HTML, XML and images"
   }
  },
  "planned": [

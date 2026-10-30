@@ -7,6 +7,7 @@
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
 const page = fs.readFileSync('intelligence/index.html', 'utf-8');
+const house = fs.readFileSync('intelligence/read/index.html', 'utf-8');   // RD1a: the FEED panel lives in the house
 const gate = fs.readFileSync('tools/ritual_gate.py', 'utf-8');
 const seams = JSON.parse(fs.readFileSync('seams.json', 'utf-8'));
 const mig = fs.readFileSync('supabase/migrations/0047_feed.sql', 'utf-8');
@@ -150,15 +151,15 @@ ok(/async function framesFor\(piece\)/.test(page) && /await studioPreload\(want\
 ok(/naturalWidth >= 600 \? im : null/.test(page), 'P5 only sharp photographs (600px and wider) are used, as the Weekly\'s rule');
 
 // ── F: the FEED panel ───────────────────────────────────────────────────
-ok(/id="kbTitle"/.test(page) && /id="kbShare"/.test(page) && /id="kbAssets"/.test(page), 'F1 every drop takes a title, Shareable and Make STUDIO assets');
-ok(/title: document\.getElementById\("kbTitle"\)\.value, shareable: document\.getElementById\("kbShare"\)\.checked, assets: document\.getElementById\("kbAssets"\)\.checked/.test(page) && /"&shareable=" \+/.test(page), 'F2 a paste, a link and a file all send them');
-ok(/var k = r\.drop_key \|\| \("row" \+ r\.id\)/.test(page) && /api\("knowledge\/used", \{ drop_key: key \}\)/.test(page) && /api\("knowledge\/cut", \{ drop_key: key, shareable: true \}\)/.test(page) && /api\("knowledge\/delete", \{ drop_key: b\.getAttribute\("data-drop"\) \}\)/.test(page),
+ok(/id="kbTitle"/.test(house) && /id="kbShare"/.test(house) && /id="kbAssets"/.test(house), 'F1 every drop takes a title, Shareable and Make STUDIO assets');
+ok(/title: document\.getElementById\("kbTitle"\)\.value, shareable: document\.getElementById\("kbShare"\)\.checked, assets: document\.getElementById\("kbAssets"\)\.checked/.test(house) && /"&shareable=" \+/.test(house), 'F2 a paste, a link and a file all send them');
+ok(/var k = r\.drop_key \|\| \("row" \+ r\.id\)/.test(house) && /api\("knowledge\/used", \{ drop_key: key \}\)/.test(house) && /api\("knowledge\/cut", \{ drop_key: key, shareable: true \}\)/.test(house) && /api\("knowledge\/delete", \{ drop_key: b\.getAttribute\("data-drop"\) \}\)/.test(house),
   'F3 drops are listed as drops, with USED, ASSETS and remove');
-ok(/function kbSaid\(d\)/.test(page) && /held, the drop is internal/.test(page), 'F4 the answer says what the drop did, and why STUDIO held it');
+ok(/function kbSaid\(d\)/.test(house) && /held, the drop is internal/.test(house), 'F4 the answer says what the drop did, and why STUDIO held it');
 
 // ── G: gate and registry ────────────────────────────────────────────────
 ok(/'kbDraft': 'callModel on Workers AI/.test(gate), 'G1 kbDraft is a registered spender');
-ok(seams.registry['SEAM:FEED_BRIDGE'].file === 'worker/src/index.js' && seams.registry['SEAM:FEED_BRIDGE@intelligence'].file === 'intelligence/index.html' &&
+ok(seams.registry['SEAM:FEED_BRIDGE'].file === 'worker/src/index.js' && seams.registry['SEAM:FEED_BRIDGE@read'].file === 'intelligence/read/index.html' &&
   seams.registry['SEAM:STUDIO_LOOK'].file === 'intelligence/index.html' && seams.registry['SEAM:STUDIO_LOOK@worker'].file === 'worker/src/index.js', 'G2 both seams are registered where they live');
 
 console.log(`proof_feed: ${pass} passed`);

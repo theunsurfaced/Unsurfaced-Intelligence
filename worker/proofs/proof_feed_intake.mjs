@@ -5,6 +5,7 @@
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
 const page = fs.readFileSync('intelligence/index.html', 'utf-8');
+const house = fs.readFileSync('intelligence/read/index.html', 'utf-8');   // RD1a: the feed's file input lives in the house
 const gate = fs.readFileSync('tools/ritual_gate.py', 'utf-8');
 let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
@@ -42,7 +43,7 @@ ok(/if \(text\.length > CLIENT_EV\.MAX_BYTES\) return json\(\{ ok: false, error:
 ok(/env\\\.AI\\\.toMarkdown\\\(/.test(gate) && /'docText': 'Workers AI Markdown Conversion/.test(gate), 'R6 the gate sees the conversion as a spend and docText is registered');
 
 // ── P: the page ───────────────────────────────────────────────────────
-ok(/id="kbFile" accept="\.txt,\.md,\.markdown,\.csv,\.json,\.pdf,\.docx,\.xlsx,\.xlsm,\.xlsb,\.xls,\.odt,\.ods,\.html,\.htm,\.xml,\.numbers,\.jpg,\.jpeg,\.png,\.webp,\.gif,\.bmp,\.svg"/.test(page), 'P1 the feed\'s file input accepts the new types');
+ok(/id="kbFile" accept="\.txt,\.md,\.markdown,\.csv,\.json,\.pdf,\.docx,\.xlsx,\.xlsm,\.xlsb,\.xls,\.odt,\.ods,\.html,\.htm,\.xml,\.numbers,\.jpg,\.jpeg,\.png,\.webp,\.gif,\.bmp,\.svg"/.test(house), 'P1 the feed\'s file input accepts the new types');
 ok(/accept="\.txt,\.md,\.csv,\.json,\.pdf,\.docx,\.xlsx,\.xlsm,\.xlsb,\.xls,\.odt,\.ods,\.html,\.htm,\.xml,\.numbers,\.jpg,\.jpeg,\.png,\.webp,\.gif,\.bmp,\.svg" onchange="_evidenceUpload\(this\)"/.test(page) && /if \(f\.size > 15000000\)/.test(page) && !/PDF, decks and recordings next/.test(page), 'P2 the evidence shelf accepts them too, fifteen megabytes at the door');
 const mr = between(page, 'function makeReconFromRead() {', '/* New Report:');
 ok(/const framed = \(fr\.entity \|\| fr\.category\) \? Object\.assign\(\{ competitors: \[\], anchors: \[\], exclude: \[\] \}, fr,/.test(mr) && /openCommission\(\{ brief: String\(L\.q\), from: String\(L\.q\), decisions: \['', '', '', '', ''\], frame: framed, framedFor: framed \? String\(L\.q\)\.replace\(\/\\s\+\/g, ' '\)\.trim\(\) : '' \}\);/.test(mr),

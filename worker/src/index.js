@@ -329,6 +329,8 @@ export default {
         case '/reads/lines':         // SEAM:EDIT_DESK (ED2): the lines an editor may change, one direct edit, a revert
         case '/reads/edit':
         case '/reads/revert':
+        case '/reads/assets':        // SEAM:HOUSE (RD1a): the assets and the nights, the house's own shelves
+        case '/reads/nights':
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/reads/slot-upload':   return slotUpload(request, env, origin, user);   // SEAM:EDIT_DESK (ED2): the house's own photograph, raw body
         case '/pay/onboard':         return payOnboard(env, origin, user);
@@ -16975,9 +16977,93 @@ async function readPdf(env, row, cut) {   // SEAM:READ_CUT: cut === 'client' ren
   if (kept && kept.key && kept.key !== key) await env.MEDIA.delete(kept.key);
   return { body: bytes, fresh: true };
 }
+/* ═══ SEAM:HOUSE (RD1a): READ is the house. Two admin lists the house's own shelves read, both through readRoute (admin), neither
+ * spending: the assets (every rights record with its picture, its credit, its basis, the contexts it clears and the reads whose
+ * slots point at it) and the nights (the door's rows by night with their status, measure, grade, marks and claims count, held and
+ * failed rows included, which the public record never carries). Nothing is written here; nothing is deleted anywhere. ═══ */
+const HOUSE = { NIGHTS: 14, NIGHTS_MAX: 60, NIGHT_ROWS: 2400, ASSETS: 240, READS: 400, CHUNK: 80 };
+/* PURE: where a record's picture is served from: the house's and its own photographs from R2, a story's from the thumbnail
+ * relay, a press or CC image from the address the record keeps; a typographic block has no picture. */
+function houseAssetUrl(rec) {
+  const ref = String((rec && rec.ref) || ''), kind = String((rec && rec.kind) || '');
+  if (kind === 'type' || !ref) return null;
+  if (/^S\d+$/.test(ref)) return '/img/t/' + ref.slice(1);
+  if (/^(?:make|own|studio|knowledge|play)\//.test(ref)) return '/media/' + ref;
+  if (/^https?:\/\//.test(ref)) return ref;
+  if (rec && /^https?:\/\//.test(String(rec.source_url || ''))) return String(rec.source_url);
+  return null;
+}
+/* PURE: which reads point at which record: a map of rights id to the reads and the slot paths that carry it. */
+function houseAssetUse(reads) {
+  const by = {};
+  for (const r of reads || []) {
+    const slots = r && r.slots && typeof r.slots === 'object' && !Array.isArray(r.slots) ? r.slots : {};
+    for (const path of Object.keys(slots)) {
+      const s = slots[path]; if (!s || !s.rights_id) continue;
+      (by[s.rights_id] = by[s.rights_id] || []).push({ id: r.id, kind: r.kind, label: r.label, version: r.version, status: r.status, path });
+    }
+  }
+  return by;
+}
+/* PURE: the door's rows grouped by night, newest first, each row with its measure, grade, marks and claims count. */
+function houseNightRows(rows, marks, claims) {
+  const mk = {}, ck = {};
+  for (const m of marks || []) { const k = m.insight_id; if (!k) continue; mk[k] = mk[k] || { held: 0, useful: 0, wrong: 0 }; if (mk[k][m.mark] != null) mk[k][m.mark]++; }
+  for (const c of claims || []) { if (c && c.reading_id) ck[c.reading_id] = (ck[c.reading_id] || 0) + 1; }
+  const nights = {}, order = [];
+  for (const r of rows || []) {
+    const n = String(r.night || ''); if (!n) continue;
+    if (!nights[n]) { nights[n] = { night: n, counts: { ready: 0, reused: 0, held: 0, failed: 0, other: 0 }, cost_usd: 0, rows: [] }; order.push(n); }
+    const g = nights[n], st = String(r.status || ''), m = r.measures || {}, called = (r.meta && r.meta.called) || null, fr = r.frame || {};
+    const bucket = st === 'ready' ? 'ready' : st === 'reused' ? 'reused' : st === 'failed' ? (/^measure_claim:/.test(String(r.error || '')) ? 'held' : 'failed') : 'other';
+    g.counts[bucket]++;
+    g.cost_usd = Math.round((g.cost_usd + (Number(r.cost_usd) || 0)) * 1e4) / 1e4;
+    g.rows.push({ id: r.id, key: r.frame_key || null, entity: fr.entity || null, category: fr.category || null, status: st, held: bucket === 'held',
+      error: r.error ? String(r.error).slice(0, 160) : null, recent_7d: m.recent_7d != null ? m.recent_7d : null, outlets: m.outlets != null ? m.outlets : null,
+      measured_from: m.measured_from || null, coverage_weeks: m.coverage_weeks != null ? m.coverage_weeks : null,
+      grade: called && called.verdict ? called.verdict : null, check_by: called && called.by ? called.by : null,
+      marks: mk[r.id] || { held: 0, useful: 0, wrong: 0 }, claims: ck[r.id] || 0 });
+  }
+  order.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  return order.map(n => nights[n]);
+}
+function houseChunks(ids, n) { const out = []; for (let i = 0; i < ids.length; i += n) out.push(ids.slice(i, i + n)); return out; }
+async function houseAssets(env) {
+  const recs = (await sbRest(env, 'media_rights?select=id,kind,ref,source_url,credit,basis,contexts,display_max_px,object_sentence,made,created_at&order=created_at.desc&limit=' + HOUSE.ASSETS).catch(excQuiet('house_assets', []))) || [];
+  const reads = (await sbRest(env, 'house_reads?select=id,kind,label,version,status,slots:meta->slots&meta->slots=not.is.null&order=created_at.desc&limit=' + HOUSE.READS).catch(excQuiet('house_asset_reads', []))) || [];
+  const use = houseAssetUse(reads), counts = {};
+  const assets = recs.map(r => {
+    counts[r.kind] = (counts[r.kind] || 0) + 1;
+    const made = r.made && typeof r.made === 'object' ? r.made : {};
+    return { id: r.id, kind: r.kind, ref: r.ref, url: houseAssetUrl(r), credit: r.credit || null, basis: r.basis, contexts: Array.isArray(r.contexts) ? r.contexts : [],
+      max_px: r.display_max_px || null, object_sentence: r.object_sentence || null, created_at: r.created_at,
+      made: { name: made.name || null, bytes: made.bytes || null, release: made.release || null, model: made.model || null, own: !!made.own,
+        hard: made.checks && Array.isArray(made.checks.hard) ? made.checks.hard.length : 0, overridden: !!(made.checks && made.checks.override && made.checks.override.why) },
+      used: use[r.id] || [] };
+  });
+  return { assets, counts, reads_scanned: reads.length };
+}
+async function houseNights(env, nights) {
+  const n = Math.max(1, Math.min(HOUSE.NIGHTS_MAX, parseInt(nights, 10) || HOUSE.NIGHTS));
+  const since = new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const rows = (await sbRest(env, 'door_reads?night=gte.' + since + '&select=id,frame_key,night,status,error,frame,measures,meta,cost_usd&order=night.desc,id.asc&limit=' + HOUSE.NIGHT_ROWS).catch(excQuiet('house_nights', []))) || [];
+  const ids = rows.map(r => r.id).filter(Boolean);
+  let marks = [], claims = [];
+  for (const part of houseChunks(ids, HOUSE.CHUNK)) {
+    marks = marks.concat((await sbRest(env, 'insight_marks?insight_id=in.(' + part.join(',') + ')&select=insight_id,mark').catch(excQuiet('house_marks', []))) || []);
+    claims = claims.concat((await sbRest(env, 'claims?src=eq.door&reading_id=in.(' + part.join(',') + ')&select=reading_id').catch(excQuiet('house_claims', []))) || []);
+  }
+  return { since, nights: houseNightRows(rows, marks, claims) };
+}
+async function houseRoute(path, body, env, origin, user) {
+  if (path === '/reads/assets') return json(Object.assign({ ok: true }, await houseAssets(env)), 200, origin, env);
+  if (path === '/reads/nights') return json(Object.assign({ ok: true }, await houseNights(env, body && body.nights)), 200, origin, env);
+  return json({ ok: false, error: 'not_found' }, 404, origin, env);
+}
 async function readRoute(path, body, env, origin, user) {
   if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
   body = body || {};
+  if (path === '/reads/assets' || path === '/reads/nights') return houseRoute(path, body, env, origin, user);   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
   if (/^\/reads\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1)
   if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)
   if (path === '/reads/list') {

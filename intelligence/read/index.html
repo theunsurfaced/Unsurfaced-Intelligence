@@ -354,12 +354,84 @@
     .band, .hero { margin-left: -22px; margin-right: -22px; } .opener h2 { font-size: 56px; } .opener { min-height: auto; }
     .mosaic, .strip { grid-template-columns: repeat(2, 1fr); }
   }
+  /* SEAM:HOUSE (RD1a): the house. One strip of doors under the title on every shelf; the DAILY, nights, assets and feed
+     shelves in the library's own type: Space Mono labels, Syne titles, the void, the ivory, the red rule. */
+  .hs-doors { display: flex; flex-wrap: wrap; gap: 8px; margin: -20px 0 30px; }
+  .hs-doors a { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #B8B2A6; border: 1px solid #2A2A2A; padding: 8px 12px; text-decoration: none; }
+  .hs-doors a:hover { border-color: var(--ivory); color: var(--ivory); }
+  .hs-doors a.on { color: var(--ivory); border-color: var(--red); }
+  .hs-note { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; line-height: 1.7; color: #9A9A9A; max-width: 820px; margin-bottom: 14px; }
+  .hs-rows { display: flex; flex-direction: column; border-top: 1px solid #2A2A2A; }
+  .hs-row { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; padding: 14px 4px; border-bottom: 1px solid #2A2A2A; color: var(--ivory); text-decoration: none; }
+  a.hs-row:hover { background: #141414; }
+  .hs-row .d { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; min-width: 150px; color: #B8B2A6; }
+  .hs-row .t { font-weight: 800; font-size: 18px; line-height: 1.15; flex: 1 1 300px; min-width: 0; }
+  .hs-row .m { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
+  .hs-row .n { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: #9A9A9A; min-width: 30px; }
+  .hs-story { display: block; padding: 16px 4px; border-bottom: 1px solid #2A2A2A; }
+  .hs-story .k { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
+  .hs-story h3 { font-weight: 800; font-size: 20px; line-height: 1.15; margin: 0 0 6px; }
+  .hs-story p { font-size: 14px; line-height: 1.5; color: #D9D1C1; margin: 0 0 8px; max-width: 760px; }
+  .hs-story .s { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
+  .hs-story .s a { color: #B8B2A6; }
+  .hs-night { margin: 26px 0 8px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; }
+  .hs-night h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--ivory); margin: 0; }
+  .hs-night span { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
+  .hs-scroll { overflow-x: auto; }
+  table.hs-table { min-width: 860px; width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; letter-spacing: .5px; }
+  table.hs-table th { text-align: left; font-weight: 400; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; padding: 8px 8px; border-bottom: 1px solid #3A3A3A; }
+  table.hs-table td { padding: 10px 8px; border-bottom: 1px solid #2A2A2A; color: #D9D1C1; vertical-align: top; }
+  table.hs-table td.e { color: var(--ivory); font-family: var(--display); font-weight: 700; font-size: 14px; }
+  table.hs-table td.e small { display: block; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: 1px; color: #9A9A9A; margin-top: 2px; }
+  .hs-grade-held { color: #6FCF97; } .hs-grade-missed { color: #F2994A; } .hs-grade-unmeasured, .hs-grade-none { color: #9A9A9A; }
+  .hs-assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .hs-asset { border: 1px solid #2A2A2A; padding: 0 0 14px; min-width: 0; }
+  .hs-asset .pic { height: 150px; background: repeating-linear-gradient(135deg, #1A1A1A 0 7px, #2A2A2A 7px 14px); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .hs-asset .pic img { width: 100%; height: 150px; object-fit: cover; }
+  .hs-asset .pic .ty { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
+  .hs-asset .r { padding: 12px 14px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #9A9A9A; }
+  .hs-asset .c { padding: 10px 14px 0; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--ivory); line-height: 1.6; word-break: break-word; }
+  .hs-asset .u { padding: 4px 14px 0; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #9A9A9A; line-height: 1.6; }
+  .hs-asset .u a { color: #B8B2A6; }
+  .hs-up { border: 1px solid #2A2A2A; padding: 16px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .hs-up label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; }
+  .hs-up input[type=text] { font: inherit; font-size: 12px; padding: 7px 9px; border: 1px solid #3A3A3A; background: #141414; color: var(--ivory); min-width: 180px; }
+  .hs-up input[type=file] { font-family: var(--mono); font-size: 10px; color: #B8B2A6; max-width: 100%; }
+  .hs-say { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: #B8B2A6; min-height: 16px; margin: 6px 0 14px; }
+  /* SEAM:KNOWLEDGE (RD1a): the feed as a shelf of the house, in the house's type. */
+  .kb { max-width: 820px; }
+  .kb label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A9A9A; margin: 14px 0 6px; }
+  .kb textarea, .kb input[type=text], .kb input[type=url], .kb select { width: 100%; box-sizing: border-box; background: #141414; border: 1px solid #3A3A3A; color: var(--ivory); font: inherit; font-size: 13px; padding: 8px 10px; }
+  .kb textarea { min-height: 110px; resize: vertical; }
+  .kb select { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .kb-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .kb-row > div { flex: 1; min-width: 180px; }
+  .kb-file { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #B8B2A6; border: 1px dashed #3A3A3A; padding: 10px 12px; display: block; cursor: pointer; text-transform: none; }
+  .kb-file:hover { border-color: var(--ivory); color: var(--ivory); }
+  .kb-check { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; margin-top: 6px; font-family: var(--mono); font-size: 11px; color: #D9D1C1; }
+  .kb-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; background: var(--red); color: var(--ivory); border: 1px solid var(--red); padding: 11px 16px; cursor: pointer; margin-top: 16px; }
+  .kb-btn:disabled { opacity: .5; cursor: wait; }
+  .kb-status { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: #B8B2A6; margin-top: 12px; min-height: 14px; }
+  .kb-list { margin-top: 24px; border-top: 1px solid #2A2A2A; padding-top: 16px; }
+  .kb-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid #2A2A2A; font-size: 12.5px; flex-wrap: wrap; }
+  .kb-item .c { flex: 1 1 260px; min-width: 0; color: #D9D1C1; line-height: 1.45; word-break: break-word; }
+  .kb-item .c b { color: var(--ivory); }
+  .kb-chip { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; border: 1px solid #3A3A3A; padding: 2px 7px; color: #B8B2A6; white-space: nowrap; }
+  .kb-chip.live { color: #6FCF97; border-color: rgba(111,207,151,.4); }
+  .kb-chip.failed { color: #F2994A; border-color: rgba(242,153,74,.4); }
+  .kb-x { background: none; border: 1px solid #3A3A3A; color: #B8B2A6; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; padding: 3px 8px; }
+  .kb-x:hover { color: var(--ivory); border-color: var(--ivory); }
+  .kb-used { margin-top: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: .5px; color: #9A9A9A; flex-basis: 100%; }
+  .kb-used a { color: #B8B2A6; }
+  .kb-hit { padding: 9px 0; border-bottom: 1px solid #2A2A2A; font-size: 12.5px; color: #D9D1C1; line-height: 1.5; }
+  .kb-hit b { color: var(--red); font-family: var(--mono); font-size: 10px; margin-right: 8px; }
+  @media (max-width: 700px) { .hs-doors { margin-top: -8px; } .hs-row .d { min-width: 0; } }
 </style>
 </head>
 <body>
 <div class="bar noprint">
   <span class="who">Unsurfaced&#8482; DAILY · The Read</span>
-  <a class="btn" href="./">Library</a>
+  <a class="btn" href="./" id="house-link">The house</a>
   <a class="btn" href="../">Intelligence</a>
   <span id="actions"></span>
 </div>
@@ -1646,15 +1718,266 @@
   }
 
   /* ── Library ─────────────────────────────────────────────────────────── */
-  function library() {
-    actions.innerHTML = "";
+  /* SEAM:HOUSE (RD1a): READ is the house. The door opens on the library of reads; each function is a room on the same page,
+     chosen by ?room= (one bar, one script, one sheet): the reads by kind (RECON, the Report, WEEKLY, the Record), DAILY (the
+     editions by day from the public edition routes), the nights (the door's rows, admin), the assets (every rights record and
+     where it is used, admin) and the feed (moved here from the Intelligence page, its routes unchanged). An open read is as it
+     was; its back link returns to the room it came from. */
+  var HOUSE_ROOMS = {
+    reads: { name: "The Read", door: "The reads", sub: "Every read we have compiled, newest first" },
+    recon: { name: "RECON", door: "RECON", kinds: ["recon"], sub: "The commissions, newest first" },
+    report: { name: "The Report", door: "The Report", kinds: ["report"], sub: "Cultural Intelligence Reports, newest first" },
+    weekly: { name: "WEEKLY", door: "WEEKLY", kinds: ["weekly"], sub: "The Weekly Read, every issue and every cut" },
+    record: { name: "The Record", door: "The Record", kinds: ["record", "monthly"], sub: "The Record and the Monthly Read" },
+    daily: { name: "DAILY", door: "DAILY", sub: "Every edition, by day, as the reader sees it" },
+    nights: { name: "The nights", door: "The nights", sub: "What the door deployed, night by night: the measure, the grade, the marks, the claims" },
+    assets: { name: "The assets", door: "The assets", sub: "Every image with its rights, and the reads that carry it" },
+    feed: { name: "The feed", door: "The feed", sub: "Your data, embedded on our account, cited by every read" }
+  };
+  var HOUSE_ORDER = ["reads", "recon", "report", "weekly", "record", "daily", "nights", "assets", "feed"];
+  var ROOM = HOUSE_ROOMS[Q.get("room") || ""] ? Q.get("room") : "reads";
+  function roomsNav(active) {
+    return '<nav class="hs-doors" aria-label="The house">' + HOUSE_ORDER.map(function (k) {
+      return '<a href="' + (k === "reads" ? "./" : "./?room=" + k) + '"' + (k === active ? ' class="on"' : "") + ">" + esc(HOUSE_ROOMS[k].door) + "</a>";
+    }).join("") + "</nav>";
+  }
+  function houseHead(room) {
+    var r = HOUSE_ROOMS[room] || HOUSE_ROOMS.reads;
+    return '<section class="lib"><h1>' + esc(r.name) + '</h1><div class="sub">' + esc(r.sub) + "</div>" + roomsNav(room);
+  }
+  function houseShell(room, body) { actions.innerHTML = ""; houseBack(null); app.innerHTML = houseHead(room) + body + "</section>"; }
+  function houseBack(room) {
+    var a = document.getElementById("house-link"); if (!a) return;
+    var r = room && room !== "reads" ? HOUSE_ROOMS[room] : null;
+    a.href = r ? "./?room=" + room : "./"; a.textContent = r ? r.door : "The house";
+  }
+  function houseOpen(room) {
+    var r = HOUSE_ROOMS[room] || HOUSE_ROOMS.reads;
+    if (r.kinds) return library(r.kinds);
+    if (room === "daily") return Q.get("issue") ? dailyDay(Q.get("issue")) : dailyRoom();
+    if (room === "nights") return nightsRoom();
+    if (room === "assets") return assetsRoom();
+    if (room === "feed") return feedRoom();
+    return library(null);
+  }
+  function houseGet(path) { return fetch(API + path).then(function (r) { return r.json(); }); }
+  function hsDay(d) {
+    var x = new Date(String(d) + "T12:00:00Z");
+    return isNaN(x) ? String(d || "") : x.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  }
+  function hsNum(n) { return n == null ? "·" : String(n); }
+  /* DAILY: the editions by day, from the public routes the DAILY page reads. */
+  function dailyRoom() {
+    houseShell("daily", '<div class="hs-note">Loading the editions.</div>');
+    houseGet("/api/edition/archive").then(function (d) {
+      var rows = (d && d.issues) || [];
+      houseShell("daily", '<div class="hs-note">One row per published edition. A row opens the day as the reader sees it at /daily.</div>' +
+        (rows.length ? '<div class="hs-rows">' + rows.map(function (e) {
+          return '<a class="hs-row" href="./?room=daily&issue=' + encodeURIComponent(String(e.issue_no)) + '"><span class="d">' + esc(hsDay(e.date)) + '</span><span class="t">' + esc(e.lead || "Untitled edition") + '</span><span class="m">No. ' + esc(String(e.issue_no)) + "</span></a>";
+        }).join("") + "</div>" : '<div class="sub">No edition published yet.</div>'));
+    }).catch(function () { houseShell("daily", '<div class="hs-note">The editions could not load.</div>'); });
+  }
+  function dailyDay(n) {
+    houseShell("daily", '<div class="hs-note">Loading the edition.</div>');
+    houseGet("/api/edition?issue=" + encodeURIComponent(String(n))).then(function (d) {
+      var ed = d && d.edition, items = (d && d.items) || [];
+      if (!ed) { houseShell("daily", '<div class="hs-note">No such edition.</div><a class="btn" href="./?room=daily">Every edition</a>'); return; }
+      houseShell("daily", '<div class="hs-night"><h3>No. ' + esc(String(ed.issue_no)) + " · " + esc(hsDay(ed.date)) + "</h3><span>" + items.length + (items.length === 1 ? " story" : " stories") + '</span><span><a href="./?room=daily">Every edition</a></span><span><a href="../daily/?issue=' + encodeURIComponent(String(ed.issue_no)) + '" target="_blank" rel="noopener">As the reader sees it</a></span></div>' +
+        (ed.headline ? '<div class="hs-note">' + esc(ed.headline) + "</div>" : "") +
+        items.map(function (it, i) {
+          return '<article class="hs-story"><div class="k">' + pad(i + 1) + (it.kicker ? " · " + esc(it.kicker) : "") + "</div><h3>" + esc(it.headline || "") + "</h3>" +
+            (it.standfirst ? "<p>" + esc(it.standfirst) + "</p>" : "") +
+            '<div class="s">' + esc(it.source_name || "") + (it.source_url ? ' · <a href="' + esc(it.source_url) + '" target="_blank" rel="noopener">source</a>' : "") + "</div></article>";
+        }).join(""));
+    }).catch(function () { houseShell("daily", '<div class="hs-note">The edition could not load.</div>'); });
+  }
+  /* THE NIGHTS: the door's rows by night, held and failed rows included, which the public record never carries. */
+  function nightsRoom() {
+    houseShell("nights", '<div class="hs-note">Reading the nights.</div>');
+    call("/reads/nights", { nights: 14 }).then(function (d) {
+      if (!d || !d.ok) { houseShell("nights", '<div class="hs-note">The nights could not load: ' + esc((d && d.error) || "no answer") + ".</div>"); return; }
+      var nights = d.nights || [];
+      houseShell("nights", '<div class="hs-note">Fourteen nights, newest first, since ' + esc(d.since || "") + '. A held row is a deployment the measure-claim law stopped; a failed one did not compile. Grade is what the watch called; marks are the readers’; claims are the findings the house holds from it.</div>' +
+        (nights.length ? nights.map(function (g) {
+          var c = g.counts || {};
+          return '<div class="hs-night"><h3>' + esc(g.night) + "</h3><span>" + hsNum(c.ready) + " deployed · " + hsNum(c.reused) + " reused · " + hsNum(c.held) + " held · " + hsNum(c.failed) + " failed</span><span>$" + (Number(g.cost_usd) || 0).toFixed(2) + "</span></div>" +
+            '<div class="hs-scroll"><table class="hs-table"><thead><tr><th>Subject</th><th>Status</th><th>7 days</th><th>Outlets</th><th>Counted</th><th>Grade</th><th>Marks</th><th>Claims</th><th></th></tr></thead><tbody>' +
+            (g.rows || []).map(function (r) {
+              var cov = r.measured_from ? "from " + esc(String(r.measured_from).slice(0, 10)) + (r.coverage_weeks != null ? " · " + r.coverage_weeks + " of 12 wks" : "") : r.coverage_weeks != null ? r.coverage_weeks + " of 12 wks" : "·";
+              var m = r.marks || {};
+              return "<tr><td class=\"e\">" + esc(r.entity || r.key || "") + (r.category ? "<small>" + esc(r.category) + "</small>" : "") + "</td>" +
+                "<td" + (r.error ? ' title="' + esc(r.error) + '"' : "") + ">" + esc(r.held ? "held" : r.status) + "</td><td>" + hsNum(r.recent_7d) + "</td><td>" + hsNum(r.outlets) + "</td><td>" + cov + "</td>" +
+                '<td class="hs-grade-' + esc(r.grade || "none") + '">' + esc(r.grade || "·") + (r.check_by ? "<br><small>by " + esc(String(r.check_by).slice(0, 10)) + "</small>" : "") + "</td>" +
+                "<td>" + (m.held || 0) + " held · " + (m.useful || 0) + " useful · " + (m.wrong || 0) + " wrong</td><td>" + hsNum(r.claims) + "</td>" +
+                "<td>" + (r.status === "ready" || r.status === "reused" ? '<a href="../?insight=' + esc(r.id) + '">Open</a>' : "") + "</td></tr>";
+            }).join("") + "</tbody></table></div>";
+        }).join("") : '<div class="sub">No night in the window.</div>'));
+    }).catch(function () { houseShell("nights", '<div class="hs-note">The house did not answer.</div>'); });
+  }
+  /* THE ASSETS: every rights record, its picture, its credit and basis, the contexts it clears, the reads that carry it;
+     the house's own photograph uploaded here through the same door THE SLOTS use. Nothing is deleted. */
+  function assetsRoom(note) {
+    houseShell("assets", '<div class="hs-note">Reading the records.</div>');
+    call("/reads/assets", {}).then(function (d) {
+      if (!d || !d.ok) { houseShell("assets", '<div class="hs-note">The assets could not load: ' + esc((d && d.error) || "no answer") + ".</div>"); return; }
+      var rows = d.assets || [], counts = d.counts || {};
+      var line = Object.keys(counts).sort().map(function (k) { return counts[k] + " " + k; }).join(" · ");
+      houseShell("assets", '<div class="hs-up"><label>Your own photograph</label><input type="file" id="hs-own" accept="image/jpeg,image/png,image/webp"><input type="text" id="hs-own-credit" placeholder="Credit (Photo: Unsurfaced)"><input type="text" id="hs-own-release" placeholder="Release note, if any"><button class="btn red" id="hs-own-use">Keep it as a record</button></div>' +
+        '<div class="hs-say" id="hs-say">' + esc(note || "") + "</div>" +
+        '<div class="hs-note">' + rows.length + " records, newest first" + (line ? " · " + esc(line) : "") + ". A JPEG, PNG or WebP under 10 MB becomes a record of kind own, cleared for every context, with your credit and release on it; set it on a read from THE SLOTS.</div>" +
+        (rows.length ? '<div class="hs-assets">' + rows.map(function (a) {
+          var pic = a.url ? '<img src="' + API + esc(a.url) + '" alt="" loading="lazy">' : '<span class="ty">' + esc(a.kind === "type" ? "typographic block" : "no picture") + "</span>";
+          var used = (a.used || []).map(function (u) { return '<a href="./?id=' + esc(String(u.id)) + '">' + esc((KIND[u.kind] || u.kind) + " " + (u.label || "") + " v" + u.version) + "</a> · " + esc(u.path); }).join("<br>");
+          return '<div class="hs-asset"><div class="pic">' + pic + '</div><div class="r"><span class="status">' + esc(a.kind) + "</span><span>basis " + esc(a.basis || "") + "</span><span>" + (a.contexts || []).length + " contexts</span>" + (a.made && a.made.hard && !a.made.overridden ? '<span class="status s-held">check failed</span>' : "") + "</div>" +
+            '<div class="c">' + esc(a.credit || "no credit") + (a.made && a.made.name ? "<br>" + esc(a.made.name) : "") + (a.made && a.made.release ? "<br>release: " + esc(a.made.release) : "") + "</div>" +
+            '<div class="u">' + (used ? "used in<br>" + used : "not on a read yet") + "<br>" + esc(String(a.created_at || "").slice(0, 10)) + "</div></div>";
+        }).join("") + "</div>" : '<div class="sub">No record yet.</div>'));
+      var bt = document.getElementById("hs-own-use"); if (bt) bt.onclick = assetsUpload;
+    }).catch(function () { houseShell("assets", '<div class="hs-note">The house did not answer.</div>'); });
+  }
+  function assetsUpload() {
+    var fi = document.getElementById("hs-own"), f = fi && fi.files && fi.files[0], say = document.getElementById("hs-say");
+    if (!f) { if (say) say.textContent = "Choose a photograph first."; return; }
+    if (f.size > 10000000) { if (say) say.textContent = "Under 10 MB, please."; return; }
+    var credit = document.getElementById("hs-own-credit").value, release = document.getElementById("hs-own-release").value;
+    if (say) say.textContent = "Uploading your photograph.";
+    fetch(API + "/reads/slot-upload", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": f.type || "application/octet-stream", "x-filename": f.name, "x-credit": credit, "x-release": release }, body: f })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.ok) { if (say) say.textContent = "The house refused the photograph: " + ((d && (d.say || d.error)) || "no answer") + "."; return; }
+        assetsRoom("Kept as a record of kind own, credited " + (d.credit || "") + ". Set it on a read from THE SLOTS.");
+      }).catch(function () { if (say) say.textContent = "The house did not answer."; });
+  }
+  /* SEAM:KNOWLEDGE (RD1a): THE FEED, moved from the Intelligence page as it stood. Paste, link, or drop a file; it chunks, embeds
+     on our own account, and lands in knowledge_base and the lake. Admin-gated server-side; the routes are unchanged. */
+  function api(action, payload) {
+    return fetch(API + "/" + action, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(payload || {}) })
+      .then(function (r) { if (!r.ok) throw new Error("Proxy " + action + " failed: " + r.status); return r.json(); });
+  }
+  function feedRoom() {
+    houseShell("feed", '<div class="kb">' +
+      '<div class="hs-note">Your data → embedded on our account → the knowledge base and the lake, where every read can cite it, counted in nothing. Internal unless you mark it shareable. Never a free model.</div>' +
+      '<label>Paste text</label><textarea id="kbText" placeholder="Notes, research, transcripts, positioning docs…"></textarea>' +
+      '<div class="kb-row"><div><label>Or a link</label><input type="url" id="kbUrl" placeholder="https://… (readable core is extracted)"></div>' +
+      '<div><label>Or a file</label><label class="kb-file">＋ text, PDF, Word, Excel, HTML, image<input type="file" id="kbFile" accept=".txt,.md,.markdown,.csv,.json,.pdf,.docx,.xlsx,.xlsm,.xlsb,.xls,.odt,.ods,.html,.htm,.xml,.numbers,.jpg,.jpeg,.png,.webp,.gif,.bmp,.svg" hidden></label></div></div>' +   /* SEAM:FEED_INTAKE (KB1): the intake's types */
+      '<div class="kb-row"><div><label>Tags (comma-separated)</label><input type="text" id="kbTags" placeholder="brand, q3, fieldnotes"></div>' +
+      '<div><label>Target</label><select id="kbTarget"><option value="both">BOTH</option><option value="daily">DAILY</option><option value="intelligence">INTELLIGENCE</option></select></div></div>' +
+      '<div class="kb-row"><div><label>Title (how the drop is cited)</label><input type="text" id="kbTitle" placeholder="Optional: the drop’s name in reads"></div>' +   /* SEAM:FEED_BRIDGE */
+      '<div><label>Where it goes</label><label class="kb-check"><input type="checkbox" id="kbShare"> Shareable: may become public assets</label>' +
+      '<label class="kb-check"><input type="checkbox" id="kbAssets"> Make STUDIO assets now</label></div></div>' +
+      '<button class="kb-btn" id="kbGo">Feed it</button>' +
+      '<div class="kb-status" id="kbStatus"></div>' +
+      '<div class="kb-list"><label style="margin-top:0">Test the recall</label>' +
+      '<input type="text" id="kbQ" placeholder="Ask what it knows: top matches with similarity"><div id="kbHits"></div></div>' +
+      '<div class="kb-list"><label style="margin-top:0">Recent drops</label><div id="kbRows"></div></div></div>');
+    document.getElementById("kbGo").addEventListener("click", kbSubmit);
+    document.getElementById("kbFile").addEventListener("change", kbSendFile);
+    document.getElementById("kbQ").addEventListener("keydown", function (e) { if (e.key === "Enter") kbSearch(); });
+    kbList();
+  }
+  function kbStat(m) { var s = document.getElementById("kbStatus"); if (s) s.textContent = m || ""; }
+  function kbSubmit() {
+    var btn = document.getElementById("kbGo");
+    var text = document.getElementById("kbText").value.trim();
+    var url = document.getElementById("kbUrl").value.trim();
+    if (!text && !url) { kbStat("NOTHING TO FEED: paste text or drop a link."); return; }
+    btn.disabled = true; kbStat("FEEDING…");
+    api("knowledge/submit", { text: text, url: url || undefined,
+      tags: document.getElementById("kbTags").value, target: document.getElementById("kbTarget").value,
+      title: document.getElementById("kbTitle").value, shareable: document.getElementById("kbShare").checked, assets: document.getElementById("kbAssets").checked }).then(function (d) {   /* SEAM:FEED_BRIDGE */
+      if (d && d.ok) { kbStat(kbSaid(d)); document.getElementById("kbText").value = ""; document.getElementById("kbUrl").value = ""; document.getElementById("kbTitle").value = ""; kbList(); }
+      else kbStat("REFUSED: " + ((d && d.error) || "unknown"));
+      btn.disabled = false;
+    }).catch(function (e) { kbStat(kbErr(e)); btn.disabled = false; });
+  }
+  function kbSendFile(inp) {
+    var f = inp.target.files && inp.target.files[0];
+    if (!f) return;
+    kbStat("FEEDING " + f.name.toUpperCase() + "…");
+    var qs = "?target=" + encodeURIComponent(document.getElementById("kbTarget").value) +
+      "&tags=" + encodeURIComponent(document.getElementById("kbTags").value) +
+      "&title=" + encodeURIComponent(document.getElementById("kbTitle").value) + "&shareable=" + (document.getElementById("kbShare").checked ? "1" : "0") +
+      "&assets=" + (document.getElementById("kbAssets").checked ? "1" : "0");   /* SEAM:FEED_BRIDGE */
+    fetch(API + "/knowledge/file" + qs, { method: "POST", headers: { Authorization: "Bearer " + token, "content-type": f.type || "text/plain", "x-filename": f.name }, body: f })
+      .then(function (r) { return r.json().then(function (d) { return { d: d, status: r.status }; }); })
+      .then(function (o) { if (o.d && o.d.ok) { kbStat(kbSaid(o.d) + " Original archived."); kbList(); } else kbStat("REFUSED: " + ((o.d && o.d.error) || o.status)); })
+      .catch(function (e) { kbStat(kbErr(e)); });
+    inp.target.value = "";
+  }
+  /* SEAM:FEED_BRIDGE: what a drop did, said plainly. */
+  function kbSaid(d) {
+    var s = "LIVE: " + d.added + " chunk" + (d.added === 1 ? "" : "s") + " in the base.";
+    if (d.lake) s += d.lake.skipped ? " DAILY only: not in the lake." : " " + (d.lake.lake || 0) + " in the lake, citable by every read.";
+    if (d.studio) s += d.studio.ok ? " STUDIO: a " + String(d.studio.format || "").replace(/_/g, " ") + " for " + d.studio.platform + " was cut." :
+      d.studio.error === "internal" ? " STUDIO: held, the drop is internal. Mark it shareable to cut it." :
+      d.studio.error === "target_intelligence" ? " STUDIO: this drop is for INTELLIGENCE only." : " STUDIO refused: " + d.studio.error + ".";
+    return s;
+  }
+  /* SEAM:FEED_BRIDGE: drops listed as drops (one key, every chunk); older rows stand alone. */
+  function kbList() {
+    var out = document.getElementById("kbRows"); if (!out) return;
+    api("knowledge/list", {}).then(function (d) {
+      var rows = (d && d.rows) || [], drops = [], byKey = {};
+      rows.forEach(function (r) {
+        var k = r.drop_key || ("row" + r.id);
+        if (!byKey[k]) { byKey[k] = { key: r.drop_key || null, id: r.id, title: r.title, first: r.content, url: r.source_url, target: r.target, status: r.status, shareable: !!r.shareable, n: 0 }; drops.push(byKey[k]); }
+        byKey[k].n++;
+      });
+      out.innerHTML = drops.length ? drops.map(function (x) {
+        var name = x.title ? "<b>" + esc(x.title) + "</b> " : "";
+        return '<div class="kb-item"><div class="c">' + name + esc(String(x.first || "").slice(0, 300)) + "…" +
+          (x.url ? ' <a href="' + esc(x.url) + '" target="_blank" rel="noopener">source</a>' : "") +
+          (x.key ? '<div class="kb-used" data-used-out="' + esc(x.key) + '"></div>' : "") + "</div>" +
+          '<span class="kb-chip ' + esc(x.status) + '">' + esc(x.target) + " · " + (x.n > 1 ? x.n + " chunks · " : "") + (x.shareable ? "shareable" : "internal") + "</span>" +
+          (x.key ? '<button class="kb-x" data-used="' + esc(x.key) + '" title="Where it was used">USED</button>' +
+            '<button class="kb-x" data-cut="' + esc(x.key) + '" data-share="' + (x.shareable ? 1 : 0) + '" title="Make STUDIO assets">ASSETS</button>' : "") +
+          '<button class="kb-x" ' + (x.key ? 'data-drop="' + esc(x.key) + '"' : 'data-id="' + x.id + '"') + ' title="Remove">✕</button></div>';
+      }).join("") : '<div class="kb-item"><div class="c">Nothing fed yet. The base is hungry.</div></div>';
+      Array.prototype.forEach.call(document.querySelectorAll("#kbRows [data-id]"), function (b) { b.addEventListener("click", function () { api("knowledge/delete", { id: +b.getAttribute("data-id") }).then(kbList, function (e) { kbStat(kbErr(e)); }); }); });
+      Array.prototype.forEach.call(document.querySelectorAll("#kbRows [data-drop]"), function (b) { b.addEventListener("click", function () {
+        if (!window.confirm("Remove this drop and its copies in the lake?")) return;
+        api("knowledge/delete", { drop_key: b.getAttribute("data-drop") }).then(kbList, function (e) { kbStat(kbErr(e)); }); }); });
+      Array.prototype.forEach.call(document.querySelectorAll("#kbRows [data-used]"), function (b) { b.addEventListener("click", function () {
+        var key = b.getAttribute("data-used"), o = document.querySelector('[data-used-out="' + key + '"]');
+        o.textContent = "LOOKING…";
+        api("knowledge/used", { drop_key: key }).then(function (u) {
+          if (!u || !u.ok) { o.textContent = "UNKNOWN: " + ((u && u.error) || "no answer"); return; }
+          o.innerHTML = "LAKE: " + u.lake + " row" + (u.lake === 1 ? "" : "s") + " · STUDIO: " + (u.studio && u.studio.length ? u.studio.map(function (p) { return esc(String(p.format || "").replace(/_/g, " ") + " (" + p.status + ")"); }).join(", ") : "none") +
+            " · READS: " + (u.reads && u.reads.length ? u.reads.map(function (r) { return '<a href="./?id=' + esc(String(r.id)) + '">' + esc(r.label + " v" + r.version) + "</a>"; }).join(", ") : "none yet");
+        }).catch(function (e) { o.textContent = kbErr(e); }); }); });
+      Array.prototype.forEach.call(document.querySelectorAll("#kbRows [data-cut]"), function (b) { b.addEventListener("click", function () {
+        var key = b.getAttribute("data-cut"), shared = b.getAttribute("data-share") === "1";
+        if (!shared && !window.confirm("This drop is internal. Mark it shareable and cut it into a STUDIO asset? The asset can be posted publicly.")) return;
+        b.disabled = true; kbStat("CUTTING THE DROP…");
+        api("knowledge/cut", { drop_key: key, shareable: true }).then(function (c) { kbStat(kbSaid({ added: 0, studio: c }).replace(/^LIVE: 0 chunks in the base\. /, "")); kbList(); }, function (e) { kbStat(kbErr(e)); b.disabled = false; }); }); });
+    }).catch(function (e) { out.innerHTML = '<div class="kb-item"><div class="c">' + esc(kbErr(e)) + "</div></div>"; });
+  }
+  function kbSearch() {
+    var q = document.getElementById("kbQ").value.trim(), hits = document.getElementById("kbHits");
+    if (!q) return;
+    hits.innerHTML = '<div class="kb-hit">SEARCHING…</div>';
+    api("knowledge/search", { q: q, target: document.getElementById("kbTarget").value }).then(function (d) {
+      var rows = (d && d.rows) || [];
+      hits.innerHTML = rows.length ? rows.map(function (r) {
+        return '<div class="kb-hit"><b>' + Math.round((r.similarity || 0) * 100) + "%</b>" + esc(String(r.content).slice(0, 220)) + "…</div>";
+      }).join("") : '<div class="kb-hit">No recall: feed it more.</div>';
+    }).catch(function (e) { hits.innerHTML = '<div class="kb-hit">' + esc(kbErr(e)) + "</div>"; });
+  }
+  function kbErr(e) {
+    var s = String(e || "");
+    if (s.indexOf("404") > -1) return "WORKER STALE: deploy the worker, then try again.";
+    if (s.indexOf("403") > -1) return "ADMIN ONLY: this account cannot feed the base.";
+    if (s.indexOf("401") > -1) return "SIGNED OUT: sign in again.";
+    return "UNREACHABLE: network or API down.";
+  }
+  function library(kinds) {   /* SEAM:HOUSE (RD1a): the door (every shelf) or one kind's room */
+    actions.innerHTML = ""; houseBack(null);
     call("/reads/list", {}).then(function (d) {
       if (!d || !d.ok) return say("The library could not load: " + ((d && d.error) || "no answer") + ".");
       var groups = { recon: [], report: [], weekly: [], monthly: [], record: [] };   /* SEAM:READ_RECON */
       (d.reads || []).forEach(function (r) { if (groups[r.kind]) groups[r.kind].push(r); });
-      var html = '<section class="lib"><h1>The Read</h1><div class="sub">Every read we have compiled, newest first</div>';
+      var html = houseHead(kinds ? ROOM : "reads");
       ["recon", "report", "record", "monthly", "weekly"].forEach(function (k) {   /* SEAM:READ_RECON: commissioned work shelves first */
-        if (!groups[k].length) return;
+        if (!groups[k].length || (kinds && kinds.indexOf(k) < 0)) return;
         html += "<h2>" + KIND[k] + "</h2><div class=\"cards\">" + groups[k].map(function (r) {
           return '<a class="card" href="?id=' + r.id + '"><div class="lab">' + esc(r.label) + " · v" + r.version + '</div>' +
             '<div class="ttl">' + esc(r.status === "ready" || r.status === "published" ? "Open the read" : r.deep_stage && (r.status === "queued" || r.status === "failed") ? deepStageLabel({ stage: r.deep_stage, hold_reason: r.deep_hold, waiting: r.deep_waiting }) : "Not ready yet") + '</div>' +   /* SEAM:READ_DEEP */
@@ -1674,6 +1997,7 @@
       var row = d.read, x = row.read || {}, st = row.stats || {}, rc = d.receipts || {};
       SELL = d.sell || null; RC_ALL = rc;   /* SEAM:SELL_LAW, the stand bar prints the verdict; the cover pick lists the photographs */
       document.title = "Unsurfaced DAILY · " + row.label;
+      houseBack(ROOM);
       var btns = [];
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF' + (CUT ? " (client cut)" : "") + '</button>');
       if (x.title && (row.kind === "report" || row.kind === "recon")) btns.push('<button class="btn" id="cut">' + (CUT ? "Full read" : "Client cut") + '</button>');   /* SEAM:READ_CUT: the same document, as a client reads it */
@@ -2245,7 +2569,7 @@
     if (!s) return say("Sign in on the Intelligence page first, then return here.");
     token = s.access_token;
     var id = Q.get("id");
-    if (id) openRead(id); else library();
+    if (id) openRead(id); else houseOpen(ROOM);
   });
 })();
 </script>
