@@ -87,7 +87,7 @@ ok(days >= 59 && days <= 61, 'B9 the window is capped at sixty nights');
 ok(/if \(path === '\/reads\/assets' \|\| path === '\/reads\/nights'\) return houseRoute\(path, body, env, origin, user\);/.test(w), 'C1 readRoute hands the two lists to the house, after the admin check');
 const rr = between(w, 'async function readRoute(path, body, env, origin, user) {', "if (path === '/reads/list')");
 ok(/callerIsAdmin\(env, user\.id\)/.test(rr) && rr.indexOf('callerIsAdmin') < rr.indexOf('houseRoute'), 'C2 the admin check comes first');
-ok(/case '\/reads\/assets':\s*\/\/ SEAM:HOUSE[^\n]*\n\s+case '\/reads\/nights':\s*\n\s+case '\/reads\/day-frames':[^\n]*\n\s+case '\/reads\/pdf':\s+return readRoute\(/.test(w), 'C3 the router carries both paths to readRoute (and the day\'s frames since RD1b)');
+ok(/case '\/reads\/assets':\s*\/\/ SEAM:HOUSE[^\n]*\n\s+case '\/reads\/nights':\s*\n\s+case '\/reads\/day-frames':[^\n]*\n\s+case '\/reads\/slot-video':[^\n]*\n\s+case '\/reads\/slot-take':\n\s+case '\/reads\/slot-clip':\n\s+case '\/reads\/pdf':\s+return readRoute\(/.test(w), 'C3 the router carries both paths to readRoute (and the day\'s frames since RD1b, the video door since RD1c)');
 ok(!/buildStudioManifest\(/.test(w) && !/async function studioCaption\(/.test(w) && /dayFramesEnsure\(env, \{ id: edId/.test(w), 'C4 the STUDIO worker block and the cron\'s cut are gone; the publish writes the day\'s frames (RD1b)');
 
 // ── D: the house page ────────────────────────────────────────────────────────────────────────────────────────────

@@ -138,7 +138,7 @@ const pick = between(w, "} else if (pick.rights_id) {", "} else if (pick.clear =
 ok(pick.includes("if (rec.kind === 'play') {") && pick.includes("'video_not_a_slot'") && pick.includes('rec = await playRecordChecked(env, rec);') && pick.indexOf("playRecordChecked") < pick.indexOf("rightsClears(rec, 'weekly_pdf') && why.length >= 12"),
   'C5 the pick route checks a PLAY image before the override and the clearance are judged, and refuses a video');
 const submit = between(w, 'async function playRender(body, env, origin, user) {', 'async function playRenderStatus(');
-ok(/prompt, seconds: pool\.kind === 'video' \? seconds : null \};/.test(submit), 'C6 the render\'s submit record carries the prompt and the seconds');
+ok(/prompt: housed, seconds: pool\.kind === 'video' \? seconds : null, resolution: pool\.kind === 'video' \? resolution : null/.test(submit), 'C6 the render\'s submit record carries the prompt (housed since RD1c) and the seconds');
 const done = between(w, 'async function playRenderStatus(', 'async function playUploadRef(');
 ok(/rec\.asset = asset;\s*\n\s*if \(asset !== url\) await playRightsWrite\(env, rec, key, reqId\)\.catch\(excQuiet\('play_rights', null\)\);/.test(done), 'C7 a finished render the house holds writes its record; one fal gave back and storage refused writes none');
 ok(/which === 'assets_play' \? await playAssetsBackfill\(env, \{ steps: parseInt\(body\.steps, 10\) \|\| undefined, again: !!body\.again \}\)/.test(w), 'C8 the desk runs the backfill');

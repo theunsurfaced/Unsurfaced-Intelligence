@@ -249,6 +249,7 @@
   .slots { font-size: 13px; line-height: 1.55; } .slots .sp-paths { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; } .slots .sp-path { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 5px 9px; border: 1px solid rgba(20,20,20,.3); cursor: pointer; background: transparent; color: inherit; } .slots .sp-path.on { background: #141414; color: #FAF7F2; border-color: #141414; } .slots .sp-path.has::after { content: " \25CF"; color: #C41230; }
   .slots .sp-brief { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 10px 0; } .slots .sp-brief label { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .15em; text-transform: uppercase; opacity: .7; margin-bottom: 3px; } .slots .sp-brief textarea, .slots .sp-brief input, .slots .sp-obj { width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px; padding: 6px 8px; border: 1px solid rgba(20,20,20,.3); background: #fff; color: #141414; } .slots .sp-brief textarea { min-height: 64px; resize: vertical; } .slots .sp-brief .wide { grid-column: 1 / -1; }
   .slots .sp-drafts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; } .slots .sp-draft { border: 1px solid rgba(20,20,20,.15); padding: 6px; background: #fff; } .slots .sp-draft img { width: 100%; aspect-ratio: 7 / 9; object-fit: cover; display: block; background: #1A1A1A; cursor: zoom-in; } .slots .sp-draft.hero img { aspect-ratio: 3 / 2; } .slots .sp-draft.on { outline: 3px solid #C41230; } .slots .sp-draft .k { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-top: 6px; line-height: 1.5; } .slots .sp-draft .k b { color: #C41230; } .slots .sp-draft .k .ok { color: #2E7D4F; } .slots .sp-draft .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .slots .sp-video { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; } .slots .sp-video input { font: inherit; font-size: 12px; padding: 5px 8px; flex: 1 1 260px; min-width: 0; border: 1px solid rgba(20,20,20,.3); background: #fff; } .slots .sp-takes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 8px; } .slots .sp-take { border: 1px solid rgba(20,20,20,.15); padding: 6px; background: #fff; min-width: 0; } .slots .sp-take.on { outline: 3px solid #C41230; } .slots .sp-take .pic { height: 120px; background: #1A1A1A; overflow: hidden; display: flex; align-items: center; justify-content: center; } .slots .sp-take .pic video { width: 100%; height: 100%; object-fit: cover; } .slots .sp-take .pic .ty { color: #FAF7F2; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; } .slots .sp-take .k { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: .06em; line-height: 1.5; margin-top: 6px; word-break: break-word; } .slots .sp-take .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }   /* SEAM:VIDEO_DOOR (RD1c) */
   .slots .sp-assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 6px; } .slots .sp-asset { border: 1px solid rgba(20,20,20,.15); padding: 6px; background: #fff; min-width: 0; } .slots .sp-asset.on { outline: 3px solid #C41230; } .slots .sp-asset .pic { height: 84px; background: #1A1A1A; overflow: hidden; } .slots .sp-asset .pic img { width: 100%; height: 84px; object-fit: cover; display: block; } .slots .sp-asset .k { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-top: 6px; line-height: 1.5; word-break: break-word; } .slots .sp-asset .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }   /* SEAM:ASSETS (AS1) */
   .slots .sp-stories { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .slots .sp-stories img { width: 84px; height: 56px; object-fit: cover; cursor: pointer; border: 2px solid transparent; opacity: .85; } .slots .sp-stories img:hover, .slots .sp-stories img.on { border-color: #C41230; opacity: 1; }
   .slots .sp-house { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; } .slots .btn { border-color: rgba(20,20,20,.6); color: #141414; } .slots .btn.red { color: #FAF7F2; } .slots .sp-note { font-size: 12px; opacity: .8; margin-top: 6px; }
@@ -696,7 +697,7 @@
   function slotLabel(row, p) {
     var x = row.read || {}; if (p === "cover") return "Cover";
     var m = /^([a-z]+)\[(\d+)\]$/.exec(p), arr = m && x[m[1]], f = arr && arr[parseInt(m[2], 10)];
-    return (parseInt(m[2], 10) + 1) + " · " + (f && (f.name || f.title) ? String(f.name || f.title).slice(0, 48) : p);
+    return (parseInt(m[2], 10) + 1) + " · " + (f && (f.name || f.title || f.headline) ? String(f.name || f.title || f.headline).slice(0, 48) : p);   /* SEAM:VIDEO_DOOR (RD1c): a day's frame */
   }
   function slotBriefOf(row, p) {
     var d = SL.data, b = d.briefs && d.briefs[p]; if (b) return b;
@@ -722,9 +723,9 @@
       : slot.kind === "play" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">PLAY render · ' + esc(slot.credit || "") + (rec && rec.made && rec.made.model ? " · " + esc(String(rec.made.model).split("/").slice(-2).join("/")) : "")   /* SEAM:ASSETS (AS1) */
       : slot.kind === "house" ? '<img src="' + API + "/media/" + esc(slot.ref) + '" style="width:120px;vertical-align:middle;margin-right:10px">House image · ' + esc(slot.credit || "") + (rec && rec.made && rec.made.model ? " · " + esc(String(rec.made.model).split("/").slice(-2).join("/")) : "")
       : '<img src="' + API + "/img/t/" + esc(String(slot.ref).slice(1)) + '" style="width:120px;vertical-align:middle;margin-right:10px">' + esc(slot.credit || "") + " · the object of the finding" + (rec && rec.object_sentence ? ': “' + esc(rec.object_sentence) + '”' : ""))
-      : "Not filled: the page shows the writer's pick (the lead photograph), as before.";
+      : row.kind === "daily" ? "Not filled: the frame draws the story's photograph, as before." : "Not filled: the page shows the writer's pick (the lead photograph), as before.";   /* SEAM:VIDEO_DOOR (RD1c) */
     var story = p === "cover" ? (x.title || "") : slotLabel(row, p).replace(/^\d+ · /, "");
-    var ids = Object.keys(RC_ALL).filter(function (s) { return /^S\d+$/.test(s) && RC_ALL[s] && RC_ALL[s].has_image; }).slice(0, 24);
+    var RCX = row.rc || RC_ALL, ids = Object.keys(RCX).filter(function (s) { return /^S\d+$/.test(s) && RCX[s] && RCX[s].has_image; }).slice(0, 24);   /* SEAM:VIDEO_DOOR (RD1c): a day's stories */
     var html = '<div class="pf-head">THE SLOTS</div>' +
       '<div class="sp-house">' + esc(story) + " &nbsp;·&nbsp; house make this month $" + Number(d.house.used_usd || 0).toFixed(2) + " of $" + Number(d.house.cap_usd || 0).toFixed(0) + (d.make && !d.make.configured ? " · the make service is not configured (FAL_KEY)" : "") + "</div>" +
       (note ? '<div class="sp-note" style="margin:6px 0 10px;padding:8px 10px;border-left:3px solid #C41230;background:#fff;opacity:1">' + esc(note) + "</div>" : "") +   /* ED1b: the house's reply, where it is seen */
@@ -747,13 +748,15 @@
       '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">YOUR OWN PHOTOGRAPH</b><div class="sp-note">The house vouches for it: no checks are run; the credit and the release note ride the record. JPEG, PNG or WebP under 10 MB.</div>' +   /* SEAM:EDIT_DESK (ED2) */
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><input type="file" id="sp-own" accept="image/jpeg,image/png,image/webp"><input id="sp-own-credit" placeholder="Credit (Photo: Name)" style="font:inherit;font-size:12px;padding:4px 6px;width:200px"><input id="sp-own-release" placeholder="Release note, if a person is in it" style="font:inherit;font-size:12px;padding:4px 6px;width:260px"><button class="btn" id="sp-own-use">Upload and use it</button></div></div>' +
       '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">FROM THE ASSETS</b><div class="sp-note">A record the house already holds: its drafts, your own photographs, PLAY\'s renders (checked the moment one is set). Newest first; every one downloads.</div><div class="sp-assets" id="sp-assets"><span class="sp-note">Reading the records.</span></div></div>' +   /* SEAM:ASSETS (AS1) */
+      slotsVideoHtml(d, p, row) +   /* SEAM:VIDEO_DOOR (RD1c): THE VIDEO, under the assets */
       (ids.length ? '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">A PHOTOGRAPH FROM THE STORIES</b><div class="sp-note">Only when the image itself is what the finding is about. Pick one, then write the sentence in the read that makes it so.</div><div class="sp-stories">' +
-        ids.map(function (s) { return '<img src="' + API + "/img/t/" + s.slice(1) + '" data-sid="' + s + '" class="' + (slot && slot.ref === s ? "on" : "") + '" title="' + esc(RC_ALL[s].headline || "") + '">'; }).join("") + "</div>" +
+        ids.map(function (s) { return '<img src="' + API + "/img/t/" + s.slice(1) + '" data-sid="' + s + '" class="' + (slot && slot.ref === s ? "on" : "") + '" title="' + esc(RCX[s].headline || "") + '">'; }).join("") + "</div>" +
         '<div id="sp-objrow" style="display:none;margin-top:8px"><input class="sp-obj" id="sp-obj" placeholder="The sentence in the read this photograph is the object of"><div style="margin-top:6px"><button class="btn" id="sp-objset">Set it as the object of the finding</button> <span class="sp-note" id="sp-objwhich"></span></div></div></div>' : "") +
       "";
     slotsPanel(html);
     slotsBind(row);
     slotsAssets(row);   /* SEAM:ASSETS (AS1): the records a slot may be filled from */
+    slotsVideoBind(row);   /* SEAM:VIDEO_DOOR (RD1c): the takes and the clip */
   }
   function slotBriefRead() {
     return { scene: document.getElementById("sp-scene").value, light: document.getElementById("sp-light").value, red: document.getElementById("sp-red").value, story: document.getElementById("sp-story").value };
@@ -768,7 +771,7 @@
       fetch(API + "/reads/slot-upload", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": f.type || "application/octet-stream", "x-filename": f.name, "x-credit": credit, "x-release": release }, body: f })
         .then(function (r) { return r.json(); }).then(function (d) {
           if (!d || !d.ok) { slotsShow(row, "The house refused the photograph: " + ((d && (d.say || d.error)) || "no answer") + "."); return; }
-          return call("/reads/slot", { id: row.id, path: p, pick: { rights_id: d.rights_id } }).then(function (d2) { if (d2 && d2.ok) { slotsOpen(row, "Your photograph is set. The next PDF carries it; on the stand, replace the issue or render its cover again."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d2 && d2.error) || "no answer") + "."); });
+          return call("/reads/slot", { id: row.id, path: p, pick: { rights_id: d.rights_id } }).then(function (d2) { if (d2 && d2.ok) { slotsOpen(row, "Your photograph is set. The next PDF carries it; on the stand, replace the issue or render its cover again."); slotsAfter(row); } else slotsShow(row, "The house refused: " + ((d2 && d2.error) || "no answer") + "."); });
         }).catch(function () { slotsShow(row, "The house did not answer."); });
     };
     Array.prototype.forEach.call(document.querySelectorAll(".sp-path"), function (bt) { bt.onclick = function () { SL.path = bt.getAttribute("data-path"); SL.pick = null; slotsShow(row, null); }; });
@@ -789,10 +792,10 @@
       }).catch(function () { slotsShow(row, "The house did not answer."); });
     };
     var tp = document.getElementById("sp-type"); if (tp) tp.onclick = function () {
-      call("/reads/slot", { id: row.id, path: p, pick: { type: true } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Typographic. The next PDF carries it."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
+      call("/reads/slot", { id: row.id, path: p, pick: { type: true } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Typographic. The next PDF carries it."); slotsAfter(row); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
     };
     var cl = document.getElementById("sp-clear"); if (cl) cl.onclick = function () {
-      call("/reads/slot", { id: row.id, path: p, pick: { clear: true } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Cleared: the writer's pick again."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
+      call("/reads/slot", { id: row.id, path: p, pick: { clear: true } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Cleared: the writer's pick again."); slotsAfter(row); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + "."); });
     };
     Array.prototype.forEach.call(document.querySelectorAll(".sp-draft img"), function (im) { im.onclick = function () { window.open(im.getAttribute("data-full"), "_blank"); }; });
     Array.prototype.forEach.call(document.querySelectorAll("[data-use]"), function (bt) { bt.onclick = function () {
@@ -800,7 +803,7 @@
       var body = { id: row.id, path: p, pick: { rights_id: dr.rights_id }, accepted: (dr.checks && dr.checks.advisory) || [] };
       if (bt.getAttribute("data-over")) { var why = window.prompt("This draft failed a hard check (" + ((dr.checks && dr.checks.hard) || []).join(", ").replace(/_/g, " ") + "). Why is the check wrong? Your reason goes on the record."); if (!why || why.trim().length < 12) return; body.override = why; }
       bt.disabled = true;
-      call("/reads/slot", body).then(function (d) { if (d && d.ok) { SL.pick = dr.rights_id; slotsOpen(row, "Set. The next PDF carries it; on the stand, replace the issue or render its cover again."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); });
+      call("/reads/slot", body).then(function (d) { if (d && d.ok) { SL.pick = dr.rights_id; slotsOpen(row, "Set. The next PDF carries it; on the stand, replace the issue or render its cover again."); slotsAfter(row); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); });
     }; });
     Array.prototype.forEach.call(document.querySelectorAll("[data-final]"), function (bt) { bt.onclick = function () {
       var i = parseInt(bt.getAttribute("data-final"), 10), dr = (SL.drafts[p] || [])[i]; if (!dr) return;
@@ -814,11 +817,11 @@
     var which = null;
     Array.prototype.forEach.call(document.querySelectorAll(".sp-stories img"), function (im) { im.onclick = function () {
       Array.prototype.forEach.call(document.querySelectorAll(".sp-stories img"), function (o) { o.classList.remove("on"); }); im.classList.add("on"); which = im.getAttribute("data-sid");
-      document.getElementById("sp-objrow").style.display = "block"; document.getElementById("sp-objwhich").textContent = which + " · " + ((RC_ALL[which] && RC_ALL[which].headline) || "");
+      document.getElementById("sp-objrow").style.display = "block"; document.getElementById("sp-objwhich").textContent = which + " · " + (((row.rc || RC_ALL)[which] && (row.rc || RC_ALL)[which].headline) || "");
     }; });
     var os = document.getElementById("sp-objset"); if (os) os.onclick = function () {
       if (!which) return; var sent = document.getElementById("sp-obj").value;
-      call("/reads/slot", { id: row.id, path: p, pick: { story: which, object_sentence: sent } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Set as the object of the finding, credited. The next PDF carries it."); openRead(row.id); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); });
+      call("/reads/slot", { id: row.id, path: p, pick: { story: which, object_sentence: sent } }).then(function (d) { if (d && d.ok) { slotsOpen(row, "Set as the object of the finding, credited. The next PDF carries it."); slotsAfter(row); } else slotsShow(row, "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."); });
     };
   }
   function deskPanel(html) {   /* SEAM:READ_DESK */
@@ -1974,6 +1977,111 @@
     if (assetIsVideo(a)) return '<video src="' + API + esc(a.url) + '" muted playsinline preload="metadata" style="width:100%;height:' + (h || 150) + 'px;object-fit:cover;background:#000"></video>';
     return '<img src="' + API + esc(a.url) + '" alt="" loading="lazy">';
   }
+  /* SEAM:VIDEO_DOOR (RD1c): THE VIDEO in THE SLOTS, and the slots on a DAILY day. A slot's image (or a story's photograph) becomes
+     a take through PLAY: a draft at 720p, a final at 1080p, each button saying its cost before it is pressed; the takes list under
+     the slot with their status, download when landed, and one marked for the clip; the clip stitches the landed takes in slot order
+     at no cost. A DAILY day opens the same panel with the row id day:<issue> (the cover and one slot per frame); after a change the
+     day is drawn again instead of a read. Nothing renders on its own. */
+  function slotsAfter(row) { if (row && typeof row.after === "function") row.after(); else openRead(row.id); }
+  function takeStatus(t) { return t.ref ? "landed" : t.status === "failed" ? "failed" : "rendering"; }
+  function takeDownloadUrl(t, label) {
+    if (!t || !t.ref) return null;
+    var day = String(t.at || "").slice(0, 10) || "take";
+    return API + "/media/" + t.ref + "?download=1&name=" + encodeURIComponent(("unsurfaced-" + String(label || "take").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + (t.tier || "take") + "-" + day + ".mp4").replace(/-+/g, "-"));
+  }
+  function slotsVideoHtml(d, p, row) {
+    var v = d.video || {}, dr = v.draft || {}, fi = v.final || {}, list = (d.takes && d.takes[p]) || [], clip = d.clip || null;
+    var usd = function (x) { return x.usd == null ? "" : " · $" + Number(x.usd).toFixed(2); };
+    var model = function (x) { return x.model ? String(x.model).split("/").slice(-3).join("/") : "the pool"; };
+    var takes = list.length ? '<div class="sp-takes">' + list.map(function (t) {
+      var st = takeStatus(t), dl = takeDownloadUrl(t, row.label);
+      return '<div class="sp-take' + (t.pick ? " on" : "") + '" data-take="' + esc(t.request_id) + '">' +
+        '<div class="pic">' + (t.ref ? '<video src="' + API + "/media/" + esc(t.ref) + '" muted playsinline controls preload="metadata"></video>' : '<span class="ty">' + esc(st) + "</span>") + "</div>" +
+        '<div class="k">' + esc(t.tier === "final" ? "Final" : "Draft") + " · " + esc(String(t.seconds || "")) + " s · " + esc(t.resolution || "") + (t.usd != null ? " · $" + Number(t.usd).toFixed(2) : "") + "<br>" + esc(model(t)) + "<br>" + esc(st) + (t.source && t.source.kind ? " · from " + esc(t.source.kind === "story" ? "the story's photograph" : t.source.kind === "play" ? "a PLAY render" : t.source.kind === "own" ? "your photograph" : "a house image") : "") + (t.pick ? " · in the clip" : "") + "</div>" +
+        '<div class="row">' + (dl ? '<a class="btn" href="' + esc(dl) + '">Download</a>' : "") + (t.ref && !t.pick ? '<button class="btn" data-tpick="' + esc(t.request_id) + '">Use in the clip</button>' : "") + '<button class="btn" data-tdrop="' + esc(t.request_id) + '" title="Removes the take from this slot; the record stays in THE ASSETS">Drop</button></div></div>';
+    }).join("") + "</div>" : "";
+    var clipHtml = clip ? '<div class="sp-note" style="margin-top:8px">The clip: ' + esc(String(clip.n || "")) + " takes" + (clip.ref ? ', landed. <a class="btn" href="' + esc(API + "/media/" + clip.ref + "?download=1&name=" + encodeURIComponent("unsurfaced-clip-" + String(clip.at || "").slice(0, 10) + ".mp4")) + '">Download the clip</a>' : ", stitching; it lands within a minute.") + "</div>" : "";
+    return '<div style="margin-top:12px"><b style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.2em">THE VIDEO</b>' +
+      '<div class="sp-note">From this slot\'s image, or the story\'s photograph, to a take through PLAY. A draft on ' + esc(model(dr)) + " at " + esc(dr.resolution || "720p") + ", " + esc(String(dr.seconds || 4)) + " seconds" + usd(dr) + "; a final on " + esc(model(fi)) + " at " + esc(fi.resolution || "1080p") + ", " + esc(String(fi.seconds || 5)) + " seconds" + usd(fi) + ". The house look and the motion law ride every prompt. Nothing renders until you press; a take lists and downloads and never sits in a slot. The reel is the frames in motion, free, from the frames section.</div>" +
+      '<div class="sp-video"><input id="sp-motion" placeholder="What moves: one gesture, what changes between the first frame and the last" value="">' +
+        '<button class="btn" id="sp-take-draft">' + esc(dr.label || "Draft take") + usd(dr) + "</button>" +
+        '<button class="btn red" id="sp-take-final">' + esc(fi.label || "Final take") + " · " + esc(fi.resolution || "1080p") + usd(fi) + "</button>" +
+        '<button class="btn" id="sp-clip">Stitch the clip · $0</button>' +
+        '<span class="sp-note" id="sp-video-say"></span></div>' + takes + clipHtml + "</div>";
+  }
+  var VD = { timer: null, polls: 0 };
+  function slotsVideoBind(row) {
+    var p = SL.path, say = document.getElementById("sp-video-say");
+    var go = function (tier) {
+      var bt = document.getElementById(tier === "final" ? "sp-take-final" : "sp-take-draft"); if (!bt || bt.disabled) return;
+      var motion = (document.getElementById("sp-motion") || {}).value || "";
+      bt.disabled = true; if (say) say.textContent = "Asking PLAY for the take.";
+      call("/reads/slot-video", { id: row.id, path: p, tier: tier, motion: motion }).then(function (d) {
+        if (!d || !d.ok) { if (say) say.textContent = "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."; bt.disabled = false; return; }
+        slotsOpen(row, "The " + (tier === "final" ? "final" : "draft") + " take is rendering" + (d.take && d.take.usd != null ? " ($" + Number(d.take.usd).toFixed(2) + " on the meter)" : "") + "; it lands under the slot in a minute or two.");
+      }).catch(function () { if (say) say.textContent = "The house did not answer."; bt.disabled = false; });
+    };
+    var bd = document.getElementById("sp-take-draft"); if (bd) bd.onclick = function () { go("draft"); };
+    var bf = document.getElementById("sp-take-final"); if (bf) bf.onclick = function () { go("final"); };
+    var bc = document.getElementById("sp-clip"); if (bc) bc.onclick = function () {
+      bc.disabled = true; if (say) say.textContent = "Stitching the landed takes in slot order.";
+      call("/reads/slot-clip", { id: row.id }).then(function (d) {
+        if (!d || !d.ok) { if (say) say.textContent = "The house refused: " + ((d && d.error) || "no answer") + (d && d.hint ? ". " + d.hint : "") + "."; bc.disabled = false; return; }
+        slotsOpen(row, "The clip is stitching: " + d.clip.n + " takes. It lands within a minute.");
+      }).catch(function () { if (say) say.textContent = "The house did not answer."; bc.disabled = false; });
+    };
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tpick]"), function (bt) { bt.onclick = function () {
+      call("/reads/slot-take", { id: row.id, path: p, request_id: bt.getAttribute("data-tpick") }).then(function (d) { if (d && d.ok) slotsOpen(row, "Marked for the clip."); else if (say) say.textContent = "The house refused: " + ((d && d.error) || "no answer") + "."; });
+    }; });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tdrop]"), function (bt) { bt.onclick = function () {
+      call("/reads/slot-take", { id: row.id, path: p, request_id: bt.getAttribute("data-tdrop"), drop: true }).then(function (d) { if (d && d.ok) slotsOpen(row, "Dropped from the slot; the record stays in THE ASSETS."); else if (say) say.textContent = "The house refused: " + ((d && d.error) || "no answer") + "."; });
+    }; });
+    slotsPoll(row);
+  }
+  /* A take or a clip still rendering is polled through PLAY's own status door by the admin who asked for it; when one lands the
+     panel is read again. Twelve minutes at most. */
+  function slotsPoll(row) {
+    if (VD.timer) { clearTimeout(VD.timer); VD.timer = null; }
+    var d = SL.data; if (!d) return;
+    var open = [];
+    Object.keys(d.takes || {}).forEach(function (k) { (d.takes[k] || []).forEach(function (t) { if (t && t.request_id && !t.ref && t.status !== "failed") open.push(t.request_id); }); });
+    if (d.clip && d.clip.request_id && !d.clip.ref) open.push(d.clip.request_id);
+    if (!open.length || VD.polls > 120) { VD.polls = 0; return; }
+    VD.polls++;
+    VD.timer = setTimeout(function () {
+      Promise.all(open.map(function (id) {
+        return fetch(API + "/play/render/" + encodeURIComponent(id), { headers: { Authorization: "Bearer " + token } }).then(function (r) { return r.json(); }).catch(function () { return null; });
+      })).then(function (rs) {
+        var landed = rs.some(function (r) { return r && r.ok && (r.status === "done" || r.status === "failed"); });
+        if (landed) { VD.polls = 0; slotsOpen(row, null); } else slotsPoll(row);
+      });
+    }, 6000);
+  }
+  /* A DAILY day as a slot row: the cover and one slot per frame, the stories as the photographs, the day drawn again after a change. */
+  function dayRow(ed, items, fr) {
+    var rc = {};
+    items.forEach(function (it) { rc["S" + it.id] = { headline: it.headline || "", source_name: it.source_name || "", has_image: !!(it.image_url || it.source_url) }; });
+    return { id: "day:" + ed.issue_no, issue: ed.issue_no, kind: "daily", label: "DAILY No. " + ed.issue_no, version: 1, status: "ready",
+      read: { title: (fr && fr.cover_line) || ed.headline || "", frames: ((fr && fr.frames) || []).map(function (f) { return { headline: f.headline || "", line: f.line || "", kicker: f.kicker || "", item_id: f.item_id || null }; }) },
+      meta: { slots: (fr && fr.slots) || {} }, rc: rc, after: function () { dailyDay(ed.issue_no); } };
+  }
+  /* PURE: the image a day's frame draws: the slot's record when one is set (a typographic slot draws none), else the story's photograph. */
+  function dayFramePool(fr, path, itemId) {
+    var s = fr && fr.slots && fr.slots[path];
+    if (s && s.kind === "type") return [];
+    if (s && s.ref) return ["slot:" + s.ref];
+    return itemId ? [String(itemId)] : [];
+  }
+  function dayFrameImg(byId, id) {
+    var s = String(id);
+    if (s.indexOf("slot:") === 0) { var ref = s.slice(5); return /^S\d+$/.test(ref) ? API + "/img/s/" + ref.slice(1) : API + "/media/" + ref; }
+    return byId[s] ? API + "/img/s/" + s : null;
+  }
+  function dayFrameCredit(fr, byId, id) {
+    var s = String(id);
+    if (s.indexOf("slot:") === 0) { var ref = s.slice(5), k = Object.keys(fr.slots || {}).filter(function (q) { return fr.slots[q] && fr.slots[q].ref === ref; })[0]; return k && fr.slots[k].credit ? String(fr.slots[k].credit) : "Unsurfaced"; }
+    return "Photo: " + ((byId[s] && byId[s].source_name) || "");
+  }
   /* THE SLOTS, FROM THE ASSETS: the records a slot may be filled from, newest first; Use it writes the slot through /reads/slot
      with the record's id, so a PLAY image is checked as it is set and a failed check asks for the reason an override needs. */
   function slotsAssets(row) {
@@ -1999,7 +2107,7 @@
     if (why) body.override = why;
     slotsShow(row, a && a.kind === "play" && !(a.made && a.made.checked) ? "Checking the render the way a draft is checked, about twenty seconds." : "Setting the slot.");
     call("/reads/slot", body).then(function (d) {
-      if (d && d.ok) { SL.pick = rid; slotsOpen(row, "Set from the assets. The next PDF carries it; on the stand, replace the issue or render its cover again."); openRead(row.id); return; }
+      if (d && d.ok) { SL.pick = rid; slotsOpen(row, "Set from the assets. The next PDF carries it; on the stand, replace the issue or render its cover again."); slotsAfter(row); return; }
       if (d && d.error === "not_cleared") {
         var hard = (d.hard || []).join(", ").replace(/_/g, " ");
         var w = window.prompt("This record failed a hard check (" + hard + "). Why is the check wrong? Your reason goes on the record, twelve characters or more.");
@@ -2815,12 +2923,16 @@
       }).catch(function () { say.textContent = "The house did not answer."; b.disabled = false; });
     };
     if (!written || fr.status !== "ready" || !(fr.frames || []).length) return;
-    var frames = fr.frames.filter(function (f) { return f && f.headline; });
+    var fidx = [], frames = fr.frames.filter(function (f, i) { if (f && f.headline) { fidx.push(i); return true; } return false; });   /* SEAM:VIDEO_DOOR (RD1c): the slot paths keep the set's own indices */
+    var coverPool = dayFramePool(fr, "cover", null);
     framesSection({ label: "DAILY · No. " + ed.issue_no + " · " + hsDay(ed.date), sub: "THE DAILY · " + hsDay(ed.date).toUpperCase() + " · SWIPE",
       slug: "unsurfaced-daily-" + String(ed.date), h2: "The day\'s frames", s: { cover_line: fr.cover_line, frames: frames, caption: fr.caption },
-      pools: frames.map(function (f) { return f.item_id ? [String(f.item_id)] : []; }), coverPool: items.map(function (it) { return String(it.id); }),
-      img: function (id) { return byId[String(id)] ? API + "/img/s/" + String(id) : null; },
-      credit: function (id) { return "Photo: " + ((byId[String(id)] && byId[String(id)].source_name) || ""); }, mount: panel });
+      pools: frames.map(function (f, j) { return dayFramePool(fr, "frames[" + fidx[j] + "]", f.item_id); }), coverPool: coverPool.length ? coverPool : items.map(function (it) { return String(it.id); }),
+      img: function (id) { return dayFrameImg(byId, id); },
+      credit: function (id) { return dayFrameCredit(fr, byId, id); }, mount: panel,
+      extra: ' <button class="btn" data-fr="slots">The slots</button>' }).then(function (wrapEl) {   /* SEAM:VIDEO_DOOR (RD1c): the cover and one slot per frame, the same doors as a read */
+        var sb = wrapEl && wrapEl.querySelector('[data-fr="slots"]'); if (sb) sb.onclick = function () { SL.path = "cover"; SL.pick = null; slotsOpen(dayRow(ed, items, fr), null); };
+      });
   }
   /* Minimal PDF: one JPEG page per frame (DCTDecode), the LinkedIn document-post shape. */
   function pdfOf(frames) {

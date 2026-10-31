@@ -54,6 +54,27 @@ const PLAY_SYSTEM = {
    * note is translated to the desired END STATE before it touches a render. */
   'engine-adjust': 'You translate a person\'s plain edit note into ONE generation-ready edit instruction for a diffusion model. Craft laws: NEVER use negation words (remove, delete, without, no, not, erase, get rid of); describe the desired end state affirmatively and name what fills the space instead. Example: \'remove the people from the background\' becomes \'the background is empty behind the subject, clean walls and fixtures visible, the subject is the only person in frame\'. Keep the given subject and action anchors. One flat declarative instruction under 60 words, then end with a short preservation clause naming what stays identical. Do not mention @Video1 or @Image1. No em dashes. Output the instruction only, no preamble.',
 };
+/* SEAM:VIDEO_DOOR (RD1c): the house look on a shot prompt. PLAY's engine-compile wrote generation-ready prompts with no house in
+ * them (subject, composition, lens, light, palette, texture), so every render came back in the model's own house style: golden hour,
+ * a sunburst, a suburban idyll, the product centered and new. The doctrine (templates/DOCTRINE.md) now rides the prompt as one
+ * affirmative paragraph, added once (playHousePrompt), on every take the video door asks for and on PLAY's own compile when the brief
+ * asks for the house (house: true). Video gets the motion law too. What the frame must not carry (type, logos, the stock gloss) goes to
+ * the model as a negative prompt where the pool takes one; the lettering law is checked on the source image before a take moves it. */
+const PLAY_HOUSE_SUFFIX = 'House look, Unsurfaced: evidence that surfaced, not content that was made. The frame reads as found, stamped and filed: a real place with its real surfaces, ' +
+  'hard honest light from one source, true blacks, ivory and cream as paper, color held back, red on the one found thing only. One subject, one gesture, one detail. ' +
+  'The eye is on the thing, never on the camera; the feeling is a document, a still from the field, a page in a file. Every surface in the frame is plain and unlettered.';
+const PLAY_MOTION_LAW = 'Motion law: the camera holds, or pushes in slowly; one gesture, finished inside the take; one thing changes between the first frame and the last, the thing the prompt names; ' +
+  'the hook is in the first second and the take is made by the fourth; the type arrives like a stamp and the house adds it afterwards, so the frame itself stays plain.';
+const PLAY_HOUSE_NEGATIVE = 'text, lettering, signage, logo, brand mark, watermark, caption, subtitles, golden hour glow, sunburst, lens flare, soft focus, bokeh, smiling at the camera, stock photography, advertising gloss, template look, oversaturated color, cinematic grade';
+/* PURE: the prompt with the house look added once, and the motion law once more for video; never doubled, never past PLAY's cap. */
+function playHousePrompt(prompt, kind) {
+  const tail = ' ' + PLAY_HOUSE_SUFFIX + (kind === 'video' ? ' ' + PLAY_MOTION_LAW : '');
+  let p = String(prompt || '').replace(/\s+/g, ' ').trim();
+  if (p.indexOf(PLAY_HOUSE_SUFFIX.slice(0, 24)) >= 0) return p.slice(0, 2500);
+  return (p.slice(0, Math.max(0, 2500 - tail.length)) + tail).trim();
+}
+/* PURE: the resolution a render is asked at: 720p as every render was before this cut, 1080p when the door asks for it. */
+function playResolution(v) { return v === '1080p' ? '1080p' : '720p'; }
 
 export default {
   async scheduled(event, env, ctx) {
@@ -327,6 +348,9 @@ export default {
         case '/reads/assets':        // SEAM:HOUSE (RD1a): the assets and the nights, the house's own shelves
         case '/reads/nights':
         case '/reads/day-frames':    // SEAM:DAY_FRAMES (RD1b): a day's frames, read or written
+        case '/reads/slot-video':    // SEAM:VIDEO_DOOR (RD1c): a take from a slot's image, a take's mark, the clip
+        case '/reads/slot-take':
+        case '/reads/slot-clip':
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
         case '/reads/slot-upload':   return slotUpload(request, env, origin, user);   // SEAM:EDIT_DESK (ED2): the house's own photograph, raw body
         case '/pay/onboard':         return payOnboard(env, origin, user);
@@ -392,6 +416,7 @@ async function playGenerate(body, env, origin) {
   const wantJson = body.format === 'json' || kind === 'copy' || kind === 'moodboard';
   const brief = body.brief && typeof body.brief === 'object' ? playBriefClean(body.brief) : null;   // SEAM:PLAY_BRIEF: the brief rides every call
   const sys = (PLAY_SYSTEM[kind] || PLAY_SYSTEM.default)
+    + (body.house === true && typeof PLAY_HOUSE_SUFFIX === 'string' ? ' THE HOUSE LOOK, which every prompt you write carries: ' + PLAY_HOUSE_SUFFIX : '')   // SEAM:VIDEO_DOOR (RD1c): PLAY's own projects unchanged unless the brief asks for the house
     + (brief ? ' THE BRIEF, which every line holds to: ' + JSON.stringify(brief) + (brief.specs ? ' PLATFORM SPECS: ' + JSON.stringify(brief.specs) : '') : '')
     + (wantJson ? ' Output STRICT JSON only. No markdown fences, no prose outside the JSON.' : '');
   if (!body.reserve) {
@@ -603,6 +628,8 @@ async function playRender(body, env, origin, user) {
   const pool = RENDER_POOL[String(body.pool || '')];
   const prompt = String(body.prompt || '').slice(0, 2500);
   if (!pool || !prompt) return json({ ok: false, error: 'bad_request' }, 400, origin, env);
+  const housed = body.house === true && typeof playHousePrompt === 'function' ? playHousePrompt(prompt, pool.kind) : prompt;   // SEAM:VIDEO_DOOR (RD1c): the house look on the prompt, once
+  const resolution = typeof playResolution === 'function' ? playResolution(body.resolution) : '720p';   // SEAM:VIDEO_DOOR (RD1c): 720p as every render was, 1080p when the door asks
   const seconds = pool.kind === 'video'
     ? Math.min(Math.max(parseInt(body.seconds, 10) || 4, 2), 10)
     : pool.sec;
@@ -627,21 +654,22 @@ async function playRender(body, env, origin, user) {
   const model = useVideoRef ? pool.ref
     : imageUrl ? ((pool.kind === 'video' && pool.i2v) ? pool.i2v : (pool.ref || pool.id))
     : pool.id;
-  const input = { prompt };
+  const input = { prompt: housed };
   const durOf = p => p.dur === 'str' ? String(seconds) : seconds;
   if (useVideoRef) {
     if (imageUrls.length) input.image_urls = imageUrls;
     if (videoUrls.length) input.video_urls = videoUrls;
     input.duration = String(seconds);
-    input.resolution = '720p';
+    input.resolution = resolution;
     input.aspect_ratio = RENDER_ASPECTS[body.aspect] ? String(body.aspect) : '16:9';
     input.generate_audio = true;
   } else if (pool.kind === 'video') {
     input.duration = durOf(pool);
-    input.resolution = '720p';
+    input.resolution = resolution;
     input.aspect_ratio = RENDER_ASPECTS[body.aspect] ? String(body.aspect) : '16:9';
     if (pool.dur === 'str') input.generate_audio = true; // free on the Seedance fast tier
     if (imageUrl) input.image_url = imageUrl; // keyframe-first chain, unchanged
+    if (body.house === true && typeof PLAY_HOUSE_NEGATIVE === 'string' && /kling/.test(model)) input.negative_prompt = PLAY_HOUSE_NEGATIVE;   // SEAM:VIDEO_DOOR (RD1c): the pool that takes one
   } else if (imageUrl && pool.ref) {
     input.image_urls = [imageUrl];
     input.image_size = RENDER_ASPECTS[body.aspect] || 'landscape_16_9';
@@ -666,7 +694,8 @@ async function playRender(body, env, origin, user) {
   const project = String(body.project || 'engine').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'engine';
   const rec = { model, kind: pool.kind, status_url: j.status_url, response_url: j.response_url,
     user: user.id, project, unit: String(body.unit || '').slice(0, 40), at: Date.now(), meter: meter.ref || null, credits: meter.credits || 0,
-    prompt, seconds: pool.kind === 'video' ? seconds : null };   // SEAM:ASSETS (AS1): the prompt and the seconds ride to the record a finished render writes
+    prompt: housed, seconds: pool.kind === 'video' ? seconds : null, resolution: pool.kind === 'video' ? resolution : null,   // SEAM:ASSETS (AS1): the prompt and the seconds ride to the record a finished render writes
+    parent: /^(?:[0-9a-f-]{36}|S\d+)$/i.test(String(body.parent || '')) ? String(body.parent) : null, surface: String(body.surface || '').replace(/[^a-z_]/g, '').slice(0, 20) || null, source: String(body.source || '').slice(0, 80) || null };   // SEAM:VIDEO_DOOR (RD1c): the image a take moved, and the slot it was asked from
   if (env.RATE_LIMIT) await env.RATE_LIMIT.put('rr:' + j.request_id, JSON.stringify(rec), { expirationTtl: 259200 });
   await logEvent(env, 'play', null, 'render_submit', null, { pool: String(body.pool), model });
   return json({ ok: true, request_id: j.request_id }, 200, origin, env);
@@ -16200,6 +16229,198 @@ async function readReceipts(env, read, row) {
   }
   return out;
 }
+/* ═══ SEAM:VIDEO_DOOR (RD1c THE DAY'S SLOTS AND THE VIDEO DOOR): the slots on a DAILY day, and video from any slot. A DAILY day
+ * has no read row; its frames (editions.frames, RD1b) are its slots: the cover and one per frame (frames[n]), reached through the
+ * same slot doors as a house read with the row id day:<issue>, written on editions.frames.{slots, briefs, takes, clip} and carried
+ * across a rewrite by the story each frame names (dayFramesCarry). The video door: from a slot's image (a cleared record, a PLAY
+ * image after its pick-time check, or a story's photograph on the lake's basis) to a take through PLAY's own render path
+ * (playRender: the meter, the seconds budget, the record of kind play with the prompt kept and the source as its parent); a draft on
+ * the draft pool at 720p, a final on the final pool at 1080p; the house look and the motion law ride every prompt; nothing renders
+ * until an admin presses the button, which says the cost first. The clip stitches the finished takes in slot order through
+ * /play/assemble at no cost. A take lists and downloads and never sits in a slot (AS1's rule); the reel (RD1b, the frames in
+ * motion, free) is a different file. No new spender: every fal call is playRender's or playAssemble's. ═══ */
+const VIDEO_DOOR = { PROJECT: 'house', KEEP: 12, MIN_S: 2, MAX_S: 10, MOTION_MAX: 240, PROMPT_MAX: 1400, RESOLUTIONS: ['720p', '1080p'], ASPECT: '9:16',
+  TIERS: { draft: { pool: 'video.draft', seconds: 4, resolution: '720p', label: 'Draft take' }, final: { pool: 'video.final', seconds: 5, resolution: '1080p', label: 'Final take' } },
+  FINAL_SECONDS: [5, 10],
+  MOTION_DEFAULT: 'the camera holds on the scene as it is; one small gesture by the person, or one change in the light, between the first frame and the last; nothing else moves.' };
+/* PURE: the shot a take is asked for: the slot's brief when the house wrote one (the scene, the light, the one thing in red), else the
+ * finding's own words; then what moves, in the admin's words or the house's default. The house look and the motion law are added
+ * once by playRender (house: true), so they are never doubled here. */
+function videoPrompt(o) {
+  const x = o || {}, b = x.brief && typeof x.brief === 'object' ? x.brief : null, parts = [];
+  const scene = b && b.scene ? String(b.scene).replace(/\u2014/g, ',').trim() : '';
+  parts.push(scene || [x.title, x.text].map(s => String(s || '').replace(/\u2014/g, ',').trim()).filter(Boolean).join('. '));
+  if (b && b.light) parts.push('Light: ' + String(b.light).trim().replace(/\.$/, '') + '.');
+  if (b && b.red) parts.push('The one thing in red: ' + String(b.red).trim().replace(/\.$/, '') + '.');
+  const mv = String(x.motion || '').replace(/\u2014/g, ',').replace(/\s+/g, ' ').trim().slice(0, VIDEO_DOOR.MOTION_MAX);
+  parts.push('Motion: ' + (mv || VIDEO_DOOR.MOTION_DEFAULT));
+  return parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, VIDEO_DOOR.PROMPT_MAX);
+}
+/* PURE: the tier's call, with the admin's seconds and resolution where the pool allows them. The final pool takes five or ten
+ * seconds; the draft pool two to ten; the resolution is one of the two the door knows. */
+function videoSpec(tier, seconds, resolution) {
+  const t = tier === 'final' ? 'final' : 'draft', spec = VIDEO_DOOR.TIERS[t];
+  const s = parseInt(seconds, 10);
+  const sec = t === 'final' ? (VIDEO_DOOR.FINAL_SECONDS.includes(s) ? s : spec.seconds) : (s >= VIDEO_DOOR.MIN_S && s <= VIDEO_DOOR.MAX_S ? s : spec.seconds);
+  return { tier: t, pool: spec.pool, seconds: sec, resolution: VIDEO_DOOR.RESOLUTIONS.includes(resolution) ? resolution : spec.resolution, label: spec.label };
+}
+/* PURE: the model a tier's image-to-video call uses, and what it costs by the price table. pools and usd are the worker's own
+ * (RENDER_POOL, renderUsd), passed in so the menu can be read without them. */
+function videoMenu(pools, usd) {
+  const out = {};
+  for (const t of Object.keys(VIDEO_DOOR.TIERS)) {
+    const spec = VIDEO_DOOR.TIERS[t], pool = pools && pools[spec.pool] ? pools[spec.pool] : null, model = pool ? (pool.i2v || pool.id) : null;
+    out[t] = { label: spec.label, pool: spec.pool, model, seconds: spec.seconds, resolution: spec.resolution, usd: model && typeof usd === 'function' ? Math.round(usd(model, 'video', spec.seconds) * 100) / 100 : null };
+  }
+  return out;
+}
+/* PURE: the take the clip uses for one slot: the admin's pick when it has landed, else the newest landed final, else the newest
+ * landed draft; null when nothing has landed. */
+function clipChoose(list) {
+  const done = (list || []).filter(t => t && t.ref);
+  if (!done.length) return null;
+  return done.find(t => t.pick) || done.find(t => t.tier === 'final') || done[0];
+}
+/* PURE: the clip's takes in slot order (the cover first, then the slots as the read lists them), one per slot that has one. */
+function clipOrder(paths, takes) {
+  const out = [];
+  for (const p of paths || []) { const t = clipChoose((takes || {})[p]); if (t) out.push({ path: p, take: t }); }
+  return out;
+}
+/* PURE: a take's file name for the download door. */
+function takeFileName(take, label) {
+  const day = String(take && take.at || '').slice(0, 10) || 'take';
+  return ('unsurfaced-' + String(label || 'take').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + (take && take.tier || 'take') + '-' + day + '.mp4').replace(/-+/g, '-');
+}
+/* A DAILY day as a slot row: the cover and the frames as the paths, the slots, briefs, takes and clip from editions.frames, the
+ * stories as the pack. Null when the issue is not published. */
+async function daySlotRow(env, issue) {
+  const n = parseInt(issue, 10);
+  if (!n) return null;
+  const eds = await sbRest(env, 'editions?issue_no=eq.' + n + '&status=eq.published&select=id,issue_no,date,headline,frames&limit=1') || [];
+  const ed = eds[0];
+  if (!ed) return null;
+  const items = await sbRest(env, 'edition_items?edition_id=eq.' + ed.id + '&order=ord.asc&select=id,ord,kicker,headline,standfirst,source_name,source_url,image_url,territory') || [];
+  const fr = ed.frames && typeof ed.frames === 'object' ? ed.frames : {};
+  const frames = (Array.isArray(fr.frames) ? fr.frames : []).map(f => ({ headline: f && f.headline || '', line: f && f.line || '', kicker: f && f.kicker || '', item_id: f && f.item_id || null, from: f && f.from || 'writer' }));
+  return { id: 'day:' + ed.issue_no, day: { id: ed.id, issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '', frames: fr, items }, kind: 'daily', status: 'ready',
+    label: 'DAILY No. ' + ed.issue_no + ' · ' + String(ed.date || ''), window_start: ed.date, window_end: ed.date,
+    read: { title: fr.cover_line || ed.headline || ('DAILY No. ' + ed.issue_no), frames },
+    meta: { slots: fr.slots && typeof fr.slots === 'object' ? fr.slots : {}, briefs: fr.briefs && typeof fr.briefs === 'object' ? fr.briefs : {}, takes: fr.takes && typeof fr.takes === 'object' ? fr.takes : {}, clip: fr.clip || null },
+    pack_ids: items.map(it => it.id) };
+}
+/* A day's slot patch lands on editions.frames: the slots, the briefs, the takes and the clip beside the writer's copy. */
+async function daySlotPatch(env, row, patch) {
+  const m = (patch && patch.meta) || {}, fr = Object.assign({}, (row.day && row.day.frames) || {}, { slots: m.slots || {}, briefs: m.briefs || {}, takes: m.takes || {}, clip: m.clip || null });
+  await sbRest(env, 'editions?id=eq.' + row.day.id, { method: 'PATCH', body: { frames: fr } });
+  row.day.frames = fr; row.meta = Object.assign({}, row.meta || {}, { slots: fr.slots, briefs: fr.briefs, takes: fr.takes, clip: fr.clip });
+}
+/* The takes with their records: a take that has landed carries the record's id, its key and its url; one query for every request. */
+async function slotTakesResolve(env, takes) {
+  const t = takes && typeof takes === 'object' ? takes : {}, ids = [];
+  for (const p of Object.keys(t)) for (const k of (Array.isArray(t[p]) ? t[p] : [])) if (k && k.request_id && !k.ref) ids.push(String(k.request_id));
+  const recs = {};
+  for (let i = 0; i < ids.length; i += 40) {
+    const part = ids.slice(i, i + 40).map(id => '"' + id.replace(/"/g, '') + '"').join(',');
+    const rows = (await sbRest(env, 'media_rights?kind=eq.play&select=id,ref,created_at,made&made-%3E%3Erequest_id=in.(' + encodeURIComponent(part) + ')').catch(excQuiet('slot_takes_resolve', []))) || [];
+    for (const r of rows) if (r && r.made && r.made.request_id) recs[String(r.made.request_id)] = r;
+  }
+  const out = {};
+  for (const p of Object.keys(t)) out[p] = (Array.isArray(t[p]) ? t[p] : []).map(k => {
+    const r = k && recs[String(k.request_id)];
+    return r ? Object.assign({}, k, { rights_id: r.id, ref: r.ref, url: '/media/' + r.ref, landed_at: r.created_at, status: 'done' }) : k;
+  });
+  return out;
+}
+/* The clip with its record, when the stitch has landed. */
+async function slotClipResolve(env, clip) {
+  if (!clip || !clip.request_id) return clip || null;
+  if (clip.ref) return clip;
+  const rows = (await sbRest(env, 'media_rights?kind=eq.play&select=id,ref,created_at&made-%3E%3Erequest_id=eq.' + encodeURIComponent(String(clip.request_id)) + '&limit=1').catch(excQuiet('slot_clip_resolve', []))) || [];
+  return rows[0] ? Object.assign({}, clip, { rights_id: rows[0].id, ref: rows[0].ref, url: '/media/' + rows[0].ref, landed_at: rows[0].created_at, status: 'done' }) : clip;
+}
+/* What /reads/slots carries besides the slots: the takes, the clip, the door's menu with each tier's cost, and the day when the row is one. */
+async function slotDoorExtras(env, row) {
+  const meta = (row && row.meta) || {};
+  return { takes: await slotTakesResolve(env, meta.takes), clip: await slotClipResolve(env, meta.clip),
+    video: videoMenu(typeof RENDER_POOL === 'object' ? RENDER_POOL : null, typeof renderUsd === 'function' ? renderUsd : null),
+    day: row && row.day ? { issue_no: row.day.issue_no, date: row.day.date, frames_status: (row.day.frames && row.day.frames.status) || null } : null };
+}
+/* The image a take moves: a record the admin named, a story photograph, the slot's own record, or on a day the frame's story. A
+ * record must be an image and cleared for the page (a PLAY image is checked here if it never was); a story rides the lake's basis. */
+async function slotVideoSource(env, ctx, source) {
+  const row = ctx.row, sp = ctx.sp, slots = ctx.slots || {}, target = ctx.target || {}, s = source && typeof source === 'object' ? source : {};
+  const base = MAKE.MEDIA_BASE.replace(/\/media\/$/, '');
+  let rec = null, story = null;
+  if (s.rights_id) rec = await rightsGet(env, s.rights_id);
+  else if (s.story) story = String(s.story);
+  else if (slots[sp] && slots[sp].rights_id) {
+    if (slots[sp].kind === 'type') return { error: 'typographic_slot', hint: 'a typographic slot has no image to move; set an image on it first' };
+    if (slots[sp].kind === 'story_obj') story = String(slots[sp].ref); else rec = await rightsGet(env, slots[sp].rights_id);
+  }
+  else if (row.day && Array.isArray(target.evidence) && target.evidence[0]) story = String(target.evidence[0]);
+  else return { error: 'no_source', hint: 'set an image on the slot, choose a record from the assets, or a story photograph' };
+  if (s.rights_id && !rec) return { error: 'no_such_record' };
+  if (rec) {
+    if (rec.kind === 'type') return { error: 'typographic_slot' };
+    if (typeof playIsVideo === 'function' && playIsVideo(rec)) return { error: 'source_is_video', hint: 'a take moves an image; pick an image record' };
+    if (rec.kind === 'play' && typeof playRecordChecked === 'function') rec = await playRecordChecked(env, rec);
+    if (!rightsClears(rec, 'weekly_pdf')) return { error: 'source_not_cleared', hard: (rec.made && rec.made.checks && rec.made.checks.hard) || [], hint: 'set it on the slot first and override the check there with a reason' };
+    const url = /^https:\/\//.test(String(rec.ref || '')) ? String(rec.ref) : MAKE.MEDIA_BASE + String(rec.ref);
+    return { kind: rec.kind, ref: rec.ref, parent: rec.id, url, credit: rec.credit || null, rec };
+  }
+  const m = /^S(\d+)$/.exec(story || '');
+  if (!m || !(row.pack_ids || []).includes(parseInt(m[1], 10))) return { error: 'not_in_the_read', hint: 'a story photograph must be one the read or the day stands on' };
+  return { kind: 'story', ref: 'S' + m[1], parent: 'S' + m[1], url: base + '/img/s/' + m[1], credit: null, rec: null };
+}
+/* The three doors, through slotRoute after the row and the path are known: a take, a take's mark, the clip. */
+async function slotDoorRoute(path, body, env, origin, user, ctx) {
+  const row = ctx.row, meta = row.meta || {}, slots = ctx.slots || {}, by = String((user && user.email) || (user && user.id) || 'admin').replace(/@.*$/, '');
+  const at = new Date().toISOString();
+  if (path === '/reads/slot-clip') {
+    const takes = await slotTakesResolve(env, meta.takes);
+    const main = slotMain(row.read), paths = ['cover'].concat(main.list.map((p, i) => main.key + '[' + i + ']'));
+    const order = clipOrder(paths, takes);
+    if (order.length < 2) return json({ ok: false, error: 'need_two_takes', have: order.length, hint: 'the clip stitches two or more landed takes, one per slot, in slot order' }, 200, origin, env);
+    if (typeof playAssemble !== 'function') return json({ ok: false, error: 'assemble_unbuilt' }, 200, origin, env);
+    const urls = order.map(o => MAKE.MEDIA_BASE + String(o.take.ref));
+    const res = await playAssemble({ video_urls: urls, project: VIDEO_DOOR.PROJECT }, env, origin, user);
+    const d = res && typeof res.json === 'function' ? await res.json() : res;
+    if (!d || !d.ok) return json({ ok: false, error: (d && d.error) || 'assemble_failed', detail: d && d.detail }, 200, origin, env);
+    const clip = { request_id: d.request_id, n: order.length, paths: order.map(o => o.path), at, by, status: 'rendering' };
+    await slotPatch(env, row, { meta: Object.assign({}, meta, { clip }) });
+    logEvent(env, 'intelligence', 'reads', 'slot_clip', null, { id: row.id, n: order.length, by: user.id });
+    return json({ ok: true, clip }, 200, origin, env);
+  }
+  const sp = ctx.sp, list = Array.isArray((meta.takes || {})[sp]) ? (meta.takes || {})[sp] : [];
+  if (path === '/reads/slot-take') {
+    const rid = String(body.request_id || '');
+    if (!list.some(t => t && t.request_id === rid)) return json({ ok: false, error: 'no_such_take' }, 200, origin, env);
+    const next = body.drop === true ? list.filter(t => t.request_id !== rid) : list.map(t => Object.assign({}, t, { pick: t.request_id === rid ? true : undefined }));
+    const takes = Object.assign({}, meta.takes || {}, { [sp]: next });
+    await slotPatch(env, row, { meta: Object.assign({}, meta, { takes }) });
+    return json({ ok: true, path: sp, takes: await slotTakesResolve(env, { [sp]: next }) }, 200, origin, env);
+  }
+  // /reads/slot-video
+  if (typeof playRender !== 'function') return json({ ok: false, error: 'render_unbuilt' }, 200, origin, env);
+  const spec = videoSpec(body.tier, body.seconds, body.resolution);
+  const src = await slotVideoSource(env, ctx, body.source);
+  if (src.error) return json({ ok: false, error: src.error, hint: src.hint || null, hard: src.hard || null }, 200, origin, env);
+  const briefs = ctx.briefs || {}, brief = briefs[sp] || (src.rec && src.rec.made && src.rec.made.brief) || null;
+  const prompt = videoPrompt({ title: ctx.target && ctx.target.title, text: ctx.target && ctx.target.text, brief, motion: body.motion });
+  const res = await playRender({ pool: spec.pool, prompt, image_url: src.url, seconds: spec.seconds, resolution: spec.resolution, aspect: VIDEO_DOOR.ASPECT, project: VIDEO_DOOR.PROJECT, unit: String(row.id) + ':' + sp,
+    house: true, parent: src.parent, surface: 'slots', source: String(row.id) + ':' + sp }, env, origin, user);
+  const d = res && typeof res.json === 'function' ? await res.json() : res;
+  if (!d || !d.ok) return json({ ok: false, error: (d && d.error) || 'render_failed', detail: d && d.detail || null }, 200, origin, env);
+  const pools = typeof RENDER_POOL === 'object' ? RENDER_POOL : {}, pool = pools[spec.pool] || {}, model = pool.i2v || pool.id || null;
+  const usd = model && typeof renderUsd === 'function' ? Math.round(renderUsd(model, 'video', spec.seconds) * 100) / 100 : null;
+  const take = { request_id: d.request_id, tier: spec.tier, pool: spec.pool, model, seconds: spec.seconds, resolution: spec.resolution, usd,
+    source: { kind: src.kind, ref: src.ref, parent: src.parent }, motion: String(body.motion || '').replace(/\u2014/g, ',').slice(0, VIDEO_DOOR.MOTION_MAX) || null, at, by, status: 'rendering' };
+  const takes = Object.assign({}, meta.takes || {}, { [sp]: [take].concat(list).slice(0, VIDEO_DOOR.KEEP) });
+  await slotPatch(env, row, { meta: Object.assign({}, meta, { takes }) });
+  logEvent(env, 'intelligence', 'reads', 'slot_take', null, { id: row.id, path: sp, tier: spec.tier, seconds: spec.seconds, resolution: spec.resolution, usd, source: src.kind, by: user.id });
+  return json({ ok: true, path: sp, take }, 200, origin, env);
+}
 /* SEAM:MEDIA_RIGHTS (ED1): every image the house publishes carries a rights record (media_rights, 0051): what it is, where
  * it came from, the basis it is used on, the contexts it is cleared for, and for a house image how it was made and what
  * the checks said. A slot on a read (meta.slots[path]) points at a record; the print, the page and the stand read the
@@ -16212,7 +16433,7 @@ const RIGHTS = {
   CONTEXTS: ['weekly_pdf', 'stand_cover', 'social', 'card', 'web', 'recon', 'brief', 'api'],
   THUMB_PX: 400,
   HOUSE_CREDIT: 'Unsurfaced, AI illustration',
-  SLOT_RX: /^(?:cover|(?:patterns|features|held|findings)\[\d{1,2}\])$/
+  SLOT_RX: /^(?:cover|(?:patterns|features|held|findings|frames)\[\d{1,2}\])$/   // SEAM:VIDEO_DOOR (RD1c): a DAILY day's frames are slots too
 };
 /* PURE: the contexts a record clears, given its kind and its checks. A hard check that stands clears nothing; a hard check
  * an admin has overridden with a reason on the record is a human judgment and clears as if it had passed. */
@@ -16264,6 +16485,7 @@ function playRightsRecord(rec, key, reqId, at) {
   return { kind: 'play', ref: String(key || ''), credit: PLAY_ASSETS.CREDIT, basis: RIGHTS.BASIS.play, contexts: [],
     made: { play: true, model: r.model || null, kind: video ? 'video' : 'image', seconds: video && r.seconds ? Number(r.seconds) : null,
       prompt: r.prompt ? String(r.prompt).slice(0, PLAY_ASSETS.PROMPT_MAX) : null, project: r.project || null, unit: r.unit || null,
+      resolution: r.resolution || null, parent: r.parent || null, surface: r.surface || null, source: r.source || null,   // SEAM:VIDEO_DOOR (RD1c): a take's source image and the slot it serves
       request_id: String(reqId || ''), user: r.user || null, at: at || new Date().toISOString() },
     created_by: playUserId(r.user) };
 }
@@ -16602,17 +16824,18 @@ function slotTarget(read, path) {
   const arr = m && Array.isArray(x[m[1]]) ? x[m[1]] : null;
   const p = arr && arr[parseInt(m[2], 10)];
   if (!p) return null;
-  return { title: p.name || p.title || '', text: p.dek || p.why_it_matters || p.line || '', brief: p.image_brief || p.image_prompt || null, evidence: Array.isArray(p.evidence) ? p.evidence : [] };
+  return { title: p.name || p.title || p.headline || '', text: p.dek || p.why_it_matters || p.line || '', brief: p.image_brief || p.image_prompt || null,
+    evidence: Array.isArray(p.evidence) ? p.evidence : (p.item_id ? ['S' + p.item_id] : []) };   // SEAM:VIDEO_DOOR (RD1c): a day's frame names its story
 }
 /* PURE: the read's main array and its key, and the headlines the story test shuffles. */
 function slotMain(read) {
   const x = read || {};
-  const key = x.patterns ? 'patterns' : x.features ? 'features' : x.held ? 'held' : 'findings';
+  const key = x.patterns ? 'patterns' : x.features ? 'features' : x.held ? 'held' : x.frames ? 'frames' : 'findings';   // SEAM:VIDEO_DOOR (RD1c): a day's frames
   return { key, list: Array.isArray(x[key]) ? x[key] : [] };
 }
 function slotLeads(read) {
   const x = read || {}, main = slotMain(x).list;
-  return [x.title].concat(main.map(p => p && (p.name || p.title))).map(s => String(s || '').trim()).filter(Boolean).slice(0, 8);
+  return [x.title].concat(main.map(p => p && (p.name || p.title || p.headline))).map(s => String(s || '').trim()).filter(Boolean).slice(0, 8);
 }
 /* PURE: a brief from the body, trimmed to its fields. */
 function slotBriefClean(b) {
@@ -16733,8 +16956,13 @@ async function slotUpload(request, env, origin, user) {
   logEvent(env, 'intelligence', 'reads', 'slot_upload', null, { rights_id: rec.id, bytes: raw.byteLength, credit, release: !!release, by: user.id });
   return json({ ok: true, rights_id: rec.id, ref, url: '/media/' + ref, credit, release, kind: 'own' }, 200, origin, env);
 }
+/* SEAM:VIDEO_DOOR (RD1c): a slot's patch lands on the read's row, or on the day's frames when the row is a DAILY day. */
+async function slotPatch(env, row, patch) {
+  if (row && row.day && typeof daySlotPatch === 'function') return daySlotPatch(env, row, patch);
+  return readPatch(env, row.id, patch);
+}
 async function slotRoute(path, body, env, origin, user) {
-  const row = await readRow(env, body.id);
+  const row = /^day:\d+$/.test(String(body.id || '')) && typeof daySlotRow === 'function' ? await daySlotRow(env, parseInt(String(body.id).slice(4), 10)) : await readRow(env, body.id);   // SEAM:VIDEO_DOOR (RD1c): a DAILY day's frames carry slots too
   if (!row) return json({ ok: false, error: 'not_found' }, 200, origin, env);
   if (!row.read || !row.read.title) return json({ ok: false, error: 'not_written' }, 200, origin, env);
   const slots = readSlots(row), briefs = (row.meta && row.meta.briefs) || {};
@@ -16743,8 +16971,13 @@ async function slotRoute(path, body, env, origin, user) {
     for (const k of Object.keys(slots)) { const s = slots[k]; if (s && s.rights_id) recs[k] = await rightsGet(env, s.rights_id); }
     const main = slotMain(row.read);
     const paths = ['cover'].concat(main.list.map((p, i) => main.key + '[' + i + ']'));
-    return json({ ok: true, id: row.id, paths, slots, briefs, rights: recs, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) },
-      make: { draft: MAKE.DRAFT, final: MAKE.FINAL, draft_usd: MAKE.USD[MAKE.DRAFT], final_usd: MAKE.USD[MAKE.FINAL], configured: !!env.FAL_KEY } }, 200, origin, env);
+    const door = typeof slotDoorExtras === 'function' ? await slotDoorExtras(env, row) : {};   // SEAM:VIDEO_DOOR (RD1c): the takes, the clip, the menu with its costs
+    return json(Object.assign({ ok: true, id: row.id, paths, slots, briefs, rights: recs, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) },
+      make: { draft: MAKE.DRAFT, final: MAKE.FINAL, draft_usd: MAKE.USD[MAKE.DRAFT], final_usd: MAKE.USD[MAKE.FINAL], configured: !!env.FAL_KEY } }, door), 200, origin, env);
+  }
+  if (path === '/reads/slot-clip') {   // SEAM:VIDEO_DOOR (RD1c): the clip needs no path; the landed takes in slot order
+    if (typeof slotDoorRoute !== 'function') return json({ ok: false, error: 'door_unbuilt' }, 200, origin, env);
+    return slotDoorRoute(path, body, env, origin, user, { row, slots, briefs });
   }
   const sp = String(body.path || '').trim();
   if (!RIGHTS.SLOT_RX.test(sp)) return json({ ok: false, error: 'bad_path' }, 200, origin, env);
@@ -16755,7 +16988,7 @@ async function slotRoute(path, body, env, origin, user) {
     const brief = await slotBrief(env, target, await slotLake(env, simIds));
     if (!brief) return json({ ok: false, error: 'brief_not_written' }, 200, origin, env);
     const next = Object.assign({}, briefs, { [sp]: Object.assign({}, brief, { by: user.id, at: new Date().toISOString(), written: 'house' }) });
-    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { briefs: next }) });
+    await slotPatch(env, row, { meta: Object.assign({}, row.meta || {}, { briefs: next }) });
     return json({ ok: true, path: sp, brief }, 200, origin, env);
   }
   if (path === '/reads/slot-make') {
@@ -16782,7 +17015,7 @@ async function slotRoute(path, body, env, origin, user) {
     };
     const drafts = await Promise.all(Array.from({ length: n }, (_, i) => one(i)));
     const nextBriefs = Object.assign({}, briefs, { [sp]: Object.assign({}, brief, { by: user.id, at: new Date().toISOString(), written: given ? 'desk' : (briefs[sp] && briefs[sp].written) || 'writer', note: String(body.note || '').replace(/\u2014/g, ',').slice(0, 400) }) });
-    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { briefs: nextBriefs }) });
+    await slotPatch(env, row, { meta: Object.assign({}, row.meta || {}, { briefs: nextBriefs }) });
     logEvent(env, 'intelligence', 'reads', 'slot_make', null, { id: row.id, path: sp, n: drafts.filter(d => d.ok).length, failed: drafts.filter(d => !d.ok).map(d => d.error), note: !!body.note, by: user.id });
     return json({ ok: true, path: sp, brief, drafts, leads, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) } }, 200, origin, env);
   }
@@ -16796,6 +17029,10 @@ async function slotRoute(path, body, env, origin, user) {
     if (!m.cached) await sbRest(env, 'media_rights?id=eq.' + m.rights_id, { method: 'PATCH', body: { made: Object.assign({}, m.rec.made, { checks, final_of: draft.id }), contexts: rightsContexts('house', checks) } });
     logEvent(env, 'intelligence', 'reads', 'slot_final', null, { id: row.id, path: sp, usd: m.usd, by: user.id });
     return json({ ok: true, path: sp, rights_id: m.rights_id, ref: m.ref, url: '/media/' + m.ref, seed: m.seed, model: m.model, usd: m.usd, checks, flagged: checks.hard.length > 0, house: { used_usd: await makeHouseUsed(env), cap_usd: makeHouseCap(env) } }, 200, origin, env);
+  }
+  if (path === '/reads/slot-video' || path === '/reads/slot-take') {   // SEAM:VIDEO_DOOR (RD1c): a take from this slot's image, or a take's mark
+    if (typeof slotDoorRoute !== 'function') return json({ ok: false, error: 'door_unbuilt' }, 200, origin, env);
+    return slotDoorRoute(path, body, env, origin, user, { row, sp, target, slots, briefs });
   }
   if (path === '/reads/slot') {
     const pick = body.pick && typeof body.pick === 'object' ? body.pick : {};
@@ -16835,13 +17072,13 @@ async function slotRoute(path, body, env, origin, user) {
       if (Array.isArray(body.accepted) && body.accepted.length) slot.accepted = body.accepted.map(String).slice(0, 8);
     } else if (pick.clear === true) {
       const next = Object.assign({}, slots); delete next[sp];
-      await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { slots: next }) });
+      await slotPatch(env, row, { meta: Object.assign({}, row.meta || {}, { slots: next }) });
       logEvent(env, 'intelligence', 'reads', 'slot_clear', null, { id: row.id, path: sp, by: user.id });
       return json({ ok: true, path: sp, slot: null }, 200, origin, env);
     } else return json({ ok: false, error: 'bad_pick' }, 200, origin, env);
     slot.by = user.id; slot.at = new Date().toISOString();
     const next = Object.assign({}, slots, { [sp]: slot });
-    await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { slots: next }) });
+    await slotPatch(env, row, { meta: Object.assign({}, row.meta || {}, { slots: next }) });
     logEvent(env, 'intelligence', 'reads', 'slot_pick', null, { id: row.id, path: sp, kind: slot.kind, accepted: slot.accepted || null, by: user.id });
     return json({ ok: true, path: sp, slot }, 200, origin, env);
   }
@@ -17235,7 +17472,7 @@ async function readRoute(path, body, env, origin, user) {
   if (path === '/reads/assets' || path === '/reads/nights') return houseRoute(path, body, env, origin, user);
   if (path === '/reads/night-note') return houseNoteRoute(body, env, origin, user);   // SEAM:MORNING_SHELF (RD1d): a house note on a door row
   if (path === '/reads/day-frames') return dayFramesRoute(body, env, origin, user);   // SEAM:DAY_FRAMES (RD1b)   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
-  if (/^\/reads\/slots?(?:-brief|-make|-final)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1)
+  if (/^\/reads\/slots?(?:-brief|-make|-final|-video|-take|-clip)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1); SEAM:VIDEO_DOOR (RD1c): the day's slots and the takes
   if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)
   if (path === '/reads/list') {
     const k = HOUSE_READ.KINDS[body.kind] ? '&kind=eq.' + body.kind : '';
@@ -17824,7 +18061,21 @@ function dayFramesShape(j, ed, items) {
 /* PURE: the feed's frames on a set survive the writer's rewrite. */
 function dayFramesMerge(fresh, prev) {
   const feed = (prev && Array.isArray(prev.frames) ? prev.frames : []).filter(f => f && f.from === 'feed');
-  return Object.assign({}, fresh, { frames: (fresh.frames || []).concat(feed) });
+  return dayFramesCarry(Object.assign({}, fresh, { frames: (fresh.frames || []).concat(feed) }), prev);   // SEAM:VIDEO_DOOR (RD1c)
+}
+/* PURE: the slots, briefs, takes and clip a set carried follow their frames across a rewrite by the story each frame names; the
+ * cover's stay on the cover; a frame the writer no longer has loses its slot (SEAM:VIDEO_DOOR, RD1c). */
+function dayFramesCarry(merged, prev) {
+  const p = prev && typeof prev === 'object' ? prev : {}, was = {}, now = {};
+  (Array.isArray(p.frames) ? p.frames : []).forEach((f, i) => { if (f && f.item_id) was['frames[' + i + ']'] = String(f.item_id); });
+  (merged.frames || []).forEach((f, i) => { if (f && f.item_id && !now[String(f.item_id)]) now[String(f.item_id)] = 'frames[' + i + ']'; });
+  const move = obj => { const out = {}; for (const k of Object.keys(obj || {})) { if (k === 'cover') out.cover = obj[k]; else if (was[k] && now[was[k]]) out[now[was[k]]] = obj[k]; } return out; };
+  const out = Object.assign({}, merged);
+  if (p.slots) out.slots = move(p.slots);
+  if (p.briefs) out.briefs = move(p.briefs);
+  if (p.takes) out.takes = move(p.takes);
+  if (p.clip) out.clip = p.clip;
+  return out;
 }
 async function dayFramesWrite(env, ed, items, by) {
   const list = (items || []).filter(it => it && it.headline).slice(0, DAY_FRAMES.ITEMS_MAX);

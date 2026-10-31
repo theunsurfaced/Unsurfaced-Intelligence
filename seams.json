@@ -1721,6 +1721,15 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:MORNING_SHELF",
    "purpose": "RD1d: the nights room as the morning shelf (the window of nights with the pass, the frames and the spend on each head, the newest night open; a night alone as the morning read with held and failed first, filters by status and subject, the room behind a subject, the reading on the record, a house note pinned from the row)."
+  },
+  "SEAM:VIDEO_DOOR": {
+   "file": "worker/src/index.js",
+   "purpose": "RD1c THE DAY'S SLOTS AND THE VIDEO DOOR (Oct 30, 2026): a DAILY day's frames are slots (the row id day:<issue> through the slot doors; the cover and frames[n]; slots, briefs, takes and clip on editions.frames, carried across a rewrite by the story each frame names, dayFramesCarry); THE VIDEO door on every slot (/reads/slot-video: a slot's cleared image, a PLAY image after its pick-time check, or a story's photograph on the lake's basis, to a take through playRender with house: true, the meter, the seconds budget and the record of kind play carrying the source as its parent; a draft on the draft pool at 720p, a final on the final pool at 1080p, the cost from the price table on the menu); /reads/slot-take marks or drops a take; /reads/slot-clip stitches the landed takes in slot order through playAssemble at no cost. playRender takes a resolution (720p as before, 1080p when asked), the house look on the prompt once (playHousePrompt: PLAY_HOUSE_SUFFIX from the doctrine, PLAY_MOTION_LAW for video, PLAY_HOUSE_NEGATIVE where the pool takes one) and the source for the record; PLAY's engine-compile carries the suffix when the brief asks (house: true). A take lists and downloads and never sits in a slot. No new spender."
+  },
+  "SEAM:VIDEO_DOOR@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:VIDEO_DOOR",
+   "purpose": "RD1c: THE SLOTS gains THE VIDEO under the assets (a draft and a final take with their cost on the button, what moves in the admin's words, the takes under the slot with their status, download when landed, one marked for the clip, Drop; Stitch the clip; the takes still rendering polled through PLAY's status door by the admin who asked); the DAILY room's day opened offers The slots (the cover and one slot per frame, the same panel with the row id day:<issue>, the day's stories as the photographs, the day drawn again after a change); a day's frames draw a slot's image in place of the story's photograph (dayFramePool, dayFrameImg, dayFrameCredit)."
   }
  },
  "planned": [
