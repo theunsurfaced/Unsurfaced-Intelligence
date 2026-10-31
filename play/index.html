@@ -224,7 +224,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--deep2);}
         <!-- export set continues -->
       </div>
     </div>
-    <p class="note">The read is free. The moves are yours.</p>
+    <p class="note">Unsurfaced™ · Your hidden hand. · unsurfaced-intelligence.com/play</p>
   </div>
 </div>
 
@@ -916,7 +916,7 @@ function exportSheet() {
     if (sel) L.push('  SELECTED TAKE: ' + (/^https?:/.test(sel.asset) ? sel.asset : API_BASE + sel.asset) + '  [' + sel.pool + ']');
     L.push('');
   });
-  L.push('The read is free. The moves are yours.');
+  L.push('Your hidden hand.');
   download('unsurfaced-callsheet.txt', L.join('\n'), 'text/plain');
 }
 function exportJson() { save(); download('unsurfaced-play-project.json', JSON.stringify(S, null, 2), 'application/json'); }

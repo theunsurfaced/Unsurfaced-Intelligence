@@ -242,7 +242,7 @@ const Hp = { esc, inner: h => '<section class="page inner">' + h + '</section>',
   uniq: list => { const seen = {}; return (list || []).filter(a => { if (!a || seen[a] || !rcP[a]) return false; seen[a] = 1; return true; }); },
   stat: (st, path) => { let v = st; String(path || '').split('.').forEach(k => { v = v == null ? undefined : v[k]; }); return typeof v === 'number' ? v : null; },
   fmtDate: d => String(d), pad: n => String(n).padStart(2, '0'), firstSentence: t => { const m = String(t || '').match(/^.+?[.!?](\s|$)/); return m ? m[0].trim() : String(t || ''); }, mark: () => '<svg class="rp-mark"></svg>', capHtml: () => 'cap', ROLES: ['creative', 'marketer', 'founder', 'exec', 'talent'], cited, used };
-const P = new Function('KIND', pageSrc + '; return { reportDoc, rpSpark, rpLine, rpDelta, rpWho, rpBars };')({ report: 'Cultural Intelligence Report' });
+const P = new Function('KIND', 'HOUSE_CLOSER', pageSrc + '; return { reportDoc, rpSpark, rpLine, rpDelta, rpWho, rpBars };')({ report: 'Cultural Intelligence Report' }, 'Your hidden hand.');
 const xr = { title: 'Culture paid for proximity', subtitle: 'What people paid for, and why', ground_line: 'Read from 812 signals across 90 sources, Jul 8 to Oct 3, 2026', thesis: 'Three sentences. Of thesis. Here.', cover_image: 'S11',
   executive_summary: [{ line: 'Put the curl line on the endcap.', evidence: ['S11', 'L1'] }], method: { what_was_read: 'The lake.', how_to_read: 'Carefully.', limits: 'No sales data.' },
   by_the_numbers: [{ stat: 'lake.signals', line: 'Up on the prior window.' }, { stat: 'lake.nope', line: 'x' }],
@@ -280,7 +280,7 @@ ok(/About this report/.test(html) && /<b>4<\/b><span>Comments and posts read/.te
 const srcAt = html.indexOf('>Sources<');
 ok(srcAt > 0 && /<div class="rc"><b>2<\/b><div><div class="hl">Tour grosses 48 million<\/div><div class="src">Reuters · 2026-09-12 · story<\/div>/.test(html) && /<div class="rc"><b>1<\/b><div><div class="hl">Sabrina sells out<\/div><div class="src">Billboard · 2026-09-14 · story<\/div>/.test(html) && /<div class="hl">A consumer comment<\/div><div class="src">Gen Z woman · consumer comment<\/div>/.test(html) && html.indexOf('"src">Billboard') < html.indexOf('"src">Reuters') && !/class="rp-rec"/.test(html) && !/class="rp-ref"|issue 070|my curls finally behave<\/div><div class="src"/.test(html),
   'G14 sources are numbered in order of first mention, named for what they are (a story is a story wherever it ran), once each, with no internal id or issue number; a comment is listed by who said it, its words printed once, where they are quoted');
-ok(!/undefined|NaN|\[object/.test(html) && /unsurfaced-intelligence\.com\/read · Issue 001/.test(html) && !/—/.test(html), 'G15 nothing undefined on the page; the closer names the issue; no em dash');
+ok(!/undefined|NaN|\[object/.test(html) && /unsurfaced-intelligence\.com\/intelligence · Issue 001/.test(html) && /UNSURFACED\u2122 INTELLIGENCE<\/div>/.test(html) && !/—/.test(html), 'G15 nothing undefined on the page; the closer names the issue; no em dash');
 const body = html.slice(0, srcAt);
 const text = body.replace(/<[^>]+>/g, ' ');
 ok(!/\b[SLRTDXV]\d+\b/.test(text) && !/\blake\b|\bframe\b|\btier\b|\bSTATS\b/.test(text), 'G16 before the sources page, no house id and no house word reaches the reader (markup aside)');

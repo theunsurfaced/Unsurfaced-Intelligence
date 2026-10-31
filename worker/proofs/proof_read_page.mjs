@@ -32,7 +32,9 @@ const pm = page.match(/var MARK = ("(?:[^"\\]|\\.)*");/);
 ok(mk && pm && JSON.parse(pm[1].replace(/<\\\//g, '</')) === mk, 'G5 the DAILY mark is the real mark, inlined');
 ok(/table class="flow"><thead>/.test(page), 'G10 interior pages repeat their print margins');
 ok(!/—/.test(page.replace(/<style>[\s\S]*?<\/style>/, '')), 'G6 no em dash in the page copy');
-ok(/The read is free\.<br>The moves are yours\./.test(page), 'G7 the house closer');
+ok(/var HOUSE_CLOSER = "Your hidden hand\.";/.test(page) && (page.match(/<div class="big">' \+ HOUSE_CLOSER \+ '<\/div>/g) || []).length === 3 && /wrap\(c, HOUSE_CLOSER, 84, 560/.test(page) && !/The moves are yours/.test(page), 'G7 the house closer: one constant, Your hidden hand., on every closer page and the frames (HH1)');
 ok(/@page \{ size: letter; margin: 0 0 0\.42in 0; \}/.test(page) && /@page :first \{ margin: 0; \}/.test(page) && /print-color-adjust: exact/.test(page), 'G8 letter pages with room for the running footer (none on the cover), backgrounds kept in the PDF');
 ok(/\/reads\/publish/.test(page) && /\/reads\/reland/.test(page), 'G9 publish and re-land wired');
+ok((page.match(/<section class="page closer">' \+ (?:H\.)?mark\("rp-mark"\) \+ '<div class="big">' \+ HOUSE_CLOSER \+ '<\/div><div class="name">UNSURFACED\\u2122 INTELLIGENCE<\/div><div class="url">unsurfaced-intelligence\.com\//g) || []).length === 3 && /unsurfaced-intelligence\.com\/weekly'/.test(page) && (page.match(/unsurfaced-intelligence\.com\/intelligence/g) || []).length === 2 && /String\(data\.url \|\| "UNSURFACED-INTELLIGENCE\.COM\/DAILY"\)/.test(page) && /url: "UNSURFACED-INTELLIGENCE\.COM\/WEEKLY"/.test(page),
+  'G7b the closer law: every closer page carries the mark, the line, the name and the house url with the kind\'s own path; the frames\' closer takes its url (HH2)');
 console.log(`\nproof_read_page: ${pass} checks PASS`);

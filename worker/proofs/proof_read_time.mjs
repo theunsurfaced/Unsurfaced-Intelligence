@@ -100,7 +100,7 @@ ok(/Depth is earned, never padded: when the evidence on the question is thin, wi
 
 // ── P: the page ───────────────────────────────────────────────────────
 const pageSrc = between(page, 'function rpNum(', '/* ── Library');
-const P = new Function('KIND', pageSrc + '; return { reportDoc, rpVoiceWho, rpAttn, rpAttnLine, rpAttnRivals, rpStatOk, rpStatFmt, rpStatLabel, rpMonth, rpKind };')({ report: 'Cultural Intelligence Report' });
+const P = new Function('KIND', 'HOUSE_CLOSER', pageSrc + '; return { reportDoc, rpVoiceWho, rpAttn, rpAttnLine, rpAttnRivals, rpStatOk, rpStatFmt, rpStatLabel, rpMonth, rpKind };')({ report: 'Cultural Intelligence Report' }, 'Your hidden hand.');
 ok(P.rpVoiceWho({ self: { generation: 'Gen Z', gender: 'woman', trait: '4c hair', place: 'US (Texas)' } }) === 'Gen Z woman with 4c hair in Texas' && P.rpVoiceWho({ self: { role: 'parent', place: 'UK' } }) === 'Parent in the UK' && P.rpVoiceWho({}) === 'Consumer' &&
   P.rpVoiceWho({ band: 'earlier', date: '2014-04-16' }) === 'Consumer, 2014' && P.rpVoiceWho({ band: 'earlier', date: '2014-04-16' }, true) === 'Consumer' && P.rpVoiceWho({ band: 'now', date: '2026-09-01' }) === 'Consumer',
   'P1 a voice is credited to a person by what they said about themselves, never a platform; a voice from before the period carries its year');

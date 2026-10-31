@@ -2558,7 +2558,8 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-new-search" onclick="clearSearch()">← New Search</button>
-        <button class="btn-export-pdf" onclick="exportToPDF()">↓ Download Report</button>
+        <button class="btn-export-pdf" onclick="exportToPDF()">↓ Download PDF</button>
+        <button class="btn-export-pdf" onclick="exportToPDF('client')" title="The same read as a client reads it: the strongest four findings, the limits on page two, the house's own checks left out">↓ Client cut</button><!-- SEAM:EXC_PRINT (RP1) -->
         <button class="btn-new-search" id="btn-make-recon" style="display:none" onclick="makeReconFromRead()">Make this a RECON</button><!-- SEAM:READ_COMMISSION -->
         <button class="btn-new-search" id="btn-pin-read" style="display:none" onclick="pinLiveRead()">Pin to folio</button><!-- SEAM:READ_FOLIO -->
       </div>
@@ -6769,7 +6770,7 @@ function _renderActionsList(elId,ideas) {
 // ════════════════════════════════════════════════════════════════
 //  PDF EXPORT
 // ════════════════════════════════════════════════════════════════
-function exportToPDF() {
+function exportToPDF(cut) {   // SEAM:EXC_PRINT (RP1): cut === 'client' asks for the client cut
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
@@ -6782,9 +6783,7 @@ function exportToPDF() {
     bodyHTML = _buildDashboardPDF(_idbConfig, _idbData, dateStr, timeStr);
     filename = 'Excavate_Dashboard_' + (_idbConfig.title||'Report').replace(/[^a-zA-Z0-9]/g,'_').slice(0,40) + '_' + now.toISOString().slice(0,10) + '.html';
   } else if (window._liveLast && window._liveLast.synthesis && Array.isArray(window._liveLast.synthesis.insights) && window._liveLast.synthesis.insights.length) {   // SEAM:EXC_FALLBACK: the report is the read, never the lens template
-    bodyHTML = _buildReadPDF(window._liveLast.q, window._liveLast.synthesis, dateStr, timeStr);
-    const q = document.getElementById('results-query')?.textContent || window._liveLast.q || 'Search';
-    filename = 'Excavate_Read_' + q.replace(/[^a-zA-Z0-9]/g,'_').slice(0,40) + '_' + now.toISOString().slice(0,10) + '.html';
+    return _excPrint(cut);   // SEAM:EXC_PRINT (RP1): the house's paper, rendered by the worker and kept
   } else if (window._lensResults && window._lensResults.consumer) {
     showToast('The reading did not finish; there is nothing to download yet. Run the full read.');
     return;
@@ -6871,26 +6870,27 @@ function _pdfIdea(idea){
 /* SEAM:EXC_FALLBACK: the downloadable read, built from the read the writer stood behind: the two lines, the interpretation, the findings
    with their confidence and evidence dates, the moves with their proof, the measures line, the blind-spots line, the sources. No lens
    template, no invented move, no dash. */
-function _buildReadPDF(q, syn, dateStr, timeStr){
-  // EX33c: the paper is the read in the reader's order: the claim as the title, the question and who it serves, the bet, the
-  // one measure line, the findings, the moves, the interpretation, the blind spots, then every source grouped and cleaned.
-  const e=x=>safe(String(x==null?'':x));
-  const read=Array.isArray(syn.read)?syn.read.filter(Boolean):[];
-  const f=syn.frame||{}; const who=[f.entity||f.category,f.audience,f.market].filter(Boolean).map(e).join(' \u00b7 ');
-  const m=syn.measures||null, rc=_receiptOf(syn), w=syn.watch||null;
-  const meas=m&&m.recent_7d!=null?`<p class="pdf-meas">Measured: ${e(m.recent_7d)} stories this week, ${e(m.prior_7d)} the week before${m.velocity_pct!=null?' ('+(m.velocity_pct>=0?'+':'')+e(m.velocity_pct)+'%)':''}; ${e(m.outlets)} outlets; ${e(m.weeks_touched)} of ${e(m.weeks||12)} weeks on record${_measuredFrom(m)?' ('+e(_measuredFrom(m))+')':''}; ${e(rc.sources)} sources cited.</p>`:'';
-  const bet=w&&w.claim?`<p class="pdf-bet"><b>Check by ${e(_recDay(w.by))}:</b> ${e(String(w.claim).replace(/[\s.]+$/,''))}.</p>`:'';
-  const ins=(syn.insights||[]).slice(0,8).map(x=>`<div class="pdf-finding"><div class="pdf-finding-cat">${e(x.confidence||'')} confidence${x.dated&&x.dated.newest?' \u00b7 evidence to '+e(x.dated.newest):''}${x.stance==='counter'?' \u00b7 against the consensus':''}</div><div class="pdf-finding-title">${e(_cleanTitle(String(x.title||'').replace(/^Where the house disagrees:\s*/i,'')))}</div><div class="pdf-finding-excerpt">${e(x.excerpt)}</div>${x.source?`<div class="pdf-finding-meta">${e(_cleanSource(x.source))}</div>`:''}</div>`).join('');
-  const mv=(syn.ideas||[]).filter(x=>x&&x.headline).slice(0,6).map(x=>`<div class="pdf-idea"><div class="pdf-idea-type">${e(x.type||'Move')}${x.for?' \u00b7 for '+e(x.for):''}</div><div class="pdf-idea-title">${e(x.headline)}</div><div class="pdf-idea-body">${e(x.body)}${x.proof?' <i>Proof: '+e(x.proof)+'</i>':''}</div></div>`).join('');
-  const src=_sourcesGrouped(syn.sources||[], syn.lines||[]).replace(/<a href="([^"]*)" target="_blank" rel="noopener">/g,'<a href="$1">');
-  const title=read[0]||q, link=syn.permalink||(window._liveLast&&window._liveLast.permalink)||'';
-  return `<div class="pdf-header"><div class="pdf-brand">EXCAVATE by Unsurfaced\u2122</div><div class="pdf-meta">THE READ \u00b7 ${e(dateStr)} at ${e(timeStr)}${syn.depth==='quick'?' \u00b7 quick read':''}</div><div class="pdf-title">${e(title)}</div><div class="pdf-deck">${who?who+'<br>':''}Asked: ${e(q)}${f.question?'<br>'+e(f.question):''}${link?'<br><a href="'+safeAttr(link)+'">'+e(link)+'</a>':''}</div></div>`+
-    (read.length?`<div class="pdf-section-head">The read</div><p class="pdf-read1">${e(read[0])}</p><p class="pdf-read2">${e(read[1]||'')}</p>`:'')+bet+meas+
-    (ins?`<div class="pdf-section-head">Findings</div>${ins}`:'')+(mv?`<div class="pdf-section-head">Moves</div>${mv}`:'')+
-    (syn.brief?`<div class="pdf-section-head">The interpretation</div><p>${e(syn.brief)}</p>`:'')+
-    `<div class="pdf-section-head">What this read does not see</div><p>${e(_blindWords(syn.blind||EXC_BLIND_LINE))}</p>`+
-    (src?`<div class="pdf-section-head">What the read stood on</div>${src}`:'')+
-    `<div class="pdf-footer">EXCAVATE by Unsurfaced\u2122 \u00b7 Cultural intelligence \u00b7 ${e(dateStr)}<br>Every figure above was checked against the evidence it cites or the house's own counts.</div>`;
+/* SEAM:EXC_PRINT (RP1 THE PRINT): the reading on screen, printed on the house's paper. The worker renders the PDF once per reading and
+   cut and keeps it; this asks for it and saves the file. A live read prints by its ledger id (read_id); an overnight reading by the door
+   row it came from; a reading the ledger did not keep (a bench read, a read that never finished) has nothing to print and says so. */
+async function _excPrint(cut) {
+  const L = window._liveLast, syn = L && L.synthesis;
+  if (!syn || !Array.isArray(syn.insights) || !syn.insights.length) { showToast('Run a search first'); return; }
+  const door = syn.overnight && window._doorOpen && window._doorOpen.id ? window._doorOpen.id : null;
+  const kind = door ? 'door' : 'read', id = door || syn.read_id || null;
+  if (!id) { showToast('This reading was not kept; run the read again to print it'); return; }
+  const btns = Array.from(document.querySelectorAll('.btn-export-pdf')); btns.forEach(b => { b.disabled = true; });
+  showToast(cut === 'client' ? 'Rendering the client cut, about 30 seconds' : 'Rendering the PDF, about 30 seconds');
+  try {
+    const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/pdf', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, await _authHeader()), body: JSON.stringify({ id, kind, cut: cut === 'client' ? 'client' : null }) });
+    if ((r.headers.get('content-type') || '').indexOf('application/pdf') !== 0) { const j = await r.json().catch(() => null); showToast(j && j.error === 'auth_required' ? 'Sign in to print' : 'The print did not render: ' + ((j && j.error) || ('status ' + r.status))); return; }
+    const name = r.headers.get('X-Read-Name') || ('Unsurfaced-Excavate-' + String(L.q || 'reading').replace(/[^A-Za-z0-9]+/g, '-').slice(0, 48) + (cut === 'client' ? '-client-cut' : '') + '.pdf');
+    const b = await r.blob(), a = document.createElement('a'), u = URL.createObjectURL(b);
+    a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 60000);
+    showToast(r.headers.get('X-Read-Pdf') === 'kept' ? 'PDF downloaded' : 'PDF rendered and downloaded');
+  } catch (e) { showToast('The print did not render; try again'); }
+  finally { btns.forEach(b => { b.disabled = false; }); }
 }
 function _buildResultsPDF(dateStr,timeStr){
   const q=document.getElementById('results-query')?.textContent||'Search Results';
@@ -9254,7 +9254,7 @@ function mineExportReport(id) {
     + (read && read.indexOf('Generate the Read') < 0 ? '<div class="eb">The Read</div><div>' + safe(read).replace(/\n/g, '<br>') + '</div>' : '')
     + _reportAggregate(s, resp)
     + '<div class="eb">Responses: every one is a receipt</div>' + (rows || '<div class="meta">No responses yet.</div>')
-    + '<div class="ft">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence \u00B7 The read is free. The moves are yours.</div>'
+    + '<div class="ft">UNSURFACED\u2122 \u00B7 Consumer & Market Intelligence \u00B7 Your hidden hand. \u00B7 unsurfaced-intelligence.com</div>'
     + '<button onclick="window.print()" style="margin-top:24px;padding:10px 18px;font-family:inherit">Print / Save as PDF</button></body></html>';
   const wnd = window.open('', '_blank'); if (!wnd) { showToast('Allow pop-ups to export the report'); return; }
   wnd.document.write(html); wnd.document.close(); setTimeout(() => { try { wnd.print(); } catch (e) {} }, 500);

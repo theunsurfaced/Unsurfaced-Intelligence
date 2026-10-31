@@ -270,6 +270,7 @@ export default {
         case '/play/assemble':       return playAssemble(body, env, origin, user);
         case '/play/upload-ref':     return playUploadRef(request, env, origin, user);
         case '/excavate/synthesize': { const b2 = Object.assign({}, body || {}, { _uid: user && user.id || null, _m: { uid: user && user.id || null } }); const res = await (b2.stream ? synthesizeStream(b2, env, origin, ctx) : synthesize(b2, env, origin)); if (!b2.stream) await meterSettle(env, b2._m, res); return res; }   // SEAM:PLANS: charged where it compiles, refunded if it fails   // SEAM:EXC_STREAM; SEAM:CLIENT_EVIDENCE: the reader's id rides so their own lines can join
+        case '/excavate/pdf':        return excavatePdfRoute(body, env, origin, user);   // SEAM:EXC_PRINT (RP1): a reading on the house's paper, as a PDF
         case '/ask':                 return meterRun(env, origin, user, 'ask', () => askRecord(body, env, origin, user));   // SEAM:ASK_RECORD; SEAM:PLANS
         case '/mine/notify':        return mineNotify(body, env, origin, user);
         case '/mine/invites':       return mineInvites(body, env, origin, user);
@@ -17207,6 +17208,7 @@ async function readRenderTicket(request, env, origin) {
   if (!/^[0-9a-f]{64}$/.test(rt) || !env.RATE_LIMIT) return json({ ok: false, error: 'bad_ticket' }, 403, origin, env);
   const id = await env.RATE_LIMIT.get('rpt:' + rt);
   if (!id) return json({ ok: false, error: 'ticket_expired' }, 403, origin, env);
+  if (String(id).indexOf(EXC_PRINT.TICKET) === 0) return excPrintTicket(env, id, origin);   // SEAM:EXC_PRINT (RP1): a reading's ticket answers its document and receipts
   const row = await readRow(env, id);
   if (!row) return json({ ok: false, error: 'not_found' }, 404, origin, env);
   return json({ ok: true, read: row, receipts: await readReceipts(env, row.read, row) }, 200, origin, env);
@@ -17264,6 +17266,220 @@ async function readPdf(env, row, cut) {   // SEAM:READ_CUT: cut === 'client' ren
   await readPatch(env, row.id, { meta: Object.assign({}, row.meta || {}, { [slot]: { key, stamp, bytes: bytes.byteLength, at: new Date().toISOString() } }) });   // SEAM:READ_CUT
   if (kept && kept.key && kept.key !== key) await env.MEDIA.delete(kept.key);
   return { body: bytes, fresh: true };
+}
+/* ═══ SEAM:EXC_PRINT (RP1 THE PRINT): one print system for every reading. An EXCAVATE reading (a live read in `reads`, a deployment
+ * in `door_reads`) prints through the house's own paper: the read page renders the document and Browser Rendering makes the PDF,
+ * exactly as a WEEKLY or a RECON prints, kept once in R2 and re-rendered when the reading changes. The adapter below is pure: it
+ * turns a reading and the lines it stood on into the read page's document model and the receipts the page numbers. Only the
+ * sources the findings and the moves cite are printed; the pack's uncited rows never reach the paper. The client cut is the
+ * RECON's law applied to a reading: the strongest four findings stay, the house's own checks (the measure, the window, the voice
+ * notes, the model) are left to the full read, the limits are said on page two, nothing is rewritten. Photographs ride the lake's
+ * basis, as the board's tiles do. No model is asked. ═══ */
+const EXC_PRINT = { REV: 'x1', CUT_FINDINGS: 4, RANK: { high: 0, medium: 1, low: 2 }, TICKET: 'exc:', KEY: 'print/excavate/', SOURCES: 60, MOVES: 6 };
+/* PURE: the reader's group for a cited line, the page's own rule (EX33c): voices, records and filings, reference, reporting. */
+function excPrintGroup(l) {
+  const u = String((l && l.url) || '').toLowerCase(), s = excPrintOutlet(l && (l.source || l.source_name || l.label)).toLowerCase(), t = String((l && l.title) || '').toLowerCase();
+  if (/youtube|reddit|mastodon|bluesky|bsky|tiktok|comments/.test(u + ' ' + s + ' ' + t) || /discourse|social|comment/.test(String((l && l.kind) || ''))) return 'voices';
+  if (/sec\.gov|\/ir\.|investor|filing|quarterly report|annual report|\.pdf|press release|newsroom|prnewswire|businesswire/.test(u + ' ' + t)) return 'records';
+  if (/wikipedia|crossref|doi\.org|openalex|arxiv|semanticscholar|igds\.org|census|statista/.test(u + ' ' + s)) return 'reference';
+  return 'reporting';
+}
+/* PURE: the outlet's name as a reader reads it: no lake prefix, no tier. */
+function excPrintOutlet(s) { return String(s || '').replace(/^Unsurfaced Lake\s*[·-]\s*/i, '').replace(/\s*\(T[0-9?]\)\s*$/, '').trim().slice(0, 80); }
+/* PURE: the blind line in the reader's words (EX33c). */
+function excPrintBlind(t) { return String(t || '').replace(/the open web and the lake/g, "the open web and the house's own archive").replace(/\bthe lake\b/g, "the house's own archive"); }
+/* PURE: a finding's title as printed: the house's counter prefix is a chip, not a title. */
+function excPrintTitle(t) { return String(t || '').replace(/^Where the house disagrees:\s*/i, '').replace(/^CONSENSUS:\s*/i, '').trim().slice(0, 160); }
+/* PURE: the client cut's law, the RECON's (READ_CUT): the strongest four findings stay, high before medium before low, then the
+ * ones with more sources behind them, kept in the writer's order. Returns the indexes kept. */
+function excPrintCut(findings) {
+  const fs = (findings || []).map((f, i) => ({ f, i }));
+  fs.sort((a, b) => {
+    const ra = EXC_PRINT.RANK[String(a.f.confidence || '').toLowerCase()], rb = EXC_PRINT.RANK[String(b.f.confidence || '').toLowerCase()];
+    const xa = ra == null ? 1 : ra, xb = rb == null ? 1 : rb;
+    if (xa !== xb) return xa - xb;
+    const ea = (a.f.evidence || []).length, eb = (b.f.evidence || []).length;
+    return eb !== ea ? eb - ea : a.i - b.i;
+  });
+  return fs.slice(0, EXC_PRINT.CUT_FINDINGS).map(o => o.i).sort((a, b) => a - b);
+}
+/* PURE: the date a line speaks for, as YYYY-MM-DD, or null. */
+function excPrintDate(l) {
+  if (!l) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(String(l.date || ''))) return String(l.date).slice(0, 10);
+  const d = typeof excWhen === 'function' ? excWhen(l) : (l.published_at ? new Date(l.published_at) : null);
+  return d && !isNaN(d) ? new Date(d).toISOString().slice(0, 10) : null;
+}
+/* PURE: a reading as the read page's document, with the receipts the page numbers.
+ *   src     'door' | 'read'
+ *   row     the door_reads row (frame, measures, read, evidence, night, status, meta) or the reads row (query, read, brief, insights,
+ *           ideas, meta, created_at)
+ *   lines   the lines the reading stood on, by line number: the door's evidence array (n = index + 1), or for a live read the lines
+ *           EX53's claims kept ([{n, title, url, source, tier, date}]); a move citing a line no finding cited prints without it
+ *   opts    { cut: 'client' | null, blind: the house's blind line today }
+ * Returns { row, receipts }: row carries kind 'excavate' and read = the document; receipts are keyed S<n>. */
+function excPrintDoc(src, row, lines, opts) {
+  const o = opts || {}, cut = o.cut === 'client' ? 'client' : null;
+  const rd = (src === 'door' ? (row && row.read) : row) || {};
+  const byN = {};
+  (lines || []).forEach((l, i) => { if (!l) return; const n = Number.isInteger(l.n) ? l.n : i + 1; if (n >= 1 && !byN[n]) byN[n] = l; });
+  const frame0 = (src === 'door' ? row.frame : (row.meta && row.meta.frame)) || {};
+  const frame = { entity: frame0.entity || null, category: frame0.category || null, audience: frame0.audience || null, market: frame0.market || null, competitors: Array.isArray(frame0.competitors) ? frame0.competitors.slice(0, 6) : [], question: frame0.question || frame0.query || null };
+  const question = String(src === 'door' ? (frame0.query || frame0.question || frame0.title || '') : (row.query || '')).replace(/\s+/g, ' ').trim().slice(0, 220);
+  const subject = String(src === 'door' ? (frame0.title || frame0.entity || frame0.category || question) : (frame.entity || question)).trim().slice(0, 120) || 'A reading';
+  const insightsAll = (Array.isArray(rd.insights) ? rd.insights : []).filter(x => x && x.title);
+  const keep = cut ? excPrintCut(insightsAll) : insightsAll.map((x, i) => i);
+  const receipts = {};
+  const ref = n => { const l = byN[n]; if (!l) return null; const k = 'S' + n; if (!receipts[k]) receipts[k] = { n, headline: String(l.title || '').slice(0, 160), source_name: excPrintOutlet(l.source || l.source_name) || null, date: excPrintDate(l), url: /^https?:\/\//.test(String(l.url || '')) ? String(l.url).slice(0, 400) : null, tier: typeof excTier === 'function' ? excTier(l) : (parseInt(l.tier, 10) || 3), kind: excPrintGroup(l), has_image: false }; return k; };
+  const cites = ns => (Array.isArray(ns) ? ns : []).map(n => parseInt(n, 10)).filter(n => n >= 1).map(ref).filter(Boolean).filter((k, i, a) => a.indexOf(k) === i);
+  const okImg = u => typeof u === 'string' && /^https:\/\//.test(u) && !/logo|favicon|avatar|icon|sprite|placeholder/i.test(u);
+  const ideasAll = (Array.isArray(rd.ideas) ? rd.ideas : []).filter(x => x && x.headline).slice(0, EXC_PRINT.MOVES);
+  const findings = keep.map((i, k) => {
+    const x = insightsAll[i], first = (x.evidence || []).map(n => byN[parseInt(n, 10)]).find(Boolean) || null;
+    const moves = ideasAll.filter(m => Number.isInteger(m.from) && m.from === i).map(m => ({ role: String(m.for || m.type || 'team').slice(0, 40), headline: String(m.headline || '').slice(0, 120), body: String(m.body || '').slice(0, 400), proof: String(m.proof || '').slice(0, 280), sources: cites(m.evidence), single: !!m.single_source }));
+    const meaning = x.meaning && typeof x.meaning === 'object' ? { culture: String(x.meaning.culture || '').slice(0, 300) || null, category: String(x.meaning.category || '').slice(0, 300) || null, consumer: String(x.meaning.consumer || '').slice(0, 300) || null } : null;
+    return { n: k + 1, title: excPrintTitle(x.title), excerpt: String(x.excerpt || '').slice(0, 400), use: String(x.implication || '').slice(0, 300) || null,
+      meaning: meaning && (meaning.culture || meaning.category || meaning.consumer) ? meaning : null, confidence: String(x.confidence || '').slice(0, 10) || null, category: String(x.category || '').slice(0, 12) || null,
+      counter: x.stance === 'counter' || /^Where the house disagrees:/i.test(String(x.title || '')), newest: (x.dated && x.dated.newest) || null, oldest: (x.dated && x.dated.oldest) || null, band: (x.dated && x.dated.band) || null,
+      sources: cites(x.evidence), image: okImg(x.image) ? x.image : (first && okImg(first.image) && (typeof excTier !== 'function' || excTier(first) <= 2) ? first.image : null),
+      credit: excPrintOutlet(x.source || (first && (first.source || first.source_name))) || null, moves };
+  });
+  const placed = findings.reduce((n, f) => n + f.moves.length, 0);
+  const loose = ideasAll.filter(m => !(Number.isInteger(m.from) && keep.indexOf(m.from) >= 0)).filter(m => !cut || !Number.isInteger(m.from))
+    .map(m => ({ role: String(m.for || m.type || 'team').slice(0, 40), headline: String(m.headline || '').slice(0, 120), body: String(m.body || '').slice(0, 400), proof: String(m.proof || '').slice(0, 280), sources: cites(m.evidence), single: !!m.single_source }));
+  const dates = findings.map(f => f.newest).filter(Boolean).sort(), olds = findings.map(f => f.oldest).filter(Boolean).sort();
+  const conf = findings.map(f => String(f.confidence || '').toLowerCase()).filter(Boolean);
+  const mode = ['high', 'medium', 'low'].map(c => [c, conf.filter(x => x === c).length]).sort((a, b) => b[1] - a[1])[0];
+  const cited = Object.keys(receipts).map(k => receipts[k]);
+  const reports = cited.filter(r => r.kind !== 'voices').map(r => (r.source_name || r.url || '').toLowerCase()).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).length;
+  const voices = cited.filter(r => r.kind === 'voices').length;
+  const read = Array.isArray(rd.read) ? rd.read.filter(Boolean).slice(0, 2).map(s => String(s).slice(0, 420)) : [];
+  const title = read[0] || findings.map(f => f.title)[0] || question || subject;
+  const measures = src === 'door' && row.measures && row.measures.recent_7d != null && Array.isArray(row.measures.series) ? row.measures : null;
+  const watch = rd.watch && rd.watch.claim && rd.watch.by ? { claim: String(rd.watch.claim).slice(0, 200), by: String(rd.watch.by).slice(0, 10), measure: rd.watch.measure || null, op: rd.watch.op || null, value: rd.watch.value != null ? rd.watch.value : null } : null;
+  const night = src === 'door' ? (row.night || null) : null;
+  const at = src === 'door' ? (row.updated_at || row.created_at || null) : (row.created_at || null);
+  const voiceN = rd.voice && Array.isArray(rd.voice) ? rd.voice.length : (rd.voice && rd.voice.n != null ? rd.voice.n : (row.meta && row.meta.voice && row.meta.voice.n != null ? row.meta.voice.n : null));
+  const about = cut ? null : { lines: src === 'door' ? (Array.isArray(row.evidence) ? row.evidence.length : null) : (row.evidence_n != null ? row.evidence_n : null), cited: cited.length, voice_notes: voiceN,
+    model: src === 'door' ? 'the door, overnight' : ((row.meta && row.meta.model && row.meta.model.lane) ? 'the live lane' : null), status: src === 'door' ? (row.status || null) : null,
+    called: src === 'door' && row.meta && row.meta.called ? (row.meta.called.verdict || row.meta.called.grade || null) : null, dropped: insightsAll.length - findings.length, window: (row.meta && row.meta.window) || null };
+  const doc = { title: String(title).slice(0, 220), thesis: read[1] || null, read, brief: String(rd.brief || '').slice(0, 1200) || null, question: question || null, subject, frame, src, night, at, cut,
+    counts: { findings: findings.length, reports, voices, confidence: mode && mode[1] ? mode[0] : null }, dated: { newest: dates.length ? dates[dates.length - 1] : null, oldest: olds.length ? olds[0] : null },
+    findings, moves: loose, moves_placed: placed, watch, blind: excPrintBlind(o.blind || (typeof EXC_BLIND === 'string' ? EXC_BLIND : '')), measures, about };
+  const label = subject + (night ? ' · ' + night : (at ? ' · ' + String(at).slice(0, 10) : ''));
+  const out = { id: String(row.id || ''), kind: 'excavate', label: label.slice(0, 160), version: 1, status: 'ready', window_start: doc.dated.oldest || (at ? String(at).slice(0, 10) : null), window_end: doc.dated.newest || (at ? String(at).slice(0, 10) : null), created_at: at,
+    read: doc, stats: {}, violations: [], meta: { print: { src, cut, question, frame } } };
+  return { row: out, receipts };
+}
+/* PURE: the running footer of a reading's PDF, in the house's shape. */
+function excPrintFooter(doc, client) {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const left = 'UNSURFACED™ EXCAVATE · THE READ · ' + String(doc.subject || '').toUpperCase() + (doc.night ? ' · ' + doc.night : (doc.at ? ' · ' + String(doc.at).slice(0, 10) : '')) + (client ? ' · CLIENT CUT' : '');
+  return '<div style="width:100%;box-sizing:border-box;padding:0 0.75in 0.16in;font-family:Menlo,Consolas,\'DejaVu Sans Mono\',monospace;font-size:6.5px;letter-spacing:1.4px;color:#6B6455;display:flex;justify-content:space-between;align-items:flex-end">' +
+    '<span>' + esc(left) + '</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>';
+}
+/* PURE: the file a reader saves. */
+function excPrintFileName(doc, client) {
+  const slug = String(doc.subject || doc.question || 'reading').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'reading';
+  return 'Unsurfaced-Excavate-' + slug + '-' + String(doc.night || (doc.at ? String(doc.at).slice(0, 10) : '')).slice(0, 10) + (client ? '-client-cut' : '') + '.pdf';
+}
+/* The reading and the lines it stood on, by kind and id. A door row's lines are its evidence; a live read's are the lines EX53's
+ * claims kept for its findings (the reads row never stored them), so a move citing a line no finding cited prints without it. */
+async function excPrintLoad(env, kind, id) {
+  if (!/^[0-9a-f-]{36}$/.test(String(id || ''))) return null;
+  if (kind === 'door') {
+    const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,night,status,frame,measures,read,evidence,meta,cost_usd,created_at,updated_at').catch(excQuiet('print_door_rows', []))) || [];
+    const r = rows[0]; if (!r || !r.read) return null;
+    return { src: 'door', row: r, lines: Array.isArray(r.evidence) ? r.evidence : [] };
+  }
+  const rows = (await sbRest(env, 'reads?id=eq.' + id + '&select=id,query,read,brief,insights,ideas,evidence_n,meta,created_at').catch(excQuiet('print_read_rows', []))) || [];
+  const r = rows[0]; if (!r || !Array.isArray(r.insights) || !r.insights.length) return null;
+  const claims = (await sbRest(env, 'claims?src=eq.read&reading_id=eq.' + id + '&select=idx,lines&order=idx.asc&limit=40').catch(excQuiet('print_claims', []))) || [];
+  const lines = [];
+  for (const c of claims) for (const l of (Array.isArray(c.lines) ? c.lines : [])) if (l && Number.isInteger(l.n) && !lines.some(x => x.n === l.n)) lines.push(l);
+  return { src: 'read', row: r, lines };
+}
+/* PURE: the stamp a kept PDF was rendered against: the document and the cut, so a changed reading renders again. */
+async function excPrintStamp(doc, client) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(doc) + '|' + (client ? 'client' : 'house')));
+  return EXC_PRINT.REV + ':' + readHex(d).slice(0, 20);
+}
+/* The PDF of a reading: kept in R2 once per stamp, rendered through the house's print rail otherwise (the read page under a one-time
+ * ticket, Browser Rendering, the same options as a house read). Returns { body, fresh, name }. */
+async function excPrintPdf(env, loaded, cut) {
+  if (!env.CF_ACCOUNT_ID || !env.CF_BROWSER_TOKEN) throw new Error('print_not_configured: set CF_ACCOUNT_ID and CF_BROWSER_TOKEN');
+  if (!env.MEDIA || !env.RATE_LIMIT) throw new Error('print_needs_media_and_kv');
+  const client = cut === 'client', slot = client ? 'client' : 'house';
+  const { row: doc } = excPrintDoc(loaded.src, loaded.row, loaded.lines, { cut: client ? 'client' : null, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND });
+  const name = excPrintFileName(doc.read, client);
+  const stamp = await excPrintStamp(doc.read, client);
+  const kept = loaded.row.meta && loaded.row.meta.print && loaded.row.meta.print[slot] || null;
+  if (kept && kept.stamp === stamp && kept.key) {
+    const obj = await env.MEDIA.get(kept.key);
+    if (obj) return { body: obj.body, fresh: false, name };
+  }
+  const rt = readHex(crypto.getRandomValues(new Uint8Array(32)));
+  await env.RATE_LIMIT.put('rpt:' + rt, EXC_PRINT.TICKET + loaded.src + ':' + loaded.row.id + ':' + slot, { expirationTtl: READ_PRINT.TICKET_TTL });
+  const res = await fetch('https://api.cloudflare.com/client/v4/accounts/' + env.CF_ACCOUNT_ID + '/browser-rendering/pdf', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.CF_BROWSER_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: READ_PRINT.PAGE + '?id=x&rt=' + rt + (client ? '&cut=client' : ''),
+      gotoOptions: { waitUntil: 'domcontentloaded', timeout: READ_PRINT.LOAD_MS },
+      waitForSelector: { selector: 'html[data-print-ready="1"]', timeout: READ_PRINT.WAIT_MS },
+      viewport: { width: 1280, height: 1000 },
+      pdfOptions: { format: 'letter', printBackground: true, preferCSSPageSize: true, timeout: READ_PRINT.PDF_MS,
+        displayHeaderFooter: true, headerTemplate: '<span></span>', footerTemplate: excPrintFooter(doc.read, client),
+        margin: { top: '0', right: '0', bottom: '0.42in', left: '0' } }
+    })
+  });
+  await env.RATE_LIMIT.delete('rpt:' + rt);
+  const type = res.headers.get('content-type') || '';
+  const len = parseInt(res.headers.get('content-length') || '0', 10);
+  if (len > READ_PRINT.MAX_BYTES) { console.log('exc_pdf_too_large', loaded.row.id, len); throw new Error('pdf_too_large: ' + Math.round(len / 1048576) + ' MB'); }
+  const bytes = await res.arrayBuffer();
+  const head = new TextDecoder().decode(bytes.slice(0, 5));
+  if (!res.ok || head !== '%PDF-') {
+    let why = type;
+    if (/json|text/.test(type)) { const t = new TextDecoder().decode(bytes.slice(0, 4000)); why = t; try { const e0 = (JSON.parse(t).errors || [])[0]; if (e0) why = (e0.code ? e0.code + ' ' : '') + String(e0.message || ''); } catch (e) { why = t; } }
+    console.log('exc_pdf_failed', loaded.row.id, res.status, why);
+    throw new Error('render_failed ' + res.status + ': ' + why.replace(/\s+/g, ' ').slice(0, 120));
+  }
+  const key = EXC_PRINT.KEY + loaded.row.id + '-' + slot + '-' + readHex(crypto.getRandomValues(new Uint8Array(8))) + '.pdf';
+  await env.MEDIA.put(key, bytes, { httpMetadata: { contentType: 'application/pdf' } });
+  const table = loaded.src === 'door' ? 'door_reads' : 'reads';
+  const print = Object.assign({}, (loaded.row.meta && loaded.row.meta.print) || {}, { [slot]: { key, stamp, bytes: bytes.byteLength, at: new Date().toISOString() } });
+  try { await sbRest(env, table + '?id=eq.' + loaded.row.id, { method: 'PATCH', body: { meta: Object.assign({}, loaded.row.meta || {}, { print }) } }); } catch (e) { console.log('exc_pdf_meta', String(e && e.message).slice(0, 80)); }
+  if (kept && kept.key && kept.key !== key) { try { await env.MEDIA.delete(kept.key); } catch (e) { console.log('exc_pdf_old', String(e && e.message).slice(0, 60)); } }
+  return { body: bytes, fresh: true, name };
+}
+/* The ticket's answer for a reading: the read page asks with the one-time ticket and gets the document and its receipts. */
+async function excPrintTicket(env, ticket, origin) {
+  const m = /^exc:(door|read):([0-9a-f-]{36}):(house|client)$/.exec(String(ticket || ''));
+  if (!m) return json({ ok: false, error: 'bad_ticket' }, 403, origin, env);
+  const loaded = await excPrintLoad(env, m[1], m[2]);
+  if (!loaded) return json({ ok: false, error: 'not_found' }, 404, origin, env);
+  const { row, receipts } = excPrintDoc(loaded.src, loaded.row, loaded.lines, { cut: m[3] === 'client' ? 'client' : null, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND });
+  return json({ ok: true, read: row, receipts }, 200, origin, env);
+}
+/* POST /excavate/pdf {id, kind: 'read' | 'door', cut?: 'client'}: signed in (the switch), the house's rate limit; a door row the record
+ * does not carry (held, failed, compiling) prints for an admin only. Answers the PDF. */
+async function excavatePdfRoute(body, env, origin, user) {
+  const kind = body && body.kind === 'door' ? 'door' : 'read', id = String((body && body.id) || '').slice(0, 40), cut = body && body.cut === 'client' ? 'client' : null;
+  const loaded = await excPrintLoad(env, kind, id);
+  if (!loaded) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  if (kind === 'door' && !['ready', 'reused'].includes(String(loaded.row.status || '')) && !(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  let out;
+  try { out = await excPrintPdf(env, loaded, cut); }
+  catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 200, origin, env); }
+  logEvent(env, 'intelligence', 'excavate', 'print', user.id, { kind, id, cut: cut || 'house', fresh: !!out.fresh });
+  const h = corsHeaders(origin, env);
+  h.set('Content-Type', 'application/pdf');
+  h.set('Cache-Control', 'no-store');
+  h.set('X-Read-Pdf', out.fresh ? 'rendered' : 'kept');
+  h.set('X-Read-Name', out.name);
+  h.set('Access-Control-Expose-Headers', 'X-Read-Pdf, X-Read-Name');
+  return new Response(out.body, { status: 200, headers: h });
 }
 /* ═══ SEAM:HOUSE (RD1a): READ is the house. Two admin lists the house's own shelves read, both through readRoute (admin), neither
  * spending: the assets (every rights record with its picture, its credit, its basis, the contexts it clears and the reads whose

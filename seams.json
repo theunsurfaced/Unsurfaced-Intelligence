@@ -1730,6 +1730,20 @@
    "file": "intelligence/read/index.html",
    "tag": "SEAM:VIDEO_DOOR",
    "purpose": "RD1c: THE SLOTS gains THE VIDEO under the assets (a draft and a final take with their cost on the button, what moves in the admin's words, the takes under the slot with their status, download when landed, one marked for the clip, Drop; Stitch the clip; the takes still rendering polled through PLAY's status door by the admin who asked); the DAILY room's day opened offers The slots (the cover and one slot per frame, the same panel with the row id day:<issue>, the day's stories as the photographs, the day drawn again after a change); a day's frames draw a slot's image in place of the story's photograph (dayFramePool, dayFrameImg, dayFrameCredit)."
+  },
+  "SEAM:EXC_PRINT": {
+   "file": "worker/src/index.js",
+   "purpose": "RP1 THE PRINT (Oct 30, 2026): one print system for every reading. excPrintDoc (pure) turns a live read (reads) or a deployment (door_reads) with the lines it stood on into the read page's document and the receipts keyed S<n>; only the sources the findings and the moves cite are printed; the client cut is the RECON's law (the strongest four findings, the limits on page two, the house's checks left to the full read). POST /excavate/pdf {id, kind, cut} (signed in; a door row the record does not carry prints for an admin only) renders through the house's print rail (a one-time ticket, the read page, Browser Rendering, the same options as a house read), keeps the PDF in R2 under print/excavate/ and on the row's meta.print, and answers the file; /reads/render answers an exc: ticket with the document. No model."
+  },
+  "SEAM:EXC_PRINT@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:EXC_PRINT",
+   "purpose": "RP1: excavateDoc lays a reading on the house's paper (the cover over the lead photograph with the reading's own counts, how to read it, the read with the bet and the interpretation, an opener and one spread per finding with its photograph, confidence, dates, what happened, what it means, the moves it placed and the sources it cites, the moves the findings did not place, the measure in the house cut, what the read does not see, the sources cited and nothing else, numbered in order of first mention and grouped as a reader thinks of them); photographs are the outlets' own on the lake's basis; the print-ready signal as for every read."
+  },
+  "SEAM:EXC_PRINT@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:EXC_PRINT",
+   "purpose": "RP1: Download PDF and Client cut on a reading ask the worker for the PDF (_excPrint: a live read by its ledger id, an overnight reading by its door row; a reading the ledger did not keep says so) and save the file the worker names; the browser-built HTML paper (_buildReadPDF) retired."
   }
  },
  "planned": [

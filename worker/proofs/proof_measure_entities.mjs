@@ -6,6 +6,7 @@
 import fs from 'fs';
 const w = fs.readFileSync('worker/src/index.js', 'utf-8');
 const page = fs.readFileSync('intelligence/index.html', 'utf-8');
+const rpage = fs.readFileSync('intelligence/read/index.html', 'utf-8');   // RP1: the printed measure lives on the read page's paper
 const sql = fs.readFileSync('supabase/migrations/0053_entity_measure.sql', 'utf-8');
 let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
@@ -75,7 +76,7 @@ const F = new Function(between(page, 'function _measuredFrom(m) {', 'function _r
 ok(F({ coverage_weeks: 12, weeks: 12 }) === '' && F(null) === '' && F({ recent_7d: 2 }) === '', 'P1 a whole window says nothing');
 ok(F({ coverage_weeks: 3, weeks: 12, measured_from: '2026-10-08' }) === 'measured from Oct 8, 3 of 12 weeks counted', 'P2 a partial window says from when and how many weeks');
 ok(/if \(_measuredFrom\(m\)\) bits\.push\(safe\(_measuredFrom\(m\)\)\);/.test(between(page, 'function _recMeasureLine(m) {', 'function _recFoot(')) && /if \(_measuredFrom\(m\)\) bits\.push\(`<span>\$\{safe\(_measuredFrom\(m\)\)\}<\/span>`\);/.test(between(page, 'function _doorMeasureRow(m, since) {', '\n}\n')), 'P3 the record tile line and the door tile row carry it');
-ok(/weeks of coverage on this frame\$\{_measuredFrom\(ms\)\?' <span class="dot">&middot;<\/span> '\+n\(_measuredFrom\(ms\)\):''\}<\/span>/.test(page) && /weeks on record\$\{_measuredFrom\(m\)\?' \('\+e\(_measuredFrom\(m\)\)\+'\)':''\}/.test(page), 'P4 the read block\'s caption and the PDF\'s measured line carry it');
+ok(/weeks of coverage on this frame\$\{_measuredFrom\(ms\)\?' <span class="dot">&middot;<\/span> '\+n\(_measuredFrom\(ms\)\):''\}<\/span>/.test(page) && /"Counted from " \+ H\.fmtDate\(m\.measured_from\) \+ ": " \+ m\.coverage_weeks \+ " of " \+ m\.weeks \+ " weeks/.test(rpage), 'P4 the read block\'s caption and the printed measure page carry it (RP1: the paper is the read page\'s)');
 
 // ── S: the migration ──────────────────────────────────────────────────
 ok(/alter table public\.entities add column if not exists resolved_from timestamptz;/.test(sql) && /drop function if exists public\.resolve_signal_entities\(timestamptz, timestamptz\);/.test(sql) && /p_entity uuid default null\)/.test(sql) && /where active and \(p_entity is null or id = p_entity\)/.test(sql), 'S1 resolved_from on the entity; the resolver takes an optional entity and the two-argument form is dropped so the API has one signature');

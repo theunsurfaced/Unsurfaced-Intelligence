@@ -57,6 +57,14 @@
   table.flow td { padding: 0; vertical-align: top; }
   table.flow td.sp { height: 0; }
   .rp-mark { width: 3.2in; height: auto; display: block; color: var(--ivory); }
+  /* SEAM:EXC_PRINT (RP1): the reading's chips and marks on the house's paper */
+  .xc-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 14px; }
+  .xc-chips span { font-family: var(--mono); font-size: 8px; letter-spacing: 2px; text-transform: uppercase; border: 1px solid var(--mute); color: var(--mute); padding: 3px 7px; }
+  .xc-proof { color: #B8B2A6; }
+  .xc-single { font-family: var(--mono); font-size: 7.5px; letter-spacing: 1.5px; text-transform: uppercase; border: 1px solid #B8B2A6; color: #B8B2A6; padding: 1px 5px; margin-left: 4px; }
+  .xc-url { color: var(--mute); }
+  .hero.xc-hero .ph { height: 3.3in; } .movebox.xc-one .grid { grid-template-columns: 1fr; }   /* a reading's spread holds its photograph, its chips and its move on one sheet; a lone move takes the width */
+  .xc-grp .kicker { break-after: avoid; } .xc-grp.keep { break-inside: avoid; } .xc-grp .rc { padding: 6px 0; } .xc-grp .rc .noimg { height: 0.38in; }   /* a small source group stays with its heading; the rows sit closer */
   .credit { font-family: var(--mono); font-size: 8.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mute); margin-top: 5px; }
   .dark .credit { color: #9A9A9A; }
   .ph { width: 100%; object-fit: cover; background: var(--matte); }
@@ -173,6 +181,7 @@
   .rc .src { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--mute); text-transform: uppercase; }
   .closer { background: var(--void); color: var(--ivory); min-height: 11in; display: flex; flex-direction: column; justify-content: center; }
   .closer .big { font-weight: 800; font-size: 56px; line-height: 1; margin: .35in 0 .3in; }
+  .closer .name { font-family: var(--mono); font-size: 11px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 10px; }   /* HH2 */
   .closer .url { font-family: var(--mono); font-size: 12px; letter-spacing: 3px; color: var(--red); text-transform: uppercase; }
   .hold { background: #2A1A08; color: #F2C48D; font-family: var(--mono); font-size: 12px; line-height: 1.7; padding: 14px 18px; margin-bottom: 18px; border: 1px solid #F2994A; }
 
@@ -927,7 +936,8 @@
     return fetch(API + path, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify(body || {}) }).then(function (r) { return r.json(); });
   }
-  var KIND = { weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record", report: "Cultural Intelligence Report", recon: "RECON" };   // SEAM:READ_REPORT, SEAM:READ_RECON
+  var HOUSE_CLOSER = "Your hidden hand.";   /* HH1: the house's closing line, one string for every closer page and the frames' closing frame */
+  var KIND = { excavate: "EXCAVATE · The read", weekly: "The Weekly Read", monthly: "The Monthly Read", record: "The Record", report: "Cultural Intelligence Report", recon: "RECON" };   // SEAM:READ_REPORT, SEAM:READ_RECON
   var ROLES = ["creative", "marketer", "founder", "exec", "talent"];
   /* The photo quality law. Every slot has a minimum source width. A photograph
    * smaller than its slot is never stretched to fill it: the slot tries its next
@@ -1675,7 +1685,7 @@
       var v = r.kind === "voice";   /* SEAM:VOICE_LAW: never the platform as the speaker, never the words a second time */
       return '<div class="rc"><b>' + foot[s] + '</b><div><div class="hl">' + esc(v ? (r.title ? "A comment on \u201C" + r.title + "\u201D" : "A consumer comment") : (r.headline || "")) + '</div><div class="src">' + (v ? esc(rpVoiceWho(r, true)) : esc(r.source_name || "")) +
         (r.date ? " · " + fmtDate(r.date) : "") + " · " + esc(rpKind(r)) + "</div></div></div>"; }).join("") + "</div>");
-    h += '<section class="page closer">' + H.mark("rp-mark") + '<div class="big">Culture, measured.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/read' + (issue ? " · " + esc(issue) : "") + "</div></section>";
+    h += '<section class="page closer">' + H.mark("rp-mark") + '<div class="big">' + HOUSE_CLOSER + '</div><div class="name">UNSURFACED\u2122 INTELLIGENCE</div><div class="url">unsurfaced-intelligence.com/intelligence' + (issue ? " · " + esc(issue) : "") + "</div></section>";
     return { html: h, coverPool: coverPool };
   }
   function rpPl(n, one, many) { return rpNum(n) + " " + (Number(n) === 1 ? one : many); }   /* a count of one takes the singular */
@@ -2274,6 +2284,139 @@
   }
 
   /* ── One read ────────────────────────────────────────────────────────── */
+  /* SEAM:EXC_PRINT (RP1 THE PRINT): an EXCAVATE reading on the house's paper. The worker's adapter sends the document (read) and the
+     receipts (rc, keyed S<n> by the line's number); this builder lays it out with the same pages a WEEKLY and a RECON use: the cover
+     over the lead photograph, how to read it, the read, one spread per finding, the moves the findings did not place, the measure
+     (house cut), what the read does not see, the sources it cited and nothing else, numbered in order of first mention and grouped as
+     a reader thinks of them. Photographs are the outlets' own, on the lake's basis, drawn straight from their address. The client cut
+     carries the limits on page two and leaves the house's own checks to the full read. */
+  var XC_GROUPS = [["reporting", "Reporting"], ["records", "Records and filings"], ["reference", "Reference"], ["voices", "Voices"]];
+  var XC_ROLES = { creative: "Creative", marketer: "Marketer", marketing: "Marketer", founder: "Founder", exec: "Exec", executive: "Exec", talent: "Talent", media: "Media", retail: "Retail", brand: "Brand", product: "Product", strategy: "Strategy" };
+  function xcRole(r) { var k = String(r || "").toLowerCase().replace(/^for\s+/, "").trim(); return XC_ROLES[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : "Team"); }
+  function xcConf(c) { var k = String(c || "").toLowerCase(); return k === "high" ? "High confidence" : k === "medium" ? "Medium confidence" : k === "low" ? "Low confidence" : ""; }
+  function xcPhoto(url, slot, alt) {
+    if (!url || !/^https:\/\//.test(String(url))) return "";
+    return '<img class="ph ph-wait" src="' + esc(url) + '" alt="' + esc(alt || "") + '" loading="eager" referrerpolicy="no-referrer" data-s="' + esc(url) + '" data-first="' + esc(url) + '" data-min="' + MIN[slot || "thumb"] + '" data-alts="" onload="phCheck(this)" onerror="phGone(this)">';
+  }
+  function excavateDoc(x, rc, row, H) {
+    var cut = x.cut === "client", sec = 0, foot = {}, footN = 0, order = [];
+    function num(s) { if (!rc[s]) return 0; if (!foot[s]) { foot[s] = ++footN; order.push(s); } return foot[s]; }
+    function refs(list) { var ns = (list || []).map(num).filter(Boolean); return ns.length ? '<span class="rp-refs">' + ns.map(function (n) { return "<sup>" + n + "</sup>"; }).join("") + "</span>" : ""; }
+    function srcline(list) { var ns = (list || []).map(num).filter(Boolean); return ns.length ? '<div class="ev">SOURCES · ' + ns.join(" · ") + "</div>" : ""; }
+    var findings = x.findings || [], loose = x.moves || [], f0 = x.frame || {}, counts = x.counts || {};
+    var who = [f0.entity || f0.category, f0.audience, f0.market].filter(Boolean).join(" · ");
+    var when = x.night || (x.at ? String(x.at).slice(0, 10) : "");
+    var kindLine = "EXCAVATE · The read · " + (when ? H.fmtDate(when) : "") + (cut ? " · Client cut" : "");
+    var contents = [];
+    contents.push(["The read", "The claim, the dek, the interpretation"]);
+    if (findings.length) contents.push(["The findings", findings.length + (findings.length === 1 ? " finding" : " findings") + ", each on what it stands on"]);
+    if (loose.length) contents.push(["The moves", loose.length + (loose.length === 1 ? " move" : " moves") + " the findings did not place"]);
+    if (x.measures && !cut) contents.push(["The measure", "Counted by the database"]);
+    contents.push(["What the read does not see", "Its limits, said plainly"]);
+    contents.push(["Sources", "Every source cited, numbered"]);
+    var h = "";
+
+    /* Cover: the claim as the title over the lead photograph; the counts are the reading's own */
+    var lead = null; for (var i = 0; i < findings.length && !lead; i++) if (findings[i].image) lead = findings[i];
+    var nums = [[counts.findings, counts.findings === 1 ? "Finding" : "Findings"], [counts.reports, "Reports cited"], [counts.voices, counts.voices === 1 ? "Voice" : "Voices"], [counts.confidence ? counts.confidence.charAt(0).toUpperCase() + counts.confidence.slice(1) : null, "Confidence"]]
+      .filter(function (n) { return n[0] !== null && n[0] !== undefined && n[0] !== ""; })
+      .map(function (n) { return "<div><b>" + esc(String(n[0])) + "</b><span>" + esc(n[1]) + "</span></div>"; }).join("");
+    h += '<section class="page cover">' + (lead ? '<div class="photo">' + xcPhoto(lead.image, "cover", lead.title) + '</div><div class="shade"></div>' : "") +
+      '<div class="in">' + H.mark("rp-mark") + '<div class="kind">' + esc(kindLine) + "</div>" +
+      "<h1>" + esc(x.title) + "</h1>" + (x.thesis ? '<p class="thesis">' + esc(x.thesis) + "</p>" : "") + (nums ? '<div class="nums">' + nums + "</div>" : "") +
+      '<div class="foot"><span>' + (x.question ? "Asked: " + esc(x.question) : "") + "</span><span>" + esc(who) + "</span>" +
+      (x.dated && x.dated.newest ? "<span>Evidence to " + esc(H.fmtDate(x.dated.newest)) + "</span>" : "") +
+      (lead && lead.credit ? '<span class="cvcredit">Cover: ' + esc(lead.credit) + "</span>" : "") + "</div></div></section>";
+
+    /* How to read this: the reading's own method, in a few words; the client cut says its limits here */
+    h += H.inner('<div class="how"><div><div class="kicker">How to read this</div><div class="loop">' +
+      "<div><b>THE FINDINGS</b><p>What the evidence shows, one claim at a time, each on the sources it cites.</p></div>" +
+      "<div><b>CONFIDENCE</b><p>How far we would lean on a finding: how many outlets said it, and how recently.</p></div>" +
+      (x.measures && !cut ? "<div><b>THE MEASURE</b><p>What the database counted on the subject over twelve weeks. Context, never a finding.</p></div>" : "<div><b>THE SOURCES</b><p>Only what the findings and the moves cite. The small numbers point to the list at the back.</p></div>") +
+      "<div><b>THE MOVE</b><p>What a team could start on Monday, with the finding it comes from.</p></div>" +
+      '</div><p class="intro">Every figure in this read was checked against the evidence it cites or the house\'s own counts. The small numbers in the text point to the sources at the back: the outlet, the headline and the date each claim stands on.</p>' +
+      (cut ? '<div class="kicker" style="margin-top:14px">What this read is and is not</div><p class="intro" style="margin-top:0">' + esc(x.blind || "") + "</p>" : "") + "</div>" +
+      '<div><div class="kicker">In this read</div><div class="toc">' + contents.map(function (c, i) { return '<div><span class="n">' + H.pad(i + 1) + '</span><span class="t">' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></div>"; }).join("") + "</div></div></div>");
+
+    /* The read: the two lines, the bet, the interpretation */
+    sec++;
+    var readHtml = "";
+    if (x.read && x.read.length) readHtml += '<p class="pull">' + esc(x.read[0]) + "</p>" + (x.read[1] ? '<p class="body lead">' + esc(x.read[1]) + "</p>" : "");
+    if (x.watch && x.watch.claim) readHtml += '<div class="kicker" style="margin-top:18px">The bet</div><p class="body"><b>Check by ' + esc(H.fmtDate(x.watch.by)) + ":</b> " + esc(String(x.watch.claim).replace(/[\s.]+$/, "")) + ".</p>";
+    if (x.brief) readHtml += '<div class="kicker" style="margin-top:18px">The interpretation</div><div class="cols">' + String(x.brief).split(/\n\n+/).map(function (p) { return '<p class="body">' + esc(p) + "</p>"; }).join("") + "</div>";
+    h += H.inner(H.band(H.pad(sec), "The read", "The claim, what it rests on, and the first move.") + readHtml);
+
+    /* The findings: an opener, then one spread each */
+    if (findings.length) {
+      sec++;
+      h += '<section class="page opener"><div class="no">' + H.pad(sec) + " · The findings</div><h2>The findings.</h2><p>What people did in the period, on the sources that show it. Each finding carries its confidence, its dates and the sources it stands on.</p><ol>" +
+        findings.map(function (f, i) { return "<li><span>" + H.pad(i + 1) + "</span>" + esc(f.title) + "</li>"; }).join("") + "</ol></section>";
+      findings.forEach(function (f, i) {
+        var chips = [xcConf(f.confidence), f.newest ? "Evidence to " + H.fmtDate(f.newest) : "", f.sources.length ? f.sources.length + (f.sources.length === 1 ? " source" : " sources") : "", f.counter ? "Against the consensus" : ""].filter(Boolean);
+        var meaning = f.meaning ? [["Culture", f.meaning.culture], ["Category", f.meaning.category], ["Consumer", f.meaning.consumer]].filter(function (m) { return m[1]; }) : [];
+        h += H.inner((f.image ? '<div class="hero xc-hero">' + xcPhoto(f.image, "hero", f.title) + '<span class="tag">The read · ' + (i + 1) + " of " + findings.length + '</span><div class="credit">' + (f.credit ? "Photo: " + esc(f.credit) : "") + "</div></div>" : '<div class="hero none"></div>') +
+          '<div class="pname">' + esc(f.title) + "</div>" +
+          (f.use ? '<p class="dek">' + esc(f.use) + refs(f.sources) + "</p>" : "") +
+          (chips.length ? '<div class="xc-chips">' + chips.map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("") + "</div>" : "") +
+          '<div class="cols">' +
+            (f.excerpt ? '<div class="lbl">What happened</div><p class="body">' + esc(f.excerpt) + (f.use ? "" : refs(f.sources)) + "</p>" : "") +
+            (meaning.length ? '<div class="lbl">What it means</div>' + meaning.map(function (m) { return '<p class="body"><b>' + esc(m[0]) + ".</b> " + esc(m[1]) + "</p>"; }).join("") : "") +
+          "</div>" +
+          (f.moves.length ? '<div class="movebox' + (f.moves.length === 1 ? " xc-one" : "") + '"><div class="h">THE MOVE · BY ROLE</div><div class="s">' + (f.moves.length === 1 ? "One role earned a move on this finding." : f.moves.length + " roles earned a move on this finding.") + '</div><div class="grid">' +
+            f.moves.map(function (m) { return "<div><b>" + esc(xcRole(m.role)) + "</b>" + esc(m.headline) + (m.body ? ". " + esc(m.body) : "") + (m.proof ? ' <span class="xc-proof">Proof: ' + esc(m.proof) + "</span>" : "") + refs(m.sources) + (m.single ? ' <span class="xc-single">Single source</span>' : "") + "</div>"; }).join("") + "</div></div>" : "") +
+          srcline(f.sources));
+      });
+    }
+
+    /* The moves the findings did not place */
+    if (loose.length) {
+      sec++;
+      h += H.inner(H.band(H.pad(sec), "The moves", "What a team could start on Monday, from the reading as a whole.") +
+        '<div class="movebox"><div class="h">THE MOVE · BY ROLE</div><div class="grid">' + loose.map(function (m) { return "<div><b>" + esc(xcRole(m.role)) + "</b>" + esc(m.headline) + (m.body ? ". " + esc(m.body) : "") + (m.proof ? ' <span class="xc-proof">Proof: ' + esc(m.proof) + "</span>" : "") + refs(m.sources) + "</div>"; }).join("") + "</div></div>");
+    }
+
+    /* The measure, house cut only: what the database counted */
+    if (x.measures && !cut) {
+      sec++;
+      var m = x.measures, series = m.series || [], mx = Math.max.apply(null, series.concat([1]));
+      var cov = m.coverage_weeks != null && m.weeks && m.coverage_weeks < m.weeks ? "Counted from " + H.fmtDate(m.measured_from) + ": " + m.coverage_weeks + " of " + m.weeks + " weeks. The earlier weeks are not counted yet, so the series is not a decline." : "Counted over " + (m.weeks || series.length) + " weeks of the lake.";
+      h += H.inner(H.band(H.pad(sec), "The measure", "What the database counted on the subject. Context for the read, never a finding.") +
+        '<div class="bigs">' + [[m.recent_7d, "Stories this week"], [m.prior_7d, "The week before"], [m.outlets, "Outlets"], [m.weeks_touched, "Weeks touched of " + (m.weeks || series.length)]].filter(function (n) { return typeof n[0] === "number"; }).map(function (n) { return "<div><b>" + n[0].toLocaleString("en-US") + "</b><span>" + esc(n[1]) + "</span></div>"; }).join("") + "</div>" +
+        '<div class="kicker">Stories by week</div><div class="bars">' + series.map(function (v, i) { return "<div><span>" + (series.length - i) + (series.length - i === 1 ? " week ago" : " weeks ago") + '</span><i class="' + (i === series.length - 1 ? "r" : "") + '" style="width:' + Math.max(3, Math.round(v / mx * 100)) + '%"></i><b>' + v + "</b></div>"; }).join("") + "</div>" +
+        '<p class="body" style="margin-top:14px">' + esc(cov) + (m.state ? " State: " + esc(String(m.state).toLowerCase()) + "." : "") + "</p>");
+    }
+
+    /* What the read does not see; the house cut also says what it stood on */
+    sec++;
+    var aboutHtml = "";
+    if (!cut && x.about) {
+      var a = x.about, bits = [];
+      if (a.lines != null) bits.push(a.lines + (a.lines === 1 ? " line" : " lines") + " read, " + a.cited + " cited");
+      if (a.window && a.window.oldest && a.window.newest) bits.push("dated " + H.fmtDate(a.window.oldest) + " to " + H.fmtDate(a.window.newest));
+      if (a.model) bits.push("written on " + a.model);
+      if (a.status) bits.push("status " + a.status);
+      if (a.called) bits.push("graded " + a.called);
+      if (a.voice_notes != null) bits.push(a.voice_notes + (a.voice_notes === 1 ? " voice note" : " voice notes"));
+      if (a.dropped) bits.push(a.dropped + " findings not printed");
+      if (bits.length) aboutHtml = '<div class="kicker" style="margin-top:22px">What the read stood on</div><p class="body">' + esc(bits.join("; ")) + ".</p>";
+    }
+    h += H.inner(H.band(H.pad(sec), "What the read does not see", "The limits of the house's eyes, said plainly.") + '<p class="pull">' + esc(x.blind || "") + "</p>" + aboutHtml);
+
+    /* Sources: only what was cited, numbered in order of first mention, grouped as a reader thinks of them */
+    findings.forEach(function (f) { (f.sources || []).forEach(num); f.moves.forEach(function (m) { (m.sources || []).forEach(num); }); });
+    loose.forEach(function (m) { (m.sources || []).forEach(num); });
+    sec++;
+    if (order.length) {
+      var groups = {}; order.forEach(function (s) { var g = (rc[s] && rc[s].kind) || "reporting"; (groups[g] = groups[g] || []).push(s); });
+      h += H.inner(H.band(H.pad(sec), "Sources", "Every source this read cited, numbered as it was cited. Nothing it did not cite is listed.") +
+        XC_GROUPS.filter(function (g) { return groups[g[0]] && groups[g[0]].length; }).map(function (g) {
+          return '<div class="xc-grp' + (groups[g[0]].length <= 4 ? " keep" : "") + '"><div class="kicker" style="margin-top:16px">' + esc(g[1]) + " · " + groups[g[0]].length + '</div><div class="rp-rec">' + groups[g[0]].map(function (s) {
+            var r = rc[s];
+            return '<div class="rc"><div class="noimg">' + foot[s] + '</div><div><div class="hl">' + esc(r.headline || r.url || "") + '</div><div class="src">' + esc(r.source_name || "") + (r.date ? " · " + H.fmtDate(r.date) : "") + (r.url ? ' · <span class="xc-url">' + esc(String(r.url).replace(/^https?:\/\/(www\.)?/, "").slice(0, 70)) + "</span>" : "") + "</div></div></div>"; }).join("") + "</div></div>"; }).join(""));
+    }
+    h += '<section class="page closer">' + H.mark("rp-mark") + '<div class="big">' + HOUSE_CLOSER + '</div><div class="name">UNSURFACED\u2122 INTELLIGENCE</div><div class="url">unsurfaced-intelligence.com/intelligence</div></section>';
+    return { html: h };
+  }
   function openRead(id) {
     (RT ? fetch(API + "/reads/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rt: RT }) }).then(function (r) { return r.json(); })
         : call("/reads/get", { id: id })).then(function (d) {
@@ -2282,6 +2425,14 @@
       SELL = d.sell || null; RC_ALL = rc;   /* SEAM:SELL_LAW, the stand bar prints the verdict; the cover pick lists the photographs */
       document.title = "Unsurfaced DAILY · " + row.label;
       houseBack(ROOM);
+      if (row.kind === "excavate") {   /* SEAM:EXC_PRINT (RP1): a reading on the house's paper, reached through the print ticket; no desk, no slots, no lines */
+        document.title = "Unsurfaced Intelligence · EXCAVATE · " + row.label;
+        actions.innerHTML = "";
+        var xp = excavateDoc(x, rc, row, { inner: inner, band: band, mark: mark, pad: pad, fmtDate: fmtDate });
+        app.innerHTML = '<div class="doc">' + xp.html + "</div>";
+        if (RT) imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); });
+        return;
+      }
       var btns = [];
       if (x.title) btns.push('<button class="btn red" id="pdf">Download PDF' + (CUT ? " (client cut)" : "") + '</button>');
       if (x.title && (row.kind === "report" || row.kind === "recon")) btns.push('<button class="btn" id="cut">' + (CUT ? "Full read" : "Client cut") + '</button>');   /* SEAM:READ_CUT: the same document, as a client reads it */
@@ -2519,7 +2670,7 @@
         var r = rc[s];
         return '<div class="rc">' + (img(s) ? photo(s, "thumb") : '<div class="noimg">' + foot[s] + "</div>") + '<div><div class="hl">' + (img(s) ? "<b>" + foot[s] + "</b> · " : "") + esc(r.headline) + '</div><div class="src">' + esc(r.source_name || "") +
           (r.date ? " · " + fmtDate(r.date) : "") + (r.issue_no ? " · Issue " + String(r.issue_no).padStart(3, "0") : "") + '<span class="rp-ref">' + esc(s) + "</span></div></div></div>"; }).join("") + "</div>");
-      h += '<section class="page closer">' + mark("rp-mark") + '<div class="big">The read is free.<br>The moves are yours.</div><div class="url">unsurfaced-intelligence.com/daily</div></section>';
+      h += '<section class="page closer">' + mark("rp-mark") + '<div class="big">' + HOUSE_CLOSER + '</div><div class="name">UNSURFACED\u2122 INTELLIGENCE</div><div class="url">unsurfaced-intelligence.com/weekly' + (row.label ? " · " + esc(String(row.label)) : "") + "</div></section>";
       app.innerHTML = '<div class="doc">' + h + "</div>";
       if (RT) { imagesReady().then(leanImages).then(function () { return document.fonts.ready; }).then(function () { document.documentElement.setAttribute("data-print-ready", "1"); }); return; }
       if (x.social && x.social.frames && x.social.frames.length) social(row, x.social, rc, img, coverPool);
@@ -2774,8 +2925,8 @@
       c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText(label.toUpperCase(), 84, Math.min(y + 40, 1180));
       c.fillStyle = C.ivory; c.font = "400 22px 'Space Mono'"; c.fillText(String(data.sub || "THE WEEKLY READ · SWIPE"), 84, 1270);   /* SEAM:DAY_FRAMES (RD1b): the day's own line */
     } else if (kind === "closer") {
-      c.fillStyle = C.ivory; wrap(c, "The read is free. The moves are yours.", 84, 560, 912, 100, 1.05, 4, "800 {s}px Syne");
-      c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText("UNSURFACED-INTELLIGENCE.COM/DAILY", 84, 1270);
+      c.fillStyle = C.ivory; wrap(c, HOUSE_CLOSER, 84, 560, 912, 100, 1.05, 4, "800 {s}px Syne");
+      c.fillStyle = C.red; c.font = "700 26px 'Space Mono'"; c.fillText(String(data.url || "UNSURFACED-INTELLIGENCE.COM/DAILY"), 84, 1270);   /* HH2: the kind's own url */
     } else {
       var top = im ? 800 : 300;
       c.fillStyle = C.red; c.beginPath(); c.arc(92, top - 12, 8, 0, 7); c.fill();
@@ -2800,7 +2951,7 @@
       var frames = [frame("cover", { headline: s.cover_line, n: "", sub: o.sub }, label, coverIm)];
       s.frames.forEach(function (f, i) { frames.push(frame("story", { kicker: f.kicker, headline: f.headline, line: f.line, n: (i + 1) + " / " + s.frames.length,
         credit: ims[i] && pick[i] ? (o.credit ? o.credit(pick[i]) : "") : "" }, label, ims[i])); });
-      frames.push(frame("closer", { n: "" }, label, null));
+      frames.push(frame("closer", { n: "", url: o.url }, label, null));
       var wrapEl = document.createElement("section"); wrapEl.className = "social";
       wrapEl.innerHTML = '<h2>' + esc(o.h2 || "The frames") + ' · ' + frames.length + ' frames, 1080 × 1350</h2><div class="frames"></div>' +
         '<button class="btn red" data-fr="carousel">Download carousel PDF (LinkedIn)</button> <button class="btn" data-fr="pngs">Download all PNGs (Instagram)</button> ' +
@@ -2829,7 +2980,7 @@
   }
   /* The WEEKLY issue's frames, as before: the copy from the read, the photographs from its receipts. */
   function social(row, s, rc, img, coverPool) {
-    return framesSection({ label: row.label, sub: "THE WEEKLY READ · SWIPE", slug: "unsurfaced-daily-" + String(row.window_start), h2: "The Unsurfaced DAILY issue", s: s,
+    return framesSection({ label: row.label, sub: "THE WEEKLY READ · SWIPE", url: "UNSURFACED-INTELLIGENCE.COM/WEEKLY", slug: "unsurfaced-daily-" + String(row.window_start), h2: "The Unsurfaced DAILY issue", s: s,
       pools: s.frames.map(function (f) { return (f.evidence || []).filter(function (x) { return rc[x]; }); }), coverPool: coverPool, img: img,
       credit: function (sid) { return "Photo: " + ((rc[sid] && rc[sid].source_name) || ""); } });
   }
@@ -2925,7 +3076,7 @@
     if (!written || fr.status !== "ready" || !(fr.frames || []).length) return;
     var fidx = [], frames = fr.frames.filter(function (f, i) { if (f && f.headline) { fidx.push(i); return true; } return false; });   /* SEAM:VIDEO_DOOR (RD1c): the slot paths keep the set's own indices */
     var coverPool = dayFramePool(fr, "cover", null);
-    framesSection({ label: "DAILY · No. " + ed.issue_no + " · " + hsDay(ed.date), sub: "THE DAILY · " + hsDay(ed.date).toUpperCase() + " · SWIPE",
+    framesSection({ url: "UNSURFACED-INTELLIGENCE.COM/DAILY", label: "DAILY · No. " + ed.issue_no + " · " + hsDay(ed.date), sub: "THE DAILY · " + hsDay(ed.date).toUpperCase() + " · SWIPE",
       slug: "unsurfaced-daily-" + String(ed.date), h2: "The day\'s frames", s: { cover_line: fr.cover_line, frames: frames, caption: fr.caption },
       pools: frames.map(function (f, j) { return dayFramePool(fr, "frames[" + fidx[j] + "]", f.item_id); }), coverPool: coverPool.length ? coverPool : items.map(function (it) { return String(it.id); }),
       img: function (id) { return dayFrameImg(byId, id); },
