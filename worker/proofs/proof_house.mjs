@@ -93,7 +93,7 @@ ok(!/buildStudioManifest\(/.test(w) && !/async function studioCaption\(/.test(w)
 // ── D: the house page ────────────────────────────────────────────────────────────────────────────────────────────
 const hb = between(house, 'SEAM:HOUSE (RD1a): READ is the house.', '  function library(');
 ok(!/—/.test(hb) && !/\\u2014/.test(hb), 'D1 no em dash in the house\'s page block');
-ok(/var HOUSE_ORDER = \["reads", "recon", "report", "weekly", "record", "daily", "nights", "assets", "feed"\];/.test(house) && /var ROOM = HOUSE_ROOMS\[Q\.get\("room"\) \|\| ""\] \? Q\.get\("room"\) : "reads";/.test(house), 'D2 nine rooms, chosen by ?room=, the reads by default');
+ok(/var HOUSE_ORDER = \["reads", "recon", "report", "weekly", "record", "daily", "nights", "assets", "feed", "corpus"\];/.test(house) && /var ROOM = HOUSE_ROOMS\[Q\.get\("room"\) \|\| ""\] \? Q\.get\("room"\) : "reads";/.test(house), 'D2 ten rooms (VX2: the corpus), chosen by ?room=, the reads by default');
 ok(/if \(id\) openRead\(id\); else houseOpen\(ROOM\);/.test(house) && /function houseOpen\(room\) \{/.test(house), 'D3 the boot opens the room; an id still opens the read');
 ok(/function library\(kinds\) \{/.test(house) && /if \(!groups\[k\]\.length \|\| \(kinds && kinds\.indexOf\(k\) < 0\)\) return;/.test(house) && /\["recon", "report", "record", "monthly", "weekly"\]\.forEach/.test(house) && /var html = houseHead\(kinds \? ROOM : "reads"\);/.test(house),
   'D4 a kind\'s room is the library filtered to its shelf; the door is every shelf, in the order it had');

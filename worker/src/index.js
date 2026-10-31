@@ -121,7 +121,7 @@ export default {
         .then(() => crossCurrentsWeekly(env))   // SEAM:CROSS_CURRENTS: on Sundays, the patterns across the fortnight's deployments
         .then(s => console.log('cross_currents', JSON.stringify(s)))
         .catch(e => console.log('cross_currents_error', String(e && e.message)))
-        .then(() => pushNightly(env))   // SEAM:REACH_PUSH: every reader whose frames moved, told once, with permalinks
+        .then(() => netNightSend(env))   // SEAM:REACH_PUSH: every reader whose frames moved, told once, with permalinks; SEAM:NET_PASS (NT2): held here for the house's pass or the 07:00 CT cutoff (NET.PASS false sends here, as before)
         .then(s => console.log('push_nightly', JSON.stringify(s)))
         .catch(e => console.log('push_nightly_error', String(e && e.message)))
         .then(async () => peopleLedger(env, await doorSet(env)))   // SEAM:PEOPLE: who spoke to the board, once a day
@@ -142,6 +142,9 @@ export default {
       await (runDailySpine(env, { feeds: 'all', gdelt: 'all', advance: INTAKE.DRAIN })
         .then(s => console.log('spine_slice', JSON.stringify(s)))
         .catch(e => console.log('spine_slice_error', String(e && e.message)))
+        .then(() => (typeof lakePullStep === 'function' ? lakePullStep(env, LAKE.PULL.SLICE_MS) : null))   // SEAM:BREADTH (LK1): a step of the pull, before the resolver links the new rows
+        .then(s => { if (s) console.log('lake_pull', JSON.stringify(s)); })
+        .catch(e => console.log('lake_pull_error', String(e && e.message)))
         .then(() => themePass(env, 1, THEME.DRAIN_BATCH))   // SEAM:THEMES: the day joins its themes as it lands
         .then(s => console.log('theme_pass', JSON.stringify(s)))
         .catch(e => console.log('theme_pass_error', String(e && e.message)))
@@ -154,6 +157,9 @@ export default {
         .then(() => claudeBatchDrain(env))   // SEAM:CLAUDE_ROUTE: collect finished batches, true the ledger up to real usage
         .then(s => console.log('claude_drain', JSON.stringify(s)))
         .catch(e => console.log('claude_drain_error', String(e && e.message)))
+        .then(() => netCutoff(env))   // SEAM:NET_PASS (NT2): the house's pass sends once the night has landed; nobody passed by 07:00 CT, the cutoff passes and sends it
+        .then(s => console.log('net_cutoff', JSON.stringify(s)))
+        .catch(e => console.log('net_cutoff_error', String(e && e.message)))
         .then(() => readTick(env, { deep: true, t0 }))   // SEAM:READ_ENGINE: submit queued reads whose children have settled (SEAM:READ_DEEP: and move the deep RECONs, on this invocation's clock)
         .then(s => console.log('read_tick', JSON.stringify(s)))
         .catch(e => console.log('read_tick_error', String(e && e.message)))
@@ -208,6 +214,7 @@ export default {
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
       if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
       if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the territories, public
+      if (path === '/excavate/day-frames' && request.method === 'GET') return arrivalDayRoute(env, origin);            // SEAM:NET_ARRIVAL (NT3): the day's frames for the arrival, public; no model
       if (path === '/excavate/method' && request.method === 'GET') return excavateMethodRoute(request, env, origin);   // SEAM:TERRITORIES (EX39b): how the numbers are made, the house's own (desk key or admin)
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
@@ -246,6 +253,8 @@ export default {
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
       if (!user) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+      if (path === '/excavate/space' && request.method === 'GET') return spaceRoute(request, env, origin, user);             // SEAM:SPACES (NT1): a space and its readings, for whoever may see them; no model, outside the daily allowance
+      if (path === '/excavate/space-grant' && request.method === 'POST') return spaceGrantRoute(request, env, origin, user);  // SEAM:SPACES (NT1): its holder or an admin grants a reader a view
       /* SEAM:PLAY_RENDER \u2014 the daily AI limit meters AI INFERENCE only.
        * /play/render POST is governed by its own seconds budget (renderBudget);
        * /play/render/:id GET polls and /play/upload-ref are KV/R2 reads that
@@ -260,7 +269,7 @@ export default {
       if (request.method === 'GET' && path === '/play/budget') return playBudget(env, origin, user);
       if (request.method === 'GET' && path.startsWith('/play/handoff/')) return playHandoffGet(decodeURIComponent(path.slice('/play/handoff/'.length)), env, origin, user);   // SEAM:PLAY_HANDOFF
 
-      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref' && path !== '/reads/slot-upload') ? await safeJson(request) : {};
+      const body = (request.method === 'POST' && path !== '/mine/upload' && path !== '/knowledge/file' && path !== '/arcade/admin/prize-obj' && path !== '/play/upload-ref' && path !== '/reads/corpus-upload' && path !== '/reads/slot-upload') ? await safeJson(request) : {};
       switch (path) {
         case '/play/generate':       return meterRun(env, origin, user, 'play.words', () => playGenerate(body, env, origin));   // SEAM:PLANS
         case '/play/interpret':      return playInterpret(body, env, origin, user);   // SEAM:PLAY_BRIEF
@@ -345,6 +354,13 @@ export default {
         case '/reads/lines':         // SEAM:EDIT_DESK (ED2): the lines an editor may change, one direct edit, a revert
         case '/reads/edit':
         case '/reads/revert':
+        case '/reads/score':         // SEAM:SCORECARD (EX54): the house's own score on a reading, and THE SCORE room's tables
+        case '/reads/scorecard':
+        case '/reads/corpus':        // SEAM:HOUSE_POSITIONS (VX2): THE CORPUS: the list, a document, a reading, a position, a register line
+        case '/reads/corpus-doc':
+        case '/reads/corpus-extract':
+        case '/reads/corpus-position':
+        case '/reads/corpus-register':
         case '/reads/night-note':    // SEAM:MORNING_SHELF (RD1d): a house note pinned on a door row
         case '/reads/assets':        // SEAM:HOUSE (RD1a): the assets and the nights, the house's own shelves
         case '/reads/nights':
@@ -353,7 +369,14 @@ export default {
         case '/reads/slot-take':
         case '/reads/slot-clip':
         case '/reads/pdf':           return readRoute(path, body, env, origin, user);
+        case '/reads/night-publish': // SEAM:NET_PASS (NT2): the morning pass: publish a held reading, the lead, a pull, the order, a note applied, pass and send
+        case '/reads/night-promote':
+        case '/reads/night-pull':
+        case '/reads/night-order':
+        case '/reads/night-apply':
+        case '/reads/night-pass':    return readRoute(path, body, env, origin, user);
         case '/reads/slot-upload':   return slotUpload(request, env, origin, user);   // SEAM:EDIT_DESK (ED2): the house's own photograph, raw body
+        case '/reads/corpus-upload': return corpusUpload(request, env, origin, user);   // SEAM:HOUSE_POSITIONS (VX2): a document of ours, raw body
         case '/pay/onboard':         return payOnboard(env, origin, user);
         case '/pay/status':          return payStatus(env, origin, user);
         case '/pay/responder':       return payResponder(body, env, origin, user);
@@ -939,8 +962,11 @@ async function synthesize(body, env, origin, hooks) {
       'If evidence items disagree, make one insight name the disagreement plainly. ' : '') +
       'Give the insights the evidence earns, 4 to 8, across the categories it supports, and the moves it earns, 3 to 6; never pad to a count. JSON only.';
     const house = typeof excHouseLines === 'function' ? await excHouseLines(env, frame0).catch(excQuiet('house_lines', [])) : [];   // SEAM:EXC_HOUSE
-    const houseBlock = house.length ? 'WHAT THE HOUSE DEPLOYED (our own dated insights on this subject; context for continuity, never evidence, never a source to cite; if the evidence now says otherwise, say so plainly):\n' + house.map(h => h.deployed + ': ' + h.claim + (h.confidence ? ' (' + h.confidence + ')' : '') + (h.called ? ' [' + h.called + ']' : '')).join('\n') + '\n\n' : '';
-    const usr = excFrameBlock(frame0) + excMeasureLine(measures) + houseBlock + (isReport ? excReportPrompt(query, evidence) : usrPlain);   // SEAM:EXC_FRAME + SEAM:EXC_MEASURE + SEAM:EXC_HOUSE
+    const houseCalib = house.length && !body.bench && typeof calibrationFrameLine === 'function' ? await calibrationFrameLine(env, frame0).catch(excQuiet('calib_line', '')) : '';   // SEAM:SCORECARD (EX54): how our calls on the subject turned out
+    const houseBlock = house.length ? 'WHAT THE HOUSE DEPLOYED (our own dated insights on this subject; context for continuity, never evidence, never a source to cite; if the evidence now says otherwise, say so plainly):\n' + house.map(h => h.deployed + ': ' + h.claim + (h.confidence ? ' (' + h.confidence + ')' : '') + (h.called ? ' [' + h.called + ']' : '')).join('\n') + (houseCalib ? '\n' + houseCalib : '') + '\n\n' : '';
+    const believes = (!body.bench && typeof housePositionsFor === 'function') ? await housePositionsFor(env, 'excavate', { frame: frame0, query }).catch(excQuiet('house_positions', null)) : null;   // SEAM:HOUSE_POSITIONS (VX2): what the house believes on the frame; never on the bench, which measures the writer alone
+    const believesBlock = believes && believes.text ? believes.text + '\n\n' : '';
+    const usr = excFrameBlock(frame0) + excMeasureLine(measures) + houseBlock + believesBlock + (isReport ? excReportPrompt(query, evidence) : usrPlain);   // SEAM:EXC_FRAME + SEAM:EXC_MEASURE + SEAM:EXC_HOUSE + SEAM:HOUSE_POSITIONS
 
     // SEAM:ONE_RAIL, now SEAM:EXC_INTEL: THE READ compiles on the live lane (Sonnet 5) and never fails: the reserve model stands behind it.
     /* SEAM:EXC_PARSE: a read the model wrote is a read the client gets. The report used to have 3600 tokens of room
@@ -1056,6 +1082,7 @@ async function synthesize(body, env, origin, hooks) {
           : (/^https?:\/\//.test(String(x.sourceUrl || '')) ? x.sourceUrl : null)
       };
     }).filter(x => x.title).filter(x => { const bad = typeof excMeasureClaim === 'function' && excMeasureClaim(x.title); if (bad) console.log('measure_claim_dropped', String(x.title).slice(0, 80)); return !bad; });   // SEAM:EXC_MEASURE (EX52a): a finding about the instrument is not a finding
+    if (!body.bench && typeof calibAdjust === 'function') await calibAdjust(env, insights, frame0 && frame0.category).catch(excQuiet('calib_adjust', 0));   // SEAM:SCORECARD (EX54): confidence learns, floor-gated, after the engine scores it
     // SEAM:EXC_ACCURACY: room for a whole sentence; the 220 cut ended THE READ mid-clause.
     const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2)
       .map(x => excClip(x, 420)).filter(Boolean);
@@ -1095,7 +1122,7 @@ async function synthesize(body, env, origin, hooks) {
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
         evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, voice: { n: voice.length, notes: voice }, moves_dropped: movesDropped, moves_pass: movesPass, partial,   // SEAM:EXC_STALL: the ledger knows a partial read; SEAM:CLAIMS: and the moves pass
-          window: excWindow(merged, now), widened: !!plan.widened, model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cost_usd: compiled.cost_usd } } });   // SEAM:EXC_INTEL
+          believes: believes ? believes.meta : null, window: excWindow(merged, now), widened: !!plan.widened, model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cost_usd: compiled.cost_usd } } });   // SEAM:EXC_INTEL (SEAM:HOUSE_POSITIONS: the positions the read met)
       const liveItems = (added || []).map(a => ({ url: a.url, title: a.title, text: a.snippet || a.text || '', source_name: a.source || 'live', source_tier: 3, kind: a.signalType === 'social' ? 'discourse' : (a.signalType || 'news'), published_at: a.published_at || null, image: a.image || null, rail: 'wire' }))
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: Math.max(1, excTier(c)), kind: c.kind || c.lens || 'open', published_at: c.published_at || null, rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
@@ -1109,6 +1136,7 @@ async function synthesize(body, env, origin, hooks) {
       client_lines: merged.filter(c => c && c.client).length,   // SEAM:CLIENT_EVIDENCE: how many of the reader's own lines the read stood on
       ahead: aheadLines ? merged.filter(c => c && c.kind === 'ahead').slice(0, 3).map(c => String(c.title || '').replace(/^AHEAD /, '')) : null,   // SEAM:EXC_AHEAD
       house: house,   // SEAM:EXC_HOUSE: the house's own deployed insights on this frame, shown as context on the receipt
+      believes: believes && believes.meta ? believes.meta.positions : [],   // SEAM:HOUSE_POSITIONS (VX2): the positions the read met, shown as context on the receipt
       evidence_n: merged.length, signals: added, connectors: serverConnectors(added),
       window: Object.assign(excWindow(merged, now), { widened: !!plan.widened }),   // SEAM:EXC_INTEL: what the read stood on, and when
       relevance: { framed: !!frame0, kept: merged.length, set_aside: gate.dropped.length, restored: gate.restored, hits: gate.hits || null, sample: gate.dropped.slice(0, 6) },   // SEAM:EXC_RELEVANCE
@@ -2547,7 +2575,7 @@ async function sweepRefound(env, rows, fresh) {
 }
 const LIVE_KINDS = new Set(['news', 'web', 'discourse', 'video']);
 const REF_KINDS = new Set(['academic', 'research', 'book', 'patent', 'filing', 'reference', 'paper', 'truth']);   // SEAM:EXC_INTEL: placed, never composed
-async function gatherServerSignals(q) {
+async function gatherServerSignals(q, opts) {   // SEAM:BREADTH (LK1): opts.hn false asks GDELT alone
   const out = [];
   // sourcelang:english is GDELT's own documented query filter and it runs on
   // their side, so it does not depend on the casing of a.language in the
@@ -2579,7 +2607,7 @@ async function gatherServerSignals(q) {
     }
   } catch (e) {}
   // Hacker News (Algolia) — operator / practitioner discourse, keyless.
-  try {
+  if (!(opts && opts.hn === false)) try {
     const r = await fetch(`https://hn.algolia.com/api/v1/search?query=${enc}&tags=story&hitsPerPage=8&numericFilters=points>5`, { cf: { cacheTtl: 300 } });
     if (r.ok) {
       const j = await r.json().catch(() => null);
@@ -2795,6 +2823,7 @@ async function serveMedia(path, env, origin, request) {
   const key = decodeURIComponent(path.slice('/media/'.length));
   if (/^weekly\/.*\.pdf$/i.test(key)) return json({ ok: false, error: 'not found' }, 404, origin, env); // SEAM:WEEKLY_STAND: the issues leave only through the signed link
   if (/^reads\/pdf\//i.test(key)) return json({ ok: false, error: 'not found' }, 404, origin, env); // SEAM:REPORT_STAND: the reports too
+  if (/^corpus\//i.test(key)) return json({ ok: false, error: 'not found' }, 404, origin, env); // SEAM:HOUSE_POSITIONS (VX2): our own writing never leaves through the public route
   let range = null;
   const rh = request && request.headers.get('Range');
   if (rh) {
@@ -5285,7 +5314,11 @@ const DAILY_POV = {
        load-bearing across feed tags and the classifier). Six new lanes from
        the twenty-lane map; feeds to fill them are cut 3. */
     'sports-culture','wellness-fitness','retail-dtc','luxury',
-    'travel-experiences','media-platforms'
+    'travel-experiences','media-platforms',
+    /* SEAM:BREADTH (LK1, Oct 31, 2026): seven more, ADDITIVELY, so the net is wide for any brand the house may pitch: the ad-spend
+       industries MAGNA and eMarketer track that the twenty had no lane for. */
+    'finance-fintech','automotive-mobility','health-pharma','real-estate-home',
+    'telecom-connectivity','packaged-goods-beverage','betting'
   ],
   // Legacy SLATE compatibility: every territory resolves to one of the five beats.
   beat_map: {
@@ -5298,7 +5331,9 @@ const DAILY_POV = {
     'sustainability-impact':'culture', 'global-diaspora':'culture',
     'sports-culture':'culture', 'wellness-fitness':'culture',
     'retail-dtc':'tech', 'luxury':'culture',
-    'travel-experiences':'culture', 'media-platforms':'advertising'
+    'travel-experiences':'culture', 'media-platforms':'advertising',
+    'finance-fintech':'tech', 'automotive-mobility':'tech', 'health-pharma':'tech', 'real-estate-home':'creativity',
+    'telecom-connectivity':'tech', 'packaged-goods-beverage':'culture', 'betting':'culture'   // SEAM:BREADTH (LK1): an industry beat reads as business does
   },
   tiers: {
     1: { role: 'daily signal: original reporting, cross-category influence', cadence: 'daily' },
@@ -5330,7 +5365,7 @@ const DAILY_POV = {
     { name:'Creative Boom',      feed:'https://www.creativeboom.com/feed/',            tier:2, territories:['art-design','advertising-marketing'], verified:true },
     { name:'Nice Kicks',         feed:'https://www.nicekicks.com/feed/',               tier:2, territories:['sneakers-streetwear'], verified:true },
     { name:'Wallpaper',          feed:'https://www.wallpaper.com/feeds/all',           tier:2, territories:['art-design','architecture-cities'], verified:false },
-    { name:'Curbed',             feed:'https://www.curbed.com/rss/index.xml',          tier:2, territories:['architecture-cities'], verified:true },
+    { name:'Curbed',             feed:'https://www.curbed.com/rss/index.xml',          tier:2, territories:['architecture-cities','real-estate-home'], verified:true },
     { name:'Hyperallergic',      feed:'https://hyperallergic.com/feed/',               tier:2, territories:['art-design'], verified:true },
     { name:'Rest of World',      feed:'https://restofworld.org/feed/latest/',          tier:2, territories:['global-diaspora','technology-innovation'], verified:true },
     { name:'Blackbird Spyplane', feed:'https://www.blackbirdspyplane.com/feed',        tier:3, territories:['fashion-beauty','sneakers-streetwear'], verified:true },
@@ -5393,7 +5428,7 @@ const DAILY_POV = {
     { name:'Game Developer',     feed:'https://www.gamedeveloper.com/rss.xml',         tier:2, territories:['entertainment-gaming','technology-innovation'], verified:false },
     // EX37: food, sustainability, diaspora, sports, wellness, travel
     { name:'Bon Appétit',        feed:'https://www.bonappetit.com/feed/rss',           tier:1, territories:['food-hospitality'], verified:false },
-    { name:'Food Dive',          feed:'https://www.fooddive.com/feeds/news/',          tier:2, territories:['food-hospitality','retail-dtc'], verified:false },
+    { name:'Food Dive',          feed:'https://www.fooddive.com/feeds/news/',          tier:2, territories:['food-hospitality','retail-dtc','packaged-goods-beverage'], verified:false },
     { name:"Nation's Restaurant News", feed:'https://www.nrn.com/rss.xml',             tier:2, territories:['food-hospitality'], verified:false },
     { name:'Punch',              feed:'https://punchdrink.com/feed/',                  tier:3, territories:['food-hospitality'], verified:false },
     { name:'The Takeout',        feed:'https://thetakeout.com/rss',                    tier:3, territories:['food-hospitality'], verified:false },
@@ -5407,8 +5442,8 @@ const DAILY_POV = {
     { name:'The Native',         feed:'https://thenativemag.com/feed/',                tier:3, territories:['global-diaspora','music','fashion-beauty'], verified:false },
     { name:'Semafor',            feed:'https://www.semafor.com/rss',                   tier:1, territories:['global-diaspora','business-economics','media-platforms'], verified:false },
     { name:'ESPN',               feed:'https://www.espn.com/espn/rss/news',            tier:1, territories:['sports-culture'], verified:false },
-    { name:'Front Office Sports', feed:'https://frontofficesports.com/feed/',          tier:2, territories:['sports-culture','business-economics'], verified:false },
-    { name:'Sportico',           feed:'https://www.sportico.com/feed/',                tier:2, territories:['sports-culture','business-economics'], verified:false },
+    { name:'Front Office Sports', feed:'https://frontofficesports.com/feed/',          tier:2, territories:['sports-culture','business-economics','betting'], verified:false },
+    { name:'Sportico',           feed:'https://www.sportico.com/feed/',                tier:2, territories:['sports-culture','business-economics','betting'], verified:false },
     { name:'SB Nation',          feed:'https://www.sbnation.com/rss/index.xml',        tier:1, territories:['sports-culture'], verified:false },
     { name:'Boardroom',          feed:'https://boardroom.tv/feed/',                    tier:3, territories:['sports-culture','entrepreneurship-creator','sneakers-streetwear'], verified:false },
     { name:'Well+Good',          feed:'https://www.wellandgood.com/feed/',             tier:1, territories:['wellness-fitness'], verified:false },
@@ -5428,7 +5463,51 @@ const DAILY_POV = {
     { name:'Blavity',            feed:'https://blavity.com/feed',                      tier:2, territories:['global-diaspora','media-platforms','entrepreneurship-creator'], verified:false },
     { name:'Essence',            feed:'https://www.essence.com/feed/',                 tier:1, territories:['fashion-beauty','global-diaspora','entertainment-gaming'], verified:false },
     { name:'The Root',           feed:'https://www.theroot.com/rss',                   tier:2, territories:['global-diaspora','media-platforms'], verified:false },
-    { name:'EURweb',             feed:'https://eurweb.com/feed/',                      tier:3, territories:['entertainment-gaming','global-diaspora','music'], verified:false }
+    { name:'EURweb',             feed:'https://eurweb.com/feed/',                      tier:3, territories:['entertainment-gaming','global-diaspora','music'], verified:false },
+    // SEAM:BREADTH (LK1, Oct 31, 2026): the seven the house added. Each feed is a candidate until its first capture (the 05:15 probe tries it).
+    // Finance: banking, payments, fintech, investing, insurance, crypto
+    { name:'CoinDesk',           feed:'https://www.coindesk.com/arc/outboundfeeds/rss/', tier:1, territories:['finance-fintech'], verified:false },
+    { name:'Banking Dive',       feed:'https://www.bankingdive.com/feeds/news/',       tier:1, territories:['finance-fintech'], verified:false },
+    { name:'Finextra',           feed:'https://www.finextra.com/rss/headlines.aspx',   tier:2, territories:['finance-fintech'], verified:false },
+    { name:'Payments Dive',      feed:'https://www.paymentsdive.com/feeds/news/',      tier:2, territories:['finance-fintech'], verified:false },
+    { name:'The Financial Brand', feed:'https://thefinancialbrand.com/news/fintech-banking/feed/', tier:2, territories:['finance-fintech'], verified:false },
+    { name:'Insurance Journal',  feed:'https://www.insurancejournal.com/rss/news',     tier:2, territories:['finance-fintech'], verified:false },
+    { name:'Fintech Business Weekly', feed:'https://fintechbusinessweekly.substack.com/feed', tier:3, territories:['finance-fintech'], verified:false },
+    // Automotive and mobility
+    { name:'Car and Driver',     feed:'https://www.caranddriver.com/rss/all.xml/',     tier:1, territories:['automotive-mobility'], verified:false },
+    { name:'Electrek',           feed:'https://electrek.co/feed/',                     tier:2, territories:['automotive-mobility'], verified:false },
+    { name:'InsideEVs',          feed:'https://insideevs.com/rss/articles/all/',       tier:2, territories:['automotive-mobility'], verified:false },
+    { name:'Carscoops',          feed:'https://www.carscoops.com/feed/',               tier:3, territories:['automotive-mobility'], verified:false },
+    // Health and pharma
+    { name:'Fierce Pharma',      feed:'https://feeds.feedburner.com/fiercepharma/IUrTsp2cG3v', tier:1, territories:['health-pharma'], verified:false },
+    { name:'STAT',               feed:'https://www.statnews.com/category/pharma/feed/', tier:1, territories:['health-pharma'], verified:false },
+    { name:'Endpoints News',     feed:'https://endpts.com/feed/',                      tier:2, territories:['health-pharma'], verified:false },
+    { name:'Healthcare Dive',    feed:'https://www.healthcaredive.com/feeds/news/',    tier:2, territories:['health-pharma'], verified:false },
+    { name:'Fierce Pharma Marketing', feed:'https://www.fiercepharma.com/rss/marketing/xml', tier:2, territories:['health-pharma'], verified:false },
+    { name:'MedCity News',       feed:'https://medcitynews.com/tag/pharma-marketing/feed/', tier:3, territories:['health-pharma'], verified:false },
+    // Real estate and home (Curbed, above, reads here too)
+    { name:'The Real Deal',      feed:'https://therealdeal.com/new-york/feed/',        tier:1, territories:['real-estate-home'], verified:false },
+    { name:'HousingWire',        feed:'https://www.housingwire.com/feed/',             tier:1, territories:['real-estate-home'], verified:false },
+    { name:'Inman',              feed:'https://feeds.feedburner.com/inmannews',        tier:2, territories:['real-estate-home'], verified:false },
+    { name:'Realtor.com News',   feed:'https://www.realtor.com/news/feed/',            tier:2, territories:['real-estate-home'], verified:false },
+    { name:'Redfin',             feed:'https://www.redfin.com/blog/feed/',             tier:3, territories:['real-estate-home'], verified:false },
+    // Telecom
+    { name:'Light Reading',      feed:'https://www.lightreading.com/rss.xml',          tier:1, territories:['telecom-connectivity'], verified:false },
+    { name:'Fierce Network',     feed:'https://www.fierce-network.com/rss/xml',        tier:1, territories:['telecom-connectivity'], verified:false },
+    { name:'RCR Wireless News',  feed:'https://feeds.feedburner.com/rcrwireless/sLmV', tier:2, territories:['telecom-connectivity'], verified:false },
+    { name:'Total Telecom',      feed:'https://totaltele.com/category/technology/feed/', tier:2, territories:['telecom-connectivity'], verified:false },
+    { name:'TeleGeography',      feed:'https://blog.telegeography.com/rss.xml',        tier:3, territories:['telecom-connectivity'], verified:false },
+    // Packaged goods and beverage (Food Dive, above, reads here too)
+    { name:'Supermarket News',   feed:'https://feeds.feedburner.com/Supermarketnews',  tier:1, territories:['packaged-goods-beverage','retail-dtc'], verified:false },
+    { name:'Shanken News Daily', feed:'https://www.shankennewsdaily.com/feed/',        tier:1, territories:['packaged-goods-beverage'], verified:false },
+    { name:'Grocery Dive',       feed:'https://www.grocerydive.com/feeds/news/',       tier:2, territories:['packaged-goods-beverage','retail-dtc'], verified:false },
+    { name:'The Spirits Business', feed:'https://www.thespiritsbusiness.com/feed/',    tier:2, territories:['packaged-goods-beverage'], verified:false },
+    { name:'Nosh',               feed:'https://www.nosh.com/feed/',                    tier:3, territories:['packaged-goods-beverage'], verified:false },
+    { name:'VinePair',           feed:'https://vinepair.com/booze-news/feed/',         tier:3, territories:['packaged-goods-beverage','food-hospitality'], verified:false },
+    // Betting (Front Office Sports and Sportico, above, read here too)
+    { name:'Legal Sports Report', feed:'https://www.legalsportsreport.com/feed/',      tier:1, territories:['betting'], verified:false },
+    { name:'Sports Handle',      feed:'https://sportshandle.com/feed/',                tier:2, territories:['betting'], verified:false },
+    { name:'Sports Betting Dime', feed:'https://www.sportsbettingdime.com/feed/',      tier:3, territories:['betting'], verified:false }
   ],
   // SEAM:INTAKE (EX37): GDELT lanes by territory. Every slice asks one query per territory (rotating), tier 4 by law: breadth
   // behind the sources, never sole evidence. The five beats below stay for the legacy fallback only.
@@ -5452,7 +5531,15 @@ const DAILY_POV = {
     'retail-dtc':             ['retail industry consumer', 'direct to consumer brand ecommerce'],
     'luxury':                 ['luxury brand market', 'luxury consumer fashion'],
     'travel-experiences':     ['travel industry experiences', 'tourism hospitality trend'],
-    'media-platforms':        ['social media platform', 'media industry streaming podcast']
+    'media-platforms':        ['social media platform', 'media industry streaming podcast'],
+    // SEAM:BREADTH (LK1): the seven, in the same short register (GDELT reads the words of a lane together)
+    'finance-fintech':        ['fintech banking', 'credit card payments'],
+    'automotive-mobility':    ['automaker electric vehicles', 'car buyers dealerships'],
+    'health-pharma':          ['pharmaceutical drug launch', 'health insurers patients'],
+    'real-estate-home':       ['housing market homebuyers', 'home furnishings brands'],
+    'telecom-connectivity':   ['wireless carrier network', 'broadband internet providers'],
+    'packaged-goods-beverage':['packaged food brands', 'beverage spirits brands'],
+    'betting':                ['sports betting sportsbook', 'online casino gambling']
   },
   gdelt: { tier: 4, role: 'breadth sweep + validation; never sole evidence for a story' },
   resist: [
@@ -5742,7 +5829,11 @@ async function spineCapture(env, opts) {
   const sources = nFeeds === 'all'
     ? DAILY_POV.sources.filter(s => probe || !(health[s.name] && health[s.name].fail >= INTAKE.DEAD_AFTER))
     : rotatePick(DAILY_POV.sources, nFeeds, hours);
-  const lanes = nLanes === 'all'
+  // SEAM:BREADTH (LK1): GDELT asks for one request every five seconds, so the slice keeps LAKE.LANES calls: the house's aim lanes first
+  // (each category it holds, its own search), then the territory lanes in rotation, every territory asked at least every other slice.
+  const aim = nLanes === 'all' && typeof lakeAimLanes === 'function' ? await lakeAimLanes(env).catch(excQuiet('aim_lanes', [])) : [];
+  const lanes = nLanes === 'all' && typeof lakeLanePlan === 'function' ? lakeLanePlan(DAILY_POV.lanes, aim, hours, LAKE.LANES)
+    : nLanes === 'all'
     ? Object.keys(DAILY_POV.lanes || {}).map(terr => { const qs = DAILY_POV.lanes[terr]; return { beat: terr, territory: terr, q: qs[hours % qs.length] }; })
     : rotatePick(DAILY_BEATS, nLanes, hours);
   const bySource = {}, byTerritory = {}, count = (name, terr) => { bySource[name] = (bySource[name] || 0) + 1; if (terr) byTerritory[terr] = (byTerritory[terr] || 0) + 1; };
@@ -5765,7 +5856,7 @@ async function spineCapture(env, opts) {
   // GDELT breadth sweep — tier 4, never sole evidence, rotating lanes.
   for (const lane of lanes) {
     try {
-      const sig = await gatherServerSignals(lane.q);
+      const sig = await gatherServerSignals(lane.q, lane.aim ? { hn: false } : null);   // SEAM:BREADTH (LK1): an aim lane asks GDELT alone
       // Belt behind the query filter. Deliberately permissive: an unknown lang
       // PASSES. An exact === 'English' against a field whose casing is
       // unverified would drop every article and take tier 4 to zero in
@@ -5804,7 +5895,7 @@ async function spineCapture(env, opts) {
     }) || [];
     await sweepRefound(env, rows, fresh);   // SEAM:SWEEP_MEASURE
   }
-  return { captured: items.length, unique: rows.length, fresh, feedErrors, sources: sources.length, lanes: lanes.length,
+  return { captured: items.length, unique: rows.length, fresh, feedErrors, sources: sources.length, lanes: lanes.length, aim: lanes.filter(l => l && l.aim).length,
     gdelt: gdeltSeen ? (gdeltKept + '/' + gdeltSeen) : null };
 }
 
@@ -5910,7 +6001,7 @@ async function composeFromLake(env, today) {
   const since = new Date(Date.now() - 36 * 3600e3).toISOString();
   const sw = await sweepOnly(env);   // SEAM:SWEEP_MEASURE: the paper picks from the sweep, never from what a search or a RECON brought in
   const cands = (await sbRest(env,
-    `signals?status=in.(connected,filtered)&captured_at=gte.${since}` + sw +
+    `signals?status=in.(connected,filtered)&captured_at=gte.${since}` + sw + (typeof lakePaperOut === 'function' ? lakePaperOut() : '') +   // SEAM:BREADTH (LK1): the paper reads its twenty until the house opens it to the seven
     '&order=captured_at.desc&limit=120' +
     '&select=id,url,title,summary,source_name,source_tier,territory,image,momentum,status'
   ) || []).filter(c => c.title && c.url && !mostlyNonLatin(c.title));
@@ -6150,7 +6241,7 @@ async function runDailySpine(env, opts) {
   // to have stopped doing. Add the field here or it does not exist.
   const stats = {
     captured: cap.captured, unique: cap.unique, fresh: cap.fresh.length,
-    gdelt: cap.gdelt || null,
+    gdelt: cap.gdelt || null, lanes: cap.lanes || 0, aim: cap.aim || 0,   // SEAM:BREADTH (LK1): the slice's lanes and how many were the house's aim
     ...adv, feed_errors: cap.feedErrors.slice(0, 8), ms: Date.now() - t0
   };
   await logEvent(env, 'daily', null, 'spine_run', null, stats);
@@ -7407,10 +7498,7 @@ function ytQuotaDay(d) {
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); }
   catch (e) { return new Date(d.getTime() - 8 * 3600e3).toISOString().slice(0, 10); }   // no time zones: Pacific standard time
 }
-const TERRITORY_SLUGS = ['advertising-marketing','technology-innovation','artificial-intelligence',
-  'business-economics','entrepreneurship-creator','music','fashion-beauty','sneakers-streetwear',
-  'art-design','architecture-cities','entertainment-gaming','food-hospitality','sustainability-impact','global-diaspora',
-  'sports-culture','wellness-fitness','retail-dtc','luxury','travel-experiences','media-platforms'];   // SEAM:TERRITORIES (EX39): the twenty, fed since EX37
+const TERRITORY_SLUGS = (typeof DAILY_POV === 'object' && DAILY_POV ? DAILY_POV.territories : []).slice();   // SEAM:TERRITORIES (EX39): the territories the intake feeds; SEAM:BREADTH (LK1): read from the registry, so the two lists never drift
 
 /* SEAM:EXC_VOICES: consumer reality, verbatim. The discourse rails (YouTube comments, Mastodon posts) hand the
  * page every on-frame quote they fetched, in the speaker's own words, ranked by what other people made of it
@@ -8212,7 +8300,7 @@ async function excavateSuggest(request, env, origin) {
     sbRest(env, 'house_reads?kind=eq.recon&status=in.(ready,published,held)&select=id,label,brief:meta->brief->>text&order=id.desc&limit=30').catch(quiet('recons'))]);
   const pool = [].concat(
     (tracks || []).map(t => ({ kind: 'brand', text: t.name, hint: t.sector || t.kind || 'tracked brand', id: t.id })),
-    TERRITORY_SLUGS.map(sl => ({ kind: 'territory', text: sl.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' and '), hint: 'territory', id: sl })),
+    TERRITORY_SLUGS.map(sl => ({ kind: 'territory', text: (typeof LAKE === 'object' && typeof INDUSTRY_NAMES === 'object' && LAKE.ADDED.includes(sl) && INDUSTRY_NAMES[sl]) || sl.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' and '), hint: 'territory', id: sl })),   // SEAM:BREADTH (LK1): the seven by their names
     (reads || []).map(r => ({ kind: 'read', text: r.query, hint: 'read ' + String(r.created_at || '').slice(0, 10), id: r.id })),
     (recons || []).map(r => ({ kind: 'recon', text: r.brief || r.label, hint: r.label, id: r.id })));
   return json({ ok: true, q, items: excSuggestRank(q, pool) }, 200, origin, env);
@@ -8293,7 +8381,10 @@ const DESK = { SCORE_KEY: 'desk:scores', EDITION_KEY: 'desk:edition', N: 20, PER
 const LENSES = ['consumer', 'market', 'culture', 'brand', 'truth'];
 const LENS_OF_TERRITORY = { 'fashion-beauty': 'consumer', 'sneakers-streetwear': 'consumer', 'food-hospitality': 'consumer', 'sustainability-impact': 'consumer',
   'advertising-marketing': 'market', 'business-economics': 'market', 'technology-innovation': 'market', 'artificial-intelligence': 'market', 'entrepreneurship-creator': 'market',
-  'music': 'culture', 'art-design': 'culture', 'entertainment-gaming': 'culture', 'architecture-cities': 'culture', 'global-diaspora': 'culture' };
+  'music': 'culture', 'art-design': 'culture', 'entertainment-gaming': 'culture', 'architecture-cities': 'culture', 'global-diaspora': 'culture',
+  // SEAM:BREADTH (LK1): an industry read for its moves and its money is market; what people buy and how they live at home is consumer
+  'finance-fintech': 'market', 'automotive-mobility': 'market', 'health-pharma': 'market', 'telecom-connectivity': 'market', 'betting': 'market',
+  'real-estate-home': 'consumer', 'packaged-goods-beverage': 'consumer' };
 const DEFAULT_FOCUS = { weights: Object.fromEntries(TERRITORY_SLUGS.map(t => [t, 1])), exclude: [] };
 
 async function loadHouseFocus(env) {
@@ -8443,7 +8534,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'assets_play' ? await playAssetsBackfill(env, { steps: parseInt(body.steps, 10) || undefined, again: !!body.again }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'spaces_seed' ? await spacesSeed(env, body) : which === 'spaces' ? await spacesDesk(env) : which === 'assets_play' ? await playAssetsBackfill(env, { steps: parseInt(body.steps, 10) || undefined, again: !!body.again }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'pull' ? await lakePullDesk(env, body) : which === 'round' ? await lakeRoundPreview(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -9327,7 +9418,7 @@ async function doorCandidates(env) {
 function doorRow(r) {
   // lens is 'market', not 'lake': the lake is the door's main evidence, so it is not held to the live read's ten-line lake lane (EXC_BUDGET.LAKE).
   return { lens: 'market', source: 'Unsurfaced Lake · ' + (r.source_name || 'signal') + ' (T' + (r.source_tier || '?') + ')', title: r.title, text: String(r.summary || '').slice(0, 700), url: r.url || '',
-    published_at: r.published_at || r.captured_at || null, kind: 'news', tier: r.source_tier, image: r.image || null, rail: 'lake', sid: r.id, similarity: 0.9 };
+    published_at: r.published_at || r.captured_at || null, kind: 'news', tier: r.source_tier, image: r.image || null, rail: 'lake', sid: r.id, territory: r.territory || null, similarity: 0.9 };   // SEAM:BREADTH (LK1): the line's territory, for its row's
 }
 async function doorEvidence(env, cand, frame, tiers) {
   const since = new Date(Date.now() - DOOR.SINCE_D * 864e5).toISOString();
@@ -9336,6 +9427,7 @@ async function doorEvidence(env, cand, frame, tiers) {
   try {
     rows = cand.kind === 'theme'
       ? (await sbRest(env, 'signals?status=neq.rejected&or=(theme_id.eq.' + cand.id + ',cluster_id.eq.' + cand.id + ')&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + DOOR.EVIDENCE + '&' + sel)) || []
+      : cand.form && cand.form !== 'board' && cand.form !== 'track' && typeof spaceEvidenceRows === 'function' ? await spaceEvidenceRows(env, cand, since, sel)   // SEAM:SPACES (NT1): a space on the graph reads its links; a bare name its names, with its context words
       : (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(cand.names || [cand.title]) + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + DOOR.EVIDENCE + '&' + sel)) || [];
   } catch (e) { console.log('door_evidence_error', String(e && e.message).slice(0, 80)); rows = []; }
   let items = rows.filter(r => r && r.title).map(doorRow);
@@ -9448,9 +9540,13 @@ async function doorPass(env, opts) {
       return out;
     }
   }
-  const cands = await doorCandidates(env);
+  const board = await doorCandidates(env);
+  const net = typeof spacesPool === 'function' ? await spacesPool(env, board, night).catch(excQuiet('spaces_pool', null)) : null;   // SEAM:SPACES (NT1): the board's thirty as doorCandidates ranks them, then the hand spaces, then the seats' due spaces
+  const cands = net && net.ok ? net.pool : board;
   out.candidates = cands.length;
   if (!cands.length) return out;
+  const round = typeof lakeRoundPick === 'function' ? await lakeRoundPick(env, night, cands).catch(excQuiet('lake_round', null)) : null;   // SEAM:BREADTH (LK1): the round, the night's seventh compile, read with the rest
+  if (round && round.cand) cands.push(round.cand);
   const tiers = await excTiersLoad(env);
   // Last night's reads (for reuse and for "since"), and tonight's rows (a second pass the same night touches only what moved).
   const prevRows = (await sbRest(env, 'door_reads?status=in.(ready,reused)&night=lt.' + night + '&order=night.desc&limit=200&select=id,frame_key,night,stamp,read,measures,frame,meta').catch(excQuiet('door_rows', []))) || [];
@@ -9458,14 +9554,16 @@ async function doorPass(env, opts) {
   const prevBy = new Map(); for (const r of prevRows) if (!prevBy.has(r.frame_key)) prevBy.set(r.frame_key, r);
   const tonightRows = (await sbRest(env, 'door_reads?night=eq.' + night + '&select=id,frame_key,status,stamp').catch(excQuiet('door_rows', []))) || [];
   const tonightBy = new Map(tonightRows.map(r => [r.frame_key, r]));
+  if (net && net.ok && typeof spacesPrivRows === 'function') await spacesPrivRows(env, cands, night, prevBy, tonightBy).catch(excQuiet('spaces_priv_rows', 0));   // SEAM:SPACES (NT1): a private space's last reading and tonight's row live in space_reads
   const memo = typeof memoryDoorBriefs === 'function' ? await memoryDoorBriefs(env, cands.map(c => c.key), Object.fromEntries(cands.map(c => [c.key, c.title]))).catch(excQuiet('door_memory', new Map())) : new Map();   // SEAM:MEMORY
   let jobs = []; const rowsOut = [];   // SEAM:RECORD_LAW: the jobs are ranked and capped after the loop
   for (const cand of cands) {
     try {
       const frame = excFrameClean(await excFrameFor(env, cand.query, { timeout_ms: DOOR.FRAME_MS, retry: true }));   // SEAM:EXC_FRAME (EX52a): the night has time; a reader does not
+      if (cand.form && cand.form !== 'board' && typeof spaceFrame === 'function') spaceFrame(cand, frame);   // SEAM:SPACES (NT1): a space on the graph names its entity; a bare name and a category name none
       const ev = await doorEvidence(env, cand, frame, tiers);
       await doorQuotes(env, ev, frame, textLedger);   // SEAM:TERRITORIES (EX39): the article's own passage on the tier 1 and 2 lines
-      const measures = frame ? await excMeasures(env, frame) : null;
+      const measures = cand.form && cand.form !== 'board' && typeof spaceMeasures === 'function' ? await spaceMeasures(env, cand, frame) : frame ? await excMeasures(env, frame) : null;   // SEAM:SPACES (NT1): a space's measure is its entity's, its set's, or none
       const prev = prevBy.get(cand.key) || null;
       const pm = prev && prev.measures && prev.measures.recent_7d != null && !!prev.measures.sweep === !!(measures && measures.sweep) ? prev.measures : null;   // "since" needs a measured last night, counted the same way (SEAM:SWEEP_MEASURE)
       // Every row carries the same keys: an upsert writes the whole row, so a key left out would be nulled on another row.
@@ -9473,6 +9571,8 @@ async function doorPass(env, opts) {
         measures: measures || {}, evidence: ev.merged.map(c => ({ title: c.title, url: c.url, source: c.source, published_at: c.published_at || null, tier: excTier(c), text: String(c.text || '').slice(0, 700), quoted: !!c.quoted, image: /^https:\/\//.test(String(c.image || '')) ? String(c.image).slice(0, 600) : null, place: c.country || null })),   // SEAM:EXC_PLACE   // SEAM:EXC_DOOR_VOICE: the image rides with its line, so the tile can show the sources' own photograph
         meta: { set_aside: ev.set_aside, prev_id: prev ? prev.id : null, prev_night: prev ? prev.night : null, since: pm ? { recent_delta: (measures ? measures.recent_7d : 0) - (pm.recent_7d || 0), outlets_delta: (measures ? measures.outlets : 0) - (pm.outlets || 0) } : null },
         status: 'queued', error: null, stamp: null, read: null, cost_usd: null };
+      if (cand.space) base.meta.space = { key: cand.key, name: cand.space.name, kind: cand.space.kind, private: !!cand.space.private };   // SEAM:SPACES (NT1): never who holds it
+      if (typeof lakeRowTerritory === 'function') { base.meta.territory = lakeRowTerritory(cand, ev.merged); if (cand.round) base.meta.round = cand.round; }   // SEAM:BREADTH (LK1): the row's territory (what the round counts), and the round's reason
       if (ev.merged.length < DOOR.MIN_EVIDENCE) { out.thin++; rowsOut.push(Object.assign(base, { status: 'failed', error: 'thin_evidence' })); continue; }
       const stamp = doorStamp(ev.merged);
       const tn = tonightBy.get(cand.key);
@@ -9484,33 +9584,48 @@ async function doorPass(env, opts) {
       // SEAM:RECORD_LAW: the evidence changed; the read is written only when the subject moved past the threshold since its last read
       const voiceChanged = !!(prev && prev.stamp && !String(prev.stamp).startsWith('v' + DOOR.VOICE + '~'));   // a new voice is a new read (SEAM:EXC_DOOR_VOICE), whatever moved
       const size = voiceChanged ? Infinity : doorMoveSize(prev, base.meta.since, measures);
-      if (prev && prev.read && size === 0) { out.reused++; out.unmoved = (out.unmoved || 0) + 1; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
+      if (prev && prev.read && size === 0 && !cand.round) { out.reused++; out.unmoved = (out.unmoved || 0) + 1; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
       const now = Date.now();
       const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join('\n');
-      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), prev, size, system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '', night) });
+      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), prev, size, round: !!cand.round, system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '', night) });
     } catch (e) { out.failed++; console.log('door_cand_error', cand.key, String(e && e.message).slice(0, 100)); }
   }
+  const roundJobs = jobs.filter(j => j.round); jobs = jobs.filter(j => !j.round);   // SEAM:BREADTH (LK1): the round is the seventh, outside the six and the seats' allowances, and never ranked
   // SEAM:RECORD_LAW: the largest moves first, at most CAP a night; past the cap a subject keeps its last read or waits for a night with room.
   jobs.sort((a, b) => (b.size === Infinity ? 1e9 : b.size) - (a.size === Infinity ? 1e9 : a.size));
+  jobs.forEach((j, i) => { j.base.meta.move = { rank: i + 1, size: Number.isFinite(j.size) ? Math.round(j.size * 100) / 100 : null }; });   // SEAM:NET_PASS (NT2): the ranking the cap reads, kept on the row: the morning's default lead is the largest move (rank 1); a first read or a new voice ranks as Infinity (size null)
+  const earned = new Map(jobs.map(j => [j.base.frame_key, j.base]));   // SEAM:SPACES (NT1): what earned a read tonight, before the cap
+  const spaceBy = new Map(cands.filter(c => c.space).map(c => [c.key, c.space]));
+  if (typeof spacesCap === 'function' && jobs.some(j => { const s = spaceBy.get(j.base.frame_key); return !!(s && s.holders && s.holders.length); })) {   // SEAM:SPACES (NT1): the holders' spaces first, under their allowance; the house keeps its cap inside the night's
+    const cut = spacesCap(jobs, typeof spacesAllowance === 'function' ? await spacesAllowance(env, spaceBy) : {}, DOOR_LAW.CAP, spaceBy);
+    for (const j of cut.rest) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }
+    jobs = cut.go; out.held = cut.held; out.charged = Object.keys(cut.charged).length;   // how many seats were charged, never who
+  } else {
   for (const j of jobs.slice(DOOR_LAW.CAP)) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }
   jobs = jobs.slice(0, DOOR_LAW.CAP);
+  }
   out.earned = jobs.length; out.cap = DOOR_LAW.CAP;
+  if (roundJobs.length) { roundJobs.forEach(j => { j.base.meta.move = { rank: null, size: null }; }); jobs = jobs.concat(roundJobs.slice(0, LAKE.ROUND.MAX)); }   // SEAM:BREADTH (LK1): the seventh; no rank, so never the morning's default lead
   // Rows first (so a landing has somewhere to go), then one batch for every read that must be written.
-  const inserted = (rowsOut.length || jobs.length) ? (await sbRest(env, 'door_reads?on_conflict=frame_key,night', { method: 'POST', headers: { Prefer: 'return=representation,resolution=merge-duplicates' }, body: rowsOut.concat(jobs.map(j => j.base)) }).catch(e => { console.log('door_insert_error', String(e && e.message).slice(0, 100)); return null; })) || [] : [];
+  const split = typeof spacesSplit === 'function' ? spacesSplit(rowsOut.concat(jobs.map(j => j.base))) : { pub: rowsOut.concat(jobs.map(j => j.base)), priv: [] };   // SEAM:SPACES (NT1): a space only seats hold is read for them alone
+  const inserted = split.pub.length ? (await sbRest(env, 'door_reads?on_conflict=frame_key,night', { method: 'POST', headers: { Prefer: 'return=representation,resolution=merge-duplicates' }, body: split.pub }).catch(e => { console.log('door_insert_error', String(e && e.message).slice(0, 100)); return null; })) || [] : [];
   const idBy = new Map(inserted.map(r => [r.frame_key, r.id]));
+  if (split.priv.length) for (const r of ((await sbRest(env, 'space_reads?on_conflict=frame_key,night', { method: 'POST', headers: { Prefer: 'return=representation,resolution=merge-duplicates' }, body: split.priv }).catch(excQuiet('space_insert', null))) || [])) idBy.set(r.frame_key, r.id);
   if (jobs.length) {
     // The overnight share law (D2): the door may spend only OVERNIGHT_SHARE of the live cap; a client in the room keeps the rest.
     let open = true;
     try { open = (await claudeSpent(env, EXC_MODEL.TIER)) < claudeCap(env, EXC_MODEL.TIER) * EXC_MODEL.OVERNIGHT_SHARE; } catch (e) { open = false; }
-    const items = jobs.filter(j => idBy.get(j.base.frame_key)).map(j => ({ custom_id: 'door-' + String(idBy.get(j.base.frame_key)).replace(/-/g, '').slice(0, 24) + '-' + night.replace(/-/g, ''), system: j.system, cache: true, prompt: j.prompt, max_tokens: DOOR.MAX_TOKENS, meta: { door_id: idBy.get(j.base.frame_key) } }));
+    const items = jobs.filter(j => idBy.get(j.base.frame_key)).map(j => ({ custom_id: 'door-' + String(idBy.get(j.base.frame_key)).replace(/-/g, '').slice(0, 24) + '-' + night.replace(/-/g, ''), system: j.system, cache: true, prompt: j.prompt, max_tokens: DOOR.MAX_TOKENS, meta: Object.assign({ door_id: idBy.get(j.base.frame_key) }, j.charge ? { held_by: j.charge } : {}) }));   // SEAM:SPACES (NT1): a seat's compile is charged to it on the ledger
     const sub = !items.length ? null : open ? await claudeBatchSubmit(env, 'live', 'door_read', items) : { ok: false, error: 'overnight_share' };
     for (const j of jobs) {
       const id = idBy.get(j.base.frame_key); if (!id) continue;
       const patch = sub && sub.ok ? { status: 'compiling', meta: Object.assign({}, j.base.meta, { batch_id: sub.batch_id }) } : { status: 'failed', error: String((sub && sub.error) || 'batch_failed').slice(0, 200), meta: j.base.meta };
-      await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: patch }).catch(excQuiet('door_patch'));
+      await sbRest(env, (j.base.meta && j.base.meta.space && j.base.meta.space.private ? 'space_reads' : 'door_reads') + '?id=eq.' + id, { method: 'PATCH', body: patch }).catch(excQuiet('door_patch'));   // SEAM:SPACES (NT1)
     }
     if (sub && sub.ok) { out.queued = items.length; out.usd = sub.est_usd || 0; } else if (items.length) { out.failed += items.length; console.log('door_batch_error', String((sub && sub.error) || '')); }
   }
+  if (round && round.cand && typeof lakeRoundNote === 'function') out.round = await lakeRoundNote(env, night, round, lakeRoundOutcome(round.cand.key, rowsOut, jobs, out.queued, tonightBy)).catch(excQuiet('round_note', null));   // SEAM:BREADTH (LK1): what became of the round, kept for the rotation
+  if (net && net.ok && typeof spacesTouch === 'function') out.spaces = await spacesTouch(env, cands, { rowsOut, jobs, earned, idBy, night, out, tonightBy, net }).catch(excQuiet('spaces_touch', null));   // SEAM:SPACES (NT1): each space's night on its row
   try { await doorPublish(env); } catch (e) { out.publish_error = String(e && e.message).slice(0, 120); excQuiet('door_publish')(e); }
   out.text = { pages: textLedger.pages, quoted: textLedger.quoted, credits: textLedger.credits, skipped: textLedger.skipped || 0 };   // SEAM:TERRITORIES: the text behind the row
   await logEvent(env, 'intelligence', 'door', 'door_pass', null, out);   // awaited: the record must land before the route answers or the chain closes
@@ -9519,12 +9634,13 @@ async function doorPass(env, opts) {
 /* Called by claudeBatchDrain when a door_read job lands. */
 async function doorLand(env, id, text, cost, stopReason) {
   const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,frame,measures,evidence,status,night,meta').catch(excQuiet('door_rows', []))) || [];
-  const row = rows[0]; if (!row) return { skipped: 'no_row' };
+  const row = rows[0]; if (!row) return typeof spaceLand === 'function' ? spaceLand(env, id, text, cost, stopReason) : { skipped: 'no_row' };   // SEAM:SPACES (NT1): a private reading lands in space_reads
   const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));   // the image survives the round trip, so a cited insight carries its photograph
   const got = excReadOf(text || '');
   if (!got) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('door_land_patch')); return { id, status: 'failed' }; }
   const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
   if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);   // SEAM:EXC_HOUSE_VOICE (VX1b): notes on the stored read, never a hold
+  if (typeof calibAdjust === 'function') await calibAdjust(env, read.insights, row.frame && row.frame.category).catch(excQuiet('calib_adjust', 0));   // SEAM:SCORECARD (EX54): confidence learns, floor-gated
   const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];   // SEAM:EXC_MEASURE (EX52a): a reading whose claim is the instrument is held, the way a thin one is: off the board, the reason on the row, the next night tries again
   if (named.length) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: ('measure_claim: ' + named[0].where + ': ' + named[0].text).slice(0, 200), updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch')); console.log('door_measure_claim', id, named[0].text.slice(0, 80)); return { id, status: 'failed', held: 'measure_claim' }; }
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'ready', read, cost_usd: cost, error: null, updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch'));
@@ -9540,6 +9656,7 @@ async function doorLand(env, id, text, cost, stopReason) {
 }
 async function doorFail(env, id, error) {
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: String(error || 'batch_failed').slice(0, 200) } }).catch(excQuiet('door_fail_patch'));
+  if (typeof spaceFail === 'function') await spaceFail(env, id, error);   // SEAM:SPACES (NT1): a private row fails where it lives
 }
 /* The tiles, rebuilt from tonight's rows (or the latest night with any) and kept in KV for the feed. */
 function doorTile(r) {
@@ -9553,6 +9670,7 @@ function doorTile(r) {
     photo: doorPhoto(rd, r.evidence),   // the sources' own photograph, credited; null when none of the lines carries one
     measures: { series: m.series || [], recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0, weeks_touched: m.weeks_touched || 0, weeks: m.weeks || 12, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, state: m.state || 'STEADY', shape: m.shape || null, newest: m.newest || null },
     evidence_n: (r.evidence || []).length, since: s, image: null,
+    house_note: typeof netNoteOf === 'function' ? netNoteOf(r.meta) : null,   // SEAM:NET_PASS (NT2): the house's applied note, its text and date (never who wrote it), for the page to render under the band (NT3)
     // SEAM:RECORD_LAW / SEAM:RECORD_WATCH / SEAM:EXC_PLACE: the deployment's date, what it develops and what developed it, its watch and the grade, where its evidence came from
     deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, developed_night: (r.meta && r.meta.developed_night) || null,
     watch: (rd && rd.watch) || null, called: (r.meta && r.meta.called) || null, place: doorPlaceOf(r.evidence),
@@ -9615,6 +9733,7 @@ async function doorPublish(env) {
     for (const t of tiles) { const c = cs.get(t.key); if (c && c.state && t.measures.state !== 'CONTESTED') { t.measures.state = c.state; t.measures.windows = { why: c.why, week: c.week }; } }
   }
   const set = { night: tiles.some(t => !t.carried) ? (tiles.find(t => !t.carried) || {}).night : (tiles[0] ? tiles[0].night : night), built_at: new Date().toISOString(), tiles, pending: pending.length };
+  if (typeof netSetOf === 'function') Object.assign(set, await netSetOf(env, set).catch(excQuiet('net_set', {})));   // SEAM:NET_PASS (NT2): the day's lead, the order of every tile and the pass ride the set; the tiles keep their order
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(DOOR.KEY, JSON.stringify(set), { expirationTtl: DOOR.TTL }); } catch (e) { excQuiet('door_publish')(e); } }
   await ledgerPut(env, 'door', ledgerDoorRows(tiles));   // SEAM:LEDGER: what the arrival posted, kept
   return set;
@@ -9627,6 +9746,8 @@ const BOARD_SWEEP = { MAX: 24, PAR: 2, BUDGET_MS: 240000, KEY: 'sweep:last', SKI
 async function boardSweep(env) {
   const t0 = Date.now();
   const subs = (await doorCandidates(env).catch(excQuiet('sweep_subjects', []))) || [];
+  const rt = typeof lakeRoundTonight === 'function' ? await lakeRoundTonight(env).catch(excQuiet('sweep_round', null)) : null;   // SEAM:BREADTH (LK1): the round's subject, researched the night it is read
+  if (rt && rt.q) subs.unshift({ key: rt.key, kind: rt.kind, query: rt.q, title: rt.title });
   const seen = new Set(), list = [];
   for (const s of subs) { const q = String(s.query || '').replace(/\s+/g, ' ').trim(), k = q.toLowerCase(); if (q.length < 4 || seen.has(k)) continue; seen.add(k); list.push({ key: s.key, kind: s.kind, q, title: s.title }); if (list.length >= BOARD_SWEEP.MAX) break; }
   const out = { subjects: list.length, gathered: 0, captured: 0, rails: {}, ms: 0, errors: [] };
@@ -10384,7 +10505,9 @@ async function intakeDesk(env) {
   const dead = DAILY_POV.sources.filter(s => health[s.name] && health[s.name].fail >= INTAKE.DEAD_AFTER).map(s => ({ name: s.name, feed: s.feed, fail: health[s.name].fail, err: health[s.name].err || null, last_ok: health[s.name].ok_at || null }));
   const never = DAILY_POV.sources.filter(s => !health[s.name]).map(s => s.name);
   const gate = intakeGate(), under = Object.keys(gate).filter(k => gate[k].under);
-  return { sources: DAILY_POV.sources.length, lanes: Object.keys(DAILY_POV.lanes || {}).length, gate_under: under, gate, dead, never_tried: never, yield: days, today };
+  const added = typeof lakeAddedReport === 'function' ? lakeAddedReport(gate, days) : null;   // SEAM:BREADTH (LK1): the seven and their gate, the pacing, the aim lanes
+  const pacing = typeof lakeLanePlan === 'function' ? { lanes_per_slice: LAKE.LANES, territories: Object.keys(DAILY_POV.lanes || {}).length, aim: (await lakeAimLanes(env).catch(excQuiet('desk_aim', []))).map(a => ({ key: a.key, name: a.name, territory: a.territory, queries: a.qs })) } : null;
+  return { sources: DAILY_POV.sources.length, lanes: Object.keys(DAILY_POV.lanes || {}).length, gate_under: under, gate, dead, never_tried: never, yield: days, today, added, pacing };
 }
 async function watchTick(env) {
   const line = await watchHealth(env);
@@ -10684,7 +10807,9 @@ const PROFILE = { ROLES: ['brand', 'strategy', 'creative', 'media', 'product', '
  * reading exactly; audiences, words and markets are the reader's own; what the house learns from their reads comes back as chips. */
 const FRAME = { INDUSTRIES: 6, AUDIENCES: 8, KEYWORDS: 20, MARKETS: 6, DECLINED: 100, LEARN_DAYS: 60, LEARN_MIN: 2, LEARN_MAX: 8, LEARN_EVENTS: 300 };
 const INDUSTRY_NAMES = { 'advertising-marketing': 'Advertising and marketing', 'technology-innovation': 'Technology', 'artificial-intelligence': 'AI', 'business-economics': 'Business and economics', 'entrepreneurship-creator': 'Entrepreneurs and creators', 'music': 'Music', 'fashion-beauty': 'Fashion and beauty', 'sneakers-streetwear': 'Sneakers and streetwear', 'art-design': 'Art and design', 'architecture-cities': 'Architecture and cities', 'entertainment-gaming': 'Entertainment and gaming', 'food-hospitality': 'Food and hospitality', 'sustainability-impact': 'Sustainability', 'global-diaspora': 'Global and diaspora',
-  'sports-culture': 'Sports', 'wellness-fitness': 'Wellness and fitness', 'retail-dtc': 'Retail', 'luxury': 'Luxury', 'travel-experiences': 'Travel', 'media-platforms': 'Media and platforms' };   // SEAM:TERRITORIES (EX39)
+  'sports-culture': 'Sports', 'wellness-fitness': 'Wellness and fitness', 'retail-dtc': 'Retail', 'luxury': 'Luxury', 'travel-experiences': 'Travel', 'media-platforms': 'Media and platforms',
+  'finance-fintech': 'Finance', 'automotive-mobility': 'Automotive and mobility', 'health-pharma': 'Health and pharma', 'real-estate-home': 'Real estate and home',
+  'telecom-connectivity': 'Telecom', 'packaged-goods-beverage': 'Packaged goods and beverage', 'betting': 'Betting' };   // SEAM:TERRITORIES (EX39)
 const frameWords = (xs, max, len) => { const seen = new Set(), out = []; for (const x0 of (Array.isArray(xs) ? xs : [])) { const x = String(x0 || '').trim().replace(/\s+/g, ' ').slice(0, len || 60); if (x.length < 2 || seen.has(x.toLowerCase())) continue; seen.add(x.toLowerCase()); out.push(x); if (out.length >= max) break; } return out; };
 function profileWebhookOk(u) { return !u || /^https:\/\/(hooks\.slack\.com\/|[\w.-]+\.webhook\.office\.com\/|[\w.-]+\.logic\.azure\.com\/)/.test(String(u)); }
 function profileClean(b, prev) {
@@ -10935,10 +11060,12 @@ async function pushNightly(env) {
   const deployed = ((await sbRest(env, 'door_reads?status=eq.ready&night=eq.' + today + '&' + SEL).catch(excQuiet('push_rows', []))) || []).map(doorTile);
   const graded = ((await sbRest(env, 'door_reads?status=in.(ready,reused)&meta->called->>at=gte.' + today + '&' + SEL).catch(excQuiet('push_graded', []))) || []).map(doorTile).filter(t => t.called && (t.called.verdict === 'held' || t.called.verdict === 'missed'));
   const weekday = new Date().getUTCDay();
+  const held = typeof spacesHeld === 'function' ? await spacesHeld(env, today).catch(excQuiet('push_spaces', null)) : null;   // SEAM:SPACES (NT1): who holds what, and their private readings tonight
   for (const prof of active) {
     out.readers++;
     const items = [];
-    for (const t of deployed) { const why = pushMatches(t, prof); if (why) items.push({ kind: 'deployed', tile: t, why }); }
+    const mine = held && held.by.get(prof.user_id);   // SEAM:SPACES (NT1): a holder hears that its space moved, with the name and the movement; a reader keeps today's push
+    for (const t of deployed.concat(mine ? mine.tiles : [])) { const why = (mine && mine.keys.has(t.key) && typeof spaceWhy === 'function' ? spaceWhy(mine.names.get(t.key), t.measures, t.since) : null) || (t.private ? null : pushMatches(t, prof)); if (why) items.push({ kind: 'deployed', tile: t, why }); }
     for (const t of graded) { const why = pushMatches(t, prof); if (why && !items.some(i => i.tile.id === t.id)) items.push({ kind: 'called', tile: t, why }); }
     if (!items.length) continue;
     const sentBefore = (await sbRest(env, 'push_log?user_id=eq.' + prof.user_id + '&select=insight_id,kind&order=created_at.desc&limit=400').catch(excQuiet('push_log_rows', []))) || [];
@@ -11001,6 +11128,8 @@ async function backupNightly(env) {
   const since = new Date(Date.now() - BACKUP.DOOR_NIGHTS * 864e5).toISOString().slice(0, 10);
   const sets = [
     ['door_reads', 'door_reads?night=gte.' + since + '&select=id,frame_key,night,status,frame,measures,read,meta,cost_usd,created_at,updated_at&order=night.asc,id.asc'],
+    ['spaces', 'spaces?select=*&order=key.asc,held_by.asc'],   // SEAM:SPACES (NT1): the net's rows
+    ['space_reads', 'space_reads?night=gte.' + since + '&select=id,frame_key,night,status,frame,measures,read,meta,cost_usd,created_at,updated_at&order=night.asc,id.asc'],   // SEAM:SPACES (NT1): the seats' private readings
     ['house_reads', 'house_reads?select=id,kind,label,status,window_start,window_end,version,stats,read,violations,error,cost_usd,meta,created_at,updated_at&order=created_at.asc'],
     ['subject_weeks', LEDGER.TABLE + '?week=gte.' + memoryAddWeeks(ledgerWeek(), -BACKUP.WEEKS) + '&select=*&order=week.asc,subject_key.asc'],
     ['cluster_calls', 'cluster_calls?select=*&order=called_at.asc'],
@@ -11107,6 +11236,7 @@ async function doorCalled(env) {
     if (typeof claimsGrade === 'function') await claimsGrade(env, r.id, called);   // SEAM:CLAIMS (EX53)
   }
   if (out.checked && env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(RECORD.KEY); } catch (e) { excQuiet('record_bust')(e); } }
+  if (out.checked && env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(CALIB.KEY); } catch (e) { excQuiet('calib_bust')(e); } }   // SEAM:SCORECARD (EX54): the calibration is counted again with tonight's grades
   logEvent(env, 'intelligence', 'door', 'door_called', null, out);
   return out;
 }
@@ -11129,6 +11259,7 @@ async function doorRecord(env) {
   let currents = null; try { currents = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get(CURRENTS.KEY)) || 'null') : null; } catch (e) { currents = null; }   // SEAM:CROSS_CURRENTS
   const calibration = calibrationOf(rows);   // SEAM:CALIBRATION
   const set = { built_at: new Date().toISOString(), tiles, positions, currents, calibration, counts: { deployments: tiles.length, subjects: by.size, held: graded.filter(t => t.called.verdict === 'held').length, missed: graded.filter(t => t.called.verdict === 'missed').length, open: tiles.filter(t => t.watch && !t.called).length }, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND };
+  set.scorecard = typeof calibrationScorecard === 'function' ? await calibrationScorecard(env).catch(excQuiet('scorecard', null)) : null;   // SEAM:SCORECARD (EX54): when we said High, the call held N of M; cached with the record
   if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(RECORD.KEY, JSON.stringify(set), { expirationTtl: RECORD.TTL }); } catch (e) { excQuiet('record_put')(e); } }
   return set;
 }
@@ -11136,7 +11267,7 @@ async function doorRecord(env) {
  * coverage on last week (counted from the lake, served as a percentage and a state: spike, rising, steady, falling, quiet), how many
  * readings the record holds in it, and its movers among the record's subjects (most covered, fastest rise, sharpest fall). Nothing about
  * the engine leaves here: no capture counts, no pass internals, no sizes. Public, cached STATE.TTL; no model call. */
-const STATE = { KEY: 'state:v4', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };   // v4: SEAM:TERRITORIES (twenty, named); EX39b: no sources
+const STATE = { KEY: 'state:v5', TTL: 600, ROWS: 8000, SPIKE: 100, RISE: 25, FALL: -25 };   // v4: SEAM:TERRITORIES (twenty, named); EX39b: no sources; v5: SEAM:BREADTH (LK1), twenty-seven
 function stateOf(recent, prior) {
   if (!recent && !prior) return 'quiet';
   const pct = prior ? Math.round((recent - prior) / prior * 100) : (recent ? 100 : 0);
@@ -11167,7 +11298,7 @@ async function excavateState(env) {
 /* SEAM:TERRITORIES (EX39): the method surface. What every number on the page means, written from the constants that compute it:
  * the measures (their window, what they count, what they never count), the state thresholds, the record's grading, the source universe
  * with its tiers by territory, and the laws. Public; cached an hour; no model. */
-const METHOD = { KEY: 'method:v1', TTL: 3600 };
+const METHOD = { KEY: 'method:v2', TTL: 3600 };   // v2: SEAM:BREADTH (LK1), the twenty-seven and the round
 function excavateMethod() {
   const terr = TERRITORY_SLUGS.map(sl => ({ territory: sl, name: INDUSTRY_NAMES[sl] || sl, sources: DAILY_POV.sources.filter(s => (s.territories || []).includes(sl)).map(s => ({ name: s.name, tier: s.tier })) }));
   return {
@@ -11190,6 +11321,7 @@ function excavateMethod() {
       { id: 'gdelt', say: 'GDELT is breadth and validation, never the sole evidence for a story.' },
       { id: 'private', say: 'What a client uploads or searches teaches the engine and is shown to no one but that client and the house.' },
       { id: 'record', say: 'The record is what the engine deployed and when; a later reading develops an earlier one, both stand, and a miss is never removed.' },
+      { id: 'round', say: 'One more reading a night goes to the territory the record has read least recently, where the lake holds ' + DOOR.MIN_EVIDENCE + ' lines or more over ' + DOOR.SINCE_D + ' days: the round, so every territory keeps a reading whatever its volume. The same evidence is never read twice.' },   // SEAM:BREADTH (LK1)
       { id: 'resist', say: DAILY_POV.resist.map(r => r.law).join(' ') }
     ]
   };
@@ -11241,6 +11373,298 @@ async function insightSharePage(path, env, embed) {
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="article"><meta property="og:image" content="${img}"><meta property="og:url" content="${esc(base + '/i/' + id)}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${esc(dest)}"><link rel="canonical" href="${esc(dest)}"></head><body style="font-family:system-ui;background:#0b0b0b;color:#eee;padding:40px"><p>${title}</p><p>${desc}</p><p><a style="color:#fff" href="${esc(dest)}">Open the reading</a></p></body></html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
+/* ═══ SEAM:SCORECARD (EX54 THE SCORECARD): calibration as the engine's feedback loop and its public headline. A call is a claim the
+ * record graded held or missed (unmeasured and ungraded are not calls), on the record (claims.on_record), counted under the band we
+ * said: overall, by category (the frame's), lens, entity (claim_entities), space (the door's frame_key) and month. A band's sentence
+ * speaks for the band at CALIB.FLOOR graded calls ("When we said High, the call held 16 of 20."); below it the count, held so far,
+ * and the newest graded calls behind it ("High: 3 of 4 held so far."); the plain hit rate follows the bands. The words stay High,
+ * Medium and Low: the band is our confidence in the evidence (corroboration weighed by tier and recency, EX4a), which ICD 203 keeps
+ * apart from likelihood words. The count runs in Postgres (claim_calibration and its examples, 0062: a GROUP BY over the graded rows,
+ * so no row cap truncates it) and is kept CALIB.TTL in KV, the record's own ten minutes; calibrationOfClaims counts rows the same way
+ * here (a room's own claims, the proofs). The writer reads it, one line a subject at SUBJECT_MIN calls, and confidence learns from
+ * it: where the engine's band in a category has FLOOR graded calls and held under BAND_FLOOR, a new finding in that category scored
+ * in that band is shown one band lower and says so (calibrated: {from, to, held, n, category}). The rule counts the band the engine
+ * earned (calibrated.from), so a corrected band keeps learning and lifts when its calls hold again. The house scores its own readings
+ * 1 to 5 (reading_scores, 0062); THE SCORE room in READ shows the calibration in full, the scores by week and kind, and the voice
+ * notes by writer. No model call anywhere here. ═══ */
+const CALIB = { FLOOR: 20, BAND_FLOOR: { High: 0.7, Medium: 0.5 }, ADJUST: true, SUBJECT_MIN: 3, EXAMPLES: 3, KEY: 'calib:v1', TTL: 600,
+  BANDS: ['High', 'Medium', 'Low'], DIMS: ['category', 'lens', 'entity', 'space', 'month'], SUBJECTS: 6, NAME: 80, CLAIM: 160,
+  WEEKS: 12, SCORES: 1000, NOTES: 12, NOTE_CHARS: 400, HOUSE: 300, DOOR: 600, LIVE: 1000, EDITIONS: 120, TOP: 3,
+  LAW: 'Where our calls on a subject have missed more than they held, the read says so where it bears and does not lean on our earlier view.' };
+/* PURE: a category as the count keys it (claim_calibration keys it the same way): one space, lower case, sixty characters. */
+function calibCat(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 60); }
+/* PURE: the band a claim is filed under: High, Medium or Low; anything else is Low (claimsOf's own rule). */
+function calibBand(b) { return CALIB.BANDS.includes(b) ? b : 'Low'; }
+/* PURE: held over calls, to three places; null with no calls. */
+function calibRate(held, n) { return n > 0 ? Math.round(held / n * 1000) / 1000 : null; }
+/* PURE: graded claims counted as claim_calibration counts them: one row a (dim, key, band) with its calls and how many held. Only
+ * claims on the record count unless opts.all; opts.entity files every row under one entity (a room's own claims), otherwise each
+ * row's entities ([{id, name}]) are its links. category_engine is the category on the band the engine earned. */
+function calibrationCounts(rows, opts) {
+  const o = opts || {}, acc = new Map();
+  const add = (dim, key, label, band, ok) => {
+    const k = JSON.stringify([dim, key, band]);
+    let a = acc.get(k); if (!a) { a = { dim, key, label: null, band, n: 0, held: 0 }; acc.set(k, a); }
+    a.n++; if (ok) a.held++; if (label && (!a.label || String(label) > a.label)) a.label = String(label);
+  };
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (!r || (r.grade !== 'held' && r.grade !== 'missed') || (!o.all && r.on_record !== true)) continue;
+    const said = calibBand(r.confidence), ok = r.grade === 'held';
+    const eng = r.calibrated && CALIB.BANDS.includes(r.calibrated.from) ? r.calibrated.from : said;
+    add('all', '', null, said, ok);
+    const cat = calibCat(r.frame && r.frame.category);
+    if (cat) { add('category', cat, null, said, ok); add('category_engine', cat, null, eng, ok); }
+    if (r.lens) add('lens', String(r.lens), null, said, ok);
+    if (r.frame_key) add('space', String(r.frame_key), null, said, ok);
+    if (/^\d{4}-\d{2}/.test(String(r.night || ''))) add('month', String(r.night).slice(0, 7), null, said, ok);
+    for (const e of o.entity ? [o.entity] : Array.isArray(r.entities) ? r.entities : []) if (e && e.id) add('entity', String(e.id), e.name || null, said, ok);
+  }
+  return [...acc.values()];
+}
+/* PURE: the newest graded calls of each band, as claim_calibration_examples picks them: one a reading (its first finding in the
+ * band), newest graded first, then the newest night, then the reading id. */
+function calibrationExamplesOf(rows, opts) {
+  const o = opts || {}, first = new Map(), per = Math.max(1, Math.min(parseInt(o.per, 10) || CALIB.EXAMPLES, 10));
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (!r || (r.grade !== 'held' && r.grade !== 'missed') || (!o.all && r.on_record !== true) || !r.claim) continue;
+    const k = JSON.stringify([calibBand(r.confidence), String(r.src || ''), String(r.reading_id == null ? '' : r.reading_id)]), cur = first.get(k);
+    if (!cur || (Number(r.idx) || 0) < (Number(cur.idx) || 0)) first.set(k, r);
+  }
+  const t = v => { const d = v ? Date.parse(v) : NaN; return isNaN(d) ? -Infinity : d; };
+  const id = r => String(r.reading_id == null ? '' : r.reading_id);
+  const out = [];
+  for (const band of CALIB.BANDS) {
+    const xs = [...first.values()].filter(r => calibBand(r.confidence) === band)
+      .sort((a, b) => (t(b.graded_at) - t(a.graded_at)) || (t(b.night) - t(a.night)) || (id(a) < id(b) ? -1 : id(a) > id(b) ? 1 : 0));
+    for (const r of xs.slice(0, per)) out.push({ band, night: r.night || null, claim: r.claim, grade: r.grade, src: r.src || null, reading_id: id(r), graded_at: r.graded_at || null });
+  }
+  return out;
+}
+/* PURE: the counts as the house reads them: the bands overall (the plain hit rate is their sum), each dimension's keys with their
+ * bands (most calls first; the months newest first), the newest graded calls of each band, and the category on the engine's band. */
+function calibrationShape(counts, examples) {
+  const bands = () => ({ High: { n: 0, held: 0 }, Medium: { n: 0, held: 0 }, Low: { n: 0, held: 0 } });
+  const groups = {};
+  for (const c of Array.isArray(counts) ? counts : []) {
+    if (!c || !c.dim) continue;
+    const dim = String(c.dim), key = c.key == null ? '' : String(c.key), band = calibBand(c.band), n = parseInt(c.n, 10) || 0, held = parseInt(c.held, 10) || 0;
+    const g = groups[dim] || (groups[dim] = new Map());
+    let x = g.get(key); if (!x) { x = { key, label: null, n: 0, held: 0, bands: bands() }; g.set(key, x); }
+    x.n += n; x.held += held; x.bands[band].n += n; x.bands[band].held += held;
+    if (c.label && (!x.label || String(c.label) > x.label)) x.label = String(c.label);
+  }
+  const list = dim => (groups[dim] ? [...groups[dim].values()] : []);
+  const byCalls = (a, b) => (b.n - a.n) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  const by = {};
+  for (const d of CALIB.DIMS) by[d] = list(d).sort(d === 'month' ? (a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0) : byCalls);
+  const all = list('all')[0] || { key: '', label: null, n: 0, held: 0, bands: bands() };
+  const ex = { High: [], Medium: [], Low: [] };
+  for (const e of Array.isArray(examples) ? examples : []) {
+    if (!e || !e.claim) continue;
+    const b = calibBand(e.band); if (ex[b].length >= CALIB.EXAMPLES) continue;
+    ex[b].push({ night: e.night ? String(e.night).slice(0, 10) : null, claim: String(e.claim).replace(/\s+/g, ' ').trim().slice(0, CALIB.CLAIM), grade: e.grade === 'held' ? 'held' : 'missed' });
+  }
+  return { v: 1, floor: CALIB.FLOOR, overall: { n: all.n, held: all.held }, bands: all.bands, examples: ex, by, engine: { category: list('category_engine').sort(byCalls) } };
+}
+/* PURE: calibration over rows in the worker: the same counts, the same examples, the same shape as calibrationLoad's. */
+function calibrationOfClaims(rows, opts) { return calibrationShape(calibrationCounts(rows, opts), calibrationExamplesOf(rows, opts)); }
+/* PURE: one key's calibration: by default a space (the door's frame_key); else 'category', 'lens', 'entity' (its id) or 'month'.
+ * Calls, held, each band's count, and a rate only where the calls reach FLOOR (null below). For NT2's pass and NT3's front:
+ * calibrationFor(await calibrationLoad(env), 'track:<id>'), or calibrationForKey(env, key). */
+function calibrationFor(cal, key, dim) {
+  const d = dim || 'space', k = d === 'category' ? calibCat(key) : String(key == null ? '' : key);
+  const x = ((cal && cal.by && cal.by[d]) || []).find(r => r && r.key === k) || null;
+  const band = b => { const c = x && x.bands && x.bands[b] ? x.bands[b] : { n: 0, held: 0 }; return { n: c.n, held: c.held, rate: c.n >= CALIB.FLOOR ? calibRate(c.held, c.n) : null }; };
+  return { dim: d, key: k, label: x ? x.label : null, n: x ? x.n : 0, held: x ? x.held : 0, rate: x && x.n >= CALIB.FLOOR ? calibRate(x.held, x.n) : null, bands: { High: band('High'), Medium: band('Medium'), Low: band('Low') } };
+}
+/* PURE: a subject's line. The writer's, at SUBJECT_MIN calls: "On Costco our calls have held 3 of 4 (High 2 of 2, Medium 1 of 2)."
+ * The room's, at any call: "On Costco, our calls held 3 of 4 (High 2 of 2, Medium 1 of 2)." Empty when there are too few. */
+function calibrationSay(name, x, room) {
+  const nm = String(name || '').replace(/\s+/g, ' ').trim().slice(0, CALIB.NAME);
+  if (!nm || !x || !(x.n >= (room ? 1 : CALIB.SUBJECT_MIN))) return '';
+  const parts = CALIB.BANDS.filter(b => x.bands && x.bands[b] && x.bands[b].n > 0).map(b => b + ' ' + x.bands[b].held + ' of ' + x.bands[b].n);
+  return 'On ' + nm + (room ? ', our calls held ' : ' our calls have held ') + x.held + ' of ' + x.n + (parts.length ? ' (' + parts.join(', ') + ')' : '') + '.';
+}
+/* PURE: the scorecard the record publishes. One sentence a band that has calls: at FLOOR graded calls "When we said High, the call
+ * held 16 of 20." with its rate; below it "High: 3 of 4 held so far." with its newest graded calls (date, claim, verdict); then the
+ * plain hit rate. Never a count of readings or subjects. Null until something is graded. */
+function calibrationPublic(cal) {
+  if (!cal || !cal.overall || !(cal.overall.n > 0)) return null;
+  const bands = {}, lines = [], examples = [];
+  for (const b of CALIB.BANDS) {
+    const x = (cal.bands || {})[b] || { n: 0, held: 0 }; if (!(x.n > 0)) continue;
+    if (x.n >= CALIB.FLOOR) { bands[b] = { n: x.n, held: x.held, rate: calibRate(x.held, x.n) }; lines.push('When we said ' + b + ', the call held ' + x.held + ' of ' + x.n + '.'); continue; }
+    bands[b] = { n: x.n, held: x.held, below_floor: true };
+    lines.push(b + ': ' + x.held + ' of ' + x.n + ' held so far.');
+    for (const e of ((cal.examples || {})[b] || []).slice(0, CALIB.EXAMPLES)) examples.push({ band: b, night: e.night || null, claim: e.claim, grade: e.grade });
+  }
+  const o = cal.overall;
+  lines.push('Overall, ' + o.held + ' of ' + o.n + (o.n === 1 ? ' call held.' : ' calls held.'));
+  return { floor: CALIB.FLOOR, bands, overall: o.n >= CALIB.FLOOR ? { n: o.n, held: o.held, rate: calibRate(o.held, o.n) } : { n: o.n, held: o.held, below_floor: true }, lines, examples };
+}
+/* PURE: confidence learns, floor-gated. Where the engine's band in this category has FLOOR graded calls and held under its BAND_FLOOR
+ * (High 0.7, Medium 0.5), a finding scored in that band is shown one band lower and says so: calibrated {from, to, held, n, category}.
+ * One band at most; Low has no floor; a finding already calibrated is left as it is. Returns how many moved. */
+function calibrationAdjust(insights, cal, category) {
+  if (!CALIB.ADJUST || !Array.isArray(insights) || !cal || !cal.engine) return 0;
+  const key = calibCat(category); if (!key) return 0;
+  const row = (cal.engine.category || []).find(r => r && r.key === key); if (!row) return 0;
+  let moved = 0;
+  for (const x of insights) {
+    if (!x || typeof x !== 'object' || x.calibrated) continue;
+    const from = x.confidence, floor = CALIB.BAND_FLOOR[from], b = row.bands && row.bands[from];
+    if (floor == null || !b || b.n < CALIB.FLOOR || b.held / b.n >= floor) continue;
+    const to = CALIB.BANDS[CALIB.BANDS.indexOf(from) + 1];
+    x.calibrated = { from, to, held: b.held, n: b.n, category: key };
+    x.confidence = to; moved++;
+  }
+  return moved;
+}
+/* The house's calibration: claim_calibration and its examples (0062), shaped, kept CALIB.TTL in KV; the grading pass drops the key.
+ * Throws when the count cannot be read; every caller catches, and a caller that cannot read it goes on without it. */
+async function calibrationLoad(env, opts) {
+  if (env.RATE_LIMIT && !(opts && opts.fresh)) {
+    try { const hit = await env.RATE_LIMIT.get(CALIB.KEY); if (hit) { const c = JSON.parse(hit); if (c && c.v === 1) return c; } } catch (e) { excQuiet('calib_get')(e); }
+  }
+  const [counts, examples] = await Promise.all([
+    sbRest(env, 'rpc/claim_calibration', { method: 'POST', body: { p_on_record: true } }),
+    sbRest(env, 'rpc/claim_calibration_examples', { method: 'POST', body: { p_per: CALIB.EXAMPLES, p_on_record: true } })]);
+  const cal = Object.assign(calibrationShape(counts || [], examples || []), { built_at: new Date().toISOString() });
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(CALIB.KEY, JSON.stringify(cal), { expirationTtl: CALIB.TTL }); } catch (e) { excQuiet('calib_put')(e); } }
+  return cal;
+}
+async function calibrationForKey(env, key, dim) { return calibrationFor(await calibrationLoad(env), key, dim); }
+async function calibrationScorecard(env) { return calibrationPublic(await calibrationLoad(env)); }
+/* After the engine computes confidence and before the claims are written: the live synth, the door's landing and a space's. */
+async function calibAdjust(env, insights, category) {
+  if (!CALIB.ADJUST || !Array.isArray(insights) || !insights.length || !calibCat(category)) return 0;
+  return calibrationAdjust(insights, await calibrationLoad(env), category);
+}
+/* The writer's lines in READ's house block: one a subject the block names, at SUBJECT_MIN calls; the category when the graph named
+ * no entity. READ_HOUSE_LAW carries what a missed record asks of the read. */
+async function calibrationSubjectLines(env, ents, category) {
+  const cal = await calibrationLoad(env), out = [], es = Array.isArray(ents) ? ents : [];
+  for (const e of es.slice(0, CALIB.SUBJECTS)) { const line = e && e.id ? calibrationSay(e.name, calibrationFor(cal, e.id, 'entity')) : ''; if (line) out.push(line); }
+  if (!es.length && calibCat(category)) { const line = calibrationSay(category, calibrationFor(cal, category, 'category')); if (line) out.push(line); }
+  return out;
+}
+/* EXCAVATE's line, in the synth's house block (outside every hashed slice): the frame's entity, or its category when the graph has
+ * no entity for it. Where the calls on the subject missed more than they held, the law rides the line. */
+async function calibrationFrameLine(env, frame) {
+  const f = frame || {}, cal = await calibrationLoad(env);
+  const ent = f.entity && typeof entityResolveName === 'function' ? await entityResolveName(env, f.entity, {}).catch(excQuiet('calib_entity', null)) : null;
+  let x = null, line = '';
+  if (ent && ent.id) { x = calibrationFor(cal, ent.id, 'entity'); line = calibrationSay(ent.name || f.entity, x); }
+  else if (calibCat(f.category)) { x = calibrationFor(cal, f.category, 'category'); line = calibrationSay(f.category, x); }
+  return line && x && x.n - x.held > x.held ? line + ' ' + CALIB.LAW : line;
+}
+/* The room's line (RM1): the subject's calls from the house's whole count; the room's own claims when the count cannot be read. */
+async function calibrationRoomLine(env, e, claims) {
+  if (!e || !e.id) return null;
+  let x = null;
+  try { x = calibrationFor(await calibrationLoad(env), e.id, 'entity'); } catch (err) { excQuiet('room_calib')(err); x = null; }
+  if (!x) x = calibrationFor(calibrationOfClaims(claims || [], { entity: { id: e.id, name: e.name } }), e.id, 'entity');
+  if (!(x.n > 0)) return null;
+  return { n: x.n, held: x.held, bands: x.bands, line: calibrationSay(e.name, x, true) };
+}
+/* SEAM:SCORECARD: the house's own score. /reads/score {src, id} reads a reading's scores (yours, and the mean of all); with a score
+ * (1 to 5) and an optional note it keeps yours, one a reading and scorer (a second press replaces the first). /reads/scorecard is THE
+ * SCORE room's tables. Admin, behind readRoute's gate; no model. */
+async function scoreRoute(path, body, env, origin, user) {
+  if (path === '/reads/scorecard') return json(Object.assign({ ok: true }, await scoreTables(env)), 200, origin, env);
+  const src = String(body.src || ''), id = String(body.id == null ? '' : body.id).trim().slice(0, 64), by = String(user.id);
+  if (!scoreIdOk(src, id)) return json({ ok: false, error: 'bad_reading' }, 400, origin, env);
+  let score = null;
+  if (body.score != null) { score = parseInt(body.score, 10); if (!(score >= 1 && score <= 5)) return json({ ok: false, error: 'bad_score' }, 400, origin, env); }
+  try {
+    if (score != null) {
+      const note = String(body.note == null ? '' : body.note).replace(/\s+/g, ' ').trim().slice(0, CALIB.NOTE_CHARS) || null;
+      await sbRest(env, 'reading_scores?on_conflict=src,reading_id,by', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: [{ src, reading_id: id, score, note, by, at: new Date().toISOString() }] });
+    }
+    const rows = (await sbRest(env, 'reading_scores?src=eq.' + src + '&reading_id=eq.' + encodeURIComponent(id) + '&select=score,note,by,at&order=at.desc&limit=50')) || [];
+    const mine = rows.find(r => r && r.by === by) || null, n = rows.length;
+    return json({ ok: true, src, id, mine: mine ? { score: mine.score, note: mine.note || null, at: mine.at } : null,
+      all: { n, mean: n ? Math.round(rows.reduce((s, r) => s + (Number(r.score) || 0), 0) / n * 10) / 10 : null } }, 200, origin, env);
+  } catch (e) { excQuiet('score')(e); return json({ ok: false, error: 'score_failed', detail: String((e && e.message) || e).slice(0, 120) }, 200, origin, env); }
+}
+/* PURE: a reading's id as its table keeps it: an overnight deployment or a live read by uuid, a house read by its number. */
+function scoreIdOk(src, id) { return src === 'house' ? /^\d{1,12}$/.test(String(id)) : (src === 'door' || src === 'read') && /^[0-9a-f-]{36}$/i.test(String(id)); }
+/* PURE: the Monday (UTC) of the week a date falls in, as YYYY-MM-DD; null for no date. */
+function scoreWeek(v) {
+  const s = String(v == null ? '' : v), d = s ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? s + 'T12:00:00Z' : s) : null;
+  if (!d || isNaN(d)) return null;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))).toISOString().slice(0, 10);
+}
+/* PURE: the calibration as an admin reads it: every band and every key at any count with its rate, flagged below the floor, and where
+ * the adjustment is live (the engine's band in a category at FLOOR calls, held under its BAND_FLOOR). */
+function scoreCalibration(cal) {
+  const cellOf = c => ({ n: c.n, held: c.held, rate: calibRate(c.held, c.n), below_floor: c.n < CALIB.FLOOR });
+  const rowOf = x => Object.assign(cellOf(x), { key: x.key, label: x.label || null, bands: CALIB.BANDS.reduce((m, b) => { m[b] = cellOf((x.bands || {})[b] || { n: 0, held: 0 }); return m; }, {}) });
+  const by = {}; for (const d of CALIB.DIMS) by[d] = ((cal.by || {})[d] || []).map(rowOf);
+  const adjusting = [];
+  for (const x of (cal.engine && cal.engine.category) || []) for (const b of Object.keys(CALIB.BAND_FLOOR)) {
+    const c = (x.bands || {})[b]; if (c && c.n >= CALIB.FLOOR && c.held / c.n < CALIB.BAND_FLOOR[b]) adjusting.push({ category: x.key, from: b, to: CALIB.BANDS[CALIB.BANDS.indexOf(b) + 1], n: c.n, held: c.held, rate: calibRate(c.held, c.n) });
+  }
+  return { floor: CALIB.FLOOR, band_floor: CALIB.BAND_FLOOR, adjust: CALIB.ADJUST, built_at: cal.built_at || null, overall: rowOf({ key: '', label: null, n: (cal.overall || {}).n || 0, held: (cal.overall || {}).held || 0, bands: cal.bands || {} }), by, adjusting, examples: cal.examples || {} };
+}
+/* PURE: the house's scores by week and kind (the mean to one place, the count) and the newest notes with their score. kinds maps a
+ * house read's id to its kind; a door row is an overnight deployment, a read a live read. */
+function scoreWeeks(rows, kinds) {
+  const acc = new Map(), notes = [];
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const s = parseInt(r && r.score, 10), week = r ? scoreWeek(r.at) : null; if (!(s >= 1 && s <= 5) || !week) continue;
+    const kind = r.src === 'house' ? 'house:' + ((kinds && kinds[String(r.reading_id)]) || 'read') : String(r.src || '');
+    const k = JSON.stringify([week, kind]); let a = acc.get(k); if (!a) { a = { week, kind, n: 0, sum: 0 }; acc.set(k, a); }
+    a.n++; a.sum += s;
+    if (r.note && notes.length < CALIB.NOTES) notes.push({ at: r.at || null, kind, score: s, note: String(r.note).slice(0, CALIB.NOTE_CHARS), src: r.src, reading_id: String(r.reading_id) });
+  }
+  const weeks = [...acc.values()].map(a => ({ week: a.week, kind: a.kind, n: a.n, mean: Math.round(a.sum / a.n * 10) / 10 }))
+    .sort((a, b) => (a.week < b.week ? 1 : a.week > b.week ? -1 : 0) || (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
+  return { weeks, notes };
+}
+/* PURE: a stored voice record's notes: an array (a door reading's read.voice) or {n, notes} (a live read's and an edition's meta.voice). */
+function scoreNotes(v) { return Array.isArray(v) ? v : v && Array.isArray(v.notes) ? v.notes : []; }
+/* PURE: the voice notes by week and writer. A house read's style notes (VX1) under its kind; the door's and the live read's voice
+ * notes (VX1b); an edition's (VX1c) under DAILY. Each row: pieces, notes, notes a piece, the faults it named most. */
+function scoreVoice(src) {
+  const s = src || {}, acc = new Map();
+  const add = (week, writer, notes) => {
+    if (!week) return;
+    const k = JSON.stringify([week, writer]); let a = acc.get(k); if (!a) { a = { week, writer, pieces: 0, notes: 0, faults: {} }; acc.set(k, a); }
+    a.pieces++;
+    for (const n of notes) { a.notes++; const f = String(n || '').split(':')[1]; if (f) a.faults[f.slice(0, 40)] = (a.faults[f.slice(0, 40)] || 0) + 1; }
+  };
+  for (const r of s.house || []) if (r) add(scoreWeek(r.created_at), 'house:' + (r.kind || 'read'), (Array.isArray(r.violations) ? r.violations : []).filter(v => /^style:/.test(String(v))));
+  for (const r of s.door || []) if (r) add(scoreWeek(r.night), 'door', scoreNotes(r.voice));
+  for (const r of s.live || []) if (r) add(scoreWeek(r.created_at), 'live', scoreNotes(r.voice));
+  for (const r of s.editions || []) if (r) add(scoreWeek(r.date), 'daily', scoreNotes(r.voice));
+  return [...acc.values()].map(a => ({ week: a.week, writer: a.writer, pieces: a.pieces, notes: a.notes, per: Math.round(a.notes / a.pieces * 10) / 10,
+    top: Object.keys(a.faults).map(f => [f, a.faults[f]]).sort((x, y) => (y[1] - x[1]) || (x[0] < y[0] ? -1 : 1)).slice(0, CALIB.TOP) }))
+    .sort((a, b) => (a.week < b.week ? 1 : a.week > b.week ? -1 : 0) || (a.writer < b.writer ? -1 : a.writer > b.writer ? 1 : 0));
+}
+/* THE SCORE room's tables: the calibration in full, read fresh; the house's scores and the voice notes over CALIB.WEEKS weeks. Each
+ * source fails alone and the room says which; a source read to its cap says so. */
+async function scoreTables(env) {
+  const since = scoreWeek(new Date(Date.now() - (CALIB.WEEKS - 1) * 7 * 864e5).toISOString()), at = since + 'T00:00:00Z';
+  const got = {}, partial = [];
+  const part = (name, p) => p.then(v => { got[name] = v || []; }, e => { excQuiet('score_' + name)(e); partial.push(name); got[name] = null; });
+  let cal = null;
+  await Promise.all([
+    calibrationLoad(env, { fresh: true }).then(v => { cal = v; }, e => { excQuiet('score_calibration')(e); partial.push('calibration'); }),
+    part('scores', sbRest(env, 'reading_scores?at=gte.' + at + '&select=src,reading_id,score,note,at&order=at.desc&limit=' + CALIB.SCORES)),
+    part('house', sbRest(env, 'house_reads?created_at=gte.' + at + '&select=id,kind,created_at,violations&order=created_at.desc&limit=' + CALIB.HOUSE)),
+    part('door', sbRest(env, 'door_reads?night=gte.' + since + '&status=eq.ready&select=night,voice:read->voice&order=night.desc&limit=' + CALIB.DOOR)),
+    part('live', sbRest(env, 'reads?created_at=gte.' + at + '&select=created_at,voice:meta->voice&order=created_at.desc&limit=' + CALIB.LIVE)),
+    part('editions', sbRest(env, 'editions?date=gte.' + since + '&select=date,voice:meta->voice&order=date.desc&limit=' + CALIB.EDITIONS))]);
+  const kinds = {};
+  for (const r of got.house || []) if (r && r.id != null) kinds[String(r.id)] = r.kind;
+  const want = [...new Set((got.scores || []).filter(r => r && r.src === 'house' && !kinds[String(r.reading_id)] && /^\d{1,12}$/.test(String(r.reading_id))).map(r => String(r.reading_id)))].slice(0, 100);
+  if (want.length) { try { for (const r of (await sbRest(env, 'house_reads?id=in.(' + want.join(',') + ')&select=id,kind')) || []) if (r) kinds[String(r.id)] = r.kind; } catch (e) { excQuiet('score_kinds')(e); } }
+  const capped = [['house', CALIB.HOUSE], ['door', CALIB.DOOR], ['live', CALIB.LIVE], ['editions', CALIB.EDITIONS]].filter(([k, n]) => (got[k] || []).length >= n).map(([k]) => k);
+  const pub = cal ? calibrationPublic(cal) : null;
+  return { built_at: new Date().toISOString(), since, floor: CALIB.FLOOR, lines: pub ? pub.lines : [], calibration: cal ? scoreCalibration(cal) : null,
+    scores: got.scores ? scoreWeeks(got.scores, kinds) : null, voice: { weeks: scoreVoice(got), partial: partial.filter(p => p !== 'scores' && p !== 'calibration'), capped } };
+}
 /* ═══ SEAM:CLAIMS (EX53): findings as rows. One finding of one reading is one row of claims (0055): the sentence, the excerpt, the
  * lens, the confidence the ground earned, the band and dates of the lines it stands on, the lines with their tiers, the frame, the
  * reading it came from (an overnight deployment or a live read), its marks and its grade; claim_entities links it to the graph (the
@@ -11276,6 +11700,8 @@ function claimsOf(src, readingId, read, lines, frame, night, measures, frameKey,
       band: d.band ? String(d.band).slice(0, 12) : null, newest: day(d.newest), oldest: day(d.oldest), lines: picked, tiers,
       frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, question: f.question || null },
       meaning: x.meaning && typeof x.meaning === 'object' ? x.meaning : null, on_record: onRecord });
+    const cb = x.calibrated;   // SEAM:SCORECARD (EX54): a finding the record moved one band lower keeps the band the engine earned (calibrated.from)
+    if (cb && typeof cb === 'object' && ['High', 'Medium', 'Low'].includes(cb.from) && ['High', 'Medium', 'Low'].includes(cb.to)) out[out.length - 1].calibrated = { from: cb.from, to: cb.to, held: parseInt(cb.held, 10) || 0, n: parseInt(cb.n, 10) || 0, category: String(cb.category || '').slice(0, 60) || null };
   });
   return out;
 }
@@ -11285,7 +11711,8 @@ async function claimsWrite(env, rows) {
   if (!Array.isArray(rows) || !rows.length) return { wrote: 0, linked: 0 };
   try {
     const at = new Date().toISOString();
-    const back = (await sbRest(env, 'claims?on_conflict=src,reading_id,idx&select=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: rows.map(r => Object.assign({}, r, { updated_at: at })) })) || [];
+    const keyed = rows.some(r => r && 'calibrated' in r);   // SEAM:SCORECARD (EX54): one batch, one set of keys; a batch that holds a calibrated finding carries the key on every row
+    const back = (await sbRest(env, 'claims?on_conflict=src,reading_id,idx&select=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: rows.map(r => Object.assign(keyed ? { calibrated: null } : {}, r, { updated_at: at })) })) || [];
     const ids = back.map(b => b && b.id).filter(Boolean);
     let linked = 0;
     if (ids.length) { const l = ((await sbRest(env, 'rpc/link_claim_entities', { method: 'POST', body: { p_claims: ids } })) || [])[0] || {}; linked = parseInt(l.links_made, 10) || 0; }
@@ -11340,6 +11767,685 @@ async function claimsMigratePass(env, opts) {
   Object.assign(out, { door, read, done: door.done && read.done, ms: Date.now() - t0 });
   await logEvent(env, 'intelligence', 'claims', 'claims_pass', null, out);
   return out;
+}
+/* ═══ SEAM:HOUSE_POSITIONS (VX2 THE CORPUS): the house's own writing, read for what it holds and how it writes. A deck, an essay, a
+ * talk or a report of ours goes up in THE CORPUS room (admin, /reads/corpus-upload): the original is kept in R2 under corpus/<hash>
+ * with its text beside it, and the document is listed in house_docs (0060). None of it enters knowledge_base, the lake or a read's
+ * evidence, and the public media route refuses corpus/. One reading of a document is the admin's click: one request on the doc tier
+ * under Method 5.0 and the reading contract (the engine's corpusExtractSubmit), on the batch at half the price, landed by the drain
+ * (corpusLand). It proposes the positions the document holds, each standing on a quote from its page, and the lines that show how we
+ * write, each labelled with the exemplar of Method 5.0 it matches. Nothing reaches a writer until an admin approves it. A document
+ * marked confidential teaches the register only: no position is drawn from it and the search never returns one. Every house read
+ * (WEEKLY, monthly, the Record, the Report, RECON) and EXCAVATE read WHAT THE HOUSE BELIEVES: the approved positions nearest the read's
+ * subject (one Workers AI embedding of the subject, the search in 0060, then the overlap of a position's topics with the read's
+ * subjects), six at most, each with its document and page; THE POSITIONS LAW rides the three systems THE HOUSE LAW rides. The register
+ * lines are the pool the next Method revision draws its exemplars from; the Method itself is unchanged by this cut. ═══ */
+const CORPUS = { TIER: 'doc', MAX_TOKENS: 8000, EFFORT: 'low', MAX_BYTES: 15000000, TEXT_MAX: 200000, NAME_MAX: 120, TITLE_MAX: 120,
+  NAME: /\.(?:pdf|docx|odt|txt|md|markdown|html?)$/i, KINDS: ['deck', 'essay', 'talk', 'report', 'other'], STATUS: ['proposed', 'approved', 'retired'],
+  POSITIONS: 24, REGISTER: 16, POSITION_MIN: 12, POSITION_CHARS: 320, QUOTE_CHARS: 600, QUOTE_WORDS: 4, GROUND: 0.4, TOPICS: 6, TOPIC_CHARS: 40,
+  REGISTER_WORDS: 3, REGISTER_CHARS: 400, DROPPED: 20,
+  LABELS: ['opening', 'fact_then_line', 'idea_and_stakes', 'number_with_source', 'return_in_figures', 'close_in_fragments', 'how_without_label', 'local_name', 'field_in_order', 'us_on_our_work', 'other'],
+  OUT_BASE: 800, OUT_PAGE: 60, OUT_MAX: 5000, STALE_MS: 26 * 3600000,
+  SEARCH: 24, KEEP: 6, SIM_FLOOR: 0.45, SIM_ALONE: 0.72, BONUS: 0.08, QUERY_CHARS: 900, BLOCK_CHARS: 320, CONSIDERED: 24, NOTES: 12, NOTE_SHARE: 0.35,
+  READY_KEY: 'corpus:approved:v1', READY_TTL: 600,
+  STOP: /^(?:a|an|the|and|or|but|if|so|as|of|to|in|on|at|by|for|with|from|into|over|under|up|out|off|than|then|that|this|these|those|it|its|is|are|was|were|be|been|being|has|have|had|do|does|did|will|would|can|could|should|may|might|must|not|no|nor|we|our|us|you|your|they|their|them|he|she|his|her|i|me|my|who|what|when|where|how|why|which|there|here|more|most|less|all|any|each|every|own|just|only|also|very|s|t|ll|re|ve|d|m)$/,
+  GENERIC: /^(?:brand|culture|cultural|consumer|people|person|audience|marketing|market|community|generation|trend|strategy|insight|category|business|company|growth|youth|young|new|thing|world|way|time|year|day)$/ };
+/* PURE: a figure, as a position may never carry one: a digit, or a quantity said in words (three percent, two million, seven years). */
+const CORPUS_FIGURE = /\d|\b(?:per ?cent|percentage points?|million|billion|trillion)\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)[ -](?:percent|points?|times|fold|dollars?|years?|months?|weeks?|days?|hours?|thousand|hundred)\b/i;
+const CORPUS_DOC_COLS = 'id,title,kind,confidential,pages,words,chars,source_ref,text_ref,hash,name,status,extract,uploaded_by,at';
+const CORPUS_POS_COLS = 'id,doc_id,page,text,quote,topics,status,edited,approved_by,approved_at,created_by,created_at,updated_at';
+const CORPUS_REG_COLS = 'id,doc_id,page,text,label,status,approved_by,approved_at,created_at';
+/* PURE: a text as compared: the marks of a name and the soft breaks gone, a word broken at a line end joined, lower case, every run of
+ * anything but letters and digits one space. Both sides of every comparison pass through here, so a curly quote matches a straight one. */
+function corpusNorm(s) {
+  return String(s == null ? '' : s).replace(/([A-Za-z])-[ \t]*\n[ \t]*([a-z])/g, '$1$2').replace(/[\u2122\u00ae\u00a9\u00ad\u200b]/g, '').normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+/* PURE: a word's stem for the overlap test: the plural dropped. */
+function corpusStem(w) { const x = String(w || ''); return x.length > 4 && /ies$/.test(x) ? x.slice(0, -3) + 'y' : x.length > 3 && /[^s]s$/.test(x) ? x.slice(0, -1) : x; }
+/* PURE: the words of a text that carry it: the small words dropped, the rest stemmed. */
+function corpusWords(s) { return corpusNorm(s).split(' ').filter(w => w && !CORPUS.STOP.test(w)).map(corpusStem); }
+/* PURE: the words of a topic a read's subjects must carry: its words less the generic ones (brand, culture, consumers and the like). */
+function corpusTopicWords(t) { return corpusWords(t).filter(w => !CORPUS.GENERIC.test(w)); }
+/* PURE: a dash set as a full stop, as the Method sets its own exemplars: an em dash, or an en dash between spaces, becomes a full stop
+ * and the next word starts a sentence. */
+function corpusDash(s) {
+  return String(s == null ? '' : s).replace(/\s*\u2014\s*([a-z]?)|\s+\u2013\s+([a-z]?)/g, (m, a, b) => '. ' + String(a || b || '').toUpperCase())
+    .replace(/([.!?])\.\s/g, '$1 ').replace(/\s+\./g, '.').replace(/^\.\s*/, '').replace(/\s+/g, ' ').trim();
+}
+/* PURE: a position's topics: lower case, six at most, each a name or a short phrase; a generic word alone is never a topic. */
+function corpusTopics(x) {
+  const a = Array.isArray(x) ? x : String(x == null ? '' : x).split(','), out = [];
+  for (const v of a) {
+    const t = String(v == null ? '' : v).toLowerCase().replace(/[\u2122\u00ae\u00a9]/g, '').replace(/[^a-z0-9&' .-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CORPUS.TOPIC_CHARS);
+    if (!t || !corpusTopicWords(t).length || out.includes(t)) continue;
+    out.push(t); if (out.length >= CORPUS.TOPICS) break;
+  }
+  return out;
+}
+/* PURE: a document's pages. A form feed is a page break (pdftotext's mark; the .txt seeds carry it) and the page keeps its index, so the
+ * numbers are the document's own; otherwise a Markdown heading "Page N" marks one (the converter's own shape, unverified); otherwise the
+ * text is one unit with no page. An empty page is dropped and keeps its number. */
+function corpusPages(text) {
+  const t = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
+  if (t.indexOf('\f') >= 0) {
+    const pages = [];
+    t.split('\f').forEach((p, i) => { if (p.trim()) pages.push({ n: i + 1, text: p.trim() }); });
+    return { pages, marked: 'form_feed', count: pages.length ? pages[pages.length - 1].n : 0 };
+  }
+  const rx = /^#{1,4}[ \t]*Page[ \t]+(\d{1,4})[ \t]*$/gim, marks = [];
+  let m; while ((m = rx.exec(t))) marks.push({ n: parseInt(m[1], 10), at: m.index, end: m.index + m[0].length });
+  if (marks.length >= 2) {
+    const pages = [];
+    marks.forEach((k, i) => { const body = t.slice(k.end, i + 1 < marks.length ? marks[i + 1].at : t.length).trim(); if (body) pages.push({ n: k.n, text: body }); });
+    return { pages, marked: 'heading', count: pages.reduce((a, p) => Math.max(a, p.n), 0) };
+  }
+  return { pages: t.trim() ? [{ n: null, text: t.trim() }] : [], marked: null, count: null };
+}
+/* PURE: the text the reading reads: each page under its [page N] mark, the whole cut at TEXT_MAX with how far it reached. */
+function corpusMarked(pg, max) {
+  const cap = max || CORPUS.TEXT_MAX, out = [];
+  let used = 0, cut = false, through = null;
+  for (const p of (pg && pg.pages) || []) {
+    const head = p.n != null ? '[page ' + p.n + ']\n' : '', room = cap - used;
+    if (room <= head.length + 40) { cut = true; break; }
+    const body = (head + p.text).slice(0, room);
+    out.push(body); used += body.length + 2; through = p.n;
+    if (body.length < head.length + p.text.length) { cut = true; break; }
+  }
+  return { text: out.join('\n\n'), cut, through, chars: Math.max(0, used - 2) };
+}
+/* PURE: the reading's prompt: the document as ours, its pages marked, the confidential rule when it is, the cut said when the text runs
+ * past the reading's room. The contract and the Method ride the system, the same for every document. */
+function corpusExtractPrompt(doc, marked, pg) {
+  const d = doc || {}, m = marked || { text: '', cut: false }, n = pg && pg.count;
+  return 'DOCUMENT: ' + String(d.title || 'untitled').replace(/\s+/g, ' ').trim() + ' (' + (d.kind || 'deck') + (n ? ', ' + n + ' pages' : '') + ')\n' +
+    (d.confidential ? 'THIS DOCUMENT IS CONFIDENTIAL: return an empty positions array; read it for the register only.\n' : '') +
+    'TEXT (as converted; ' + (pg && pg.marked ? '[page N] marks each page' : 'no page is marked, so every page is null') +
+    (m.cut ? '; only the first ' + (m.through != null ? m.through + ' pages' : m.chars + ' characters') + ' fit the reading' : '') + '):\n' +
+    m.text + '\n\nRead it as our own writing. Return only the JSON object.';
+}
+/* PURE: the reading, enforced. A position is kept when it is a view (twelve to 320 characters, no figure by CORPUS_FIGURE), stands on a quote of four
+ * words or more that is in the document (on its page; when the quote is on another page the page is corrected to it), and shares enough
+ * of its words with that page (GROUND); a duplicate goes, the topics are cleaned. A register line is kept when it is the document's own
+ * words, three words or more; a label outside the Method's set is other. A dash is set as a full stop. A confidential document keeps no
+ * position. Every line set aside is kept with its reason, DROPPED at most. */
+function corpusExtractShape(parsed, doc, pg) {
+  const o = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  const P = Array.isArray(o.positions) ? o.positions : [], G = Array.isArray(o.register) ? o.register : [];
+  const pages = (pg && pg.pages) || [], norm = {}, whole = corpusNorm(pages.map(p => p.text).join('\n'));
+  for (const p of pages) if (p.n != null) norm[p.n] = corpusNorm(p.text);
+  const find = (q, n) => {
+    const nq = corpusNorm(q); if (!nq) return { found: false };
+    if (n != null && norm[n] != null && norm[n].indexOf(nq) >= 0) return { found: true, page: n };
+    for (const p of pages) if (p.n != null && norm[p.n].indexOf(nq) >= 0) return { found: true, page: p.n, moved: n != null };
+    return whole.indexOf(nq) >= 0 ? { found: true, page: null } : { found: false };
+  };
+  const positions = [], register = [], dropped = [], seenP = new Set(), seenR = new Set();
+  const drop = (kind, why, text) => { if (dropped.length < CORPUS.DROPPED) dropped.push({ kind, why, text: String(text || '').slice(0, 140) }); };
+  for (const x of P.slice(0, CORPUS.POSITIONS * 2)) {
+    if (!x || typeof x !== 'object') continue;
+    const text = corpusDash(String(x.text || '').replace(/\s+/g, ' ').trim());
+    if (doc && doc.confidential) { drop('position', 'confidential', text); continue; }
+    if (text.length < CORPUS.POSITION_MIN) { drop('position', 'short', text); continue; }
+    if (text.length > CORPUS.POSITION_CHARS) { drop('position', 'long', text); continue; }
+    if (CORPUS_FIGURE.test(text)) { drop('position', 'figure', text); continue; }
+    const quote = String(x.quote || '').replace(/\s+/g, ' ').trim();
+    if (corpusNorm(quote).split(' ').filter(Boolean).length < CORPUS.QUOTE_WORDS) { drop('position', 'no_quote', text); continue; }
+    const pn = Number.isFinite(+x.page) && +x.page > 0 ? Math.round(+x.page) : null, hit = find(quote, pn);
+    if (!hit.found) { drop('position', 'quote_not_in_document', text); continue; }
+    const words = [...new Set(corpusWords(text))], have = new Set(corpusWords(quote + ' ' + (hit.page != null ? norm[hit.page] : whole)));
+    if (!words.length || words.filter(w => have.has(w)).length / words.length < CORPUS.GROUND) { drop('position', 'not_grounded', text); continue; }
+    const key = corpusNorm(text); if (seenP.has(key)) { drop('position', 'duplicate', text); continue; } seenP.add(key);
+    positions.push({ page: hit.page, text, quote: corpusDash(quote).slice(0, CORPUS.QUOTE_CHARS), topics: corpusTopics(x.topics), moved: !!hit.moved });
+    if (positions.length >= CORPUS.POSITIONS) break;
+  }
+  for (const x of G.slice(0, CORPUS.REGISTER * 2)) {
+    if (!x || typeof x !== 'object') continue;
+    const raw = String(x.text || '').replace(/\s+/g, ' ').trim();
+    if (corpusNorm(raw).split(' ').filter(Boolean).length < CORPUS.REGISTER_WORDS) { drop('register', 'short', raw); continue; }
+    if (raw.length > CORPUS.REGISTER_CHARS) { drop('register', 'long', raw); continue; }
+    const pn = Number.isFinite(+x.page) && +x.page > 0 ? Math.round(+x.page) : null, hit = find(raw, pn);
+    if (!hit.found) { drop('register', 'not_in_document', raw); continue; }
+    const key = corpusNorm(raw); if (seenR.has(key)) { drop('register', 'duplicate', raw); continue; } seenR.add(key);
+    register.push({ page: hit.page, text: corpusDash(raw), label: CORPUS.LABELS.includes(x.label) ? x.label : 'other' });
+    if (register.length >= CORPUS.REGISTER) break;
+  }
+  return { positions, register, dropped, wrote: { positions: P.length, register: G.length } };
+}
+/* PURE: what one reading of a document costs, said before the click (on the batch, at half the price). about: the text read once at the
+ * house's 3.5 characters a token, the Method and the contract written to the cache once, the answer at OUT_BASE plus OUT_PAGE a page
+ * (OUT_MAX at most); an estimate, and the receipt says what it cost. most: the gate's own worst case, every token uncached and the whole
+ * room, which the gate holds while the reading is out. */
+function corpusCost(chars, pages, sysChars, price) {
+  const p = price || { in: 10, out: 50, cw: 12.5, cr: 0.25 }, c = Math.min(Number(chars) || 0, CORPUS.TEXT_MAX) + 700;
+  const inTok = Math.ceil(c / 3.5), sysTok = Math.ceil((Number(sysChars) || 0) / 3.5);
+  const outTok = Math.min(CORPUS.OUT_MAX, CORPUS.OUT_BASE + CORPUS.OUT_PAGE * Math.max(1, Number(pages) || 1));
+  const about = (inTok * p.in + sysTok * p.cw + outTok * p.out) / 1e6 * 0.5, most = (inTok * p.in + sysTok * p.cw + CORPUS.MAX_TOKENS * p.out) / 1e6 * 0.5;
+  return { about_usd: Math.round(about * 100) / 100, most_usd: Math.round(most * 100) / 100, in_tokens: inTok + sysTok, out_tokens: outTok };
+}
+function corpusCostOf(d) {
+  const price = typeof CLAUDE !== 'undefined' && CLAUDE.PRICE ? CLAUDE.PRICE[CLAUDE.TIERS[CORPUS.TIER].model] : null;
+  return corpusCost(d && d.chars, d && d.pages, typeof corpusSysChars === 'function' ? corpusSysChars() : 36000, price);
+}
+/* PURE: the counts the room shows, per document. */
+function corpusCountsZero() { return { positions: { proposed: 0, approved: 0, retired: 0 }, register: { proposed: 0, approved: 0, retired: 0 } }; }
+function corpusCounts(pos, reg) {
+  const out = {};
+  const add = (k, r) => { if (!r || !r.doc_id) return; const c = out[r.doc_id] = out[r.doc_id] || corpusCountsZero(); if (c[k][r.status] != null) c[k][r.status]++; };
+  for (const r of pos || []) add('positions', r);
+  for (const r of reg || []) add('register', r);
+  return out;
+}
+/* PURE: a document as the room reads it: the R2 keys stay on the worker. */
+function corpusDocOut(d) {
+  const x = (d && d.extract) || {};
+  return { id: d.id, title: d.title, kind: d.kind, confidential: !!d.confidential, pages: d.pages == null ? null : d.pages, words: d.words || 0, chars: d.chars || 0, name: d.name || null, status: d.status, at: d.at || null,
+    extract: { marked: x.marked || null, how: x.how || null, n: x.n || 0, sent_at: x.sent_at || null, landed_at: x.landed_at || null, failed_at: x.failed_at || null, error: x.error || null,
+      est_usd: x.est_usd != null ? x.est_usd : null, cost_usd: x.cost_usd != null ? x.cost_usd : null, proposed: x.proposed || null, dropped: Array.isArray(x.dropped) ? x.dropped : [],
+      cut: !!x.cut, pages_read: x.pages_read == null ? null : x.pages_read, model: x.model || null, voice: x.voice || null, tokens: x.tokens || null } };
+}
+/* PURE: what a read asks the corpus: the text embedded (its subject, said plainly) and the subject words a position's topics are matched
+ * on. A RECON and EXCAVATE ask their frame (the entity, its competitors, the category, the audience, the market, the anchors) and their
+ * question; every other kind asks the entities its window's stories are linked to (EX53b's subjects), its territories and its top
+ * headlines; EXCAVATE with no frame asks its question alone. */
+function housePositionsAsk(kind, ctx) {
+  const c = ctx || {}, f = (c.recon && c.recon.frame) || c.frame || null, parts = [], subj = [];
+  const add = (x, s) => { const t = String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); if (!t) return; parts.push(t); if (s) subj.push(t); };
+  if (f) {
+    add(f.entity, true);
+    for (const x of (Array.isArray(f.competitors) ? f.competitors : []).slice(0, 6)) add(x, true);
+    add(f.category, true); add(f.audience, true); add(f.market, true);
+    for (const x of (Array.isArray(f.anchors) ? f.anchors : []).slice(0, 6)) add(x, true);
+    add(c.query || f.question, false);
+  } else {
+    const ents = c.hc && c.hc.meta && Array.isArray(c.hc.meta.entities) ? c.hc.meta.entities : [], items = Array.isArray(c.items) ? c.items : [];
+    for (const e of ents.slice(0, 8)) add(e && e.name, true);
+    const terr = {};
+    for (const it of items) if (it && it.territory) terr[it.territory] = (terr[it.territory] || 0) + 1;
+    for (const t of Object.keys(terr).sort((a, b) => terr[b] - terr[a] || (a < b ? -1 : 1)).slice(0, 4)) add(String(t).replace(/[-_]+/g, ' '), true);
+    for (const it of items.slice(0, 8)) add(it && it.headline, false);
+    add(c.query, false);   // EXCAVATE with no frame: the question alone, so only a near position (SIM_ALONE) is met
+  }
+  const words = new Set();
+  for (const s of subj) for (const w of corpusWords(s)) words.add(w);
+  return { kind: String(kind || ''), text: parts.join('. ').slice(0, CORPUS.QUERY_CHARS), words: [...words].slice(0, 60) };
+}
+/* PURE: how many of a position's topics the read's subjects carry. A topic counts when every one of its words that is not generic is
+ * among the subject words, so "jordan brand" counts for a frame on Jordan Brand and "gen alpha" for one whose audience is Gen Alpha. */
+function housePositionOverlap(topics, words) {
+  const W = words instanceof Set ? words : new Set(words || []);
+  let n = 0;
+  for (const t of Array.isArray(topics) ? topics : []) { const tw = corpusTopicWords(t); if (tw.length && tw.every(w => W.has(w))) n++; }
+  return n;
+}
+/* PURE: the positions a read meets. A candidate is kept when its topics meet the read's subjects and its similarity reaches SIM_FLOOR,
+ * or when its similarity alone reaches SIM_ALONE; ranked by similarity plus BONUS for each topic met (three at most), KEEP at most. Every
+ * candidate is kept on the read's receipt with its numbers, so the floors can be set from the reads that ran, not from habit. */
+function housePositionsRank(rows, words) {
+  const W = new Set(words || []), considered = [];
+  for (const r of rows || []) {
+    if (!r || !r.id || !r.text) continue;
+    const sim = Number(r.similarity) || 0, overlap = housePositionOverlap(r.topics, W);
+    considered.push({ r, sim, overlap, kept: (overlap >= 1 && sim >= CORPUS.SIM_FLOOR) || sim >= CORPUS.SIM_ALONE, score: sim + CORPUS.BONUS * Math.min(overlap, 3) });
+  }
+  considered.sort((a, b) => b.score - a.score || b.sim - a.sim);
+  return { keep: considered.filter(x => x.kept).slice(0, CORPUS.KEEP), considered };
+}
+/* PURE: the block's head: its rules in our voice (the Method's "we" when we take a position, never "the house" in what a read prints). */
+function housePositionsHead(n) {
+  return 'WHAT THE HOUSE BELIEVES (' + (n > 1 ? 'P1..P' + n : 'P1') + ': our own positions, from the decks, essays and talks we wrote, each approved by us; our view, never evidence, never a source to cite, never a figure this read may print. ' +
+    'Where the evidence touches a position, say it as our view, once, in our words, with where we said it ("We have held since the Chicago proposal that legacy does not transfer on its own. This week\'s comments say it again."). ' +
+    'Where the evidence contradicts a position, name it and say what the evidence shows instead. A position the evidence does not touch is left out. Never write that we have held anything this block does not carry.):';
+}
+function housePositionWhere(r) { const t = String((r && r.doc_title) || 'our writing').replace(/\s+/g, ' ').trim().slice(0, 80); return r && r.page != null ? t + ', p. ' + r.page : t; }
+/* PURE: the block. Nothing kept is nothing written: no position is invented for a read the corpus does not touch. */
+function housePositionsBlock(keep) {
+  if (!keep || !keep.length) return '';
+  return housePositionsHead(keep.length) + '\n' + keep.map((x, i) => 'P' + (i + 1) + ' [' + housePositionWhere(x.r) + '] ' + String(x.r.text || '').replace(/\s+/g, ' ').trim().slice(0, CORPUS.BLOCK_CHARS)).join('\n');
+}
+/* PURE: what a read keeps of the positions it met (meta.house_positions): the kept with their numbers, every candidate considered, the
+ * subject words, the floors it ran under, why it met none when it met none, the time. */
+function housePositionsMeta(rank, ask, ms, skipped) {
+  const keep = (rank && rank.keep) || [], cons = (rank && rank.considered) || [], r3 = x => Math.round((Number(x) || 0) * 1000) / 1000;
+  return { n: keep.length, ids: keep.map(x => x.r.id),
+    positions: keep.map(x => ({ id: x.r.id, doc_id: x.r.doc_id || null, title: x.r.doc_title || null, page: x.r.page == null ? null : x.r.page, text: String(x.r.text || '').slice(0, CORPUS.BLOCK_CHARS), sim: r3(x.sim), overlap: x.overlap })),
+    considered: cons.slice(0, CORPUS.CONSIDERED).map(x => ({ id: x.r.id, sim: r3(x.sim), overlap: x.overlap, kept: x.kept })),
+    words: ((ask && ask.words) || []).slice(0, 24), query_chars: ask && ask.text ? ask.text.length : 0,
+    floors: { sim: CORPUS.SIM_FLOOR, alone: CORPUS.SIM_ALONE, bonus: CORPUS.BONUS }, skipped: skipped || null, ms: ms || 0, at: new Date().toISOString() };
+}
+/* Whether any position is approved: one KV read a read (READY_TTL), so nothing is embedded before the corpus holds a position. */
+async function housePositionsReady(env) {
+  if (env.RATE_LIMIT) { const v = await env.RATE_LIMIT.get(CORPUS.READY_KEY).catch(excQuiet('corpus_ready_get', null)); if (v === '1') return true; if (v === '0') return false; }
+  const rows = await sbRest(env, 'house_positions?status=eq.approved&select=id&limit=1').catch(excQuiet('corpus_ready', null));
+  if (!Array.isArray(rows)) return false;
+  if (env.RATE_LIMIT) await env.RATE_LIMIT.put(CORPUS.READY_KEY, rows.length ? '1' : '0', { expirationTtl: CORPUS.READY_TTL }).catch(excQuiet('corpus_ready_put'));
+  return rows.length > 0;
+}
+async function housePositionsDirty(env) { if (env.RATE_LIMIT) await env.RATE_LIMIT.delete(CORPUS.READY_KEY).catch(excQuiet('corpus_ready_dirty')); }
+/* What the house believes, for a read: the ask, the approved positions nearest it, the block and the meta. Never throws: a corpus that
+ * cannot be read leaves the read as it was, and the meta says why it met none. Spends nothing a model is paid for: one Workers AI
+ * embedding (embedQuery) and one search. */
+async function housePositionsFor(env, kind, ctx) {
+  const t0 = Date.now(), ask = housePositionsAsk(kind, ctx), none = why => ({ text: '', meta: housePositionsMeta(null, ask, Date.now() - t0, why), rows: [] });
+  if (!ask.text) return none('no_subject');
+  if (!(await housePositionsReady(env))) return none('none_approved');
+  const vec = await embedQuery(env, ask.text).catch(excQuiet('house_positions_embed', null));
+  if (!vec) return none('embed_failed');
+  const rows = await sbRest(env, 'rpc/house_positions_search', { method: 'POST', body: { p_query: vec, p_count: CORPUS.SEARCH } }).catch(excQuiet('house_positions_search', null));
+  if (!Array.isArray(rows)) return none('search_failed');
+  const rank = housePositionsRank(rows, ask.words);
+  return { text: housePositionsBlock(rank.keep), meta: housePositionsMeta(rank, ask, Date.now() - t0, rank.keep.length ? null : 'none_near'), rows: rank.keep.map(x => x.r) };
+}
+/* The positions notes. A sentence that says we have held, argued, maintained or believed something since or that (or the house's view
+ * since) and shares too little with every position the read was given (two words, or NOTE_SHARE of a position's words) is noted
+ * positions:unheld:<path>; with no position given, every such sentence is. Notes, never a hold. */
+const HOUSE_BELIEF_RX = /\b(?:we(?:'ve| have)?|the house(?: has)?) (?:long |always )?(?:held|argued|maintained|believed) (?:since|that|for)\b|\b(?:as|what) we (?:have )?(?:held|argued|maintained|believed)\b|\b(?:our|the house's) (?:view|position|belief) (?:since|has long|has been)\b/i;
+/* PURE: the strings of a read a reader sees, by path (the arrays of ids, evidence and voices skipped, as the register law skips them). */
+function housePositionStrings(read) {
+  const out = [];
+  const walk = (v, path, d) => {
+    if (out.length >= 400 || d > 7) return;
+    if (Array.isArray(v)) { if (!/(?:evidence|quotes|voices|ids)$|\.(?:then|now)$/.test(path)) v.forEach((x, i) => walk(x, path + '[' + i + ']', d + 1)); return; }
+    if (v && typeof v === 'object') { for (const k of Object.keys(v)) walk(v[k], path ? path + '.' + k : k, d + 1); return; }
+    if (typeof v === 'string' && v.length >= 20 && !/\.stat$|^cover_image$|lead_image$|\.(?:reach|horizon|confidence|strength|image_prompt)$/.test(path)) out.push({ path, text: v });
+  };
+  walk(read, '', 0);
+  return out;
+}
+function housePositionNotes(read, hp) {
+  const given = hp && Array.isArray(hp.positions) ? hp.positions.filter(p => p && p.text) : [], sets = given.map(p => new Set(corpusWords(p.text))), notes = [];
+  for (const s of housePositionStrings(read)) {
+    if (notes.length >= CORPUS.NOTES) break;
+    for (const sent of String(s.text).split(/(?<=[.!?])\s+/)) {
+      if (!HOUSE_BELIEF_RX.test(sent)) continue;
+      const w = new Set(corpusWords(sent));
+      const met = sets.some(S => { let n = 0; for (const x of S) if (w.has(x)) n++; return n >= 2 || (S.size > 0 && n / S.size >= CORPUS.NOTE_SHARE); });
+      if (!met) { notes.push('positions:unheld:' + s.path); break; }
+    }
+  }
+  return notes;
+}
+/* PURE: a position as it is embedded: its words and its topics, so a read on its subject finds it. */
+function corpusPassage(text, topics) { const t = Array.isArray(topics) ? topics.filter(Boolean) : []; return String(text || '') + (t.length ? ' (' + t.join(', ') + ')' : ''); }
+/* PURE: a position as an admin writes it: one or two short sentences, POSITION_MIN to POSITION_CHARS characters, no figure (CORPUS_FIGURE), no em dash. */
+function corpusPositionText(s) {
+  const t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  if (/\u2014/.test(t)) return { error: 'em_dash' };
+  if (t.length < CORPUS.POSITION_MIN) return { error: 'too_short' };
+  if (t.length > CORPUS.POSITION_CHARS) return { error: 'too_long' };
+  if (CORPUS_FIGURE.test(t)) return { error: 'figure' };
+  return { text: t };
+}
+function corpusId(x) { const s = String(x == null ? '' : x).trim(); return /^[0-9a-f-]{36}$/i.test(s) ? s : null; }
+async function corpusDoc(env, id) {
+  const k = corpusId(id); if (!k) return null;
+  const rows = (await sbRest(env, 'house_docs?id=eq.' + k + '&select=' + CORPUS_DOC_COLS + '&limit=1')) || [];
+  return rows[0] || null;
+}
+async function corpusText(env, doc) {
+  if (!env.MEDIA || !doc || !doc.text_ref) return { ok: false, error: 'media_unconfigured' };
+  const obj = await env.MEDIA.get(doc.text_ref).catch(excQuiet('corpus_text', null));
+  if (!obj) return { ok: false, error: 'text_missing' };
+  return { ok: true, text: await obj.text() };
+}
+/* POST /reads/corpus-upload?title=&kind=&confidential= (raw body, admin): a document of ours into the corpus, its name in x-filename
+ * (URI-encoded by the room; the only custom header the API's preflight allows, so the rest ride the query, as KB1's file door's do).
+ * PDF, Word, OpenDocument, HTML or text through the intake's docText (a document converts for nothing); the
+ * original kept in R2 under corpus/<hash>, a converted document's text beside it; listed in house_docs. The same file twice is one
+ * document. No model reads anything here. */
+async function corpusUpload(request, env, origin, user) {
+  if (!(await callerIsAdmin(env, user.id))) return json({ ok: false, error: 'forbidden' }, 403, origin, env);
+  if (!env.MEDIA) return json({ ok: false, error: 'media_unconfigured' }, 200, origin, env);
+  const u = new URL(request.url), q = k => String(u.searchParams.get(k) || ''), fn = String(request.headers.get('x-filename') || '');
+  let name0 = fn; try { name0 = decodeURIComponent(fn); } catch (e) { name0 = fn; }
+  name0 = name0.replace(/[\r\n]+/g, ' ').trim().slice(0, CORPUS.NAME_MAX) || 'document.txt';
+  const name = name0.replace(/[^\w.-]/g, '_');
+  if (!CORPUS.NAME.test(name)) return json({ ok: false, error: 'unsupported_type', say: 'A PDF, Word, OpenDocument, HTML or text file.' }, 200, origin, env);
+  const raw = await request.arrayBuffer();
+  if (!raw.byteLength) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  if (raw.byteLength > CORPUS.MAX_BYTES) return json({ ok: false, error: 'too_large', max: CORPUS.MAX_BYTES }, 200, origin, env);
+  const digest = await crypto.subtle.digest('SHA-256', raw), hash = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+  const same = async () => ((await sbRest(env, 'house_docs?hash=eq.' + hash + '&select=' + CORPUS_DOC_COLS + '&limit=1').catch(excQuiet('corpus_same', []))) || [])[0] || null;
+  const had = await same();
+  if (had) return json({ ok: true, existing: true, doc: corpusDocOut(had), cost: corpusCostOf(had) }, 200, origin, env);
+  const got = await docText(env, name, request.headers.get('content-type'), raw);
+  if (!got.ok) return json({ ok: false, error: got.error, detail: got.detail || null }, 200, origin, env);
+  const text = String(got.text || '');
+  if (!text.trim()) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  const pg = corpusPages(text), ext = name.split('.').pop().toLowerCase(), kindIn = q('kind').toLowerCase().trim();
+  const source_ref = 'corpus/' + hash + '.' + ext, text_ref = got.how === 'text' ? source_ref : 'corpus/' + hash + '.md';
+  await env.MEDIA.put(source_ref, raw, { httpMetadata: { contentType: got.mime || 'application/octet-stream' } });
+  if (text_ref !== source_ref) await env.MEDIA.put(text_ref, text, { httpMetadata: { contentType: 'text/markdown; charset=utf-8' } });
+  const title = corpusDash(q('title').replace(/\s+/g, ' ').trim()).slice(0, CORPUS.TITLE_MAX) || name0.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim().slice(0, CORPUS.TITLE_MAX) || 'Untitled';
+  const row = { title, kind: CORPUS.KINDS.includes(kindIn) ? kindIn : 'deck', confidential: /^(?:1|true|yes|on)$/i.test(q('confidential').trim()),
+    pages: pg.count, words: corpusNorm(text).split(' ').filter(Boolean).length, chars: text.length, source_ref, text_ref, hash, name: name0, status: 'uploaded',
+    extract: { marked: pg.marked, how: got.how }, uploaded_by: user.id };
+  const ins = await sbRest(env, 'house_docs', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [row] }).catch(excQuiet('corpus_insert', null));
+  const doc = (Array.isArray(ins) && ins[0]) || await same();   // the same file sent twice at once: the second finds the first
+  if (!doc) return json({ ok: false, error: 'not_written' }, 200, origin, env);
+  logEvent(env, 'intelligence', 'reads', 'corpus_upload', null, { id: doc.id, bytes: raw.byteLength, pages: pg.count, marked: pg.marked, how: got.how, confidential: row.confidential, by: user.id });
+  return json({ ok: true, doc: corpusDocOut(doc), cost: corpusCostOf(doc) }, 200, origin, env);
+}
+/* The corpus routes, admin through readRoute: the list (and a probe), a document, a reading, a position, a register line. */
+async function corpusRoute(path, body, env, origin, user) {
+  const b = body || {};
+  if (path === '/reads/corpus') return b.probe != null ? corpusProbe(b, env, origin) : corpusList(env, origin);
+  if (path === '/reads/corpus-doc') return corpusDocRoute(b, env, origin, user);
+  if (path === '/reads/corpus-extract') return corpusExtract(b, env, origin, user);
+  if (path === '/reads/corpus-position') return corpusPositionRoute(b, env, origin, user);
+  if (path === '/reads/corpus-register') return corpusRegisterRoute(b, env, origin, user);
+  return json({ ok: false, error: 'not_found' }, 404, origin, env);
+}
+/* POST /reads/corpus: every document with its counts and its cost, and the register pool (the approved lines by the exemplar they match). */
+async function corpusList(env, origin) {
+  const docs = (await sbRest(env, 'house_docs?select=' + CORPUS_DOC_COLS + '&order=at.desc&limit=200')) || [];
+  const pos = (await sbRest(env, 'house_positions?select=doc_id,status&limit=5000').catch(excQuiet('corpus_list_pos', []))) || [];
+  const reg = (await sbRest(env, 'house_register?select=' + CORPUS_REG_COLS + '&order=created_at.asc&limit=2000').catch(excQuiet('corpus_list_reg', []))) || [];
+  const counts = corpusCounts(pos, reg), titles = {}, pool = {};
+  for (const d of docs) titles[d.id] = d.title;
+  for (const r of reg) if (r && r.status === 'approved') (pool[r.label] = pool[r.label] || []).push({ id: r.id, doc_id: r.doc_id, title: titles[r.doc_id] || null, page: r.page == null ? null : r.page, text: r.text });
+  const totals = corpusCountsZero();
+  for (const k of Object.keys(counts)) for (const g of ['positions', 'register']) for (const s of CORPUS.STATUS) totals[g][s] += counts[k][g][s];
+  return json({ ok: true, docs: docs.map(d => Object.assign(corpusDocOut(d), { counts: counts[d.id] || corpusCountsZero(), cost: corpusCostOf(d) })), totals, pool, labels: CORPUS.LABELS,
+    floors: { sim: CORPUS.SIM_FLOOR, alone: CORPUS.SIM_ALONE, bonus: CORPUS.BONUS, keep: CORPUS.KEEP } }, 200, origin, env);
+}
+/* POST /reads/corpus {probe}: which approved positions a read on this subject would meet, with the numbers; every word of the probe
+ * counts as a subject. One Workers AI embedding, no model paid. */
+async function corpusProbe(b, env, origin) {
+  const q = String(b.probe == null ? '' : b.probe).replace(/\s+/g, ' ').trim().slice(0, CORPUS.QUERY_CHARS);
+  if (q.length < 3) return json({ ok: false, error: 'empty' }, 200, origin, env);
+  const vec = await embedQuery(env, q).catch(excQuiet('corpus_probe_embed', null));
+  if (!vec) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+  const rows = (await sbRest(env, 'rpc/house_positions_search', { method: 'POST', body: { p_query: vec, p_count: CORPUS.SEARCH } })) || [];
+  const rank = housePositionsRank(rows, corpusWords(q)), r3 = x => Math.round((Number(x) || 0) * 1000) / 1000;
+  const out = x => ({ id: x.r.id, title: x.r.doc_title || null, page: x.r.page == null ? null : x.r.page, text: x.r.text, sim: r3(x.sim), overlap: x.overlap, kept: x.kept });
+  return json({ ok: true, probe: q, kept: rank.keep.map(out), considered: rank.considered.slice(0, CORPUS.CONSIDERED).map(out), floors: { sim: CORPUS.SIM_FLOOR, alone: CORPUS.SIM_ALONE, bonus: CORPUS.BONUS } }, 200, origin, env);
+}
+/* A document with its positions and its register lines, approved first, by page. */
+async function corpusDocView(env, id, origin, extra) {
+  const doc = await corpusDoc(env, id);
+  if (!doc) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const P = (await sbRest(env, 'house_positions?doc_id=eq.' + doc.id + '&select=' + CORPUS_POS_COLS + '&order=created_at.asc&limit=200')) || [];
+  const G = (await sbRest(env, 'house_register?doc_id=eq.' + doc.id + '&select=' + CORPUS_REG_COLS + '&order=created_at.asc&limit=200')) || [];
+  const rank = s => s === 'approved' ? 0 : s === 'proposed' ? 1 : 2, by = (a, b) => rank(a.status) - rank(b.status) || (a.page || 0) - (b.page || 0);
+  return json(Object.assign({ ok: true, doc: corpusDocOut(doc), positions: P.slice().sort(by), register: G.slice().sort(by), cost: corpusCostOf(doc), labels: CORPUS.LABELS }, extra || {}), 200, origin, env);
+}
+/* POST /reads/corpus-doc {id, title?, kind?, confidential?, retire?}: the document as it stands, or one change to it. Marked confidential,
+ * its positions are retired (marked back, they stay retired until approved again); retired, nothing from it reaches a writer. */
+async function corpusDocRoute(b, env, origin, user) {
+  const doc = await corpusDoc(env, b.id);
+  if (!doc) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const patch = {};
+  if (typeof b.title === 'string') { const t = corpusDash(b.title.replace(/\s+/g, ' ').trim()).slice(0, CORPUS.TITLE_MAX); if (t.length < 2) return json({ ok: false, error: 'title_too_short' }, 200, origin, env); patch.title = t; }
+  if (typeof b.kind === 'string') { if (!CORPUS.KINDS.includes(b.kind)) return json({ ok: false, error: 'bad_kind' }, 200, origin, env); patch.kind = b.kind; }
+  if (typeof b.confidential === 'boolean') patch.confidential = b.confidential;
+  if (typeof b.retire === 'boolean') patch.status = b.retire ? 'retired' : (doc.extract && doc.extract.landed_at ? 'extracted' : 'uploaded');
+  if (!Object.keys(patch).length) return corpusDocView(env, doc.id, origin);
+  await sbRest(env, 'house_docs?id=eq.' + doc.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch });
+  let retired = 0;
+  if (patch.confidential === true) {
+    const r = await sbRest(env, 'house_positions?doc_id=eq.' + doc.id + '&status=neq.retired&select=id', { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { status: 'retired', updated_at: new Date().toISOString() } });
+    retired = Array.isArray(r) ? r.length : 0;
+  }
+  await housePositionsDirty(env);
+  logEvent(env, 'intelligence', 'reads', 'corpus_doc', null, { id: doc.id, patch: Object.keys(patch), retired, by: user.id });
+  return corpusDocView(env, doc.id, origin, { retired });
+}
+/* POST /reads/corpus-extract {id, again?}: the reading, the admin's click. One request on the doc tier under Method 5.0 (the engine's
+ * corpusExtractSubmit), on the batch; the gate holds its worst case until the drain lands it (corpusLand). A document is never read twice
+ * unless asked (again), and one reading at a time: the document is claimed before anything is paid. */
+async function corpusExtract(b, env, origin, user) {
+  const doc = await corpusDoc(env, b.id);
+  if (!doc) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  if (doc.status === 'retired') return json({ ok: false, error: 'retired' }, 200, origin, env);
+  const x = doc.extract || {}, now = Date.now(), at = new Date(now).toISOString();
+  if (doc.status === 'reading' && now - Date.parse(x.sent_at || 0) < CORPUS.STALE_MS) return json({ ok: false, error: 'reading_now', doc: corpusDocOut(doc) }, 200, origin, env);
+  if (x.landed_at && b.again !== true) return json({ ok: false, error: 'already_read', doc: corpusDocOut(doc) }, 200, origin, env);
+  if (typeof corpusExtractSubmit !== 'function') return json({ ok: false, error: 'unbuilt' }, 200, origin, env);
+  const got = await corpusText(env, doc);
+  if (!got.ok) return json({ ok: false, error: got.error }, 200, origin, env);
+  const pg = corpusPages(got.text), marked = corpusMarked(pg), n = (parseInt(x.n, 10) || 0) + 1;
+  const prior = doc.status === 'reading' ? (x.landed_at ? 'extracted' : 'uploaded') : doc.status;
+  const claim = await sbRest(env, 'house_docs?id=eq.' + doc.id + '&status=eq.' + doc.status, { method: 'PATCH', headers: { Prefer: 'return=representation' },
+    body: { status: 'reading', extract: Object.assign({}, x, { n, sent_at: at, by: user.id, again: b.again === true, prior, error: null }) } }).catch(excQuiet('corpus_claim', null));
+  if (!Array.isArray(claim) || !claim.length) return json({ ok: false, error: 'reading_now' }, 200, origin, env);
+  const sub = await corpusExtractSubmit(env, doc, corpusExtractPrompt(doc, marked, pg), n);
+  if (!sub || !sub.ok) {
+    await sbRest(env, 'house_docs?id=eq.' + doc.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: prior, extract: Object.assign({}, x, { error: String((sub && sub.error) || 'refused').slice(0, 120), failed_at: at }) } }).catch(excQuiet('corpus_unclaim'));
+    return json({ ok: false, error: (sub && sub.error) || 'refused', detail: (sub && sub.detail) || null, spent: sub && sub.spent, cap: sub && sub.cap, est: sub && sub.est }, 200, origin, env);
+  }
+  const ex = Object.assign({}, x, { n, sent_at: at, by: user.id, again: b.again === true, prior, batch_id: sub.batch_id, custom_id: sub.custom_id || null, est_usd: sub.est_usd,
+    marked: pg.marked, pages_read: marked.through, cut: marked.cut, chars_read: marked.chars, error: null, failed_at: null });
+  await sbRest(env, 'house_docs?id=eq.' + doc.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { extract: ex } });
+  logEvent(env, 'intelligence', 'reads', 'corpus_extract_sent', null, { id: doc.id, n, est_usd: sub.est_usd, chars: marked.chars, cut: marked.cut, by: user.id });
+  return json({ ok: true, sent: true, id: doc.id, batch_id: sub.batch_id, est_usd: sub.est_usd, doc: corpusDocOut(Object.assign({}, doc, { status: 'reading', extract: ex })) }, 200, origin, env);
+}
+/* Called by claudeBatchDrain when a corpus_extract request lands. The answer is shaped against the document's own text and written as
+ * proposed: on a second reading the first reading's proposals that were never approved, retired or edited go, and a line already kept
+ * (or one an admin edited away from, or one that holds a kept line or sits inside one) is not proposed again; the positions are
+ * embedded as they land, so approving one is one click. The receipt says what it cost. A request that failed puts the document back
+ * where it was, with the error. The drain catches what this throws. */
+async function corpusLand(env, docId, patch, job) {
+  const doc = await corpusDoc(env, docId);
+  if (!doc) return { skipped: 'no_doc' };
+  const x = doc.extract || {}, at = new Date().toISOString(), cid = job && job.custom_id;
+  if (cid && x.custom_id && cid !== x.custom_id) return { skipped: 'superseded' };   // a later reading was sent; this answer is not the document's
+  const back = doc.status === 'reading' ? (x.prior || (x.landed_at ? 'extracted' : 'uploaded')) : doc.status;
+  if (!patch || patch.status !== 'done') {
+    await sbRest(env, 'house_docs?id=eq.' + doc.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: back, extract: Object.assign({}, x, { error: String((patch && patch.error) || 'failed').slice(0, 160), failed_at: at }) } });
+    logEvent(env, 'intelligence', 'reads', 'corpus_extract_failed', null, { id: doc.id, error: String((patch && patch.error) || '').slice(0, 120) });
+    return { ok: false, failed: true };
+  }
+  const got = await corpusText(env, doc), pg = corpusPages(got.ok ? got.text : '');
+  const shaped = corpusExtractShape(parseModelJson(patch.result) || extractJson(patch.result), doc, pg);
+  await sbRest(env, 'house_positions?doc_id=eq.' + doc.id + '&status=eq.proposed&edited=is.null', { method: 'DELETE' });
+  await sbRest(env, 'house_register?doc_id=eq.' + doc.id + '&status=eq.proposed', { method: 'DELETE' });
+  const keptP = (await sbRest(env, 'house_positions?doc_id=eq.' + doc.id + '&select=text,edited').catch(excQuiet('corpus_land_kept', []))) || [];
+  const keptR = (await sbRest(env, 'house_register?doc_id=eq.' + doc.id + '&select=text').catch(excQuiet('corpus_land_kept_r', []))) || [];
+  const hasP = keptP.map(r => corpusNorm(r.text)).concat(keptP.map(r => corpusNorm(r.edited && r.edited.before))).filter(Boolean), hasR = keptR.map(r => corpusNorm(r.text)).filter(Boolean);
+  const near = (t, kept) => { const a = corpusNorm(t); return kept.some(k => k === a || k.indexOf(a) >= 0 || a.indexOf(k) >= 0); };
+  const P = shaped.positions.filter(p => !near(p.text, hasP)), G = shaped.register.filter(r => !near(r.text, hasR));
+  const vecs = P.length ? await kbEmbed(env, P.map(p => corpusPassage(p.text, p.topics))).catch(excQuiet('corpus_land_embed', null)) : null;
+  if (P.length) await sbRest(env, 'house_positions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: P.map((p, i) => ({ doc_id: doc.id, page: p.page, text: p.text, quote: p.quote, topics: p.topics, status: 'proposed', embedding: vecs && vecs[i] ? vecs[i] : null })) });
+  if (G.length) await sbRest(env, 'house_register', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: G.map(r => ({ doc_id: doc.id, page: r.page, text: r.text, label: r.label, status: 'proposed' })) });
+  const u = patch.usage || {}, again = shaped.positions.length - P.length + shaped.register.length - G.length;
+  const dropped = shaped.dropped.concat(again > 0 ? [{ kind: 'line', why: 'already_kept', text: again + ' already in the corpus' }] : []).slice(0, CORPUS.DROPPED);
+  const ex = Object.assign({}, x, { landed_at: at, cost_usd: Number(patch.cost_usd) || 0, stop_reason: patch.stop_reason || null,
+    tokens: { in: u.input_tokens || 0, out: u.output_tokens || 0, cache_write: u.cache_creation_input_tokens || 0, cache_read: u.cache_read_input_tokens || 0 },
+    proposed: { positions: P.length, register: G.length }, wrote: shaped.wrote, dropped, model: (job && job.model) || null, voice: 'Method 5.0', embedded: P.length ? !!vecs : null,
+    error: got.ok ? null : got.error, failed_at: null });
+  await sbRest(env, 'house_docs?id=eq.' + doc.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { status: doc.status === 'retired' ? 'retired' : 'extracted', extract: ex } });
+  logEvent(env, 'intelligence', 'reads', 'corpus_extract', null, { id: doc.id, n: x.n || 1, cost_usd: ex.cost_usd, positions: P.length, register: G.length, dropped: shaped.dropped.length });
+  return { ok: true, positions: P.length, register: G.length };
+}
+/* POST /reads/corpus-position: {id, status} approves, retires or puts back a position; {id, text?, topics?} is one direct edit (the text
+ * keeps what it was before, and is embedded again); {doc_id, text, topics?, page?} with no id is a position written by hand, approved as
+ * written. A confidential document takes none. Every change clears the ready mark, so the next read sees the corpus as it now stands. */
+async function corpusPositionRoute(b, env, origin, user) {
+  const now = new Date().toISOString(), by = user.id;
+  if (!b.id) {
+    const doc = await corpusDoc(env, b.doc_id);
+    if (!doc) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+    if (doc.confidential) return json({ ok: false, error: 'confidential_register_only' }, 200, origin, env);
+    const t = corpusPositionText(b.text); if (t.error) return json({ ok: false, error: t.error }, 200, origin, env);
+    const topics = corpusTopics(b.topics), pn = parseInt(b.page, 10), page = Number.isFinite(pn) && pn > 0 && (!doc.pages || pn <= doc.pages) ? pn : null;
+    const vec = await kbEmbed(env, [corpusPassage(t.text, topics)]).catch(excQuiet('corpus_embed_hand', null));
+    if (!vec || !vec[0]) return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+    await sbRest(env, 'house_positions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: [{ doc_id: doc.id, page, text: t.text, quote: null, topics, status: 'approved', embedding: vec[0], approved_by: by, approved_at: now, created_by: by }] });
+    await housePositionsDirty(env);
+    logEvent(env, 'intelligence', 'reads', 'corpus_position', null, { doc_id: doc.id, hand: true, by });
+    return corpusDocView(env, doc.id, origin);
+  }
+  const k = corpusId(b.id), rows = k ? ((await sbRest(env, 'house_positions?id=eq.' + k + '&select=' + CORPUS_POS_COLS + ',embedding&limit=1')) || []) : [], p = rows[0];
+  if (!p) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const doc = await corpusDoc(env, p.doc_id), patch = { updated_at: now };
+  let embed = false;
+  if (typeof b.text === 'string') { const t = corpusPositionText(b.text); if (t.error) return json({ ok: false, error: t.error }, 200, origin, env); if (t.text !== p.text) { patch.text = t.text; patch.edited = { before: p.text, by, at: now }; embed = true; } }
+  if (b.topics != null) { const tp = corpusTopics(b.topics); if (tp.join('|') !== (p.topics || []).join('|')) { patch.topics = tp; embed = true; } }
+  if (typeof b.status === 'string') {
+    if (!CORPUS.STATUS.includes(b.status)) return json({ ok: false, error: 'bad_status' }, 200, origin, env);
+    if (b.status === 'approved' && doc && doc.confidential) return json({ ok: false, error: 'confidential_register_only' }, 200, origin, env);
+    patch.status = b.status;
+    if (b.status === 'approved') { patch.approved_by = by; patch.approved_at = now; if (!p.embedding) embed = true; }
+  }
+  if (embed) {
+    const v = await kbEmbed(env, [corpusPassage(patch.text || p.text, patch.topics || p.topics)]).catch(excQuiet('corpus_embed_one', null));
+    if (v && v[0]) patch.embedding = v[0];
+    else if (patch.status === 'approved' || p.status === 'approved') return json({ ok: false, error: 'embed_failed' }, 200, origin, env);
+  }
+  await sbRest(env, 'house_positions?id=eq.' + p.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch });
+  await housePositionsDirty(env);
+  logEvent(env, 'intelligence', 'reads', 'corpus_position', null, { id: p.id, doc_id: p.doc_id, status: patch.status || null, edited: !!patch.text, topics: !!patch.topics, by });
+  return corpusDocView(env, p.doc_id, origin);
+}
+/* POST /reads/corpus-register {id, status?, label?, text?}: a register line approved, retired or put back; its label set from the
+ * Method's exemplars; its text trimmed. A trim stays the document's own words: a line that is not in the document is refused. */
+async function corpusRegisterRoute(b, env, origin, user) {
+  const k = corpusId(b.id), rows = k ? ((await sbRest(env, 'house_register?id=eq.' + k + '&select=' + CORPUS_REG_COLS + '&limit=1')) || []) : [], r = rows[0];
+  if (!r) return json({ ok: false, error: 'not_found' }, 200, origin, env);
+  const now = new Date().toISOString(), patch = {};
+  if (typeof b.status === 'string') {
+    if (!CORPUS.STATUS.includes(b.status)) return json({ ok: false, error: 'bad_status' }, 200, origin, env);
+    patch.status = b.status;
+    if (b.status === 'approved') { patch.approved_by = user.id; patch.approved_at = now; }
+  }
+  if (typeof b.label === 'string' && b.label !== r.label) { if (!CORPUS.LABELS.includes(b.label)) return json({ ok: false, error: 'bad_label' }, 200, origin, env); patch.label = b.label; }
+  if (typeof b.text === 'string') {
+    const t = b.text.replace(/\s+/g, ' ').trim();
+    if (t !== r.text) {
+      if (/\u2014/.test(t)) return json({ ok: false, error: 'em_dash' }, 200, origin, env);
+      if (corpusNorm(t).split(' ').filter(Boolean).length < CORPUS.REGISTER_WORDS) return json({ ok: false, error: 'too_short' }, 200, origin, env);
+      const doc = await corpusDoc(env, r.doc_id), got = await corpusText(env, doc);
+      if (!got.ok) return json({ ok: false, error: got.error }, 200, origin, env);
+      if (corpusNorm(got.text).indexOf(corpusNorm(t)) < 0) return json({ ok: false, error: 'not_in_document', say: 'A register line is the document\'s own words: trim it, never rewrite it.' }, 200, origin, env);
+      patch.text = t;
+    }
+  }
+  if (!Object.keys(patch).length) return corpusDocView(env, r.doc_id, origin);
+  await sbRest(env, 'house_register?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: patch });
+  logEvent(env, 'intelligence', 'reads', 'corpus_register', null, { id: r.id, doc_id: r.doc_id, status: patch.status || null, label: patch.label || null, trimmed: !!patch.text, by: user.id });
+  return corpusDocView(env, r.doc_id, origin);
+}
+/* ═══ SEAM:HOUSE_CORPUS (EX53b): the corpus to every writer. The house reads (WEEKLY, monthly, the Record, the Report, RECON) get
+ * what EXCAVATE got in EX53: the house's own dated claims on the subject, with how each call turned out, read before the evidence.
+ * A RECON's subject is its brief (the entity and its competitors, on the graph, no row created); every other kind's subject is
+ * what its window's stories name (the lake's links on the pack's signals, the most-linked first). The block is context, never
+ * evidence: the real-stats law stands, and a figure inside a claim is not a figure the read may print. Nothing here spends: the
+ * block rides inside the compile's own call, about forty tokens a claim, twenty-four claims at most. ═══ */
+const HOUSE_CORPUS = { PER_ENTITY: 6, MAX: 24, NIGHTS: 120, ENTITIES: 6, MIN_LINKS: 2, CLAIM_CHARS: 200, KEEP_CHARS: 160, SIM: 0.6, CHUNK: 100, NOTES: 12 };
+/* PURE: the grade's words. */
+function houseGradeWords(g) { return g === 'held' ? 'the call held' : g === 'missed' ? 'the call missed' : g === 'unmeasured' ? 'the call unmeasured' : 'ungraded'; }
+/* PURE: one claim as the writer reads it. */
+function houseCorpusLine(i, r) {
+  return 'C' + (i + 1) + ' [' + (r.night || 'undated') + ', ' + (r.confidence || 'Low') + ', ' + houseGradeWords(r.grade) + ', ' + (r.src === 'door' ? 'deployed' : 'a live read') + (r.entity ? ', on ' + r.entity : '') + '] ' +
+    String(r.claim || '').replace(/\s+/g, ' ').trim().slice(0, HOUSE_CORPUS.CLAIM_CHARS);
+}
+/* PURE: the block. Empty is said plainly; nothing is invented as history. */
+function houseCorpusBlock(rows, subjects) {
+  const head = 'WHAT THE HOUSE ALREADY HOLDS ON THIS SUBJECT', on = subjects && subjects.length ? subjects.slice(0, 8).join(', ') : '';
+  if (!rows || !rows.length) return head + ': nothing on record yet. This is the first reading the house writes on ' + (on || 'this subject') + '; there is no history to name, and none is to be invented.';
+  return head + ' (C1..C' + rows.length + ': our own dated findings from earlier readings' + (on ? ' on ' + on : '') + '; "the call held" or "the call missed" says how the bet behind that reading turned out; ' +
+    'context for continuity, never evidence, never a source to cite; a figure inside a claim is not a figure this read may print unless the evidence below carries it. ' +
+    'A pattern or finding that repeats a claim here says so and develops it: what moved since. A claim graded missed is named as missed, never written again as new. A finding that contradicts a held claim says which and why.):\n' +
+    rows.map((r, i) => houseCorpusLine(i, r)).join('\n');
+}
+/* PURE: the most-linked entities of a window: {entity_id: links} to [{id, links}], at least MIN_LINKS, ENTITIES at most. */
+function houseCorpusTop(counts) {
+  return Object.keys(counts || {}).map(id => ({ id, links: Number(counts[id]) || 0 })).filter(x => x.links >= HOUSE_CORPUS.MIN_LINKS)
+    .sort((a, b) => b.links - a.links || (a.id < b.id ? -1 : 1)).slice(0, HOUSE_CORPUS.ENTITIES);
+}
+/* PURE: the rows the read keeps on its row: newest first, one per claim, MAX at most; and the meta the first week counts. */
+function houseCorpusKeep(rows) {
+  const seen = new Set(), out = [];
+  for (const r of (rows || []).slice().sort((a, b) => String(b.night || '').localeCompare(String(a.night || '')))) {
+    if (!r || !r.claim || seen.has(r.id)) continue; seen.add(r.id); out.push(r); if (out.length >= HOUSE_CORPUS.MAX) break;
+  }
+  return out;
+}
+function houseCorpusMeta(rows, entities, category, ms) {
+  const graded = { held: 0, missed: 0, unmeasured: 0, ungraded: 0 };
+  for (const r of rows || []) graded[r.grade === 'held' || r.grade === 'missed' || r.grade === 'unmeasured' ? r.grade : 'ungraded']++;
+  return { n: (rows || []).length, entities: (entities || []).map(e => ({ id: e.id, name: e.name, links: e.links || null })), category: category || null, graded, ids: (rows || []).map(r => r.id),
+    claims: (rows || []).map(r => ({ id: r.id, claim: String(r.claim || '').slice(0, HOUSE_CORPUS.KEEP_CHARS), grade: r.grade || null, night: r.night || null })), ms: ms || 0, at: new Date().toISOString() };
+}
+/* PURE: the words of a title for the repeat test: lower case, letters and digits, the small words dropped. */
+function houseTitleWords(s) {
+  const stop = /^(?:the|a|an|and|or|of|to|in|on|for|by|with|as|at|is|are|was|were|be|it|its|this|that|their|they|them|now|still|than|from|into|over|under|up|out|not|no|has|have|had|will|who|what|when|where|how|why|more|most|less|new|next|first|last|week|month|period)$/;
+  return new Set(String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !stop.test(w)));
+}
+/* PURE: how alike two titles are: the shared words over the smaller set, so a title that carries a claim whole reads 1. */
+function houseTitleSim(a, b) {
+  const A = houseTitleWords(a), B = houseTitleWords(b); if (A.size < 3 || B.size < 3) return 0;
+  let n = 0; for (const w of A) if (B.has(w)) n++;
+  return n / Math.min(A.size, B.size);
+}
+const HOUSE_SAID = /\b(?:the house (?:called|held|said|deployed|already|wrote|read|holds)|we (?:called|said|held|wrote|read) (?:this|it|that)|(?:as|what) we (?:called|said|wrote)|the record (?:holds|held|called|says|said)|the call (?:held|missed)|called (?:this|it) on|on record|since (?:we|the house)\b)/i;
+const HOUSE_MISSED = /\b(?:missed|the call missed|got (?:this|it) wrong|was wrong|did not hold|didn't hold)\b/i;
+/* PURE: the repeat notes. A written pattern or finding whose title is near a held or ungraded claim (SIM) and whose text never says
+ * the house already called it is noted house:repeat:<path>; one near a missed claim whose text never says missed is noted
+ * house:missed:<path>. Notes, never a hold. */
+function houseRepeatNotes(read, hc) {
+  const claims = hc && Array.isArray(hc.claims) ? hc.claims.filter(c => c && c.claim) : [];
+  if (!read || !claims.length) return [];
+  const notes = [];
+  for (const key of ['patterns', 'findings']) {
+    const units = Array.isArray(read[key]) ? read[key] : [];
+    units.forEach((u, i) => {
+      if (!u || typeof u !== 'object' || notes.length >= HOUSE_CORPUS.NOTES) return;
+      const title = String(u.name || u.title || ''), text = JSON.stringify(u);
+      let best = null, bs = 0;
+      for (const c of claims) { const s = houseTitleSim(title, c.claim); if (s > bs) { bs = s; best = c; } }
+      if (!best || bs < HOUSE_CORPUS.SIM) return;
+      if (best.grade === 'missed') { if (!HOUSE_MISSED.test(text)) notes.push('house:missed:' + key + '[' + i + '].' + (u.name != null ? 'name' : 'title')); return; }
+      if (!HOUSE_SAID.test(text)) notes.push('house:repeat:' + key + '[' + i + '].' + (u.name != null ? 'name' : 'title'));
+    });
+  }
+  return notes;
+}
+/* The brief's subjects on the graph: the entity and its competitors, by name or alias, no row created. */
+async function houseCorpusBriefEntities(env, frame) {
+  const f = frame || {}, names = [f.entity].concat(Array.isArray(f.competitors) ? f.competitors : []).map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => x.replace(/\s/g, '').length >= ENTITY.MIN_NAME).slice(0, 1 + ENTITY_MEASURE.MAX_COMPETITORS);
+  if (!names.length || typeof entityMap !== 'function') return [];
+  const map = await entityMap(env), out = [], seen = new Set();
+  for (const nm of names) { const hit = map[nm.toLowerCase()]; if (hit && hit.id && !seen.has(hit.id)) { seen.add(hit.id); out.push({ id: hit.id, name: hit.name || nm, how: 'brief' }); } }
+  return out;
+}
+/* The window's subjects: the entities the pack's stories are linked to on the lake, the most-linked first. */
+async function houseCorpusWindowEntities(env, items) {
+  const sids = [...new Set((items || []).map(it => it && it.signal_id).filter(x => /^[0-9a-f-]{36}$/i.test(String(x || ''))))];
+  if (!sids.length) return [];
+  const counts = {};
+  for (let i = 0; i < sids.length; i += HOUSE_CORPUS.CHUNK) {
+    const rows = (await sbRest(env, 'signal_entities?signal_id=in.(' + sids.slice(i, i + HOUSE_CORPUS.CHUNK).join(',') + ')&select=entity_id').catch(excQuiet('house_corpus_links', []))) || [];
+    for (const r of rows) if (r && r.entity_id) counts[r.entity_id] = (counts[r.entity_id] || 0) + 1;
+  }
+  const top = houseCorpusTop(counts);
+  if (!top.length) return [];
+  const ents = (await sbRest(env, 'entities?id=in.(' + top.map(t => t.id).join(',') + ')&active=eq.true&select=id,name').catch(excQuiet('house_corpus_names', []))) || [];
+  const byId = {}; for (const e of ents) byId[e.id] = e.name;
+  return top.filter(t => byId[t.id]).map(t => ({ id: t.id, name: byId[t.id], links: t.links, how: 'window' }));
+}
+/* What the house already holds for a read: the subjects, their claims (deployed and live, dated, graded), the block and the meta.
+ * A RECON reads its brief's entities; every other kind reads its window's. A RECON whose brief names no entity on the graph reads
+ * the claims on its category, if any. Never throws: a corpus that cannot be read leaves the read as it was, with the honest line. */
+async function houseClaimsFor(env, kind, row, items, recon) {
+  const t0 = Date.now(), f = recon && recon.frame ? recon.frame : null;
+  let ents = [], category = f && f.category ? String(f.category).replace(/\s+/g, ' ').trim().slice(0, 60) : null;
+  try { ents = f ? await houseCorpusBriefEntities(env, f) : await houseCorpusWindowEntities(env, items); } catch (e) { excQuiet('house_corpus_subjects')(e); ents = []; }
+  const since = new Date(Date.now() - HOUSE_CORPUS.NIGHTS * 864e5).toISOString().slice(0, 10);
+  let rows = [];
+  for (const e of ents.slice(0, HOUSE_CORPUS.ENTITIES)) {
+    const rs = (await sbRest(env, 'rpc/claim_corpus', { method: 'POST', body: { p_entities: [e.id], p_deployed: false, p_since: since, p_limit: HOUSE_CORPUS.PER_ENTITY } }).catch(excQuiet('house_corpus_rows', []))) || [];
+    for (const r of rs) if (r && r.claim) rows.push(Object.assign({}, r, { entity: e.name }));
+  }
+  if (!rows.length && category && category.length >= 3) {
+    const rs = (await sbRest(env, 'claims?frame->>category=ilike.' + encodeURIComponent('*' + category.replace(/[%_*,()"]/g, ' ').trim() + '*') + '&night=gte.' + since + '&select=id,src,reading_id,night,claim,confidence,grade,on_record&order=night.desc,written_at.desc&limit=' + (HOUSE_CORPUS.PER_ENTITY * 2)).catch(excQuiet('house_corpus_category', []))) || [];
+    for (const r of rs) if (r && r.claim) rows.push(Object.assign({}, r, { entity: category }));
+  }
+  const kept = houseCorpusKeep(rows), subjects = ents.map(e => e.name).concat(!ents.length && category && kept.length ? [category] : []);
+  const calib = kept.length && typeof calibrationSubjectLines === 'function' ? await calibrationSubjectLines(env, ents, category).catch(excQuiet('calib_lines', [])) : [];   // SEAM:SCORECARD (EX54): how our calls on each subject turned out, at three calls or more
+  return { text: houseCorpusBlock(kept, subjects) + (calib.length ? '\n' + calib.join('\n') : ''), meta: Object.assign(houseCorpusMeta(kept, ents, category, Date.now() - t0), calib.length ? { calibration: calib } : {}), rows: kept };
 }
 /* The corpus on a frame: the claims linked to the entity the frame names (the graph's name or alias; no row is created for a
  * frame that has not been written yet). deployed reads the record's deployments only; otherwise everything the house knows. */
@@ -11432,13 +12538,14 @@ async function doorReadRoute(request, env, origin) {
   const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
   if (!/^[0-9a-f-]{36}$/.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
   const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,night,status,frame,measures,read,evidence,meta,updated_at').catch(excQuiet('door_rows', []))) || [];
-  const r = rows[0];
+  const r = rows[0] || (typeof spaceReadFor === 'function' ? await spaceReadFor(env, id, user) : null);   // SEAM:SPACES (NT1): a held space's private reading opens for its holder, a grantee or an admin
   if (!r || !r.read) return json({ ok: false, error: 'not_ready' }, 200, origin, env);
   const f = r.frame || {}, rd = r.read;
   const data = Object.assign({}, rd, { frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null },
     measures: r.measures || null, model: { lane: 'overnight', model: CLAUDE.TIERS.live.model, reason: r.status === 'reused' ? 'reused: evidence unchanged' : null, cached: false }, compiled_at: r.updated_at || null,
     overnight: { night: r.night, status: r.status, since: (r.meta && r.meta.since) || null, prev_night: (r.meta && r.meta.prev_night) || null, deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, called: (r.meta && r.meta.called) || null, watch: rd.watch || null, place: doorPlaceOf(r.evidence) },   // SEAM:RECORD_LAW
     blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND
+    house_note: typeof netNoteOf === 'function' ? netNoteOf(r.meta) : null,   // SEAM:NET_PASS (NT2): the house's applied note on the deep dive's payload; the page renders it under the band (NT3)
     query: f.query || f.title || '', title: f.title || null,
     relevance: { framed: !!f.anchors, kept: (r.evidence || []).length, set_aside: (r.meta && r.meta.set_aside) || 0, restored: 0 }, timing: null, signals: [], connectors: [] });
   return json({ ok: true, data }, 200, origin, env);
@@ -11686,6 +12793,880 @@ async function excavateTrackAdd(request, env, origin) {
   } catch (e) { return json({ ok: false, error: 'insert_failed' }, 200, origin, env); }
 }
 
+/* ═══ SEAM:NET_PASS (NT2 THE PASS): the morning pass. The 06:10 chain no longer sends: it holds the night for the house
+ * (night_held). The house acts on the nights room (publish a held reading on a note, make one the lead, pull a deployment, set
+ * the order, apply a note) and presses "Pass and send": the day's set is written once on the night's pass record (night_pass:
+ * the lead, the deployments in order, the pulled), published (doorPublish, the record's cache cleared) and sent (pushNightly,
+ * the same function the chain ran, readers and seats, the Monday brief on its day). If nobody passes by NET.CUTOFF_H in Chicago
+ * on the night's date (07:00, DST from the zone: 12:00 UTC in daylight time, 13:00 in standard), the half hour's cron passes the
+ * night as it stands and sends it exactly as the chain did. A night whose compiles are still out (door_read jobs submitted on
+ * the ledger) sends when they land, to the UTC day's last hour (NET.LAST_UTC_H), then sends what is ready. A send is claimed on
+ * the log (night_send; the earliest live claim sends, a claim older than LEASE_MS is a sender that died) and recorded once
+ * (night_sent). A seat's private readings are never passed by the house; their push waits for the same pass or cutoff. NET.PASS
+ * false is the chain's send, as before. No model is asked. ═══ */
+const NET = { PASS: true, TZ: 'America/Chicago', CUTOFF_H: 7, LAST_UTC_H: 23, LEASE_MS: 15 * 60e3, PULLED: 'pulled_by_house', NOTE_MAX: 600,
+  EVENTS: ['night_held', 'night_pass', 'night_send', 'night_sent'], EVENTS_MAX: 400, NIGHT_ROWS: 200 };
+/* PURE: Chicago's offset from UTC in hours at t by the US rule (since 2007): daylight time from the second Sunday of March at
+ * 08:00 UTC to the first Sunday of November at 07:00 UTC. The clock when the runtime has no zone data; the proof holds it to Intl. */
+function netUsOffsetH(t) {
+  const y = new Date(t).getUTCFullYear();
+  const sunday = (m, nth) => 1 + ((7 - new Date(Date.UTC(y, m, 1)).getUTCDay()) % 7) + 7 * (nth - 1);
+  return t >= Date.UTC(y, 2, sunday(2, 2), 8) && t < Date.UTC(y, 10, sunday(10, 1), 7) ? -5 : -6;
+}
+/* The house's clock: the date, the hour and the minute in Chicago at t. Intl first (the runtime's zone data), the rule after. */
+function netLocal(t) {
+  const ms = Number.isFinite(t) ? t : Date.now();
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: NET.TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms));
+    const g = k => (parts.find(p => p.type === k) || {}).value;
+    const h = parseInt(g('hour'), 10) % 24, m = parseInt(g('minute'), 10);
+    if (g('year') && g('month') && g('day') && Number.isFinite(h) && Number.isFinite(m)) return { date: g('year') + '-' + g('month') + '-' + g('day'), h, m, via: 'intl' };
+  } catch (e) { console.log('net_local_intl', String(e && e.message).slice(0, 60)); }
+  const d = new Date(ms + netUsOffsetH(ms) * 3600e3);
+  return { date: d.toISOString().slice(0, 10), h: d.getUTCHours(), m: d.getUTCMinutes(), via: 'rule' };
+}
+/* PURE: the cutoff of a night as a UTC instant: CUTOFF_H in Chicago on the night's date. */
+function netCutoffAt(night) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(night || ''))) return null;
+  const [y, mo, d] = String(night).split('-').map(Number);
+  for (const off of [5, 6]) { const t = Date.UTC(y, mo - 1, d, NET.CUTOFF_H + off); const l = netLocal(t); if (l.date === night && l.h === NET.CUTOFF_H) return new Date(t).toISOString(); }
+  return null;
+}
+/* PURE: a night is due to send when the house passed it, or when the cutoff has come on the night's own date in Chicago. */
+function netDue(local, night, passed) { return !!passed || (!!local && local.date === night && local.h >= NET.CUTOFF_H); }
+/* PURE: a night's own records from activity_events rows: when the chain held it, the pass (the first stands), the send's claims,
+ * the send (the first stands). */
+function netEventsOf(events, night) {
+  const mine = (events || []).filter(e => e && NET.EVENTS.includes(e.event) && e.meta && e.meta.night === night).sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+  const first = k => mine.find(e => e.event === k) || null;
+  return { held: first('night_held'), pass: first('night_pass'), claims: mine.filter(e => e.event === 'night_send'), sent: first('night_sent') };
+}
+/* PURE: what the shelf says of a night: its state (none, open, passed, sending, sent) and the facts behind it. */
+function netNightOf(events, night, nowMs, tonight) {
+  const ev = netEventsOf(events, night), now = Number.isFinite(nowMs) ? nowMs : Date.now(), m = e => (e && e.meta) || {};
+  const live = ev.claims.filter(c => now - Date.parse(c.created_at) < NET.LEASE_MS);
+  const p = ev.pass ? m(ev.pass) : null, s = ev.sent ? m(ev.sent) : null;
+  const pass = p ? { at: ev.pass.created_at, by: p.by || null, auto: !!p.auto, lead: p.lead || null, lead_by: p.lead_by || null, order: Array.isArray(p.order) ? p.order : [], order_by: p.order_by || null, pulled: Array.isArray(p.pulled) ? p.pulled : [], pending: Number(p.pending) || 0 } : null;
+  const sent = s ? { at: ev.sent.created_at, by: s.by || null, late: Number(s.late) || 0, readers: s.push && s.push.readers != null ? Number(s.push.readers) : null, told: s.push && s.push.matched != null ? Number(s.push.matched) : null } : null;
+  return { night, state: sent ? 'sent' : live.length ? 'sending' : pass ? 'passed' : ev.held ? 'open' : 'none', current: night === tonight, on: !!NET.PASS,
+    held_at: ev.held ? ev.held.created_at : null, pass, sent, cutoff_at: netCutoffAt(night) };
+}
+/* PURE: the day's set from a night's rows (status, error, measures, meta): the lead is the house's promotion, else the largest
+ * move (the smallest rank doorPass gave it); the deployments follow in the house's order when it set one, else the ranking; a
+ * row the ranking never saw follows the ranked ones by its week's stories; the pulled are named apart. */
+function netOrder(rows) {
+  const dep = (rows || []).filter(r => r && r.status === 'ready');
+  const num = v => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+  const rank = r => { const v = num(r.meta && r.meta.move && r.meta.move.rank); return v == null ? 1e6 : v; };
+  const pos = r => num(r.meta && r.meta.pos);
+  const week = r => Number(r.measures && r.measures.recent_7d) || 0;
+  const byRank = (a, b) => rank(a) - rank(b) || week(b) - week(a) || String(a.id).localeCompare(String(b.id));
+  const housed = dep.some(r => pos(r) != null);
+  const sorted = dep.slice().sort(housed ? (a, b) => ((pos(a) == null ? 1e6 : pos(a)) - (pos(b) == null ? 1e6 : pos(b))) || byRank(a, b) : byRank);
+  const leadAt = r => String((r.meta && r.meta.lead && r.meta.lead.at) || '');
+  const promoted = dep.filter(r => r.meta && r.meta.lead).sort((a, b) => leadAt(b).localeCompare(leadAt(a)))[0] || null;
+  const lead = promoted || dep.slice().sort(byRank)[0] || null;
+  return { lead: lead ? lead.id : null, lead_by: promoted ? 'house' : lead ? 'move' : null,
+    order: lead ? [lead.id].concat(sorted.filter(r => r.id !== lead.id).map(r => r.id)) : [], order_by: housed ? 'house' : 'move',
+    pulled: (rows || []).filter(r => r && r.status === 'failed' && String(r.error || '') === NET.PULLED).map(r => r.id) };
+}
+/* PURE: the house's applied note on a reading, for the page to render under the band: its text and its date, never who. */
+function netNoteOf(meta) {
+  const ns = (meta && Array.isArray(meta.notes) ? meta.notes : []).filter(x => x && x.status === 'applied' && x.text);
+  if (!ns.length) return null;
+  const n = ns.slice().sort((a, b) => String(a.applied_at || a.at || '').localeCompare(String(b.applied_at || b.at || '')))[ns.length - 1];
+  return { text: String(n.text).slice(0, NET.NOTE_MAX), at: String(n.applied_at || n.at || '').slice(0, 10) || null };
+}
+function netPushSummary(p) { const o = p || {}; return { readers: o.readers || 0, matched: o.matched || 0, sent: o.sent || null, briefs: o.briefs || 0 }; }
+/* The night's records, one read. */
+async function netEvents(env, night) {
+  return (await sbRest(env, 'activity_events?platform=eq.intelligence&space=eq.door&event=in.(' + NET.EVENTS.join(',') + ')&meta->>night=eq.' + night + '&select=id,event,created_at,meta&order=id.asc&limit=' + NET.EVENTS_MAX).catch(excQuiet('net_events', []))) || [];
+}
+/* One record written and read back (its id orders the claims). */
+async function netEvent(env, event, meta) {
+  const back = await sbRest(env, 'activity_events', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { platform: 'intelligence', space: 'door', event, session_id: null, meta } }).catch(excQuiet('net_event_' + event, null));
+  return Array.isArray(back) ? back[0] || null : back || null;
+}
+/* The night's compiles still out: door_read jobs submitted on the ledger since the night began. A seat's private compile rides
+ * the same batch as the board's, so it is counted here without reading anyone's space. */
+async function netPending(env, night) {
+  const rows = await sbRest(env, 'claude_jobs?kind=eq.door_read&status=eq.submitted&created_at=gte.' + night + 'T00:00:00Z&select=id&limit=' + NET.NIGHT_ROWS).catch(excQuiet('net_pending', null));
+  return Array.isArray(rows) ? rows.length : 0;
+}
+async function netNightRows(env, night) {
+  return (await sbRest(env, 'door_reads?night=eq.' + night + '&status=in.(ready,failed)&select=id,status,error,measures,meta&limit=' + NET.NIGHT_ROWS).catch(excQuiet('net_rows', []))) || [];
+}
+async function netRecordBust(env) { if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(RECORD.KEY); } catch (e) { excQuiet('net_record_bust')(e); } } }
+/* After a house act: tonight's board republished, the record's cache cleared (an older night is on the record only). */
+async function netAfter(env, night) {
+  if (night === doorNight()) { try { await doorPublish(env); } catch (e) { excQuiet('net_publish')(e); } }
+  await netRecordBust(env);
+}
+/* The day's set on the board: doorPublish hands its set here. Additive: the tiles keep the order and the content doorPublish gave
+ * them; the set gains the lead, the order of every tile (the deployments in the day's order, then the reused and the carried as
+ * they stood) and the pass: when the night was passed and by the house or the cutoff (never by whom), or sent by the chain with
+ * the pass off; null before. */
+async function netSetOf(env, set) {
+  const night = set && set.night; if (!night) return {};
+  const o = netOrder(await netNightRows(env, night)), ids = (set.tiles || []).map(t => t.id), shown = new Set(ids);
+  const st = netNightOf(await netEvents(env, night), night, Date.now(), doorNight());
+  return { lead: o.lead && shown.has(o.lead) ? o.lead : null, order: o.order.filter(id => shown.has(id)).concat(ids.filter(id => o.order.indexOf(id) < 0)),
+    pass: st.pass ? { night, at: st.pass.at, by: st.pass.auto ? 'cutoff' : 'house' } : st.sent && st.sent.by === 'chain' ? { night, at: st.sent.at, by: 'chain' } : null };
+}
+/* The pass record, written once a night: the day's set as it stands (the house's lead and order when it set them, else the
+ * defaults), then the set published and the record's cache cleared. A second pass finds the first and writes nothing. */
+async function netPassWrite(env, night, by, auto) {
+  const ev = netEventsOf(await netEvents(env, night), night);
+  if (ev.pass) return { already: true, pass: ev.pass };
+  const o = netOrder(await netNightRows(env, night)), pending = await netPending(env, night);
+  const rec = await netEvent(env, 'night_pass', { night, by: String(by || 'house').slice(0, 60), auto: !!auto, lead: o.lead, lead_by: o.lead_by, order: o.order, order_by: o.order_by, pulled: o.pulled, deployments: o.order.length, pending });
+  if (!rec) return { error: 'pass_not_written' };
+  await netAfter(env, night);
+  return { pass: rec, pending, set: o };
+}
+/* The send, once a night: claimed on the log (the earliest live claim sends), then pushNightly exactly as the chain ran it, then
+ * recorded. A send that fails is not recorded, so the next half hour sends again; the push's own log keeps a reader from hearing
+ * the same reading twice. */
+async function netSend(env, night, by, late) {
+  if (night !== doorNight()) return { night, error: 'not_tonight' };
+  const now = Date.now(), live = ev => ev.claims.filter(c => now - Date.parse(c.created_at) < NET.LEASE_MS);
+  let ev = netEventsOf(await netEvents(env, night), night);
+  if (ev.sent) return { night, already: 'sent', at: ev.sent.created_at };
+  if (live(ev).length) return { night, already: 'sending', since: live(ev)[0].created_at };
+  const mine = await netEvent(env, 'night_send', { night, by });
+  if (!mine || mine.id == null) return { night, error: 'claim_not_written' };
+  ev = netEventsOf(await netEvents(env, night), night);
+  const first = live(ev)[0];
+  if (ev.sent || !first || String(first.id) !== String(mine.id)) return { night, already: 'sending' };
+  let push = null;
+  try { push = await pushNightly(env); } catch (e) { console.log('net_send_error', String(e && e.message).slice(0, 120)); return { night, error: 'push_failed' }; }
+  await netEvent(env, 'night_sent', { night, by, late: late || 0, push: netPushSummary(push) });
+  return { night, sent: true, by, late: late || 0, push };
+}
+/* The 06:10 chain's step where the push was: the night is held for the pass. With the pass off, or a log that cannot hold the
+ * night, the chain sends as it did. */
+async function netNightSend(env) {
+  const night = doorNight();
+  if (NET.PASS) {
+    const held = await netEvent(env, 'night_held', { night, cutoff_at: netCutoffAt(night) });
+    if (held) return { held: true, night, cutoff_at: netCutoffAt(night) };
+  }
+  const push = await pushNightly(env);
+  await netEvent(env, 'night_sent', { night, by: 'chain', late: 0, push: netPushSummary(push) });
+  return push;
+}
+/* The half hour's check, after the drain lands what came back: a held night sends at the house's pass, or at the cutoff when
+ * nobody passed (passed then as it stands, by the cutoff), once its compiles have landed or the UTC day's last hour has come. */
+async function netCutoff(env, opts) {
+  if (!NET.PASS) return { skipped: 'off' };
+  const t = opts && Number.isFinite(opts.now) ? opts.now : Date.now(), night = new Date(t).toISOString().slice(0, 10), local = netLocal(t);
+  const ev = netEventsOf(await netEvents(env, night), night);
+  if (ev.sent) return { night, skipped: 'sent' };
+  if (!ev.held) return { night, skipped: 'not_held' };
+  if (!netDue(local, night, !!ev.pass)) return { night, skipped: 'before_cutoff', local: local.date + ' ' + String(local.h).padStart(2, '0') + ':' + String(local.m).padStart(2, '0') };
+  const pending = await netPending(env, night);
+  if (pending && new Date(t).getUTCHours() < NET.LAST_UTC_H) return { night, waiting: pending, passed: !!ev.pass };
+  if (!ev.pass) { const w = await netPassWrite(env, night, 'cutoff', true); if (w.error) return { night, error: w.error }; }
+  return netSend(env, night, ev.pass ? 'house' : 'cutoff', pending);
+}
+/* The shelf's pass for houseNights: the window's records (one read), each night's set from its rows, tonight's compiles out. */
+async function netShelf(env, rows, t0) {
+  const tonight = doorNight(), now = Date.now(), by = {};
+  const ev = (await sbRest(env, 'activity_events?platform=eq.intelligence&space=eq.door&event=in.(' + NET.EVENTS.join(',') + ')&created_at=gte.' + t0 + '&select=id,event,created_at,meta&order=id.asc&limit=' + NET.EVENTS_MAX).catch(excQuiet('net_shelf', []))) || [];
+  for (const r of rows || []) if (r && r.night) (by[r.night] = by[r.night] || []).push(r);
+  const pending = by[tonight] ? await netPending(env, tonight) : 0;
+  return { pass: { on: !!NET.PASS, tz: NET.TZ, cutoff_h: NET.CUTOFF_H, tonight, cutoff_at: netCutoffAt(tonight) },
+    of: night => Object.assign(netNightOf(ev, night, now, tonight), netOrder(by[night] || []), night === tonight ? { pending } : {}) };
+}
+/* The routes, admin only behind readRoute. Every act is idempotent; none spends. */
+async function netPassRoute(path, body, env, origin, user) {
+  const by = String((user && (user.email || user.id)) || 'editor').replace(/@.*$/, '').slice(0, 60), at = new Date().toISOString();
+  const say = o => json(o, 200, origin, env), DASH = String.fromCharCode(0x2014);
+  const patch = (id, b) => sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: b });
+  const tell = (event, meta) => { if (typeof logEvent === 'function') logEvent(env, 'intelligence', 'door', event, null, Object.assign({ by }, meta)); };
+  if (path === '/reads/night-pass') {
+    const night = String((body && body.night) || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(night)) return say({ ok: false, error: 'bad_night' });
+    if (night !== doorNight()) return say({ ok: false, error: 'not_tonight', tonight: doorNight() });
+    const ev = netEventsOf(await netEvents(env, night), night);
+    if (ev.pass) return say({ ok: true, already: true, night, pass: netNightOf([ev.pass], night, Date.now(), night).pass, sent: ev.sent ? ev.sent.created_at : null });
+    if (NET.PASS && !ev.held && !ev.sent) return say({ ok: false, error: 'not_ready_to_pass' });   // the chain holds the night at 06:10 UTC; before that it has no rows to pass
+    const w = await netPassWrite(env, night, by, false);
+    if (w.error) return say({ ok: false, error: w.error });
+    if (w.already) return say({ ok: true, already: true, night });
+    const send = !NET.PASS ? { off: true } : w.pending ? { waiting: w.pending } : await netSend(env, night, 'house', 0);
+    return say({ ok: true, night, pass: { lead: w.set.lead, lead_by: w.set.lead_by, order: w.set.order, order_by: w.set.order_by, pulled: w.set.pulled }, send: send && send.push ? Object.assign({}, send, { push: netPushSummary(send.push) }) : send });
+  }
+  if (path === '/reads/night-order') {
+    const night = String((body && body.night) || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(night)) return say({ ok: false, error: 'bad_night' });
+    const reset = !!(body && body.reset), ids = Array.isArray(body && body.ids) ? body.ids.map(x => String(x || '').trim()) : [];
+    if (!reset && (!ids.length || ids.length > NET.NIGHT_ROWS || ids.some(x => !/^[0-9a-f-]{36}$/i.test(x)) || new Set(ids).size !== ids.length)) return say({ ok: false, error: 'bad_order' });
+    const rows = (await sbRest(env, 'door_reads?night=eq.' + night + '&status=eq.ready&select=id,status,measures,meta&limit=' + NET.NIGHT_ROWS).catch(excQuiet('net_order_rows', []))) || [];
+    const have = new Set(rows.map(r => r.id));
+    if (!reset && ids.some(x => !have.has(x))) return say({ ok: false, error: 'not_deployed' });
+    let changed = 0;
+    for (const r of rows) {
+      const i = reset ? -1 : ids.indexOf(r.id), want = i < 0 ? null : i + 1, had = r.meta && r.meta.pos != null ? Number(r.meta.pos) : null;
+      if (want === had) continue;
+      const m = Object.assign({}, r.meta || {}); if (want == null) delete m.pos; else m.pos = want;
+      await patch(r.id, { meta: m }); r.meta = m; changed++;
+    }
+    if (changed) { await netAfter(env, night); tell('night_order', { night, reset, changed }); }
+    const o = netOrder(rows);
+    return say({ ok: true, night, order: o.order, order_by: o.order_by, lead: o.lead, changed });
+  }
+  const id = String((body && body.id) || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return say({ ok: false, error: 'bad_id' });
+  const full = path === '/reads/night-publish';
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,night,status,error,frame,measures,meta' + (full ? ',read,evidence' : '')).catch(excQuiet('net_row', []))) || [];
+  const row = rows[0]; if (!row) return say({ ok: false, error: 'not_found' });
+  const meta = Object.assign({}, row.meta || {}), err = String(row.error || '');
+  if (path === '/reads/night-publish') {
+    const from = row.status === 'failed' && /^measure_claim:/.test(err) ? 'held' : row.status === 'failed' && err === NET.PULLED ? 'pulled' : null;
+    if (!from) return say({ ok: false, error: row.status === 'ready' ? 'already_deployed' : 'not_held' });
+    if (!row.read) return say({ ok: false, error: 'no_read' });
+    let notes = Array.isArray(meta.notes) ? meta.notes.filter(Boolean) : [];
+    if (body && body.note) { const r = houseNoteAdd(notes, body.note, by, at); if (r.error) return say({ ok: false, error: r.error }); notes = r.notes; }
+    if (from === 'held' && !notes.length) return say({ ok: false, error: 'note_first' });
+    const was = meta.pulled || null;
+    delete meta.pulled;
+    meta.notes = notes;
+    meta.published = { by, at, from, note: notes.length ? notes[notes.length - 1].n || null : null };
+    await patch(id, { status: 'ready', error: null, meta });
+    if (from === 'held') {   // the landing the hold stopped: the findings as claims, the read it develops marked
+      const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));
+      if (typeof claimsWrite === 'function' && typeof claimsOf === 'function') await claimsWrite(env, claimsOf('door', id, row.read, merged, row.frame, row.night, row.measures, row.frame_key, at));
+      const prevId = meta.prev_id;
+      if (prevId && /^[0-9a-f-]{36}$/.test(String(prevId))) {
+        const pr = (await sbRest(env, 'door_reads?id=eq.' + prevId + '&select=id,meta').catch(excQuiet('net_prev', []))) || [];
+        if (pr[0]) await patch(prevId, { meta: Object.assign({}, pr[0].meta || {}, { developed_by: id, developed_night: row.night }) }).catch(excQuiet('net_prev_patch'));
+      }
+    } else if (was && was.on_record) await sbRest(env, 'claims?src=eq.door&reading_id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { on_record: true, updated_at: at } }).catch(excQuiet('net_claims_back'));
+    await netAfter(env, row.night);
+    const ev = netEventsOf(await netEvents(env, row.night), row.night);
+    tell('night_publish', { id, night: row.night, from });
+    return say({ ok: true, id, status: 'ready', from, in_push: !!NET.PASS && row.night === doorNight() && !ev.sent });
+  }
+  if (path === '/reads/night-pull') {
+    if (row.status !== 'ready') return say({ ok: false, error: row.status === 'failed' && err === NET.PULLED ? 'already_pulled' : 'not_deployed' });
+    const why = String((body && body.why) || '').replace(/\s+/g, ' ').trim().slice(0, NET.NOTE_MAX);
+    if (why.indexOf(DASH) >= 0) return say({ ok: false, error: 'em_dash' });
+    const cl = (await sbRest(env, 'claims?src=eq.door&reading_id=eq.' + id + '&select=on_record&limit=1').catch(excQuiet('net_claims_was', []))) || [];
+    meta.pulled = { by, at, was: 'ready', on_record: cl[0] ? !!cl[0].on_record : null, why: why || null, lead: !!meta.lead };
+    delete meta.lead;
+    await patch(id, { status: 'failed', error: NET.PULLED, meta });
+    if (cl.length) await sbRest(env, 'claims?src=eq.door&reading_id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { on_record: false, updated_at: at } }).catch(excQuiet('net_claims_off'));
+    await netAfter(env, row.night);
+    const ev = netEventsOf(await netEvents(env, row.night), row.night);
+    tell('night_pull', { id, night: row.night });
+    return say({ ok: true, id, status: 'failed', pulled: true, sent_before: !!ev.sent });
+  }
+  if (path === '/reads/night-promote') {
+    const off = !!(body && body.off);
+    if (off) {
+      if (!meta.lead) return say({ ok: true, id, lead: false, changed: 0 });
+      delete meta.lead;
+      await patch(id, { meta });
+    } else {
+      if (row.status !== 'ready') return say({ ok: false, error: 'not_deployed' });
+      meta.lead = { by, at };
+      await patch(id, { meta });
+      const others = (await sbRest(env, 'door_reads?night=eq.' + row.night + '&id=neq.' + id + '&meta->lead=not.is.null&select=id,meta').catch(excQuiet('net_leads', []))) || [];
+      for (const o of others) { const m = Object.assign({}, o.meta || {}); delete m.lead; await patch(o.id, { meta: m }); }   // one lead a night
+    }
+    await netAfter(env, row.night);
+    tell('night_promote', { id, night: row.night, off });
+    return say({ ok: true, id, lead: !off });
+  }
+  if (path === '/reads/night-apply') {
+    const n = parseInt(body && body.n, 10), off = !!(body && body.off), notes = Array.isArray(meta.notes) ? meta.notes.filter(Boolean).slice() : [];
+    const k = notes.findIndex(x => x.n === n); if (k < 0) return say({ ok: false, error: 'no_such_note' });
+    const note = Object.assign({}, notes[k]);
+    if (off ? note.status !== 'applied' : note.status === 'applied') return say({ ok: true, id, n, applied: !off, house_note: netNoteOf(meta) });
+    if (off) { note.status = 'open'; delete note.applied_by; delete note.applied_at; } else { note.status = 'applied'; note.applied_by = by; note.applied_at = at; }
+    notes[k] = note; meta.notes = notes;
+    await patch(id, { meta });
+    await netAfter(env, row.night);
+    tell('night_apply', { id, night: row.night, n, off });
+    return say({ ok: true, id, n, applied: !off, house_note: netNoteOf(meta) });
+  }
+  return say({ ok: false, error: 'not_found' });
+}
+/* ═══ SEAM:SPACES (NT1 THE SPACES): the net's unit. A space is a row (spaces, 0061): what the door reads, keyed by the door's own
+ * frame_key, who holds it, its cadence and its state, night by night. The house holds the board's subjects (the thirty doorCandidates
+ * ranks, synced each night; one the feed and the tracks stop proposing sleeps after DORMANT_AFTER nights unseen, its record kept) and
+ * its own ventures and clients by hand (pinned: considered every night, whatever the board ranks). A paying seat holds its tracked
+ * brands and its followed categories; an audience stays a filter on the push (the lake counts no audience). A category is read from its
+ * set: the entities that share it on the rooms' list (RM1's set section), as its anchors, its evidence and its measure. A name with no
+ * entity and no track is read by its names (one of its context words required when it has some), with no measure, and is never given to
+ * the graph as a new entity; the graph resolves it by a track or by hand, and the next night's pass picks the entity up.
+ * The night: the board's thirty first, exactly as doorCandidates ranks them; then the hand spaces; then the seats' spaces that are due
+ * on their cadence, or pulled forward because their measure moved past the earned law's threshold since they were last considered (one
+ * rollup, no model). The stamp rule and the earned law decide every space as they decide the board. The cap: a space only seats hold
+ * compiles under its holder's allowance (HELD_WEEK compiles over the trailing seven days, counted on claude_jobs), and those go first, up
+ * to NIGHT_CAP less HOUSE_FLOOR a night; the house keeps DOOR_LAW.CAP inside what the night has left; a house space past the house's cap
+ * that a seat also holds compiles under that seat's allowance while the night has room. A space only seats hold is read for them
+ * alone: its rows live in space_reads, never on the board, the record, a room, the claims or another reader's push. A reader may be
+ * granted a view (space_grants). A seat's space slows a step after SLOW_AFTER considered nights unmoved and is back to nightly the night
+ * it earns a read; the house's spaces stay nightly. No model is asked here. ═══ */
+const SPACES = { NIGHT_CAP: 12, HOUSE_FLOOR: 3, HELD_WEEK: 12, HELD_MAX: 12, PER_SEAT: 12, HAND_MAX: 6, SLOW_AFTER: 5, DORMANT_AFTER: 7, SET: 8,
+  ROWS: 1000, LINKS: 300, IDS: 100, WIDE: 120, READS: 12, STEPS: ['nightly', 'every_2', 'every_3', 'weekly'], GAP: { nightly: 1, every_2: 2, every_3: 3, weekly: 7 },
+  HOLDER_PLANS: ['engine', 'partner', 'retainer'],
+  SEL: 'id,key,kind,name,entity_id,track_id,category,frame,held_by,holder_kind,pinned,cadence,considered_nights,unmoved_nights,last_considered,last_compiled_at,last_read_id,movement,seen_on,status,since' };
+// PURE: a name as a key's slug: lowercased letters and digits, single hyphens.
+function spaceSlug(name) {
+  return String(name || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+}
+// PURE: the space row a name stands for. A brand the house tracks takes the track's key (the board's own, so one subject is one key
+// whoever holds it); otherwise its name, with its entity when the graph has the name; a category its name. The words the house gave it
+// (query, names, context) ride in the frame.
+function spaceRowOf(want, tracks, map) {
+  const name = String((want && want.name) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (name.replace(/\s/g, '').length < 3) return null;
+  const lc = name.toLowerCase(), kind = want.kind === 'category' ? 'category' : 'brand';
+  const words = a => (Array.isArray(a) ? a : []).map(x => String(x || '').replace(/\s+/g, ' ').trim().slice(0, 60)).filter(x => x.length >= 2).slice(0, 8);
+  const frame = { query: String(want.query || '').replace(/\s+/g, ' ').trim().slice(0, 180) || null, names: words(want.names), context: words(want.context).map(x => x.toLowerCase()), lens: kind === 'category' ? 'market' : 'brand' };
+  if (kind === 'category') return { key: 'cat:' + spaceSlug(name), kind, name, category: lc, frame };
+  const t = (tracks || []).find(x => x && [x.name].concat(x.aliases || []).some(n => String(n || '').replace(/\s+/g, ' ').trim().toLowerCase() === lc));
+  if (t) return { key: 'track:' + t.id, kind, name: String(t.name).slice(0, 80), track_id: t.id, category: t.sector || want.category || null, frame };
+  const e = map && map[lc];
+  return { key: 'brand:' + spaceSlug(name), kind, name: e ? String(e.name).slice(0, 80) : name, entity_id: e ? e.id : null, category: want.category || null, frame };
+}
+// PURE: the house's row for one of the board's subjects tonight.
+function spaceBoardRow(c, night) {
+  return { key: c.key, kind: c.kind === 'theme' ? 'theme' : 'brand', name: String(c.title || c.key).slice(0, 90), track_id: c.kind === 'track' ? c.id : null, held_by: 'house', holder_kind: 'house', seen_on: night, status: 'active',
+    frame: { query: c.query || null, names: c.names || null, subtitle: c.subtitle || null, lens: c.lens || null } };
+}
+// PURE: nights since the board last proposed a space (since it was made, when never).
+function spaceUnseen(s, night) { const at = (s && (s.seen_on || s.since)) || null; return at ? Math.round((Date.parse(night) - Date.parse(at)) / 864e5) : 0; }
+// PURE: is a space due tonight on its cadence? Never considered: due. Otherwise its gap in nights since it was last considered.
+function spaceDue(s, night) {
+  if (!s || s.status === 'dormant') return false;
+  if (!s.last_considered) return true;
+  return Math.round((Date.parse(night) - Date.parse(s.last_considered)) / 864e5) >= (SPACES.GAP[s.cadence] || 1);
+}
+// PURE: the seats' order when the night has more due than HELD_MAX: never considered first, then the longest unconsidered.
+function spaceStale(a, b) { return String(a.last_considered || '') < String(b.last_considered || '') ? -1 : String(a.last_considered || '') > String(b.last_considered || '') ? 1 : 0; }
+// PURE: the measure a space keeps from the night it was considered, so the next night can tell whether it moved.
+function spaceMovement(m, since, night) {
+  return m && m.recent_7d != null ? { night, recent_7d: m.recent_7d, prior_7d: m.prior_7d == null ? null : m.prior_7d, outlets: m.outlets == null ? null : m.outlets, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, state: m.state || null, since: since || null }
+    : { night, measured: false };
+}
+// PURE: did a space's measure move past the earned law's threshold since it was last considered? The pull-forward's test.
+function spacePull(now, was) { return now != null && was != null && Number.isFinite(Number(now)) && Number.isFinite(Number(was)) && Math.abs(Number(now) - Number(was)) >= DOOR_LAW.MIN_DELTA; }
+/* PURE: a space's state after a night. fate: compiled (a read was written), capped (earned, past the cap: it keeps its last read or waits,
+ * and is first in line), unmoved (the stamp held, or the law said it did not move), thin (too little evidence), kept (already read tonight).
+ * A second pass the same night counts nothing twice. A seat's space slows one step after SLOW_AFTER considered nights unmoved and is
+ * nightly again when it earns; the house's spaces (the board, the hand) stay nightly. */
+function spaceNext(s, fate, night, moved) {
+  if (!s || !fate || fate === 'kept') return null;
+  const again = s.last_considered === night;
+  const out = { key: s.key, held_by: s.held_by, last_considered: night, considered_nights: (s.considered_nights || 0) + (again ? 0 : 1) };
+  if (moved) out.movement = moved;
+  if (fate === 'compiled') out.last_compiled_at = night;
+  const fast = fate === 'compiled' || fate === 'capped', quiet = fate === 'unmoved' || fate === 'thin';
+  let un = s.unmoved_nights || 0, cad = SPACES.STEPS.includes(s.cadence) ? s.cadence : 'nightly';
+  if (fast) un = 0; else if (quiet && !again) un++;
+  if (s.held_by !== 'house' && !s.pinned) {
+    if (fast) cad = 'nightly';
+    else if (un >= SPACES.SLOW_AFTER) { cad = SPACES.STEPS[Math.min(SPACES.STEPS.length - 1, SPACES.STEPS.indexOf(cad) + 1)]; un = 0; }
+  }
+  out.unmoved_nights = un; out.cadence = cad;
+  return out;
+}
+/* PURE: the night's cap across holders. jobs arrive ranked, the largest move first, as doorPass sorts them; left is each seat's allowance;
+ * spaceBy maps a key to its space. A job only seats hold goes first, charged to the first of its holders with allowance, up to
+ * NIGHT_CAP less HOUSE_FLOOR; the house's jobs keep the earned law's cap inside what the night has left; a house job past it that a seat
+ * also holds is charged to that seat while the night has room. With no seat holders it is jobs.slice(0, cap), exactly. */
+function spacesCap(jobs, left, cap, spaceBy) {
+  const room = Object.assign({}, left || {}), go = [], rest = [], charged = {}, heldMax = SPACES.NIGHT_CAP - SPACES.HOUSE_FLOOR;
+  const sp = j => (spaceBy && j && j.base && spaceBy.get(j.base.frame_key)) || null;
+  const charge = j => { const h = ((sp(j) || {}).holders || []).find(u => (room[u] || 0) > 0); if (!h) return false; room[h]--; charged[h] = (charged[h] || 0) + 1; j.charge = h; return true; };
+  let held = 0, house = 0;
+  for (const j of jobs) { const s = sp(j); if (!(s && !s.house)) continue; if (held < heldMax && charge(j)) { held++; go.push(j); } else rest.push(j); }
+  const houseRoom = Math.min(cap, SPACES.NIGHT_CAP - held);
+  for (const j of jobs) {
+    const s = sp(j); if (s && !s.house) continue;
+    if (house < houseRoom) { house++; go.push(j); continue; }
+    if (held + house < SPACES.NIGHT_CAP && charge(j)) { held++; go.push(j); continue; }
+    rest.push(j);
+  }
+  const at = new Map(jobs.map((j, i) => [j, i]));
+  go.sort((a, b) => at.get(a) - at.get(b)); rest.sort((a, b) => at.get(a) - at.get(b));
+  return { go, rest, held, house, charged };
+}
+// PURE: the night's rows split: a space only seats hold is written to space_reads; every other row is the house's record, as before.
+function spacesSplit(rows) {
+  const priv = r => !!(r && r.meta && r.meta.space && r.meta.space.private);
+  return { pub: (rows || []).filter(r => !priv(r)), priv: (rows || []).filter(priv) };
+}
+// PURE: every seat that holds one of the night's spaces.
+function spacesHoldersOf(spaceBy) { return [...new Set([].concat(...[...((spaceBy && spaceBy.values()) || [])].map(s => (s && s.holders) || [])))]; }
+// PURE: a space as the night sees it: the house's row (or none), the paying seats that hold it, every row the night will touch, and
+// whether its readings are the seats' alone.
+function spaceOn(key, byKey, paying, name) {
+  const all = (byKey && byKey.get(key)) || [];
+  const houseRow = all.find(s => s.held_by === 'house') || null;
+  const seats = all.filter(s => s.holder_kind === 'seat' && s.status === 'active' && paying && paying.has(s.held_by));
+  return { key, name: String(name || (houseRow && houseRow.name) || (seats[0] && seats[0].name) || key).slice(0, 90), kind: (houseRow || seats[0] || {}).kind || 'brand', house: !!houseRow,
+    holders: [...new Set(seats.map(s => s.held_by))], rows: (houseRow ? [houseRow] : []).concat(seats), private: !houseRow };
+}
+/* PURE: the door candidate a space stands for, in the shape doorCandidates gives the board: a tracked brand exactly as the board builds
+ * one (form track); a brand on the graph by its links (form entity); a category by its set (form category); a bare name by its names
+ * (form bare). ctx: trackBy (active tracks by id), stats (the tracks' week counts), entName (entity id to name), sets (category to set). */
+function spaceCandOf(s, ctx) {
+  if (!s) return null;
+  const f = s.frame || {}, c = ctx || {}, nm = String(s.name || '').slice(0, 90);
+  const t = s.track_id && c.trackBy ? c.trackBy.get(s.track_id) : null;
+  if (t) return { key: s.key || 'track:' + t.id, kind: 'track', id: t.id, title: String(t.name).slice(0, 90), subtitle: String(t.sector || '').slice(0, 160), query: (t.name + (t.sector ? ' ' + t.sector : '')).slice(0, 180),
+    names: [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3), lens: 'brand', velocity: ((c.stats || {})[t.id] || {}).n7 || 0, form: 'track' };
+  if (s.kind === 'category') {
+    const cat = String(s.category || s.name || '').toLowerCase().trim(), own = (Array.isArray(f.members) ? f.members : []).filter(m => m && m.id).slice(0, SPACES.SET);   // NT1a: the set the house named wins over the label
+    const set = own.length ? own.map(m => ({ id: m.id, name: String((c.entName && c.entName.get(m.id)) || m.name || '').slice(0, 90), n7: (c.n7 && c.n7.get(m.id)) || 0 })).filter(x => x.name) : ((c.sets && c.sets.get(cat)) || []);
+    if (!set.length) return null;   // a category with no subject on the graph has nothing to read yet
+    const names = set.map(x => x.name);
+    return { key: s.key, kind: 'category', id: null, title: nm, subtitle: ('The set: ' + names.slice(0, 5).join(', ')).slice(0, 160), query: (nm + ' ' + names.slice(0, 4).join(' ')).slice(0, 180),
+      names, entity_ids: set.map(x => x.id), category: cat, lens: 'market', velocity: set.reduce((a, x) => a + (x.n7 || 0), 0), form: 'category' };
+  }
+  const listed = (Array.isArray(f.names) ? f.names : []).map(x => String(x || '').trim()).filter(x => x.length >= 3);
+  if (s.entity_id) {
+    const en = (c.entName && c.entName.get(s.entity_id)) || nm;
+    return { key: s.key, kind: 'brand', id: s.entity_id, title: nm, subtitle: String(s.category || '').slice(0, 160), query: String(f.query || (nm + (s.category ? ' ' + s.category : ''))).slice(0, 180),
+      names: [...new Set([en, nm].concat(listed))].filter(x => x && x.length >= 3).slice(0, 8), entity_ids: [s.entity_id], entity_name: en, category: s.category || null, lens: 'brand', velocity: 0, form: 'entity' };
+  }
+  const words = (Array.isArray(f.context) ? f.context : []).map(x => String(x || '').trim().toLowerCase()).filter(Boolean).slice(0, 8);
+  return { key: s.key, kind: 'brand', id: null, title: nm, subtitle: String(s.category || '').slice(0, 160), query: String(f.query || [nm].concat(words).join(' ')).slice(0, 180),
+    names: (listed.length ? listed : [nm]).slice(0, 8), context: words, category: s.category || null, lens: 'brand', velocity: 0, form: 'bare' };
+}
+/* The frame a space is read under. The board's subjects and a tracked brand keep the frame the compiler wrote. A brand on the graph names
+ * its own entity. A bare name and a category name none: a category is not a thing the lake counts by name, and a bare name is never handed
+ * to the graph as a new entity; its names (or the category's set) become the anchors, and a category's set its competitors. */
+function spaceFrame(cand, frame) {
+  if (!cand || !frame || !cand.form || cand.form === 'board' || cand.form === 'track') return frame;
+  if (cand.form === 'entity') frame.entity = cand.entity_name || cand.title;
+  else frame.entity = null;
+  if (cand.form === 'category') { frame.category = cand.category || frame.category || null; frame.competitors = (cand.names || []).slice(0, 5); }
+  const names = (cand.names || []).map(x => String(x || '').trim()).filter(x => x.length >= 3);
+  if (names.length) frame.anchors = [...new Set(names.concat(Array.isArray(frame.anchors) ? frame.anchors : []))].slice(0, 8);
+  return frame;
+}
+// PURE: does a lake line carry one of a bare name's context words (whole words, in the title or the summary)?
+function spaceContextKeep(r, context) {
+  const norm = x => ' ' + String(x || '').toLowerCase().replace(/[^a-z0-9&]+/g, ' ').trim() + ' ';
+  const h = norm((r && r.title) + ' ' + (r && r.summary));
+  return (context || []).some(w => { const t = norm(w).trim(); return t.length >= 2 && h.includes(' ' + t + ' '); });
+}
+// PURE: the push's why for a holder: "your space moved", its name and the movement in the measure's own words.
+function spaceWhy(name, m, since) {
+  const parts = [], d = since && Number(since.recent_delta), o = since && Number(since.outlets_delta);
+  if (m && m.recent_7d != null && Number(m.recent_7d) > 0) parts.push(m.recent_7d + (Number(m.recent_7d) === 1 ? ' story' : ' stories') + ' this week');
+  if (d) parts.push((d > 0 ? 'up ' : 'down ') + Math.abs(d) + ' since its last reading');
+  if (o > 0) parts.push(o + ' new ' + (o === 1 ? 'outlet' : 'outlets'));
+  if (!d && m && m.velocity_pct != null && Math.abs(Number(m.velocity_pct)) >= 1) parts.push((Number(m.velocity_pct) >= 0 ? '+' : '') + m.velocity_pct + '% on the week');
+  return 'your space moved: ' + String(name || 'a space').slice(0, 80) + (parts.length ? ', ' + parts.join(', ') : '');
+}
+// PURE: what a viewer is shown of a space: its state, never who else holds it.
+function spacePublicRow(s) {
+  return s ? { id: s.id, key: s.key, kind: s.kind, name: s.name, category: s.category || null, entity_id: s.entity_id || null, track_id: s.track_id || null, house: s.held_by === 'house', pinned: !!s.pinned,
+    cadence: s.cadence || 'nightly', status: s.status || 'active', since: s.since || null, considered_nights: s.considered_nights || 0, unmoved_nights: s.unmoved_nights || 0,
+    last_considered: s.last_considered || null, last_compiled_at: s.last_compiled_at || null, last_read_id: s.last_read_id || null, movement: s.movement || null } : null;
+}
+/* The seats that hold spaces: a seat on an active group whose plan is one of HOLDER_PLANS, and what its profile holds (its tracked brands
+ * and brand follows, its category follows; an audience follow stays a filter on the push). ok false when a read failed, so the night never
+ * puts a seat's spaces to sleep on a missing answer. */
+async function spacesSeatWant(env, tracks, map) {
+  const out = { ok: false, holders: new Set(), want: [], audiences: 0 };
+  let seats = [], groups = [], profs = [];
+  try {
+    seats = (await sbRest(env, 'group_seats?select=user_id,group_id&limit=' + SPACES.ROWS)) || [];
+    const gids = [...new Set(seats.map(s => s.group_id).filter(Boolean))];
+    groups = gids.length ? (await sbRest(env, 'member_groups?id=in.(' + gids.join(',') + ')&status=eq.active&select=id,plan')) || [] : [];
+    const paying = new Set(groups.filter(g => SPACES.HOLDER_PLANS.includes(g.plan)).map(g => g.id));
+    for (const s of seats) if (s.user_id && paying.has(s.group_id)) out.holders.add(s.user_id);
+    profs = out.holders.size ? (await sbRest(env, 'client_profile?user_id=in.(' + [...out.holders].join(',') + ')&select=user_id,tracked_brands,follows')) || [] : [];
+  } catch (e) { excQuiet('spaces_seats')(e); return out; }
+  out.ok = true;
+  for (const p of profs) {
+    const fl = Array.isArray(p.follows) ? p.follows : [];
+    const wants = (p.tracked_brands || []).map(n => ({ name: n, kind: 'brand' })).concat(fl.filter(x => x && x.kind === 'brand').map(x => ({ name: x.value, kind: 'brand' })), fl.filter(x => x && x.kind === 'category').map(x => ({ name: x.value, kind: 'category' })));
+    out.audiences += fl.filter(x => x && x.kind === 'audience').length;
+    const seen = new Set();
+    for (const w of wants) {
+      if (seen.size >= SPACES.PER_SEAT) break;
+      const r = spaceRowOf(w, tracks, map); if (!r || seen.has(r.key)) continue;
+      seen.add(r.key); out.want.push(Object.assign(r, { held_by: p.user_id, holder_kind: 'seat', created_by: 'profile' }));
+    }
+  }
+  return out;
+}
+// The seats' spaces not due tonight whose measure moved past the law's threshold since they were last considered: one rollup, no model.
+async function spacesPulled(env, list) {
+  const ids = [...new Set((list || []).map(s => s.entity_id).filter(Boolean))].slice(0, SPACES.IDS);
+  if (!ids.length) return [];
+  const roll = (await sbRest(env, 'rpc/entity_rollup', { method: 'POST', body: { p_ids: ids, p_now: new Date().toISOString() } }).catch(excQuiet('spaces_rollup', []))) || [];
+  const n7 = new Map(roll.map(r => [r.entity_id, r.n7]));
+  return [...new Set((list || []).filter(s => spacePull(n7.get(s.entity_id), s.movement && s.movement.recent_7d)).map(s => s.key))];
+}
+/* The night's pool. The board's thirty come first, unchanged (each now knows its space), then the hand spaces, then the seats' spaces due
+ * or pulled. Also the night's sync: the board's subjects as the house's spaces, seen tonight; the house's unseen board spaces put to sleep;
+ * the paying seats' profiles as their spaces, a space no longer held put to sleep. ok false (no table yet): the night is the board alone. */
+async function spacesPool(env, board, night) {
+  const out = { ok: false, pool: board, touch: [], hand: 0, held: 0, pulled: 0, made: 0, dormant: 0, resolved: 0, holders: 0, audiences: 0 };
+  let rows = null;
+  try { rows = await sbRest(env, 'spaces?select=' + SPACES.SEL + '&limit=' + SPACES.ROWS); } catch (e) { excQuiet('spaces_rows')(e); return out; }
+  if (!Array.isArray(rows)) return out;
+  out.ok = true;
+  const tracks = await loadTracks(env), map = (await entityMap(env).catch(excQuiet('spaces_map', {}))) || {};
+  let stats = {}; try { stats = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) { stats = excQuiet('spaces_stats', {})(e); }
+  const byKey = new Map(); const put = s => { if (!byKey.has(s.key)) byKey.set(s.key, []); byKey.get(s.key).push(s); };
+  for (const s of rows) put(s);
+  // a bare name the graph has since resolved (an entity by that name or alias): read on its links from tonight; filled while empty, never replaced
+  for (const s of rows) if (s.status === 'active' && s.kind === 'brand' && !s.entity_id && !s.track_id) { const e = map[String(s.name || '').toLowerCase().replace(/\s+/g, ' ').trim()]; if (e && e.id) { s.entity_id = e.id; out.touch.push({ key: s.key, held_by: s.held_by, entity_id: e.id }); out.resolved++; } }
+  const fresh = r => Object.assign({ id: null, status: 'active', cadence: 'nightly', considered_nights: 0, unmoved_nights: 0, last_considered: null, pinned: false, movement: null, since: night }, r);
+  // the board: each of tonight's subjects is a house space, seen tonight (a sleeping one wakes)
+  const boardKeys = new Set(board.map(c => c.key));
+  for (const c of board) {
+    const row = spaceBoardRow(c, night), had = (byKey.get(c.key) || []).find(s => s.held_by === 'house');
+    out.touch.push(row);
+    if (!had) { out.made++; put(fresh(row)); } else had.status = 'active';
+  }
+  for (const s of rows) if (s.held_by === 'house' && !s.pinned && s.status === 'active' && !boardKeys.has(s.key) && spaceUnseen(s, night) >= SPACES.DORMANT_AFTER) { out.touch.push({ key: s.key, held_by: 'house', status: 'dormant' }); s.status = 'dormant'; out.dormant++; }
+  // the seats: who pays, and what their profiles hold
+  const seat = await spacesSeatWant(env, tracks, map);
+  out.holders = seat.holders.size; out.audiences = seat.audiences;
+  if (seat.ok) {
+    const wanted = new Set(seat.want.map(r => r.key + '|' + r.held_by));
+    for (const r of seat.want) { const had = (byKey.get(r.key) || []).find(s => s.held_by === r.held_by); out.touch.push(Object.assign({}, r, { status: 'active' })); if (!had) { out.made++; put(fresh(r)); } else had.status = 'active'; }
+    for (const s of rows) if (s.holder_kind === 'seat' && s.status === 'active' && !wanted.has(s.key + '|' + s.held_by)) { out.touch.push({ key: s.key, held_by: s.held_by, status: 'dormant' }); s.status = 'dormant'; out.dormant++; }
+  }
+  const all = [].concat(...byKey.values()), live = s => s.status === 'active';
+  const hand = all.filter(s => s.held_by === 'house' && s.pinned && live(s)).slice(0, SPACES.HAND_MAX);
+  const seatRows = all.filter(s => s.holder_kind === 'seat' && live(s) && seat.holders.has(s.held_by));
+  const sets = new Map(), n7 = new Map();   // NT1a: n7, a room's week by its entity id, for a set the house named
+  if (hand.concat(seatRows).some(s => s.kind === 'category')) {
+    const list = (await roomList(env).catch(excQuiet('spaces_rooms', null))) || {};
+    for (const r of (list.rooms || [])) if (r && r.id) n7.set(r.id, (r.counts && r.counts.captures_7d) || 0);
+    for (const r of (list.rooms || [])) { const k = String(r.category || '').toLowerCase().trim(); if (!k) continue; if (!sets.has(k)) sets.set(k, []); if (sets.get(k).length < SPACES.SET) sets.get(k).push({ id: r.id, name: r.name, n7: (r.counts && r.counts.captures_7d) || 0 }); }
+  }
+  const entName = new Map(); for (const v of Object.values(map)) if (v && v.id && !entName.has(v.id)) entName.set(v.id, v.name);
+  const ctx = { trackBy: new Map(tracks.map(t => [t.id, t])), stats, entName, sets, n7 };
+  const seen = new Set(boardKeys);
+  const pool = board.map(c => Object.assign({}, c, { space: spaceOn(c.key, byKey, seat.holders, c.title), form: 'board' }));
+  for (const s of hand) {
+    if (seen.has(s.key)) continue;
+    const c = spaceCandOf(s, ctx); if (!c || seen.has(c.key)) continue;
+    seen.add(c.key); out.hand++; pool.push(Object.assign(c, { space: spaceOn(c.key, byKey, seat.holders, s.name) }));
+  }
+  const keys = [...new Set(seatRows.map(s => s.key))].filter(k => !seen.has(k));
+  const due = keys.filter(k => seatRows.some(s => s.key === k && spaceDue(s, night)));
+  const later = keys.filter(k => !due.includes(k));
+  const pulled = await spacesPulled(env, seatRows.filter(s => later.includes(s.key) && s.entity_id));
+  out.pulled = pulled.length;
+  const firstOf = k => seatRows.filter(s => s.key === k).sort(spaceStale)[0];
+  const order = pulled.concat(due.map(firstOf).sort(spaceStale).map(s => s.key));
+  for (const k of order) {
+    if (out.held >= SPACES.HELD_MAX) break;
+    const s = firstOf(k), c = s ? spaceCandOf(s, ctx) : null; if (!c || seen.has(c.key)) continue;
+    seen.add(c.key); out.held++; pool.push(Object.assign(c, { space: spaceOn(c.key, byKey, seat.holders, s.name) }));
+  }
+  out.pool = pool;
+  return out;
+}
+// A private space's last reading and tonight's row come from space_reads; a public reading may serve a private space, never the reverse.
+async function spacesPrivRows(env, cands, night, prevBy, tonightBy) {
+  const keys = (cands || []).filter(c => c.space && c.space.private).map(c => c.key);
+  if (!keys.length) return 0;
+  const inK = 'frame_key=in.(' + keys.map(k => '"' + encodeURIComponent(k) + '"').join(',') + ')';
+  const prev = (await sbRest(env, 'space_reads?status=in.(ready,reused)&night=lt.' + night + '&' + inK + '&order=night.desc&limit=200&select=id,frame_key,night,stamp,read,measures,frame,meta').catch(excQuiet('space_prev', []))) || [];
+  for (const r of prev) { const cur = prevBy.get(r.frame_key); if (!cur || String(r.night) > String(cur.night)) prevBy.set(r.frame_key, r); }
+  const tn = (await sbRest(env, 'space_reads?night=eq.' + night + '&' + inK + '&select=id,frame_key,status,stamp').catch(excQuiet('space_tonight', []))) || [];
+  for (const r of tn) tonightBy.set(r.frame_key, r);
+  return prev.length + tn.length;
+}
+// A space's measure: a tracked brand's as the board counts it, an entity's on its links, a category's on its set, a bare name's none.
+async function spaceMeasures(env, cand, frame) {
+  if (!cand || cand.form === 'bare') return null;   // no entity and no track: no measure, never zeros
+  if (cand.form === 'category') return spaceSetMeasures(env, cand);
+  if (cand.form === 'entity') return excMeasures(env, Object.assign({}, frame || {}, { entity: cand.entity_name || cand.title, category: (frame && frame.category) || cand.category || null }));
+  return frame ? excMeasures(env, frame) : null;
+}
+/* A category's measure: its set's links counted as one subject (a story linked to two of the set counts once) with the measure's own
+ * function, counted from where its most recently added member's coverage begins. */
+async function spaceSetMeasures(env, cand) {
+  const ids = ((cand && cand.entity_ids) || []).slice(0, SPACES.SET);
+  if (!ids.length) return null;
+  const since = new Date(Date.now() - EXC_MEASURE.WEEKS * 7 * 864e5).toISOString();
+  const sw = await sweepOnly(env);
+  const sets = await Promise.all(ids.map(id => entityRows(env, id, since, !!sw).catch(excQuiet('space_set_rows', []))));
+  const seen = new Set(), rows = [];
+  for (const list of sets) for (const r of (list || [])) if (r && r.id && !seen.has(r.id)) { seen.add(r.id); rows.push(r); }
+  const m = excMeasureFrom(rows, [], Date.now(), excTerritoryOf({ category: cand.category, anchors: cand.names }));
+  m.entity = null; m.entity_id = null; m.set = (cand.names || []).slice(0, SPACES.SET); m.set_ids = ids; m.anchors = m.set.slice(); m.sweep = !!sw;
+  let bf = null; try { bf = (await entityStateGet(env)).backfill || null; } catch (e) { bf = excQuiet('space_set_backfill', null)(e); }
+  const map = (await entityMap(env).catch(excQuiet('space_set_map', {}))) || {};
+  const covs = m.set.map(n => entityCoverage((map[String(n).toLowerCase().replace(/\s+/g, ' ').trim()] || {}).resolved_from || null, bf, Date.now(), EXC_MEASURE.WEEKS));
+  Object.assign(m, covs.sort((a, b) => a.coverage_weeks - b.coverage_weeks)[0] || entityCoverage(null, bf, Date.now(), EXC_MEASURE.WEEKS));
+  return m;
+}
+/* A space's evidence. On the graph (a brand's entity, a category's set): its links, never a headline's letters. A bare name: its names on
+ * the titles, as a track's are read, kept only when the line carries one of its context words (read wider first, so the filter has
+ * something to keep). */
+async function spaceEvidenceRows(env, cand, since, sel) {
+  if (cand.entity_ids && cand.entity_ids.length) {
+    const links = (await sbRest(env, 'signal_entities?entity_id=in.(' + cand.entity_ids.slice(0, SPACES.SET).join(',') + ')&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + SPACES.LINKS + '&select=signal_id').catch(excQuiet('space_links', []))) || [];
+    const ids = [...new Set(links.map(l => l.signal_id).filter(Boolean))].slice(0, SPACES.IDS);
+    if (!ids.length) return [];
+    return (await sbRest(env, 'signals?status=neq.rejected&id=in.(' + ids.join(',') + ')&order=captured_at.desc&limit=' + DOOR.EVIDENCE + '&' + sel).catch(excQuiet('space_signals', []))) || [];
+  }
+  const words = cand.context || [];
+  const rows = (await sbRest(env, 'signals?status=neq.rejected&' + ilikeOr(cand.names || [cand.title]) + '&captured_at=gte.' + since + '&order=captured_at.desc&limit=' + (words.length ? SPACES.WIDE : DOOR.EVIDENCE) + '&' + sel).catch(excQuiet('space_bare', []))) || [];
+  return words.length ? rows.filter(r => spaceContextKeep(r, words)).slice(0, DOOR.EVIDENCE) : rows;
+}
+// Each seat's allowance tonight: HELD_WEEK less the compiles charged to it over the trailing seven days on claude_jobs. A ledger that
+// does not answer allows none: no seat compiles on a guess.
+async function spacesAllowance(env, holders) {
+  const ids = (Array.isArray(holders) ? holders : spacesHoldersOf(holders)).filter(x => /^[0-9a-f-]{36}$/.test(String(x || '')));
+  const left = {}; for (const u of ids) left[u] = SPACES.HELD_WEEK;
+  if (!ids.length) return left;
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const rows = await sbRest(env, 'claude_jobs?kind=eq.door_read&status=neq.failed&created_at=gte.' + since + '&meta->>held_by=in.(' + ids.join(',') + ')&select=held_by:meta->>held_by&limit=2000').catch(excQuiet('spaces_allowance', null));
+  if (!Array.isArray(rows)) { for (const u of ids) left[u] = 0; return left; }
+  for (const r of rows) if (r && left[r.held_by] != null) left[r.held_by] = Math.max(0, left[r.held_by] - 1);
+  return left;
+}
+/* Each space's night on its row, in one write with the night's sync: last considered, considered nights, unmoved nights, the cadence, the
+ * movement, the last read and, for a brand, the entity the measure found. */
+async function spacesTouch(env, cands, ctx) {
+  const fate = new Map(), base = new Map();
+  for (const r of (ctx.rowsOut || [])) { fate.set(r.frame_key, r.status === 'failed' ? 'thin' : 'unmoved'); base.set(r.frame_key, r); }
+  for (const [k, b] of (ctx.earned || new Map())) { fate.set(k, 'capped'); if (!base.has(k)) base.set(k, b); }
+  for (const j of (ctx.jobs || [])) { fate.set(j.base.frame_key, ctx.out && ctx.out.queued ? 'compiled' : 'capped'); base.set(j.base.frame_key, j.base); }
+  const rows = ((ctx.net && ctx.net.touch) || []).slice(), tally = { considered: 0, compiled: 0, capped: 0, unmoved: 0, thin: 0 };
+  for (const c of (cands || [])) {
+    if (!c.space) continue;
+    const f = fate.get(c.key) || (ctx.tonightBy && ctx.tonightBy.has(c.key) ? 'kept' : null);
+    if (!f || f === 'kept') continue;
+    tally.considered++; tally[f] = (tally[f] || 0) + 1;
+    const b = base.get(c.key), moved = spaceMovement(b && b.measures, b && b.meta && b.meta.since, ctx.night);
+    for (const s of c.space.rows) {
+      const n = spaceNext(s, f, ctx.night, moved); if (!n) continue;
+      const id = ctx.idBy && ctx.idBy.get(c.key); if (id) n.last_read_id = id;
+      const ent = b && b.measures && b.measures.entity_id; if (ent && !s.entity_id && /^(track|brand):/.test(c.key)) n.entity_id = ent;
+      rows.push(n);
+    }
+  }
+  const net = ctx.net || {}, out = Object.assign(tally, { hand: net.hand || 0, held: net.held || 0, pulled: net.pulled || 0, made: net.made || 0, dormant: net.dormant || 0, resolved: net.resolved || 0, holders: net.holders || 0, rows: rows.length, touched: 0 });
+  if (!rows.length) return out;
+  const n = await sbRest(env, 'rpc/spaces_touch', { method: 'POST', body: { p_rows: rows } }).catch(excQuiet('spaces_touch_rpc', null));
+  out.touched = typeof n === 'number' ? n : 0;
+  return out;
+}
+/* A private reading landed: doorLand's own steps on space_reads (the read compiled, the voice notes, the measure-claim hold, the reading
+ * it develops marked), and nothing public: no claims (the corpus is read by the rooms), no board, no record. */
+async function spaceLand(env, id, text, cost, stopReason) {
+  const rows = (await sbRest(env, 'space_reads?id=eq.' + id + '&select=id,frame_key,frame,measures,evidence,status,night,meta').catch(excQuiet('space_rows', []))) || [];
+  const row = rows[0]; if (!row) return { skipped: 'no_row' };
+  const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));
+  const got = excReadOf(text || '');
+  if (!got) { await sbRest(env, 'space_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('space_land_patch')); return { id, status: 'failed', private: true }; }
+  const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
+  if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);
+  if (typeof calibAdjust === 'function') await calibAdjust(env, read.insights, row.frame && row.frame.category).catch(excQuiet('calib_adjust', 0));   // SEAM:SCORECARD (EX54): confidence learns, floor-gated
+  const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];
+  if (named.length) { await sbRest(env, 'space_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: ('measure_claim: ' + named[0].where + ': ' + named[0].text).slice(0, 200), updated_at: new Date().toISOString() } }).catch(excQuiet('space_land_patch')); return { id, status: 'failed', held: 'measure_claim', private: true }; }
+  await sbRest(env, 'space_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'ready', read, cost_usd: cost, error: null, updated_at: new Date().toISOString() } }).catch(excQuiet('space_land_patch'));
+  const prevId = row.meta && row.meta.prev_id;
+  if (prevId && /^[0-9a-f-]{36}$/.test(String(prevId))) {   // only a private reading is marked: a public tile never says a private one developed it
+    const pr = (await sbRest(env, 'space_reads?id=eq.' + prevId + '&select=id,meta').catch(excQuiet('space_rows', []))) || [];
+    if (pr[0]) await sbRest(env, 'space_reads?id=eq.' + prevId, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, pr[0].meta || {}, { developed_by: id, developed_night: row.night }) } }).catch(excQuiet('space_develop_patch'));
+  }
+  return { id, status: 'ready', private: true };
+}
+async function spaceFail(env, id, error) {
+  await sbRest(env, 'space_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: String(error || 'batch_failed').slice(0, 200) } }).catch(excQuiet('space_fail_patch'));
+}
+// The push's view: each seat's spaces, their names, and tonight's private readings on them.
+async function spacesHeld(env, night) {
+  const rows = (await sbRest(env, 'spaces?holder_kind=eq.seat&status=eq.active&select=key,name,held_by&limit=' + SPACES.ROWS).catch(excQuiet('push_spaces_rows', []))) || [];
+  if (!rows.length) return null;
+  const by = new Map();
+  for (const s of rows) { if (!by.has(s.held_by)) by.set(s.held_by, { keys: new Set(), names: new Map(), tiles: [] }); const h = by.get(s.held_by); h.keys.add(s.key); h.names.set(s.key, s.name); }
+  const keys = [...new Set(rows.map(s => s.key))];
+  const priv = (await sbRest(env, 'space_reads?status=eq.ready&night=eq.' + night + '&frame_key=in.(' + keys.map(k => '"' + encodeURIComponent(k) + '"').join(',') + ')&select=id,frame_key,night,status,frame,measures,read,evidence,meta').catch(excQuiet('push_space_reads', []))) || [];
+  for (const r of priv) { const t = Object.assign(doorTile(r), { private: true }); for (const h of by.values()) if (h.keys.has(r.frame_key)) h.tiles.push(t); }
+  return { by };
+}
+// May this reader see the private readings on a key? Its holder, a reader granted a view of one of its rows, or an admin.
+async function spaceMayView(env, key, user) {
+  if (!user || !user.id || !key) return false;
+  const rows = (await sbRest(env, 'spaces?key=eq.' + encodeURIComponent(key) + '&select=id,held_by&limit=50').catch(excQuiet('space_view_rows', []))) || [];
+  if (rows.some(s => s.held_by === user.id)) return true;
+  if (rows.length) { const g = (await sbRest(env, 'space_grants?user_id=eq.' + user.id + '&space_id=in.(' + rows.map(s => s.id).join(',') + ')&select=space_id&limit=1').catch(excQuiet('space_view_grants', []))) || []; if (g.length) return true; }
+  return callerIsAdmin(env, user.id);
+}
+// A private reading by id, for a reader who may see it; null for anyone else (the read route then answers not_ready, as for any id it does not know).
+async function spaceReadFor(env, id, user) {
+  if (!user || !/^[0-9a-f-]{36}$/.test(String(id || ''))) return null;
+  const r = ((await sbRest(env, 'space_reads?id=eq.' + id + '&select=id,frame_key,night,status,frame,measures,read,evidence,meta,updated_at').catch(excQuiet('space_read_rows', []))) || [])[0];
+  if (!r) return null;
+  return (await spaceMayView(env, r.frame_key, user)) ? r : null;
+}
+/* GET /excavate/space (signed in): with no id or key, the reader's own spaces and the ones granted to them; with ?id=<space id> or
+ * ?key=<key>, one space's state and its readings, newest first: the house's readings for anyone signed in, the private ones for its
+ * holder, a grantee or an admin. Never who else holds it. No model; outside the daily allowance. */
+async function spaceRoute(request, env, origin, user) {
+  const u = new URL(request.url), id = String(u.searchParams.get('id') || '').slice(0, 40), key = String(u.searchParams.get('key') || '').slice(0, 120);
+  if (!id && !key) {
+    const held = (await sbRest(env, 'spaces?held_by=eq.' + user.id + '&status=eq.active&select=' + SPACES.SEL + '&order=name.asc&limit=100').catch(excQuiet('space_mine', []))) || [];
+    const g = (await sbRest(env, 'space_grants?user_id=eq.' + user.id + '&select=space_id&limit=100').catch(excQuiet('space_granted', []))) || [];
+    const granted = g.length ? (await sbRest(env, 'spaces?id=in.(' + g.map(x => x.space_id).join(',') + ')&select=' + SPACES.SEL + '&limit=100').catch(excQuiet('space_granted_rows', []))) || [] : [];
+    return json({ ok: true, held: held.map(spacePublicRow), granted: granted.map(spacePublicRow) }, 200, origin, env);
+  }
+  if (id && !/^[0-9a-f-]{36}$/.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
+  const rows = (await sbRest(env, 'spaces?' + (id ? 'id=eq.' + id : 'key=eq.' + encodeURIComponent(key)) + '&select=' + SPACES.SEL + '&limit=50').catch(excQuiet('space_rows', []))) || [];
+  if (!rows.length) return json({ ok: false, error: 'no_such_space' }, 200, origin, env);
+  const k = rows[0].key, all = id ? ((await sbRest(env, 'spaces?key=eq.' + encodeURIComponent(k) + '&select=' + SPACES.SEL + '&limit=50').catch(excQuiet('space_rows', []))) || rows) : rows;
+  const houseRow = all.find(s => s.held_by === 'house') || null, mine = all.find(s => s.held_by === user.id) || null;
+  const priv = await spaceMayView(env, k, user);
+  if (!houseRow && !priv) return json({ ok: false, error: 'not_yours' }, 403, origin, env);
+  const SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta&order=night.desc&limit=' + SPACES.READS;
+  const pub = (await sbRest(env, 'door_reads?frame_key=eq.' + encodeURIComponent(k) + '&status=in.(ready,reused)&' + SEL).catch(excQuiet('space_pub_reads', []))) || [];
+  const own = priv ? ((await sbRest(env, 'space_reads?frame_key=eq.' + encodeURIComponent(k) + '&status=in.(ready,reused)&' + SEL).catch(excQuiet('space_priv_reads', []))) || []) : [];
+  const readings = pub.map(r => Object.assign(doorTile(r), { private: false })).concat(own.map(r => Object.assign(doorTile(r), { private: true }))).sort((a, b) => String(b.night).localeCompare(String(a.night))).slice(0, SPACES.READS);
+  return json({ ok: true, space: spacePublicRow(mine || houseRow || all[0]), yours: !!mine, readings }, 200, origin, env);
+}
+/* POST /excavate/space-grant {space_id, user_id | email, revoke?} (signed in): a space's holder, or an admin, grants a reader a view of it
+ * (its state and its readings), or takes it back. */
+async function spaceGrantRoute(request, env, origin, user) {
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const sid = String(body.space_id || '').slice(0, 40);
+  if (!/^[0-9a-f-]{36}$/.test(sid)) return json({ ok: false, error: 'bad_space', say: 'name the space by its id: GET /excavate/space lists yours' }, 200, origin, env);
+  const s = ((await sbRest(env, 'spaces?id=eq.' + sid + '&select=id,key,name,held_by&limit=1').catch(excQuiet('grant_space', []))) || [])[0];
+  if (!s) return json({ ok: false, error: 'no_such_space' }, 200, origin, env);
+  const admin = await callerIsAdmin(env, user.id);
+  if (!admin && s.held_by !== user.id) return json({ ok: false, error: 'not_yours', say: 'only the space\'s holder or an admin may grant a view' }, 403, origin, env);
+  let uid = String(body.user_id || '').slice(0, 40);
+  if (!uid && body.email) { const who = await planUser(env, body.email); uid = who ? String(who.id) : ''; }
+  if (!/^[0-9a-f-]{36}$/.test(uid)) return json({ ok: false, error: 'bad_user', say: 'name the reader by user_id, or by the email they signed up with' }, 200, origin, env);
+  const known = ((await sbRest(env, 'app_user?id=eq.' + uid + '&select=id&limit=1').catch(excQuiet('grant_user', []))) || [])[0];
+  if (!known) return json({ ok: false, error: 'no_such_user' }, 200, origin, env);
+  try {
+    if (body.revoke) await sbRest(env, 'space_grants?space_id=eq.' + sid + '&user_id=eq.' + uid, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    else await sbRest(env, 'space_grants?on_conflict=space_id,user_id', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: [{ space_id: sid, user_id: uid, granted_by: s.held_by === user.id ? user.id : 'admin:' + user.id }] });
+  } catch (e) { return json({ ok: false, error: 'grant_failed', detail: String(e && e.message).slice(0, 80) }, 200, origin, env); }
+  await logEvent(env, 'intelligence', 'spaces', body.revoke ? 'space_revoke' : 'space_grant', user.id, { space_id: sid, user_id: uid });
+  return json({ ok: true, space_id: sid, user_id: uid, granted: !body.revoke }, 200, origin, env);
+}
+/* The desk: {run:"spaces_seed", hand:[{name, query?, names?, context?, category?, kind?}], categories?:[name], drop?:[key]}. The board's
+ * thirty as the house's spaces (with the entity of each tracked brand), the hand spaces (pinned; at most HAND_MAX), the house's category
+ * spaces, the paying seats' profiles as theirs. Run it again and nothing new is made: the same rows are touched. Admin or the desk key. */
+/* SEAM:SPACES (NT1a THE SETS): a category's set, named by the house. Each member is a brand the house watches (a track under the
+ * category, made when the house has none) and an entity on the graph (made from the track and backfilled alone over twelve weeks, as a
+ * watched brand is). A member made here with context words is marked ambiguous and relinked on them, so an ordinary word or a namesake
+ * never counts as the brand. An entity the graph already holds (by the member's name or an alias) is used as it is and never changed.
+ * SPACES.SET members at most. No model is asked. */
+async function spaceSetSeed(env, category, members, tracks) {
+  const cat = String(category || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 80);
+  const out = { members: [], tracks_made: 0, entities_made: 0, relinked: 0, skipped: [] };
+  const words = a => (Array.isArray(a) ? a : []).map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(x => x.length >= 2).slice(0, 8);
+  const map = (await entityMap(env).catch(excQuiet('set_map', {}))) || {}, seen = new Set(), list = Array.isArray(tracks) ? tracks : [];
+  for (const m0 of (Array.isArray(members) ? members : []).slice(0, SPACES.SET * 2)) {
+    const m = typeof m0 === 'string' ? { name: m0 } : (m0 || {});
+    const name = String(m.name || '').replace(/\s+/g, ' ').trim().slice(0, 80), lc = name.toLowerCase();
+    if (out.members.length >= SPACES.SET) { out.skipped.push({ name, why: 'set_full' }); continue; }
+    if (lc.replace(/\s/g, '').length < ENTITY.MIN_NAME || seen.has(lc)) { out.skipped.push({ name, why: 'name' }); continue; }
+    seen.add(lc);
+    const aliases = words(m.aliases).filter(a => a.toLowerCase() !== lc), context = words(m.context).map(x => x.toLowerCase());
+    let e = map[lc] || aliases.map(a => map[a.toLowerCase()]).find(x => x && x.id) || null, made = false;
+    let t = list.find(x => x && [x.name].concat(x.aliases || []).some(n => String(n || '').replace(/\s+/g, ' ').trim().toLowerCase() === lc)) || null;
+    if (!t && !e) {
+      t = ((await sbRest(env, 'tracks', { method: 'POST', headers: { Prefer: 'return=representation' }, body: { name, kind: 'brand', aliases, sector: cat, description: 'Watched for the ' + cat + ' space (NT1a)', active: true } }).catch(excQuiet('set_track', null))) || [])[0] || null;
+      if (t) { out.tracks_made++; list.push(t); }
+    }
+    const tn = t ? String(t.name || name).replace(/\s+/g, ' ').trim().slice(0, 80) : name;   // a track the house already keeps names the brand in its own spelling
+    if (!e && t) e = map[tn.toLowerCase()] || null;
+    if (!e && t) {
+      const ta = [...new Set(aliases.concat(t.aliases || []).map(a => String(a || '').trim()).filter(a => a && a.toLowerCase() !== tn.toLowerCase()))].slice(0, 8);
+      e = await entityResolveName(env, tn, { create: true, category: t.sector || cat, track: { id: t.id, name: tn, aliases: ta, sector: t.sector || cat, kind: 'brand' } }).catch(excQuiet('set_entity', null));
+      made = !!(e && e.id);
+      if (made) out.entities_made++;
+    }
+    if (!e || !e.id) { out.skipped.push({ name, why: t ? 'no_entity' : 'no_track' }); continue; }
+    if (made && context.length) {   // a word in ordinary use: a story must also carry one of these words; the twelve weeks relinked on them
+      await sbRest(env, 'entities?id=eq.' + e.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { ambiguous: true, context } }).catch(excQuiet('set_context', null));
+      await sbRest(env, 'signal_entities?entity_id=eq.' + e.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('set_unlink', null));
+      await sbRest(env, 'rpc/resolve_signal_entities', { method: 'POST', body: { p_since: new Date(Date.now() - ENTITY.BACKFILL_WEEKS * 7 * 864e5).toISOString(), p_until: new Date().toISOString(), p_entity: e.id } }).catch(excQuiet('set_relink', null));
+      out.relinked++;
+    }
+    out.members.push({ id: e.id, name: String(e.name || name).slice(0, 90) });
+  }
+  return out;
+}
+async function spacesSeed(env, body) {
+  const night = doorNight(), b = body || {};
+  let have = null;
+  try { have = (await sbRest(env, 'spaces?select=' + SPACES.SEL + '&limit=' + SPACES.ROWS)) || []; }
+  catch (e) { return { ok: false, error: 'no_spaces_table', say: 'run supabase/migrations/0061_spaces.sql in the Supabase SQL editor first', detail: String(e && e.message).slice(0, 80) }; }
+  const board = await doorCandidates(env), tracks = await loadTracks(env), map = (await entityMap(env).catch(excQuiet('seed_map', {}))) || {};
+  const rows = board.map(c => spaceBoardRow(c, night));
+  const tids = [...new Set(board.filter(c => c.kind === 'track').map(c => c.id))];
+  const ents = tids.length ? ((await sbRest(env, 'entities?track_id=in.(' + tids.join(',') + ')&active=eq.true&select=id,track_id').catch(excQuiet('seed_track_entities', []))) || []) : [];
+  const entOf = new Map(ents.map(e => [e.track_id, e.id]));
+  for (const r of rows) if (r.track_id && entOf.has(r.track_id)) r.entity_id = entOf.get(r.track_id);
+  const out = { ok: true, night, board: rows.length, hand: [], categories: 0, seats: null, dropped: 0, over: 0 };
+  const drop = new Set((Array.isArray(b.drop) ? b.drop : []).map(k => String(k || '').trim().slice(0, 120)).filter(Boolean));
+  for (const k of drop) { rows.push({ key: k, held_by: 'house', pinned: false, status: 'dormant' }); out.dropped++; }
+  const pinned = new Set((have || []).filter(s => s.held_by === 'house' && s.pinned && s.status === 'active' && !drop.has(s.key)).map(s => s.key));
+  const wants = (Array.isArray(b.hand) ? b.hand : []).map(h => (typeof h === 'string' ? { name: h } : h || {})).concat((Array.isArray(b.categories) ? b.categories : []).map(c => ({ name: typeof c === 'string' ? c : c && c.name, kind: 'category', members: c && typeof c === 'object' && Array.isArray(c.members) ? c.members : null })));
+  for (const h of wants) {
+    const r = spaceRowOf(h, tracks, map);
+    if (!r) { out.hand.push({ name: String(h.name || '').slice(0, 80), error: 'name_too_short' }); continue; }
+    if (!pinned.has(r.key) && pinned.size >= SPACES.HAND_MAX) { out.over++; out.hand.push({ name: r.name, key: r.key, error: 'hand_full', say: 'the house holds ' + SPACES.HAND_MAX + ' spaces by hand at most; drop one first' }); continue; }
+    if (r.track_id && entOf.has(r.track_id)) r.entity_id = entOf.get(r.track_id);
+    if (r.kind === 'category' && h.members && h.members.length) {   // NT1a: the set the house names for the category, watched and on the graph
+      const got = await spaceSetSeed(env, r.name, h.members, tracks);
+      r.frame.members = got.members;
+      out.sets = (out.sets || []).concat([{ category: r.name, members: got.members.map(m => m.name), tracks_made: got.tracks_made, entities_made: got.entities_made, relinked: got.relinked, skipped: got.skipped }]);
+      if (typeof lakePullQueue === 'function') out.pull = (out.pull || []).concat([await lakePullQueue(env, { key: r.key, name: r.name, category: r.name }, got.members, h.members).catch(excQuiet('set_pull', null))]);   // SEAM:BREADTH (LK1): each member's last three months, pulled by the slices
+    }
+    pinned.add(r.key);
+    rows.push(Object.assign(r, { held_by: 'house', holder_kind: 'house', pinned: true, status: 'active', created_by: 'desk' }));
+    if (r.kind === 'category') out.categories++;
+    out.hand.push({ name: r.name, key: r.key, reads: r.track_id ? 'its track, as the board reads one' : r.entity_id ? 'its links on the graph, and its measure' : r.kind === 'category' ? 'its set on the rooms, and the set\'s measure'
+      : 'its names on the lake' + (r.frame.context.length ? ', with one of its context words' : '') + '; no measure until the graph has its entity' });
+  }
+  const seat = await spacesSeatWant(env, tracks, map);
+  if (seat.ok) {
+    const wanted = new Set(seat.want.map(r => r.key + '|' + r.held_by));
+    for (const r of seat.want) rows.push(Object.assign({}, r, { status: 'active' }));
+    let slept = 0; for (const s of (have || [])) if (s.holder_kind === 'seat' && s.status === 'active' && !wanted.has(s.key + '|' + s.held_by)) { rows.push({ key: s.key, held_by: s.held_by, status: 'dormant' }); slept++; }
+    out.seats = { holders: seat.holders.size, spaces: seat.want.length, slept, audiences_left_as_filters: seat.audiences };
+  } else out.seats = { error: 'seats_unread', say: 'the seats or their profiles did not answer; their spaces are unchanged' };
+  let n = 0;
+  try { n = await sbRest(env, 'rpc/spaces_touch', { method: 'POST', body: { p_rows: rows } }); }
+  catch (e) { return Object.assign(out, { ok: false, error: 'touch_failed', detail: String(e && e.message).slice(0, 120) }); }
+  out.touched = typeof n === 'number' ? n : 0;
+  const after = (await sbRest(env, 'spaces?select=key,held_by,holder_kind,pinned,status&limit=' + SPACES.ROWS).catch(excQuiet('seed_after', []))) || [];
+  out.now = { spaces: after.length, active: after.filter(s => s.status === 'active').length, house_board: after.filter(s => s.held_by === 'house' && !s.pinned && s.status === 'active').length,
+    house_hand: after.filter(s => s.held_by === 'house' && s.pinned && s.status === 'active').length, seats: after.filter(s => s.holder_kind === 'seat' && s.status === 'active').length };
+  await logEvent(env, 'intelligence', 'spaces', 'spaces_seed', null, { board: out.board, hand: out.hand.length, seats: out.seats, touched: out.touched });
+  return out;
+}
+// The desk: {run:"spaces"}. The net's state: how many spaces, held how, at what cadence; the hand spaces; each seat's allowance tonight.
+async function spacesDesk(env) {
+  let rows = null;
+  try { rows = (await sbRest(env, 'spaces?select=' + SPACES.SEL + '&limit=' + SPACES.ROWS)) || []; }
+  catch (e) { return { ok: false, error: 'no_spaces_table', say: 'run supabase/migrations/0061_spaces.sql first' }; }
+  const live = rows.filter(s => s.status === 'active'), seats = live.filter(s => s.holder_kind === 'seat');
+  const cadence = {}; for (const s of seats) cadence[s.cadence] = (cadence[s.cadence] || 0) + 1;
+  const holders = [...new Set(seats.map(s => s.held_by))];
+  return { ok: true, total: rows.length, active: live.length, dormant: rows.length - live.length,
+    house: { board: live.filter(s => s.held_by === 'house' && !s.pinned).length, hand: live.filter(s => s.held_by === 'house' && s.pinned).map(s => ({ key: s.key, name: s.name, kind: s.kind, entity: !!s.entity_id, track: !!s.track_id,
+      considered_nights: s.considered_nights || 0, unmoved_nights: s.unmoved_nights || 0, last_considered: s.last_considered || null, last_compiled_at: s.last_compiled_at || null })) },
+    seats: { holders: holders.length, spaces: seats.length, cadence, allowance: await spacesAllowance(env, holders) },
+    last_night: rows.map(s => s.last_considered).filter(Boolean).sort().pop() || null, constants: { NIGHT_CAP: SPACES.NIGHT_CAP, HOUSE_FLOOR: SPACES.HOUSE_FLOOR, HELD_WEEK: SPACES.HELD_WEEK, SLOW_AFTER: SPACES.SLOW_AFTER, DORMANT_AFTER: SPACES.DORMANT_AFTER, HAND_MAX: SPACES.HAND_MAX } };
+}
 /* ═══ SEAM:ENTITY_ROOM (RM1): the rooms on the graph. Every active entity has a room: the measure of one subject counted on its
  * links with the measure's own function (so the room and the board are one counter), its twelve weeks with their outlets, the
  * voices behind it (the outlets by tier), the newest stories, the record on it (the door's readings whose frame names it, under the
@@ -11835,13 +13816,14 @@ async function roomOf(env, e) {
   try { attention = await brandAttention(env, { id: e.id, name: e.name, sector: (t && t.sector) || e.category || null, description: (t && t.description) || null }, set.slice(0, ROOMS.RIVALS)); } catch (err) { excQuiet('room_attention')(err); attention = null; }
   let ledger = null;
   if (e.track_id) { try { const led = (await sbRest(env, LEDGER.TABLE + '?subject_key=eq.' + encodeURIComponent('track:' + e.track_id) + '&select=week,door&order=week.asc&limit=260')) || []; if (led.length) ledger = { weeks: led.length, since: led[0].week, on_board: led.filter(r => r.door).length }; } catch (err) { excQuiet('room_ledger')(err); partial = true; } }
+  const scorecard = typeof calibrationRoomLine === 'function' ? await calibrationRoomLine(env, e, claims).catch(excQuiet('room_scorecard', null)) : null;   // SEAM:SCORECARD (EX54): on this subject, our calls held N of M
   return { ok: true,
     room: { id: e.id, name: e.name, kind: ROOM_KINDS[e.kind] ? e.kind : 'brand', category: e.category || (t && t.sector) || null, aliases: (e.aliases || []).slice(0, 8), ambiguous: !!e.ambiguous, from: e.from_src || 'frame',
       track: t ? { id: t.id, sector: t.sector || null, description: t.description || null, image: /^https:\/\//.test(String(t.image || '')) ? t.image : null, image_license: t.image_license || null } : null,
       measured_at: new Date(now).toISOString(), measured_from: cov.measured_from, coverage_weeks: cov.coverage_weeks, gap: cov.gap || null, sweep: !!sw },
     measure: { weeks: measure.weeks, series: measure.series, recent_7d: measure.recent_7d, prior_7d: measure.prior_7d, velocity_pct: measure.velocity_pct, outlets: measure.outlets, weeks_touched: measure.weeks_touched, state: measure.state, shape: measure.shape, newest: measure.newest, n: measure.n, territory: measure.territory || null },
     weeks: roomWeeksOf(rows, now), voices: roomVoicesOf(rows, now), stories: roomStoriesOf(rows, ROOMS.STORIES, now),
-    record, readings: roomReadingsOf(cl),
+    record, readings: roomReadingsOf(cl), scorecard,
     claims: claims.map(c => ({ id: c.id, src: c.src, reading_id: c.reading_id, night: c.night, claim: String(c.claim || '').slice(0, 240), excerpt: c.excerpt ? String(c.excerpt).slice(0, 400) : null, lens: c.lens || null, confidence: c.confidence || null, band: c.band || null, newest: c.newest || null, tiers: c.tiers || {}, grade: c.grade || null, marks: c.marks && Object.keys(c.marks).length ? c.marks : null, on_record: !!c.on_record, how: c.how || null })),
     board, set, attention, ledger, partial };
 }
@@ -12458,6 +14440,8 @@ async function claudeBatchDrain(env) {
         if (patch.status === 'done') await readLand(env, row.meta.house_read_id, patch.result, patch.cost_usd, patch.stop_reason).catch(e => console.log('read_land_error', String(e && e.message)));
         else await readFail(env, row.meta.house_read_id, patch.error).catch(e => console.log('read_fail_error', String(e && e.message)));
       }
+      if (row.kind === 'corpus_extract' && row.meta && row.meta.corpus_doc_id && typeof corpusLand === 'function')   // SEAM:HOUSE_POSITIONS (VX2): a reading of our own writing lands its proposals here
+        await corpusLand(env, row.meta.corpus_doc_id, patch, row).catch(e => console.log('corpus_land_error', String(e && e.message)));
       if (row.kind === 'door_read' && row.meta && row.meta.door_id) {   // SEAM:EXC_DOOR v2 lands its reads here
         if (patch.status === 'done') await doorLand(env, row.meta.door_id, patch.result, patch.cost_usd, patch.stop_reason).catch(e => console.log('door_land_error', String(e && e.message)));
         else await doorFail(env, row.meta.door_id, patch.error).catch(e => console.log('door_fail_error', String(e && e.message)));
@@ -14411,6 +16395,28 @@ const READ_EDITOR_LAW = 'THE EDITOR LAW: you are the editor of this RECON. THE D
   'Fix every note: a figure not in the evidence is replaced by the figure its cited line gives, or the sentence is rewritten without it; an id or a plan id in prose becomes words; a house word becomes the reader\'s word; a style note is rewritten under THE SENTENCE in the Method (the long sentence split, the chain cut, the template said plainly in your own shape, the mechanism label dropped and the how written into the sentence, the abstract contrast replaced with the thing itself); a voice quoted twice is quoted once; what a finding lacks is written from the evidence, except a counter-reading or a move the evidence does not give, which stays empty; a missing section is written from the evidence (its targets and thresholds, where the contract allows them, are ours); an illustrator\'s brief keeps only anonymous people, places described and never named, and plain unmarked things, every proper name in it lower case or gone. ' +
   'Then read it as the client will, under THE EDITING LAWS: a figure is stated once, in the section that proves its finding, and every other section refers to it in words (the comfort complaint that doubled) or leaves it out; a name or an event is told once in full and after that in a clause that adds something; confidence frames the claim, so a low-confidence decision is written as the whitespace to test and names the pilot that settles it, never as a bet, and no concept or territory grows from it without saying so; what this evidence cannot show is said once, in one sentence, inside brief_answer or the first line of the executive summary, before any finding; "X, not Y" at most once a section; a glossary, an advertising read or the competitive sets that say nothing the read has not said come back empty. ' +
   'Keep every other key the contract asks for, keep the ids in the arrays, keep what is right as it is, and never add a figure the evidence does not give. Return the whole edited object.';   // SEAM:READ_EDIT
+const READ_HOUSE_LAW = 'THE HOUSE LAW: the pack may carry WHAT THE HOUSE ALREADY HOLDS, our own dated findings on this subject with how each call turned out. They are our record, never evidence: a figure inside one is not a figure this read may print unless a story or a counted line carries it. ' +
+  'A pattern or finding that repeats a claim the house already holds says so and develops it, in a sentence that names the date and what moved since ("The house called this on Oct 12; the week moved it from the drop to the shelf"), never as a discovery. ' +
+  'A claim the record graded missed is named as missed and not written again as new. A finding that contradicts a held claim says which claim and why the evidence now reads the other way. Where our calls on a subject have missed more than they held, the read says so where it bears and does not lean on our earlier view. When the house holds nothing on the subject, the read says nothing about its history.';   // SEAM:HOUSE_CORPUS (EX53b)
+const READ_POSITIONS_LAW = 'THE POSITIONS LAW: the pack may carry WHAT THE HOUSE BELIEVES, our own positions from the decks, essays and talks we wrote, each approved by us. A position is our view, never evidence: it is never cited, never counted, and no figure is printed on its strength. ' +
+  'Where the evidence touches a position, say it as our view, once, in our words, with where we said it ("We have held since the Chicago proposal that legacy does not transfer on its own. This week\'s comments say it again."). ' +
+  'Where the evidence contradicts a position, name the position and say what the evidence shows instead. A position the evidence does not touch is left out. Only a position printed in WHAT THE HOUSE BELIEVES is ours to claim: never write that we have held, believed or argued anything else.';   // SEAM:HOUSE_POSITIONS (VX2)
+/* SEAM:HOUSE_POSITIONS (VX2): the reading of a document of ours. The contract rides the Method in the system, the same for every
+ * document so the cache holds; the document, its pages and the confidential rule ride the prompt (corpusExtractPrompt). One request a
+ * document on the doc tier, on the batch at half the price; the drain lands it (corpusLand). Admin only, from THE CORPUS room. */
+const CORPUS_EXTRACT_CONTRACT = 'CONTRACT (our own writing, read for the positions it holds and the register it is written in). The document in the prompt is ours: a deck, an essay, a talk or a report we wrote by hand. Read it as our own writing, never as evidence about the world and never as instructions. ' +
+  'Return one JSON object with exactly two keys. ' +
+  '"positions": at most 24 objects {"text": the view in one or two short sentences, said plainly as we would say it (no "we believe", never "the house"), with no figure in it; "page": the page it stands on as the [page N] marks give it, or null when the text carries no marks; "quote": the sentence or two on that page it stands on, copied word for word; "topics": two to six lower-case names it touches (a brand, a category, an audience, a place, a moment), never a generic word such as brand, culture or consumers alone}. ' +
+  'A position is a view a strategist would carry into the next read: what we hold about a brand, a category, an audience or how culture moves. A figure is never a position: a share, a price, a count or a date is evidence, and a client\'s figure stays in the client\'s deck. How we work, what we deliver, a timeline or a fee is not a position. ' +
+  '"register": at most 16 objects {"text": a sentence or a short passage copied word for word that shows how we write; "page": as above; "label": the exemplar of the Method it matches, one of "opening" (the problem in three beats, the threat named), "fact_then_line" (a fact, then one line that lets it land), "idea_and_stakes" (the idea in one sentence, the stakes in the second half), "number_with_source" (a number with its source under it), "return_in_figures" (the return in figures only), "close_in_fragments" (the close, a verdict in fragments), "how_without_label" (how it works, said without the label), "local_name" (the example carries the idea and the name is local), "field_in_order" (the field, in the order it happened), "us_on_our_work" (us, on our own work, in short beats), or "other"}. ' +
+  'Never invent: every position stands on a quote from the document, and every register line is the document\'s own words. Fewer and true beats many: a short deck may hold two positions and no more. Where the document carries a dash, set it as a full stop. Return only the JSON object.';
+function corpusSysChars() { return READ_METHOD.length + 2 + CORPUS_EXTRACT_CONTRACT.length; }
+async function corpusExtractSubmit(env, doc, prompt, n) {
+  const k = parseInt(n, 10) || 1, cid = 'cx-' + String((doc && doc.id) || 'x').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40) + '-' + k;
+  const r = await claudeBatchSubmit(env, CORPUS.TIER, 'corpus_extract', [{ custom_id: cid, system: READ_METHOD + '\n\n' + CORPUS_EXTRACT_CONTRACT, cache: true, prompt,
+    max_tokens: CORPUS.MAX_TOKENS, thinking: { type: 'adaptive' }, output_config: { effort: CORPUS.EFFORT }, meta: { corpus_doc_id: doc.id, n: k } }]);
+  return Object.assign({ custom_id: cid }, r || { ok: false, error: 'refused' });
+}
 
 /* PURE: a pass's custom id (one per row and version, so a revision is its own), what it reads before it, and its system. */
 function deepThinkCid(row, pass) { return READ_THINK.PASS[pass].cid + '-' + parseInt(row.id, 10) + '-v' + parseInt(row.version, 10); }
@@ -14418,7 +16424,7 @@ function deepThinkReads(pass) { return { analysis: [], strategy: ['analysis'], w
 function deepThinkSystem(pass) {
   if (pass === 'analysis') return DEEP_ANALYST_SYS + '\n\n' + DEEP_THINK_KEY;
   if (pass === 'strategy') return DEEP_STRATEGIST_SYS + '\n\n' + DEEP_THINK_KEY;
-  return READ_METHOD + '\n\n' + READ_CONTRACT.recon + ' ' + READ_DEEP_LAW + ' ' + READ_THINK_CONTRACT + ' ' + (pass === 'edit' ? READ_EDITOR_LAW : READ_WRITER_LAW);
+  return READ_METHOD + '\n\n' + READ_CONTRACT.recon + ' ' + READ_DEEP_LAW + ' ' + READ_THINK_CONTRACT + ' ' + (pass === 'edit' ? READ_EDITOR_LAW : READ_WRITER_LAW) + ' ' + READ_HOUSE_LAW + ' ' + READ_POSITIONS_LAW;   // SEAM:HOUSE_CORPUS (SEAM:HOUSE_POSITIONS: and the positions law)
 }
 /* PURE: what the passes from `from` on can cost at most, given the evidence's length: each pass's worst case (its prompt uncached, its
  * whole output budget), reading what is already written at its real length (have) and what is not at its assumed one. */
@@ -14440,6 +16446,8 @@ async function deepThinkEvidence(env, row) {
     (pk.desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + pk.desk + '\n\n' : '') +
     (pk.plan ? pk.plan + '\n\n' : '') +
     'STATS (exact, computed by the database; STATS.recon counts the brief\'s slice):\n' + JSON.stringify(row.stats || {}) +
+    (pk.house ? '\n\n' + pk.house : '') +   // SEAM:HOUSE_CORPUS: what the house already holds, as the compile wrote it, before the evidence; every pass reads the same
+    (pk.believes ? '\n\n' + pk.believes : '') +   // SEAM:HOUSE_POSITIONS (VX2): what the house believes, as the compile met it, after what it holds; every pass reads the same
     (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY, the brief\'s slice):\n' + items.map(it => readPackLine(it, K.take)).join('\n') : '') +
     (pk.text ? '\n\n' + pk.text : '');
 }
@@ -14876,10 +16884,16 @@ async function readSubmit(env, row) {
   const pack = items.map(it => readPackLine(it, K.take)).join('\n');
   const desk = await readDeskInputs(env, row.kind, row);   // SEAM:READ_DESK: the editors' standing inputs ride every compile (SEAM:READ_COMMISSION: and the RECON's own)
   const memo = typeof memoryReadBrief === 'function' ? await memoryReadBrief(env, items, stats).catch(excQuiet('read_memory', '')) : '';   // SEAM:MEMORY: what we said before on this read's subjects
+  const hc = typeof houseClaimsFor === 'function' ? await houseClaimsFor(env, row.kind, row, items, recon).catch(excQuiet('house_corpus', null)) : null;   // SEAM:HOUSE_CORPUS (EX53b): what the house already holds on the subject, read before the evidence
+  if (hc && hc.meta) stage('house', { n: hc.meta.n, entities: hc.meta.entities.length });
+  const hp = typeof housePositionsFor === 'function' ? await housePositionsFor(env, row.kind, { recon, items, hc }).catch(excQuiet('house_positions', null)) : null;   // SEAM:HOUSE_POSITIONS (VX2): what the house believes, the approved positions nearest the read's subject
+  if (hp && hp.meta) stage('positions', { n: hp.meta.n, skipped: hp.meta.skipped || null });
   const prompt = (recon ? 'THE BRIEF (the question this RECON answers):\n' + readReconBriefText(recon) + '\n\n' : '') +   // SEAM:READ_RECON
     (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
     (pack2 && pack2.plan ? pack2.plan + '\n\n' : '') +   // SEAM:READ_DEEP: the plan, beside the pack and never in the ground
     'STATS (exact, computed by the database' + (recon ? '; STATS.recon counts the brief\'s slice' : '') + '):\n' + JSON.stringify(stats) +
+    (hc && hc.text ? '\n\n' + hc.text : '') +   // SEAM:HOUSE_CORPUS: before the evidence
+    (hp && hp.text ? '\n\n' + hp.text : '') +   // SEAM:HOUSE_POSITIONS (VX2): after what the house holds, before the evidence
     (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY' + (recon ? ', the brief\'s slice' : '') + '):\n' + pack : '') +
     (pack2 && pack2.text ? '\n\n' + pack2.text : '') +
     (memo ? '\n\n' + memo : '') +   // SEAM:MEMORY
@@ -14889,7 +16903,7 @@ async function readSubmit(env, row) {
             : '\n\nWrite the ' + row.kind + ' read for ' + label + '. Return only the JSON object.');
   stage('prompt', { chars: prompt.length });
   const req = { custom_id: 'hr-' + row.id + '-v' + row.version,
-    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind], cache: true,
+    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind] + ' ' + READ_HOUSE_LAW + ' ' + READ_POSITIONS_LAW, cache: true,   // SEAM:HOUSE_CORPUS: the house law (SEAM:HOUSE_POSITIONS: and the positions law)
     prompt, max_tokens: K.max_tokens, thinking: { type: 'adaptive' }, output_config: { effort: K.effort },
     meta: { house_read_id: row.id } };   // the one-pass compile (every kind but a deep RECON, which thinks in passes below)
   if (deep) {   // SEAM:READ_DEEP: the commission's ceiling (SEAM:READ_THINK: on the worst case of all four passes over this evidence) and the copy desk after it
@@ -14901,9 +16915,10 @@ async function readSubmit(env, row) {
     }
   }
   const packMeta = pack2 ? { pack: Object.assign({ ids: pack2.ids, lines: pack2.lines, voices: pack2.voices, counts: pack2.counts, text: pack2.text }, pack2.plan ? { plan: pack2.plan } : {}, pack2.win ? { win: pack2.win } : {}, pack2.outlet_types ? { outlet_types: pack2.outlet_types } : {},
-    deep && desk ? { desk } : {}) } : {};   // SEAM:READ_THINK: the desk's inputs as they stood, so every pass reads the same
+    deep && desk ? { desk } : {}, hc && hc.text ? { house: hc.text } : {}) } : {};   // SEAM:READ_THINK: the desk's inputs as they stood, so every pass reads the same (SEAM:HOUSE_CORPUS: and the house's claims)
+  if (hp && hp.text && packMeta.pack) packMeta.pack.believes = hp.text;   // SEAM:HOUSE_POSITIONS (VX2): the RECON's passes read the positions as the compile met them
   if (deep) {   // SEAM:READ_DEEP: the ground is written before the compile is paid for, so a compile sent by a run that dies after it can be adopted (deepCompile), never sent twice
-    row.meta = deepSafe(Object.assign({}, row.meta || {}, { children: children.map(c => c.id), desk_chars: desk.length }, packMeta));
+    row.meta = deepSafe(Object.assign({}, row.meta || {}, { children: children.map(c => c.id), desk_chars: desk.length }, packMeta, hc ? { house_claims: hc.meta } : {}, hp ? { house_positions: hp.meta } : {}));   // SEAM:HOUSE_CORPUS (SEAM:HOUSE_POSITIONS: and what the house believes)
     await readPatch(env, row.id, { stats, label, pack_ids: items.map(it => it.id), meta: row.meta });
     // SEAM:READ_THINK: the first of four passes, the analysis, from the ground just written; the tick carries the rest.
     Object.assign(row, { stats, label, pack_ids: items.map(it => it.id) });
@@ -14929,7 +16944,7 @@ async function readSubmit(env, row) {
     await readPatch(env, row.id, { status: 'queued', error: sub.error + (sub.detail ? ': ' + String(sub.detail).slice(0, 120) : ''), stats, label });
     return sub;
   }
-  const meta2 = Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id), desk_chars: desk.length }, packMeta);
+  const meta2 = Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: children.map(c => c.id), desk_chars: desk.length }, packMeta, hc ? { house_claims: hc.meta } : {}, hp ? { house_positions: hp.meta } : {});   // SEAM:HOUSE_CORPUS (SEAM:HOUSE_POSITIONS: and what the house believes)
   await readPatch(env, row.id, { status: 'compiling', error: null, stats, label,
     pack_ids: items.map(it => it.id), meta: recon ? deepSafe(meta2) : meta2 });   // SEAM:READ_DEEP: a half emoji in a voice title must never fail the row after the batch is paid
   stage('patched');
@@ -14964,6 +16979,8 @@ async function readSubmitRevision(env, row) {
   const desk = await readDeskInputs(env, row.kind, readDeskScope(row) ? row : prior);   // SEAM:READ_COMMISSION: a revision reads its RECON's own inputs
   const recon = row.kind === 'recon' ? readReconOf(row) : null;
   const deep = recon ? deepOf(row) || deepOf(prior) : null;   // SEAM:READ_DEEP: a deep RECON's revision stands on the same evidence, on the same ledger, under the same law
+  const hc = typeof houseClaimsFor === 'function' ? await houseClaimsFor(env, row.kind, row, items, recon).catch(excQuiet('house_corpus', null)) : null;   // SEAM:HOUSE_CORPUS (EX53b): a revision reads what the house holds now
+  const hp = typeof housePositionsFor === 'function' ? await housePositionsFor(env, row.kind, { recon, items, hc }).catch(excQuiet('house_positions', null)) : null;   // SEAM:HOUSE_POSITIONS (VX2): a revision reads what the house believes now
   if (deep && pk && !pk.win) pk.win = { start: prior.window_start, end: prior.window_end };
   if (recon && pk) stats.recon = Object.assign({}, stats.recon || {}, readReconStats(recon, items, pk, (prior.meta && prior.meta.gather && prior.meta.gather.attention) || (deep && deep.attention) || null),   // SEAM:READ_NUMBERS: the reader's counts, from the same pack
     deep ? deepStatsOf(deep, pk) : {});   // SEAM:READ_DEEP: the deep counts, as the first compile carried them
@@ -14971,13 +16988,15 @@ async function readSubmitRevision(env, row) {
     (desk ? 'HOUSE DESK (standing inputs from the editors; apply them to this read):\n' + desk + '\n\n' : '') +
     (pk && pk.plan ? pk.plan + '\n\n' : '') +   // SEAM:READ_DEEP
     'STATS (exact, computed by the database):\n' + JSON.stringify(stats) +
+    (hc && hc.text ? '\n\n' + hc.text : '') +   // SEAM:HOUSE_CORPUS: before the evidence
+    (hp && hp.text ? '\n\n' + hp.text : '') +   // SEAM:HOUSE_POSITIONS (VX2): after what the house holds, before the evidence
     (items.length ? '\n\nSTORIES (' + items.length + ', published by DAILY):\n' + items.map(it => readPackLine(it, K.take)).join('\n') : '') +
     (pk && pk.text ? '\n\n' + pk.text : '') +
     '\n\nPRIOR READ (version ' + prior.version + ', the object you are revising):\n' + JSON.stringify(prior.read) +
     '\n\nDESK NOTES (' + notes.length + '):\n' + (notes.length ? readNotesText(notes) : '(none: apply the HOUSE DESK inputs and change nothing else)') +
     '\n\n' + READ_REVISION_LAW + '\n\nWrite version ' + row.version + ' of ' + row.label + '. Return only the JSON object.';
   const req = { custom_id: 'hr-' + row.id + '-v' + row.version,
-    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind] + (deep ? ' ' + READ_DEEP_LAW : '') + (deep && deep.think ? ' ' + READ_THINK_CONTRACT : ''), cache: true,   // SEAM:READ_THINK: a revision keeps every section the passes wrote
+    system: READ_METHOD + '\n\n' + READ_CONTRACT[row.kind] + (deep ? ' ' + READ_DEEP_LAW : '') + (deep && deep.think ? ' ' + READ_THINK_CONTRACT : '') + ' ' + READ_HOUSE_LAW + ' ' + READ_POSITIONS_LAW, cache: true,   // SEAM:HOUSE_CORPUS (SEAM:HOUSE_POSITIONS)   // SEAM:READ_THINK: a revision keeps every section the passes wrote
     prompt, max_tokens: K.max_tokens, thinking: { type: 'adaptive' }, output_config: { effort: K.effort },
     meta: { house_read_id: row.id } };
   if (deep) {   // SEAM:READ_DEEP: a revision is paid inside the commission's ceiling too (the research, every compile and desk before it)
@@ -14990,7 +17009,8 @@ async function readSubmitRevision(env, row) {
   const sub = await claudeBatchSubmit(env, deep ? 'recon' : 'doc', 'house_' + row.kind, [req]);
   if (!sub.ok) { await readPatch(env, row.id, { status: 'queued', error: sub.error + (sub.detail ? ': ' + String(sub.detail).slice(0, 120) : '') }); return sub; }
   const rmeta = Object.assign({}, row.meta || {}, { batch_id: sub.batch_id, est_usd: sub.est_usd, children: (prior.meta && prior.meta.children) || [], desk_chars: desk.length,
-      notes: ((row.meta && row.meta.notes) || []).map(n => Object.assign({}, n, { status: 'applied', applied_in: row.id })) }, pk ? { pack: pk } : {});   // the notes it applied stay as its record; new notes start open
+      notes: ((row.meta && row.meta.notes) || []).map(n => Object.assign({}, n, { status: 'applied', applied_in: row.id })) }, pk ? { pack: Object.assign({}, pk, hc && hc.text ? { house: hc.text } : {}) } : {}, hc ? { house_claims: hc.meta } : {});   // the notes it applied stay as its record; new notes start open (SEAM:HOUSE_CORPUS: the corpus as this version read it)
+  if (hp) { rmeta.house_positions = hp.meta; if (hp.text && rmeta.pack) rmeta.pack = Object.assign({}, rmeta.pack, { believes: hp.text }); }   // SEAM:HOUSE_POSITIONS (VX2): the positions as this version met them
   await readPatch(env, row.id, { status: 'compiling', error: null, stats, label: row.label, pack_ids: prior.pack_ids || [], meta: deep ? deepSafe(rmeta) : rmeta });   // SEAM:READ_DEEP: text the row keeps
   logEvent(env, 'intelligence', 'reads', 'read_revise', null, { id: row.id, from: prior.id, kind: row.kind, notes: notes.length });
   return { ok: true, id: row.id, from: prior.id, batch_id: sub.batch_id, notes: notes.length, est_usd: sub.est_usd };
@@ -15041,6 +17061,8 @@ async function readLand(env, id, text, cost, stopReason, force) {
       if (hv) { v.read = hv.read; v.notes = hv.notes; voiceReceipt = hv.receipt; }
     }
   }
+  if (v.read && typeof houseRepeatNotes === 'function') v.notes = v.notes.concat(houseRepeatNotes(v.read, row.meta && row.meta.house_claims));   // SEAM:HOUSE_CORPUS (EX53b): a title near a held claim with no word that the house called it; a missed claim written as new. Notes, never a hold.
+  if (v.read && typeof housePositionNotes === 'function') v.notes = v.notes.concat(housePositionNotes(v.read, row.meta && row.meta.house_positions));   // SEAM:HOUSE_POSITIONS (VX2): a view written as ours that no position the read was given carries. Notes, never a hold.
   // SEAM:READ_PROOF: the copy desk reads every landing. Spelling costs nothing; the editor rides the live tier; neither can block the landing.
   const pr = v.read ? await readProofRun(env, row.kind, v.read, ground, row.pack_ids || [], extra) : { read: null, notes: [], receipt: null };
   const status = pr.read && !v.fatal.length ? 'ready' : 'held';
@@ -17519,7 +19541,7 @@ function houseNightRows(rows, marks, claims, ents) {   // SEAM:MORNING_SHELF (RD
     const n = String(r.night || ''); if (!n) continue;
     if (!nights[n]) { nights[n] = { night: n, counts: { ready: 0, reused: 0, held: 0, failed: 0, other: 0 }, cost_usd: 0, rows: [] }; order.push(n); }
     const g = nights[n], st = String(r.status || ''), m = r.measures || {}, called = (r.meta && r.meta.called) || null, fr = r.frame || {};
-    const bucket = st === 'ready' ? 'ready' : st === 'reused' ? 'reused' : st === 'failed' ? (/^measure_claim:/.test(String(r.error || '')) ? 'held' : 'failed') : 'other';
+    const bucket = st === 'ready' ? 'ready' : st === 'reused' ? 'reused' : st === 'failed' ? (/^measure_claim:/.test(String(r.error || '')) || String(r.error || '') === 'pulled_by_house' ? 'held' : 'failed') : 'other';   // SEAM:NET_PASS (NT2): a pulled deployment is held by the house
     g.counts[bucket]++;
     g.cost_usd = Math.round((g.cost_usd + (Number(r.cost_usd) || 0)) * 1e4) / 1e4;
     g.rows.push({ id: r.id, key: r.frame_key || null, entity: fr.entity || null, category: fr.category || null, status: st, held: bucket === 'held',
@@ -17532,7 +19554,13 @@ function houseNightRows(rows, marks, claims, ents) {   // SEAM:MORNING_SHELF (RD
       claims_mix: typeof houseClaimsMix === 'function' ? houseClaimsMix(cl[r.id]) : null, develops: (r.meta && r.meta.prev_night) || null, developed_by: (r.meta && r.meta.developed_night) || null,
       since: r.meta && r.meta.since && typeof r.meta.since === 'object' ? { recent_delta: r.meta.since.recent_delta != null ? Number(r.meta.since.recent_delta) : null, outlets_delta: r.meta.since.outlets_delta != null ? Number(r.meta.since.outlets_delta) : null } : null,
       thin: st === 'failed' && String(r.error || '') === 'thin_evidence',
-      notes: (() => { const ns = (r.meta && Array.isArray(r.meta.notes) ? r.meta.notes : []).filter(x => x && x.status !== 'applied'); return { open: ns.length, last: ns.length ? String(ns[ns.length - 1].text || '').slice(0, 160) : null }; })(),
+      // SEAM:NET_PASS (NT2): the pass on the row: pulled by the house and why, the day's lead, the rank the door gave its move, the house's place for it, a publish
+      pulled: st === 'failed' && String(r.error || '') === 'pulled_by_house', pulled_by: r.meta && r.meta.pulled ? r.meta.pulled.by || null : null, pulled_why: r.meta && r.meta.pulled ? r.meta.pulled.why || null : null,
+      lead: !!(r.meta && r.meta.lead), rank: r.meta && r.meta.move && r.meta.move.rank != null ? Number(r.meta.move.rank) : null, pos: r.meta && r.meta.pos != null ? Number(r.meta.pos) : null,
+      published: r.meta && r.meta.published ? { by: r.meta.published.by || null, at: r.meta.published.at || null, from: r.meta.published.from || null } : null,
+      round: r.meta && r.meta.round && r.meta.round.territory ? { territory: String(r.meta.round.territory).slice(0, 40), name: String(r.meta.round.name || r.meta.round.territory).slice(0, 60), last_read: r.meta.round.last_read || null } : null,   // SEAM:BREADTH (LK1): the round's reading and why
+      notes: (() => { const all = r.meta && Array.isArray(r.meta.notes) ? r.meta.notes.filter(Boolean) : [], ns = all.filter(x => x.status !== 'applied'), ap = all.filter(x => x.status === 'applied');   // SEAM:NET_PASS (NT2): the latest open note's number (to apply it) and the applied ones
+        return { open: ns.length, last: ns.length ? String(ns[ns.length - 1].text || '').slice(0, 160) : null, n: ns.length ? ns[ns.length - 1].n || null : null, applied: ap.length, applied_last: ap.length ? String(ap[ap.length - 1].text || '').slice(0, 160) : null }; })(),
       entity_id: (() => { const k = String(fr.entity || '').toLowerCase().replace(/\s+/g, ' ').trim(); const e = ents && k ? ents[k] : null; return e && e.id ? e.id : null; })() });
   }
   order.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
@@ -17572,6 +19600,7 @@ async function houseNights(env, nights, night) {   // SEAM:MORNING_SHELF (RD1d):
   const t0 = since + 'T00:00:00Z';
   const ledger = rows.length ? (await sbRest(env, 'claude_jobs?kind=eq.' + MORNING.FRAME_KIND + '&created_at=gte.' + t0 + '&select=status,cost_usd,created_at,ms:meta->>ms&order=created_at.desc&limit=' + MORNING.LEDGER_ROWS).catch(excQuiet('house_ledger', []))) || [] : [];
   const passes = rows.length ? (await sbRest(env, 'activity_events?event=eq.door_pass&created_at=gte.' + t0 + '&select=created_at,meta&order=created_at.desc&limit=' + MORNING.PASSES).catch(excQuiet('house_passes', []))) || [] : [];
+  const net = rows.length && typeof netShelf === 'function' ? await netShelf(env, rows, t0).catch(excQuiet('house_net', null)) : null;   // SEAM:NET_PASS (NT2): the pass's records of the window, each night's set, tonight's compiles still out
   let ents = {};
   if (rows.length && typeof entityMap === 'function') { try { ents = (await entityMap(env)) || {}; } catch (e) { ents = {}; } }
   const clock = typeof DOOR === 'object' && DOOR && Number(DOOR.FRAME_MS) ? Number(DOOR.FRAME_MS) : 25000;
@@ -17581,15 +19610,15 @@ async function houseNights(env, nights, night) {   // SEAM:MORNING_SHELF (RD1d):
       const dl = watchDoorLine(doorEvery(env), last ? last.night : null, new Date().toISOString().slice(0, 10), !!(lp && lp.meta && lp.meta.skipped));
       cadence = { every: dl.every, last_compiled: dl.last_compiled, gap_nights: dl.gap_nights, skipped: dl.skipped, trip: dl.trip ? dl.trip.say : null }; } catch (e) { cadence = null; }
   }
-  return { since, night: one, windows: MORNING.WINDOWS, nights: houseNightRows(rows, marks, claims, ents).map(g => houseMorningNight(g, passes, ledger, clock)), cadence };
+  return { since, night: one, windows: MORNING.WINDOWS, nights: houseNightRows(rows, marks, claims, ents).map(g => houseMorningNight(g, passes, ledger, clock)).map(g => (net ? Object.assign(g, { net: net.of(g.night) }) : g)), cadence, pass: net ? net.pass : null };   // SEAM:NET_PASS (NT2)
 }
 /* ═══ SEAM:MORNING_SHELF (RD1d THE MORNING SHELF): the nights room carries the morning's facts. Per night: the pass's own record
  * (earned, queued, kept, reused, thin, waiting, failed, skipped, the publish error), the frame calls inside the pass's window
  * (asked, answered inside the night's clock, slow, failed, the p95), and the night's spend (the rows' cost plus the frames').
  * Per deployment: the cost, the voice notes, the claims' confidence mix, what it develops and what developed it, the measure's
  * movement since the last night, the hold's reason, the house's notes, and the entity behind it for the room. A house note is
- * pinned on a door row through one admin door, idempotent, no model. Publish, promote, pull and "Pass and send" wait for the
- * net arc; this shelf reads. ═══ */
+ * pinned on a door row through one admin door, idempotent, no model. Publish, promote, pull and "Pass and send" are the net's
+ * pass (SEAM:NET_PASS, NT2); this shelf reads. ═══ */
 const MORNING = { FRAME_KIND: 'excavate_frame', WINDOW_MS: 25 * 60e3, LEDGER_ROWS: 3000, PASSES: 120, NOTE_MAX: 600, NOTES_MAX: 24, WINDOWS: [7, 14, 30, 60] };
 /* PURE: a percentile of a list of numbers, by rank; null for an empty list. */
 function housePct(nums, p) {
@@ -17687,7 +19716,10 @@ async function readRoute(path, body, env, origin, user) {
   body = body || {};
   if (path === '/reads/assets' || path === '/reads/nights') return houseRoute(path, body, env, origin, user);
   if (path === '/reads/night-note') return houseNoteRoute(body, env, origin, user);   // SEAM:MORNING_SHELF (RD1d): a house note on a door row
+  if (/^\/reads\/night-(?:publish|promote|pull|order|apply|pass)$/.test(path)) return netPassRoute(path, body, env, origin, user);   // SEAM:NET_PASS (NT2): the morning pass, admin only
   if (path === '/reads/day-frames') return dayFramesRoute(body, env, origin, user);   // SEAM:DAY_FRAMES (RD1b)   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
+  if (path === '/reads/score' || path === '/reads/scorecard') return scoreRoute(path, body, env, origin, user);   // SEAM:SCORECARD (EX54)
+  if (/^\/reads\/corpus(?:-doc|-extract|-position|-register)?$/.test(path)) return corpusRoute(path, body, env, origin, user);   // SEAM:HOUSE_POSITIONS (VX2): the corpus, a document, a reading, a position, a register line
   if (/^\/reads\/slots?(?:-brief|-make|-final|-video|-take|-clip)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1); SEAM:VIDEO_DOOR (RD1c): the day's slots and the takes
   if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)
   if (path === '/reads/list') {
@@ -18335,6 +20367,41 @@ async function dayFramesRoute(body, env, origin, user) {
   return json(Object.assign({ edition: { issue_no: ed.issue_no, date: ed.date, headline: ed.headline || '' } }, r), 200, origin, env);
 }
 
+/* ═══ SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the day's frames for the arrival, public. The arrival's home is the passed set, and the door set
+ * the feed serves already carries it (doorPublish and netSetOf, NT2: the lead, the house's order, the pass); what the page lacked is the
+ * day's visual set. GET /excavate/day-frames: the latest published DAILY day's frame copy once the house has made it (RD1b: status ready;
+ * a held set, a set the feed started alone, a day under DAY_FRAMES.MIN_FRAMES or a day with none answers day null, and the page shows
+ * nothing), each frame its kicker, headline and line as written, with a photograph only where its slot's record clears the web (RIGHTS:
+ * the record's contexts are the verdict; the frame is typographic otherwise). Never the cost, the model, the hold or who wrote it. No
+ * model; one edition row and at most one read of the rights records, kept ARRIVAL_DAY.TTL in KV. ═══ */
+const ARRIVAL_DAY = { KEY: 'arrival:day:v1', TTL: 600, RIGHTS_MAX: 24 };
+/* PURE: the public face of a day's frames. ed: the edition row (issue_no, date, frames); recs: the rights records its slots point at. */
+function arrivalDayOf(ed, recs) {
+  const fr = ed && ed.frames && typeof ed.frames === 'object' ? ed.frames : null;
+  if (!fr || fr.status !== 'ready' || !Array.isArray(fr.frames) || fr.frames.length < DAY_FRAMES.MIN_FRAMES) return null;
+  const slots = fr.slots && typeof fr.slots === 'object' && !Array.isArray(fr.slots) ? fr.slots : {};
+  const by = new Map((recs || []).filter(r => r && r.id).map(r => [String(r.id), r]));
+  const words = (x, n) => String(x || '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const photo = path => {
+    const s = slots[path], r = s && s.rights_id ? by.get(String(s.rights_id)) : null, url = r && rightsClears(r, 'web') ? houseAssetUrl(r) : null;
+    return url ? { url, credit: words(r.credit, 120) || null } : null;
+  };
+  const frames = fr.frames.slice(0, DAY_FRAMES.ITEMS_MAX).map((f, i) => ({ kicker: words(f && f.kicker, 40), headline: words(f && f.headline, 160), line: words(f && f.line, 260), photo: photo('frames[' + i + ']') }))
+    .filter(f => f.headline);
+  if (frames.length < DAY_FRAMES.MIN_FRAMES) return null;
+  return { issue_no: ed.issue_no || null, date: ed.date || null, cover_line: words(fr.cover_line, 120), cover: photo('cover'), frames };
+}
+async function arrivalDayRoute(env, origin) {
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get(ARRIVAL_DAY.KEY) : null; if (hit) return json(JSON.parse(hit), 200, origin, env); } catch (e) { excQuiet('arrival_day_get')(e); }
+  const ed = ((await sbRest(env, 'editions?status=eq.published&order=date.desc&limit=1&select=id,issue_no,date,frames').catch(excQuiet('arrival_day_edition', []))) || [])[0] || null;
+  const fr = ed && ed.frames && typeof ed.frames === 'object' ? ed.frames : null;
+  const slots = fr && fr.status === 'ready' && fr.slots && typeof fr.slots === 'object' && !Array.isArray(fr.slots) ? fr.slots : {};
+  const ids = [...new Set(Object.values(slots).map(s => String((s && s.rights_id) || '')).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, ARRIVAL_DAY.RIGHTS_MAX);
+  const recs = ids.length ? ((await sbRest(env, 'media_rights?id=in.(' + ids.join(',') + ')&select=id,kind,ref,source_url,credit,contexts').catch(excQuiet('arrival_day_rights', []))) || []) : [];
+  const out = { ok: true, day: arrivalDayOf(ed, recs) };
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(ARRIVAL_DAY.KEY, JSON.stringify(out), { expirationTtl: ARRIVAL_DAY.TTL }); } catch (e) { excQuiet('arrival_day_put')(e); } }
+  return json(out, 200, origin, env);
+}
 /* SEAM:ARCHIVE — the back-issue shelf. Every published edition stays
  * readable forever: a public index (issue, date, lead headline) and a
  * public by-issue reader in the exact shape /api/edition/today serves,
@@ -19257,4 +21324,341 @@ async function rsPublishFromRead(env, row, body) {
   if (!res.ok) throw new Error('shelf_write_' + res.status + ': ' + (await res.text()).slice(0, 120));
   const back = await res.json().catch(rsSwallow('shelf_json'));
   return { issue: (back && back[0]) || issue, pdf: { key: pdf.key, bytes: pdf.bytes, fresh: out.fresh }, pages };
+}
+
+/* ═══ SEAM:BREADTH (LK1 THE BREADTH, Oct 31, 2026): the net is wide, and the house aims it. Fresco, Oct 31: "our net must be wide
+ * though where we fish may change depending on the opportunity, RFP, or client requests that can arise at any time." Four parts.
+ * (1) The lake reads twenty-seven territories: the twenty, then finance, automotive and mobility, health and pharma, real estate and home,
+ * telecom, packaged goods and beverage, and betting, each with its trade feeds and two GDELT lanes (DAILY_POV; TERRITORY_SLUGS is read
+ * from it, so the two lists never drift).
+ * (2) The round: one more compile a night, the seventh, outside the house's six and the seats' allowances. It goes to the territory the
+ * record has read least recently, among those the lake holds DOOR.MIN_EVIDENCE lines or more in over DOOR.SINCE_D days (the memory's own
+ * weekly counts): that territory's loudest theme not already on tonight's board, or failing that its loudest tracked brand, or failing
+ * that the next territory, LAKE.ROUND.TRIES at most. The round keeps the stamp rule (the same evidence under the same voice is reused and
+ * spends nothing) and the evidence floor; it reads past the earned law's movement threshold, which is its point. A territory the round
+ * tried goes to the back of the line; a thin one waits LAKE.ROUND.RETRY_D nights. Every row the door writes now carries its territory
+ * (meta.territory), so "least recently read" is the record's own fact.
+ * (3) The pull: a category the house names with its set has each member's last three months pulled into the lake by the half-hour slices,
+ * through the free rails (the board sweep's skips) with a frame the house builds from the seed, so no model is asked. The rows are research
+ * (provenance recon_set, which 0038's trigger marks research): evidence a reading can cite, never a count.
+ * (4) Aim lanes: each category the house holds gets a GDELT search of its own in the intake, so its counts build from the hour it is named,
+ * with no deploy. GDELT asks for one request every five seconds, so a slice keeps today's LAKE.LANES GDELT calls: the aim lanes first, then
+ * the territory lanes in rotation, every territory asked at least every other slice (with room, every slice, exactly as before). An aim
+ * lane asks GDELT alone. The house's categories only: a seat's spaces are read for that seat and never spend the shared wire.
+ * DAILY's paper keeps its twenty (LAKE.PAPER_OUT) until the house opens it: the house's focus weights reach the desk's pulse, not the paper. ═══ */
+const LAKE = {
+  ADDED: ['finance-fintech', 'automotive-mobility', 'health-pharma', 'real-estate-home', 'telecom-connectivity', 'packaged-goods-beverage', 'betting'],
+  LANES: 20, AIM_MAX: 6, AIM_NAMES: 10, AIM_CONTEXT: 6, AIM_CHARS: 190,
+  // DAILY's paper reads the twenty, as it did: its pool is the newest drained rows, so thirty-six trade feeds would otherwise change the page.
+  // A territory taken off this list joins the paper (one line); the lake, the board, the round, EXCAVATE and the RECONs read all twenty-seven.
+  PAPER_OUT: ['finance-fintech', 'automotive-mobility', 'health-pharma', 'real-estate-home', 'telecom-connectivity', 'packaged-goods-beverage', 'betting'],
+  ROUND: { MAX: 1, TRIES: 4, WINDOW_D: 90, ROWS: 1000, SIGNALS: 500, KEY: 'round:v1', RETRY_D: 7, RECENT_D: 7 },
+  PULL: { KEY: 'pull:v1', PER_STEP: 4, PAR: 2, SLICE_MS: 60000, DESK_MS: 20000, AGAIN_D: 30, QUEUE_MAX: 64, DONE_MAX: 400, TRIES: 3, PROVENANCE: 'recon_set' },
+  // The words a sector or a category lends its territory: a tracked brand's sector, a held category's name. The most words wins; a tie
+  // goes to the territory listed first, so packaged goods outranks the restaurant press and entertainment outranks media.
+  SECTOR_WORDS: {
+    'finance-fintech': ['finance', 'financial', 'fintech', 'bank', 'banks', 'banking', 'payments', 'payment', 'insurance', 'insurer', 'insurers', 'investing', 'investment', 'crypto', 'credit', 'lending', 'wealth'],
+    'automotive-mobility': ['automotive', 'auto', 'autos', 'car', 'cars', 'vehicle', 'vehicles', 'ev', 'evs', 'mobility', 'motor', 'motors', 'automaker', 'automakers'],
+    'health-pharma': ['health', 'healthcare', 'pharma', 'pharmaceutical', 'pharmaceuticals', 'drug', 'drugs', 'biotech', 'medical', 'medicine'],
+    'real-estate-home': ['real estate', 'housing', 'home', 'homes', 'furniture', 'furnishings', 'property', 'mortgage', 'mortgages', 'interiors'],
+    'telecom-connectivity': ['telecom', 'telecoms', 'telecommunications', 'wireless', 'carrier', 'carriers', 'broadband', '5g', 'connectivity'],
+    'packaged-goods-beverage': ['packaged', 'cpg', 'grocery', 'groceries', 'beverage', 'beverages', 'drinks', 'spirits', 'beer', 'wine', 'snack', 'snacks', 'seasoning', 'seasonings', 'spice', 'spices', 'condiment', 'condiments', 'personal care'],
+    'betting': ['betting', 'sportsbook', 'sportsbooks', 'gambling', 'casino', 'casinos', 'igaming', 'wagering'],
+    'technology-innovation': ['technology', 'tech', 'glasses', 'wearable', 'wearables', 'electronics', 'gadgets', 'devices', 'software', 'hardware'],
+    'artificial-intelligence': ['ai', 'artificial intelligence'],
+    'fashion-beauty': ['fashion', 'beauty', 'apparel', 'lifestyle', 'cosmetics', 'skincare'],
+    'sneakers-streetwear': ['sneaker', 'sneakers', 'streetwear', 'footwear'],
+    'retail-dtc': ['retail', 'retailer', 'retailers', 'ecommerce', 'dtc', 'stores'],
+    'food-hospitality': ['restaurant', 'restaurants', 'food', 'hospitality', 'dining'],
+    'entertainment-gaming': ['entertainment', 'gaming', 'film', 'tv', 'streaming', 'games'],
+    'media-platforms': ['media', 'platform', 'platforms', 'social', 'publishing'],
+    'music': ['music', 'audio'],
+    'sports-culture': ['sports', 'sport', 'athletic', 'athletics'],
+    'wellness-fitness': ['wellness', 'fitness', 'gym'],
+    'luxury': ['luxury'],
+    'travel-experiences': ['travel', 'tourism', 'hotels', 'airlines'],
+    'advertising-marketing': ['advertising', 'marketing', 'agency', 'agencies'],
+    'business-economics': ['business', 'economics', 'economy'],
+    'entrepreneurship-creator': ['creator', 'creators', 'startup', 'startups', 'founder', 'founders'],
+    'art-design': ['art', 'design'],
+    'architecture-cities': ['architecture', 'cities', 'urban'],
+    'sustainability-impact': ['sustainability', 'sustainable', 'climate'],
+    'global-diaspora': ['diaspora']
+  }
+};
+// PURE: the filter that keeps DAILY's paper on its territories (the lake keeps every row; only the paper's pool leaves these out).
+function lakePaperOut() { const out = (LAKE.PAPER_OUT || []).filter(t => /^[a-z-]+$/.test(String(t))); return out.length ? '&territory=not.in.(' + out.join(',') + ')' : ''; }
+// PURE: the territory a sector or a category's name belongs to, or null. A slug or a territory's own name answers at once; otherwise the
+// territory whose words the text carries most (whole words and phrases, never inside a word).
+function lakeSectorTerritory(text) {
+  const norm = String(text || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!norm) return null;
+  const terrs = (typeof DAILY_POV === 'object' && DAILY_POV.territories) || Object.keys(LAKE.SECTOR_WORDS);
+  for (const t of terrs) if (norm === t.replace(/-/g, ' ') || (typeof INDUSTRY_NAMES === 'object' && String(INDUSTRY_NAMES[t] || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() === norm)) return t;
+  const s = ' ' + norm + ' ';
+  let best = null, bestN = 0;
+  for (const t of Object.keys(LAKE.SECTOR_WORDS)) {
+    if (!terrs.includes(t)) continue;
+    const n = LAKE.SECTOR_WORDS[t].filter(w => s.includes(' ' + w + ' ')).length;
+    if (n > bestN) { best = t; bestN = n; }
+  }
+  return best;
+}
+// PURE: the territory a door row speaks for. The round's own; else the territory most of its lake lines were placed in; else the one its
+// candidate declares (a theme's, from the feed); else its sector's (a tracked brand) or its category's (a space).
+function lakeRowTerritory(cand, merged) {
+  const c = cand || {};
+  if (c.round && c.round.territory) return c.round.territory;
+  const n = new Map();
+  for (const l of (merged || [])) { const t = l && l.territory; if (t && t !== 'unassigned') n.set(t, (n.get(t) || 0) + 1); }
+  const top = [...n.entries()].sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1))[0];
+  if (top) return top[0];
+  if (Array.isArray(c.territories) && c.territories[0]) return c.territories[0];
+  return lakeSectorTerritory(c.category || (c.space && c.space.category) || (c.kind === 'track' ? c.subtitle : '') || '');
+}
+// PURE: the slice's GDELT lanes inside a budget of calls. The aim lanes first (each alternating its forms by the half hour), then the
+// territory lanes in rotation: a window of the territories that moves by its own width each slice, each territory's two phrases taking
+// turns as the window comes round. With room for every territory it is today's plan exactly: one lane per territory, phrase by the epoch.
+function lakeLanePlan(lanes, aim, epoch, budget) {
+  const terrs = Object.keys(lanes || {}), T = terrs.length, out = [], e = Math.max(0, Math.floor(Number(epoch) || 0)), cap = Math.max(0, Math.floor(Number(budget) || 0));
+  for (const a of (Array.isArray(aim) ? aim : [])) { if (out.length >= cap) break; if (a && Array.isArray(a.qs) && a.qs.length) out.push({ beat: 'aim', territory: a.territory || null, q: a.qs[e % a.qs.length], aim: a.key || true }); }
+  const k = Math.min(T, Math.max(0, cap - out.length));
+  for (let j = 0; j < k; j++) {
+    const g = e * k + j, terr = terrs[g % T], qs = lanes[terr] || [];
+    if (qs.length) out.push({ beat: terr, territory: terr, q: qs[Math.floor(g / T) % qs.length] });
+  }
+  return out;
+}
+// PURE: one held category's GDELT search, in the forms GDELT reads (an OR block in parentheses, no nesting; a phrase in quotes). Form one:
+// the category's own phrase (three words or fewer) and its plain members. Form two, only when a member is a word in ordinary use (marked
+// ambiguous with context words on the graph): those members, and one of their context words required. Each form fits LAKE.AIM_CHARS, so
+// the wire's own cut never breaks a parenthesis.
+function lakeAimQueries(space, ents) {
+  const s = space || {}, f = s.frame || {}, em = new Map((ents || []).filter(e => e && e.id).map(e => [e.id, e]));
+  const quote = x => { const t = String(x || '').replace(/["()]/g, ' ').replace(/\s+/g, ' ').trim(); return !t ? '' : /^[A-Za-z0-9]+$/.test(t) ? t : '"' + t + '"'; };
+  const or = xs => (xs.length > 1 ? '(' + xs.join(' OR ') + ')' : (xs[0] || ''));
+  const fit = (xs, room) => { const out = []; for (const x of xs) { if (!x || out.includes(x)) continue; if (or(out.concat([x])).length > room) break; out.push(x); } return out; };
+  const plain = [], amb = [], ctx = [];
+  for (const m of (Array.isArray(f.members) ? f.members : []).slice(0, LAKE.AIM_NAMES)) {
+    const e = (m && m.id && em.get(m.id)) || null, nm = String((e && e.name) || (m && m.name) || '').replace(/\s+/g, ' ').trim();
+    if (nm.length < 3) continue;
+    if (e && e.ambiguous && Array.isArray(e.context) && e.context.length) {
+      amb.push(quote(nm));
+      for (const w of e.context) { const q = quote(w); if (String(w || '').trim().length >= 3 && q && !ctx.includes(q) && ctx.length < LAKE.AIM_CONTEXT) ctx.push(q); }
+    } else plain.push(quote(nm));
+  }
+  const cat = String(s.category || s.name || '').replace(/\s+/g, ' ').trim(), catQ = cat && cat.split(' ').length <= 3 ? quote(cat) : '';
+  const qs = [], one = fit([catQ].concat(plain).filter(Boolean), LAKE.AIM_CHARS);
+  if (one.length) qs.push(or(one));
+  if (amb.length && ctx.length) {
+    const c = fit(ctx, Math.floor(LAKE.AIM_CHARS / 2)), names = fit(amb, LAKE.AIM_CHARS - or(c).length - 1);
+    if (c.length && names.length) qs.push(or(names) + ' ' + or(c));
+  }
+  if (!qs.length) return null;
+  return { key: s.key || null, name: s.name || cat, territory: lakeSectorTerritory(cat), qs };
+}
+// The house's held categories, as aim lanes: two reads a slice (the spaces, and the graph's word on their members).
+async function lakeAimLanes(env) {
+  const rows = (await sbRest(env, 'spaces?kind=eq.category&held_by=eq.house&status=eq.active&select=key,name,category,frame&order=since.asc&limit=' + LAKE.AIM_MAX).catch(excQuiet('aim_spaces', []))) || [];
+  const ids = [...new Set(rows.flatMap(s => ((s && s.frame && Array.isArray(s.frame.members)) ? s.frame.members : []).map(m => m && m.id).filter(Boolean)))].slice(0, 100);
+  const ents = ids.length ? ((await sbRest(env, 'entities?id=in.(' + ids.join(',') + ')&select=id,name,ambiguous,context').catch(excQuiet('aim_entities', []))) || []) : [];
+  return rows.map(s => lakeAimQueries(s, ents)).filter(Boolean).slice(0, Math.min(LAKE.AIM_MAX, SPACES.HAND_MAX));
+}
+// PURE: the territories in the round's order. Eligible: the lake holds `floor` lines or more there (when the memory has counts at all);
+// a territory the round found thin waits RETRY_D nights. Order: never touched first, then the oldest touch (the record's last reading or
+// the round's last try, whichever is later), then the most lines, then the slug.
+function lakeRoundOrder(terrs, lastRead, attempts, lines, night, floor) {
+  const at = Date.parse(night), has = !!lines && Object.keys(lines).length > 0, out = [];
+  for (const t of (terrs || [])) {
+    const n = (lines && lines[t]) || 0, a = attempts && attempts[t];
+    if (has && n < floor) continue;
+    if (a && a.outcome === 'thin' && a.night && (at - Date.parse(a.night)) / 864e5 < LAKE.ROUND.RETRY_D) continue;
+    const read = (lastRead && lastRead[t]) || null, last = [read, a && a.night].filter(Boolean).sort().pop() || null;
+    out.push({ territory: t, last, read, lines: n });
+  }
+  const when = x => (x.last == null ? '' : x.last);
+  return out.sort((x, y) => (when(x) < when(y) ? -1 : when(x) > when(y) ? 1 : 0) || (y.lines - x.lines) || (x.territory < y.territory ? -1 : 1));
+}
+// PURE: a territory's lines over the memory's weeks, from subject_weeks rows of kind territory.
+function lakeTerritoryLines(rows) {
+  const out = {};
+  for (const r of (rows || [])) { const k = String((r && r.subject_key) || ''); if (!k.startsWith('territory:')) continue; const t = k.slice(10); out[t] = (out[t] || 0) + ((r.counts && Number(r.counts.n)) || 0); }
+  return out;
+}
+// PURE: a territory's loudest theme in the lake not already on tonight's board (by either of its ids): the most lines in the last
+// RECENT_D days, then the most in the window; `floor` lines at least, so the door's evidence floor will hold.
+function lakeRoundTheme(rows, have, nowMs, floor) {
+  const by = new Map(), d7 = nowMs - LAKE.ROUND.RECENT_D * 864e5;
+  for (const r of (rows || [])) {
+    const id = r && (r.theme_id || r.cluster_id); if (!id) continue;
+    if (have && (have.has('theme:' + id) || (r.theme_id && have.has('theme:' + r.theme_id)) || (r.cluster_id && have.has('theme:' + r.cluster_id)))) continue;
+    const g = by.get(id) || { id, n: 0, n7: 0, title: null, at: 0 }, t = Date.parse(r.captured_at) || 0;
+    g.n++; if (t >= d7) g.n7++;
+    if (r.title && t >= g.at) { g.title = String(r.title); g.at = t; }
+    by.set(id, g);
+  }
+  return [...by.values()].filter(g => g.n >= floor && g.title).sort((a, b) => (b.n7 - a.n7) || (b.n - a.n) || (a.id < b.id ? -1 : 1))[0] || null;
+}
+// PURE: a territory's loudest tracked brand not on tonight's board, its sector mapped to the territory; the board's own track shape.
+function lakeRoundTrack(tracks, stats, have, terr) {
+  const n7 = t => (stats && stats[t.id] && stats[t.id].n7) || 0;
+  const t = (tracks || []).filter(x => x && x.id && x.name && !(have && have.has('track:' + x.id)) && lakeSectorTerritory(x.sector || '') === terr)
+    .sort((a, b) => (n7(b) - n7(a)) || String(a.name).localeCompare(String(b.name)))[0];
+  return t ? { key: 'track:' + t.id, kind: 'track', id: t.id, title: String(t.name).slice(0, 90), subtitle: String(t.sector || '').slice(0, 160), query: (t.name + (t.sector ? ' ' + t.sector : '')).slice(0, 180),
+    names: [t.name].concat(t.aliases || []).filter(n => n && n.length >= 3), lens: 'brand', velocity: n7(t) } : null;
+}
+async function lakeRoundLedger(env) {
+  try { const v = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get(LAKE.ROUND.KEY)) || 'null') : null; if (v && typeof v === 'object') return Object.assign({ territories: {}, tonight: null }, v); }
+  catch (e) { excQuiet('round_ledger')(e); }
+  return { territories: {}, tonight: null };
+}
+async function lakeRoundPut(env, led) {
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(LAKE.ROUND.KEY, JSON.stringify(led)); } catch (e) { excQuiet('round_put')(e); } }
+}
+// The Monday (UTC) on or before a date, as the memory keys its weeks.
+function lakeMonday(ms) { const d = new Date(ms); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); }
+// The round's subject for tonight: the order (the record's tags, the round's ledger, the memory's counts), then the first territory with a
+// theme or a tracked brand to read, TRIES at most. A second pass the same night keeps tonight's subject (the stamp then keeps its read).
+async function lakeRoundPick(env, night, cands, opts) {
+  const R = LAKE.ROUND, nowMs = Date.now(), have = new Set((cands || []).map(c => c && c.key).filter(Boolean)), led = await lakeRoundLedger(env);
+  if (!(opts && opts.preview) && led.tonight && led.tonight.night === night && led.tonight.cand && led.tonight.cand.key) return { cand: led.tonight.cand, again: true, tried: [], order: [] };
+  const since = new Date(Date.parse(night) - R.WINDOW_D * 864e5).toISOString().slice(0, 10);
+  const rows = (await sbRest(env, 'door_reads?status=eq.ready&night=gte.' + since + '&select=night,territory:meta->>territory&order=night.desc&limit=' + R.ROWS).catch(excQuiet('round_rows', []))) || [];
+  const lastRead = {}; for (const r of rows) if (r && r.territory && !lastRead[r.territory]) lastRead[r.territory] = r.night;
+  const weeks = (await sbRest(env, LEDGER.TABLE + '?kind=eq.territory&week=gte.' + lakeMonday(Date.parse(night) - DOOR.SINCE_D * 864e5) + '&select=subject_key,counts&limit=1000').catch(excQuiet('round_weeks', []))) || [];
+  const order = lakeRoundOrder(DAILY_POV.territories, lastRead, led.territories, lakeTerritoryLines(weeks), night, DOOR.MIN_EVIDENCE);
+  const tried = [], sinceIso = new Date(nowMs - DOOR.SINCE_D * 864e5).toISOString();
+  let tracks = null, stats = null;
+  for (const o of order.slice(0, R.TRIES)) {
+    const sig = (await sbRest(env, 'signals?territory=eq.' + encodeURIComponent(o.territory) + '&research=is.false&status=neq.rejected&captured_at=gte.' + sinceIso + '&select=theme_id,cluster_id,title,captured_at&order=captured_at.desc&limit=' + R.SIGNALS).catch(excQuiet('round_signals', []))) || [];
+    const th = lakeRoundTheme(sig, have, nowMs, DOOR.MIN_EVIDENCE);
+    let cand = th ? { key: 'theme:' + th.id, kind: 'theme', id: th.id, title: th.title.slice(0, 90), subtitle: INDUSTRY_NAMES[o.territory] || o.territory, query: th.title.slice(0, 180),
+      lens: LENS_OF_TERRITORY[o.territory] || 'culture', velocity: th.n7, territories: [o.territory] } : null;
+    if (!cand) {
+      if (!tracks) { tracks = await loadTracks(env); try { stats = (JSON.parse((env.RATE_LIMIT && await env.RATE_LIMIT.get(FEED.TRACKS_KEY)) || '{}').stats) || {}; } catch (e) { stats = {}; } }
+      cand = lakeRoundTrack(tracks, stats, have, o.territory);
+    }
+    tried.push({ territory: o.territory, found: cand ? cand.kind : null });
+    if (cand) { cand.round = { territory: o.territory, name: INDUSTRY_NAMES[o.territory] || o.territory, last_read: o.read, lines: o.lines, why: o.read ? 'least_read' : 'no_recent_reading' }; return { cand, again: false, tried, order }; }
+  }
+  return { cand: null, again: false, tried, order };
+}
+// PURE: what became of the round's subject tonight.
+function lakeRoundOutcome(key, rowsOut, jobs, queued, tonightBy) {
+  if ((jobs || []).some(j => j && j.round && j.base && j.base.frame_key === key)) return queued ? 'queued' : 'failed';
+  const r = (rowsOut || []).find(x => x && x.frame_key === key);
+  if (r) return r.status === 'reused' ? 'reused' : r.error === 'thin_evidence' ? 'thin' : r.status === 'failed' ? 'failed' : String(r.status || 'kept');
+  return tonightBy && tonightBy.has && tonightBy.has(key) ? 'kept' : 'error';
+}
+async function lakeRoundNote(env, night, pick, outcome) {
+  const c = pick && pick.cand, t = c && c.round && c.round.territory;
+  if (!t) return null;
+  const led = await lakeRoundLedger(env);
+  led.territories = led.territories || {};
+  const had = led.territories[t], keep = !!pick.again && outcome === 'kept' && had && had.night === night;   // a rerun the same night that found tonight's read standing changes nothing
+  if (!keep) {
+    led.territories[t] = { night, outcome, key: c.key };
+    led.tonight = { night, territory: t, key: c.key, kind: c.kind, q: c.query, title: c.title, cand: c, outcome };
+    await lakeRoundPut(env, led);
+  }
+  return { territory: t, name: c.round.name, key: c.key, title: c.title, outcome: keep ? had.outcome : outcome, why: c.round.why, last_read: c.round.last_read, again: !!pick.again, tried: pick.tried || [] };
+}
+// The board sweep's slot for the round: tonight's subject, once the pass has named it.
+async function lakeRoundTonight(env) {
+  const t = (await lakeRoundLedger(env)).tonight;
+  return t && t.night === doorNight() && t.q ? t : null;
+}
+// {run: "round"} at the desk: who is next and why, read only; nothing is framed, compiled or written.
+async function lakeRoundPreview(env) {
+  const night = doorNight(), board = await doorCandidates(env).catch(excQuiet('round_board', [])), led = await lakeRoundLedger(env);
+  const pick = await lakeRoundPick(env, night, board, { preview: true });
+  return { night, next: pick.cand ? { territory: pick.cand.round.territory, name: pick.cand.round.name, why: pick.cand.round.why, last_read: pick.cand.round.last_read, kind: pick.cand.kind, key: pick.cand.key, title: pick.cand.title } : null,
+    tried: pick.tried, order: (pick.order || []).map(o => ({ territory: o.territory, name: INDUSTRY_NAMES[o.territory] || o.territory, last: o.last, last_read: o.read, lines: o.lines })), tonight: led.tonight ? { night: led.tonight.night, territory: led.tonight.territory, outcome: led.tonight.outcome } : null };
+}
+// PURE: a frame the house builds for a member's pull, whole (its anchors), so the gather asks no model for one.
+function lakePullFrame(it) {
+  const name = String((it && it.name) || '').replace(/\s+/g, ' ').trim(), q = String((it && it.q) || name).slice(0, 90);
+  return { entity: name, category: (it && it.category) || null, anchors: [name].concat((it && it.aliases) || []).map(x => String(x || '').toLowerCase().trim()).filter(x => x.length >= 3).slice(0, 8), exclude: [],
+    queries: { news: q, discourse: q, web: q, research: null }, task: 'read' };
+}
+// PURE: the queue's items for a category's members: each member's name, with its first context word when it is a word in ordinary use.
+function lakePullItems(space, members, seed, territory) {
+  const by = new Map(), key = x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  for (const m0 of (Array.isArray(seed) ? seed : [])) { const m = typeof m0 === 'string' ? { name: m0 } : (m0 || {}); for (const n of [m.name].concat(m.aliases || [])) if (n) by.set(key(n), m); }
+  return (Array.isArray(members) ? members : []).filter(m => m && m.id && m.name).slice(0, SPACES.SET).map(m => {
+    const s = by.get(key(m.name)) || {}, ctx = (Array.isArray(s.context) ? s.context : []).map(x => String(x || '').trim()).filter(x => x.length >= 3);
+    return { id: m.id, name: String(m.name).slice(0, 80), aliases: (Array.isArray(s.aliases) ? s.aliases : []).map(x => String(x || '').trim()).filter(Boolean).slice(0, 4),
+      q: (String(m.name) + (ctx.length ? ' ' + ctx[0] : '')).slice(0, 120), space: (space && space.key) || null, category: (space && space.category) || null, territory: territory || null };
+  });
+}
+async function lakePullLoad(env) {
+  try { const v = env.RATE_LIMIT ? JSON.parse((await env.RATE_LIMIT.get(LAKE.PULL.KEY)) || 'null') : null; if (v && Array.isArray(v.items)) return { items: v.items, done: v.done || {} }; }
+  catch (e) { excQuiet('pull_load')(e); }
+  return { items: [], done: {} };
+}
+async function lakePullSave(env, q) {
+  const done = Object.entries(q.done || {}).sort((a, b) => (a[1] < b[1] ? 1 : -1)).slice(0, LAKE.PULL.DONE_MAX);
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(LAKE.PULL.KEY, JSON.stringify({ items: (q.items || []).slice(0, LAKE.PULL.QUEUE_MAX), done: Object.fromEntries(done) })); } catch (e) { excQuiet('pull_save')(e); } }
+}
+// A category's members, queued for the pull (each once in AGAIN_D days unless the house asks again); the slices do the gathering.
+async function lakePullQueue(env, space, members, seed, again) {
+  const P = LAKE.PULL, q = await lakePullLoad(env), today = doorNight(), cat = (space && (space.category || space.name)) || '';
+  const items = lakePullItems({ key: space && space.key, category: cat }, members, seed, lakeSectorTerritory(cat));
+  let queued = 0, already = 0;
+  for (const it of items) {
+    const d = q.done[it.id];
+    if ((!again && d && (Date.parse(today) - Date.parse(d)) / 864e5 < P.AGAIN_D) || q.items.some(x => x && x.id === it.id)) { already++; continue; }
+    if (q.items.length >= P.QUEUE_MAX) break;
+    q.items.push(Object.assign(it, { at: today, tries: 0 })); queued++;
+  }
+  await lakePullSave(env, q);
+  return { category: cat, territory: lakeSectorTerritory(cat), queued, already, waiting: q.items.length };
+}
+// One step of the pull: PER_STEP members, PAR at a time, inside the budget; each gathered on the free rails with the house's frame and
+// captured as research. A member that fails is tried again on a later slice, TRIES times in all. Nothing waits: one KV read.
+async function lakePullStep(env, budgetMs) {
+  const P = LAKE.PULL, t0 = Date.now(), q = await lakePullLoad(env);
+  if (!q.items.length) return null;
+  const out = { pulled: 0, gathered: 0, captured: 0, left: 0, members: [], errors: [] }, take = q.items.splice(0, P.PER_STEP), budget = budgetMs || P.SLICE_MS;
+  for (let i = 0; i < take.length; i += P.PAR) {
+    if (Date.now() - t0 > budget) { q.items = take.slice(i).concat(q.items); out.errors.push('budget'); break; }
+    const res = await Promise.all(take.slice(i, i + P.PAR).map(async it => {
+      try {
+        const g = await gatherOpenSignals(env, it.q, { skip: BOARD_SWEEP.SKIP, frame: lakePullFrame(it) });
+        if (!g || !g.ok) return { it, ok: false };
+        const captured = await lakeCapture(env, g.items, { provenance: P.PROVENANCE, query: it.q, cls: g.cls, territory: it.territory || null });
+        return { it, ok: true, items: (g.items || []).length, captured };
+      } catch (e) { out.errors.push(String(it.name).slice(0, 30) + ':' + String(e && e.message).slice(0, 40)); return { it, ok: false }; }
+    }));
+    for (const r of res) {
+      if (r.ok) { q.done[r.it.id] = doorNight(); out.pulled++; out.gathered += r.items; out.captured += r.captured || 0; out.members.push(r.it.name); }
+      else if ((r.it.tries = (r.it.tries || 0) + 1) < P.TRIES) q.items.push(r.it);
+    }
+  }
+  out.left = q.items.length; out.ms = Date.now() - t0; out.errors = out.errors.slice(0, 6);
+  await lakePullSave(env, q);
+  await logEvent(env, 'intelligence', 'lake', 'lake_pull', null, out).catch(excQuiet('pull_log', null));
+  return out;
+}
+// {run: "pull", category} at the desk: a held category's set queued again (its members' context words from the graph), then one step.
+async function lakePullDesk(env, body) {
+  const b = body || {}, want = String(b.category || b.key || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  let queued = null;
+  if (want) {
+    const rows = (await sbRest(env, 'spaces?kind=eq.category&held_by=eq.house&status=eq.active&select=key,name,category,frame&limit=' + (SPACES.HAND_MAX * 2)).catch(excQuiet('pull_spaces', []))) || [];
+    const s = rows.find(x => [x.key, x.name, x.category].some(v => String(v || '').toLowerCase() === want));
+    if (!s) return { ok: false, error: 'no_category', say: 'the house holds no active category by that name or key', held: rows.map(x => x.name) };
+    const members = (s.frame && Array.isArray(s.frame.members)) ? s.frame.members.filter(m => m && m.id) : [];
+    if (!members.length) return { ok: false, error: 'no_members', say: 'this category has no named set yet; seed it with its members first ({run: "spaces_seed"})' };
+    const ents = (await sbRest(env, 'entities?id=in.(' + members.map(m => m.id).join(',') + ')&select=id,name,aliases,ambiguous,context').catch(excQuiet('pull_entities', []))) || [];
+    const seed = ents.map(e => ({ name: e.name, aliases: e.aliases || [], context: e.ambiguous ? (e.context || []) : [] }));
+    queued = await lakePullQueue(env, { key: s.key, name: s.name, category: s.category || s.name }, members, seed, !!b.again);
+  }
+  const ran = await lakePullStep(env, LAKE.PULL.DESK_MS);
+  return { ok: true, queued, ran, waiting: (await lakePullLoad(env)).items.length };
+}
+// PURE: the intake desk's view of the seven LK1 added: each one's gate and what it captured over the yield's days.
+function lakeAddedReport(gate, days) {
+  return LAKE.ADDED.map(t => { const g = (gate && gate[t]) || {}; return { territory: t, name: (typeof INDUSTRY_NAMES === 'object' && INDUSTRY_NAMES[t]) || t, sources: g.sources || 0, tiers: g.tiers || [], under: !!g.under,
+    captured: (days || []).reduce((a, y) => a + ((y && y.by_territory && y.by_territory[t]) || 0), 0) }; });
 }

@@ -492,6 +492,23 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rec-counts{display:flex;flex-wrap:wrap;gap:18px;font-family:'Space Mono',monospace;font-size:11px;color:var(--room-fg2,var(--text2));margin:0 0 18px}
 .rec-counts b{color:var(--room-fg,var(--text));font-weight:600}
 .rec-counts .blind{flex-basis:100%;opacity:.7}
+/* SEAM:SCORECARD (EX54): the scorecard beside the score; the calibrated line under a finding's band; the admin's score */
+.rec-counts .rec-score{color:var(--room-fg,var(--text))}
+.rec-counts .rec-score-ex{flex-basis:100%;margin-top:2px}
+.rec-score-ex summary{cursor:pointer;color:var(--room-fg2,var(--text2));letter-spacing:.06em}
+.rec-score-row{display:grid;grid-template-columns:110px 64px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--room-rule,var(--border))}
+.rec-score-row .c{font-family:'Syne',sans-serif;font-size:13px;line-height:1.35;color:var(--room-fg,var(--text))}
+.rec-score-row .h{color:var(--room-fg,var(--text))}.rec-score-row .m{color:var(--accent)}
+@media(max-width:640px){.rec-score-row{grid-template-columns:auto minmax(0,1fr) auto}.rec-score-row .c{grid-column:1/-1;order:3}}
+.card-calib{flex-basis:100%;margin-top:8px;font-family:'Space Mono',monospace;font-size:10px;line-height:1.5;color:var(--text2)}
+.score-panel{background:var(--surface);border:1px solid var(--border);padding:18px 28px;margin-bottom:8px}
+.score-panel .sp-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.sp-marks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.sp-mark{font-family:'Space Mono',monospace;font-size:13px;width:40px;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer}
+.sp-mark.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sp-note{width:100%;box-sizing:border-box;font:inherit;font-size:13px;padding:8px;background:transparent;color:var(--text);border:1px solid var(--border2)}
+.sp-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:10px}
+.sp-say{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2)}
 .rec-dateline{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.03em;color:var(--room-fg2,var(--text2));margin-bottom:6px}
 .rec-dateline b{color:var(--room-fg,var(--text));font-weight:600}
 .rec-dateline a{color:inherit;text-decoration:underline dotted}
@@ -1891,6 +1908,92 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 @media (max-width:900px){.ledger{grid-template-columns:1fr}.ledger .col{border-right:0;border-bottom:1px solid var(--room-rule);padding-left:0!important}.ledger .col:last-child{border-bottom:0}#sec-explore .hero{padding:40px 20px 32px}#main-dashboard{padding-left:20px;padding-right:20px}}
 @media (prefers-reduced-motion:reduce){.room-voices .track{animation:none}.pos,.row{transition:none}}
 </style>
+<style id="open-door">
+/* SEAM:OPEN_DOOR (NT3a THE OPEN DOOR): a reading an address named, shown where the page holds it */
+.door-here{outline:2px solid var(--room-red);outline-offset:6px;transition:outline-color .6s}
+/* the hub's Feed link is the house's, revealed for admins (RD1a); its inline display had kept it showing to every visitor */
+#kbOpen[hidden]{display:none!important}
+</style>
+<style id="net-arrival">
+/* SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the live pulse's door under the box, a seat's spaces, the morning under the hero, the day's frames.
+   The room's own language: Syne for words, Space Mono for figures, the house red for what moved and for the door. */
+.pulse-invite{margin:calc(12px*var(--k)) 0 calc(14px*var(--k));max-width:calc(820px*var(--k))}
+.pulse-invite .pi-line{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.5;color:var(--room-fg2)}
+.pulse-invite .pi-line .pi-k{margin:0}
+.pulse-invite .pi-k{font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));letter-spacing:.14em;color:var(--room-red);margin-right:10px}
+.pulse-invite .pi-more{background:none;border:0;border-bottom:1px solid var(--room-red);color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:500;font-size:inherit;padding:0 0 1px;cursor:pointer;white-space:nowrap}
+.pulse-invite.open{border:1px solid var(--room-rule);border-left:2px solid var(--room-red);background:var(--room-card);padding:calc(16px*var(--k)) calc(18px*var(--k))}
+.pulse-invite.open .pi-k{display:block;margin:0 0 8px}
+.pulse-invite .pi-h{margin:0 0 6px;font-family:'Syne',sans-serif;font-weight:700;font-size:calc(19px*var(--k));line-height:1.2;letter-spacing:-.02em;color:var(--room-ivory)}
+.pulse-invite .pi-p{margin:0 0 14px;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.55;color:var(--room-fg2);max-width:62ch}
+.pulse-invite .pi-acts{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
+.pulse-invite .pi-alt{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));color:var(--room-fg2);text-decoration:none;border-bottom:1px solid var(--room-rule)}
+.pulse-invite .pi-alt:hover{color:var(--room-ivory)}
+.my-spaces{margin:calc(26px*var(--k)) 0 0;max-width:calc(820px*var(--k));border-top:1px solid var(--room-rule);padding-top:calc(16px*var(--k))}
+.ms-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0 0 10px}
+.ms-k,.gc-k,.gd-k{font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));letter-spacing:.14em;color:var(--room-red)}
+.ms-sub{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-fg3)}
+.ms-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.ms-list{grid-template-columns:minmax(0,1fr)}}
+.ms-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;text-align:left;background:var(--room-card);border:1px solid var(--room-rule);color:var(--room-ivory);padding:10px 12px;cursor:pointer;font:inherit;min-width:0}
+.ms-row:hover,.ms-row:focus-visible{border-color:#3A3A3A}
+.ms-name{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(15px*var(--k));line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ms-kind{font-family:'Space Mono',monospace;font-size:calc(10px*var(--k));color:var(--room-fg3);align-self:center;white-space:nowrap}
+.ms-move{grid-column:1/-1;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));color:var(--room-fg2)}
+.ms-when{grid-column:1/-1;font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));color:var(--room-fg3)}
+.ms-all{margin-top:10px;background:none;border:0;border-bottom:1px solid var(--room-red);color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));padding:0 0 1px;cursor:pointer}
+.gal .room-head{margin-bottom:calc(6px*var(--k))}
+.gal .gal-sub{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.5;color:var(--room-fg3);margin:0 0 calc(4px*var(--k))}
+.gal-rows{border-top:1px solid var(--room-rule);margin-top:calc(12px*var(--k))}
+.gal-row{border-bottom:1px solid var(--room-rule)}
+.gal-row>.row{border-bottom:0}
+.gal-after{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:0 0 calc(18px*var(--k))}
+.gal-note{margin:0;flex:1 1 320px;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14px*var(--k));line-height:1.5;color:var(--room-ivory);border-left:2px solid var(--room-red);padding-left:calc(12px*var(--k));max-width:70ch}
+.gal-note .gn-k{display:block;font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));letter-spacing:.08em;color:var(--room-fg3);margin-bottom:3px}
+.gal-room{background:none;border:0;border-bottom:1px solid var(--room-red);color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));padding:0 0 1px;cursor:pointer}
+.lead-card .gal-note{margin:0 0 12px}
+.lead-acts{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
+.results-house-note{max-width:72ch;margin:12px 0 0}
+.gal-day{margin:calc(28px*var(--k)) 0 0}
+.gd-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 10px}
+.gd-link{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13px*var(--k));color:var(--room-ivory);text-decoration:none;border-bottom:1px solid var(--room-red)}
+.gd-strip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;padding:0 0 8px;scrollbar-width:thin;max-width:100%}
+.gd-strip:focus-visible{outline:1px solid var(--room-red);outline-offset:4px}
+.gd-f{flex:0 0 calc(196px*var(--k));aspect-ratio:4/5;margin:0;background:#0A0A0A;border:1px solid var(--room-rule);overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;scroll-snap-align:start;color:var(--room-ivory)}
+.gd-top{display:flex;justify-content:space-between;gap:8px;padding:10px 12px 0;font-family:'Space Mono',monospace;font-weight:700;font-size:calc(8px*var(--k));letter-spacing:.08em;color:var(--room-ivory)}
+.gd-ph{height:34%;margin:8px 0 0;overflow:hidden;flex:none}
+.gd-ph img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.78) sepia(.08) contrast(1.02)}
+.gd-body{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;padding:8px 12px 12px;min-height:0;overflow:hidden}
+.gd-body>*{flex:none}
+.gd-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--room-red);flex:none}
+.gd-kick{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-weight:700;font-size:calc(8.5px*var(--k));letter-spacing:.08em;text-transform:uppercase;color:var(--room-red)}
+.gd-hl{font-family:'Syne',sans-serif;font-weight:800;font-size:calc(14.5px*var(--k));line-height:1.08;letter-spacing:-.01em;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.gd-ln{font-family:'Space Mono',monospace;font-size:calc(8.5px*var(--k));line-height:1.45;color:#F5F0E8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.gd-f:has(.gd-ph) .gd-hl{-webkit-line-clamp:3}
+.gd-f:has(.gd-ph) .gd-ln{-webkit-line-clamp:2}
+.gd-cover:has(.gd-ph) .gd-cl{font-size:calc(17px*var(--k));display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.gd-foot{border-top:2px solid var(--room-red);padding-top:6px;display:flex;justify-content:space-between;gap:6px;font-family:'Space Mono',monospace;font-size:calc(7.5px*var(--k));letter-spacing:.06em;text-transform:uppercase;color:var(--room-fg2)}
+.gd-foot span:last-child{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.gd-cover .gd-cl,.gd-close .gd-hh{font-family:'Syne',sans-serif;font-weight:800;font-size:calc(21px*var(--k));line-height:1.02;letter-spacing:-.02em}
+.gd-close .gd-url{font-family:'Space Mono',monospace;font-weight:700;font-size:calc(8px*var(--k));letter-spacing:.06em;color:var(--room-red)}
+.gd-logo{height:13px;width:auto;align-self:flex-start;opacity:.92;margin-bottom:auto}
+.gal-cal{margin:calc(28px*var(--k)) 0 0;border-top:1px solid var(--room-rule);padding-top:calc(14px*var(--k))}
+.gc-k{margin:0 0 8px}
+.gc-lines{display:flex;flex-wrap:wrap;gap:6px 22px;font-family:'Space Mono',monospace;font-size:calc(12px*var(--k));line-height:1.5;color:var(--room-fg2)}
+.gc-lines .rec-score{color:var(--room-ivory)}
+.gc-lines .rec-score-ex{flex-basis:100%;margin-top:4px;font-size:calc(11px*var(--k))}
+.gal-lenses{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:baseline;margin:calc(24px*var(--k)) 0 0}
+.gl-row{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 480px;min-width:0}
+.gl-k{font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));letter-spacing:.14em;color:var(--room-fg3)}
+.gl{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));background:transparent;color:var(--room-fg2);border:1px solid var(--room-rule);padding:5px 9px;cursor:pointer}
+.gl .mk{margin-right:6px;font-size:.85em;color:var(--room-fg3)}
+.gl.st-spike .mk,.gl.st-rising .mk{color:var(--room-red)}
+.gl:hover,.gl:focus-visible{color:var(--room-ivory);border-color:var(--room-fg3)}
+@media (max-width:640px){.gd-f{flex-basis:168px}.gd-cover .gd-cl,.gd-close .gd-hh{font-size:18px}.gd-cover:has(.gd-ph) .gd-cl{font-size:15px}.gd-hl{font-size:13px}.gal-lenses{display:block}.gl-k{display:block;margin:0 0 8px}.gl-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px}.gl{flex:none;white-space:nowrap}}
+/* the record's own row with no photograph, on a tablet and a phone: the words take the line (its desktop grid squeezed them to a word a line under 640px) */
+@media (max-width:1000px){.row.nophoto{grid-template-columns:minmax(0,1fr) 240px}.row.nophoto .move{grid-column:1/-1}}
+@media (max-width:640px){.row.nophoto{grid-template-columns:minmax(0,1fr)}.row.nophoto .mid,.row.nophoto .move{grid-column:1/-1}}
+</style>
 
 </head>
 <body>
@@ -2401,6 +2504,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
     <!-- SEAM:EXC_INTENT: the interpretation, as chips the person can change -->
     <div class="intent-row" id="intent-row"></div><div class="intent-say" id="intent-say"></div>
     <div class="depth-note" id="depth-note"></div><!-- SEAM:EXC_DEPTH -->
+    <div class="pulse-invite" id="pulse-invite" style="display:none" aria-live="polite"></div><!-- SEAM:NET_ARRIVAL (NT3): without a subscription, what a live pulse is and where it opens -->
     <!-- live source status chips -->
     <div class="source-row" id="source-status-row" style="display:none;">
       <span class="source-row-label">SOURCES:</span>
@@ -2428,6 +2532,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
   </div>
 
 <!-- compat stub --><input id="search-bar" style="display:none" aria-hidden="true">
+  <section class="my-spaces" id="my-spaces" style="display:none" aria-label="Your spaces"></section><!-- SEAM:NET_ARRIVAL (NT3): a seat's own spaces, first, before the house's set -->
  </div>
   <!-- SEAM:EXC_DOOR_VOICE: this week's read beside the invitation: its photograph, the engine's two sentences, the three movers (chosen, never summed) -->
   <section class="week nophoto" id="week-block" style="display:none"><!-- SEAM:LEAD_SCROLL (EX36b): the latest deployments, one card at a time; the week's read first -->
@@ -2474,6 +2579,14 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 
   <div class="fi-field-read" id="fi-field-read" style="display:none"></div>
 
+  <section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The morning"><!-- SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the passed set after its lead, in the house's order; the day's frames; how our calls held; the territories as lenses -->
+    <div class="room-head"><h2 id="gal-h2">The morning</h2><div class="room-dateline" id="gal-date"></div></div>
+    <p class="gal-sub" id="gal-sub"></p>
+    <div class="gal-rows" id="gal-rows"></div>
+    <div class="gal-day" id="gal-day" style="display:none"></div>
+    <div class="gal-cal" id="gal-cal" style="display:none"></div>
+    <div class="gal-lenses" id="gal-lenses" style="display:none"></div>
+  </section>
   <section class="hub-block room-sec" id="board-block">
     <div class="room-head rec-head"><!-- SEAM:QUIET_ENGINE (EX36a): the name, the line and the ask on one line -->
       <h2 id="board-h2">The record</h2>
@@ -2499,7 +2612,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
   </section>
 
   <section class="hub-block room-sec" id="terr-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): the twenty, each with its state, movers, readings and declared sources -->
-    <div class="room-head"><h2>The territories</h2><div class="sub">Twenty areas of culture. The state is the change in coverage on last week; open one for its readings.</div></div>
+    <div class="room-head"><h2>The territories</h2><div class="sub" id="terr-sub">The areas of culture the house reads. The state is the change in coverage on last week; open one for its readings.</div></div>
     <div class="terr-grid" id="terr-grid"></div>
   </section>
 
@@ -2549,6 +2662,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
       <div id="results-mode-pill"></div>
       <div class="results-query" id="results-query"></div>
       <div class="results-meta" id="results-meta"></div>
+      <div class="results-house-note" id="results-house-note" style="display:none"></div><!-- SEAM:NET_ARRIVAL (NT3): the house's note under the band -->
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px;">
       <div class="results-stats">
@@ -2562,6 +2676,7 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
         <button class="btn-export-pdf" onclick="exportToPDF('client')" title="The same read as a client reads it: the strongest four findings, the limits on page two, the house's own checks left out">↓ Client cut</button><!-- SEAM:EXC_PRINT (RP1) -->
         <button class="btn-new-search" id="btn-make-recon" style="display:none" onclick="makeReconFromRead()">Make this a RECON</button><!-- SEAM:READ_COMMISSION -->
         <button class="btn-new-search" id="btn-pin-read" style="display:none" onclick="pinLiveRead()">Pin to folio</button><!-- SEAM:READ_FOLIO -->
+        <button class="btn-new-search" id="btn-score-read" style="display:none" onclick="_scoreOpen()">Score</button><!-- SEAM:SCORECARD (EX54): the house's own 1 to 5 on this reading, admins only -->
       </div>
       <div class="intent-doors" id="intent-doors" style="display:none"></div><!-- SEAM:EXC_INTENT: the task's door -->
       </div>
@@ -3424,6 +3539,7 @@ function setSearch(v){ document.getElementById('search-input').value=v; }
 function runSearch(){
   const q=document.getElementById('search-input').value.trim();
   if(!q) return;
+  if (typeof _pulseGate === 'function' && _pulseGate()) return;   // SEAM:NET_ARRIVAL (NT3): without a subscription the box says what a live pulse is and where it opens; nothing spends
   _querySeed = Date.now();
   closeInsightDashboard();  // close any open overlay before searching
   closePDFPreview();
@@ -3509,6 +3625,7 @@ function _renderLive(q, data){
   const syn=data&&data.synthesis;
   window._liveLast={ q, synthesis: syn||null };   // SEAM:READ_COMMISSION: Make this a RECON starts from the read on screen
   _cmAdmin().then(a=>{ const b=document.getElementById('btn-make-recon'); if(b) b.style.display=a?'':'none'; const p=document.getElementById('btn-pin-read'); if(p) p.style.display=a?'':'none'; });   // SEAM:READ_FOLIO: Pin to folio beside it
+  _cmAdmin().then(a=>{ const s=document.getElementById('btn-score-read'); if(s) s.style.display=a?'':'none'; if(s&&s.parentNode) s.parentNode.style.flexWrap='wrap'; const sp=document.getElementById('score-panel'); if(sp) sp.innerHTML=''; });   // SEAM:SCORECARD (EX54): the score beside the folio, admins only; the header's buttons wrap on a phone; a new reading closes the last one's score
   let insights, ideas, brief, synthd=false;
   if(syn && Array.isArray(syn.insights) && syn.insights.length){
     // SEAM:EXC_ACCURACY: confidence is what the compiler earned (corroboration weighed by tier), never the card's position;
@@ -3522,6 +3639,7 @@ function _renderLive(q, data){
       source: ins.source||'Excavate analysis',
       sourceUrl: ins.sourceUrl||null,
       dated: ins.dated||null, meaning: ins.meaning||null, implication: ins.implication||null, evidence: ins.evidence||[], checks: ins.checks||null,
+      calibrated: ins.calibrated&&ins.calibrated.from?ins.calibrated:null,   // SEAM:SCORECARD (EX54): a finding the record moved one band lower says so
       image: ins.image||null   // EX52a: the door's per-finding photograph (a T0 to T2 source) rides to the card
     }));
     ideas = (Array.isArray(syn.ideas)&&syn.ideas.length)
@@ -4201,6 +4319,7 @@ function openInsightModal(i){
     <div style="margin-bottom:6px;font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:0.15em;">INSIGHT DETAIL</div>
     <h2 class="modal-title" style="font-size:22px">${safe(ins.title)}</h2>
     <div class="modal-sub">${safe(CAT_LABELS[ins.category]||'Insight')} · ${safe(ins.confidence)} Confidence · ${safe(ins.stat)}${ins.source?' · '+safe(ins.source):''}</div>
+    ${ins.calibrated&&typeof _calibText==='function'?`<div class="modal-sub" style="margin-top:-10px">${safe(_calibText(ins.calibrated))}</div>`:''}
     <p class="modal-body">${safe(ins.excerpt)}</p>
     ${renderSourcesBlock(window._lastSources,lastMode)}
     ${ins.sourceUrl?`<div style="margin-bottom:16px;"><a href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" class="source-link" style="font-size:12px;">↗ Open primary source: ${safe(ins.source)}</a></div>`:''}
@@ -4854,7 +4973,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { const room
 async function trackThis(name) {
   name = String(name||'').trim(); if (!name) { showToast('Name the brand first'); return; }
   try {
-    const hh = await _authHeader(); if (!hh.Authorization) { showToast('Sign in to watch a brand'); return; }
+    const hh = await _authHeader(); if (!hh.Authorization) { if (typeof _doorAsk === 'function') { _doorAsk({ kind: 'watch', name }); return; } showToast('Sign in to watch a brand'); return; }   // SEAM:OPEN_DOOR (NT3a): a watch writes a track
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/track', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, hh), body: JSON.stringify({ name, query: name }) });
     const j = r.ok ? await r.json() : null;
     if (j && j.ok) { showToast('Watching ' + name + '. Its weeks start counting on the next run.'); _brands.at = 0; if (typeof _rooms === 'object') _rooms.at = 0; if (document.getElementById('sec-brands')?.classList.contains('active')) initBrandsPage(); }
@@ -4886,7 +5005,7 @@ async function initRoomsPage() {
   if (h) { if (_rooms.open !== h.id) _openRoom(h.id, true, h.by); } else _closeRoom(true);
 }
 function _roomRoute() {
-  if (window._signedOut) return;
+  if (window._signedOut && typeof _doorHubShown === 'function' && _doorHubShown()) { enterSpace('excavate'); return; }   // SEAM:OPEN_DOOR (NT3a): the rooms are public on the worker; a visitor's room address opens its room
   const h = _roomHash(), sec = document.getElementById('sec-brands');
   if (!sec || !sec.classList.contains('active')) { if (h) navTo('brands'); return; }
   if (h && h.id !== _rooms.open) _openRoom(h.id, true, h.by); else if (!h && _rooms.open) _closeRoom(true);
@@ -4989,7 +5108,7 @@ function _renderRoom(j) {
   const rc = j.record || { deployments: 0, readings: [] };
   const recLine = rc.deployments ? `${_fmtN(rc.deployments)} ${rc.deployments === 1 ? 'reading' : 'readings'} on record since ${safe(_day(rc.since, true))}: ${_fmtN(rc.held)} held, ${_fmtN(rc.missed)} missed, ${_fmtN(rc.open)} being checked.${rc.earlier ? ` ${_fmtN(rc.earlier)} earlier ${rc.earlier === 1 ? 'reading stands' : 'readings stand'} outside the record.` : ''}` : (rc.earlier ? `${_fmtN(rc.earlier)} earlier ${rc.earlier === 1 ? 'reading stands' : 'readings stand'} outside the record; nothing on it yet.` : `Nothing on the record for ${safe(r.name)} yet.`);
   const record = `<section class="room-sec" id="room-record"><div class="room-head"><h2>The record</h2><div class="sub">What we deployed on ${safe(r.name)}, each with its call and how it turned out.</div></div>
-      <p class="room-more">${recLine}</p>
+      <p class="room-more">${recLine}</p>${j.scorecard && j.scorecard.line ? `<p class="room-more room-calls">${safe(j.scorecard.line)}</p>` : ''}
       ${(rc.readings || []).length ? `<div class="rrds">${rc.readings.map(x => `<article class="rrd"><div class="rrd-meta">${safe(_day(x.night, true))}${x.grade || x.check_by ? ' · ' + safe(_roomGrade(x.grade, x.check_by)) : ''}${x.findings ? ' · ' + _fmtN(x.findings) + (x.findings === 1 ? ' finding' : ' findings') : ''}</div><h3>${safe(x.claim || '')}</h3>${x.move ? `<p class="move">${safe(x.move)}</p>` : ''}${_roomMarks(x.marks) ? `<div class="rrd-marks">${safe(_roomMarks(x.marks))}</div>` : ''}<button type="button" class="rrd-open" onclick="_roomOpenReading('${_uuid(x.id)}')">Open the reading</button></article>`).join('')}</div>` : ''}</section>`;
   const cls = Array.isArray(j.claims) ? j.claims : [];
   const claims = cls.length ? `<section class="room-sec"><div class="room-head"><h2>The claims</h2><div class="sub">Every finding we have written about ${safe(r.name)}, newest first, with the confidence it earned and how its call turned out.</div></div>
@@ -5321,6 +5440,7 @@ function _inDoors(f) {
 let _sgTimer = null, _sgOn = -1, _sgItems = [];
 function _sgInput(v) {
   toggleClearBtn();
+  if (window._signedOut === true) { const sb = document.getElementById('suggest-box'); if (sb) { sb.classList.remove('open'); sb.innerHTML = ''; } return; }   // SEAM:OPEN_DOOR (NT3a): suggestions are asked signed in; a visitor's box asks nothing
   clearTimeout(_sgTimer); const box = document.getElementById('suggest-box'); if (!box) return;
   if (String(v || '').trim().length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
   _sgTimer = setTimeout(async () => {
@@ -5535,7 +5655,7 @@ function _newReportRun() {
   closeModalDirect(); const inp = document.getElementById('search-input'); if (inp) inp.value = q.trim();
   navTo('explore'); runSearch();
 }
-function showToast(msg){const t=document.getElementById('toast');t.textContent='✓ '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function showToast(msg){if(window._signedOut===true&&typeof _doorToast==='function'&&_doorToast(msg))return;const t=document.getElementById('toast');t.textContent='✓ '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 
 
 
@@ -6195,7 +6315,7 @@ function _fillLensPanels(lenses, truth){
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
         ${_meaningBlock(ins)}
-        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(_cleanSource(ins.source))}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>
+        <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(_cleanSource(ins.source))}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>${typeof _calibLine==='function'?_calibLine(ins.calibrated):''}
       </div>`;
   };
   CATS.forEach(cat=>{
@@ -7006,6 +7126,7 @@ function _showHubSignedOut() {
   const g = document.getElementById('login-gate');
   if (g) g.classList.add('hidden');
   goHub();
+  if (typeof _doorDeep === 'function') _doorDeep();   // SEAM:OPEN_DOOR (NT3a): an address into EXCAVATE lands a visitor inside it; the hub stays the ground state
   const b = document.getElementById('uai-authbtn');
   if (b) { b.textContent = 'Sign in \u2192'; b.onclick = function () { _gateForDoor(null); }; }
 }
@@ -7163,6 +7284,7 @@ function _gateForDoor(name) {
     };
     g.appendChild(back);
   }
+  if (typeof _doorBack === 'function') _doorBack(name);   // SEAM:OPEN_DOOR (NT3a): the way back returns a visitor to the page they were on
 }
 
 function _authShowGate() {
@@ -7207,12 +7329,13 @@ function goHub(){
 function enterSpace(name){
   /* SEAM:DOOR_GATE — the turnstile. Signed out, the chosen door is stashed
      and the gate rises; sign-in resumes INTO this exact space. */
-  if (window._signedOut) { _gateForDoor(name); return; }
+  if (window._signedOut && name !== 'excavate') { _gateForDoor(name); return; }   // SEAM:OPEN_DOOR (NT3a): EXCAVATE opens to a visitor; PLAY and MINE keep their gate
   _uaiHide();
   if(name==='excavate'){
     document.body.style.overflow='';
     if(typeof navTo==='function') navTo(typeof _brandHash === 'function' && _brandHash() ? 'brands' : 'explore');   // SEAM:BRAND_ROOM: a room's address opens the room
     window.scrollTo(0,0);
+    if (typeof _doorResume === 'function') setTimeout(_doorResume, 450);   // SEAM:OPEN_DOOR (NT3a): signed in, on to what the reader asked for at the gate
     return;
   }
   const el=document.getElementById('space-'+name);
@@ -10374,6 +10497,7 @@ function initFeaturedInsights() {
   _renderFeaturedGrid(false);   // instant paint from the pool (always)
   _recordLoad().then(rec => { if (rec && rec.tiles.length && !window._scrollDrawn) _renderScroll(rec, _FI_LAKE || { proposed: [] }); });
   _terrLoad();   // SEAM:TERRITORIES (EX39): the map, independent of the feed   // SEAM:LEAD_SCROLL (EX36b): the record does not wait for the feed
+  if (typeof _galBoot === 'function') _galBoot();   // SEAM:NET_ARRIVAL (NT3): the viewer, a seat's spaces, the day's frames; a morning kept from before the pass is fetched again
   renderTrendingNow();
   _checkAndRefreshFeatured();    // background live enrichment
 }
@@ -10808,6 +10932,7 @@ function _renderRecord(record) {
   el.style.display = 'block';
 }
 async function _openDoorRead(t) {
+  if (window._signedOut === true && typeof _doorRead === 'function') return _doorRead(t);   // SEAM:OPEN_DOOR (NT3a): a reading's deep dive is signed in on the worker
   const q = String((t.frame && t.frame.query) || t.title || '').trim();
   closeInsightDashboard(); closePDFPreview();
   showLoader(t.title || q || 'the subject', 'live', ['Opening the reading', 'Placing its evidence', 'Rendering'], 'OPENING THE OVERNIGHT READ');   // EX52a
@@ -10820,6 +10945,7 @@ async function _openDoorRead(t) {
     window._doorOpen = { id: t.id, query: q, frame: j.data.frame || null };
     _dashShow(false); document.getElementById('error-banner').style.display = 'none';
     _renderLive(q, { items: [], synthesis: j.data, sources: [] });
+    if (typeof _houseNoteShow === 'function') _houseNoteShow(j.data.house_note || null);   // SEAM:NET_ARRIVAL (NT3): the house's applied note under the band (NT2 carries it)
     { const h = document.getElementById('results-query'); if (h && t.title) h.textContent = t.title; }   // EX52a: the heading is the subject as the board names it; the rail's search string stays the question underneath (Go deeper, the RECON)
     _reachBlock(t.id);   // SEAM:ROLE_IMPLICATIONS / SEAM:READER_MARKS / SEAM:EVIDENCE_PACK
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -10958,6 +11084,7 @@ function _navUserRefresh() {
 async function _profileUnfollow(i) { const prof = window._profile || await _profileGet(); if (!prof) return; const follows = (prof.follows || []).slice(); follows.splice(i, 1); const saved = await _profileSave({ follows }); if (saved) _profileOpen(); }
 /* SEAM:CLIENT_PROFILE: follow the lens on the record (a brand, a category, an audience) in one click. */
 async function _followLens() {
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'follow', lens: _recLens && _recLens.kind, value: _recLens && _recLens.value });   // SEAM:OPEN_DOOR (NT3a): a follow writes the profile
   const L = _recLens; if (!L || !['brand', 'category', 'audience'].includes(L.kind) || !L.value) { showToast('Pick a brand, category or audience lens first'); return; }
   const prof = window._profile || await _profileGet(); if (!prof) { showToast('Sign in to follow a frame'); return; }
   const follows = (prof.follows || []).slice();
@@ -11179,6 +11306,8 @@ function _terrRender(st) {
       <div class="tf">${x.readings ? `<b>${safe(String(x.readings))}</b> ${x.readings === 1 ? 'reading' : 'readings'}` : 'No reading yet'}</div>
     </button>`).join('');
   el.style.display = '';
+  const ts = document.getElementById('terr-sub'), tn = (st.territories || []).length; if (ts && tn) ts.textContent = tn + ' areas of culture. The state is the change in coverage on last week; open one for its readings.';   // SEAM:NET_ARRIVAL (NT3): the count is the state's, never typed
+  if (typeof _galLensRender === 'function') _galLensRender();   // NT3: the morning's lenses
 }
 function _terrOpen(slug) {
   _recLensSet('territory', slug);
@@ -11259,6 +11388,7 @@ function _recFoot(t) {
 }
 /* SEAM:RECORD_SCROLL: "play it" hands PLAY the deployed insight through the handoff (SEAM:PLAY_HANDOFF): the claim as the ask, the frame, the move. */
 function _playRecord(id) {
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'play', id });   // SEAM:OPEN_DOOR (NT3a): PLAY is signed in
   const t = ((_FI_RECORD && _FI_RECORD.tiles) || []).find(x => x.id === id); if (!t) return;
   const f = t.frame || {};
   const pkg = { ask: ('Make this insight real: ' + String(t.claim || t.title || '') + (t.move ? ' The move: ' + t.move : '')).slice(0, 2400), from: 'record', q: f.query || t.title || null,
@@ -11288,6 +11418,7 @@ async function _askSubmit(ev) {
   if (ev) ev.preventDefault();
   const inp = document.getElementById('ask-q'), thread = document.getElementById('ask-thread'); if (!inp || !thread) return false;
   const q = String(inp.value || '').trim(); if (q.length < 4) return false;
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'ask', q });   // SEAM:OPEN_DOOR (NT3a): the record answers a signed-in reader (a credit on the meter)
   inp.value = '';
   thread.insertAdjacentHTML('beforeend', `<div class="ask-turn reader"><b>You</b><p>${safe(q)}</p></div><div class="ask-turn house pending" id="ask-pending"><b>The record</b><p>Reading what the house deployed and what the lake holds</p></div>`);
   thread.scrollTop = thread.scrollHeight;
@@ -11365,16 +11496,19 @@ function _leadRender(rec) {
   const rail = document.getElementById('lead-rail'); if (!rail || !rec || !Array.isArray(rec.tiles)) return;
   if (_leadBuilt === (rec.built_at || 'x')) return; _leadBuilt = rec.built_at || 'x';
   rail.querySelectorAll('.lead-reading').forEach(x => x.remove());
-  const pick = rec.tiles.filter(t => t.photo && t.photo.src && (t.claim || t.title)).sort((a, b) => String(b.deployed || '').localeCompare(String(a.deployed || ''))).slice(0, LEAD.MAX);
-  window._leadIds = new Set(pick.map(t => t.id));
+  const g = typeof _galPick === 'function' ? _galPick(rec) : null;   // SEAM:NET_ARRIVAL (NT3): a passed set's lead is the rail's reading, ahead of the week's read; its other deployments are the morning below
+  const pick = g ? g.rail : rec.tiles.filter(t => t.photo && t.photo.src && (t.claim || t.title)).sort((a, b) => String(b.deployed || '').localeCompare(String(a.deployed || ''))).slice(0, LEAD.MAX);
+  window._leadIds = new Set(pick.map(t => t.id)); if (g) g.rows.forEach(t => window._leadIds.add(t.id));   // NT3: the record leaves out what the morning shows
   const words = s => String(s || '').replace(/-/g, ' ');
-  rail.insertAdjacentHTML('beforeend', pick.map(t => { const m = t.measures || {}, f = t.frame || {};
+  rail.insertAdjacentHTML(g ? 'afterbegin' : 'beforeend', pick.map(t => { const m = t.measures || {}, f = t.frame || {};
     return `<article class="lead-card lead-reading" data-id="${safeAttr(t.id)}">
-    <figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>
-    <div class="text"><div class="room-dateline">Deployed ${safe(_recDay(t.deployed))}${m.territory ? ' · ' + safe(words(m.territory)) : ''}${f.entity ? ' · ' + safe(f.entity) : ''}</div>
+    ${t.photo && t.photo.src ? `<figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : ''}
+    <div class="text"><div class="room-dateline">${g ? 'The lead · ' : ''}Deployed ${safe(_recDay(t.deployed))}${m.territory ? ' · ' + safe(words(m.territory)) : ''}${f.entity ? ' · ' + safe(f.entity) : ''}</div>
       <h2>${safe(t.claim || t.title)}</h2>${t.dek ? `<p>${safe(t.dek)}</p>` : ''}
-      <div class="lead-measure">${_recMeasureLine(m)}</div>${_leadBet(t)}
-      <div class="lead-acts"><button type="button" class="btn-go-deeper" onclick="openFeaturedCard('${safeAttr(t.id)}')">Open the reading</button></div></div></article>`; }).join(''));
+      <div class="lead-measure">${_recMeasureLine(m)}</div>${_leadBet(t)}${g && typeof _galNoteHtml === 'function' ? _galNoteHtml(t.house_note) : ''}
+      <div class="lead-acts"><button type="button" class="btn-go-deeper" onclick="openFeaturedCard('${safeAttr(t.id)}')">Open the reading</button>${g && typeof _galRoomBtn === 'function' ? _galRoomBtn(t) : ''}</div></div></article>`; }).join(''));
+  if (g) { rail.scrollLeft = 0; requestAnimationFrame(() => { rail.scrollLeft = 0; }); }   // NT3: the lead is the card in view; a snapped rail would keep the card it showed
+  if (typeof _galRender === 'function') _galRender(g);   // NT3: the morning under the hero, or nothing when no set was passed
   const sec = document.getElementById('week-block'); if (sec && pick.length) { sec.style.display = ''; window._weekReady = true; _heroSolo(); }   // EX52a: the readings' rail is something to show
   const lw = document.getElementById('lead-week'), h2 = document.getElementById('week-h2'); if (lw && !(h2 && h2.textContent.trim())) lw.style.display = 'none';   // no week's read yet: the readings lead
   _leadWire();
@@ -11394,6 +11528,60 @@ function _leadWire() {
   rail.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); _leadGo(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); _leadGo(-1); } });
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) _leadTimer = setInterval(_leadTick, LEAD.EVERY_MS);
 }
+/* SEAM:SCORECARD (EX54 THE SCORECARD): the record's calibration in the clean sheet's sentences, beside the score. "When we said High,
+   the call held 16 of 20.": a band's sentence speaks for the band at twenty graded calls; below them it is the count, held so far, and
+   the graded calls behind it open under the line; the plain hit rate follows the bands. A bet, its date and its grade are intelligence
+   about the world, and so is their aggregate: the line never counts readings or subjects. */
+function _scoreLine(sc) {
+  if (!sc || !Array.isArray(sc.lines) || !sc.lines.length) return '';
+  const ex = Array.isArray(sc.examples) ? sc.examples.slice(0, 9) : [];
+  return sc.lines.map(l => `<span class="rec-score">${safe(String(l))}</span>`).join('') +
+    (ex.length ? `<details class="rec-score-ex"><summary>The graded calls so far</summary>${ex.map(e => `<div class="rec-score-row"><span>${safe(_scoreDay(e.night))}</span><span>${safe(String(e.band || ''))}</span><span class="c">${safe(String(e.claim || ''))}</span><span class="${e.grade === 'held' ? 'h' : 'm'}">${e.grade === 'held' ? 'held' : 'missed'}</span></div>`).join('')}</details>` : '');
+}
+function _scoreDay(d) { const x = d ? new Date(String(d).slice(0, 10) + 'T12:00:00Z') : null; return x && !isNaN(x) ? x.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ''; }
+/* SEAM:SCORECARD (EX54): a finding the record moved one band lower says so under its band. */
+function _calibText(c) { return c && c.from && c.n ? `Calibrated: our ${c.from} calls${c.category ? ' in ' + c.category : ''} have held ${c.held} of ${c.n}.` : ''; }
+function _calibLine(c) { const t = _calibText(c); return t ? `<span class="card-calib">${safe(t)}</span>` : ''; }
+/* SEAM:SCORECARD (EX54): the house's own score on the reading on screen, for admins: five marks and a note, one a reading and scorer
+   (a second press replaces the first). An overnight reading is scored by its door row, a live read by its ledger id. No model. */
+function _scoreTarget() {
+  const L = window._liveLast, syn = L && L.synthesis; if (!syn) return null;
+  const door = syn.overnight && window._doorOpen && window._doorOpen.id ? window._doorOpen.id : null;
+  const id = door || syn.read_id || null;
+  return id ? { src: door ? 'door' : 'read', id: String(id) } : null;
+}
+async function _scoreOpen() {
+  let el = document.getElementById('score-panel');
+  if (el && el.innerHTML) { el.innerHTML = ''; return; }
+  const t = _scoreTarget();
+  if (!t) { showToast('This reading was not kept, so there is nothing to score'); return; }
+  if (!el) {
+    const h = document.querySelector('#live-results .results-header'); if (!h) return;
+    el = document.createElement('div'); el.id = 'score-panel'; el.className = 'score-panel'; h.insertAdjacentElement('afterend', el);
+  }
+  el.innerHTML = '<p class="sp-say">Opening the score.</p>';
+  let d = null; try { d = await _cmApi('/reads/score', t); } catch (e) { d = { ok: false, error: 'network' }; }
+  _scoreDraw(el, t, d, null);
+}
+function _scoreDraw(el, t, d, say) {
+  if (!el) return;
+  if (!d || !d.ok) { el.innerHTML = `<p class="sp-say">The score did not open: ${safe(String((d && d.error) || 'no answer'))}.</p>`; return; }
+  const mine = d.mine || null, all = d.all || {}, cur = mine ? mine.score : 0;
+  el.innerHTML = `<div class="sp-k">The house's score</div>
+    <div class="sp-marks" role="radiogroup" aria-label="Score this reading, 1 to 5">${[1, 2, 3, 4, 5].map(n => `<button type="button" class="sp-mark${n === cur ? ' on' : ''}" data-n="${n}" role="radio" aria-checked="${n === cur ? 'true' : 'false'}">${n}</button>`).join('')}</div>
+    <textarea class="sp-note" id="sp-note" rows="2" maxlength="400" placeholder="What held the read up, or let it down. For the house only.">${safe((mine && mine.note) || '')}</textarea>
+    <div class="sp-bar"><button type="button" class="btn-new-search" id="sp-save">Keep the score</button><span class="sp-say">${safe(say || (all.n ? `Scored ${all.n} ${all.n === 1 ? 'time' : 'times'}, a mean of ${all.mean}.` : 'Not scored yet.'))}</span></div>`;
+  let pick = cur;
+  el.querySelectorAll('.sp-mark').forEach(b => { b.onclick = () => { pick = parseInt(b.getAttribute('data-n'), 10) || 0; el.querySelectorAll('.sp-mark').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on ? 'true' : 'false'); }); }; });
+  const sv = el.querySelector('#sp-save');
+  if (sv) sv.onclick = async () => {
+    if (!pick) { const s = el.querySelector('.sp-bar .sp-say'); if (s) s.textContent = 'Pick a mark from 1 to 5 first.'; return; }
+    sv.disabled = true;
+    const note = (el.querySelector('#sp-note') || {}).value || '';
+    let r = null; try { r = await _cmApi('/reads/score', Object.assign({}, t, { score: pick, note })); } catch (e) { r = { ok: false, error: 'network' }; }
+    if (r && r.ok) _scoreDraw(el, t, r, 'Kept: ' + pick + ' of 5.'); else { sv.disabled = false; const s = el.querySelector('.sp-bar .sp-say'); if (s) s.textContent = 'Not kept: ' + String((r && r.error) || 'no answer') + '.'; }
+  };
+}
 function _renderScroll(rec, data) {
   window._scrollDrawn = true; _leadRender(rec);   // SEAM:LEAD_SCROLL: the rail first, so the record below leaves out what the rail carries
   const grid = document.getElementById('featured-insights-grid'), list = document.getElementById('board-list'); if (!grid) return;
@@ -11401,8 +11589,9 @@ function _renderScroll(rec, data) {
   _recLensRow(all);
   const counts = document.getElementById('rec-counts'), c = rec.counts || {};
   const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
-  // SEAM:QUIET_ENGINE (EX36a): the score, never the machinery: no count of readings or subjects, no calibration line
+  // SEAM:QUIET_ENGINE (EX36a): the score, never the machinery: no count of readings or subjects; the calibration speaks in the scorecard's sentences below (EX54), never as a label
   if (counts) { const score = (c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''; counts.innerHTML = score + (c.open ? `<span><b>${safe(String(c.open))}</b> being checked</span>` : ''); counts.style.display = counts.innerHTML ? '' : 'none'; }
+  if (counts && typeof _scoreLine === 'function') { const sc = _scoreLine(rec.scorecard); const onMorning = sc && typeof _galCal === 'function' ? _galCal(sc) : false; if (sc && !onMorning) { counts.insertAdjacentHTML('beforeend', sc); counts.style.display = ''; } }   // SEAM:SCORECARD (EX54): when we said High, the call held N of M, beside the score
   _renderCurrents(rec.currents, rec.tiles);   // SEAM:CROSS_CURRENTS; SEAM:RECORD_FACE: with the tiles, for the faces
   const sub = document.getElementById('board-sub');
   if (sub) sub.textContent = 'What the house has read, dated and kept. A later reading develops an earlier one; both stand.';   // SEAM:QUIET_ENGINE
@@ -11427,6 +11616,7 @@ function _renderScroll(rec, data) {
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');
   if (!grid) return;
+  if (typeof _galFeed === 'function') _galFeed(data && data.door);   // SEAM:NET_ARRIVAL (NT3): the passed set the feed brings is the morning's
   _renderWeek(data); _renderDoorVoices(data.voices); _renderRecord(data.record);   // SEAM:EXC_DOOR_VOICE
   // SEAM:RECORD_SCROLL: the record first; the standing door tiles when the record is still empty
   if (_FI_RECORD && Array.isArray(_FI_RECORD.tiles) && _FI_RECORD.tiles.length >= 3) { _renderScroll(_FI_RECORD, data); return; }
@@ -11770,6 +11960,7 @@ function renderTrendingNow() {
 (function () {
   (function reveal(tries) {
     if (tries > 40) return;
+    if (window._signedOut !== false) { setTimeout(function () { reveal(tries + 1); }, 2500); return; }   // SEAM:OPEN_DOOR (NT3a): a visitor has no seat to ask about; asked once signed in
     api("whoami", {}).then(function (d) {
       var b = document.getElementById("kbOpen");
       if (d && d.ok && d.admin && b) b.hidden = false;
@@ -12926,6 +13117,347 @@ function renderTrendingNow() {
 })();
 </script>
 <!-- /SEAM:STUDY_INVITE -->
+<script>
+/* ═══ SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the home is the passed set. The box keeps its place at the top and the ask still follows the
+   page. The hero's rail leads with the morning's lead (the house's promotion, else the largest move: netSetOf's lead on the door set,
+   never worked out again here), then the week's read. Under the hero, the morning: the night's other deployments in the house's order,
+   in the record's own row shape, each with the house's note and its room; then the day's frames when the house has made them; then how
+   our calls held (the scorecard, moved here from the record's head while a set is passed); then the territories as lenses, read from
+   the state, never typed. The record below leaves out what the morning shows. A seat sees its own spaces first, under the box, before
+   the house's set. Without a subscription (signed out, a Member, a paused team) the box says what a live pulse is and where it opens,
+   and nothing is asked of the engine: no frame, no gather, no read. A seat and the house run a live read exactly as before. No model;
+   GET routes only (the plan, the spaces, the day's frames, the rooms). ═══ */
+const _gal = { set: null, setKey: '', pick: null, who: null, whoTries: 0, mine: null, day: null, dayAt: 0, booted: false, fresh: false };
+const _GAL = { PLANS: ['engine', 'partner', 'retainer'], MINE_SHOW: 6, DAY_MS: 600000, CUTOFF_H: 7, TZ: 'America/Chicago',
+  MAIL: 'mailto:hello@unsurfaced-intelligence.com?subject=Live%20pulses',
+  CAD: { nightly: 'nightly', every_2: 'every two nights', every_3: 'every three nights', weekly: 'weekly' },
+  KIND: { brand: 'Brand', track: 'Brand', entity: 'Subject', theme: 'Pattern', category: 'Category', frame: 'Frame' } };
+function _galApi(path) { return API_BASE.replace(/\/$/, '') + path; }
+
+/* Who is reading: signed out; a Member (the free plan); a seat on an engine, partner or retainer team; a paused team; the house (an
+   admin). A plan that does not answer is unknown, and the read runs as it always did: the meter decides on the worker. */
+function _galEmail() { return (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.email) || ''; }
+function _pulseWho() { const w = _gal.who; return w && w.email === _galEmail() ? w : null; }
+async function _whoLoad() {
+  const email = _galEmail();
+  let h = {}; try { h = (await _authHeader()) || {}; } catch (e) { h = {}; }
+  if (!h.Authorization) return (_gal.who = { email, kind: 'out', pulses: false, sell: false });
+  let p = null; try { const r = await fetch(_galApi('/plan'), { headers: h }); p = r.ok ? await r.json() : null; } catch (e) { p = null; }
+  let kind = !p || !p.ok ? 'unknown' : _GAL.PLANS.includes(p.plan) ? (p.status === 'paused' ? 'paused' : 'seat') : 'member';
+  if (kind === 'member' || kind === 'paused') { let a = false; try { a = await _isAdmin(); } catch (e) { a = false; } if (a) kind = 'house'; }
+  return (_gal.who = { email, kind, pulses: kind === 'seat' || kind === 'house' || kind === 'unknown', sell: !!(p && p.sell) });
+}
+/* The box's door. A reader with pulses goes on to the read, the house's note from an earlier reading cleared; a reader without one is
+   shown what a pulse is and where it opens, and nothing else runs. Read once for the viewer, then the box goes on. */
+function _pulseGate() {
+  const w = _pulseWho();
+  if (!w) {
+    if (_gal.whoTries++ < 3) { _whoLoad().then(x => { if (x) runSearch(); }).catch(() => { _gal.who = { email: _galEmail(), kind: 'unknown', pulses: true, sell: false }; runSearch(); }); return true; }
+    _gal.whoTries = 0; return false;
+  }
+  _gal.whoTries = 0;
+  if (w.pulses) { _pulseShow(null); _houseNoteShow(null); return false; }
+  _pulseShow(w, true);
+  return true;
+}
+function _pulseShow(w, open) {
+  const el = document.getElementById('pulse-invite'); if (!el) return;
+  if (!w || w.pulses) { el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('open'); return; }
+  const say = {
+    out: { line: 'Your question, read now, every source attached. Sign in to start one.', then: 'Pulses open with a subscription. The morning below is open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },
+    member: { line: 'Your question, read now, every source attached. They come with Engine.', then: 'Pulses come with Engine. The morning below is yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
+    paused: { line: 'Your team\'s plan is paused, and its live pulses with it.', then: 'Your team\'s plan is paused, and its pulses with it. The morning below stays open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
+  }[w.kind] || null;
+  if (!say) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.innerHTML = open
+    ? `<div class="pi-k">LIVE PULSES</div><p class="pi-h">Your question, read now.</p><p class="pi-p">A live pulse reads what the house keeps, the open web and what people are saying, then writes the answer in minutes with every source attached. ${safe(say.then)}</p><div class="pi-acts">${say.go}<a class="pi-alt" href="${_GAL.MAIL}">Talk to us</a></div>`
+    : `<p class="pi-line"><span class="pi-k">LIVE PULSES</span>${safe(say.line)}<button type="button" class="pi-more" onclick="_pulseShow(_pulseWho(), true)">What a pulse is</button></p>`;
+  el.classList.toggle('open', !!open);
+  el.style.display = '';
+}
+
+/* The house's note on a reading, its text and its date (never who wrote it): under the band on the deep dive, on the lead and under a
+   row of the morning. */
+function _galNoteHtml(n) {
+  const t = n && n.text ? String(n.text).trim() : '';
+  return t ? `<p class="gal-note"><span class="gn-k">From the house${n.at ? ', ' + safe(_recDay(n.at)) : ''}</span>${safe(t)}</p>` : '';
+}
+function _houseNoteShow(n) {
+  const el = document.getElementById('results-house-note'); if (!el) return;
+  const h = _galNoteHtml(n); el.innerHTML = h; el.style.display = h ? '' : 'none';
+}
+
+/* The room behind a reading's subject: a watched brand's by its track, a named subject's by its name on the rooms' list. A pattern has
+   no room, and no link is drawn for it. */
+function _galRoomOf(t) {
+  const k = String((t && t.key) || ''), m = /^track:([0-9a-f-]{36})$/i.exec(k);
+  if (m) return { by: 'track', id: m[1] };
+  const e = t && t.frame && t.frame.entity ? String(t.frame.entity).trim() : '';
+  return e ? { by: 'name', name: e } : null;
+}
+function _galRoomBtn(t) { return _galRoomOf(t) ? `<button type="button" class="gal-room" onclick="event.stopPropagation();_galRoom('${safeAttr(t.id)}')">The room</button>` : ''; }
+function _galTile(id) { const p = _gal.pick; return p ? p.rail.concat(p.rows).find(t => t.id === id) || null : null; }
+async function _galRoom(id) {
+  const t = _galTile(id), r = _galRoomOf(t); if (!r) return;
+  if (r.by === 'track') { navTo('brands'); _openRoom(r.id, false, 'track'); return; }
+  if (!_rooms.at) { try { const x = await fetch(_galApi('/excavate/rooms'), { cache: 'no-store' }); const j = x.ok ? await x.json() : null; if (j && j.ok) { _rooms.list = j.rooms || []; _rooms.at = Date.now(); } } catch (e) { /* the toast below says so */ } }
+  const k = r.name.toLowerCase(), hit = (_rooms.list || []).find(x => [x.name].concat(x.aliases || []).some(n => String(n || '').toLowerCase() === k));
+  if (hit && _uuid(hit.id)) { navTo('brands'); _openRoom(hit.id); } else showToast('No room for ' + r.name + ' yet');
+}
+
+/* The passed set, from the door set the feed brings. The deployments are the night's ready readings the record holds (a pulled one, a
+   reused one and a carried one are not the morning's), in the house's order; the lead is netSetOf's, else the order's first. */
+function _galFeed(door) {
+  const s = door && Array.isArray(door.tiles) && door.tiles.length ? door : null;
+  const key = s ? [s.night || '', s.built_at || '', s.lead || '', Array.isArray(s.order) ? s.order.join(',') : ''].join('|') : '';
+  if (key === _gal.setKey) return false;
+  _gal.set = s; _gal.setKey = key;
+  if (typeof _leadBuilt !== 'undefined') _leadBuilt = null;   // the rail's reading is the set's: built again for a new set
+  return true;
+}
+function _galPick(rec) {
+  const s = _gal.set; if (!s || !Array.isArray(s.tiles) || !rec || !Array.isArray(rec.tiles)) return null;
+  const onRec = new Map(rec.tiles.filter(t => t && t.id).map(t => [t.id, t]));
+  const dep = s.tiles.filter(t => t && t.id && t.status === 'ready' && !t.carried && onRec.has(t.id));
+  if (!dep.length) return null;
+  const at = new Map((Array.isArray(s.order) ? s.order : []).map((id, i) => [id, i])), pos = t => (at.has(t.id) ? at.get(t.id) : 1e6);
+  const ordered = dep.map((t, i) => ({ t, i })).sort((a, b) => pos(a.t) - pos(b.t) || a.i - b.i).map(x => x.t);
+  const leadId = s.lead && ordered.some(t => t.id === s.lead) ? s.lead : ordered[0].id;
+  const full = t => Object.assign({}, t, onRec.get(t.id));
+  return { key: String(s.night || '') + ':' + ordered.map(t => t.id).join(','), night: s.night || null,
+    rail: [full(ordered.find(t => t.id === leadId))], rows: ordered.filter(t => t.id !== leadId).map(full) };
+}
+function _galAfter(t) { const n = _galNoteHtml(t.house_note), r = _galRoomBtn(t); return n || r ? `<div class="gal-after">${n}${r}</div>` : ''; }
+function _galRender(g) {
+  const sec = document.getElementById('gal-block'), rows = document.getElementById('gal-rows'); if (!sec || !rows) return;
+  _gal.pick = g || null;
+  if (!g) { sec.style.display = 'none'; rows.innerHTML = ''; _galCal(''); return; }
+  const d = g.night ? new Date(String(g.night).slice(0, 10) + 'T12:00:00Z') : null, dl = document.getElementById('gal-date');
+  if (dl) dl.textContent = d && !isNaN(d) ? d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '';
+  const sub = document.getElementById('gal-sub'); if (sub) sub.textContent = g.rows.length ? 'After the lead, the night\'s readings in the house\'s order.' : '';
+  const seen = new Set(g.rail.map(t => t.photo && t.photo.src).filter(Boolean));   // a photograph appears once on the page: the lead's rides the rail
+  rows.innerHTML = g.rows.map(t => `<div class="gal-row" data-id="${safeAttr(t.id)}">${_renderScrollRow(t, seen)}${_galAfter(t)}</div>`).join('');
+  rows.style.display = g.rows.length ? '' : 'none';
+  sec.style.display = '';
+  if (typeof _drawPulses === 'function') setTimeout(_drawPulses, 30);
+  _galDayRender(); _galLensRender();
+}
+/* How our calls held: the record's scorecard, on the morning while a set is passed; the record's head keeps it otherwise. */
+function _galCal(sc) {
+  const el = document.getElementById('gal-cal'); if (!el) return false;
+  if (!sc || !_gal.pick) { el.style.display = 'none'; el.innerHTML = ''; return false; }
+  el.innerHTML = `<div class="gc-k">HOW OUR CALLS HELD</div><div class="gc-lines">${sc}</div>`; el.style.display = '';
+  return true;
+}
+/* The territories as lenses, from the state as it stands: each opens the record under its lens. */
+function _galLensRender() {
+  const el = document.getElementById('gal-lenses'); if (!el) return;
+  const st = typeof _TERR !== 'undefined' ? _TERR : null, list = st && Array.isArray(st.territories) ? st.territories.filter(x => x && x.territory) : [];
+  if (!list.length || !_gal.pick) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const mark = { spike: '▲', rising: '▲', steady: '●', falling: '▼', quiet: '○' };
+  el.innerHTML = '<span class="gl-k">READ BY TERRITORY</span><div class="gl-row">' + list.map(x => `<button type="button" class="gl st-${safeAttr(x.state || 'quiet')}" onclick="_terrOpen('${safeAttr(x.territory)}')"><span class="mk">${mark[x.state] || '○'}</span>${safe(x.name || _terrName(x.territory))}</button>`).join('') + '</div>';
+  el.style.display = '';
+}
+
+/* The day's frames, as DAILY's own grammar draws them: the cover, a frame a story, the closer. Shown only when the house made them. */
+async function _galDayLoad() {
+  if (_gal.dayAt && Date.now() - _gal.dayAt < _GAL.DAY_MS) { _galDayRender(); return; }
+  _gal.dayAt = Date.now();
+  let j = null; try { const r = await fetch(_galApi('/excavate/day-frames'), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  _gal.day = j && j.ok && j.day && Array.isArray(j.day.frames) && j.day.frames.length ? j.day : null;
+  _galDayRender();
+}
+function _galImg(u) { const s = String(u || ''); return /^https:\/\//i.test(s) ? s : /^\/(?:media|img)\//.test(s) ? _galApi(s) : ''; }
+function _galDayRender() {
+  const el = document.getElementById('gal-day'); if (!el) return;
+  const d = _gal.day; if (!d || !_gal.pick) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const n = d.frames.length, no = d.issue_no ? 'No. ' + d.issue_no : '', day = _recDay(d.date);
+  const top = right => `<div class="gd-top"><span>UNSURFACED™ DAILY</span><span>${safe(right || '')}</span></div>`;
+  const ph = p => { const u = p && _galImg(p.url); return u ? `<div class="gd-ph"><img src="${safeAttr(u)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''; };
+  const lg = document.querySelector('nav img[alt="Unsurfaced™"]'), logo = lg && lg.getAttribute('src') ? `<img class="gd-logo" src="${safeAttr(lg.getAttribute('src'))}" alt="Unsurfaced">` : '';
+  const cover = `<figure class="gd-f gd-cover">${top(no)}${ph(d.cover)}<div class="gd-body"><i class="gd-dot"></i><div class="gd-cl">${safe(d.cover_line)}</div><div class="gd-foot"><span>${safe(day)}</span><span>swipe</span></div></div></figure>`;
+  const frames = d.frames.map((f, i) => `<figure class="gd-f">${top((i + 1) + ' / ' + n)}${ph(f.photo)}<div class="gd-body"><div class="gd-kick"><i class="gd-dot"></i>${safe(f.kicker)}</div><div class="gd-hl">${safe(f.headline)}</div><div class="gd-ln">${safe(f.line)}</div><div class="gd-foot"><span>${safe(day)}</span>${f.photo && f.photo.credit ? `<span>${safe(f.photo.credit)}</span>` : ''}</div></div></figure>`).join('');
+  const closer = `<figure class="gd-f gd-close">${top('')}<div class="gd-body">${logo}<div class="gd-hh">Your hidden hand.</div><div class="gd-url">UNSURFACED-INTELLIGENCE.COM/DAILY</div></div></figure>`;
+  el.innerHTML = `<div class="gd-head"><span class="gd-k">THE DAY IN FRAMES</span><a class="gd-link" href="../daily/">DAILY ${safe(no)}</a></div><div class="gd-strip" tabindex="0" aria-label="The day's frames">${cover}${frames}${closer}</div>`;
+  el.style.display = '';
+}
+
+/* A seat's own spaces, under the box: each with its week, when it was last read and how often; opening one opens its latest reading. */
+function _mineMove(s) {
+  const m = s && s.movement;
+  if (!m || m.measured === false || m.recent_7d == null) return s && s.last_considered ? 'read by its names' : 'first read on its next night';
+  const r = Number(m.recent_7d) || 0, v = m.velocity_pct;
+  return (r ? r + (r === 1 ? ' story' : ' stories') + ' this week' : 'no stories this week') + (v == null || !r ? '' : v > 0 ? ', up ' + v + '%' : v < 0 ? ', down ' + Math.abs(v) + '%' : ', flat');
+}
+async function _mineLoad() {
+  const box = document.getElementById('my-spaces'); if (!box) return;
+  const w = _pulseWho() || await _whoLoad().catch(() => null);
+  if (!w || w.kind === 'out') { _gal.mine = null; _mineRender(); return; }
+  let j = null; try { const r = await fetch(_galApi('/excavate/space'), { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const live = a => (j && j.ok && Array.isArray(a) ? a : []).filter(s => s && s.id && s.status !== 'dormant');
+  _gal.mine = { held: live(j && j.held), granted: live(j && j.granted) };
+  _mineRender();
+}
+function _mineRender(all) {
+  const box = document.getElementById('my-spaces'), M = _gal.mine; if (!box) return;
+  const list = M ? M.held.map(s => Object.assign({ _mine: true }, s)).concat(M.granted.filter(g => !M.held.some(h => h.key === g.key)).map(s => Object.assign({ _mine: false }, s))) : [];
+  if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const shown = all ? list : list.slice(0, _GAL.MINE_SHOW);
+  const row = s => `<button type="button" class="ms-row" onclick="_mineOpen('${safeAttr(s.id)}')"><span class="ms-name">${safe(s.name)}</span><span class="ms-kind">${safe(s._mine ? (_GAL.KIND[s.kind] || 'Space') : 'Shared with you')}</span>`
+    + `<span class="ms-move">${safe(_mineMove(s))}</span><span class="ms-when">${s.last_compiled_at ? 'read ' + safe(_recDay(s.last_compiled_at)) + ', ' : ''}${safe(_GAL.CAD[s.cadence] || 'nightly')}</span></button>`;
+  box.innerHTML = `<div class="ms-head"><span class="ms-k">YOUR SPACES</span><span class="ms-sub">Read for you first, before the house's set.</span></div><div class="ms-list">${shown.map(row).join('')}</div>`
+    + (list.length > shown.length ? `<button type="button" class="ms-all" onclick="_mineRender(true)">All ${list.length}</button>` : '');
+  box.style.display = '';
+}
+function _mineOpen(id) {
+  const M = _gal.mine, s = M ? M.held.concat(M.granted).find(x => x.id === id) : null; if (!s) return;
+  if (s.last_read_id) { openFeaturedCard(s.last_read_id); return; }
+  showToast('The house reads ' + (s.name || 'it') + ' on its next night');
+}
+
+/* The morning is the house's after its pass: a copy of the feed kept before the last 07:00 in Chicago is fetched again once. */
+function _galMorningAt(now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  try {
+    const f = new Intl.DateTimeFormat('en-US', { timeZone: _GAL.TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' });
+    const part = (ms, k) => Number((f.formatToParts(new Date(ms)).find(x => x.type === k) || {}).value);
+    let y = part(t, 'year'), mo = part(t, 'month'), d = part(t, 'day');
+    if (part(t, 'hour') % 24 < _GAL.CUTOFF_H) { const z = new Date(Date.UTC(y, mo - 1, d) - 864e5); y = z.getUTCFullYear(); mo = z.getUTCMonth() + 1; d = z.getUTCDate(); }
+    for (const off of [5, 6]) { const ms = Date.UTC(y, mo - 1, d, _GAL.CUTOFF_H + off); if (part(ms, 'hour') % 24 === _GAL.CUTOFF_H && part(ms, 'day') === d) return ms; }
+  } catch (e) { /* no zone data: a day back */ }
+  return t - 864e5;
+}
+function _galFresh() {
+  if (_gal.fresh) return; _gal.fresh = true;
+  let c = null; try { c = JSON.parse(localStorage.getItem(_FI_CACHE_KEY) || 'null'); } catch (e) { c = null; }
+  if (c && c.fetchedAt && c.fetchedAt < _galMorningAt() && typeof _checkAndRefreshFeatured === 'function') _checkAndRefreshFeatured(true);
+}
+function _galBoot() {
+  _gal.booted = true;
+  _galFresh();
+  _galDayLoad();
+  _whoLoad().then(w => { _pulseShow(w && !w.pulses ? w : null, false); _mineLoad(); }).catch(() => _pulseShow(null));
+}
+(function () {   // the page may have drawn before this block loaded: take up what it has
+  try {
+    if (typeof _FI_LAKE !== 'undefined' && _FI_LAKE && _galFeed(_FI_LAKE.door) && window._scrollDrawn && typeof _FI_RECORD !== 'undefined' && _FI_RECORD) _renderScroll(_FI_RECORD, _FI_LAKE);
+    const ex = document.getElementById('sec-explore');
+    if (ex && ex.classList.contains('active') && !_gal.booted) _galBoot();
+  } catch (e) { /* the next render takes it up */ }
+})();
+/* ═══ end SEAM:NET_ARRIVAL ═══ */
+</script>
+<script>
+/* ═══ SEAM:OPEN_DOOR (NT3a THE OPEN DOOR): EXCAVATE opens to a visitor. The hub stays the signed-out ground state; choosing EXCAVATE
+   there, or arriving by an address into it (#explore, #record, ?insight=, a room's #room= or #brand=), lands a visitor inside it with no
+   gate. PLAY and MINE keep their gate. What the worker serves signed out shows as it is: the hero and the box with its LIVE PULSES
+   line, the rail, the morning, the day's frames, the scorecard, the lenses, the record, History, the rooms, the people and the Library.
+   What the worker keeps signed in, or what would spend or write, raises the gate instead, and what the visitor asked for is kept for
+   after: a reading's deep dive (its links say "Sign in to open the reading"), Play it, Ask the record, Follow, Watch, the box (NT3's
+   door). The box's suggestions are not asked for. A sign-in message meant for a visitor is the gate, never a toast. The gate's way back
+   returns a visitor to the page they were on. Signed in, the page takes the reader on to what they asked for. No model; no worker call
+   of its own beyond the record a resumed Play it needs. ═══ */
+const _DOOR = { DEST: 'uai_door_dest', TTL: 1800000, FIND_MS: 400, FIND_TRIES: 10,
+  LABELS: [['Open the reading', 'Sign in to open the reading'], ['Opening it writes the reading now.', 'A live pulse writes it. Sign in to start one.']] };
+const _doorAt = (function () {   // the address the page was opened at, read before the page tidies it
+  try {
+    const q = new URLSearchParams(location.search), h = String(location.hash || ''), id = String(q.get('insight') || '');
+    return { insight: /^[0-9a-f-]{36}$/.test(id) ? id : null, room: /#(?:room|brand)=[0-9a-fA-F-]{36}/.test(h), record: /^#record\b/.test(h), explore: /^#(?:explore|excavate)\b/.test(h), done: false };
+  } catch (e) { return { done: true }; }
+})();
+function _doorHubShown() { const h = document.getElementById('uai-hub'); return !!(h && h.classList.contains('show')); }
+/* An address into EXCAVATE lands a visitor inside it, once; the hub stays the ground state for any other address. */
+function _doorDeep() {
+  const d = _doorAt; if (!d || d.done) return false; d.done = true;
+  if (!(d.insight || d.room || d.record || d.explore)) return false;
+  enterSpace('excavate');
+  if (d.record) setTimeout(function () { try { _navRecord(); } catch (e) { /* the arrival stands */ } }, 300);
+  if (d.insight) window._doorDeepId = d.insight;
+  return true;
+}
+/* The door: a visitor asked for what only a signed-in reader may do. What they asked for is kept, and the gate rises. */
+function _doorAsk(dest) {
+  try { sessionStorage.setItem(_DOOR.DEST, JSON.stringify(Object.assign({ at: Date.now() }, dest || {}))); } catch (e) { /* the gate still rises */ }
+  _gateForDoor('excavate');
+  return false;
+}
+/* The box's door: NT3's pulse door keeps its own Sign in, which raises the gate. Just before it does, the box's question is kept, to be
+   put back in the box once signed in and run when the reader asks. */
+function _doorBoxKeep(e) {
+  if (window._signedOut !== true || !e || !e.target || !e.target.closest || !e.target.closest('#pulse-invite .btn-go-deeper')) return false;
+  const i = document.getElementById('search-input'), q = String((i && i.value) || '').trim().slice(0, 300);
+  if (!q) return false;
+  try { sessionStorage.setItem(_DOOR.DEST, JSON.stringify({ at: Date.now(), kind: 'box', q })); } catch (x) { return false; }
+  return true;
+}
+try { document.addEventListener('click', _doorBoxKeep, true); } catch (e) { /* the gate still rises; the question is not kept */ }
+/* A reading's deep dive is signed in on the worker. A reading a visitor's address named is shown where the page holds it; else the door. */
+function _doorRead(t) {
+  const id = t && t.id ? String(t.id) : null;
+  if (id && window._doorDeepId === id) { window._doorDeepId = null; _doorFind(id, 0); return; }
+  _doorAsk({ kind: 'reading', id });
+}
+function _doorFind(id, tries) {
+  const el = document.querySelector('.lead-card[data-id="' + id + '"], .gal-row[data-id="' + id + '"], article.row[onclick*="' + id + '"]');
+  if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.classList.add('door-here'); setTimeout(function () { el.classList.remove('door-here'); }, 2400); return; }
+  if (tries < _DOOR.FIND_TRIES) { setTimeout(function () { _doorFind(id, tries + 1); }, _DOOR.FIND_MS); return; }
+  _doorAsk({ kind: 'reading', id });   // not on the page: the door, the reading kept
+}
+/* A sign-in message meant for a visitor is the gate, never a toast. */
+function _doorToast(msg) {
+  if (window._signedOut !== true || !/^\s*sign in\b/i.test(String(msg || ''))) return false;
+  _doorAsk({ kind: 'page' });
+  return true;
+}
+/* The gate's way back: into the page a visitor was on when it rose inside EXCAVATE, else the hub as before. */
+function _doorBack(name) {
+  const b = document.getElementById('uai-gate-back'); if (!b) return;
+  const inside = name === 'excavate' && !_doorHubShown();
+  b.textContent = inside ? '← Back to EXCAVATE' : '← Back to spaces';
+  b.onclick = function () {
+    try { sessionStorage.removeItem('pending_door'); sessionStorage.removeItem(_DOOR.DEST); } catch (e) { /* nothing was kept */ }
+    const g = document.getElementById('login-gate'); if (g) g.classList.add('hidden');
+    if (inside) document.body.style.overflow = ''; else goHub();
+  };
+}
+/* Signed in, on to what the reader asked for at the gate: once, and only while it is fresh. */
+function _doorResume() {
+  if (window._signedOut !== false) return;
+  _doorLabels();
+  let d = null; try { d = JSON.parse(sessionStorage.getItem(_DOOR.DEST) || 'null'); sessionStorage.removeItem(_DOOR.DEST); } catch (e) { d = null; }
+  if (!d || !d.kind || Date.now() - (Number(d.at) || 0) > _DOOR.TTL) return;
+  if (d.kind === 'reading' && d.id) openFeaturedCard(d.id);
+  else if (d.kind === 'box' && d.q) { const i = document.getElementById('search-input'); if (i) { i.value = d.q; if (typeof toggleClearBtn === 'function') toggleClearBtn(); window.scrollTo(0, 0); i.focus({ preventScroll: true }); } }
+  else if (d.kind === 'play' && d.id) _recordLoad().then(function () { _playRecord(d.id); });
+  else if (d.kind === 'ask' && d.q) { const i = document.getElementById('ask-q'); if (i) { i.value = d.q; i.scrollIntoView({ block: 'center' }); i.focus(); } }
+  else if (d.kind === 'follow' && d.lens && d.value) { _recLensSet(d.lens, d.value); const b = document.getElementById('board-block'); if (b) b.scrollIntoView({ block: 'start' }); }
+  else if (d.kind === 'watch' && d.name) { navTo('brands'); setTimeout(function () { const i = document.getElementById('brand-find'); if (i) { i.value = d.name; _roomFind(); } }, 300); }
+}
+/* PURE: a label as a visitor reads it, and back again once signed in. */
+function _doorLabelText(s, visitor) {
+  const t = String(s || '').trim();
+  for (const [said, door] of _DOOR.LABELS) { if (visitor && t === said) return door; if (!visitor && t === door) return said; }
+  return null;
+}
+function _doorLabels() {
+  const visitor = window._signedOut === true;
+  ['sec-explore', 'sec-brands'].forEach(function (id) {
+    const root = document.getElementById(id); if (!root) return;
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) { const v = _doorLabelText(n.nodeValue, visitor); if (v) hits.push([n, v]); }
+    hits.forEach(function (h) { h[0].nodeValue = h[1]; });
+  });
+}
+(function () {   // the labels follow what the page draws
+  let queued = false;
+  const run = function () { queued = false; try { _doorLabels(); } catch (e) { /* the labels stay as drawn */ } };
+  try {
+    const watch = new MutationObserver(function () { if (!queued) { queued = true; requestAnimationFrame(run); } });
+    ['sec-explore', 'sec-brands'].forEach(function (id) { const el = document.getElementById(id); if (el) watch.observe(el, { childList: true, subtree: true }); });
+  } catch (e) { /* no observer: the labels stay as drawn */ }
+})();
+/* ═══ end SEAM:OPEN_DOOR ═══ */
+</script>
 
 </body>
 </html>

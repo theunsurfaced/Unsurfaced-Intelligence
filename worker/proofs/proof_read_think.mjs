@@ -79,7 +79,7 @@ const sha = async s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.c
 const CONFIG = { IMAGE_MODEL: '@cf/black-forest-labs/flux-1-schnell' };
 const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'callerIsAdmin', 'json', 'logEvent', 'excFrameFor', 'gatherOpenSignals', 'lakeCapture', 'excTerritoryOf', 'sha256hex', 'RAILS', 'RAIL_FNS', 'excFrameLabel', 'railFetch',
   'callClaude', 'claudeEstimate', 'claudeParams', 'KB_EMBED_MODEL', 'BGE_QUERY_PREFIX', 'RAIL_BY_ID', 'fetch', 'CONFIG', 'CLAUDE',
-  trim + pmj + ej + frameClean + voiceSrc + block + '; return { READ_DEEP, READ_THINK, READ_DEEP_LAW, READ_THINK_CONTRACT, READ_WRITER_LAW, READ_EDITOR_LAW, DEEP_ANALYST_SYS, DEEP_STRATEGIST_SYS, DEEP_THINK_KEY, READ_METHOD, READ_CONTRACT, DEEP_STAGE, DEEP_SPENDS, ' +
+  trim + pmj + ej + frameClean + voiceSrc + block + '; return { READ_DEEP, READ_THINK, READ_DEEP_LAW, READ_THINK_CONTRACT, READ_WRITER_LAW, READ_EDITOR_LAW, READ_HOUSE_LAW, READ_POSITIONS_LAW, DEEP_ANALYST_SYS, DEEP_STRATEGIST_SYS, DEEP_THINK_KEY, READ_METHOD, READ_CONTRACT, DEEP_STAGE, DEEP_SPENDS, ' +
   'deepThinkCid, deepThinkReads, deepThinkSystem, deepThinkChain, deepThinkEvidence, deepThinkPrompt, deepThinkReq, deepThinkOut, deepThinkUsable, deepThinkRestore, deepThinkLaws, deepDraftNotesOf, deepBrandNames, deepImageRisk, deepRenderPrompt, deepRenders, deepJobsSpend, ' +
   'deepAdvance, deepCompile, readTick, readFail, readLand, readValidate, readSellable, readStyle, readRoute, readSubmitRevision, readReportExtraIds };')(
   sbRest, claudeBatchSubmit, async () => ({}), async (e, u) => u === 'admin', (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve(),
@@ -129,7 +129,7 @@ ok(R.deepThinkCid(r0, 'analysis') === 'ra-41-v1' && R.deepThinkCid(r0, 'strategy
   'A2 each pass has one custom id a row and version (a revision is its own); the strategist reads the analysis, the writer both, the editor the draft');
 const sysA = R.deepThinkSystem('analysis'), sysS = R.deepThinkSystem('strategy'), sysW = R.deepThinkSystem('write'), sysE = R.deepThinkSystem('edit');
 ok(sysA.startsWith(R.DEEP_ANALYST_SYS) && sysA.endsWith(R.DEEP_THINK_KEY) && !sysA.includes(R.READ_METHOD) && sysS.startsWith(R.DEEP_STRATEGIST_SYS) &&
-  sysW.startsWith(R.READ_METHOD) && sysW.includes(R.READ_CONTRACT.recon) && sysW.includes(R.READ_DEEP_LAW) && sysW.includes(R.READ_THINK_CONTRACT) && sysW.endsWith(R.READ_WRITER_LAW) && sysE.endsWith(R.READ_EDITOR_LAW) && !sysE.includes(R.READ_WRITER_LAW),
+  sysW.startsWith(R.READ_METHOD) && sysW.includes(R.READ_CONTRACT.recon) && sysW.includes(R.READ_DEEP_LAW) && sysW.includes(R.READ_THINK_CONTRACT) && sysW.endsWith(R.READ_WRITER_LAW + ' ' + R.READ_HOUSE_LAW + ' ' + R.READ_POSITIONS_LAW) && sysE.endsWith(R.READ_EDITOR_LAW + ' ' + R.READ_HOUSE_LAW + ' ' + R.READ_POSITIONS_LAW) && !sysE.includes(R.READ_WRITER_LAW) && !sysA.includes(R.READ_HOUSE_LAW) && !sysS.includes(R.READ_HOUSE_LAW) && !sysA.includes(R.READ_POSITIONS_LAW) && !sysS.includes(R.READ_POSITIONS_LAW),
   'A3 the analyst and the strategist work from the evidence key, not the house style; the writer and the editor write under the Method, the RECON contract, the deep law and the think contract');
 const allPrompts = [R.DEEP_ANALYST_SYS, R.DEEP_STRATEGIST_SYS, R.DEEP_THINK_KEY, R.READ_THINK_CONTRACT, R.READ_WRITER_LAW, R.READ_EDITOR_LAW];
 ok(allPrompts.every(p => !/—|–/.test(p)) && ['"decisions"', '"hypotheses"', '"market_model"', '"competitive_map"', '"futures"', '"concept_territories"', '"product_concepts"', '"plan_90"'].every(k => R.READ_THINK_CONTRACT.includes(k)) &&
@@ -210,14 +210,14 @@ resetAll(); fixtures = fx();
   jobs[1].status = 'done'; jobs[1].result = JSON.stringify(strategyOut); jobs[1].cost_usd = 1.3;
   await advance(row);
   const wj = submitted[1], wit = wj && wj.items[0];
-  ok(wj && wj.kind === 'recon_write' && wit.custom_id === 'rw-41-v1' && wit.system.endsWith(R.READ_WRITER_LAW) && wit.max_tokens === 120000 && wit.prompt.indexOf('THE ANALYSIS') < wit.prompt.indexOf('THE STRATEGY') && /Write the RECON RECON 001: FIELD, smart glasses \(2026-07-08 to 2026-10-05\), answering the brief\./.test(wit.prompt) &&
+  ok(wj && wj.kind === 'recon_write' && wit.custom_id === 'rw-41-v1' && wit.system.endsWith(R.READ_WRITER_LAW + ' ' + R.READ_HOUSE_LAW + ' ' + R.READ_POSITIONS_LAW) && wit.max_tokens === 120000 && wit.prompt.indexOf('THE ANALYSIS') < wit.prompt.indexOf('THE STRATEGY') && /Write the RECON RECON 001: FIELD, smart glasses \(2026-07-08 to 2026-10-05\), answering the brief\./.test(wit.prompt) &&
     row.meta.deep.stage === 'write' && row.meta.deep.spend.strategy === 1.3,
     'E3 the strategy back, the writer goes with the evidence, the analysis and the strategy, under the Method and every law');
   const draft = fullRead(); draft.findings[0].what_the_data_shows = 'Meta sold 2 million pairs, up 41% on the year.'; draft.thesis = 'HYP2 holds: venues decide.'; draft.decisions = draft.decisions.slice(0, 1); delete draft.findings[0].advantage;
   jobs[2].status = 'done'; jobs[2].result = JSON.stringify(draft); jobs[2].cost_usd = 2.2;
   await advance(row);
   const ej = submitted[2], eit = ej && ej.items[0], notes = (eit && eit.prompt.split("THE LAWS' NOTES")[1]) || '';
-  ok(ej && ej.kind === 'house_recon' && eit.custom_id === 'hr-41-v1' && eit.meta.house_read_id === 41 && eit.meta.recon_read_id === 41 && eit.system.endsWith(R.READ_EDITOR_LAW) && /THE DRAFT \(the RECON as our writer wrote it; the object you edit\):\n\{"title":"Wearers lead/.test(eit.prompt) &&
+  ok(ej && ej.kind === 'house_recon' && eit.custom_id === 'hr-41-v1' && eit.meta.house_read_id === 41 && eit.meta.recon_read_id === 41 && eit.system.endsWith(R.READ_EDITOR_LAW + ' ' + R.READ_HOUSE_LAW + ' ' + R.READ_POSITIONS_LAW) && /THE DRAFT \(the RECON as our writer wrote it; the object you edit\):\n\{"title":"Wearers lead/.test(eit.prompt) &&
     /number_not_in_evidence:findings\[0\]\.what_the_data_shows:41\n/.test(notes) && /voices:0_of_2/.test(notes) && !/style:opener:findings\[0\]\.supports|style:[^\n]*\.figure/.test(notes) && /plan_id_in_prose:thesis:HYP2/.test(notes) && /think:decisions:1_of_2/.test(notes) && /finding_1:edge/.test(notes) && /think:image_prompt_names:concept_territories\[0\]:FIELD/.test(notes) &&
     !/em_dashes_replaced/.test(notes) && !/number_not_in_evidence:[^\n]*(?:plan_90|signposts|would_change|first_test|image_prompt)/.test(notes),
     'E4 the draft back, our laws read it as the landing would and the editor gets the draft and every note: a figure in no line, a plan id in prose, a decision unanswered, a finding without its edge, a brand in an image brief (never a target or a threshold)');

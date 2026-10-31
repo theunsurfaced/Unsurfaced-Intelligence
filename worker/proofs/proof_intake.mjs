@@ -14,15 +14,15 @@ const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i 
 const regSrc = between(w, '  sources: [\n', '  gdelt: { tier: 4,');
 const reg = new Function('return ({' + regSrc + 'x: 1 })')();
 const terrs = new Function('return ' + between(w, "  territories: [\n    'advertising-marketing'", '  // Legacy SLATE compatibility').replace(/^\s*territories: /, '').replace(/,\s*$/, '').replace(/\/\*[\s\S]*?\*\//g, ''))();
-ok(terrs.length === 20 && reg.sources.length >= 60 && new Set(reg.sources.map(s => s.feed)).size === reg.sources.length && new Set(reg.sources.map(s => s.name)).size === reg.sources.length,
-  'I1 the registry holds sixty or more sources, every feed and every name once, over the twenty territories');
+ok(terrs.length === 27 && reg.sources.length >= 60 && new Set(reg.sources.map(s => s.feed)).size === reg.sources.length && new Set(reg.sources.map(s => s.name)).size === reg.sources.length,
+  'I1 the registry holds sixty or more sources, every feed and every name once, over the twenty-seven territories (LK1)');
 const under = terrs.filter(t => { const s = reg.sources.filter(x => x.territories.includes(t)); return s.length < 3 || new Set(s.map(x => x.tier)).size < 2; });
 ok(under.length === 0, 'I2 the gate: every territory has three or more sources across two or more tiers' + (under.length ? ' (under: ' + under.join(', ') + ')' : ''));
 ok(reg.sources.every(s => s.territories.every(t => terrs.includes(t)) && [1, 2, 3].includes(s.tier) && /^https:\/\//.test(s.feed)), 'I3 every source names only configured territories, a tier of 1 to 3 and an https feed');
 ok(terrs.every(t => Array.isArray(reg.lanes[t]) && reg.lanes[t].length >= 2), 'I4 a GDELT lane with two or more queries for every territory');
 // the capture
 const cap = between(w, 'async function spineCapture(env, opts) {', 'async function runDailySpine(env, opts) {');
-ok(/const sources = nFeeds === 'all'\s*\? DAILY_POV\.sources\.filter\(s => probe \|\| !\(health\[s\.name\] && health\[s\.name\]\.fail >= INTAKE\.DEAD_AFTER\)\)/.test(cap) && /const lanes = nLanes === 'all'\s*\? Object\.keys\(DAILY_POV\.lanes/.test(cap), 'I5 every source and one lane per territory on every slice; a dead feed waits for the probe');
+ok(/const sources = nFeeds === 'all'\s*\? DAILY_POV\.sources\.filter\(s => probe \|\| !\(health\[s\.name\] && health\[s\.name\]\.fail >= INTAKE\.DEAD_AFTER\)\)/.test(cap) && /const lanes = nLanes === 'all' && typeof lakeLanePlan === 'function' \? lakeLanePlan\(DAILY_POV\.lanes, aim, hours, LAKE\.LANES\)\s*: nLanes === 'all'\s*\? Object\.keys\(DAILY_POV\.lanes/.test(cap), 'I5 every source and one lane per territory on every slice; a dead feed waits for the probe');
 ok(/territory: intakeTerritory\(s, it\)/.test(cap) && /function intakeTerritory\(source, item\)/.test(w) && /territoryGuessIn\(String\(item\.title \|\| ''\) \+ ' ' \+ String\(item\.summary \|\| ''\), terrs\) \|\| terrs\[0\]/.test(w), 'I6 a multi-territory source places each story by its words within its own territories');
 ok(/territory: lane\.territory \|\| null/.test(cap) && /INTAKE\.HEALTH_KEY, JSON\.stringify\(health\)/.test(cap) && /INTAKE\.YIELD_KEY \+ day, JSON\.stringify\(y\)/.test(cap), 'I7 a lane\'s rows carry its territory; the health and the day\'s yield are kept');
 ok(/runDailySpine\(env, \{ feeds: 'all', gdelt: 'all', advance: INTAKE\.DRAIN \}\)/.test(w) && /runDailySpine\(env, \{ feeds: 'all', gdelt: 'all', advance: INTAKE\.DRAIN, probe: true \}\)/.test(w) && !/advance: 42/.test(w) && !/free cap 50/.test(w) && !/free-tier law/.test(w), 'I8 the crons read everything and drain INTAKE.DRAIN; the 05:15 run probes; the free-plan sizing is gone');

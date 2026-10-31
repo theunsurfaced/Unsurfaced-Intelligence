@@ -11,11 +11,11 @@ const page = fs.readFileSync('intelligence/index.html', 'utf-8');
 let pass = 0;
 const ok = (c, l) => { if (!c) { console.error('FAIL:', l); process.exit(1); } pass++; console.log('  ok', l); };
 const between = (src, a, b) => { const i = src.indexOf(a), j = src.indexOf(b, i + 1); if (i < 0 || j < 0) throw new Error('slice ' + a); return src.slice(i, j); };
-const slugs = new Function('return ' + between(w, "const TERRITORY_SLUGS = ", ';   // SEAM:TERRITORIES').replace('const TERRITORY_SLUGS = ', ''))();
+const slugs = new Function('return ' + between(w, "  territories: [\n    'advertising-marketing'", '  // Legacy SLATE compatibility').replace(/^\s*territories: /, '').replace(/,\s*$/, '').replace(/\/\*[\s\S]*?\*\//g, ''))();   // LK1: the slugs are the registry's
 const names = new Function('return ' + between(w, 'const INDUSTRY_NAMES = ', ';   // SEAM:TERRITORIES').replace('const INDUSTRY_NAMES = ', ''))();
-ok(slugs.length === 20 && Object.keys(names).length === 20 && slugs.every(s => names[s]), 'T1 twenty territories, every one named');
+ok(slugs.length === 27 && Object.keys(names).length === 27 && slugs.every(s => names[s]) && /const TERRITORY_SLUGS = \(typeof DAILY_POV === 'object' && DAILY_POV \? DAILY_POV\.territories : \[\]\)\.slice\(\);/.test(w), 'T1 twenty-seven territories (LK1), every one named; TERRITORY_SLUGS is the registry\'s');
 const st = between(w, 'async function excavateState(env) {', 'const METHOD = {');
-ok(/name: INDUSTRY_NAMES\[o\.territory\] \|\| o\.territory\.replace/.test(st) && !/sources:/.test(st) && !/declared/.test(st) && /KEY: 'state:v4'/.test(w), 'T2 the state names each territory and says nothing about the sources behind it');
+ok(/name: INDUSTRY_NAMES\[o\.territory\] \|\| o\.territory\.replace/.test(st) && !/sources:/.test(st) && !/declared/.test(st) && /KEY: 'state:v5'/.test(w), 'T2 the state names each territory and says nothing about the sources behind it');
 const mr = between(w, 'async function excavateMethodRoute(request, env, origin) {', 'async function excavateStateRoute(');
 ok(/path === '\/excavate\/method' && request\.method === 'GET'\) return excavateMethodRoute\(request, env, origin\)/.test(w) && /key === deskKey/.test(mr) && /callerIsAdmin\(env, user\.id\)/.test(mr) && /error: 'unauthorized' \}, 401/.test(mr), 'T3 GET /excavate/method answers the desk key or a signed-in admin, nobody else');
 const m = between(w, 'function excavateMethod() {', 'async function excavateMethodRoute(');

@@ -27,7 +27,7 @@ const sig = (id, title, d, src, tier, more) => Object.assign({ id, title, url: '
 const links = [
   { captured_at: ago(1), signal: sig('s1', 'Costco opens a store', 2, 'Vogue', 1, { image: 'https://img/1.jpg' }) },
   { captured_at: ago(1), signal: sig('s2', 'Costco again', 1, 'WWD', 2) },
-  { captured_at: ago(1), signal: sig('s2b', 'COSTCO AGAIN', 1, 'The WWD', 2) },   // the same headline and the same outlet under "the": one story, one outlet in the room
+  { captured_at: ago(1), signal: sig('s2b', 'COSTCO AGAIN', 1, 'The WWD', 2, { published_at: new Date(Date.now() - 864e5 - 60e3).toISOString() }) },   // the same headline and the same outlet under "the": one story, one outlet in the room
   { captured_at: ago(20), signal: sig('s3', 'Costco last month', 20, 'Vogue', 1) },
   { captured_at: ago(1), signal: sig('s4', 'Costco research row', 1, 'Blog', 3, { research: true }) },
   { captured_at: ago(1), signal: sig('s5', 'Costco rejected row', 1, 'Blog', 3, { status: 'rejected' }) },
