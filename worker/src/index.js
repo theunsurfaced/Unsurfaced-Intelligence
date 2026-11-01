@@ -227,14 +227,7 @@ export default {
       if (path === '/client/evidence' && ['GET', 'POST', 'DELETE'].includes(request.method)) return clientEvidenceRoute(request, env, origin);   // SEAM:CLIENT_EVIDENCE (signed in)
       if (path === '/bench/freeze' && request.method === 'POST') return benchFreeze(request, env, origin);   // SEAM:BENCH (desk key)
       if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
-      if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
-      if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
-      if (path === '/excavate/rooms' && request.method === 'GET') return excavateRooms(env, origin);                 // SEAM:ENTITY_ROOM (RM1): every entity on the links
-      if (path === '/excavate/room' && request.method === 'GET') return excavateRoom(request, env, origin);          // SEAM:ENTITY_ROOM (RM1): one subject in one place
-      if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
-      if (path === '/excavate/timeline' && request.method === 'GET') return excavateTimeline(request, env, origin);  // SEAM:MEMORY
       if (path === '/excavate/track' && request.method === 'POST') return excavateTrackAdd(request, env, origin);    // SEAM:TRACKS (signed in)
-      if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/s/')) return readImageRelay(path, env);   // SEAM:READ_DESIGN
@@ -253,6 +246,15 @@ export default {
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
       if (!user) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+      // SEAM:ROOMS_INSIDE (NT3b): Brands, Audiences, a subject's room and its History are for a signed-in reader. Read here, ahead of
+      // the AI meter below, so reading them never spends. The main page's reads and the Library stay above the sign-in line.
+      if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
+      if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
+      if (path === '/excavate/rooms' && request.method === 'GET') return excavateRooms(env, origin);                 // SEAM:ENTITY_ROOM (RM1): every entity on the links
+      if (path === '/excavate/room' && request.method === 'GET') return excavateRoom(request, env, origin);          // SEAM:ENTITY_ROOM (RM1): one subject in one place
+      if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
+      if (path === '/excavate/timeline' && request.method === 'GET') return excavateTimeline(request, env, origin);  // SEAM:MEMORY
+      if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/space' && request.method === 'GET') return spaceRoute(request, env, origin, user);             // SEAM:SPACES (NT1): a space and its readings, for whoever may see them; no model, outside the daily allowance
       if (path === '/excavate/space-grant' && request.method === 'POST') return spaceGrantRoute(request, env, origin, user);  // SEAM:SPACES (NT1): its holder or an admin grants a reader a view
       /* SEAM:PLAY_RENDER \u2014 the daily AI limit meters AI INFERENCE only.

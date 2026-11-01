@@ -101,13 +101,13 @@ const box = async (tok, plan, admin) => { await who(tok, plan, admin); seen.live
 const bSeat = await box('t', { ok: true, plan: 'engine', status: 'active' }), bHouse = await box('t', { ok: true, plan: 'member' }, true);
 ok(bSeat.live.length === 1 && bSeat.live[0] === 'Costco and the gas card' && bSeat.shown === 'none' && bHouse.live.length === 1, 'B2 the box still runs a read: a seat and the house go to runLiveSearch with the question, as before');
 const bMember = await box('t', { ok: true, plan: 'member', sell: true }), bOut = await box(null, null);
-ok(bMember.live.length === 0 && bMember.open && /Your question, read now\./.test(bMember.invite) && /See what Engine adds/.test(bMember.invite) && /_profileOpen\(\)/.test(bMember.invite) && bMember.fetched.length === 0
+ok(bMember.live.length === 0 && bMember.open && /Ask it\. Get the reading\./.test(bMember.invite) && /See what Engine adds/.test(bMember.invite) && /_profileOpen\(\)/.test(bMember.invite) && bMember.fetched.length === 0
   && bOut.live.length === 0 && /Sign in/.test(bOut.invite) && /_gateForDoor\(&#39;excavate&#39;\)|_gateForDoor\('excavate'\)/.test(bOut.invite) && /Talk to us/.test(bOut.invite) && bOut.fetched.length === 0,
   'B3 without a subscription the box says what a live pulse is and where it opens (Engine for a Member, the door for a visitor); no read runs and nothing is fetched');
 N._gal.who = null; TOKEN = 't'; PLAN = { ok: true, plan: 'engine', status: 'active' }; seen.live.length = 0; RS(); await new Promise(r => setTimeout(r, 5));
 ok(seen.live.length === 1, 'B4 a viewer not yet read is read first, then the box goes on');
 N._pulseShow({ kind: 'member', pulses: false }, false);
-ok(/LIVE PULSES/.test(el('pulse-invite').innerHTML) && /They come with Engine\./.test(el('pulse-invite').innerHTML) && /What a pulse is/.test(el('pulse-invite').innerHTML) && !el('pulse-invite').classList.contains('open'),
+ok(/LIVE PULSES/.test(el('pulse-invite').innerHTML) && /Live pulses come with Engine\./.test(el('pulse-invite').innerHTML) && /What a pulse is/.test(el('pulse-invite').innerHTML) && !el('pulse-invite').classList.contains('open'),
   'B5 under the box, before any question, one line says pulses come with Engine');
 
 // the passed set

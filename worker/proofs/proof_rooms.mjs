@@ -270,7 +270,7 @@ const bare = BJ._renderBrandRoom({ ok: true, measured_at: '2026-10-06T12:00:00Z'
 ok(!/On the board this week|Attention, three years|Against its set|The latest stories/.test(bare) && /No story about Quiet in twelve weeks of our sweep\./.test(bare) && /the same as the week before/.test(bare), 'G8 a quiet brand says so plainly: no empty sections, no invented line');
 const audJs = between(page, 'let _peopleAt = 0;', '// ══ REPORTS (retired) ══');
 const el = {}; ['people-groups', 'people-early', 'people-early-sec', 'people-figs', 'people-note', 'people-groups-sub', 'people-dateline'].forEach(id => { el[id] = { innerHTML: '', textContent: '', style: {} }; });
-const AJ = new Function('document', 'fetch', 'API_BASE', 'safe', '_fmtN', '_day', audJs + '; return initAudiencesPage;')({ getElementById: id => el[id] || null },
+const AJ = new Function('document', 'fetch', 'API_BASE', 'safe', '_fmtN', '_day', 'const _authHeader = async () => ({});\n' + audJs + '; return initAudiencesPage;')({ getElementById: id => el[id] || null },
   async () => ({ ok: true, json: async () => ({ ok: true, night: '2026-10-05', heard: 48, described: 38, subjects: 12, computed_at: '2026-10-06T12:00:00Z', groups: [
     { key: 'gen:gen_z', label: 'Gen Z', n: 28, stands: true, subjects: [{ on: 'Smart glasses', n: 20 }], quotes: [{ text: 'I wear mine to work', likes: 9, self: { generation: 'Gen Z' }, on: 'Smart glasses' }] },
     { key: 'role:nurse', label: 'Nurses', n: 6, stands: false, subjects: [{ on: 'Smart glasses', n: 6 }], quotes: [{ text: 'the shift is long', likes: 2, self: { role: 'nurse' }, on: 'Smart glasses' }] }] }) }),

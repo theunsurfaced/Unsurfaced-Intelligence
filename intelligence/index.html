@@ -1914,6 +1914,11 @@ nav .nav-menu #nav-spaces::first-letter{color:var(--room-red)}
 /* the hub's Feed link is the house's, revealed for admins (RD1a); its inline display had kept it showing to every visitor */
 #kbOpen[hidden]{display:none!important}
 </style>
+<style id="rooms-inside">
+/* SEAM:ROOMS_INSIDE (NT3b THE ROOMS INSIDE): Brands, Audiences and the room lenses wait for a signed-in reader; a visitor's nav keeps EXCAVATE, Record, Library and Spaces */
+body:not(.uai-in) #nl-brands,body:not(.uai-in) #nl-audiences,body:not(.uai-in) #nav-brands,body:not(.uai-in) #nav-audiences,body:not(.uai-in) .rec-lens.room{display:none!important}
+body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:has(> #nl-audiences),body:not(.uai-in) .nav-menu-list li:has(> #nav-brands),body:not(.uai-in) .nav-menu-list li:has(> #nav-audiences){display:none!important}
+</style>
 <style id="net-arrival">
 /* SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the live pulse's door under the box, a seat's spaces, the morning under the hero, the day's frames.
    The room's own language: Syne for words, Space Mono for figures, the house red for what moved and for the door. */
@@ -4514,6 +4519,11 @@ function exportBrief(){
 // ══ NAV SECTION ROUTING ══
 function navTo(section) {
   if (section === 'reports' || section === 'deploy') section = 'library';   // SEAM:LIBRARY: the retired doors lead to the Library
+  if ((section === 'brands' || section === 'audiences') && window._signedOut === true && typeof _doorAsk === 'function') {   // SEAM:ROOMS_INSIDE (NT3b): the brand and audience rooms are for a signed-in reader
+    const h = section === 'brands' && typeof _roomHash === 'function' ? _roomHash() : null;
+    if (!document.querySelector('.page-section.active')) navTo('explore');
+    _doorAsk(h ? { kind: 'room', id: h.id, by: h.by } : { kind: 'section', section }); return;
+  }
   if (section !== 'brands' && typeof _brandHash === 'function' && _brandHash()) { try { history.replaceState(null, '', location.pathname + location.search); _brands.open = null; } catch (e) { /* the address stays */ } }   // SEAM:BRAND_ROOM: a room's address leaves with the room
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nlb').forEach(b => b.classList.remove('active'));
@@ -4538,6 +4548,7 @@ const _reportStore = [];
 let _activeReportType = 'Brand Analysis';
 
 function _dlFile(content, filename) {
+  if (window._signedOut === true && typeof _doorAsk === 'function') { _doorAsk({ kind: 'page' }); return; }   // SEAM:ROOMS_INSIDE (NT3b): downloads are for a signed-in reader
   const blob = new Blob([content], {type: 'text/html;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -4652,7 +4663,7 @@ async function initBrandsPage() {
   if (typeof initRoomsPage === 'function') return initRoomsPage();   // SEAM:ENTITY_ROOM (RM1): the rooms on the graph
   if (Date.now() - _brands.at > 300000) {
     _brands.loading = true;
-    try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/tracks', { cache: 'no-store' }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _brands.tracks = j.tracks || []; _brands.at = Date.now(); } } catch (e) { /* the grid says so */ }
+    try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/tracks', { cache: 'no-store', headers: await _authHeader() }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _brands.tracks = j.tracks || []; _brands.at = Date.now(); } } catch (e) { /* the grid says so */ }
     _brands.loading = false;
   }
   _renderBrandGrid();
@@ -4727,7 +4738,7 @@ async function _openBrand(id, fromAddress) {
   if (!fromAddress && _brandHash() !== id) { try { if (fromRoom && _brandHash()) history.replaceState({ brand: id }, '', location.pathname + location.search + '#brand=' + id); else history.pushState({ brand: id }, '', location.pathname + location.search + '#brand=' + id); } catch (e) { /* the address stays */ } }
   window.scrollTo({ top: 0, behavior: 'smooth' });
   let j = null;
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/brand?id=' + encodeURIComponent(id), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/brand?id=' + encodeURIComponent(id), { cache: 'no-store', headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
   if (_brands.open !== id) return;
   if (!j || !j.ok) { room.innerHTML = '<button class="broom-back" onclick="_closeBrand()">&larr; All brands</button><p class="lib-empty" role="status">' + (j && j.error === 'not_tracked' ? 'We do not watch that brand.' : 'The room did not answer. Refresh in a moment.') + '</p>'; return; }
   _brands.room = j; _paintBrandRoom(room, j, true);
@@ -4881,7 +4892,7 @@ async function _tlFetch(key) {
   const k = _tlKey(key); if (!k) return null;
   const hit = _tlCache.get(k); if (hit && Date.now() - hit.at < 600000) return hit.j;
   let j = null;
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/timeline?key=' + encodeURIComponent(k), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/timeline?key=' + encodeURIComponent(k), { cache: 'no-store', headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
   if (j && j.ok) _tlCache.set(k, { at: Date.now(), j });
   return j;
 }
@@ -4948,6 +4959,7 @@ function _tlInertOn(on) {
 }
 async function openTimeline(key, opener, fromHistory) {
   const k = _tlKey(key), room = document.getElementById('tl-room'), body = document.getElementById('tl-body'); if (!k || !room || !body) return;
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'history', key: k });   // SEAM:ROOMS_INSIDE (NT3b): a subject's History is for a signed-in reader
   const seq = ++_tlSeq;
   if (room.hidden) { _tlOpener = opener || document.activeElement; _tlInertOn(true); }
   body.innerHTML = '<p class="lib-empty" role="status">Opening the history.</p>';
@@ -4997,7 +5009,7 @@ function _roomHash() {
 async function initRoomsPage() {
   if (Date.now() - _rooms.at > 300000) {
     _rooms.loading = true;
-    try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/rooms', { cache: 'no-store' }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _rooms.list = j.rooms || []; _rooms.at = Date.now(); } } catch (e) { /* the grid says so */ }
+    try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/rooms', { cache: 'no-store', headers: await _authHeader() }); const j = r.ok ? await r.json() : null; if (j && j.ok) { _rooms.list = j.rooms || []; _rooms.at = Date.now(); } } catch (e) { /* the grid says so */ }
     _rooms.loading = false;
   }
   _renderRoomGrid();
@@ -5049,6 +5061,7 @@ function _closeRoom(quiet) {
 // Opens a room by its entity id, or (by = 'track') by the track behind it; the address becomes #room=<entity id> once the room answers.
 async function _openRoom(id, fromAddress, by) {
   id = _uuid(id);
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'room', id, by });   // SEAM:ROOMS_INSIDE (NT3b): a room opens signed in
   const list = document.getElementById('brands-list'), room = document.getElementById('brand-room'); if (!list || !room || !id) return;
   const fromRoom = !!_rooms.open;
   _rooms.open = id; _rooms.room = null;
@@ -5057,7 +5070,7 @@ async function _openRoom(id, fromAddress, by) {
   if (!fromAddress) { try { if (fromRoom && _roomHash()) history.replaceState({ room: id }, '', location.pathname + location.search + '#room=' + id); else history.pushState({ room: id }, '', location.pathname + location.search + '#room=' + id); } catch (e) { /* the address stays */ } }
   window.scrollTo({ top: 0, behavior: 'smooth' });
   let j = null;
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/room?' + (by === 'track' ? 'track=' : 'id=') + encodeURIComponent(id), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/room?' + (by === 'track' ? 'track=' : 'id=') + encodeURIComponent(id), { cache: 'no-store', headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
   if (_rooms.open !== id) return;
   if (!j || !j.ok) { room.innerHTML = '<button class="broom-back" onclick="_closeRoom()">&larr; All subjects</button><p class="lib-empty" role="status">' + (j && j.error === 'no_room' ? 'We do not watch that subject.' : 'The room did not answer. Refresh in a moment.') + '</p>'; return; }
   if (by === 'track' && j.room && _uuid(j.room.id) && _uuid(j.room.id) !== id) { _rooms.open = _uuid(j.room.id); try { history.replaceState({ room: _rooms.open }, '', location.pathname + location.search + '#room=' + _rooms.open); } catch (e) { /* the address stays */ } }
@@ -5203,7 +5216,7 @@ let _peopleAt = 0;
 async function initAudiencesPage() {
   if (Date.now() - _peopleAt < 300000) return;
   let j = null;
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/people', { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/people', { cache: 'no-store', headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
   const groupsEl = document.getElementById('people-groups'), earlyEl = document.getElementById('people-early'), earlySec = document.getElementById('people-early-sec'), figs = document.getElementById('people-figs'), note = document.getElementById('people-note'), sub = document.getElementById('people-groups-sub'), dl = document.getElementById('people-dateline');
   if (!groupsEl) return;
   if (!j || !j.ok) { groupsEl.innerHTML = '<p class="lib-empty">The comments did not answer. Refresh in a moment.</p>'; return; }
@@ -7142,6 +7155,7 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
   const a = document.getElementById('nav-sign'), b = document.getElementById('nav-new-report');
   if (a) a.style.display = window._signedOut === false ? 'none' : '';
   if (b) b.style.display = window._signedOut === false ? '' : 'none';
+  document.body.classList.toggle('uai-in', window._signedOut === false);   // SEAM:ROOMS_INSIDE (NT3b): Brands, Audiences and the room lenses show only signed in
   if (window._signedOut === false && !window._foBooted) { window._foBooted = true; _foBoot(); }   // SEAM:READ_FOLIO: the open folio's pill, for an admin
   if (window._signedOut === false) _cmAdmin().then(a => { const li = document.getElementById('nav-read-li'); if (li) li.style.display = a ? '' : 'none'; });   // SEAM:EXC_NAV: READ for admins
 }
@@ -13164,13 +13178,13 @@ function _pulseShow(w, open) {
   const el = document.getElementById('pulse-invite'); if (!el) return;
   if (!w || w.pulses) { el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('open'); return; }
   const say = {
-    out: { line: 'Your question, read now, every source attached. Sign in to start one.', then: 'Pulses open with a subscription. The morning below is open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },
-    member: { line: 'Your question, read now, every source attached. They come with Engine.', then: 'Pulses come with Engine. The morning below is yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
-    paused: { line: 'Your team\'s plan is paused, and its live pulses with it.', then: 'Your team\'s plan is paused, and its pulses with it. The morning below stays open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
+    out: { line: 'Ask it. Get the reading. Live pulses come with a subscription.', h: 'Ask it. Get the reading.', body: 'Live pulses come with a subscription, and an account opens the rooms, the full readings and your downloads. The morning below is open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },   // SEAM:ROOMS_INSIDE (NT3b): what an account opens, never how the engine works
+    member: { line: 'Ask it. Get the reading. Live pulses come with Engine.', h: 'Ask it. Get the reading.', body: 'Live pulses come with Engine: any brand, category or audience, read live for your team. The morning below is yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
+    paused: { line: 'Your team\'s plan is paused, and its live pulses with it.', h: 'Your plan is paused.', body: 'Your team\'s plan is paused, and its live pulses with it. The morning below stays open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
   }[w.kind] || null;
   if (!say) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.innerHTML = open
-    ? `<div class="pi-k">LIVE PULSES</div><p class="pi-h">Your question, read now.</p><p class="pi-p">A live pulse reads what the house keeps, the open web and what people are saying, then writes the answer in minutes with every source attached. ${safe(say.then)}</p><div class="pi-acts">${say.go}<a class="pi-alt" href="${_GAL.MAIL}">Talk to us</a></div>`
+    ? `<div class="pi-k">LIVE PULSES</div><p class="pi-h">${safe(say.h)}</p><p class="pi-p">${safe(say.body)}</p><div class="pi-acts">${say.go}<a class="pi-alt" href="${_GAL.MAIL}">Talk to us</a></div>`
     : `<p class="pi-line"><span class="pi-k">LIVE PULSES</span>${safe(say.line)}<button type="button" class="pi-more" onclick="_pulseShow(_pulseWho(), true)">What a pulse is</button></p>`;
   el.classList.toggle('open', !!open);
   el.style.display = '';
@@ -13199,8 +13213,9 @@ function _galRoomBtn(t) { return _galRoomOf(t) ? `<button type="button" class="g
 function _galTile(id) { const p = _gal.pick; return p ? p.rail.concat(p.rows).find(t => t.id === id) || null : null; }
 async function _galRoom(id) {
   const t = _galTile(id), r = _galRoomOf(t); if (!r) return;
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk(r.by === 'track' ? { kind: 'room', id: r.id, by: 'track' } : { kind: 'find', name: r.name });   // SEAM:ROOMS_INSIDE (NT3b): a subject on the morning opens its room signed in
   if (r.by === 'track') { navTo('brands'); _openRoom(r.id, false, 'track'); return; }
-  if (!_rooms.at) { try { const x = await fetch(_galApi('/excavate/rooms'), { cache: 'no-store' }); const j = x.ok ? await x.json() : null; if (j && j.ok) { _rooms.list = j.rooms || []; _rooms.at = Date.now(); } } catch (e) { /* the toast below says so */ } }
+  if (!_rooms.at) { try { const x = await fetch(_galApi('/excavate/rooms'), { cache: 'no-store', headers: await _authHeader() }); const j = x.ok ? await x.json() : null; if (j && j.ok) { _rooms.list = j.rooms || []; _rooms.at = Date.now(); } } catch (e) { /* the toast below says so */ } }
   const k = r.name.toLowerCase(), hit = (_rooms.list || []).find(x => [x.name].concat(x.aliases || []).some(n => String(n || '').toLowerCase() === k));
   if (hit && _uuid(hit.id)) { navTo('brands'); _openRoom(hit.id); } else showToast('No room for ' + r.name + ' yet');
 }
@@ -13358,7 +13373,7 @@ function _galBoot() {
    returns a visitor to the page they were on. Signed in, the page takes the reader on to what they asked for. No model; no worker call
    of its own beyond the record a resumed Play it needs. ═══ */
 const _DOOR = { DEST: 'uai_door_dest', TTL: 1800000, FIND_MS: 400, FIND_TRIES: 10,
-  LABELS: [['Open the reading', 'Sign in to open the reading'], ['Opening it writes the reading now.', 'A live pulse writes it. Sign in to start one.']] };
+  LABELS: [['Open the reading', 'Sign in to open the reading'], ['Opening it writes the reading now.', 'Sign in to open it.']] };   // SEAM:ROOMS_INSIDE (NT3b): a visitor reads what an account opens
 const _doorAt = (function () {   // the address the page was opened at, read before the page tidies it
   try {
     const q = new URLSearchParams(location.search), h = String(location.hash || ''), id = String(q.get('insight') || '');
@@ -13371,6 +13386,7 @@ function _doorDeep() {
   const d = _doorAt; if (!d || d.done) return false; d.done = true;
   if (!(d.insight || d.room || d.record || d.explore)) return false;
   enterSpace('excavate');
+  if (d.room && window._signedOut === true && typeof _roomRoute === 'function') setTimeout(function () { try { _roomRoute(); } catch (e) { /* the main page stands */ } }, 300);   // SEAM:ROOMS_INSIDE (NT3b): a room's address takes a visitor to the gate, the room kept
   if (d.record) setTimeout(function () { try { _navRecord(); } catch (e) { /* the arrival stands */ } }, 300);
   if (d.insight) window._doorDeepId = d.insight;
   return true;
@@ -13431,7 +13447,10 @@ function _doorResume() {
   else if (d.kind === 'play' && d.id) _recordLoad().then(function () { _playRecord(d.id); });
   else if (d.kind === 'ask' && d.q) { const i = document.getElementById('ask-q'); if (i) { i.value = d.q; i.scrollIntoView({ block: 'center' }); i.focus(); } }
   else if (d.kind === 'follow' && d.lens && d.value) { _recLensSet(d.lens, d.value); const b = document.getElementById('board-block'); if (b) b.scrollIntoView({ block: 'start' }); }
-  else if (d.kind === 'watch' && d.name) { navTo('brands'); setTimeout(function () { const i = document.getElementById('brand-find'); if (i) { i.value = d.name; _roomFind(); } }, 300); }
+  else if ((d.kind === 'watch' || d.kind === 'find') && d.name) { navTo('brands'); setTimeout(function () { const i = document.getElementById('brand-find'); if (i) { i.value = d.name; _roomFind(); } }, 300); }
+  else if (d.kind === 'section' && (d.section === 'brands' || d.section === 'audiences')) navTo(d.section);   // SEAM:ROOMS_INSIDE (NT3b): on to the section, the room or the History asked for
+  else if (d.kind === 'room' && d.id) { navTo('brands'); _openRoom(d.id, false, d.by === 'track' ? 'track' : undefined); }
+  else if (d.kind === 'history' && d.key) openTimeline(d.key);
 }
 /* PURE: a label as a visitor reads it, and back again once signed in. */
 function _doorLabelText(s, visitor) {

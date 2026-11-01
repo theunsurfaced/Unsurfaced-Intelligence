@@ -1807,6 +1807,15 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:OPEN_DOOR",
    "purpose": "NT3a THE OPEN DOOR (Oct 31, 2026): EXCAVATE opens to a visitor. The hub stays the signed-out ground state; choosing EXCAVATE there (enterSpace: PLAY and MINE keep their gate), or an address into it (#explore, #record, ?insight=, #room=, #brand=; _doorDeep in _showHubSignedOut, once), lands a visitor inside with no gate. Shown signed out, as the worker serves it: the arrival (hero, box with its LIVE PULSES line, rail, the morning, the day's frames, the scorecard, the lenses), the record, History, the rooms (_roomRoute lets a visitor through), the people, the Library. Behind the gate, with what was asked for kept in sessionStorage (uai_door_dest, thirty minutes) and resumed once signed in (_doorResume from enterSpace): a reading's deep dive (/excavate/door/read is signed in; _openDoorRead hands a visitor to _doorRead, which shows a reading an address named where the page holds it, else the door; its links read Sign in to open the reading), Play it, Ask the record (a credit), Follow (the profile), Watch (a track), the box (NT3's door). A visitor's box asks no suggestions; the Feed reveal asks /whoami only signed in, and the hub's Feed link stays hidden until it answers admin (#kbOpen[hidden]). NT3's pulse door is left as NT3 made it; a click listener on the capture (_doorBoxKeep) keeps the box's question for after its Sign in. A sign-in message for a visitor is the gate (_doorToast in showToast), never a toast. The gate's way back returns a visitor to the page they were on (_doorBack). No model; no worker change."
+  },
+  "SEAM:ROOMS_INSIDE": {
+   "file": "worker/src/index.js",
+   "purpose": "NT3b THE ROOMS INSIDE (Nov 1, 2026): GET /excavate/tracks, /excavate/brand, /excavate/rooms, /excavate/room, /excavate/people, /excavate/audiences and /excavate/timeline are served only to a signed-in reader. They sit just below the sign-in line and ahead of the AI meter (_aiPath), so reading them never spends. The main page's reads (the feed, the record, the state, the day's frames, the pulse, one insight, the lake) and the Library's stand and Report stay public."
+  },
+  "SEAM:ROOMS_INSIDE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:ROOMS_INSIDE",
+   "purpose": "NT3b THE ROOMS INSIDE (Nov 1, 2026): signed out, a visitor sees the main page and the Library. _navAuth marks a signed-in reader (body.uai-in); until then the style hides the Brands and Audiences tabs (header and menu) and the room lenses. navTo('brands'|'audiences'), _openRoom, _galRoom, openTimeline (History) and a room's address (_doorDeep, then _roomRoute) raise the gate for a visitor with what was asked for kept (kinds section, room, find, history); _doorResume takes the reader on to it once signed in. The download sink _dlFile raises the gate for a visitor. Every call to the seven signed-in reads carries _authHeader(). The LIVE PULSES box says what an account and a subscription open (Ask it. Get the reading.), never how the engine works; a visitor's label on a reading not yet read says Sign in to open it."
   }
  },
  "planned": [

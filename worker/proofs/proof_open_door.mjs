@@ -74,7 +74,7 @@ ok(r1.includes('open:r1') && askVal === 'What did Costco do with gas?' && r2.inc
   'B8 signed in, the page takes the reader on to what they asked for (the reading, the question, the lens); a stale ask is dropped');
 win._signedOut = true; put({ kind: 'reading', id: 'r2', at: Date.now() }); did.length = 0; D._doorResume();
 ok(!did.includes('open:r2') && store.has(D._DOOR.DEST), 'B9 a visitor is never resumed: what was asked for waits for the sign-in');
-ok(D._doorLabelText('Open the reading', true) === 'Sign in to open the reading' && D._doorLabelText(' Opening it writes the reading now. ', true) === 'A live pulse writes it. Sign in to start one.'
+ok(D._doorLabelText('Open the reading', true) === 'Sign in to open the reading' && D._doorLabelText(' Opening it writes the reading now. ', true) === 'Sign in to open it.'
   && D._doorLabelText('Sign in to open the reading', false) === 'Open the reading' && D._doorLabelText('Open the reading', false) === null && D._doorLabelText('Play it', true) === null,
   'B10 a link into a signed-in section says so for a visitor, and says it plainly again once signed in');
 const signIn = { target: { closest: sel => (sel === '#pulse-invite .btn-go-deeper' ? {} : null) } }, elsewhere = { target: { closest: () => null } };
@@ -94,8 +94,8 @@ ok(capture && kept && bx.kind === 'box' && bx.q === 'Costco and the gas card' &&
 ok(/if \(window\._signedOut && name !== 'excavate'\) \{ _gateForDoor\(name\); return; \}/.test(es) && /if \(typeof _doorResume === 'function'\) setTimeout\(_doorResume, 450\);/.test(es), 'C1 the hub\'s door: EXCAVATE in, PLAY and MINE gated');
 ok(/goHub\(\);\n  if \(typeof _doorDeep === 'function'\) _doorDeep\(\);/.test(between(page, 'function _showHubSignedOut() {', 'function _dashShow(on) {')), 'C2 an address into EXCAVATE is read where the hub becomes the ground state');
 ok(/if \(typeof _doorBack === 'function'\) _doorBack\(name\);[^\n]*\n\}/.test(between(page, 'function _gateForDoor(name) {', 'function _authShowGate() {')), 'C3 the gate\'s way back is set each time it rises');
-ok(/function _roomRoute\(\) \{\n  if \(window\._signedOut && typeof _doorHubShown === 'function' && _doorHubShown\(\)\) \{ enterSpace\('excavate'\); return; \}/.test(page) && !/function _roomRoute\(\) \{\n  if \(window\._signedOut\) return;/.test(page),
-  'C4 a room\'s address opens its room for a visitor (the rooms are public on the worker)');
+ok(/function _roomRoute\(\) \{\n  if \(window\._signedOut && typeof _doorHubShown === 'function' && _doorHubShown\(\)\) \{ enterSpace\('excavate'\); return; \}/.test(page) && /if \(d\.room && window\._signedOut === true && typeof _roomRoute === 'function'\)/.test(page),
+  'C4 a room\'s address takes a visitor into EXCAVATE and on to the gate, the room kept (NT3b: the rooms are signed in)');
 const od = between(page, 'async function _openDoorRead(t) {', '/* SEAM:CLIENT_PROFILE');
 ok(/^async function _openDoorRead\(t\) \{\n  if \(window\._signedOut === true && typeof _doorRead === 'function'\) return _doorRead\(t\);/.test(od), 'C5 a reading\'s deep dive: a visitor goes to the door before anything is fetched');
 ok(/function _playRecord\(id\) \{\n  if \(window\._signedOut === true && typeof _doorAsk === 'function'\) return _doorAsk\(\{ kind: 'play', id \}\);/.test(page)
@@ -116,11 +116,10 @@ ok(/#kbOpen\[hidden\]\{display:none!important\}/.test(between(page, '<style id="
 const authAt = w.indexOf('// Everything below requires a signed-in user');
 const body = name => { const i = w.search(new RegExp('\\n(?:async )?function ' + name + '\\(')); if (i < 0) return null; const rest = w.slice(i + 1), j = rest.search(/\n(?:async )?function /); return rest.slice(0, j < 0 ? undefined : j); };
 const reads = { '/excavate/feed': 'excavateFeed', '/excavate/record': 'doorRecordRoute', '/excavate/state': 'excavateStateRoute', '/excavate/day-frames': 'arrivalDayRoute', '/excavate/pulse': 'excavatePulse',
-  '/excavate/rooms': 'excavateRooms', '/excavate/room': 'excavateRoom', '/excavate/tracks': 'excavateTracks', '/excavate/brand': 'excavateBrand', '/excavate/timeline': 'excavateTimeline',
-  '/excavate/people': 'excavatePeople', '/excavate/audiences': 'excavateAudiences', '/excavate/insight': 'doorInsightRoute' };
+  '/excavate/insight': 'doorInsightRoute' };   // NT3b: the rooms, the brands, History, the people and the audiences moved inside (proof_rooms_inside A1)
 const open = Object.entries(reads).filter(([p, fn]) => { const at = w.indexOf("path === '" + p + "' && request.method === 'GET'"); const b = body(fn); return at > 0 && at < authAt && b && !/authenticate\(|excavateAuth\(/.test(b); });
 ok(open.length === Object.keys(reads).length && /path\.startsWith\('\/api\/weekly\/'\)/.test(w.slice(0, authAt)) && /path\.startsWith\('\/api\/report\/'\)/.test(w.slice(0, authAt)),
-  'D1 every read a visitor\'s page asks for (the feed, the record, the state, the day\'s frames, the rooms, the brands, History, the people, the Library) is served signed out');
+  'D1 every read a visitor\'s page asks for (the feed, the record, the state, the day\'s frames, one insight, the Library) is served signed out');
 const gated = { '/excavate/door/read': 'doorReadRoute', '/excavate/suggest': 'excavateSuggest', '/excavate/track': 'excavateTrackAdd' };
 ok(Object.values(gated).every(fn => /authenticate\(|excavateAuth\(/.test(body(fn) || '')) && w.indexOf("case '/ask':") > authAt && w.indexOf("case '/play/handoff':") > authAt,
   'D2 what the door holds back is signed in on the worker: a reading\'s deep dive, suggestions, a watch, Ask the record, PLAY');
