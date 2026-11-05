@@ -108,8 +108,8 @@ ok(!DASH.test(fj) && !/method:\s*'POST'|callClaude|\bapi\(/.test(fj), 'B11 GET o
 ok(/if \(L\.kind === 'yours'\) return typeof _yoursFilter === 'function' \? _yoursFilter\(tiles\) : tiles;/.test(between(page, 'function _recFilter(tiles) {', 'function _recDay(d)'))
   && /btn\('all', null, 'Everything', tiles\.length\) \+ \(typeof _yoursLens === 'function' \? _yoursLens\(btn\) : ''\)/.test(page),
   'C1 the record\'s lens row offers the frame and the record keeps to it');
-ok(/<div class="hs-card-text"><div class="hs-line">\$\{_hsLine\(t\)\}\$\{typeof _yoursTag === 'function' \? _yoursTag\(t\) : ''\}<\/div>/.test(page) && /<div class="hs-row-text"><div class="hs-line">\$\{_hsLine\(t\)\}\$\{typeof _yoursTag === 'function' \? _yoursTag\(t\) : ''\}<\/div>/.test(page),
-  'C2 the morning\'s cards and the record\'s rows carry the line');
+ok(/<div class="hs-card-text"><div class="hs-line">\$\{_hsLine\(t\)\}\$\{typeof _yoursTag === 'function' \? _yoursTag\(t\) : ''\}<\/div>/.test(page) && !/hs-row-text/.test(page),
+  'C2 every card on the scroll carries the line (NT4: the record\'s rows are gone)');
 const inr = between(page, 'function _inRender() {', '/* SEAM:EXC_PROBE (EX42): the reader takes one of the underneath readings.');
 ok(inr.indexOf("html += typeof _inFitRow === 'function' ? _inFitRow(f) : '';") > inr.indexOf('<span class="intent-lead">Against</span>') && inr.indexOf("html += typeof _inFitRow === 'function' ? _inFitRow(f) : '';") < inr.indexOf('<span class="intent-lead">Threads</span>'),
   'C3 the offers sit under Against, before the threads');

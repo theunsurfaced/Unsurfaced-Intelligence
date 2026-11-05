@@ -127,7 +127,7 @@ const iKept = dp.indexOf("out.kept++; continue; }"), iVoice = dp.indexOf('const 
 ok(iThin > 0 && iKept > iThin && iVoice > iKept && iReuse > iVoice && /Object\.assign\(base\.meta, doorVoicesKeep\(heard, prev && prev\.meta\)\);/.test(dp) && /select=id,frame_key,night,stamp,read,measures,frame,meta'/.test(dp) && /let voicesSpent = 0;/.test(dp) && /voicesSpent \+= Date\.now\(\) - vt;/.test(dp)
    && /!!prev\.measures\.sweep === !!\(measures && measures\.sweep\) \? prev\.measures : null;/.test(dp) && /m\.sweep = !!sw;/.test(fnOf('excMeasures')),
   'V7 the door pass gathers a subject\'s voices after the thin and kept checks (a read kept tonight spends nothing), within two minutes of their own time, keeping last week\'s when the gather is empty, before the reuse so a reused read gets fresh voices; "since" compares only passes that counted the same way');
-ok(/voices: \(r\.meta && Array\.isArray\(r\.meta\.voices\) \? r\.meta\.voices : \[\]\)\.slice\(0, DOOR_VOICES\.KEEP\)\.map\(doorVoicePublic\) \};/.test(fnOf('doorTile')) && !/voices_pool/.test(fnOf('doorTile')), 'V8 a tile carries its subject\'s six voices, never the pool');
+ok(/voices: \(r\.meta && Array\.isArray\(r\.meta\.voices\) \? r\.meta\.voices : \[\]\)\.filter\(v => v && v\.text && !\(typeof voiceBarred === 'function' && voiceBarred\(v\.text\)\)\)\.slice\(0, DOOR_VOICES\.KEEP\)\.map\(doorVoicePublic\) \};/.test(fnOf('doorTile')) && !/voices_pool/.test(fnOf('doorTile')), 'V8 a tile carries its subject\'s six voices (NT4: none barred), never the pool');
 // the desk's voices pass
 const vpSrc = between(w, '/* The voices alone, for the tiles standing now', '/* ═══ SEAM:LEDGER');
 const vpPatches = [], vpDel = [], vpAsked = []; let published = 0;
@@ -220,8 +220,8 @@ ok((page.match(/function _renderVoices\(/g) || []).length === 1 && /function _re
   'P10 one name, one function: the custom read\'s voices and the board\'s band no longer share a name, so a custom read renders its own voices again');
 const elx = { block: { style: {} }, track: { innerHTML: '' } };
 const RDV = new Function('document', 'safe', band + '\n}\nreturn _renderDoorVoices;')({ getElementById: id => id === 'voices-block' ? elx.block : id === 'voices-track' ? elx.track : null }, x => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;'));
-RDV([{ text: 'I wear mine the whole shift', likes: 1240, self: { role: 'nurse' }, on: 'Smart glasses at work' }, { text: 'my 4c hair has a shelf now', likes: 870, self: { generation: 'Gen Z' }, on: 'Curl care' }, { text: 'cancelled after the show ended', likes: 0, self: null, on: null }]);
-ok(!/youtube|mastodon/i.test(band) && /<div class="q-on">Smart glasses at work<\/div><p>“I wear mine the whole shift”<\/p><cite>A nurse, 1,240 likes<\/cite>/.test(elx.track.innerHTML) && /<cite>Gen Z, 870 likes<\/cite>/.test(elx.track.innerHTML) && /<p>“cancelled after the show ended”<\/p><cite>Consumer<\/cite>/.test(elx.track.innerHTML) && elx.block.style.display === 'block',
+RDV([{ text: 'I wear mine the whole shift', likes: 1240, self: { role: 'nurse' }, on: 'Smart glasses at work' }, { text: 'my 4c hair has a shelf now', likes: 870, self: { generation: 'Gen Z' }, on: 'Curl care' }, { text: 'cancelled the day after the show I watched it for ended', likes: 0, self: null, on: null }]);
+ok(!/youtube|mastodon/i.test(band) && /<div class="q-on">Smart glasses at work<\/div><p>“I wear mine the whole shift”<\/p><cite>A nurse, 1,240 likes<\/cite>/.test(elx.track.innerHTML) && /<cite>Gen Z, 870 likes<\/cite>/.test(elx.track.innerHTML) && /<p>“cancelled the day after the show I watched it for ended”<\/p><cite>Consumer<\/cite>/.test(elx.track.innerHTML) && elx.block.style.display === 'block',
   'P11 a quote names the subject it speaks to and its speaker by generation or role, else as Consumer; never by platform');
 // one name, one function, across the page's classic scripts (the gate's 5e, run here too)
 const counts = {};
@@ -230,8 +230,8 @@ ok(Object.values(counts).every(n => n === 1) && Object.keys(counts).length > 300
 ok(/const _FI_CACHE_KEY  = 'unsurfaced_fi_v6';/.test(page) && /localStorage\.removeItem\('unsurfaced_fi_v5'\)/.test(page),
   'P12b a browser that kept yesterday\'s feed (which could hold a RECON\'s quotes) drops it: the feed\'s local copy moves to a new key and the old one is removed');
 ok(/renderReportCards\(\);   \/\/ SEAM:LIBRARY: the builder's list refreshes/.test(between(page, 'function _saveReport(q, data, mode) {', '\n}\n')), 'P12c the builder\'s list of this session\'s reads refreshes on every save');
-RDV([{ text: 'one like only', likes: 1, self: null, on: null }, { text: 'second quote here', likes: 2 }, { text: 'third quote here', likes: 3 }]);
-ok(/<cite>Consumer, 1 like<\/cite>/.test(elx.track.innerHTML) && /about the subjects on the board and the month behind them\./.test(page), 'P12d one like is a like; the band says it quotes the board\'s subjects and the month behind them');
+RDV([{ text: 'one like only, and eight words to stand on', likes: 1, self: null, on: null }, { text: 'a second quote here, long enough for the band', likes: 2 }, { text: 'a third quote here, long enough for the band', likes: 3 }]);
+ok(/<cite>Consumer, 1 like<\/cite>/.test(elx.track.innerHTML) && /about the subjects we read and the month behind them\./.test(page), 'P12d one like is a like; the band says it quotes the subjects we read and the month behind them (NT4)');
 const stand = fs.readFileSync('weekly/index.html', 'utf-8');
 ok(/if \(location\.hash === '#report' && report\.issue\) setTimeout\(function \(\) \{ \$\('report'\)\.scrollIntoView\(/.test(stand), 'P12e the stand scrolls to the report when the Library sends a reader there');
 const brands = between(page, '<div id="sec-brands" class="page-section">', '<!-- ══ AUDIENCES ══ -->');

@@ -80,8 +80,8 @@ ok(/const gatherP=_threads\?Promise\.all\(_threads\.map\(_gatherOne\)\)/.test(pa
 ok(/frame:_if\?Object\.assign\(\{\},\(g\.meta&&g\.meta\.frame\)\|\|\{\},_if\)/.test(page), 'D5 the person\'s chips win over the gather\'s frame on the way to the writer');
 ok(/if \(I\.frame && I\.q === q\) return I\.frame;/.test(page) && /onclick="runSearch\(\)">Read it this way<\/button>/.test(page) && /window\._intent = \{ q: '', frame: null, edited: false, busy: false \}; _inRender\(\);/.test(page),
   'D6 an edited chip offers Read it this way, the confirmed frame is reused, and a new search starts clean');
-ok(/oninput="_sgInput\(this\.value\)" onkeydown="_sgKey\(event\)"/.test(page) && /\.suggest-box\{position:absolute;[^}]*z-index:var\(--z-menu\)/.test(page) && /placeholder="Ask culture a question/.test(page),
-  'D7 suggestions ride the bar, stack on a token, and the bar asks culture a question');
+ok(/oninput="_sgInput\(this\.value\)" onkeydown="_sgKey\(event\)"/.test(page) && /\.suggest-box\{position:absolute;[^}]*z-index:var\(--z-menu\)/.test(page) && /placeholder="A brand, a category, the people, or a question"/.test(page) && /<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(page),
+  'D7 suggestions ride the bar, stack on a token, and the ask stands over the bar (NT4: the box names what to type)');
 ok(/Open the brand room: \$\{safe\(f\.entity\)\}/.test(page) && /This is a brief: commission a RECON/.test(page) && /Make it in PLAY/.test(page) && /document\.getElementById\('brand-find'\)/.test(page),
   'D8 the task opens its door beside the read: the brand room, a RECON commission (admin), PLAY');
 

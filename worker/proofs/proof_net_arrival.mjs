@@ -187,8 +187,8 @@ ok(at('2026-10-31T10:00:00Z') === '2026-10-30T12:00:00.000Z' && at('2026-10-31T1
 
 // ── C: the page's wiring ────────────────────────────────────────────────────────────────────────────────────────────
 const iBox = page.indexOf('id="search-input"'), iInv = page.indexOf('id="pulse-invite"'), iMine = page.indexOf('id="my-spaces"'), iWeek = page.indexOf('id="week-block"'), iGal = page.indexOf('id="gal-block"'), iRec = page.indexOf('id="board-block"');
-ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && iInv > 0 && iInv < iBox && iBox < iMine && iMine < iWeek && iWeek < iGal && iGal < iRec && /<div class="ask-sticky" id="ask-sticky"/.test(page),
-  'C1 the box keeps its place at the top, the ask still follows; the pulse\'s door beside the ask (NT3c), then a seat\'s spaces, then the spread; the morning before the record');
+ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && iBox > 0 && iBox < iInv && iInv < iMine && iMine < iWeek && iWeek < iGal && iGal < iRec && /<div class="ask-sticky" id="ask-sticky"/.test(page),
+  'C1 the box keeps its place at the top, the ask still follows; the pulse\'s door beside the box, after it in the markup (NT4), then a seat\'s spaces, then the spread; the morning before the record');
 const rs = between(page, 'function runSearch(){', '//  LIVE SEARCH');
 ok(/if\(!q\) return;\n  if \(typeof _pulseGate === 'function' && _pulseGate\(\)\) return;/.test(rs) && /runLiveSearch\(q\);   \/\/ SEAM:ONE_RAIL/.test(rs), 'C2 the door sits at the top of runSearch; the one rail is unchanged behind it');
 const lr = between(page, 'function _leadRender(rec) {', 'function _leadCards() {');

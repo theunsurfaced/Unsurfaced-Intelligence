@@ -83,7 +83,7 @@ const FI_RECORD = { tiles: [tile('r1', null, { deployed: '2026-11-01', photo: { 
 const FI_LAKE = { door: { tiles: [tile('d1', null)] } };
 gal.set = { tiles: [tile('d1', null), tile('r1', null)] };
 const H = new Function('document', 'window', '_gal', '_FI_RECORD', '_FI_LAKE', 'safe', 'safeAttr', '_recDay', '_leadBet', '_leadDays', '_galRoomOf', '_galRoom', '_galNoteHtml', 'openFeaturedCard', '_playRecord', '_doorAsk', '_authHeader', '_galApi', 'fetch', 'showToast', 'API_BASE', 'navigator', '_renderScroll', 'setTimeout',
-  hs + '; return { _HS, _hsMoves, _hsMoveOf, _hsTile, _hsMineIds, _hsLine, _hsPhoto, _hsMoveBlock, _hsCard, _hsGrade, _hsRow, _hsTry, _hsMovesLoad, _hsMovesMerge, _hsMovesApply, _hsWeekPhoto, _hsMovesForget, _hsMovesSync, _hsMoveOpen, _hsMoveDraw, _hsMoveClose, _hsMoveKey, _hsRoles, _hsMoveResume };')(
+  hs + '; return { _HS, _hsMoves, _hsMoveOf, _hsTile, _hsMineIds, _hsLine, _hsPhoto, _hsMoveBlock, _hsCard, _hsTry, _hsMovesLoad, _hsMovesMerge, _hsMovesApply, _hsWeekPhoto, _hsMovesForget, _hsMovesSync, _hsMoveOpen, _hsMoveDraw, _hsMoveClose, _hsMoveKey, _hsRoles, _hsMoveResume };')(
   doc, win, gal, FI_RECORD, FI_LAKE, esc, esc, d => (d ? String(d).slice(5, 10) : ''), t => (t.watch ? `<div class="rec-watch open"><i>The bet</i> ${esc(t.watch.claim)}</div>` : ''), by => (by === '2026-12-01' ? 29 : null),
   t => (t.frame && t.frame.entity ? { by: 'name', name: t.frame.entity } : null), id => seen.rooms.push(id), n => (n && n.text ? `<p class="gal-note">${esc(n.text)}</p>` : ''),
   id => seen.opened.push(id), id => seen.played.push(id), d => { seen.door.push(d); return false; }, async () => ({ Authorization: 'Bearer t' }), p => 'https://api.example' + p,
@@ -97,9 +97,8 @@ const card = H._hsCard(withMove, seenSet), card2 = H._hsCard(Object.assign({}, w
 ok(/class="hs-card" data-id="m1"/.test(card) && /Claim m1/.test(card) && /Copy m1/.test(card) && /The bet/.test(card) && /onclick="_hsMoveOpen\('m1'\)">Open the move<\/button>/.test(card) && /class="hs-lockrow"/.test(card) && !/The quiet move/.test(card)
   && /<img src="https:\/\/p\.example\/m\.jpg"/.test(card) && /Photo: BoF/.test(card) && !/<img/.test(card2) && /hs-face/.test(card2) && /Acme/.test(card2) && /Deployed 11-01 · fashion beauty · Acme/.test(card),
   'B1 a morning card: the photograph once and credited (else the subject set large, never a chart), the line, the claim, its copy, the bet, the lock and the move behind its button; the move\'s words never on the card');
-const row = H._hsRow(FI_RECORD.tiles[1], new Set());
-ok(/class="hs-row" data-id="r2"/.test(row) && /The bet · Held/.test(row) && /openFeaturedCard\('r2'\);return false/.test(row) && /Open the move/.test(row) && /The bet · Checked in 29 days/.test(H._hsRow(FI_RECORD.tiles[0], new Set())) && H._hsGrade({}) === '' && /Missed/.test(H._hsGrade({ watch: { by: 'x' }, called: { verdict: 'missed' } })),
-  'B2 the record\'s row: the claim opens the reading; the bet\'s state in a word (when it is checked, or held, or missed); the move behind its link');
+ok(!/function _hsRow\(|function _hsGrade\(|\.hs-row\{|\.hs-grade\{/.test(page) && card.indexOf('class="hs-lockrow"') < card.indexOf('class="hs-btn hs-movebtn"'),
+  'B2 the record\'s row and the bet\'s word are gone (NT4: every reading is a card on the scroll); the move\'s button closes the card after the bet');
 win._signedOut = true; const blockVM = H._hsMoveBlock(withMove);
 win._signedOut = false; const blockV = H._hsMoveBlock(Object.assign({}, withMove, { move: null })), blockM = H._hsMoveBlock(withMove);
 ok(!/The quiet move/.test(blockVM) && /hs-lockwrap/.test(blockVM) && /hs-lockwrap/.test(blockV) && /Members get the move on every reading\./.test(blockV) && /hs-signin/.test(blockV) && !/Play it/.test(blockV) && /The quiet move/.test(blockM) && /Play it/.test(blockM) && /hs-member/.test(blockM) && /_galRoom\('m1'\)/.test(blockM),
@@ -184,8 +183,8 @@ ok(/if \(e\.key !== 'Tab'/.test(hs) && /else if \(e\.shiftKey && at === first\) 
 // ── C: the page's markup, style and wiring ──────────────────────────────────────────────────────────────────────────────────────
 const iH1 = page.indexOf('<h1 class="hero-title">Ask culture a question.</h1>'), iInv = page.indexOf('id="pulse-invite"'), iBox = page.indexOf('id="search-input"'), iTry = page.indexOf('id="hs-try"'), iMine = page.indexOf('id="my-spaces"'),
   iWeek = page.indexOf('id="week-block"'), iGal = page.indexOf('id="gal-block"'), iInvite = page.indexOf('id="hs-invite"'), iRec = page.indexOf('id="board-block"'), iTerr = page.indexOf('id="hs-terr"'), iVoices = page.indexOf('id="voices-block"');
-ok(iH1 > 0 && iH1 < iInv && iInv < iBox && iBox < iTry && iTry < iMine && iMine < iWeek && iWeek < iGal && iGal < iInvite && iInvite < iRec && iRec < iVoices && iVoices < iTerr && (page.match(/id="pulse-invite"/g) || []).length === 1,
-  'C1 the order: the ask, its words and the box in one row; the suggestions; a seat\'s spaces; the spread; the morning; the visitor\'s band; the record; the voices; the territories at the foot (NT3e)');
+ok(iH1 > 0 && iH1 < iBox && iBox < iTry && iTry < iInv && iInv < iMine && iMine < iWeek && iWeek < iGal && iGal < iInvite && iInvite < iRec && iRec < iVoices && iVoices < iTerr && (page.match(/id="pulse-invite"/g) || []).length === 1,
+  'C1 the order: the ask, the box and the suggestions, then the reader\'s side (NT4); a seat\'s spaces; the spread; the morning; the visitor\'s band; the record; the voices; the territories at the foot (NT3e)');
 ok(/EXCAVATE is your cultural intelligence engine\. Ask about any brand, category or behavior and get the reading: what people are doing, how much, and the move to make\. Sign in and it fits to you: your brands, your competitors, your role\./.test(page)
   && /k: 'LIVE PULSES · SIGN IN TO ACCESS'/.test(page) && /k: 'LIVE PULSES · WITH ENGINE'/.test(page) && /k: 'LIVE PULSES · PAUSED'/.test(page) && /an account opens the moves, the rooms, the full readings and your downloads/.test(page)
   && /Start with a question\. Stay for the loop\./.test(page) && /The move on every reading, and what it means for your role\./.test(page) && /Ask anything, live\./.test(page) && /This page, built around your brand, your competitors and your questions\./.test(page)
@@ -199,12 +198,13 @@ ok(/body\.uai-in \.hs-signin,body\.uai-in \.hs-lockwrap,body\.uai-in \.hs-lockro
 ok(!/id="gal-day"|id="gal-cal"/.test(page) && /<section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses"/.test(page) && !/_galDayLoad\(\);\n  _whoLoad/.test(page)
   && /_pulseShow\(w && !w\.pulses \? w : null, true\)/.test(page), 'C4 the day\'s frames and the scorecard leave the arrival; the territories stand under the record; the box opens beside the ask');
 ok(/else if \(d\.kind === 'move' && d\.id && typeof _hsMoveResume === 'function'\) _hsMoveResume\(d\.id, 0\);/.test(between(page, 'function _doorResume() {', '/* PURE: a label as a visitor reads it'))
-  && /\.hs-row\[data-id="' \+ id \+ '"\]/.test(page) && /if \(typeof _hsMovesSync === 'function'\) _hsMovesSync\(\);/.test(between(page, 'function _navAuth() {', '/* SEAM:EXC_NAV: the dropdown.')),
-  'C5 the door keeps the move for after sign-in; an address finds a reading on the record\'s new rows; the moves follow the sign-in');
+  && /\.gal-row\[data-id="' \+ id \+ '"\]/.test(page) && !/\.hs-row\[data-id/.test(page) && /if \(typeof _hsMovesSync === 'function'\) _hsMovesSync\(\);/.test(between(page, 'function _navAuth() {', '/* SEAM:EXC_NAV: the dropdown.')),
+  'C5 the door keeps the move for after sign-in; an address finds a reading on the scroll (NT4); the moves follow the sign-in');
 const gr = between(page, 'function _galRender(g) {', '/* How our calls held: the record\'s scorecard');
-ok(/_hsCard\(t, seen\)/.test(gr) && /list = g\.rows\.filter\(t => !mine\.has\(t\.id\)\)/.test(gr) && !/_renderScrollRow|_galAfter|_galDayRender/.test(gr) && /list\.innerHTML = rows\.map\(t => _hsRow\(t, seen\)\)\.join\(''\)|rows\.map\(t => _hsRow\(t, seen\)\)/.test(between(page, 'function _renderScroll(rec, data) {', 'function _renderLakeGrid(data) {'))
-  && !/_renderLakeRow|Also moving, not yet read/.test(between(page, 'function _renderScroll(rec, data) {', 'function _renderLakeGrid(data) {')),
-  'C6 the morning draws cards and leaves out a seat\'s own readings; the record draws its lighter rows and none of the lake\'s unread patterns');
+ok(/_scrollDraw\(\);/.test(gr) && /list = g \? g\.rows\.filter\(t => !mine\.has\(t\.id\)\) : \[\]/.test(gr) && !/_renderScrollRow|_galAfter|_galDayRender/.test(gr) && /list\.innerHTML = '';/.test(between(page, 'function _renderScroll(rec, data) {', 'function _renderLakeGrid(data) {'))
+  && /if \(built === _leadBuilt && typeof _scrollDraw === 'function'\) _scrollDraw\(\);/.test(between(page, 'function _renderScroll(rec, data) {', 'function _renderLakeGrid(data) {'))
+  && !/_renderLakeRow|Also moving, not yet read|_hsRow\(/.test(between(page, 'function _renderScroll(rec, data) {', 'function _renderLakeGrid(data) {')),
+  'C6 the morning draws the scroll and leaves out a seat\'s own readings (NT4); the record draws no rows of its own and none of the lake\'s unread patterns');
 ok(/if \(j && j\.ok && Array\.isArray\(j\.tiles\)\) \{ _FI_RECORD = j; if \(typeof _hsMovesMerge === 'function'\) _hsMovesMerge\(\); return j; \}/.test(page)
   && /function _playRecord\(id\) \{/.test(page) && /if \(arguments\[1\] !== true && window\._signedOut === false && typeof _hsMoves !== 'undefined' && !_hsMoves\.at && typeof _hsMovesLoad === 'function'\) \{ _hsMovesLoad\(\)\.then\(\(\) => _playRecord\(id, true\)\); return; \}/.test(page)
   && /move: mv \? \{ headline: mv,/.test(page) && /\$\{c\.move && window\._signedOut === false \? `<div class="move">/.test(page),

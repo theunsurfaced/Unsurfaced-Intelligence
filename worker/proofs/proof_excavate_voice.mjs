@@ -53,7 +53,7 @@ const ex = await X.doorExtras(env, [{ cluster_id: 'c1', title: 'Presales clear f
 ok(ex.voices.map(v => v.text).join('|') === 'I wear mine every day at work|my 4c hair finally has a shelf|the battery dies by lunch|the loud one says a lot|the quiet one says little'
    && ex.voices[0].on === 'Smart glasses' && ex.voices[1].on === 'Curl care' && ex.voices[3].on === null && ex.voices[3].self.generation === 'Gen Z' && ex.voices[3].when === '2026-09-30',
   'X1 the band quotes the board\'s own subjects one at a time, each naming the subject it speaks to, then the monthly report\'s most liked; deduplicated by text; a shared headline and a voice from before the period never reach the arrival');
-ok(!calls.some(c => /recon/.test(c)) && !ex.voices.some(v => /client brief/.test(v.text)) && ex.voices.every(v => Object.keys(v).sort().join(',') === 'likes,on,self,text,when'),
+ok(!calls.some(c => /recon/.test(c)) && !ex.voices.some(v => /client brief/.test(v.text)) && ex.voices.every(v => Object.keys(v).sort().join(',') === 'id,likes,on,self,text,when'),
   'X1b never a RECON: the band never asks for one, and a quote carries only its words, likes, date, what the speaker said about themselves and its subject; no platform, no handle, no link, no read\'s name');
 ok(ex.record.counts.held === 2 && ex.record.held[0].title === 'Presales clear first' && !calls.some(c => /^cluster_calls\?/.test(c)) && /try \{ out\.record = await memoryRecord\(env\); \}/.test(extrasSrc),
   'X2 record: the calls graded on their own weekly stories (SEAM:MEMORY), never the scoreboard\'s board-presence outcomes');
@@ -66,15 +66,15 @@ ok(band.length === X.DOOR_VOICES.BAND && band.slice(0, 5).map(v => v.on).join(',
 
 // ── P ─────────────────────────────────────────────────────────────────
 const arrival = page.slice(page.indexOf('<section class="hero">'), page.indexOf('<!-- RESULTS PANEL -->'));
-ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is your cultural intelligence engine\. Ask about any brand, category or behavior/.test(arrival) && /placeholder="Ask culture a question: a brand, a category, the people, or the question itself"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
+ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is your cultural intelligence engine\. Ask about any brand, category or behavior/.test(arrival) && /placeholder="A brand, a category, the people, or a question"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
   'P1 the arrival opens with the headline, the plain sub and the search under it');
 ok(/data-q="smart glasses, who buys and who refuses"/.test(arrival) && /data-q="luxury in Lagos"/.test(arrival) && !/Gen Z purchase behavior trends/.test(arrival), 'P2 the examples are questions a person would type, one to an industry (NT3c)');
-ok(/id="week-block"/.test(arrival) && /id="week-movers"/.test(arrival) && /id="board-block"/.test(arrival) && /id="voices-block"/.test(arrival) && /id="record-block"/.test(arrival) && /<section class="partners">/.test(arrival) && /id="featured-insights-grid"/.test(arrival) && /id="fi-state-strip"/.test(arrival),
+ok(/id="week-block"/.test(arrival) && !/id="week-movers"/.test(arrival) && /id="board-block"/.test(arrival) && /id="voices-block"/.test(arrival) && /id="record-block"/.test(arrival) && /<section class="partners">/.test(arrival) && /id="featured-insights-grid"/.test(arrival) && /id="fi-state-strip"/.test(arrival),
   'P3 the five movements mount in order and the engine\'s mount points keep their ids');
 const visible = arrival.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');
 ok(!/\b(signal|signals|lake|overnight|frame|frames)\b/i.test(visible) && !/Featured Insights|Trending Now|THE READ · FROM THE LAKE/.test(arrival), 'P4 no machinery word in the arrival\'s visible copy; the old headers are gone');
-ok(/function _renderWeek\(data\)/.test(page) && /function _renderDoorVoices\(voices\)/.test(page) && /function _renderRecord\(record\)/.test(page) && /function _pulse\(series\)/.test(page) && /function _drawPulses\(\)/.test(page) && /function _countUp\(el, from, to, ms\)/.test(page) && /_renderWeek\(data\); _renderDoorVoices\(data\.voices\); _renderRecord\(data\.record\);/.test(page),
-  'P5 the week, the voices and the record render on every feed; the pulses draw once and the movers count');
+ok(/function _renderWeek\(data\)/.test(page) && /function _renderDoorVoices\(voices\)/.test(page) && /function _renderRecord\(record\)/.test(page) && /function _pulse\(series\)/.test(page) && /function _drawPulses\(\)/.test(page) && !/function _countUp\(/.test(page) && /_renderWeek\(data\); _renderDoorVoices\(data\.voices\); _renderRecord\(data\.record\);/.test(page),
+  'P5 the week, the voices and the record render on every feed; the pulses draw once; nothing counts up (NT4: the movers are gone)');
 // the hybrid board: the movers lead as cards, the rest follow as rows; the first screen carries the invitation and the week's read
 const orderSrc = page.slice(page.indexOf('function _doorLeads()'), page.indexOf('function _renderDoorRow(t)'));
 const leadsOf = n => new Function('getComputedStyle', 'document', orderSrc + '; return { _doorOrder, _moveSize, _doorLeads };')(() => ({ getPropertyValue: () => ' ' + n }), { documentElement: {} });
@@ -89,7 +89,8 @@ ok(OO._moveSize({ measures: { velocity_pct: -100, recent_7d: 0, prior_7d: 1 } })
   'P15 one story falling to none is no move; a fall from 67 to 33 and a rise from 19 to 50 are');
 const ord3 = O([tl('z', -100, 0, true, 1), tl('a', 51, 68, true, 45), tl('b', -17, 45, true, 54)]);
 ok(ord3.leads.map(t => t.id).join(',') === 'a,b' && ord3.quiet[0].id === 'z', 'P15b the subject with one story never leads the board on its hundred percent fall');
-ok(/const moved = withM\.filter\(t => t\.measures\.velocity_pct != null && _moveSize\(t\) > 0\);/.test(page), 'P15c the week\'s movers sit above the same floor: no sharpest fall from one story to none');
+ok(!/const moved = withM\.filter/.test(page) && !/week-movers/.test(page) && /const loud = withM\.slice\(\)\.sort\(\(a, b\) => b\.measures\.recent_7d - a\.measures\.recent_7d\)\[0\];   \/\/ the most covered subject's photograph, when it has one/.test(page),
+  'P15c the week\'s movers are gone (NT4): the most covered subject still lends the week its photograph');
 // the room is one centered page that scales with the canvas; the stepped knob resolves in every browser (the trig formula did not)
 ok(/--k:1;--room-w:calc\(1240px\*var\(--k\)\);--room-g:40px;--leads:2\}/.test(page) && /@media \(min-width:1680px\)\{:root\{--k:1\.15\}\}/.test(page) && /@media \(min-width:2360px\)\{:root\{--k:1\.5\}\}/.test(page) && /@media \(min-width:3300px\)\{:root\{--k:1\.75\}\}/.test(page) && !/tan\(atan2/.test(page),
   'P16 the room is 1240px at 1440 and scales by steps to 1.75 on a wide canvas; no formula a browser may not resolve');

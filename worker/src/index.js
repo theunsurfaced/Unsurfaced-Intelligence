@@ -232,6 +232,7 @@ export default {
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
       if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/s/')) return readImageRelay(path, env);   // SEAM:READ_DESIGN
       if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/t/')) return readImageRelay(path, env);   // SEAM:READ_SLOTS (ED1): the same relay at thumbnail size (400 px) for the mosaics and strips
+      if ((request.method === 'GET' || request.method === 'HEAD') && path.startsWith('/img/r/')) return arrivalImageRelay(path, env);   // SEAM:THE_SCROLL (NT4): the arrival's photographs, through the house
       if (path === '/reads/render' && request.method === 'POST') return readRenderTicket(request, env, origin);   // SEAM:READ_PRINT one-time ticket
       if (path === '/mine/studies' && request.method === 'GET') return mineStudiesPublic(env, origin);
       if (path === '/mine/study' && request.method === 'GET') return mineStudyPublic(url, env, origin);
@@ -257,6 +258,7 @@ export default {
       if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
       if (path === '/excavate/moves' && request.method === 'GET') return movesRoute(env, origin);                    // SEAM:HOUSE_STYLE (NT3c): the moves, for a signed-in reader; no model, no meter
       if (path === '/excavate/yours' && request.method === 'GET') return yoursRoute(env, origin, user);                 // SEAM:FRAME_FIT (NT3d): the reader's frame on the page; no model, no meter
+      if (path === '/excavate/searches/mine' && request.method === 'GET') return searchesMineRoute(env, origin, user);   // SEAM:THE_SCROLL (NT4): the reader's last questions; no model, no meter
       if (path === '/partner' && request.method === 'GET') return partnerRoute(env, origin, user);                          // SEAM:PARTNER (EX51): the company's page; no model, no meter
       if (path === '/partner/intake' && request.method === 'POST') return partnerIntakeRoute(request, env, origin, user);   // SEAM:PARTNER (EX51): the owner keeps the intake
       if (path === '/excavate/space' && request.method === 'GET') return spaceRoute(request, env, origin, user);             // SEAM:SPACES (NT1): a space and its readings, for whoever may see them; no model, outside the daily allowance
@@ -2286,7 +2288,13 @@ function excVoiceNotes(read) {
  * measure, the weeks touched: the writer may stand on them, never write about them. 'early signal' is the house's own phrase and passes. */
 function excMeasureClaim(text) {
   const t = String(text || '').replace(/\bearly signals?\b/gi, ' ');
-  return /\b(?:\d+ signals?|signals? (?:counts?|fell|rose|dropped|climbed|doubled|halved|reads?|stands?|stood|flat|unchanged|this week|last week|the week)|(?:no|zero|few|fewer|more|most) signals|(?:signal|coverage|outlet|story) counts?|the count|coverage (?:reads?|fell|rose|dropped|climbed|is|was|stands?|stood|this week|last week)|(?:no|zero|thin|flat|quiet) coverage|streaks?|weeks? touched|of \d{1,2} weeks|reads (?:0|zero)|unchanged from (?:0|zero)|the measure|lake (?:reads?|counts?))\b/i.test(t);
+  return /\b(?:\d+ signals?|signals? (?:counts?|fell|rose|dropped|climbed|doubled|halved|reads?|stands?|stood|flat|unchanged|this week|last week|the week)|(?:no|zero|few|fewer|more|most) signals|(?:signal|coverage|outlet|story) counts?|the count|coverage (?:reads?|fell|rose|dropped|climbed|is|was|stands?|stood|this week|last week)|(?:no|zero|thin|flat|quiet) coverage|streaks?|weeks? touched|of \d{1,2} weeks|reads (?:0|zero)|unchanged from (?:0|zero)|the measure|lake (?:reads?|counts?)|signal tracking|\d+ mentions?|mentions? (?:this|last) week|unsurfaced lake|per (?:the )?lake|the lake (?:reads?|counts?|shows?|says?|holds?|tracked)|tracked (?:for |over )?\d+ weeks?|our (?:data|tracking|signals) (?:shows?|showed|says?)|(?:most|least) covered|(?:signal|story|outlet|news|press) coverage (?:doubled|halved|grew|spiked|jumped))\b/i.test(t);
+}
+/* SEAM:THE_SCROLL (NT4) PURE: the week's cover line, kept when it holds: three to twelve words, one claim, no colon, never the measure or the lake. */
+function weekCoverOk(c) {
+  const s = String(c || '').replace(/\s+/g, ' ').trim().replace(/[\s.]+$/, ''); if (!s) return '';
+  const n = s.split(' ').length; if (n < 3 || n > 12 || /[:;]/.test(s) || s.includes(String.fromCharCode(8212)) || excMeasureClaim(s) || /\b(?:lake|signals?|mentions?|tracked|tracking|coverage|counts?|outlets?)\b/i.test(s)) return '';
+  return s.slice(0, 120);
 }
 /* PURE: the lines of a compiled reading that name the measure: the two read lines, every finding's title, every move's headline. */
 function excMeasureClaims(read) {
@@ -7248,6 +7256,7 @@ async function excavatePropose(request, env, origin, internal) {
       + 'Return ONLY JSON: {"read":<this week\'s read: exactly 2 sentences, under 44 words total. The first is a plain statement about people, '
       + 'what they did this week across the patterns given, naming the concrete things (the releases, the behaviors, the categories) and never a count of coverage; '
       + 'the second names what follows for the brands and the professionals who serve those people. Written as an expert states a fact: no slogan, no X-not-Y, no colon openers, no em dashes>,'
+      + '"cover":<the week\'s cover line: the read\'s first sentence said as a headline, one claim about people in at most twelve words, no figure, no count, no colon, no em dash>,'
       + '"themes":[{"n":<item number>,"lens":<one of ' + PROPOSE_LENS.join('|') + '>,'
       + '"title":<3-5 words, declarative, no colon>,'
       + '"subtitle":<8-14 words naming the actual question>,'
@@ -7258,13 +7267,14 @@ async function excavatePropose(request, env, origin, internal) {
       + 'shows no real pattern, omit it entirely rather than forcing one. No prose outside the JSON.';
 
     let written = [];
-    let fieldRead = '';
+    let fieldRead = '', fieldCover = '';
     try {
       const compiled = await excCompile(env, { system: sys, prompt: brief, kind: 'excavate_propose',   // SEAM:EXC_INTEL: the field read rides the lane
         overnight: internal === true, reserve: 't3', max_tokens: 8000 });   // room for 12 named patterns, and for the thinking Sonnet 5 does first (2400 was cut; the field fell back to desk tiles)
       const j = parseModelJson(compiled.text);
       written = (j && Array.isArray(j.themes)) ? j.themes : [];
       fieldRead = (j && typeof j.read === 'string') ? j.read.slice(0, 400) : '';
+      fieldCover = typeof weekCoverOk === 'function' ? weekCoverOk(j && j.cover) : '';   // SEAM:THE_SCROLL (NT4): kept only when it holds; the page leads with the first sentence otherwise
     } catch (e) {
       return json({ ok: false, error: 'propose_voice_failed',
         detail: String(e && e.message).slice(0, 120) }, 200, origin, env);
@@ -7310,7 +7320,7 @@ async function excavatePropose(request, env, origin, internal) {
     themes.forEach(t => { const st = t.state || 'STEADY'; stateCounts[st] = (stateCounts[st] || 0) + 1; });
     const out = { ok: true, window_days: days, scanned: rows.length, min_weeks: minWeeks,
       candidates: ranked.length, proposed,
-      field: { read: fieldRead, states: stateCounts, anchors_on: anchorsOn },
+      field: { read: fieldRead, cover: fieldCover, states: stateCounts, anchors_on: anchorsOn },   // SEAM:THE_SCROLL (NT4): the cover line rides the field
       bar_note: 'bar is recurrence strength RELATIVE to this set; evidence carries the absolute numbers',
       generated_at: new Date().toISOString() };
     if (env.RATE_LIMIT) {
@@ -8378,13 +8388,22 @@ async function lakeCapture(env, items, prov) {
  * answered (compiled, served again from the day's read, or refused by the meter) and the read it returned (searches, 0065). The read is the
  * ledger's own row (SEAM:READ_LEDGER), which now keeps who asked it; opening a search in READ shows that row as it was compiled. Nothing
  * runs again: no model, no gather, no spend. A search that cannot be kept never stops the read. Admin only, behind readRoute's gate. ═══ */
-const SEARCHES = { PAGE: 50, MAX_PAGE: 200, STATUS: ['compiled', 'partial', 'cached', 'refused'], ASKED: 100 };
+const SEARCHES = { PAGE: 50, MAX_PAGE: 200, STATUS: ['compiled', 'partial', 'cached', 'refused'], ASKED: 100, MINE: 6 };   // MINE: SEAM:THE_SCROLL (NT4)
 function searchRow(row) {   // PURE: one search as it is kept
   const cost = row && row.cost_usd != null && row.cost_usd !== '' && Number.isFinite(Number(row.cost_usd)) ? Number(row.cost_usd) : null;
   return { user_id: row && /^[0-9a-f-]{36}$/.test(String(row.user_id || '')) ? row.user_id : null, query: String((row && row.query) || '').slice(0, 200),
     depth: row && row.depth === 'quick' ? 'quick' : row && row.depth === 'full' ? 'full' : null, mode: row && row.mode ? String(row.mode).slice(0, 40) : null,
     status: row && SEARCHES.STATUS.includes(row.status) ? row.status : 'compiled', read_id: row && /^[0-9a-f-]{36}$/.test(String(row.read_id || '')) ? row.read_id : null,
     cost_usd: cost, meta: (row && row.meta && typeof row.meta === 'object') ? row.meta : {} };
+}
+/* ═══ SEAM:THE_SCROLL (NT4 THE SCROLL): the reader's last questions, for the first section. GET /excavate/searches/mine (signed in, below the
+ * sign-in line and ahead of the meter, so it never spends): the distinct questions this reader asked the engine and had answered (a refused
+ * ask is not one), newest first, at most SEARCHES.MINE. The reader's own rows only (user_id); no model. ═══ */
+async function searchesMineRoute(env, origin, user) {
+  const rows = (await sbRest(env, 'searches?user_id=eq.' + user.id + '&status=in.(compiled,partial,cached)&select=query,depth,created_at&order=created_at.desc&limit=40').catch(excQuiet('searches_mine', []))) || [];
+  const seen = new Set(), out = [];
+  for (const r of rows) { const q = String((r && r.query) || '').replace(/\s+/g, ' ').trim(), k = q.toLowerCase(); if (!q || seen.has(k)) continue; seen.add(k); out.push({ q, depth: r.depth || null, at: r.created_at || null }); if (out.length >= SEARCHES.MINE) break; }
+  return json({ ok: true, questions: out }, 200, origin, env);
 }
 async function searchLog(env, row) {
   if (!row || !String(row.query || '').trim()) return false;
@@ -8696,6 +8715,11 @@ async function excFrameTiles(env, tiles, edition, generated) {
  * quote carries its words, its likes, its date and what the speaker said about themselves; never a platform, a handle, a
  * channel or a link. The pass is free (YouTube's house allowance, Mastodon) and spends no model. ═══ */
 const DOOR_VOICES = { KEEP: 6, POOL: 40, POOL_PER: 15, SINCE_D: 30, FRESH_D: 90, MS: 12000, PASS_MS: 120000, PER_SOURCE: 2, BAND: 12 };   // the pool (SEAM:PEOPLE) stays on the row, never on a tile
+// SEAM:THE_SCROLL (NT4) PURE: a voice the house never quotes, on any surface: a slur, or a loaded label from the register law's own list.
+const VOICE_BARRED = /\b(?:n[i1]gg(?:a|er)s?|f[a@]gg?(?:ot)?s?|tr[a@]nn(?:y|ies)|k[i1]kes?|sp[i1]cs?|ch[i1]nks?|g[o0]{2}ks?|wetbacks?|r[e3]tards?|dykes?|towelheads?|ragheads?)\b/i;
+function voiceBarred(text) { const t = String(text || ''); return VOICE_BARRED.test(t) || (typeof READ_LOADED !== 'undefined' && READ_LOADED.test(t)); }
+// PURE: a subject as a reader says it: the entity, else the label without the engine's own tail (excFrameLabel writes "Nike in apparel brand"; the reader says "Nike"; "Made in America" keeps its words), else the category.
+function doorSubjectOf(t) { const f = (t && t.frame) || {}, l = String((t && (t.label || t.title)) || '').trim(), c = String(f.category || '').trim().toLowerCase(); return String(f.entity || (c && l.toLowerCase().endsWith(' in ' + c) ? l.slice(0, l.length - c.length - 4) : l) || f.category || '').trim() || null; }
 // The subject's own question (YouTube) and its shortest name (Mastodon reads a tag), through its frame, so a comment that is not
 // about the subject (on_frame false) is never quoted as if it were. Room for every comment the rails fetch: one video never fills it.
 async function doorVoices(env, cand, frame) {
@@ -8716,7 +8740,7 @@ async function doorVoices(env, cand, frame) {
 function doorVoicePick(quotes, nowMs, keep, perSource) {
   const K = keep || DOOR_VOICES.KEEP, PER = perSource || DOOR_VOICES.PER_SOURCE;
   const fresh = q => { const t = q && q.when ? Date.parse(q.when) : NaN; return isNaN(t) || (nowMs - t) <= DOOR_VOICES.FRESH_D * 864e5; };
-  const list = (quotes || []).filter(q => q && q.text && q.on_frame !== false && !voiceShareOf(q) && fresh(q)).map(q => Object.assign({}, q, { text: voiceDisplay(q.text) }))
+  const list = (quotes || []).filter(q => q && q.text && q.on_frame !== false && !voiceShareOf(q) && fresh(q) && !voiceBarred(q.text)).map(q => Object.assign({}, q, { text: voiceDisplay(q.text) }))
     .filter(q => q.text.length >= VOICES.MIN).sort((a, b) => (b.likes || 0) - (a.likes || 0));
   const seen = new Set(), per = {}, out = [];
   for (const q of list) {
@@ -8732,10 +8756,11 @@ function doorVoicePick(quotes, nowMs, keep, perSource) {
 // report's. Each quote says which subject it speaks to.
 function doorBand(tiles, reportQuotes) {
   const out = [], seen = new Set();
-  const add = (q, on) => { const k = String((q && q.text) || '').toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); out.push({ text: q.text, likes: q.likes || 0, when: q.when || null, self: q.self || null, on: on || null }); };
-  const lists = (tiles || []).filter(t => t && Array.isArray(t.voices) && t.voices.length).map(t => ({ on: t.label || t.title || null, v: t.voices.slice() }));
-  while (out.length < DOOR_VOICES.BAND && lists.some(l => l.v.length)) for (const l of lists) { if (out.length >= DOOR_VOICES.BAND) break; const q = l.v.shift(); if (q) add(q, l.on); }
-  for (const q of (reportQuotes || [])) { if (out.length >= DOOR_VOICES.BAND) break; add(q, null); }
+  // SEAM:THE_SCROLL (NT4): a voice says which subject it speaks to as a reader says it (never the engine's frame) and holds its reading's id; a barred voice never rides
+  const add = (q, on, id) => { const k = String((q && q.text) || '').toLowerCase(); if (!k || seen.has(k) || voiceBarred(q.text)) return; seen.add(k); out.push({ text: q.text, likes: q.likes || 0, when: q.when || null, self: q.self || null, on: on || null, id: id || null }); };
+  const lists = (tiles || []).filter(t => t && Array.isArray(t.voices) && t.voices.length).map(t => ({ on: doorSubjectOf(t), id: t.id || null, v: t.voices.slice() }));
+  while (out.length < DOOR_VOICES.BAND && lists.some(l => l.v.length)) for (const l of lists) { if (out.length >= DOOR_VOICES.BAND) break; const q = l.v.shift(); if (q) add(q, l.on, l.id); }
+  for (const q of (reportQuotes || [])) { if (out.length >= DOOR_VOICES.BAND) break; add(q, null, null); }
   return out;
 }
 // PURE: what a subject keeps: tonight's voices, or the last ones it had when tonight's gather came back empty (a spent allowance,
@@ -9732,7 +9757,7 @@ function doorTile(r) {
     frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null, query: f.query || null },
     claim: rd && rd.read && rd.read[0] ? rd.read[0] : null, move: rd && rd.ideas && rd.ideas[0] ? rd.ideas[0].headline : null, findings: rd && rd.insights ? rd.insights.length : 0,
     question: (rd && rd.question) || f.question || null,   // SEAM:EXC_DOOR_VOICE: the question this reading answers
-    dek: rd && rd.read && rd.read[1] && r.night >= '2026-10-10' ? rd.read[1] : null,   // EX33a: the dek (the one figure, its source in words); before the 3.4 voice line 2 was the move, so older readings carry none
+    dek: rd && rd.read && rd.read[1] && r.night >= '2026-10-10' && !(typeof excMeasureClaim === 'function' && excMeasureClaim(rd.read[1])) ? rd.read[1] : null,   // EX33a: the dek (the one figure, its source in words); before the 3.4 voice line 2 was the move, so older readings carry none. SEAM:THE_SCROLL (NT4): a dek about the measure or the lake never publishes, whenever it was written
     photo: doorPhoto(rd, r.evidence),   // the sources' own photograph, credited; null when none of the lines carries one
     measures: { series: m.series || [], recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0, weeks_touched: m.weeks_touched || 0, weeks: m.weeks || 12, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, state: m.state || 'STEADY', shape: m.shape || null, newest: m.newest || null },
     evidence_n: (r.evidence || []).length, since: s, image: null,
@@ -9740,7 +9765,7 @@ function doorTile(r) {
     // SEAM:RECORD_LAW / SEAM:RECORD_WATCH / SEAM:EXC_PLACE: the deployment's date, what it develops and what developed it, its watch and the grade, where its evidence came from
     deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, developed_night: (r.meta && r.meta.developed_night) || null,
     watch: (rd && rd.watch) || null, called: (r.meta && r.meta.called) || null, place: doorPlaceOf(r.evidence),
-    voices: (r.meta && Array.isArray(r.meta.voices) ? r.meta.voices : []).slice(0, DOOR_VOICES.KEEP).map(doorVoicePublic) };   // SEAM:DOOR_VOICES: the pool never rides a tile
+    voices: (r.meta && Array.isArray(r.meta.voices) ? r.meta.voices : []).filter(v => v && v.text && !(typeof voiceBarred === 'function' && voiceBarred(v.text))).slice(0, DOOR_VOICES.KEEP).map(doorVoicePublic) };   // SEAM:DOOR_VOICES: the pool never rides a tile; SEAM:THE_SCROLL (NT4): a barred voice never rides it either
 }
 /* SEAM:EXC_DOOR_VOICE PURE: the photograph a tile shows is one the read's own sources carried: the first cited insight's image, else the
  * first evidence line with an https image. Never stock, always credited to the outlet. */
@@ -19441,6 +19466,56 @@ function readImgLarger(href) {
   const p = t.pathname.replace(/-\d{2,4}x\d{2,4}(\.(?:jpe?g|png|webp))$/i, '$1');
   if (p !== t.pathname) { t.pathname = p; changed = true; }
   return changed ? readImgUrl(t.href) : null;
+}
+/* ═══ SEAM:THE_SCROLL (NT4): the arrival's photographs land through the house. GET /img/r/<reading id> (public) serves the photograph a
+ * public reading carries (doorPhoto: the cited insight's, else a T0 to T2 line's), fetched by the worker and kept at the edge a week, so a
+ * browser never hotlinks an outlet: a referer check, a slow host or a dead address no longer leaves a blank tile. The stored address is
+ * tried with its size parameters taken off (a larger copy), then the source page's og:image, then the address as stored; the edge
+ * resizes to ARRIVAL_IMG.WIDTH where the zone allows. A non-image, a file past READ_IMG.MAX_BYTES or one under ARRIVAL_IMG.MIN_BYTES
+ * (a pixel, an icon, a logo-sized file) answers 404, which the page turns into the sources' own address, then the subject's name. A
+ * reading that is not public (not ready, or a private space's, which never sits in door_reads) serves nothing. ═══ */
+const ARRIVAL_IMG = { MIN_BYTES: 6000, WIDTH: 1400, QUALITY: 82, KEY: 'https://img.unsurfaced-intelligence.com/r1/' };
+async function arrivalImageRelay(path, env) {
+  const hdr = ttl => ({ 'Cache-Control': 'public, max-age=' + ttl, 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
+  const m = /^\/img\/r\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(path), id = m && m[1].toLowerCase();
+  if (!id) return new Response('not found', { status: 404, headers: hdr(3600) });
+  const cache = caches.default, key = new Request(ARRIVAL_IMG.KEY + id);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const miss = async why => { console.log('img_r_miss', id, why); const r = new Response('not found', { status: 404, headers: hdr(READ_IMG.MISS_TTL) }); await cache.put(key, r.clone()); return r; };
+  const rows = await sbRest(env, 'door_reads?id=eq.' + id + '&status=in.(ready,reused)&select=read,evidence&limit=1').catch(excQuiet('img_r_rows', null));
+  if (!Array.isArray(rows)) return new Response('not now', { status: 503, headers: hdr(0) });   // the database did not answer: nothing is kept, the page tries the sources' address
+  const row = rows[0]; if (!row) return miss('not_public');
+  const ph = doorPhoto(row.read || null, row.evidence || []); if (!ph || !ph.src) return miss('no_photo');
+  // the stored address with its size taken off; then, only if that fails, the source page's og:image; then the address as stored
+  const tries = [], stored = readImgUrl(ph.src), full = stored && readImgLarger(stored);
+  if (full) tries.push(async () => ({ href: full, from: 'full' }));
+  const ins = ((row.read && row.read.insights) || []).find(x => x && x.image === ph.src), page = ins && readImgUrl(ins.sourceUrl);
+  if (page) tries.push(async () => {
+    const res = await readImgFetch(page, 'text/html,application/xhtml+xml');
+    if (!res || !res.ok || !/text\/html|xhtml/.test(res.headers.get('content-type') || '')) return null;
+    const html = (await res.text()).slice(0, READ_IMG.HTML_BYTES);
+    const og = readImgUrl(pvMeta(html, 'og:image') || pvMeta(html, 'twitter:image'), res.url || page);
+    return og ? { href: og, from: 'og' } : null;
+  });
+  if (stored) tries.push(async () => ({ href: stored, from: 'stored' }));
+  const seen = {};
+  for (const next of tries) {
+    const t = await next();
+    if (!t || seen[t.href]) continue;
+    seen[t.href] = 1;
+    const res = await readImgFetch(t.href, 'image/avif,image/webp,image/*', { image: { width: ARRIVAL_IMG.WIDTH, fit: 'scale-down', quality: ARRIVAL_IMG.QUALITY } });
+    if (!res || !res.ok) continue;
+    const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!/^image\/(?:jpeg|jpg|png|webp|gif|avif)$/.test(type)) continue;
+    if (parseInt(res.headers.get('content-length') || '0', 10) > READ_IMG.MAX_BYTES) continue;   // said ahead, so a large file is never read in
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength < ARRIVAL_IMG.MIN_BYTES || buf.byteLength > READ_IMG.MAX_BYTES) continue;
+    const out = new Response(buf, { status: 200, headers: Object.assign({ 'Content-Type': type, 'X-Img-From': t.from, 'Access-Control-Expose-Headers': 'X-Img-From' }, hdr(READ_IMG.TTL)) });
+    await cache.put(key, out.clone());
+    return out;
+  }
+  return miss(tries.length ? 'no_image_served' : 'no_candidate');
 }
 async function readImageRelay(path, env) {
   const hdr = ttl => ({ 'Cache-Control': 'public, max-age=' + ttl, 'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
