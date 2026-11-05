@@ -91,7 +91,7 @@ const PS = new Function('document', 'safe', '_GAL', '_pulseWho', ps + '; return 
 const shown = (kind, openIt) => { PS({ kind, pulses: false }, openIt); return el.innerHTML; };
 const outOpen = shown('out', true), outLine = shown('out', false), memOpen = shown('member', true), memLine = shown('member', false), pausedOpen = shown('paused', true);
 const how = /open web|what the house keeps|writes the answer|in minutes|every source attached/;
-ok(/Ask it\. Get the reading\./.test(outOpen) && /Live pulses come with a subscription, and an account opens the rooms, the full readings and your downloads\. The morning below is open to everyone\./.test(outOpen)
+ok(/Ask it\. Get the reading\./.test(outOpen) && /Live pulses come with a subscription, and an account opens the moves, the rooms, the full readings and your downloads\. The morning below is open to everyone\./.test(outOpen) && /LIVE PULSES · SIGN IN TO ACCESS/.test(outOpen)
   && /Sign in<\/button>/.test(outOpen) && /Talk to us/.test(outOpen) && /Live pulses come with a subscription\./.test(outLine) && /What a pulse is/.test(outLine)
   && /Live pulses come with Engine/.test(memOpen) && /See what Engine adds/.test(memOpen) && /Live pulses come with Engine\./.test(memLine) && /paused/.test(pausedOpen)
   && ![outOpen, outLine, memOpen, memLine, pausedOpen].some(h => how.test(h)),

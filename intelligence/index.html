@@ -1999,6 +1999,260 @@ body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:
 @media (max-width:1000px){.row.nophoto{grid-template-columns:minmax(0,1fr) 240px}.row.nophoto .move{grid-column:1/-1}}
 @media (max-width:640px){.row.nophoto{grid-template-columns:minmax(0,1fr)}.row.nophoto .mid,.row.nophoto .move{grid-column:1/-1}}
 </style>
+<style id="house-style">
+/* SEAM:HOUSE_STYLE (NT3c THE HOUSE STYLE): the arrival in the work's own type. The ask is a short section of its own, with the box beside
+   it; a seat's spaces lead with their latest readings; the lead and this week's read stand as one spread, larger; the morning is a grid of
+   cards, each opening its move; the record reads lighter, its cross-currents first; the territories and the voices close it. A visitor
+   reads the top of every reading and sees that a move is there; a member reads it. Syne 800 uppercase for display, Space Mono for labels,
+   ivory panels on the void, the house red for the door. */
+:root{--hs-ivory:#FAF7F2;--hs-ink:#141414;--hs-ink2:#3A3630;--hs-meta:#6B6455;--hs-paper-rule:#D9D1C1;--hs-pink:#E8365A;--hs-soft:#CFC8BA;--hs-quiet:#9A9A9A}
+.hs-k{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase;color:#C41230}
+.hs-line{font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));line-height:1.5;letter-spacing:.12em;text-transform:uppercase;color:var(--hs-quiet)}
+.hs-btn{font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.12em;text-transform:uppercase;line-height:1.2;padding:14px 18px;border:1px solid #0A0A0A;background:#0A0A0A;color:#FAF7F2;cursor:pointer;text-align:center}
+.hs-btn.red{background:var(--room-red);border-color:var(--room-red);color:#FAF7F2}
+.hs-btn.ink{background:#0A0A0A;border-color:#0A0A0A;color:#FAF7F2}
+.hs-btn:hover{filter:brightness(1.12)}
+.hs-link{background:none;border:0;border-bottom:1px solid var(--room-red);color:var(--room-ivory);font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.12em;text-transform:uppercase;padding:0 0 2px;cursor:pointer}
+.hs-btn:focus-visible,.hs-link:focus-visible,.hs-ind:focus-visible{outline:2px solid var(--room-red);outline-offset:3px}
+body.uai-in .hs-signin,body.uai-in .hs-lockwrap,body.uai-in .hs-lockrow{display:none!important}
+body:not(.uai-in) .hs-member{display:none!important}
+
+/* 1. the ask: its words and the box in one row, the box full width under them, the four industries under that */
+#sec-explore .hero{display:block;padding:calc(40px*var(--k)) var(--room-g) calc(36px*var(--k));max-width:var(--room-w);margin:0 auto}
+#sec-explore .hero-left{max-width:none}
+#sec-explore .hs-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.05fr);gap:calc(20px*var(--k)) calc(40px*var(--k));align-items:start;margin:0 0 calc(24px*var(--k))}
+#sec-explore .hs-top h1.hero-title{font-size:clamp(34px,3.9vw,calc(56px*var(--k)));line-height:.98;margin:0;max-width:none}
+#sec-explore .hs-top .hero-sub{margin:4px 0 0;font-size:calc(16.5px*var(--k));line-height:1.55;max-width:none}
+#sec-explore .hs-top .pulse-invite{margin:0;max-width:none}
+#sec-explore .hs-top .pulse-invite.open{border:1px solid var(--room-rule);padding:calc(18px*var(--k)) calc(20px*var(--k))}
+#sec-explore .hs-top .pulse-invite .pi-k{color:var(--hs-pink)}
+#sec-explore .hs-top .pulse-invite .pi-h{font-size:calc(17px*var(--k))}
+#sec-explore .hs-top .pulse-invite .pi-p{font-size:calc(14.5px*var(--k));color:var(--room-ivory);margin:0 0 12px}
+#sec-explore .hs-top .pulse-invite .btn-go-deeper{background:var(--room-red);color:#FAF7F2;border:0;border-radius:0;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.12em;text-transform:uppercase;padding:13px 18px}
+#sec-explore .search-shell{max-width:none}
+#sec-explore .search-wrapper{min-height:calc(62px*var(--k))}
+#sec-explore .search-bar{font-size:calc(19px*var(--k))}
+#sec-explore .hs-try{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:calc(6px*var(--k))}
+#sec-explore .hs-try-k{font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));letter-spacing:.14em;text-transform:uppercase;color:var(--hs-quiet);margin-right:6px}
+#sec-explore .hs-ind{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.2;padding:8px 13px;background:transparent;color:var(--room-ivory);border:1px solid var(--room-rule);border-radius:0;cursor:pointer}
+#sec-explore .hs-ind.on{background:var(--room-ivory);color:#0A0A0A;border-color:var(--room-ivory)}
+#sec-explore .hs-try-sep{color:#3A3A3A;padding:0 4px}
+#sec-explore .hs-try .tag.hs-q{font-size:calc(14.5px*var(--k));color:var(--room-ivory);border-bottom-color:#555}
+@media (max-width:1000px){#sec-explore .hs-top{grid-template-columns:minmax(0,1fr);gap:14px}}
+
+/* a seat's spaces: their latest readings, first */
+#sec-explore .my-spaces{max-width:none;margin:calc(30px*var(--k)) 0 0;padding-top:calc(18px*var(--k))}
+#sec-explore .ms-head{margin:0 0 14px}
+#sec-explore .ms-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ms-card{background:var(--room-card);border:1px solid var(--room-rule);padding:18px 18px 20px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.ms-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-width:0}
+.ms-card .ms-name{font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(14px*var(--k));letter-spacing:.02em;color:var(--room-ivory);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ms-card h3{font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(17px*var(--k));line-height:1.1;margin:0;color:var(--room-ivory)}
+.ms-card .hs-movebtn{margin-top:auto}
+.ms-wait{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(13.5px*var(--k));line-height:1.5;color:var(--room-fg3)}
+@media (max-width:1000px){#sec-explore .ms-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){#sec-explore .ms-list{grid-template-columns:minmax(0,1fr)}}
+
+/* 2. the lead and this week's read, one spread */
+#sec-explore .hero .week{margin:calc(36px*var(--k)) 0 0;padding:calc(40px*var(--k)) 0 0;border-top:1px solid var(--room-rule)}
+#sec-explore .lead-rail{display:flex;flex-direction:column;gap:16px;overflow:visible;scroll-snap-type:none}
+#sec-explore .lead-card{flex:none;min-width:0;width:100%;scroll-snap-align:none}
+#sec-explore .lead-nav{display:none!important}
+#sec-explore .lead-reading{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:16px;align-items:stretch}
+#sec-explore .lead-reading .photo,#sec-explore #lead-week .photo{position:relative;margin:0;background:var(--room-card);overflow:hidden}
+#sec-explore .lead-reading .photo{min-height:calc(540px*var(--k))}
+#sec-explore .lead-reading .photo img,#sec-explore #lead-week .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;aspect-ratio:auto}
+#sec-explore .lead-reading .photo figcaption,#sec-explore #lead-week .photo figcaption{position:absolute;left:14px;bottom:14px;margin:0;background:rgba(10,10,10,.82);color:var(--hs-soft);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px}
+#sec-explore .lead-reading .photo figcaption:empty,#sec-explore #lead-week .photo figcaption:empty{display:none}
+#sec-explore .lead-reading .text{background:var(--hs-ivory);color:var(--hs-ink);padding:calc(34px*var(--k)) calc(34px*var(--k)) calc(32px*var(--k));display:flex;flex-direction:column;gap:14px;min-width:0}
+#sec-explore .lead-reading .room-dateline{margin:0;color:#C41230;font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase}
+#sec-explore .lead-reading h2{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(26px,2.4vw,calc(34px*var(--k)));line-height:.98;letter-spacing:-.01em;color:var(--hs-ink)}
+#sec-explore .lead-reading .text>p{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(16px*var(--k));line-height:1.55;color:var(--hs-ink2)}
+#sec-explore .lead-reading .rec-watch{margin:auto 0 0;border-top:1px solid var(--hs-paper-rule);padding-top:14px;color:var(--hs-ink);font-size:calc(15px*var(--k));line-height:1.45;max-width:none}
+#sec-explore .lead-reading .rec-watch i{display:block;margin:0 0 6px;color:#C41230;border:0;padding:0;background:none}
+#sec-explore .lead-reading .lead-when{color:#C41230}
+#sec-explore .lead-reading .gal-note{color:var(--hs-ink);border-left-color:#C41230;flex:none}
+#sec-explore .lead-reading .gal-note .gn-k{color:var(--hs-meta)}
+.hs-move{border-top:1px solid var(--hs-paper-rule);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+#sec-explore .hs-move-text,.hs-move-text{margin:0;font-family:'Syne',sans-serif;font-weight:600;font-size:calc(19px*var(--k));line-height:1.4;color:var(--hs-ink)}
+.hs-lockwrap{display:flex;flex-direction:column;gap:10px}
+.hs-lock{display:flex;flex-direction:column;gap:8px;padding:2px 0}
+.hs-lock i{display:block;height:13px;background:var(--hs-ink)}
+.hs-lock i:nth-child(1){width:94%}.hs-lock i:nth-child(2){width:81%}.hs-lock i:nth-child(3){width:57%}
+#sec-explore .hs-lock-line,.hs-lock-line{margin:2px 0 0;font-family:'Syne',sans-serif;font-weight:700;font-size:calc(18px*var(--k));line-height:1.3;color:var(--hs-ink)}
+.hs-acts{display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px}
+.lead-reading .hs-acts .gal-room{background:none;border:0;border-bottom:1px solid var(--hs-ink);color:var(--hs-ink);font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));padding:0 0 1px;cursor:pointer}
+#sec-explore #lead-week{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,3fr) minmax(0,4fr);gap:16px;align-items:stretch}
+#sec-explore #lead-week .text{border:1px solid var(--room-rule);padding:calc(30px*var(--k)) calc(32px*var(--k));display:flex;flex-direction:column;gap:14px;min-width:0}
+#sec-explore #lead-week .room-dateline{margin:0;color:var(--hs-pink);font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase}
+#sec-explore #lead-week h2{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(19px,1.75vw,calc(25px*var(--k)));line-height:1.08;color:var(--room-ivory)}
+#sec-explore #lead-week .text p{margin:0;font-size:calc(16px*var(--k));line-height:1.5;color:var(--hs-soft)}
+#sec-explore #lead-week .photo{min-height:calc(360px*var(--k))}
+#sec-explore #lead-week .movers{display:flex;flex-direction:column;gap:8px;margin:0}
+#sec-explore #lead-week .movers>div{flex:1 1 0;display:flex;flex-direction:row;align-items:center;gap:18px;background:var(--room-card);border:1px solid var(--room-rule);padding:18px 22px;min-height:calc(88px*var(--k))}
+#sec-explore #lead-week .movers>div:nth-child(2){background:var(--room-red);border-color:var(--room-red)}
+#sec-explore #lead-week .movers b{flex:0 0 calc(170px*var(--k));font-family:'Syne',sans-serif;font-weight:800;font-size:calc(38px*var(--k));line-height:1;white-space:nowrap;color:var(--room-ivory)}
+#sec-explore #lead-week .movers b small{font-size:inherit}
+#sec-explore #lead-week .movers>div>span{max-width:none;font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));line-height:1.6;letter-spacing:.1em;text-transform:uppercase;color:var(--hs-soft)}
+#sec-explore #lead-week .movers>div:nth-child(2)>span{color:#FAF7F2}
+#sec-explore .week.nophoto #lead-week{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+@media (max-width:1000px){#sec-explore .lead-reading,#sec-explore #lead-week,#sec-explore .week.nophoto #lead-week{grid-template-columns:minmax(0,1fr)}#sec-explore .lead-reading .photo{min-height:calc(56vw)}#sec-explore #lead-week .photo{min-height:220px}}
+@media (max-width:640px){#sec-explore .lead-reading .photo{min-height:220px}#sec-explore .lead-reading .text{padding:22px 20px 24px}#sec-explore #lead-week .text{padding:22px 18px}#sec-explore #lead-week .movers b{flex-basis:136px;font-size:30px}#sec-explore #lead-week .movers>div{padding:12px 16px;min-height:60px}}
+
+/* 3. the morning: cards, two to a row, each opening its move */
+#sec-explore .gal .room-head{flex-direction:column-reverse;align-items:flex-start;justify-content:flex-start;gap:10px;margin-bottom:8px}
+#sec-explore .gal .room-head h2{font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(32px,3.3vw,calc(48px*var(--k)));line-height:1;letter-spacing:-.01em}
+#sec-explore .gal .room-dateline{color:var(--hs-pink);font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase}
+#sec-explore .gal .gal-sub{font-size:calc(16px*var(--k));color:var(--hs-soft)}
+#sec-explore .gal-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px;border-top:0;margin-top:20px}
+#sec-explore .gal-row{border-bottom:0;border-top:1px solid var(--room-rule);min-width:0}
+.hs-card{display:grid;grid-template-columns:calc(248px*var(--k)) minmax(0,1fr);gap:22px;padding:26px 0 30px}
+.hs-card-media{display:flex;flex-direction:column;gap:10px;min-width:0}
+.hs-photo,.hs-thumb,.hs-pop-fig{position:relative;margin:0;background:var(--room-card);overflow:hidden;border:1px solid #262626}
+.hs-photo{aspect-ratio:4/3}
+.hs-photo img,.hs-thumb img,.hs-pop-fig img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.hs-photo figcaption,.hs-pop-fig figcaption{position:absolute;left:8px;bottom:8px;margin:0;background:rgba(10,10,10,.82);color:var(--hs-soft);font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-face-name{position:absolute;inset:0;display:flex;align-items:flex-end;padding:14px;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(21px*var(--k));line-height:1;letter-spacing:-.01em;color:var(--room-ivory);background:linear-gradient(160deg,#1E1E1E,#111);word-break:break-word}
+.hs-movebtn{width:100%;background:transparent;border-color:var(--room-ivory);color:var(--room-ivory)}
+body:not(.uai-in) .hs-movebtn{background:var(--room-red);border-color:var(--room-red);color:#FAF7F2}
+.hs-card-text{display:flex;flex-direction:column;gap:10px;min-width:0}
+.hs-card h3{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(22px*var(--k));line-height:1.06;color:var(--room-ivory)}
+.hs-dek{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));line-height:1.5;color:var(--hs-soft)}
+.hs-card .rec-watch,.hs-pop .rec-watch{margin:0;font-family:'Space Mono',monospace;font-size:calc(10.5px*var(--k));line-height:1.6;letter-spacing:.06em;color:var(--hs-pink);max-width:none}
+.hs-card .rec-watch i{font-style:normal;margin-right:6px;color:var(--hs-pink);border:0;padding:0;background:none}
+.hs-lockrow{display:flex;align-items:center;gap:10px;margin-top:4px}
+.hs-lockrow span{flex:none;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--hs-quiet)}
+.hs-lockrow i{display:block;height:10px;background:#2A2A2A}
+.hs-lockrow i:first-of-type{flex:0 0 38%}.hs-lockrow i:last-of-type{flex:0 0 22%}
+@media (max-width:1000px){#sec-explore .gal-rows{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.hs-card{grid-template-columns:minmax(0,1fr);gap:12px}.hs-card-media{display:contents}.hs-card .hs-photo{order:1}.hs-card-text{order:2}.hs-card .hs-movebtn{order:3}}
+
+/* what the page becomes once it is theirs, for a visitor */
+.hs-invite{border-top:1px solid var(--room-rule);padding:calc(48px*var(--k)) 0 calc(44px*var(--k))}
+body.uai-in .hs-invite{display:none}
+.hs-invite-head{display:flex;flex-direction:column;gap:12px;margin:0 0 24px}
+.hs-invite-head .hs-k{color:var(--hs-pink)}
+.hs-invite h2{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(28px,3vw,calc(44px*var(--k)));line-height:1;color:var(--room-ivory)}
+.hs-ways{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.hs-way{background:var(--room-card);border:1px solid var(--room-rule);padding:24px;display:flex;flex-direction:column;gap:12px}
+.hs-way:last-child{background:var(--hs-ivory);border-color:var(--hs-ivory);color:var(--hs-ink)}
+.hs-way-k{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase;color:var(--room-red)}
+.hs-way p{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(16px*var(--k));line-height:1.5;color:inherit}
+.hs-invite-acts{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;margin-top:22px}
+.hs-alt{font-family:'Syne',sans-serif;font-weight:500;font-size:calc(15px*var(--k));color:var(--room-ivory);text-decoration:none;border-bottom:1px solid var(--room-rule)}
+@media (max-width:900px){.hs-ways{grid-template-columns:minmax(0,1fr)}}
+
+/* the record, lighter: its cross-currents first, then each reading as a row; no score */
+#sec-explore #rec-counts,#sec-explore #board-more{display:none!important}
+#sec-explore #board-h2{font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(32px,3.3vw,calc(48px*var(--k)));line-height:1;letter-spacing:-.01em}
+#sec-explore #board-sub{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase;color:var(--hs-pink)}
+#sec-explore .room-head.rec-head{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+#sec-explore .room-head.rec-head #board-sub{order:-1}
+#sec-explore .room-head.rec-head .rec-ask-row{width:100%;max-width:calc(680px*var(--k));margin-top:10px;flex-wrap:nowrap}
+#sec-explore .rec-lens small{display:none}
+@media (max-width:640px){#sec-explore .room-head.rec-head .rec-ask-row{flex-wrap:wrap}#sec-explore .room-head.rec-head .rec-ask-k,#sec-explore .room-head.rec-head .rec-ask-row input{flex:1 1 100%}}
+#sec-explore .rec-currents{border:0;padding:0;margin:0 0 calc(26px*var(--k))}
+#sec-explore .rec-cur{background:var(--room-card);border:1px solid var(--room-rule);padding:22px}
+#sec-explore .rec-cur h3{font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(19px*var(--k));line-height:1.08}
+#sec-explore .rec-cur .move{border-top:1px solid var(--room-rule);padding-top:12px}
+#sec-explore .rec-cur .hs-lockrow{border-top:1px solid var(--room-rule);padding-top:12px}
+.hs-row{display:grid;grid-template-columns:calc(132px*var(--k)) minmax(0,1fr) calc(230px*var(--k));gap:14px 28px;padding:22px 0;border-bottom:1px solid var(--room-rule);align-items:start}
+.hs-thumb{aspect-ratio:4/3}
+.hs-thumb .hs-face-name{font-size:calc(13px*var(--k));padding:10px}
+.hs-row-text{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hs-row h3{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(20px*var(--k));line-height:1.15}
+.hs-row h3 a{color:var(--room-ivory);text-decoration:none}
+.hs-row h3 a:hover,.hs-row h3 a:focus-visible{text-decoration:underline;text-decoration-color:var(--room-red);text-underline-offset:4px}
+.hs-row-side{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0}
+.hs-grade{font-family:'Space Mono',monospace;font-size:calc(10px*var(--k));letter-spacing:.12em;text-transform:uppercase;border:1px solid #555;padding:6px 10px;color:var(--room-ivory)}
+.hs-grade.g-held{border-color:var(--room-ivory)}.hs-grade.g-missed{border-color:var(--room-red);color:var(--hs-pink)}
+@media (max-width:760px){.hs-row{grid-template-columns:calc(96px*var(--k)) minmax(0,1fr)}.hs-row-side{grid-column:2}}
+
+/* the territories and the voices close the page; the grid of twenty-seven, the track record and the day's frames stay off the arrival */
+#sec-explore #terr-block,#sec-explore #record-block{display:none!important}
+#sec-explore .hs-terr .gal-lenses{margin:0;display:flex;flex-wrap:wrap;gap:8px}
+#sec-explore .hs-terr .gl-k{flex-basis:100%;margin:0 0 10px;font-family:'Syne',sans-serif;font-weight:800;font-size:calc(30px*var(--k));letter-spacing:0;text-transform:uppercase;color:var(--room-ivory)}
+#sec-explore .hs-terr .gl-row{flex:1 1 100%}
+#sec-explore .hs-terr .gl{font-family:'Syne',sans-serif;font-size:calc(14px*var(--k));padding:9px 14px;color:var(--room-ivory)}
+#sec-explore .room-voices .room-head h2{font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(30px*var(--k))}
+#sec-explore .room-voices .track{animation:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:auto;gap:16px}
+#sec-explore .room-voices .track>.quote:nth-child(n+4){display:none}
+#sec-explore .room-voices .quote{width:auto;background:var(--room-card)}
+@media (max-width:900px){#sec-explore .room-voices .track{grid-template-columns:minmax(0,1fr)}}
+#sec-explore .partners{background:var(--hs-ivory);color:var(--hs-ink);border-top:0;padding:calc(36px*var(--k)) calc(40px*var(--k));margin:calc(28px*var(--k)) 0 0}
+#sec-explore .partners p{color:var(--hs-ink);font-size:calc(19px*var(--k));font-weight:600;line-height:1.45}
+#sec-explore .partners a{background:#0A0A0A;color:#FAF7F2;font-family:'Space Mono',monospace;font-size:calc(11.5px*var(--k));letter-spacing:.12em;text-transform:uppercase;padding:15px 20px}
+
+/* the move, open: X, Close and Escape close it */
+.hs-pop-wrap{position:fixed;inset:0;z-index:var(--z-app-modal);display:flex;align-items:center;justify-content:center;padding:24px}
+.hs-pop-back{position:absolute;inset:0;background:rgba(10,10,10,.78)}
+.hs-pop{position:relative;width:min(880px,100%);max-height:calc(100vh - 48px);overflow:auto;background:var(--hs-ivory);color:var(--hs-ink);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.hs-pop-photo{position:relative;height:180px}
+.hs-pop-fig{position:absolute;inset:0;border:0}
+.hs-pop-x{position:absolute;top:16px;right:16px;width:48px;height:48px;background:var(--hs-ivory);color:var(--hs-ink);border:0;font-family:'Syne',sans-serif;font-size:28px;line-height:1;cursor:pointer;z-index:var(--z-raise)}
+.hs-pop-x:focus-visible{outline:2px solid var(--room-red);outline-offset:2px}
+.hs-pop-body{padding:26px 40px 30px;display:flex;flex-direction:column;gap:16px}
+.hs-pop .hs-line{color:var(--hs-meta)}
+.hs-pop-read{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:16px;line-height:1.15;color:var(--hs-ink2)}
+.hs-pop-move{border-left:4px solid #C41230;padding:4px 0 4px 20px;display:flex;flex-direction:column;gap:10px}
+.hs-pop-move h2{margin:0;font-family:'Syne',sans-serif;font-weight:700;font-size:30px;line-height:1.22;letter-spacing:-.01em;color:var(--hs-ink)}
+.hs-pop-role{border-top:1px solid var(--hs-paper-rule);padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.hs-role-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.hs-role-for,.hs-role-wait{font-family:'Syne',sans-serif;font-size:14px;color:var(--hs-meta);margin:0}
+.hs-pop-imps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 28px}
+.hs-imp b{display:block;margin:0 0 6px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;line-height:1.3}
+.hs-imp p{margin:0;font-family:'Syne',sans-serif;font-size:14px;line-height:1.5;color:var(--hs-ink2)}
+.hs-pop-bet{border-top:1px solid var(--hs-paper-rule);padding-top:14px}
+.hs-pop .rec-watch{color:var(--hs-ink);font-family:'Syne',sans-serif;font-size:15px;letter-spacing:0;line-height:1.45}
+.hs-pop .rec-watch i{display:block;font-style:normal;margin:0 0 6px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#C41230;border:0;padding:0;background:none}
+.hs-pop .lead-when{color:#C41230}
+.hs-pop .gal-note{color:var(--hs-ink);border-left-color:#C41230}
+.hs-pop .hs-link{color:var(--hs-ink)}
+.hs-pop .hs-close{margin-left:auto}
+body.hs-pop-open{overflow:hidden}
+@media (max-width:760px){.hs-pop-wrap{padding:0;align-items:stretch}.hs-pop{max-height:100vh}.hs-pop-body{padding:22px 20px 26px}.hs-pop-imps{grid-template-columns:minmax(0,1fr)}.hs-pop-move h2{font-size:22px}}
+@media (prefers-reduced-motion:reduce){.hs-btn:hover{filter:none}}
+</style>
+<style id="frame-fit">
+/* SEAM:FRAME_FIT (NT3d THE FRAME): a reading on the reader's frame says so in its line; the record's lens; a live read's offers */
+.hs-yours{display:inline;margin-left:10px;color:var(--hs-pink,#E8365A);white-space:nowrap}
+.hs-yours::before{content:'';display:inline-block;width:6px;height:6px;margin:0 7px 1px 0;background:var(--hs-pink,#E8365A);vertical-align:middle}
+.rec-lens.hs-yours-set{border-style:dashed}
+.in-fit .intent-lead{color:var(--hs-pink,#E8365A)}
+.in-fit .intent-chip.fit{cursor:pointer;border-style:dashed;font-family:inherit}
+.in-fit .intent-chip.fit:hover,.in-fit .intent-chip.fit:focus-visible{border-style:solid;border-color:var(--hs-pink,#E8365A)}
+@media (max-width:640px){.hs-yours{display:block;margin:4px 0 0;white-space:normal}}
+</style>
+<style id="partner">
+/* SEAM:PARTNER (EX51 THE PARTNER): the company's band at the top of its page, and the owner's intake */
+.pt-band{margin:0 0 calc(28px*var(--k));border:1px solid var(--room-rule);background:var(--room-card);padding:calc(26px*var(--k)) calc(28px*var(--k))}
+.pt-head h2{margin:8px 0 6px;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:clamp(26px,2.6vw,calc(36px*var(--k)));line-height:1;color:var(--room-ivory)}
+.pt-sub{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(16px*var(--k));line-height:1.5;color:var(--hs-soft,#CFC8BA);max-width:760px}
+.pt-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}
+.pt-col{border-top:1px solid var(--room-rule);padding-top:14px;min-width:0}
+.pt-k{font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.14em;text-transform:uppercase;color:var(--hs-pink,#E8365A);margin-bottom:10px}
+.pt-qs{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.pt-qs li{font-family:'Syne',sans-serif;font-weight:600;font-size:calc(15.5px*var(--k));line-height:1.4;color:var(--room-ivory)}
+.pt-item{display:flex;flex-direction:column;gap:5px;padding:0 0 14px;margin:0 0 14px;border-bottom:1px solid var(--room-rule)}
+.pt-item:last-child{border-bottom:0;margin-bottom:0}
+.pt-item h3{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(16px*var(--k));line-height:1.15;color:var(--room-ivory)}
+.pt-item p{margin:0;font-size:calc(14.5px*var(--k));line-height:1.5;color:var(--hs-soft,#CFC8BA)}
+.pt-next{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.pt-next li{display:flex;flex-direction:column;gap:3px}
+.pt-next b{font-family:'Syne',sans-serif;font-weight:700;font-size:calc(15px*var(--k));color:var(--room-ivory)}
+.pt-hours{margin:16px 0 0;font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.1em;text-transform:uppercase;color:var(--hs-soft,#CFC8BA)}
+.pt-none{margin:0;color:var(--hs-soft,#CFC8BA);font-size:calc(14.5px*var(--k));line-height:1.5}
+.pt-acts{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;margin-top:22px}
+.pt-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;margin-top:22px;padding-top:20px;border-top:1px solid var(--room-rule)}
+.pt-form label{display:flex;flex-direction:column;gap:6px;font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));letter-spacing:.1em;text-transform:uppercase;color:var(--room-ivory)}
+.pt-form label small{font-size:10px;letter-spacing:.06em;color:var(--hs-soft,#CFC8BA);text-transform:none}
+.pt-form input,.pt-form textarea{background:transparent;border:1px solid var(--room-rule);color:var(--room-ivory);padding:10px 12px;font-family:'Syne',sans-serif;font-size:15px;letter-spacing:0;text-transform:none}
+.pt-form input:focus-visible,.pt-form textarea:focus-visible{outline:2px solid var(--hs-pink,#E8365A);outline-offset:1px}
+.pt-wide{grid-column:1/-1}
+.pt-say{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--hs-soft,#CFC8BA)}
+@media (max-width:900px){.pt-cols,.pt-form{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.pt-band{padding:20px 18px}}
+</style>
 
 </head>
 <body>
@@ -2493,8 +2747,11 @@ body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:
 <!-- HERO -->
 <section class="hero">
  <div class="hero-left">
+  <div class="hs-top"><!-- SEAM:HOUSE_STYLE (NT3c): the ask, its words and the box in one row -->
   <h1 class="hero-title">Ask culture a question.</h1>
-  <p class="hero-sub">EXCAVATE is the cultural intelligence engine behind Unsurfaced. Name a brand, a category or a behavior and it returns the reading: what people are doing, how much, and the move to make. Every source attached.</p>
+  <p class="hero-sub">EXCAVATE is your cultural intelligence engine. Ask about any brand, category or behavior and get the reading: what people are doing, how much, and the move to make. Sign in and it fits to you: your brands, your competitors, your role.</p>
+    <div class="pulse-invite" id="pulse-invite" style="display:none" aria-live="polite"></div><!-- SEAM:NET_ARRIVAL (NT3): without a subscription, what a live pulse is and where it opens -->
+  </div>
 
   <div class="search-shell">
     <div class="search-wrapper">
@@ -2509,7 +2766,6 @@ body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:
     <!-- SEAM:EXC_INTENT: the interpretation, as chips the person can change -->
     <div class="intent-row" id="intent-row"></div><div class="intent-say" id="intent-say"></div>
     <div class="depth-note" id="depth-note"></div><!-- SEAM:EXC_DEPTH -->
-    <div class="pulse-invite" id="pulse-invite" style="display:none" aria-live="polite"></div><!-- SEAM:NET_ARRIVAL (NT3): without a subscription, what a live pulse is and where it opens -->
     <!-- live source status chips -->
     <div class="source-row" id="source-status-row" style="display:none;">
       <span class="source-row-label">SOURCES:</span>
@@ -2528,28 +2784,31 @@ body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:
       <span class="src-chip" id="chip-openlibrary">Open Library</span>
       <span class="src-chip" id="chip-wikidata">Wikidata</span>
     </div>
-    <div class="search-tags">Try:
-      <button class="tag" onclick="setSearch('Nike in athletic footwear')">Nike in athletic footwear</button>
-      <button class="tag" onclick="setSearch('smart glasses, who buys and who refuses')">smart glasses, who buys and who refuses</button>
-      <button class="tag" onclick="setSearch('Gen Z and hair care')">Gen Z and hair care</button>
-      <button class="tag" onclick="setSearch('luxury in Lagos')">luxury in Lagos</button>
+    <div class="search-tags hs-try" id="hs-try"><span class="hs-try-k">Try it, by industry</span><!-- SEAM:HOUSE_STYLE (NT3c): the page's own four suggestions, one to an industry -->
+      <button type="button" class="hs-ind on" aria-pressed="true" data-q="Nike in athletic footwear" onclick="_hsTry(this)">Sneakers</button>
+      <button type="button" class="hs-ind" aria-pressed="false" data-q="smart glasses, who buys and who refuses" onclick="_hsTry(this)">Technology</button>
+      <button type="button" class="hs-ind" aria-pressed="false" data-q="Gen Z and hair care" onclick="_hsTry(this)">Fashion &amp; beauty</button>
+      <button type="button" class="hs-ind" aria-pressed="false" data-q="luxury in Lagos" onclick="_hsTry(this)">Luxury</button>
+      <span class="hs-try-sep" aria-hidden="true">/</span>
+      <button type="button" class="tag hs-q" id="hs-q" onclick="setSearch(this.textContent)">Nike in athletic footwear</button>
     </div>
   </div>
 
 <!-- compat stub --><input id="search-bar" style="display:none" aria-hidden="true">
+  <section class="pt-band" id="pt-band" style="display:none" aria-labelledby="pt-h"></section><!-- SEAM:PARTNER (EX51): a Partner or Retainer company's own band, first -->
   <section class="my-spaces" id="my-spaces" style="display:none" aria-label="Your spaces"></section><!-- SEAM:NET_ARRIVAL (NT3): a seat's own spaces, first, before the house's set -->
  </div>
   <!-- SEAM:EXC_DOOR_VOICE: this week's read beside the invitation: its photograph, the engine's two sentences, the three movers (chosen, never summed) -->
   <section class="week nophoto" id="week-block" style="display:none"><!-- SEAM:LEAD_SCROLL (EX36b): the latest deployments, one card at a time; the week's read first -->
-    <div class="lead-rail" id="lead-rail" tabindex="0" aria-roledescription="carousel" aria-label="The latest deployments">
+    <div class="lead-rail" id="lead-rail" aria-label="The lead and this week's read"><!-- SEAM:HOUSE_STYLE (NT3c): one spread, nothing advances -->
     <article class="lead-card" id="lead-week">
-    <figure class="photo" id="week-photo" style="display:none"><img id="week-img" alt="" referrerpolicy="no-referrer"><figcaption id="week-credit"></figcaption></figure>
     <div class="text">
       <div class="room-dateline" id="week-dateline">This week's read</div>
       <h2 id="week-h2"></h2>
       <p id="week-p"></p>
-      <div class="movers" id="week-movers"></div>
     </div>
+    <figure class="photo" id="week-photo" style="display:none"><img id="week-img" alt="" referrerpolicy="no-referrer"><figcaption id="week-credit"></figcaption></figure>
+    <div class="movers" id="week-movers"></div><!-- SEAM:HOUSE_STYLE (NT3c): the words, the photograph, the movers, side by side -->
     </article>
     </div>
     <div class="lead-nav" id="lead-nav" style="display:none"><button type="button" class="lead-arrow" onclick="_leadGo(-1)" aria-label="previous">&larr;</button><div class="lead-dots" id="lead-dots"></div><button type="button" class="lead-arrow" onclick="_leadGo(1)" aria-label="next">&rarr;</button></div>
@@ -2588,15 +2847,21 @@ body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:
     <div class="room-head"><h2 id="gal-h2">The morning</h2><div class="room-dateline" id="gal-date"></div></div>
     <p class="gal-sub" id="gal-sub"></p>
     <div class="gal-rows" id="gal-rows"></div>
-    <div class="gal-day" id="gal-day" style="display:none"></div>
-    <div class="gal-cal" id="gal-cal" style="display:none"></div>
-    <div class="gal-lenses" id="gal-lenses" style="display:none"></div>
+  </section>
+  <section class="hs-invite" id="hs-invite" aria-labelledby="hs-invite-h"><!-- SEAM:HOUSE_STYLE (NT3c): for a visitor, what the page becomes once it is theirs; what an account opens, never how the engine works -->
+    <div class="hs-invite-head"><span class="hs-k">When it&rsquo;s yours</span><h2 id="hs-invite-h">Start with a question. Stay for the loop.</h2></div>
+    <div class="hs-ways">
+      <div class="hs-way"><span class="hs-way-k">Member</span><p>The move on every reading, and what it means for your role. Follow your brands, categories and audiences, and what moves on them comes to you.</p></div>
+      <div class="hs-way"><span class="hs-way-k">Engine</span><p>Ask anything, live. Your brands and categories become your spaces, read for you, kept private and waiting here when you arrive.</p></div>
+      <div class="hs-way"><span class="hs-way-k">Partner</span><p>This page, built around your brand, your competitors and your questions. Your reports land here, and our team works beside yours.</p></div>
+    </div>
+    <div class="hs-invite-acts"><button type="button" class="hs-btn red" onclick="_gateForDoor('excavate')">Sign in</button><a class="hs-alt" href="mailto:hello@unsurfaced-intelligence.com?subject=EXCAVATE">Talk to us</a></div>
   </section>
   <section class="hub-block room-sec" id="board-block">
     <div class="room-head rec-head"><!-- SEAM:QUIET_ENGINE (EX36a): the name, the line and the ask on one line -->
       <h2 id="board-h2">The record</h2>
-      <div class="sub" id="board-sub">What the house has read, dated and kept. A later reading develops an earlier one; both stand.</div>
-      <form class="rec-ask-row" onsubmit="return _askSubmit(event)"><span class="rec-ask-k">ASK THE RECORD</span><input id="ask-q" maxlength="400" placeholder="What has the house seen on retro silhouettes since August, and did it hold?" autocomplete="off" aria-label="Ask the record"><button type="submit" class="btn-go-deeper">Ask</button></form>
+      <div class="sub" id="board-sub">Every reading, by date.</div>
+      <form class="rec-ask-row" onsubmit="return _askSubmit(event)"><span class="rec-ask-k">ASK THE RECORD</span><input id="ask-q" maxlength="400" placeholder="What have we seen on retro silhouettes?" autocomplete="off" aria-label="Ask the record"><button type="submit" class="btn-go-deeper">Ask</button></form>
     </div>
     <div class="rec-ask" id="rec-ask"><!-- SEAM:ASK_RECORD: a conversation over the record and the lake; the thread opens under the head -->
       <div class="rec-ask-thread" id="ask-thread"></div>
@@ -2615,6 +2880,8 @@ body:not(.uai-in) .nav-list li:has(> #nl-brands),body:not(.uai-in) .nav-list li:
     <span id="fi-live-badge" style="display:none"></span><span id="fi-refresh-label" style="display:none"></span>
     <div id="trending-now-list" style="display:none"></div>
   </section>
+
+  <section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses" style="display:none"></div></section><!-- SEAM:HOUSE_STYLE (NT3c): the territories as lenses, under the record -->
 
   <section class="hub-block room-sec" id="terr-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): the twenty, each with its state, movers, readings and declared sources -->
     <div class="room-head"><h2>The territories</h2><div class="sub" id="terr-sub">The areas of culture the house reads. The state is the change in coverage on last week; open one for its readings.</div></div>
@@ -5419,6 +5686,7 @@ function _inRender() {
   html += `<div class="in-grid">` + _IN_FIELDS.filter(([k]) => k !== 'period' || f.period).map(([k, label]) => chip(k, label, f[k])).join('') + `</div>`;
   html += `<div class="in-vs"><span class="intent-lead">Against</span>` + (f.competitors || []).map((c, i) => `<span class="intent-chip"><span>${safe(c)}</span><button type="button" aria-label="Remove" onclick="_inListDel('competitors',${i})">×</button></span>`).join('')
     + ((f.competitors || []).length < 5 ? `<input class="intent-add" placeholder="Add a competitor" onkeydown="if(event.key==='Enter'){event.preventDefault();_inListAdd('competitors',this.value)}">` : '') + `</div>`;
+  html += typeof _inFitRow === 'function' ? _inFitRow(f) : '';   // SEAM:FRAME_FIT (NT3d): the brands they watch and their market, one tap each
   if ((f.threads || []).length) html += `<div class="in-vs"><span class="intent-lead">Threads</span>` + f.threads.map((t, i) => `<span class="intent-chip thread"><span>${safe(t)}</span><button type="button" aria-label="Remove" onclick="_inListDel('threads',${i})">×</button></span>`).join('') + `</div>`;
   // SEAM:EXC_PROBE (EX42): the underneath, each a reading the reader can take
   if ((f.underneath || []).length) html += `<div class="intent-under"><span class="intent-lead on">Underneath it</span><div class="in-under-list">${f.underneath.map((u, i) => `<button type="button" class="intent-chip under" title="${safeAttr((u.why || '') + (u.question ? ' ' + u.question : ''))}" onclick="_inTake(${i})"><small>${safe(_IN_KIND[u.kind] || u.kind)}</small><span>${safe(u.label || '')}</span></button>`).join('')}</div></div>`;
@@ -7156,6 +7424,9 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
   if (a) a.style.display = window._signedOut === false ? 'none' : '';
   if (b) b.style.display = window._signedOut === false ? '' : 'none';
   document.body.classList.toggle('uai-in', window._signedOut === false);   // SEAM:ROOMS_INSIDE (NT3b): Brands, Audiences and the room lenses show only signed in
+  if (typeof _hsMovesSync === 'function') _hsMovesSync();   // SEAM:HOUSE_STYLE (NT3c): a member takes the moves; a visitor holds none
+  if (typeof _yoursSync === 'function') _yoursSync();   // SEAM:FRAME_FIT (NT3d): the reader's frame follows the sign-in
+  if (typeof _ptSync === 'function') _ptSync();   // SEAM:PARTNER (EX51): the company's page follows the sign-in
   if (window._signedOut === false && !window._foBooted) { window._foBooted = true; _foBoot(); }   // SEAM:READ_FOLIO: the open folio's pill, for an admin
   if (window._signedOut === false) _cmAdmin().then(a => { const li = document.getElementById('nav-read-li'); if (li) li.style.display = a ? '' : 'none'; });   // SEAM:EXC_NAV: READ for admins
 }
@@ -10968,7 +11239,7 @@ async function _openDoorRead(t) {
 /* SEAM:CLIENT_PROFILE: your profile. The role the implications are written for, the brands you track, the frames you follow, where the
    push goes. Saved on the worker; nothing here is a password or a key. */
 async function _profileGet() { try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/client/profile', { headers: await _authHeader() }); const j = r.ok ? await r.json() : null; return j && j.ok ? j.profile : null; } catch (e) { return null; } }
-async function _profileSave(patch) { try { const d = await api('client/profile', patch); if (d && d.ok) { window._profile = d.profile; return d.profile; } } catch (e) {} return null; }
+async function _profileSave(patch) { try { const d = await api('client/profile', patch); if (d && d.ok) { window._profile = d.profile; if (typeof _yoursLoad === 'function') _yoursLoad(true); return d.profile; } } catch (e) {} return null; }
 async function _profileOpen() {
   const prof = await _profileGet();
   if (!prof) { showToast('Sign in to set your profile'); return; }
@@ -11298,7 +11569,7 @@ function _goDeeperLive() {
    first nights) the standing door tiles render as before. */
 let _FI_RECORD = null, _recLens = { kind: 'all', value: null };
 async function _recordLoad() {
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; return j; } } catch (e) {}
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; if (typeof _hsMovesMerge === 'function') _hsMovesMerge(); return j; }   /* SEAM:HOUSE_STYLE (NT3c): a record loaded again keeps a member's moves */ } catch (e) {}
   return null;
 }
 /* SEAM:TERRITORIES (EX39): the twenty territories as a map, from GET /excavate/state: the state on last week, the movers, the
@@ -11337,7 +11608,7 @@ function _recLensRow(tiles) {
   const on = (kind, value) => _recLens.kind === kind && _recLens.value === value;
   const btn = (kind, value, label, n) => `<button type="button" class="rec-lens${on(kind, value) ? ' on' : ''}" onclick="_recLensSet('${safeAttr(kind)}',${value == null ? 'null' : JSON.stringify(String(value)).replace(/"/g, '&quot;')})">${safe(label)}${on(kind, value) && n != null ? `<small>${safe(String(n))}</small>` : ''}</button>`;
   const aheadN = tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length).length, watchN = tiles.filter(t => t.watch && !t.called).length;
-  let html = btn('all', null, 'Everything', tiles.length) + (positions.length ? btn('positions', null, 'Positions', positions.length) : '') + (aheadN ? btn('ahead', null, 'Ahead', aheadN) : '') + (watchN ? btn('watching', null, 'Watching', watchN) : '');   // SEAM:EXC_AHEAD
+  let html = btn('all', null, 'Everything', tiles.length) + (typeof _yoursLens === 'function' ? _yoursLens(btn) : '') + (positions.length ? btn('positions', null, 'Positions', positions.length) : '') + (aheadN ? btn('ahead', null, 'Ahead', aheadN) : '') + (watchN ? btn('watching', null, 'Watching', watchN) : '');   // SEAM:EXC_AHEAD
   const kinds = [['brand', 'Brands'], ['category', 'Categories'], ['audience', 'Audiences'], ['place', 'Places'], ['territory', 'Territories']];   // SEAM:TERRITORIES
   html += '<span class="rec-sep"></span>';
   for (const [kind, label] of kinds) if (groups[kind].length) html += `<button type="button" class="rec-kind${_recLens.open === kind ? ' open' : ''}${_recLens.kind === kind ? ' on' : ''}" onclick="_recLensOpen('${kind}')">${label}${_recLens.kind === kind && _recLens.value ? ': ' + safe(kind === 'territory' ? _terrName(_recLens.value) : _recLens.value) : ''}<span class="chev">&#9662;</span></button>`;
@@ -11350,6 +11621,7 @@ function _recLensOpen(kind) { _recLens.open = _recLens.open === kind ? null : ki
 function _recLensSet(kind, value) { _recLens = { kind, value, open: null }; if (_FI_RECORD && _FI_LAKE) _renderScroll(_FI_RECORD, _FI_LAKE); }
 function _recFilter(tiles) {
   const L = _recLens; if (!L || L.kind === 'all') return tiles;
+  if (L.kind === 'yours') return typeof _yoursFilter === 'function' ? _yoursFilter(tiles) : tiles;   // SEAM:FRAME_FIT (NT3d): the readings on the reader's frame
   if (L.kind === 'positions') return tiles.filter(t => t.position);
   if (L.kind === 'ahead') return tiles.filter(t => Array.isArray(t.ahead) && t.ahead.length);   // SEAM:EXC_AHEAD
   if (L.kind === 'watching') return tiles.filter(t => t.watch && !t.called);   // EX33b: the bets still open
@@ -11403,11 +11675,12 @@ function _recFoot(t) {
 /* SEAM:RECORD_SCROLL: "play it" hands PLAY the deployed insight through the handoff (SEAM:PLAY_HANDOFF): the claim as the ask, the frame, the move. */
 function _playRecord(id) {
   if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'play', id });   // SEAM:OPEN_DOOR (NT3a): PLAY is signed in
-  const t = ((_FI_RECORD && _FI_RECORD.tiles) || []).find(x => x.id === id); if (!t) return;
-  const f = t.frame || {};
-  const pkg = { ask: ('Make this insight real: ' + String(t.claim || t.title || '') + (t.move ? ' The move: ' + t.move : '')).slice(0, 2400), from: 'record', q: f.query || t.title || null,
+  const t = ((_FI_RECORD && _FI_RECORD.tiles) || []).find(x => x.id === id) || (typeof _hsTile === 'function' ? _hsTile(id) : null); if (!t) return;   // SEAM:HOUSE_STYLE (NT3c): a seat's own reading plays too
+  if (arguments[1] !== true && window._signedOut === false && typeof _hsMoves !== 'undefined' && !_hsMoves.at && typeof _hsMovesLoad === 'function') { _hsMovesLoad().then(() => _playRecord(id, true)); return; }   // NT3c: signed in from the door, the move rides with Play it (once)
+  const f = t.frame || {}, mv = typeof _hsMoveOf === 'function' ? _hsMoveOf(t) : t.move;
+  const pkg = { ask: ('Make this insight real: ' + String(t.claim || t.title || '') + (mv ? ' The move: ' + mv : '')).slice(0, 2400), from: 'record', q: f.query || t.title || null,
     frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, task: null },
-    move: t.move ? { headline: t.move, body: null, because: null, proof: null, type: null } : null, title: t.title || null, thesis: t.claim || null, findings: [], evidence: [], voices: (t.voices || []).slice(0, 4).map(v => v.text).filter(Boolean) };
+    move: mv ? { headline: mv, body: null, because: null, proof: null, type: null } : null, title: t.title || null, thesis: t.claim || null, findings: [], evidence: [], voices: (t.voices || []).slice(0, 4).map(v => v.text).filter(Boolean) };
   _playOpen(pkg);
 }
 function _renderScrollRow(t, seen) {
@@ -11482,20 +11755,19 @@ function _renderCurrents(cur, tilesIn) {
     const r = _curResolve(c, tiles);
     // every current has a face: the readings' photographs when they carry one; else their pulse drawn large; else the subjects' names set large
     const faces = r.faces.length ? `<div class="rec-cur-faces n${r.faces.length}">${r.faces.map(f => `<button type="button" class="face" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(f.id)}')" title="${safeAttr(f.name + (f.credit ? ' · Photo: ' + f.credit : ''))}"><img src="${safeAttr(f.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="const b=this.closest('.rec-cur-faces');this.parentNode.remove();if(b&&!b.children.length)b.remove()"></button>`).join('')}</div>`
-      : r.series ? `<div class="rec-cur-faces big-pulse">${_pulse(r.series)}<small>Coverage across its readings, twelve weeks</small></div>`
       : `<div class="rec-cur-faces names"><div>${r.subs.slice(0, 4).map(s => `<span>${safe(s.short)}</span>`).join('')}</div></div>`;
-    const pulse = r.faces.length && r.series ? `<div class="rec-cur-pulse">${_pulse(r.series)}<small>Coverage across its readings, twelve weeks</small></div>` : '';
+    const pulse = '';   // SEAM:HOUSE_STYLE (NT3c): insight over charts on the arrival
     const subs = r.subs.map(s => s.tile ? `<button type="button" onclick="openFeaturedCard('${safeAttr(s.tile.id)}')" title="${safeAttr(s.name)}">${safe(s.short)}</button>` : `<span title="${safeAttr(s.name)}">${safe(s.short)}</span>`).join('');
     const long = String(c.body || '').length > 300;
-    return `<article class="rec-cur">${faces}${pulse}<h3>${safe(c.title)}</h3><p class="body">${safe(c.body)}</p>${long ? `<button type="button" class="rec-cur-more" aria-expanded="false" onclick="_curToggle(this)">More</button>` : ''}${c.move ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : ''}<div class="rec-cur-subs">${subs}</div></article>`;
+    return `<article class="rec-cur">${faces}${pulse}<h3>${safe(c.title)}</h3><p class="body">${safe(c.body)}</p>${long ? `<button type="button" class="rec-cur-more" aria-expanded="false" onclick="_curToggle(this)">More</button>` : ''}${c.move && window._signedOut === false ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : '<div class="hs-lockrow" aria-hidden="true"><span>The move</span><i></i><i></i></div>'}<div class="rec-cur-subs">${subs}</div></article>`;
   };
-  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))} over ${safe(String(cur.rows || ''))} readings</span></div><div class="rec-cur-grid n${Math.min(4, list.length)}">` + list.map(face).join('') + '</div>';
+  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))}</span></div><div class="rec-cur-grid n${Math.min(4, list.length)}">` + list.map(face).join('') + '</div>';
   el.style.display = '';
   if (typeof _drawPulses === 'function') setTimeout(_drawPulses, 50);
 }
 /* SEAM:LEAD_SCROLL (EX36b): the newest readings with photographs follow the week's read on the rail, each with its bet as a countdown.
    A reading on the rail is not repeated in the record below. Built once per record build. */
-const LEAD = { MAX: 3, EVERY_MS: 8000 };
+const LEAD = { MAX: 1 };   // SEAM:HOUSE_STYLE (NT3c): one reading leads the spread; nothing advances
 let _leadBuilt = null, _leadTimer = null, _leadPaused = false;
 window._leadIds = new Set();
 function _leadDays(by) { const d = by ? new Date(String(by).slice(0, 10) + 'T12:00:00Z') : null; if (!d || isNaN(d)) return null; return Math.round((d.getTime() - Date.now()) / 86400000); }
@@ -11508,20 +11780,21 @@ function _leadBet(t) {
 }
 function _leadRender(rec) {
   const rail = document.getElementById('lead-rail'); if (!rail || !rec || !Array.isArray(rec.tiles)) return;
-  if (_leadBuilt === (rec.built_at || 'x')) return; _leadBuilt = rec.built_at || 'x';
+  const stamp = (rec.built_at || 'x') + '|' + (window._hsMovesAt || '') + '|' + (window._hsMineAt || '');   // SEAM:HOUSE_STYLE (NT3c): drawn again when the moves or the seat's spaces arrive
+  if (_leadBuilt === stamp) return; _leadBuilt = stamp;
   rail.querySelectorAll('.lead-reading').forEach(x => x.remove());
   const g = typeof _galPick === 'function' ? _galPick(rec) : null;   // SEAM:NET_ARRIVAL (NT3): a passed set's lead is the rail's reading, ahead of the week's read; its other deployments are the morning below
   const pick = g ? g.rail : rec.tiles.filter(t => t.photo && t.photo.src && (t.claim || t.title)).sort((a, b) => String(b.deployed || '').localeCompare(String(a.deployed || ''))).slice(0, LEAD.MAX);
   window._leadIds = new Set(pick.map(t => t.id)); if (g) g.rows.forEach(t => window._leadIds.add(t.id));   // NT3: the record leaves out what the morning shows
+  if (typeof _hsMineIds === 'function') _hsMineIds().forEach(id => window._leadIds.add(id));   // NT3c: a reading in the seat's own spaces is not repeated below
   const words = s => String(s || '').replace(/-/g, ' ');
-  rail.insertAdjacentHTML(g ? 'afterbegin' : 'beforeend', pick.map(t => { const m = t.measures || {}, f = t.frame || {};
+  rail.insertAdjacentHTML('afterbegin', pick.map(t => { const m = t.measures || {}, f = t.frame || {};
     return `<article class="lead-card lead-reading" data-id="${safeAttr(t.id)}">
-    ${t.photo && t.photo.src ? `<figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : ''}
+    ${t.photo && t.photo.src ? `<figure class="photo"><img src="${safeAttr(t.photo.src)}" alt="" loading="lazy" referrerpolicy="no-referrer"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : `<figure class="photo hs-face"><span class="hs-face-name" aria-hidden="true">${safe(f.entity || f.category || t.title || '')}</span></figure>`}
     <div class="text"><div class="room-dateline">${g ? 'The lead · ' : ''}Deployed ${safe(_recDay(t.deployed))}${m.territory ? ' · ' + safe(words(m.territory)) : ''}${f.entity ? ' · ' + safe(f.entity) : ''}</div>
       <h2>${safe(t.claim || t.title)}</h2>${t.dek ? `<p>${safe(t.dek)}</p>` : ''}
-      <div class="lead-measure">${_recMeasureLine(m)}</div>${_leadBet(t)}${g && typeof _galNoteHtml === 'function' ? _galNoteHtml(t.house_note) : ''}
-      <div class="lead-acts"><button type="button" class="btn-go-deeper" onclick="openFeaturedCard('${safeAttr(t.id)}')">Open the reading</button>${g && typeof _galRoomBtn === 'function' ? _galRoomBtn(t) : ''}</div></div></article>`; }).join(''));
-  if (g) { rail.scrollLeft = 0; requestAnimationFrame(() => { rail.scrollLeft = 0; }); }   // NT3: the lead is the card in view; a snapped rail would keep the card it showed
+      ${_leadBet(t)}${g && typeof _galNoteHtml === 'function' ? _galNoteHtml(t.house_note) : ''}
+      ${typeof _hsMoveBlock === 'function' ? _hsMoveBlock(t) : ''}</div></article>`; }).join(''));   // NT3c: no measure line; the move, or the door to it
   if (typeof _galRender === 'function') _galRender(g);   // NT3: the morning under the hero, or nothing when no set was passed
   const sec = document.getElementById('week-block'); if (sec && pick.length) { sec.style.display = ''; window._weekReady = true; _heroSolo(); }   // EX52a: the readings' rail is something to show
   const lw = document.getElementById('lead-week'), h2 = document.getElementById('week-h2'); if (lw && !(h2 && h2.textContent.trim())) lw.style.display = 'none';   // no week's read yet: the readings lead
@@ -11532,15 +11805,9 @@ function _leadIndex() { const rail = document.getElementById('lead-rail'); if (!
 function _leadGo(step, to) { const rail = document.getElementById('lead-rail'), n = _leadCards().length; if (!rail || !n) return; const i = to == null ? (_leadIndex() + step + n) % n : to; rail.scrollTo({ left: i * rail.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); _leadDots(i); }
 function _leadDots(active) { const d = document.getElementById('lead-dots'), n = _leadCards().length; if (!d) return; const i = active == null ? _leadIndex() : active; d.innerHTML = Array.from({ length: n }, (_, k) => `<button type="button" class="lead-dot${k === i ? ' on' : ''}" aria-label="card ${k + 1}" onclick="_leadGo(0, ${k})"></button>`).join(''); }
 function _leadTick() { if (_leadPaused || document.hidden) return; if (_leadCards().length > 1) _leadGo(1); }
-function _leadWire() {
-  const rail = document.getElementById('lead-rail'), nav = document.getElementById('lead-nav'); if (!rail || !nav) return;
-  const n = _leadCards().length; nav.style.display = n > 1 ? '' : 'none'; _leadDots();
-  if (rail._wired) return; rail._wired = true;
-  rail.addEventListener('scroll', () => { clearTimeout(rail._st); rail._st = setTimeout(() => _leadDots(), 80); }, { passive: true });
-  ['mouseenter', 'focusin', 'touchstart'].forEach(ev => rail.addEventListener(ev, () => { _leadPaused = true; }, { passive: true }));
-  ['mouseleave', 'focusout', 'touchend'].forEach(ev => rail.addEventListener(ev, () => { _leadPaused = false; }, { passive: true }));
-  rail.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); _leadGo(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); _leadGo(-1); } });
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) _leadTimer = setInterval(_leadTick, LEAD.EVERY_MS);
+function _leadWire() {   // SEAM:HOUSE_STYLE (NT3c): the lead and the week's read stand still, one above the other; nothing advances
+  const nav = document.getElementById('lead-nav'); if (nav) nav.style.display = 'none';
+  if (_leadTimer) { clearInterval(_leadTimer); _leadTimer = null; }
 }
 /* SEAM:SCORECARD (EX54 THE SCORECARD): the record's calibration in the clean sheet's sentences, beside the score. "When we said High,
    the call held 16 of 20.": a band's sentence speaks for the band at twenty graded calls; below them it is the count, held so far, and
@@ -11597,35 +11864,31 @@ function _scoreDraw(el, t, d, say) {
   };
 }
 function _renderScroll(rec, data) {
+  if (typeof _hsMovesMerge === 'function') _hsMovesMerge();   // SEAM:HOUSE_STYLE (NT3c): a member's moves, into a record or door set that arrived after them
   window._scrollDrawn = true; _leadRender(rec);   // SEAM:LEAD_SCROLL: the rail first, so the record below leaves out what the rail carries
+  if (typeof _hsWeekPhoto === 'function') _hsWeekPhoto();   // SEAM:HOUSE_STYLE (NT3c): the week's read beside the lead never repeats its photograph
   const grid = document.getElementById('featured-insights-grid'), list = document.getElementById('board-list'); if (!grid) return;
   const onRail0 = window._leadIds || new Set(), all = (rec.tiles || []).filter(t => !onRail0.has(t.id)), tiles = _recFilter(all);   // SEAM:LEAD_SCROLL: the rows and their counts leave out what the rail carries
   _recLensRow(all);
-  const counts = document.getElementById('rec-counts'), c = rec.counts || {};
-  const cal = rec.calibration || null, calLine = cal ? ['High', 'Medium', 'Low'].filter(k => cal[k] && cal[k].n).map(k => `${k}: ${safe(String(cal[k].held))} of ${safe(String(cal[k].n))} held`).join(' · ') : '';   // SEAM:CALIBRATION
-  // SEAM:QUIET_ENGINE (EX36a): the score, never the machinery: no count of readings or subjects; the calibration speaks in the scorecard's sentences below (EX54), never as a label
-  if (counts) { const score = (c.held || c.missed) ? `<span><b>${safe(String(c.held || 0))}</b> held, <b>${safe(String(c.missed || 0))}</b> missed</span>` : ''; counts.innerHTML = score + (c.open ? `<span><b>${safe(String(c.open))}</b> being checked</span>` : ''); counts.style.display = counts.innerHTML ? '' : 'none'; }
-  if (counts && typeof _scoreLine === 'function') { const sc = _scoreLine(rec.scorecard); const onMorning = sc && typeof _galCal === 'function' ? _galCal(sc) : false; if (sc && !onMorning) { counts.insertAdjacentHTML('beforeend', sc); counts.style.display = ''; } }   // SEAM:SCORECARD (EX54): when we said High, the call held N of M, beside the score
+  const counts = document.getElementById('rec-counts');   // SEAM:HOUSE_STYLE (NT3c): no score on the arrival; every reading's own bet carries its grade (SEAM:CALIBRATION and SEAM:SCORECARD live on in READ and on a finding's card)
+  if (counts) { counts.innerHTML = ''; counts.style.display = 'none'; }
   _renderCurrents(rec.currents, rec.tiles);   // SEAM:CROSS_CURRENTS; SEAM:RECORD_FACE: with the tiles, for the faces
   const sub = document.getElementById('board-sub');
-  if (sub) sub.textContent = 'What the house has read, dated and kept. A later reading develops an earlier one; both stand.';   // SEAM:QUIET_ENGINE
+  if (sub) sub.textContent = 'Every reading, by date.';   // SEAM:QUIET_ENGINE; SEAM:HOUSE_STYLE (NT3c)
   const strip = document.getElementById('fi-state-strip'); if (strip) strip.style.display = 'none';
   // EX33b: one shape for every reading; nothing leads as a card, the record reads top to bottom
   const leads = [], rest = tiles;
   grid.innerHTML = '';
   if (list) {
-    const readKeys = new Set(all.map(t => t.key));
-    let lake = ((data && data.proposed) || []).filter(x => x && x.cluster_id && !readKeys.has('theme:' + x.cluster_id));
     list.classList.toggle('nothumbs', false);
     const seen = new Set();   // EX33b: a photograph appears once on the page
     const onRail = window._leadIds || new Set(), rows = rest.filter(t => !onRail.has(t.id));   // SEAM:LEAD_SCROLL: one pool, one rule
-    list.innerHTML = rows.map(t => _renderScrollRow(t, seen)).join('') +
-      (!tiles.length ? '<div class="fi-divider" style="padding:14px 0 4px">Nothing deployed under this lens yet</div>' : '') +
-      (lake.length && _recLens.kind === 'all' ? '<div class="fi-divider" style="padding:14px 0 4px">Also moving, not yet read</div>' + lake.slice(0, 12).map(x => _renderLakeRow(x)).join('') : '');
+    list.innerHTML = rows.map(t => _hsRow(t, seen)).join('') +   // SEAM:HOUSE_STYLE (NT3c): the record's own row, lighter; the lake's unread patterns stay off the arrival
+      (!tiles.length ? '<div class="fi-divider" style="padding:14px 0 4px">Nothing deployed under this lens yet</div>' : '');
   }
   _drawPulses();
   const more = document.getElementById('board-more');
-  if (more) { more.innerHTML = safe('Every reading carries one bet; the record grades it when its date comes, and a miss stays.') + (rec.blind ? `<span class="blind">${safe(String(rec.blind).replace(/This read does not see/, 'These readings do not see').replace(/its voices come/i, 'their voices come').replace(/its news from the open web and the lake/i, 'their news from the open web and the house\'s own archive'))}</span>` : ''); more.style.display = 'block'; }   // EX33b: the blind-spots line at the foot, in the reader's words
+  if (more) { more.innerHTML = ''; more.style.display = 'none'; }   // SEAM:HOUSE_STYLE (NT3c): the foot says nothing about how the record works
 }
 function _renderLakeGrid(data) {
   const grid = document.getElementById('featured-insights-grid');
@@ -13178,13 +13441,13 @@ function _pulseShow(w, open) {
   const el = document.getElementById('pulse-invite'); if (!el) return;
   if (!w || w.pulses) { el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('open'); return; }
   const say = {
-    out: { line: 'Ask it. Get the reading. Live pulses come with a subscription.', h: 'Ask it. Get the reading.', body: 'Live pulses come with a subscription, and an account opens the rooms, the full readings and your downloads. The morning below is open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },   // SEAM:ROOMS_INSIDE (NT3b): what an account opens, never how the engine works
-    member: { line: 'Ask it. Get the reading. Live pulses come with Engine.', h: 'Ask it. Get the reading.', body: 'Live pulses come with Engine: any brand, category or audience, read live for your team. The morning below is yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
-    paused: { line: 'Your team\'s plan is paused, and its live pulses with it.', h: 'Your plan is paused.', body: 'Your team\'s plan is paused, and its live pulses with it. The morning below stays open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
+    out: { k: 'LIVE PULSES · SIGN IN TO ACCESS', line: 'Ask it. Get the reading. Live pulses come with a subscription.', h: 'Ask it. Get the reading.', body: 'Live pulses come with a subscription, and an account opens the moves, the rooms, the full readings and your downloads. The morning below is open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },   // SEAM:ROOMS_INSIDE (NT3b): what an account opens, never how the engine works
+    member: { k: 'LIVE PULSES · WITH ENGINE', line: 'Ask it. Get the reading. Live pulses come with Engine.', h: 'Ask it. Get the reading.', body: 'Live pulses come with Engine: any brand, category or audience, read live for your team. The morning below is yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
+    paused: { k: 'LIVE PULSES · PAUSED', line: 'Your team\'s plan is paused, and its live pulses with it.', h: 'Your plan is paused.', body: 'Your team\'s plan is paused, and its live pulses with it. The morning below stays open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
   }[w.kind] || null;
   if (!say) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.innerHTML = open
-    ? `<div class="pi-k">LIVE PULSES</div><p class="pi-h">${safe(say.h)}</p><p class="pi-p">${safe(say.body)}</p><div class="pi-acts">${say.go}<a class="pi-alt" href="${_GAL.MAIL}">Talk to us</a></div>`
+    ? `<div class="pi-k">${safe(say.k || 'LIVE PULSES')}</div><p class="pi-h">${safe(say.h)}</p><p class="pi-p">${safe(say.body)}</p><div class="pi-acts">${say.go}<a class="pi-alt" href="${_GAL.MAIL}">Talk to us</a></div>`
     : `<p class="pi-line"><span class="pi-k">LIVE PULSES</span>${safe(say.line)}<button type="button" class="pi-more" onclick="_pulseShow(_pulseWho(), true)">What a pulse is</button></p>`;
   el.classList.toggle('open', !!open);
   el.style.display = '';
@@ -13210,7 +13473,7 @@ function _galRoomOf(t) {
   return e ? { by: 'name', name: e } : null;
 }
 function _galRoomBtn(t) { return _galRoomOf(t) ? `<button type="button" class="gal-room" onclick="event.stopPropagation();_galRoom('${safeAttr(t.id)}')">The room</button>` : ''; }
-function _galTile(id) { const p = _gal.pick; return p ? p.rail.concat(p.rows).find(t => t.id === id) || null : null; }
+function _galTile(id) { const p = _gal.pick; return (p ? p.rail.concat(p.rows).find(t => t.id === id) : null) || (typeof _hsTile === 'function' ? _hsTile(id) : null) || null; }   // SEAM:HOUSE_STYLE (NT3c): a reading on the record or in a seat's spaces has its room too
 async function _galRoom(id) {
   const t = _galTile(id), r = _galRoomOf(t); if (!r) return;
   if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk(r.by === 'track' ? { kind: 'room', id: r.id, by: 'track' } : { kind: 'find', name: r.name });   // SEAM:ROOMS_INSIDE (NT3b): a subject on the morning opens its room signed in
@@ -13249,13 +13512,13 @@ function _galRender(g) {
   if (!g) { sec.style.display = 'none'; rows.innerHTML = ''; _galCal(''); return; }
   const d = g.night ? new Date(String(g.night).slice(0, 10) + 'T12:00:00Z') : null, dl = document.getElementById('gal-date');
   if (dl) dl.textContent = d && !isNaN(d) ? d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '';
-  const sub = document.getElementById('gal-sub'); if (sub) sub.textContent = g.rows.length ? 'After the lead, the night\'s readings in the house\'s order.' : '';
+  const mine = new Set(typeof _hsMineIds === 'function' ? _hsMineIds() : []), list = g.rows.filter(t => !mine.has(t.id));   // SEAM:HOUSE_STYLE (NT3c): a reading in the seat's own spaces leads there, not here
+  const sub = document.getElementById('gal-sub'); if (sub) sub.textContent = list.length ? 'After the lead, the night’s readings. Each opens its move.' : '';
   const seen = new Set(g.rail.map(t => t.photo && t.photo.src).filter(Boolean));   // a photograph appears once on the page: the lead's rides the rail
-  rows.innerHTML = g.rows.map(t => `<div class="gal-row" data-id="${safeAttr(t.id)}">${_renderScrollRow(t, seen)}${_galAfter(t)}</div>`).join('');
-  rows.style.display = g.rows.length ? '' : 'none';
+  rows.innerHTML = list.map(t => `<div class="gal-row" data-id="${safeAttr(t.id)}">${_hsCard(t, seen)}</div>`).join('');   // NT3c: a card each; the note and the room open with the move
+  rows.style.display = list.length ? '' : 'none';
   sec.style.display = '';
-  if (typeof _drawPulses === 'function') setTimeout(_drawPulses, 30);
-  _galDayRender(); _galLensRender();
+  _galLensRender();   // NT3c: the territories stand under the record; the day's frames stay on DAILY
 }
 /* How our calls held: the record's scorecard, on the morning while a set is passed; the record's head keeps it otherwise. */
 function _galCal(sc) {
@@ -13268,7 +13531,7 @@ function _galCal(sc) {
 function _galLensRender() {
   const el = document.getElementById('gal-lenses'); if (!el) return;
   const st = typeof _TERR !== 'undefined' ? _TERR : null, list = st && Array.isArray(st.territories) ? st.territories.filter(x => x && x.territory) : [];
-  if (!list.length || !_gal.pick) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }   // SEAM:HOUSE_STYLE (NT3c): under the record, whatever the morning holds
   const mark = { spike: '▲', rising: '▲', steady: '●', falling: '▼', quiet: '○' };
   el.innerHTML = '<span class="gl-k">READ BY TERRITORY</span><div class="gl-row">' + list.map(x => `<button type="button" class="gl st-${safeAttr(x.state || 'quiet')}" onclick="_terrOpen('${safeAttr(x.territory)}')"><span class="mk">${mark[x.state] || '○'}</span>${safe(x.name || _terrName(x.territory))}</button>`).join('') + '</div>';
   el.style.display = '';
@@ -13316,18 +13579,24 @@ async function _mineLoad() {
 function _mineRender(all) {
   const box = document.getElementById('my-spaces'), M = _gal.mine; if (!box) return;
   const list = M ? M.held.map(s => Object.assign({ _mine: true }, s)).concat(M.granted.filter(g => !M.held.some(h => h.key === g.key)).map(s => Object.assign({ _mine: false }, s))) : [];
+  const was = (_gal.mineLatest || []).map(t => t.id).join(',');
+  _gal.mineLatest = list.map(s => s.latest).filter(t => t && t.id);   // SEAM:HOUSE_STYLE (NT3c): the seat's latest readings, for the move and to keep them from repeating below
+  if (_gal.mineLatest.map(t => t.id).join(',') !== was) { window._hsMineAt = String(Date.now()); if (typeof _hsRedraw === 'function') _hsRedraw(); }
   if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
   const shown = all ? list : list.slice(0, _GAL.MINE_SHOW);
-  const row = s => `<button type="button" class="ms-row" onclick="_mineOpen('${safeAttr(s.id)}')"><span class="ms-name">${safe(s.name)}</span><span class="ms-kind">${safe(s._mine ? (_GAL.KIND[s.kind] || 'Space') : 'Shared with you')}</span>`
-    + `<span class="ms-move">${safe(_mineMove(s))}</span><span class="ms-when">${s.last_compiled_at ? 'read ' + safe(_recDay(s.last_compiled_at)) + ', ' : ''}${safe(_GAL.CAD[s.cadence] || 'nightly')}</span></button>`;
-  box.innerHTML = `<div class="ms-head"><span class="ms-k">YOUR SPACES</span><span class="ms-sub">Read for you first, before the house's set.</span></div><div class="ms-list">${shown.map(row).join('')}</div>`
+  const card = s => { const t = s.latest, kind = s._mine ? (_GAL.KIND[s.kind] || 'Space') : 'Shared with you';
+    return `<article class="ms-card"${t ? ` data-id="${safeAttr(t.id)}"` : ''}><div class="ms-top"><span class="ms-name">${safe(s.name)}</span><span class="ms-kind">${safe(kind)}</span></div>`
+      + (t ? `<div class="hs-line">${typeof _hsLine === 'function' ? _hsLine(t) : 'Deployed ' + safe(_recDay(t.deployed))}</div><h3>${safe(t.claim || t.title || '')}</h3><button type="button" class="hs-btn hs-movebtn" onclick="_mineOpen('${safeAttr(s.id)}')">Open the move</button>`
+           : '<p class="ms-wait">Its first reading comes on its next night.</p>') + '</article>'; };
+  box.innerHTML = `<div class="ms-head"><span class="ms-k">YOUR SPACES</span><span class="ms-sub">Read for you, kept private, and here first.</span></div><div class="ms-list">${shown.map(card).join('')}</div>`
     + (list.length > shown.length ? `<button type="button" class="ms-all" onclick="_mineRender(true)">All ${list.length}</button>` : '');
   box.style.display = '';
 }
 function _mineOpen(id) {
   const M = _gal.mine, s = M ? M.held.concat(M.granted).find(x => x.id === id) : null; if (!s) return;
+  if (s.latest && s.latest.id && typeof _hsMoveOpen === 'function') { _hsMoveOpen(s.latest.id); return; }   // NT3c: its latest reading's move
   if (s.last_read_id) { openFeaturedCard(s.last_read_id); return; }
-  showToast('The house reads ' + (s.name || 'it') + ' on its next night');
+  showToast((s.name || 'It') + ' is read on its next night');
 }
 
 /* The morning is the house's after its pass: a copy of the feed kept before the last 07:00 in Chicago is fetched again once. */
@@ -13350,8 +13619,7 @@ function _galFresh() {
 function _galBoot() {
   _gal.booted = true;
   _galFresh();
-  _galDayLoad();
-  _whoLoad().then(w => { _pulseShow(w && !w.pulses ? w : null, false); _mineLoad(); }).catch(() => _pulseShow(null));
+  _whoLoad().then(w => { _pulseShow(w && !w.pulses ? w : null, true); _mineLoad(); }).catch(() => _pulseShow(null));   // SEAM:HOUSE_STYLE (NT3c): the box opens beside the ask; the day's frames stay on DAILY
 }
 (function () {   // the page may have drawn before this block loaded: take up what it has
   try {
@@ -13361,6 +13629,361 @@ function _galBoot() {
   } catch (e) { /* the next render takes it up */ }
 })();
 /* ═══ end SEAM:NET_ARRIVAL ═══ */
+</script>
+<script>
+/* ═══ SEAM:HOUSE_STYLE (NT3c THE HOUSE STYLE): the arrival in the work's own type. A visitor reads the top of every reading (the claim,
+   its copy, the bet) and sees that a move is there; a member opens it. The moves come to a signed-in page from GET /excavate/moves and
+   are merged into the readings the page already holds; the public reads carry none. The morning is cards; each opens its move in a
+   pop-out (the X, Close and Escape close it) with the lines for the reader's role, the bet, Play it, the reading, the room and its link.
+   A seat's spaces lead with their latest readings, and a reading there is not repeated below. No model; GET routes only. ═══ */
+const _HS = { LOCK_LINE: 'Members get the move on every reading.', NO_MOVE: 'No move was written for this reading.', MOVES_MS: 600000, RESUME_MS: 400, RESUME_TRIES: 20 };
+const _hsMoves = { at: 0, ids: {}, cur: {}, busy: null };
+let _hsPopFrom = null, _hsPopFromId = null;
+/* A reading the page holds, wherever it shows: the morning and its lead, the record, a seat's own spaces. */
+function _hsTile(id) {
+  const pools = [];
+  if (typeof _gal !== 'undefined' && _gal.pick) pools.push(_gal.pick.rail, _gal.pick.rows);
+  if (typeof _FI_RECORD !== 'undefined' && _FI_RECORD && Array.isArray(_FI_RECORD.tiles)) pools.push(_FI_RECORD.tiles);
+  if (typeof _gal !== 'undefined' && Array.isArray(_gal.mineLatest)) pools.push(_gal.mineLatest);
+  for (const p of pools) { const t = (p || []).find(x => x && x.id === id); if (t) return t; }
+  return null;
+}
+function _hsMineIds() { return ((typeof _gal !== 'undefined' && _gal.mineLatest) || []).map(t => t && t.id).filter(Boolean); }
+/* A reading's move as a member's page holds it: on the reading, or in the moves the page took, whichever copy of the reading it is. */
+function _hsMoveOf(t) { return (t && (t.move || (t.id && _hsMoves.ids[t.id]))) || null; }
+/* PURE: the line over a reading: when it was deployed, its territory, its subject. */
+function _hsLine(t) { const m = (t && t.measures) || {}, f = (t && t.frame) || {}; return ['Deployed ' + _recDay(t && t.deployed), m.territory ? String(m.territory).replace(/-/g, ' ') : '', f.entity || ''].filter(Boolean).map(safe).join(' · '); }
+function _hsFace(t) { const f = (t && t.frame) || {}; return safe(f.entity || f.category || (t && (t.label || t.title)) || ''); }
+/* The sources' own photograph, once on the page and credited; else the subject's name set large, never a chart. */
+function _hsPhoto(t, seen, cls) {
+  const src = t && t.photo && t.photo.src ? String(t.photo.src) : '', show = !!src && !(seen && seen.has(src)); if (show && seen) seen.add(src);
+  return `<figure class="${cls}${show ? '' : ' hs-face'}"><span class="hs-face-name" aria-hidden="true">${_hsFace(t)}</span>`
+    + (show ? `<img src="${safeAttr(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="var f=this.parentNode;f.classList.add('hs-face');var c=f.querySelector('figcaption');if(c)c.remove();this.remove()">${t.photo.credit ? `<figcaption>Photo: ${safe(t.photo.credit)}</figcaption>` : ''}` : '') + '</figure>';
+}
+/* The lead's move: a member reads it with Play it beside it; a visitor sees that there is one, and the door to it, whatever the page holds. */
+function _hsMoveBlock(t) {
+  const mv = window._signedOut === false ? _hsMoveOf(t) : null, id = safeAttr(t.id), room = typeof _galRoomOf === 'function' && _galRoomOf(t) ? `<button type="button" class="gal-room hs-member" onclick="_galRoom('${id}')">The room</button>` : '';
+  const body = mv ? `<div class="hs-k">The move</div><p class="hs-move-text">${safe(mv)}</p>`
+    : `<div class="hs-lockwrap"><div class="hs-k">The move</div><div class="hs-lock" role="img" aria-label="The move, for members"><i></i><i></i><i></i></div><p class="hs-lock-line">${safe(_HS.LOCK_LINE)}</p></div>`;
+  return `<div class="hs-move">${body}<div class="hs-acts"><button type="button" class="hs-btn red hs-signin" onclick="_hsMoveOpen('${id}')">Open the move</button>`
+    + `<button type="button" class="hs-btn ink hs-member" onclick="openFeaturedCard('${id}')">Open the reading</button>`
+    + (mv ? `<button type="button" class="hs-btn red hs-member" onclick="_playRecord('${id}')">Play it</button>` : '') + room + '</div></div>';
+}
+/* A morning card: the photograph, the line, the claim, its copy, the bet; the move behind its button. */
+function _hsCard(t, seen) {
+  const id = safeAttr(t.id);
+  return `<article class="hs-card" data-id="${id}"><div class="hs-card-media">${_hsPhoto(t, seen, 'hs-photo')}<button type="button" class="hs-btn hs-movebtn" onclick="_hsMoveOpen('${id}')">Open the move</button></div>`
+    + `<div class="hs-card-text"><div class="hs-line">${_hsLine(t)}${typeof _yoursTag === 'function' ? _yoursTag(t) : ''}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.dek ? `<p class="hs-dek">${safe(t.dek)}</p>` : ''}${_leadBet(t)}`
+    + '<div class="hs-lockrow" aria-hidden="true"><span>The move</span><i></i><i></i></div></div></article>';
+}
+/* PURE: the bet's state in a word or two: when it is checked, or how it came out. */
+function _hsGrade(t) {
+  const w = t && t.watch, c = t && t.called; if (!w) return '';
+  const d = typeof _leadDays === 'function' ? _leadDays(w.by) : null;
+  const g = c && c.verdict === 'held' ? ['held', 'Held'] : c && c.verdict === 'missed' ? ['missed', 'Missed'] : c && c.verdict === 'unmeasured' ? ['quiet', 'Not measured']
+    : ['open', d == null ? 'Open' : d > 1 ? 'Checked in ' + d + ' days' : d === 1 ? 'Checked tomorrow' : d === 0 ? 'Checked today' : 'Being checked'];
+  return `<span class="hs-grade g-${g[0]}">The bet · ${safe(g[1])}</span>`;
+}
+/* The record's row: a small photograph, the line, the claim (it opens the reading), its copy, the bet's state, the move behind its link. */
+function _hsRow(t, seen) {
+  const id = safeAttr(t.id);
+  return `<article class="hs-row" data-id="${id}">${_hsPhoto(t, seen, 'hs-thumb')}<div class="hs-row-text"><div class="hs-line">${_hsLine(t)}${typeof _yoursTag === 'function' ? _yoursTag(t) : ''}</div>`
+    + `<h3><a href="#" onclick="openFeaturedCard('${id}');return false">${safe(t.claim || t.title || '')}</a></h3>${t.dek ? `<p class="hs-dek">${safe(t.dek)}</p>` : ''}</div>`
+    + `<div class="hs-row-side">${_hsGrade(t)}<button type="button" class="hs-link" onclick="_hsMoveOpen('${id}')">Open the move</button></div></article>`;
+}
+/* A photograph appears once on the page (EX33b): this week's read, now beside the lead, does not repeat the lead's. When the loudest
+   subject is the lead, the week takes the most covered of the set's other photographs, or none. */
+function _hsWeekPhoto() {
+  const img = document.getElementById('week-img'), fig = document.getElementById('week-photo'), cap = document.getElementById('week-credit'), sec = document.getElementById('week-block');
+  if (!img || !fig || fig.style.display === 'none') return;
+  const lead = new Set([...document.querySelectorAll('#lead-rail .lead-reading img')].map(i => i.getAttribute('src')));
+  if (!lead.has(img.getAttribute('src'))) return;
+  const set = (typeof _gal !== 'undefined' && _gal.set && Array.isArray(_gal.set.tiles)) ? _gal.set.tiles : [];
+  const alt = set.filter(t => t && t.photo && t.photo.src && !lead.has(t.photo.src)).sort((a, b) => ((b.measures && b.measures.recent_7d) || 0) - ((a.measures && a.measures.recent_7d) || 0))[0];
+  if (alt) { img.src = alt.photo.src; if (cap) cap.textContent = alt.photo.credit ? 'Photo: ' + alt.photo.credit : ''; }
+  else { fig.style.display = 'none'; if (sec) sec.classList.add('nophoto'); }
+}
+/* An industry puts its suggestion in front of the box. */
+function _hsTry(b) {
+  const row = document.getElementById('hs-try'), q = document.getElementById('hs-q'); if (!row || !q || !b) return;
+  row.querySelectorAll('.hs-ind').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  q.textContent = b.getAttribute('data-q') || '';
+}
+/* The moves, for a member: fetched once in ten minutes, merged into what the page holds, and the arrival drawn again. A visitor holds none. */
+async function _hsMovesLoad(force) {
+  if (window._signedOut !== false) return null;
+  if (_hsMoves.busy) return _hsMoves.busy;
+  if (!force && _hsMoves.at && Date.now() - _hsMoves.at < _HS.MOVES_MS) return _hsMoves;
+  _hsMoves.busy = (async function () {
+    let j = null;
+    try { const r = await fetch(_galApi('/excavate/moves'), { headers: await _authHeader(), cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+    if (j && j.ok && window._signedOut === false) { _hsMoves.ids = j.moves || {}; _hsMoves.cur = j.currents || {}; _hsMoves.at = Date.now(); _hsMovesApply(); }
+    _hsMoves.busy = null;
+    return _hsMoves;
+  })();
+  return _hsMoves.busy;
+}
+function _hsMovesEach(fn) {
+  if (typeof _FI_RECORD !== 'undefined' && _FI_RECORD) { (_FI_RECORD.tiles || []).forEach(t => fn(t, 'tile')); const c = _FI_RECORD.currents; if (c && Array.isArray(c.currents)) c.currents.forEach(x => fn(x, 'current')); }
+  if (typeof _gal !== 'undefined' && _gal.set && Array.isArray(_gal.set.tiles)) _gal.set.tiles.forEach(t => fn(t, 'tile'));
+  if (typeof _FI_LAKE !== 'undefined' && _FI_LAKE && _FI_LAKE.door && Array.isArray(_FI_LAKE.door.tiles)) _FI_LAKE.door.tiles.forEach(t => fn(t, 'tile'));
+}
+/* The moves held, into what the page holds now: called again whenever the record or the door set is drawn, so a set that arrives after
+   the moves has its moves too. True when one was added. */
+function _hsMovesMerge() {
+  if (!_hsMoves.at) return false;
+  let added = false;
+  _hsMovesEach((x, kind) => { if (!x || x.move) return; const m = kind === 'current' ? _hsMoves.cur[x.title] : _hsMoves.ids[x.id]; if (m) { x.move = m; added = true; } });
+  return added;
+}
+function _hsMovesApply() {
+  _hsMovesMerge();
+  window._hsMovesAt = String(_hsMoves.at);
+  _hsRedraw();
+}
+function _hsMovesForget() {
+  if (!_hsMoves.at) return;
+  _hsMoves.at = 0; _hsMoves.ids = {}; _hsMoves.cur = {}; window._hsMovesAt = '';
+  _hsMovesEach(x => { if (x) delete x.move; });
+  _hsMoveClose();
+  _hsRedraw();
+}
+function _hsMovesSync() { if (window._signedOut === false) _hsMovesLoad(); else if (window._signedOut === true) _hsMovesForget(); }
+function _hsRedraw() { if (typeof _FI_RECORD !== 'undefined' && _FI_RECORD && window._scrollDrawn) _renderScroll(_FI_RECORD, (typeof _FI_LAKE !== 'undefined' && _FI_LAKE) || { proposed: [] }); }
+/* The move, open. A visitor is taken to the door with the reading kept, and the move opens once they are in. */
+function _hsMoveOpen(id) {
+  if (window._signedOut === true && typeof _doorAsk === 'function') return _doorAsk({ kind: 'move', id });
+  const t = _hsTile(id); if (!t) { openFeaturedCard(id); return; }
+  if (!document.getElementById('hs-pop')) { _hsPopFrom = document.activeElement; _hsPopFromId = String(id); }
+  _hsMoveDraw(t);
+  if (!_hsMoveOf(t) && !_hsMoves.at) _hsMovesLoad().then(() => { const u = _hsTile(id), el = document.getElementById('hs-pop'); if (u && _hsMoveOf(u) && el && el.getAttribute('data-id') === String(id)) _hsMoveDraw(u, true); });   // the move that arrives goes into its own reading's pop-out only
+}
+function _hsMoveDraw(t, quiet) {   // quiet: the same reading drawn again with its move, the reader's place and the role lines kept
+  let el = document.getElementById('hs-pop');
+  if (!el) { el = document.createElement('div'); el.id = 'hs-pop'; el.className = 'hs-pop-wrap'; document.body.appendChild(el); document.addEventListener('keydown', _hsMoveKey); }
+  const mv = _hsMoveOf(t), prev = quiet ? document.getElementById('hs-pop-role') : null, keep = prev ? { html: prev.innerHTML, shown: prev.style.display } : null;
+  el.setAttribute('data-id', String(t.id));
+  const id = safeAttr(t.id), note = typeof _galNoteHtml === 'function' ? _galNoteHtml(t.house_note) : '';
+  const room = typeof _galRoomOf === 'function' && _galRoomOf(t) ? `<button type="button" class="hs-link" onclick="_hsMoveClose();_galRoom('${id}')">The room</button>` : '';
+  el.innerHTML = `<div class="hs-pop-back" onclick="_hsMoveClose()"></div><div class="hs-pop" role="dialog" aria-modal="true" aria-labelledby="hs-pop-h">`
+    + `<div class="hs-pop-photo">${_hsPhoto(t, null, 'hs-pop-fig')}<button type="button" class="hs-pop-x" aria-label="Close the move" onclick="_hsMoveClose()">&times;</button></div>`
+    + `<div class="hs-pop-body"><div class="hs-line">${_hsLine(t)}</div><p class="hs-pop-read">The read: ${safe(t.claim || t.title || '')}</p>`
+    + `<div class="hs-pop-move"><div class="hs-k">The move</div><h2 id="hs-pop-h">${safe(mv || _HS.NO_MOVE)}</h2></div>`
+    + `<div class="hs-pop-role" id="hs-pop-role" data-id="${id}" style="display:none"></div>${t.watch ? `<div class="hs-pop-bet">${_leadBet(t)}</div>` : ''}${note}`
+    + `<div class="hs-acts">${mv ? `<button type="button" class="hs-btn red" onclick="_hsMoveClose();_playRecord('${id}')">Play it</button>` : ''}`
+    + `<button type="button" class="hs-btn ink" onclick="_hsMoveClose();openFeaturedCard('${id}')">Open the reading</button>${room}`
+    + (t.private ? '' : `<button type="button" class="hs-link" onclick="_hsCopy('${id}')">Copy link</button>`)
+    + '<button type="button" class="hs-link hs-close" onclick="_hsMoveClose()">Close</button></div></div></div>';
+  document.body.classList.add('hs-pop-open');
+  if (keep) { const r = document.getElementById('hs-pop-role'); if (r && keep.html) { r.innerHTML = keep.html; r.style.display = keep.shown; } return; }
+  const x = el.querySelector('.hs-pop-x'); if (x) x.focus();
+  _hsRoles(t.id);
+}
+function _hsMoveClose() {
+  const el = document.getElementById('hs-pop'); if (el) el.remove();
+  document.removeEventListener('keydown', _hsMoveKey);
+  document.body.classList.remove('hs-pop-open');
+  const f = _hsPopFrom, fid = _hsPopFromId; _hsPopFrom = null; _hsPopFromId = null;
+  if (f && typeof f.focus === 'function' && document.body.contains(f)) { f.focus(); return; }
+  if (fid && /^[0-9a-f-]{36}$/.test(fid) && typeof document.querySelector === 'function') {   // the button that opened it was drawn again: its reading's own button takes focus
+    const alt = document.querySelector('[data-id="' + fid + '"] .hs-movebtn, [data-id="' + fid + '"] .hs-link, [data-id="' + fid + '"] .hs-btn'); if (alt) alt.focus();
+  }
+}
+/* Escape closes the move; Tab stays inside it while it is open. */
+function _hsMoveKey(e) {
+  if (!e) return;
+  if (e.key === 'Escape') { e.preventDefault(); _hsMoveClose(); return; }
+  if (e.key !== 'Tab' || typeof document.querySelector !== 'function') return;
+  const box = document.querySelector('#hs-pop .hs-pop'); if (!box) return;
+  const f = [...box.querySelectorAll('button, a[href], input, textarea, select, [tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && x.getClientRects().length);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1], at = document.activeElement;
+  if (!box.contains(at)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && at === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+}
+/* The lines for the reader's role (EX47), from the route the reading's own card asks: written overnight; a reading the pass has not reached
+   is written on first open while the plans allow it, the same as on its card. */
+async function _hsRoles(id) {
+  if (window._signedOut !== false) return;
+  let j = null;
+  try { const r = await fetch(_galApi('/excavate/insight/roles?id=' + encodeURIComponent(id)), { headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  const el = document.getElementById('hs-pop-role'); if (!el || el.getAttribute('data-id') !== String(id)) return;
+  if (j && j.ok && Array.isArray(j.implications) && j.implications.length) {
+    el.innerHTML = `<div class="hs-role-head"><span class="hs-k">For your role</span><span class="hs-role-for">${j.fallback ? 'for every role' : 'for ' + safe(j.role)}</span></div>`
+      + '<div class="hs-pop-imps">' + j.implications.slice(0, 3).map(x => `<div class="hs-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('') + '</div>';
+    el.style.display = '';
+  } else if (j && j.error === 'not_written') {
+    el.innerHTML = `<div class="hs-role-head"><span class="hs-k">For your role</span></div><p class="hs-role-wait">${safe(j.say || 'The lines for your role are written overnight.')}</p>`;
+    el.style.display = '';
+  } else { el.style.display = 'none'; el.innerHTML = ''; }
+}
+function _hsCopy(id) {
+  const link = API_BASE.replace(/\/$/, '') + '/i/' + encodeURIComponent(id);
+  try { navigator.clipboard.writeText(link).then(() => showToast('Link copied'), () => showToast(link)); } catch (e) { showToast(link); }
+}
+/* Signed in from the door: the move opens once the page holds the reading and its move. */
+function _hsMoveResume(id, tries) {
+  const n = tries || 0;
+  if (n === 0) _hsMovesLoad();
+  const t = _hsTile(id);
+  if (t && (_hsMoveOf(t) || (_hsMoves.at && !_hsMoves.busy))) { _hsMoveOpen(id); return; }
+  if (n < _HS.RESUME_TRIES) { setTimeout(function () { _hsMoveResume(id, n + 1); }, _HS.RESUME_MS); return; }
+  if (t) _hsMoveOpen(id); else openFeaturedCard(id);
+}
+try { _hsMovesSync(); } catch (e) { /* the moves come with the next sign-in */ }
+/* ═══ end SEAM:HOUSE_STYLE ═══ */
+</script>
+<script>
+/* ═══ SEAM:FRAME_FIT (NT3d THE FRAME): the page fits to the reader's frame (the brands they watch, theirs and their competitors'; the
+   categories and audiences they follow; their industries, markets and words). Signed in, GET /excavate/yours says which readings on the
+   record and in the morning are on their frame and why, by the push's own matching. The record gets a "Your frame" lens and each such
+   reading says so; a live read offers the brands they watch and their market as one-tap chips beside the frame it was given. A reader
+   with no frame is asked to set it. No model; GET routes only. ═══ */
+const _YOURS = { MS: 600000, AGAINST: 5, WHY: { brand: 'a brand you watch', competitor: 'a competitor you watch', category: 'a category you follow', audience: 'an audience you follow', industry: 'your industry', market: 'your market', keyword: 'your words' } };
+const _yours = { at: 0, has: false, matches: {}, frame: null, busy: null };
+async function _yoursLoad(force) {
+  if (window._signedOut !== false) return null;
+  if (_yours.busy) return _yours.busy;
+  if (!force && _yours.at && Date.now() - _yours.at < _YOURS.MS) return _yours;
+  _yours.busy = (async function () {
+    let j = null;
+    try { const r = await fetch(_galApi('/excavate/yours'), { headers: await _authHeader(), cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+    if (j && j.ok && window._signedOut === false) { _yours.has = !!j.has_frame; _yours.matches = j.matches || {}; _yours.frame = j.frame || null; _yours.at = Date.now(); _yoursRedraw(); }
+    _yours.busy = null;
+    return _yours;
+  })();
+  return _yours.busy;
+}
+function _yoursForget() {
+  if (!_yours.at) return;
+  _yours.at = 0; _yours.has = false; _yours.matches = {}; _yours.frame = null;
+  if (typeof _recLens !== 'undefined' && _recLens && _recLens.kind === 'yours') _recLens = { kind: 'all', value: null };
+  _yoursRedraw();
+}
+function _yoursSync() { if (window._signedOut === false) _yoursLoad(); else if (window._signedOut === true) _yoursForget(); }
+function _yoursRedraw() {
+  if (typeof _leadBuilt !== 'undefined') _leadBuilt = null;   // the morning's cards carry the line too
+  if (typeof _hsRedraw === 'function') _hsRedraw();
+  if (typeof _inRender === 'function' && window._intent && window._intent.frame) _inRender();
+}
+/* PURE: the line a reading on the reader's frame carries, and why it is there. */
+function _yoursTag(t) { const k = t && _yours.matches[t.id]; return k ? `<span class="hs-yours">Your frame · ${safe(_YOURS.WHY[k] || k)}</span>` : ''; }
+function _yoursFilter(tiles) { return (tiles || []).filter(t => t && _yours.matches[t.id]); }
+/* The record's lens: the reader's frame, or the way to set it. A visitor has neither. */
+function _yoursLens(btn) {
+  if (window._signedOut !== false || !_yours.at) return '';
+  return _yours.has ? btn('yours', null, 'Your frame', null) : '<button type="button" class="rec-lens hs-yours-set" onclick="_profileOpen()">Set your frame</button>';
+}
+/* PURE: what the reader's frame offers a live read. The brands they watch, to read against, when the read is in their space (its subject or
+   one of its competitors is a brand they watch); their market, when the read is set elsewhere. Offered, never applied: one tap each. */
+function _inFit(f, fr) {
+  const none = { against: [], market: null };
+  if (!f || !fr) return none;
+  const lc = v => String(v == null ? '' : v).toLowerCase().replace(/\s+/g, ' ').trim();
+  const watched = (Array.isArray(fr.tracked_brands) ? fr.tracked_brands : []).filter(b => lc(b).length >= 2);
+  const have = new Set([lc(f.entity)].concat((f.competitors || []).map(lc)).filter(Boolean));
+  const inSpace = watched.some(b => have.has(lc(b)));
+  const room = Math.max(0, _YOURS.AGAINST - (f.competitors || []).length);
+  const against = inSpace ? watched.filter(b => !have.has(lc(b))).slice(0, room) : [];
+  const m = (Array.isArray(fr.markets) ? fr.markets : []).find(x => lc(x).length >= 2) || null;
+  return { against, market: m && lc(m) !== lc(f.market || 'US') ? m : null };
+}
+function _inFitRow(f) {
+  const x = _inFit(f, _yours.frame); if (!x.against.length && !x.market) return '';
+  return '<div class="in-vs in-fit"><span class="intent-lead">From your frame</span>'
+    + x.against.map(b => `<button type="button" class="intent-chip fit" data-v="${safeAttr(b)}" onclick="_inListAdd('competitors',this.dataset.v)">+ ${safe(b)}</button>`).join('')
+    + (x.market ? `<button type="button" class="intent-chip fit" data-v="${safeAttr(x.market)}" onclick="_inEdit('market',this.dataset.v)">Read it in ${safe(x.market)}</button>` : '') + '</div>';
+}
+try { _yoursSync(); } catch (e) { /* the frame comes with the next sign-in */ }
+/* ═══ end SEAM:FRAME_FIT ═══ */
+</script>
+<script>
+/* ═══ SEAM:PARTNER (EX51 THE PARTNER): a Partner or Retainer company's own page. Signed in, GET /partner says whether the reader's team
+   holds one; when it does, the arrival opens with the company's band: its standing questions, what the house has delivered (a read, a
+   RECON, a report, a brief, a session's notes, each opening where it lives), what comes next, the office hours this month against what
+   the plan includes, and the way to the team. The team's owner keeps the intake (the brand, the competitive set, the markets, audiences
+   and channels, the standing questions) and it joins every member's frame. A visitor and a reader on any other plan see none of it.
+   No model; GET and the owner's intake only. ═══ */
+const _PT = { MS: 600000, MAIL: 'hello@unsurfaced-intelligence.com', KIND: { read: 'Read', recon: 'RECON', report: 'Report', brief: 'Brief', session: 'Session notes' }, NEXT: { read: 'Read', recon: 'RECON', report: 'Report', session: 'Session' }, PLAN: { partner: 'Partner', retainer: 'Retainer' },
+  LISTS: [['competitors', 'Competitors', 'Who you are read against'], ['markets', 'Markets', 'Where you sell'], ['audiences', 'Audiences', 'Who you sell to'], ['channels', 'Channels', 'Where you show up']] };
+const _pt = { at: 0, data: null, busy: null, editing: false, saying: '', draft: null };
+async function _ptLoad(force) {
+  if (window._signedOut !== false) return null;
+  if (_pt.busy) return _pt.busy;
+  if (!force && _pt.at && Date.now() - _pt.at < _PT.MS) return _pt;
+  _pt.busy = (async function () {
+    let j = null;
+    try { const r = await fetch(_galApi('/partner'), { headers: await _authHeader(), cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+    if (j && j.ok && window._signedOut === false) { _pt.data = j.partner ? j : null; _pt.at = Date.now(); _ptRender(); }
+    _pt.busy = null;
+    return _pt;
+  })();
+  return _pt.busy;
+}
+function _ptForget() { if (!_pt.at && !_pt.data) return; _pt.at = 0; _pt.data = null; _pt.editing = false; _pt.draft = null; _ptRender(); }
+function _ptSync() { if (window._signedOut === false) _ptLoad(); else if (window._signedOut === true) _ptForget(); }
+/* PURE: minutes as a person says them. */
+function _ptTime(m) { const n = Math.max(0, Math.round(Number(m) || 0)), h = Math.floor(n / 60), r = n % 60; return h ? h + ' h' + (r ? ' ' + r + ' min' : '') : r + ' min'; }
+/* PURE: the line under the company's name: its brand and the set it is read against. */
+function _ptSub(it) {
+  if (!it || !it.brand) return 'Start with the intake: your brand, who you are read against, and the questions you want answered.';
+  const vs = (it.competitors || []).slice(0, 4);
+  return 'Built around ' + it.brand + (vs.length ? ', read against ' + vs.join(', ') : '') + '.';
+}
+function _ptDay(d) { return typeof _recDay === 'function' ? _recDay(d) : String(d || '').slice(0, 10); }
+function _ptRender() {
+  const el = document.getElementById('pt-band'); if (!el) return;
+  const d = _pt.data;
+  if (!d || !d.partner || window._signedOut !== false) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const it = d.intake || null, owner = d.role === 'owner', p = d.partner, h = d.hours || {};
+  const qs = it && Array.isArray(it.questions) ? it.questions : [];
+  const questions = qs.length ? '<ol class="pt-qs">' + qs.map(q => `<li>${safe(q)}</li>`).join('') + '</ol>'
+    : `<p class="pt-none">${owner ? 'Set the questions you want answered every week.' : 'Your team’s owner sets them.'}</p>`;
+  const delivered = (d.delivered || []).length ? (d.delivered || []).map(x => `<article class="pt-item"><div class="hs-line">${safe(_PT.KIND[x.kind] || x.kind)} · ${safe(_ptDay(x.delivered_at))}</div><h3>${safe(x.title)}</h3>`
+    + (x.summary ? `<p>${safe(x.summary)}</p>` : '') + (x.url && /^https:\/\//.test(x.url) ? `<a class="hs-link" href="${safeAttr(x.url)}" target="_blank" rel="noopener">Open it</a>` : '') + '</article>').join('')
+    : '<p class="pt-none">What the team delivers lands here.</p>';
+  const ahead = (d.ahead || []).length ? '<ul class="pt-next">' + (d.ahead || []).map(x => `<li><span class="hs-line">${safe(_PT.NEXT[x.kind] || x.kind)} · ${safe(_ptDay(x.due))}</span><b>${safe(x.title)}</b></li>`).join('') + '</ul>'
+    : '<p class="pt-none">The team sets your schedule with you.</p>';
+  const hours = h.included_min ? `<p class="pt-hours">Office hours this month: ${safe(_ptTime(h.used_min))} of ${safe(_ptTime(h.included_min))}</p>` : '';
+  const mail = 'mailto:' + _PT.MAIL + '?subject=' + encodeURIComponent((p.name || 'Our') + ' partnership');
+  el.innerHTML = `<div class="pt-head"><span class="hs-k">YOUR ${safe((_PT.PLAN[p.plan] || 'Partner').toUpperCase())} PAGE</span><h2 id="pt-h">${safe(p.name || 'Your company')}</h2><p class="pt-sub">${safe(_ptSub(it))}</p></div>`
+    + `<div class="pt-cols"><section class="pt-col" aria-label="Your standing questions"><div class="pt-k">Your standing questions</div>${questions}</section>`
+    + `<section class="pt-col" aria-label="Delivered"><div class="pt-k">Delivered</div>${delivered}</section>`
+    + `<section class="pt-col" aria-label="Next"><div class="pt-k">Next</div>${ahead}${hours}</section></div>`
+    + `<div class="pt-acts">${owner ? `<button type="button" class="hs-btn red" onclick="_ptEdit(true)">${it ? 'Edit your intake' : 'Start your intake'}</button>` : ''}<a class="hs-alt" href="${safeAttr(mail)}">Talk to the team</a></div>`
+    + (owner && _pt.editing ? _ptForm(it) : '');
+  el.style.display = '';
+}
+/* The owner's intake. Lists are comma separated; the questions one to a line. What was typed stays while it saves, or if it did not. */
+function _ptForm(it0) {
+  const it = _pt.draft || it0, v = k => safeAttr(((it && it[k]) || []).join(', '));
+  return `<form class="pt-form" id="pt-form" onsubmit="return _ptSave(event)"><label>Your brand<input id="pt-brand" maxlength="80" value="${safeAttr((it && it.brand) || '')}"></label>`
+    + _PT.LISTS.map(([k, label, hint]) => `<label>${label} <small>${hint}, comma separated</small><input id="pt-${k}" value="${v(k)}"></label>`).join('')
+    + `<label class="pt-wide">Your standing questions <small>one to a line, up to six</small><textarea id="pt-questions" rows="5">${safe(((it && it.questions) || []).join('\n'))}</textarea></label>`
+    + `<label class="pt-wide">Notes for the team <small>optional</small><textarea id="pt-notes" rows="3" maxlength="1000">${safe((it && it.notes) || '')}</textarea></label>`
+    + `<div class="pt-acts pt-wide"><button type="submit" class="hs-btn red">Save the intake</button><button type="button" class="hs-link" onclick="_ptEdit(false)">Cancel</button><span class="pt-say" role="status">${safe(_pt.saying)}</span></div></form>`;
+}
+function _ptEdit(on) { _pt.editing = !!on; _pt.saying = ''; _pt.draft = null; _ptRender(); if (on) { const f = document.getElementById('pt-brand'); if (f) f.focus(); } }
+/* PURE: the intake the form holds, as the worker takes it. */
+function _ptFormBody(get) {
+  const list = k => String(get('pt-' + k) || '').split(',').map(x => x.trim()).filter(Boolean);
+  const out = { brand: String(get('pt-brand') || '').trim(), questions: String(get('pt-questions') || '').split('\n').map(x => x.trim()).filter(Boolean), notes: String(get('pt-notes') || '').trim() };
+  for (const [k] of _PT.LISTS) out[k] = list(k);
+  return out;
+}
+async function _ptSave(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const body = _ptFormBody(id => { const x = document.getElementById(id); return x ? x.value : ''; });
+  _pt.draft = body; _pt.saying = 'Saving'; _ptRender();
+  let j = null;
+  try { const h = await _authHeader(); const r = await fetch(_galApi('/partner/intake'), { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify(body) }); j = r.ok ? await r.json() : await r.json().catch(() => null); } catch (x) { j = null; }
+  if (j && j.ok && j.partner) { _pt.data = j; _pt.at = Date.now(); _pt.editing = false; _pt.saying = ''; _pt.draft = null; _ptRender(); if (typeof _yoursLoad === 'function') _yoursLoad(true); if (typeof showToast === 'function') showToast('Intake saved'); }
+  else { _pt.saying = (j && j.say) || 'It did not save. Try again in a moment.'; _ptRender(); }
+  return false;
+}
+try { _ptSync(); } catch (e) { /* the company's page comes with the next sign-in */ }
+/* ═══ end SEAM:PARTNER ═══ */
 </script>
 <script>
 /* ═══ SEAM:OPEN_DOOR (NT3a THE OPEN DOOR): EXCAVATE opens to a visitor. The hub stays the signed-out ground state; choosing EXCAVATE
@@ -13373,7 +13996,7 @@ function _galBoot() {
    returns a visitor to the page they were on. Signed in, the page takes the reader on to what they asked for. No model; no worker call
    of its own beyond the record a resumed Play it needs. ═══ */
 const _DOOR = { DEST: 'uai_door_dest', TTL: 1800000, FIND_MS: 400, FIND_TRIES: 10,
-  LABELS: [['Open the reading', 'Sign in to open the reading'], ['Opening it writes the reading now.', 'Sign in to open it.']] };   // SEAM:ROOMS_INSIDE (NT3b): a visitor reads what an account opens
+  LABELS: [['Open the reading', 'Sign in to open the reading'], ['Opening it writes the reading now.', 'Sign in to open it.'], ['Open the move', 'Sign in for the move'], ['Ask', 'Sign in to ask']] };   // SEAM:HOUSE_STYLE (NT3c): the move and the record's ask   // SEAM:ROOMS_INSIDE (NT3b): a visitor reads what an account opens
 const _doorAt = (function () {   // the address the page was opened at, read before the page tidies it
   try {
     const q = new URLSearchParams(location.search), h = String(location.hash || ''), id = String(q.get('insight') || '');
@@ -13414,7 +14037,7 @@ function _doorRead(t) {
   _doorAsk({ kind: 'reading', id });
 }
 function _doorFind(id, tries) {
-  const el = document.querySelector('.lead-card[data-id="' + id + '"], .gal-row[data-id="' + id + '"], article.row[onclick*="' + id + '"]');
+  const el = document.querySelector('.lead-card[data-id="' + id + '"], .gal-row[data-id="' + id + '"], .hs-row[data-id="' + id + '"], .ms-card[data-id="' + id + '"], article.row[onclick*="' + id + '"]');   // SEAM:HOUSE_STYLE (NT3c): the record's own row
   if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.classList.add('door-here'); setTimeout(function () { el.classList.remove('door-here'); }, 2400); return; }
   if (tries < _DOOR.FIND_TRIES) { setTimeout(function () { _doorFind(id, tries + 1); }, _DOOR.FIND_MS); return; }
   _doorAsk({ kind: 'reading', id });   // not on the page: the door, the reading kept
@@ -13451,6 +14074,7 @@ function _doorResume() {
   else if (d.kind === 'section' && (d.section === 'brands' || d.section === 'audiences')) navTo(d.section);   // SEAM:ROOMS_INSIDE (NT3b): on to the section, the room or the History asked for
   else if (d.kind === 'room' && d.id) { navTo('brands'); _openRoom(d.id, false, d.by === 'track' ? 'track' : undefined); }
   else if (d.kind === 'history' && d.key) openTimeline(d.key);
+  else if (d.kind === 'move' && d.id && typeof _hsMoveResume === 'function') _hsMoveResume(d.id, 0);   // SEAM:HOUSE_STYLE (NT3c): the move asked for opens
 }
 /* PURE: a label as a visitor reads it, and back again once signed in. */
 function _doorLabelText(s, visitor) {

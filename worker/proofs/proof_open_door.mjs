@@ -107,7 +107,7 @@ ok(/function _sgInput\(v\) \{\n  toggleClearBtn\(\);\n  if \(window\._signedOut 
   && /function showToast\(msg\)\{if\(window\._signedOut===true&&typeof _doorToast==='function'&&_doorToast\(msg\)\)return;/.test(page),
   'C7 a visitor\'s box asks no suggestions; the Feed reveal asks the base only signed in; a sign-in toast for a visitor is the gate');
 ok(/if \(typeof _pulseGate === 'function' && _pulseGate\(\)\) return;/.test(page), 'C8 the box keeps NT3\'s door: a visitor\'s question runs nothing');
-ok(/out: \{ line: [^\n]*go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor\('excavate'\)">Sign in<\/button>` \},/.test(page) && /document\.addEventListener\('click', _doorBoxKeep, true\)/.test(nb),
+ok(/out: \{ k: 'LIVE PULSES · SIGN IN TO ACCESS', line: [^\n]*go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor\('excavate'\)">Sign in<\/button>` \},/.test(page) && /document\.addEventListener\('click', _doorBoxKeep, true\)/.test(nb),
   'C9 NT3\'s pulse door is left as NT3 made it; its Sign in keeps the box\'s question through the door\'s own listener');
 ok(/#kbOpen\[hidden\]\{display:none!important\}/.test(between(page, '<style id="open-door">', '</style>')) && /style="[^"]*display:inline-block" id="kbOpen"[^>]* hidden>/.test(page),
   'C10 the hub\'s Feed link stays hidden until the base says admin (its inline display no longer overrides hidden)');

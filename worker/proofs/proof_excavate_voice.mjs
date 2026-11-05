@@ -66,9 +66,9 @@ ok(band.length === X.DOOR_VOICES.BAND && band.slice(0, 5).map(v => v.on).join(',
 
 // ── P ─────────────────────────────────────────────────────────────────
 const arrival = page.slice(page.indexOf('<section class="hero">'), page.indexOf('<!-- RESULTS PANEL -->'));
-ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is the cultural intelligence engine behind Unsurfaced\./.test(arrival) && /placeholder="Ask culture a question: a brand, a category, the people, or the question itself"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
+ok(/<h1 class="hero-title">Ask culture a question\.<\/h1>/.test(arrival) && /EXCAVATE is your cultural intelligence engine\. Ask about any brand, category or behavior/.test(arrival) && /placeholder="Ask culture a question: a brand, a category, the people, or the question itself"/.test(arrival) && /onclick="runSearch\(\)">Search<\/button>/.test(arrival),
   'P1 the arrival opens with the headline, the plain sub and the search under it');
-ok(/setSearch\('smart glasses, who buys and who refuses'\)/.test(arrival) && /setSearch\('luxury in Lagos'\)/.test(arrival) && !/Gen Z purchase behavior trends/.test(arrival), 'P2 the examples are questions a person would type');
+ok(/data-q="smart glasses, who buys and who refuses"/.test(arrival) && /data-q="luxury in Lagos"/.test(arrival) && !/Gen Z purchase behavior trends/.test(arrival), 'P2 the examples are questions a person would type, one to an industry (NT3c)');
 ok(/id="week-block"/.test(arrival) && /id="week-movers"/.test(arrival) && /id="board-block"/.test(arrival) && /id="voices-block"/.test(arrival) && /id="record-block"/.test(arrival) && /<section class="partners">/.test(arrival) && /id="featured-insights-grid"/.test(arrival) && /id="fi-state-strip"/.test(arrival),
   'P3 the five movements mount in order and the engine\'s mount points keep their ids');
 const visible = arrival.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');

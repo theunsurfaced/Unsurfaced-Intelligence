@@ -1422,7 +1422,7 @@
   "SEAM:CALIBRATION@excavate": {
    "file": "intelligence/index.html",
    "tag": "SEAM:CALIBRATION",
-   "purpose": "the calibration line in the record's counts"
+   "purpose": "the calibration line in the record's counts NT3c THE HOUSE STYLE (Nov 2, 2026): the line left the arrival with the score; the calibration stays on the worker and on a finding's card."
   },
   "SEAM:ACCESS_KNOCK": {
    "file": "worker/src/index.js",
@@ -1778,7 +1778,7 @@
   "SEAM:SCORECARD@intelligence": {
    "file": "intelligence/index.html",
    "tag": "SEAM:SCORECARD",
-   "purpose": "EX54: the record's head carries the scorecard's sentences beside the score (_scoreLine: one a band, the graded calls so far under a band below the floor, the plain hit rate; no count of readings or subjects); a calibrated finding says so under its band on its card and in its detail (_calibLine, _calibText); an admin scores the reading on screen from its header (Score: five marks and a note, _scoreOpen, an overnight reading by its door row, a live read by its ledger id); a room says its subject's calls (j.scorecard.line)."
+   "purpose": "EX54: the record's head carries the scorecard's sentences beside the score (_scoreLine: one a band, the graded calls so far under a band below the floor, the plain hit rate; no count of readings or subjects); a calibrated finding says so under its band on its card and in its detail (_calibLine, _calibText); an admin scores the reading on screen from its header (Score: five marks and a note, _scoreOpen, an overnight reading by its door row, a live read by its ledger id); a room says its subject's calls (j.scorecard.line). NT3c THE HOUSE STYLE (Nov 2, 2026): off the arrival; the record's head prints no score; READ's SCORE room and a finding's card keep it."
   },
   "SEAM:SCORECARD@read": {
    "file": "intelligence/read/index.html",
@@ -1816,6 +1816,46 @@
    "file": "intelligence/index.html",
    "tag": "SEAM:ROOMS_INSIDE",
    "purpose": "NT3b THE ROOMS INSIDE (Nov 1, 2026): signed out, a visitor sees the main page and the Library. _navAuth marks a signed-in reader (body.uai-in); until then the style hides the Brands and Audiences tabs (header and menu) and the room lenses. navTo('brands'|'audiences'), _openRoom, _galRoom, openTimeline (History) and a room's address (_doorDeep, then _roomRoute) raise the gate for a visitor with what was asked for kept (kinds section, room, find, history); _doorResume takes the reader on to it once signed in. The download sink _dlFile raises the gate for a visitor. Every call to the seven signed-in reads carries _authHeader(). The LIVE PULSES box says what an account and a subscription open (Ask it. Get the reading.), never how the engine works; a visitor's label on a reading not yet read says Sign in to open it."
+  },
+  "SEAM:HOUSE_STYLE": {
+   "file": "worker/src/index.js",
+   "purpose": "NT3c THE HOUSE STYLE (Nov 2, 2026): the moves are for members. withoutMoves strips the move from the record's tiles and its cross-currents, the feed's door set and GET /excavate/insight; the permalink page and the embed card carry the claim, the copy and the date. GET /excavate/moves (signed in, below the sign-in line and ahead of the meter, never spends) answers movesOf the cached record and door sets: the moves by reading id and the currents' by title. GET /excavate/space's list carries each space's latest reading (spaceLatest, spaceWithLatest). No model."
+  },
+  "SEAM:HOUSE_STYLE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:HOUSE_STYLE",
+   "purpose": "NT3c THE HOUSE STYLE (Nov 2, 2026): the arrival in the work's own type. The ask is its own short section (the words and the open box in one row, the suggestions by industry); a seat's spaces lead with their latest readings; the lead and this week's read stand as one spread; the morning is cards (_hsCard), each opening its move in a pop-out (_hsMoveOpen: X, Close, Escape; the role lines from /excavate/insight/roles; Play it; the room; the link); a visitor sees that a move is there and is taken to the door with it kept (kind move, resumed by _hsMoveResume); a member's page takes the moves from /excavate/moves (_hsMovesLoad) on sign-in; the record is lighter (_hsRow; no score, no lake rows, no foot), its cross-currents first and never a chart; the territories and the voices close it; a visitor's band says what an account opens. Off the arrival: the scorecard, the track record, the territories grid and the day's frames."
+  },
+  "SEAM:FRAME_FIT": {
+   "file": "worker/src/index.js",
+   "purpose": "NT3d THE FRAME (Nov 2, 2026): the page fits to the reader's frame. GET /excavate/yours (signed in, below the sign-in line and ahead of the meter, never spends) answers frameMatches over the cached record and door set by pushMatches (SEAM:REACH_PUSH), with the reader's tracked brands and markets; a reader with no frame gets has_frame false. frameFit: a read whose frame differs from the framer's own for its query (frameFitSig over the writer's frame block: entity, category, audience, market, period, task, question, the competitors and the threads) is cached under its own key in synthesize, and a read keeps its frame's line (frame_sig), so a cached read compiled on another frame (an Underneath-it take) is not served. On the page, US marks no reading (FRAME_FIT.PLAIN_MARKET). No model."
+  },
+  "SEAM:FRAME_FIT@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:FRAME_FIT",
+   "purpose": "NT3d THE FRAME (Nov 2, 2026): signed in, _yoursLoad reads /excavate/yours once in ten minutes; the record's lens row offers Your frame (_yoursLens; _recFilter kind yours) or Set your frame; a reading on the frame carries its line (_yoursTag) on the morning's cards and the record's rows; a live read's chips offer the brands the reader watches when the read is in their space, and their market, one tap each (_inFit, _inFitRow); a saved profile is read again; signing out forgets it."
+  },
+  "SEAM:PARTNER": {
+   "file": "worker/src/index.js",
+   "purpose": "EX51 THE PARTNER (Nov 2, 2026): a Partner or Retainer company's own page. partner_intake, partner_deliveries, partner_schedule and partner_hours (0064, RLS on, no grants). GET /partner (partnerRoute: partner null for anyone not on a Partner or Retainer team) and POST /partner/intake (the owner only; partnerIntakeClean) are signed in, below the sign-in line and ahead of the meter. partnerFrameOf joins the intake to the reader's frame in /excavate/yours (SEAM:FRAME_FIT). The desk (admin or desk key): partner, partner_deliver (https links only), partner_schedule (add, or an entry's status), partner_hours. Office hours shown against PARTNER.HOURS_MIN (Partner 240 minutes a month, Retainer 1200). No model."
+  },
+  "SEAM:PARTNER@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:PARTNER",
+   "purpose": "EX51 THE PARTNER (Nov 2, 2026): signed in, _ptLoad reads GET /partner once in ten minutes; for a Partner or Retainer team the arrival opens with #pt-band (_ptRender): the company, its standing questions, what was delivered (each opening where it lives), what comes next and the office hours this month; the owner keeps the intake (_ptForm, _ptSave to POST /partner/intake; what was typed stays while it saves); signing out forgets it."
+  },
+  "SEAM:SEARCH_LEDGER": {
+   "file": "worker/src/index.js",
+   "purpose": "RD1e THE SEARCHES (Nov 2, 2026): every search kept for READ in searches (0065, RLS on, no grants): synthesize keeps a compiled or partial search after the ledger write (with read_id and cost), one served again from the day's cache (not a stream's cache_only retry) and one the meter refused (searchLog, searchRow; a failure never stops the read); ledgerWrite's row keeps user_id. READ's /reads/searches (searchesList: before, a word, a reader, a status; fifty a page) and /reads/search (searchesRead: the ledger row as compiled and every time it was asked) are admin, behind readRoute's gate. No model, no gather, no spend."
+  },
+  "SEAM:SEARCH_LEDGER@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:SEARCH_LEDGER",
+   "purpose": "RD1e THE SEARCHES (Nov 2, 2026): READ's searches room (HOUSE_ROOMS.searches): searchesRoom lists every search with its filters and Older; searchRead opens a search's read from the ledger as it was compiled (the read, the brief, the findings with https links, the moves, every time it was asked). Nothing runs again."
+  },
+  "SEAM:TAKEAWAY_TEST": {
+   "file": "worker/src/index.js",
+   "purpose": "TK1 THE TAKEAWAY TEST (Nov 3, 2026): the desk run {run:\"takeaway_test\", n} writes the newest ready readings again on their kept evidence with a takeaway field (TAKEAWAY_TEST.LAW, spliced into excDoorPrompt's schema at its question line), returns them beside what was published with takeawayChecks, and writes nothing. The night writer is unchanged; adoption is its own cut with the bench."
   }
  },
  "planned": [

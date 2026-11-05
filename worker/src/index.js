@@ -255,6 +255,10 @@ export default {
       if (path === '/excavate/people' && request.method === 'GET') return excavatePeople(env, origin);               // SEAM:PEOPLE
       if (path === '/excavate/timeline' && request.method === 'GET') return excavateTimeline(request, env, origin);  // SEAM:MEMORY
       if (path === '/excavate/audiences' && request.method === 'GET') return excavateAudiences(env, origin);         // SEAM:AUDIENCES
+      if (path === '/excavate/moves' && request.method === 'GET') return movesRoute(env, origin);                    // SEAM:HOUSE_STYLE (NT3c): the moves, for a signed-in reader; no model, no meter
+      if (path === '/excavate/yours' && request.method === 'GET') return yoursRoute(env, origin, user);                 // SEAM:FRAME_FIT (NT3d): the reader's frame on the page; no model, no meter
+      if (path === '/partner' && request.method === 'GET') return partnerRoute(env, origin, user);                          // SEAM:PARTNER (EX51): the company's page; no model, no meter
+      if (path === '/partner/intake' && request.method === 'POST') return partnerIntakeRoute(request, env, origin, user);   // SEAM:PARTNER (EX51): the owner keeps the intake
       if (path === '/excavate/space' && request.method === 'GET') return spaceRoute(request, env, origin, user);             // SEAM:SPACES (NT1): a space and its readings, for whoever may see them; no model, outside the daily allowance
       if (path === '/excavate/space-grant' && request.method === 'POST') return spaceGrantRoute(request, env, origin, user);  // SEAM:SPACES (NT1): its holder or an admin grants a reader a view
       /* SEAM:PLAY_RENDER \u2014 the daily AI limit meters AI INFERENCE only.
@@ -377,6 +381,8 @@ export default {
         case '/reads/night-order':
         case '/reads/night-apply':
         case '/reads/night-pass':    return readRoute(path, body, env, origin, user);
+        case '/reads/searches':      // SEAM:SEARCH_LEDGER (RD1e): every search, and one search's read as it was compiled
+        case '/reads/search':        return readRoute(path, body, env, origin, user);
         case '/reads/slot-upload':   return slotUpload(request, env, origin, user);   // SEAM:EDIT_DESK (ED2): the house's own photograph, raw body
         case '/reads/corpus-upload': return corpusUpload(request, env, origin, user);   // SEAM:HOUSE_POSITIONS (VX2): a document of ours, raw body
         case '/pay/onboard':         return payOnboard(env, origin, user);
@@ -832,18 +838,22 @@ async function synthesize(body, env, origin, hooks) {
     // SEAM:EXC_RAILS: framed stays on. body.framed governs the retry of the competitive set and the counter view (excFramedRerun, ten
     // seconds), not a rerun of the writer; Quick turned it off on Oct 7 and lost the two rails the Jordan question needed.
     if (quick) body = Object.assign({}, body, { pages: false, gap: false, facts: false });
-    const qhash = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || '') + (quick ? '|quick' : '') + '|' + EXC_READ.REV);   // SEAM:EXC_QUICK: a read cached before a deploy that changed the writer is compiled again once
+    const fit = typeof frameFit === 'function' ? await frameFit(env, query, body.frame) : { key: '', sig: '' };   // SEAM:FRAME_FIT (NT3d): a read on a frame the reader changed is kept apart from the plain read
+    const qhash0 = await sha256hex(query.toLowerCase().trim() + '|' + String(body.mode || '') + (quick ? '|quick' : '') + '|' + EXC_READ.REV);   // SEAM:EXC_QUICK: a read cached before a deploy that changed the writer is compiled again once
+    const qhash = fit.key ? await sha256hex(qhash0 + '|' + fit.key) : qhash0;   // SEAM:FRAME_FIT (NT3d): the plain read's key is the one it always had
     if (env.RATE_LIMIT && !body.bench) {   // SEAM:BENCH: the bench never reads the cache
       try {
         const hit = await env.RATE_LIMIT.get(excCacheKey(qhash));
-        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights) && (!j.partial || body.cache_only)) { j.model = Object.assign({}, j.model, { cached: true }); return reply({ ok: true, data: j }, 200, origin, env); } }
+        if (hit) { const j = JSON.parse(hit); if (j && Array.isArray(j.insights) && (!j.partial || body.cache_only) && (!fit.sig || !j.frame_sig || j.frame_sig === fit.sig)) { j.model = Object.assign({}, j.model, { cached: true }); if (!body.cache_only && typeof searchLog === 'function') await searchLog(env, { user_id: body._uid, query, depth: quick ? 'quick' : 'full', mode: body.mode, status: 'cached', read_id: j.read_id });   /* SEAM:SEARCH_LEDGER (RD1e): served again, kept */ return reply({ ok: true, data: j }, 200, origin, env); } }
       } catch (e) { console.log('exc_cache_read', String(e && e.message).slice(0, 80)); }
     }
     // SEAM:EXC_STREAM: a caller whose stream was cut asks cache_only while the worker's own read lands; nothing is compiled twice.
     if (body.cache_only) return reply({ ok: false, error: 'not_cached' }, 200, origin, env);
     // SEAM:PLANS: the read compiles here and nowhere else, so it is charged here (a cached read was served above for nothing)
     if (body._m && body._m.uid && !body.bench) { const act = quick ? 'excavate.quick' : 'excavate.full'; const mc = await meterCharge(env, body._m.uid, act, PLANS.COST[act], null);
-      if (!mc.ok) return reply(meterRefusal(mc), 402, origin, env); body._m.charge = mc; }
+      if (!mc.ok) { if (typeof searchLog === 'function') await searchLog(env, { user_id: body._uid, query, depth: quick ? 'quick' : 'full', mode: body.mode, status: 'refused' });   // SEAM:SEARCH_LEDGER (RD1e): refused, kept
+        return reply(meterRefusal(mc), 402, origin, env); }
+      body._m.charge = mc; }
     const T = { start: Date.now() };
     const stage = st => { try { if (hooks.onStage) hooks.onStage(st); } catch (e) { excQuiet('stage')(e); } };
     // SEAM:EXC_FRAME: the frame the gather used rides in with the corpus; without one, it is made here (cached a week).
@@ -1120,7 +1130,7 @@ async function synthesize(body, env, origin, hooks) {
     // SEAM:READ_LEDGER — persist the read, then let its live signals enter the lake at raw.
     let readId = null;
     if (!body.bench) try {   // SEAM:BENCH: a bench read lands nowhere: no ledger row, no lake capture
-      readId = await ledgerWrite(env, { query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
+      readId = await ledgerWrite(env, { user_id: body._uid || null, query: query.slice(0, 200), query_hash: await sha256hex(query.toLowerCase().trim()), mode: body.mode || null,
         cls: body.cls || null, read: read.length === 2 ? read : null, brief, insights, ideas,
         connectors: (added || []).reduce((m, a) => { const k = a.source || 'live'; m[k] = (m[k] || 0) + 1; return m; }, {}),
         evidence_n: merged.length, meta: { lake: plan.lake.length, corpus: corpus.length, added: (added || []).length, offered: addedAll.length, frame, voice: { n: voice.length, notes: voice }, moves_dropped: movesDropped, moves_pass: movesPass, partial,   // SEAM:EXC_STALL: the ledger knows a partial read; SEAM:CLAIMS: and the moves pass
@@ -1129,6 +1139,7 @@ async function synthesize(body, env, origin, hooks) {
         .concat(corpus.filter(c => c && c.url).map(c => ({ url: c.url, title: c.title, text: c.text || '', source_name: c.source || 'open', source_tier: Math.max(1, excTier(c)), kind: c.kind || c.lens || 'open', published_at: c.published_at || null, rail: 'client' })));
       await lakeCapture(env, liveItems, { provenance: 'live_read', read_id: readId, query, cls: body.cls || null });
       if (readId && typeof claimsWrite === 'function') await claimsWrite(env, claimsOf('read', readId, { insights }, merged, frame0 || frame, new Date(now).toISOString(), measures, null, new Date(now).toISOString()));   // SEAM:CLAIMS (EX53): the read's findings as rows
+      if (typeof searchLog === 'function') await searchLog(env, { user_id: body._uid, query, depth: quick ? 'quick' : 'full', mode: body.mode, status: partial ? 'partial' : 'compiled', read_id: readId, cost_usd: compiled.cost_usd, meta: { lane: compiled.lane || null } });   // SEAM:SEARCH_LEDGER (RD1e): compiled, kept
     } catch (e) {}
     const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, voice, frame, moves_dropped: movesDropped, moves_pass: movesPass, partial,   // SEAM:EXC_STALL; SEAM:CLAIMS (EX53): the moves pass on the receipt
       depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
@@ -1154,6 +1165,7 @@ async function synthesize(body, env, origin, hooks) {
         framed: needFramed.length ? { asked: needFramed, added: framedAdded } : null },   // SEAM:EXC_HARVEST; SEAM:EXC_COMPETE: the rails asked again here
       model: { lane: compiled.lane, model: compiled.model, reason: compiled.reason, cached: false }, compiled_at: new Date().toISOString() };
     data.score = excReadScore(data, merged, frame0, data.timing);   // SEAM:EXC_SCORE
+    if (fit && fit.sig) data.frame_sig = fit.sig;   // SEAM:FRAME_FIT (NT3d): the read keeps the line of the frame it was compiled on
     console.log('exc_read', JSON.stringify({ q: query.slice(0, 60), ev: merged.length, aside: gate.dropped.length, lane: compiled.lane, passes: passes.length, score: data.score.score, ms: data.timing, harvest: data.harvest }));
     if (body._uid && !body.bench && frame0) logEvent(env, 'intelligence', 'excavate', 'read_frame', body._uid, { entity: frame0.entity || null, category: frame0.category || null, audience: frame0.audience || null, market: frame0.market || null, q: query.slice(0, 80) });   // SEAM:CLIENT_FRAME: the reader's own reads teach their frame
     if (env.RATE_LIMIT && compiled.lane === 'live') {
@@ -8362,6 +8374,58 @@ async function lakeCapture(env, items, prov) {
     method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' }, body: rows }) || [];
   return back.length;
 }
+/* ═══ SEAM:SEARCH_LEDGER (RD1e THE SEARCHES): every question a reader asks the engine is kept for READ: when, who, how deep, how it was
+ * answered (compiled, served again from the day's read, or refused by the meter) and the read it returned (searches, 0065). The read is the
+ * ledger's own row (SEAM:READ_LEDGER), which now keeps who asked it; opening a search in READ shows that row as it was compiled. Nothing
+ * runs again: no model, no gather, no spend. A search that cannot be kept never stops the read. Admin only, behind readRoute's gate. ═══ */
+const SEARCHES = { PAGE: 50, MAX_PAGE: 200, STATUS: ['compiled', 'partial', 'cached', 'refused'], ASKED: 100 };
+function searchRow(row) {   // PURE: one search as it is kept
+  const cost = row && row.cost_usd != null && row.cost_usd !== '' && Number.isFinite(Number(row.cost_usd)) ? Number(row.cost_usd) : null;
+  return { user_id: row && /^[0-9a-f-]{36}$/.test(String(row.user_id || '')) ? row.user_id : null, query: String((row && row.query) || '').slice(0, 200),
+    depth: row && row.depth === 'quick' ? 'quick' : row && row.depth === 'full' ? 'full' : null, mode: row && row.mode ? String(row.mode).slice(0, 40) : null,
+    status: row && SEARCHES.STATUS.includes(row.status) ? row.status : 'compiled', read_id: row && /^[0-9a-f-]{36}$/.test(String(row.read_id || '')) ? row.read_id : null,
+    cost_usd: cost, meta: (row && row.meta && typeof row.meta === 'object') ? row.meta : {} };
+}
+async function searchLog(env, row) {
+  if (!row || !String(row.query || '').trim()) return false;
+  return sbRest(env, 'searches', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: searchRow(row) }).then(() => true).catch(excQuiet('search_log', false));
+}
+function searchesFilter(b) {   // PURE: the room's filter as the table's own: before a time, a word in the question, how it was answered
+  const out = [], x = b || {};
+  const before = String(x.before || '');
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(before)) out.push('at=lt.' + encodeURIComponent(before));
+  const q = String(x.q || '').replace(/[^\p{L}\p{N} '&.-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (q.length >= 2) out.push('query=ilike.' + encodeURIComponent('*' + q + '*'));
+  if (SEARCHES.STATUS.includes(String(x.status || ''))) out.push('status=eq.' + x.status);
+  return out;
+}
+async function searchesList(env, b) {
+  const x = b || {}, n = Math.min(SEARCHES.MAX_PAGE, Math.max(1, parseInt(x.limit, 10) || SEARCHES.PAGE)), f = searchesFilter(x);
+  if (String(x.who || '').trim()) { const u = await planUser(env, x.who); if (!u) return { ok: true, searches: [], more: false, who: null }; f.push('user_id=eq.' + u.id); }
+  const rows = await sbRest(env, 'searches?select=id,at,user_id,query,depth,mode,status,read_id,cost_usd&order=at.desc&limit=' + (n + 1) + (f.length ? '&' + f.join('&') : '')).catch(excQuiet('searches_rows', null));
+  if (!Array.isArray(rows)) return { ok: false, error: 'not_ready', say: 'Has 0065_searches.sql run in Supabase?' };
+  const page = rows.slice(0, n), uids = [...new Set(page.map(r => r.user_id).filter(Boolean))], rids = [...new Set(page.map(r => r.read_id).filter(Boolean))];
+  const users = uids.length ? ((await sbRest(env, 'app_user?id=in.(' + uids.join(',') + ')&select=id,email,name,company').catch(excQuiet('searches_users', []))) || []) : [];
+  const reads = rids.length ? ((await sbRest(env, 'reads?id=in.(' + rids.join(',') + ')&select=id,read,evidence_n').catch(excQuiet('searches_reads', []))) || []) : [];
+  const U = new Map(users.map(u => [u.id, u])), R = new Map(reads.map(r => [r.id, r]));
+  return { ok: true, more: rows.length > n, searches: page.map(s => { const u = U.get(s.user_id), r = R.get(s.read_id);
+    return Object.assign({}, s, { who: u ? { email: u.email, name: u.name || null, company: u.company || null } : null, claim: r && Array.isArray(r.read) ? (r.read[0] || null) : null, evidence_n: r ? r.evidence_n : null }); }) };
+}
+async function searchesRead(env, b) {
+  const id = String((b && b.id) || '');
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, error: 'bad_id' };
+  const row = ((await sbRest(env, 'reads?id=eq.' + id + '&select=*').catch(excQuiet('searches_read', []))) || [])[0];
+  if (!row) return { ok: false, error: 'not_found' };
+  const asked = (await sbRest(env, 'searches?read_id=eq.' + id + '&select=at,user_id,depth,status&order=at.asc&limit=' + SEARCHES.ASKED).catch(excQuiet('searches_asked', []))) || [];
+  const uids = [...new Set(asked.map(a => a.user_id).concat([row.user_id]).filter(Boolean))];
+  const users = uids.length ? ((await sbRest(env, 'app_user?id=in.(' + uids.join(',') + ')&select=id,email').catch(excQuiet('searches_read_users', []))) || []) : [];
+  const U = new Map(users.map(u => [u.id, u.email]));
+  return { ok: true, read: row, who: U.get(row.user_id) || null, asked: asked.map(a => Object.assign({}, a, { who: U.get(a.user_id) || null })) };
+}
+async function searchesRoute(path, body, env, origin) {
+  return json(path === '/reads/search' ? await searchesRead(env, body || {}) : await searchesList(env, body || {}), 200, origin, env);
+}
+/* ═══ end SEAM:SEARCH_LEDGER ═══ */
 async function ledgerWrite(env, row) {
   try { const back = await sbRest(env, 'reads?select=id', { method: 'POST', headers: { Prefer: 'return=representation' }, body: [row] }) || []; return back[0] ? back[0].id : null; }
   catch (e) { return null; }
@@ -8536,7 +8600,7 @@ async function deskRunGuarded(request, env, origin) {
     role = r.role; who = r.email || (user && user.id) || null; allowed = role === 'admin' || (role === 'editor' && DESK_ROLES.EDITOR_RUNS.includes(which)); }
   if (!allowed) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
   logEvent(env, 'intelligence', 'desk', 'desk_run', null, { run: which, who: who ? String(who).slice(0, 80) : null, role });
-  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'spaces_seed' ? await spacesSeed(env, body) : which === 'spaces' ? await spacesDesk(env) : which === 'assets_play' ? await playAssetsBackfill(env, { steps: parseInt(body.steps, 10) || undefined, again: !!body.again }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'pull' ? await lakePullDesk(env, body) : which === 'round' ? await lakeRoundPreview(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
+  const out = which === 'themes' ? await themePass(env, 8, THEME.BATCH) : which === 'door' ? await doorPass(env, { force: true }) : which === 'door_publish' ? await doorPublish(env) : which === 'called' ? await doorCalled(env) : which === 'record' ? await doorRecord(env) : which === 'backup' ? await backupNightly(env) : which === 'watch' ? await watchTick(env) : which === 'push' ? await pushNightly(env) : which === 'currents' ? await crossCurrentsPass(env) : which === 'health' ? await watchHealth(env) : which === 'access' ? await accessDesk(env, body) : which === 'knocks' ? await accessKnocks(env) : which === 'takeaway_test' ? await takeawayTest(env, body) : which === 'partner' || which === 'partner_deliver' || which === 'partner_schedule' || which === 'partner_hours' ? await partnerDesk(env, body) : which === 'plan' ? await planDesk(env, body) : which === 'seat' ? await seatDesk(env, body) : which === 'credits' ? await creditsDesk(env, body) : which === 'plans' ? await plansDesk(env, body) : which === 'checkout' ? await checkoutDesk(env, body) : which === 'seats' ? await seatsDesk(env, body) : which === 'asks' ? await asksDesk(env, body) : which === 'ask_reply' ? await askReplyDesk(env, body, who) : which === 'popout' ? await popoutPass(env, { force: !!body.force, max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'spaces_seed' ? await spacesSeed(env, body) : which === 'spaces' ? await spacesDesk(env) : which === 'assets_play' ? await playAssetsBackfill(env, { steps: parseInt(body.steps, 10) || undefined, again: !!body.again }) : which === 'claims' ? await claimsMigratePass(env, { steps: parseInt(body.steps, 10) || undefined }) : which === 'resolve' ? await entityResolvePass(env, { steps: parseInt(body.steps, 10) || undefined, seed: !!body.seed }) : which === 'entities' ? await entitySeed(env) : which === 'describe' ? await imageDescribePass(env, { max: Math.min(40, parseInt(body.max, 10) || 0) || undefined }) : which === 'intake' ? await intakeDesk(env) : which === 'pull' ? await lakePullDesk(env, body) : which === 'round' ? await lakeRoundPreview(env) : which === 'sweep' ? await boardSweep(env) : which === 'voices' ? await doorVoicesPass(env) : which === 'memory' ? await memoryDaily(env, { budgetMs: 60000 }) : which === 'windows' ? await memoryWindows(env) : which === 'edition' ? await deskEdition(env) : which === 'hub' ? { feed: !!(await feedWarm(env)), tracks: await tracksRefresh(env), audiences: await audiencesRefresh(env), attention: await backfillAttention(env) } : await deskScore(env);
   return json({ ok: true, run: which, out }, 200, origin, env);
 }
 
@@ -11338,9 +11402,218 @@ async function excavateMethodRoute(request, env, origin) {
   return json(Object.assign({ ok: true }, out), 200, origin, env);
 }
 async function excavateStateRoute(env, origin) { return json(Object.assign({ ok: true }, await excavateState(env)), 200, origin, env); }
+/* ═══ SEAM:HOUSE_STYLE (NT3c THE HOUSE STYLE): the moves are for members. A visitor reads the top of every reading (the claim, its
+ * copy, the bet) and never its move: the record, its cross-currents, the feed's door set and one insight answer without the move, and a
+ * reading's permalink page and embed card carry the claim, the copy and the date. A signed-in reader takes the moves from GET
+ * /excavate/moves, below the sign-in line and ahead of the meter, so it never spends: the record's and the door set's by reading id, the
+ * cross-currents' by title, from the same cached sets the public routes read. A seat's spaces list carries each space's latest reading.
+ * No model. ═══ */
+function withoutMoves(set) {   // PURE: a copy of a record or door set with no move anywhere in it
+  if (!set || typeof set !== 'object') return set;
+  const out = Object.assign({}, set);
+  if (Array.isArray(set.tiles)) out.tiles = set.tiles.map(t => { if (!t || typeof t !== 'object') return t; const c = Object.assign({}, t); delete c.move; return c; });
+  if (set.currents && Array.isArray(set.currents.currents)) out.currents = Object.assign({}, set.currents, { currents: set.currents.currents.map(c => { if (!c || typeof c !== 'object') return c; const x = Object.assign({}, c); delete x.move; return x; }) });
+  return out;
+}
+function movesOf(rec, door) {   // PURE: the moves a signed-in page needs, by reading id and by current title
+  const moves = {}, currents = {};
+  for (const s of [rec, door]) for (const t of ((s && s.tiles) || [])) if (t && t.id && t.move) moves[t.id] = t.move;
+  for (const c of ((rec && rec.currents && rec.currents.currents) || [])) if (c && c.title && c.move) currents[c.title] = c.move;
+  return { moves, currents };
+}
+async function movesRoute(env, origin) {
+  const rec = await doorRecord(env).catch(excQuiet('moves_record', null));
+  const door = await doorSet(env).catch(excQuiet('moves_door', null));
+  return json(Object.assign({ ok: true }, movesOf(rec, door)), 200, origin, env);
+}
+/* ═══ end SEAM:HOUSE_STYLE ═══ */
+/* ═══ SEAM:FRAME_FIT (NT3d THE FRAME): the page fits to the reader's frame (SEAM:CLIENT_FRAME: the brands they watch, theirs and their
+ * competitors'; the categories and audiences they follow; their industries, markets and words). GET /excavate/yours (signed in, below
+ * the sign-in line and ahead of the meter, so it never spends): which of the record's and the morning's readings are on the reader's
+ * frame and why, by the push's own matching (pushMatches), with the brands and markets a live read can start from. A read whose frame
+ * differs from the framer's own for its query (the reader changed it, or took what their frame offers) is kept under its own key, so a
+ * read fitted to one reader is never served to another as the plain one. No model. ═══ */
+const FRAME_FIT = { FIELDS: ['entity', 'category', 'audience', 'market', 'period', 'task', 'question'], KINDS: ['tracked_brands', 'follows', 'industries', 'audiences', 'keywords', 'markets'],
+  PLAIN_MARKET: /^(?:us|usa|u\.s\.?|u\.s\.a\.?|united states|america)$/i };   // the framer sets US when a reading names no market
+function frameHas(p) { return !!p && FRAME_FIT.KINDS.some(k => Array.isArray(p[k]) && p[k].length > 0); }   // PURE
+function frameMatches(prof, sets) {   // PURE: each reading on the reader's frame, by id, and why. On the page US marks nothing: the framer sets it on any reading that names no market
+  const out = {}; if (!frameHas(prof)) return out;
+  const p = Object.assign({}, prof, { markets: (prof.markets || []).filter(m => !FRAME_FIT.PLAIN_MARKET.test(String(m || '').trim())) });
+  for (const s of (sets || [])) for (const t of ((s && s.tiles) || [])) { if (!t || !t.id || out[t.id]) continue; const why = pushMatches(t, p); if (why) out[t.id] = why; }
+  return out;
+}
+async function yoursRoute(env, origin, user) {
+  const rows = (await sbRest(env, 'client_profile?user_id=eq.' + user.id + '&select=' + FRAME_FIT.KINDS.join(',')).catch(excQuiet('yours_profile', []))) || [];
+  const prof = typeof partnerFrameOf === 'function' ? await partnerFrameOf(env, user.id, rows[0] || null) : (rows[0] || null);   // SEAM:PARTNER (EX51): the company's intake joins the reader's frame
+  if (!frameHas(prof)) return json({ ok: true, has_frame: false, matches: {}, frame: { tracked_brands: [], markets: [] } }, 200, origin, env);
+  const rec = await doorRecord(env).catch(excQuiet('yours_record', null));
+  const door = await doorSet(env).catch(excQuiet('yours_door', null));
+  return json({ ok: true, has_frame: true, matches: frameMatches(prof, [rec, door]), frame: { tracked_brands: prof.tracked_brands || [], markets: prof.markets || [] } }, 200, origin, env);
+}
+function frameFitSig(f) {   // PURE: the fields the writer is given (the frame block's own), as one line; case, spacing and the order of a list do not count
+  if (!f || typeof f !== 'object') return '';
+  const lc = v => String(v == null ? '' : v).toLowerCase().replace(/\s+/g, ' ').trim(), list = v => (Array.isArray(v) ? v.map(lc).filter(Boolean).sort().join(',') : '');
+  return FRAME_FIT.FIELDS.map(k => lc(f[k])).join('|') + '|' + list(f.competitors) + '|' + list(f.threads);
+}
+async function frameFit(env, query, sent) {   // the read's key ('' for the framer's own frame: the key it always had) and the frame it is compiled on
+  const none = { key: '', sig: '' }, qn = String(query || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200); if (!qn) return none;
+  let base = null;
+  try { const hit = env.RATE_LIMIT ? await env.RATE_LIMIT.get('xfr:' + EXC_FRAME.REV + ':' + (await sha256hex(qn))) : null; const j = hit ? JSON.parse(hit) : null; base = j && !j._miss ? excFrameClean(j) : null; }
+  catch (e) { base = excQuiet('fit_base', null)(e); }
+  const used = (sent && typeof sent === 'object' ? excFrameWhole(sent) : null) || base;   // the frame the read runs on, as synthesize takes it
+  if (!used) return none;
+  const line = frameFitSig(used);
+  return { key: base && frameFitSig(base) === line ? '' : 'f:' + (await sha256hex(line)).slice(0, 16), sig: (await sha256hex('fit|' + line)).slice(0, 24) };
+}
+/* ═══ end SEAM:FRAME_FIT ═══ */
+/* ═══ SEAM:TAKEAWAY_TEST (TK1 THE TAKEAWAY TEST): the takeaway line, tested before it is adopted. Fresco, Nov 3: Basic reads as expert
+ * thinking digested just beneath the surface, and its third line is a takeaway, tested first. The desk takes the newest readings on the
+ * record and writes each again on its own kept evidence with one field more: "takeaway", what the reading means for the professional it
+ * serves, never the move. Nothing is written to the record, and the writer the night pass uses is unchanged (no hashed slice moves, so
+ * no bench): the law rides this run only, appended to the night's own system and spliced into the reading's own schema. The readings are
+ * written at once and returned beside what was published, for the house to judge. Admin or the desk key: {run:"takeaway_test", n} ═══ */
+const TAKEAWAY_TEST = { MAX: 8, DEFAULT: 6, MAX_TOKENS: 16000, TIMEOUT_MS: 150000, ANCHOR: '"question":"the question this read answers',
+  LAW: 'TAKEAWAY LAW: "takeaway" is one sentence of 14 to 28 words for the professional this read serves: what the finding means for their business, said by an expert who has done the thinking and hands over the conclusion that sits just beneath the headline. It names the implication the headline and the dek leave unsaid: what it changes, for whom, and why now. It never restates the headline and never repeats the dek figure. It is never a move: no instruction, no imperative, no "should", "must" or "consider", no channel, product or campaign to build. Never the signal, the lake, the coverage or the house as its subject. No dash of any kind, no semicolon, no X-not-Y.',
+  FIELD: '"takeaway":"one sentence under the TAKEAWAY LAW: what this reading means for the professional it serves, the conclusion beneath the headline, never a move",' };
+// PURE: what the takeaway law can check in code
+function takeawayChecks(t, headline) {
+  const s = String(t || '').trim(), words = s ? s.split(/\s+/).length : 0;
+  return { present: !!s, words, length: words >= 14 && words <= 28, no_dash: !!s && !/[‒-―]|\s-\s|;/.test(s),
+    not_a_move: !!s && !/\b(should|must|consider)\b/i.test(s) && !/^(Sell|Lead|Build|Launch|Put|Stock|Price|Make|Use|Shift|Move|Stop|Start|Own|Bet|Turn|Give|Treat)\b/.test(s),
+    not_the_headline: !!s && s.toLowerCase() !== String(headline || '').trim().toLowerCase() };
+}
+async function takeawayTest(env, body) {
+  const n = Math.max(1, Math.min(TAKEAWAY_TEST.MAX, parseInt(body && body.n, 10) || TAKEAWAY_TEST.DEFAULT));
+  const rows = await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&select=id,frame_key,night,frame,measures,read,evidence&order=night.desc,id.desc&limit=' + n).catch(excQuiet('takeaway_rows', null));
+  if (!Array.isArray(rows)) return { ok: false, error: 'read_failed' };
+  const system = EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW + ' ' + TAKEAWAY_TEST.LAW;   // the night pass's own system, plus the law
+  const one = async r => {
+    const ev = Array.isArray(r.evidence) ? r.evidence : [], rd = r.read || {};
+    const was = { headline: (rd.read && rd.read[0]) || null, dek: (rd.read && rd.read[1]) || null, bet: (rd.watch && rd.watch.claim) || null, move: (rd.ideas && rd.ideas[0] && rd.ideas[0].headline) || null };
+    const subject = (r.frame && (r.frame.entity || r.frame.title || r.frame.category)) || r.frame_key;
+    if (!ev.length || !r.frame) return { id: r.id, night: r.night, subject, was, skipped: 'no_evidence' };
+    const now = Date.now(), base = excDoorPrompt(r.frame, ev.map((c, i) => excLine(c, i, now)).join('\n'), r.measures || {}, '', r.night);
+    if (base.indexOf(TAKEAWAY_TEST.ANCHOR) < 0) return { id: r.id, night: r.night, subject, was, error: 'schema_moved' };
+    const res = await callClaude(env, 'live', { system, prompt: base.replace(TAKEAWAY_TEST.ANCHOR, TAKEAWAY_TEST.FIELD + TAKEAWAY_TEST.ANCHOR), max_tokens: TAKEAWAY_TEST.MAX_TOKENS, kind: 'takeaway_test', timeout_ms: TAKEAWAY_TEST.TIMEOUT_MS, meta: { reading: r.id } });
+    if (!res.ok) return { id: r.id, night: r.night, subject, was, error: res.error || 'claude_failed' };
+    const j = extractJson(res.text || '') || {}, rl = Array.isArray(j.read) ? j.read : [];
+    const now2 = { headline: rl[0] || null, dek: rl[1] || null, takeaway: typeof j.takeaway === 'string' ? j.takeaway.trim() : null, bet: (j.watch && j.watch.claim) || null, move: (j.ideas && j.ideas[0] && j.ideas[0].headline) || null };
+    return { id: r.id, night: r.night, subject, was, now: now2, checks: takeawayChecks(now2.takeaway, now2.headline), usd: res.cost_usd || 0 };
+  };
+  const readings = await Promise.all(rows.map(one));
+  const usd = +readings.reduce((a, x) => a + (x.usd || 0), 0).toFixed(4), written = readings.filter(x => x.now).length;
+  logEvent(env, 'intelligence', 'desk', 'takeaway_test', null, { n: rows.length, written, usd });
+  return { ok: true, n: readings.length, written, usd, readings };
+}
+/* ═══ end SEAM:TAKEAWAY_TEST ═══ */
+/* ═══ SEAM:PARTNER (EX51 THE PARTNER): a Partner or Retainer company's own page. The company's intake (its brand, its competitive set,
+ * its markets, audiences and channels, and the standing questions it wants answered) is kept on the group (partner_intake, 0064) and set
+ * by the group's owner; it joins each member's frame (SEAM:FRAME_FIT), so the page marks what is theirs and a live read offers their set.
+ * What the house delivers (a read, a RECON, a report, a brief, a session's notes) lands on the company's page with its link; the desk
+ * keeps the schedule of what comes next and the office hours, shown against what the plan includes (Partner about four hours a month,
+ * Retainer twenty: the membership plan). GET /partner and POST /partner/intake are signed in, below the sign-in line and ahead of the
+ * meter: they never spend. The desk (admin or desk key, never an editor): {run:"partner"}, {run:"partner_deliver"},
+ * {run:"partner_schedule"}, {run:"partner_hours"}. No model. ═══ */
+const PARTNER = { PLANS: ['partner', 'retainer'], HOURS_MIN: { partner: 240, retainer: 1200 }, DELIVER_KINDS: ['read', 'recon', 'report', 'brief', 'session'],
+  SCHEDULE_KINDS: ['read', 'recon', 'report', 'session'], STATUS: ['planned', 'done', 'moved', 'cancelled'], HOUR_KINDS: ['session', 'office_hours'],
+  LISTS: { competitors: 8, markets: 6, audiences: 8, channels: 8 }, QUESTIONS: 6, Q_MIN: 8, Q_LEN: 240, NOTES: 1000, DELIVERED: 12, AHEAD: 6, BACK_DAYS: 7, FRAME_BRANDS: 20 };
+function partnerList(xs, max) {   // PURE: a short list of names, trimmed, deduplicated without regard to case, capped
+  const seen = new Set(), out = [];
+  for (const x0 of (Array.isArray(xs) ? xs : String(xs == null ? '' : xs).split(','))) {
+    const x = String(x0 == null ? '' : x0).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (x.length < 2 || seen.has(x.toLowerCase())) continue;
+    seen.add(x.toLowerCase()); out.push(x); if (out.length >= max) break;
+  }
+  return out;
+}
+function partnerIntakeClean(b) {   // PURE: the intake as the owner sent it, cleaned
+  const s = (v, n) => String(v == null ? '' : v).replace(/[<>"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const out = { brand: s(b && b.brand, 80) || null, notes: s(b && b.notes, PARTNER.NOTES) || null };
+  for (const k of Object.keys(PARTNER.LISTS)) out[k] = partnerList(b && b[k], PARTNER.LISTS[k]);
+  out.questions = (Array.isArray(b && b.questions) ? b.questions : String((b && b.questions) || '').split('\n')).map(q => s(q, PARTNER.Q_LEN)).filter(q => q.length >= PARTNER.Q_MIN).slice(0, PARTNER.QUESTIONS);
+  return out;
+}
+function partnerFrameJoin(prof, it) {   // PURE: the reader's frame with the company's intake joined: its brand and set watched, its markets and audiences theirs
+  if (!it) return prof;
+  const p = prof || {}, out = Object.assign({}, p);
+  out.tracked_brands = partnerList([].concat(p.tracked_brands || [], it.brand ? [it.brand] : [], it.competitors || []), PARTNER.FRAME_BRANDS);
+  out.markets = partnerList([].concat(p.markets || [], it.markets || []), PARTNER.LISTS.markets + 2);
+  out.audiences = partnerList([].concat(p.audiences || [], it.audiences || []), PARTNER.LISTS.audiences + 4);
+  return out;
+}
+async function partnerOf(env, uid) {   // the reader's company when it holds a Partner or Retainer plan, else null
+  const seat = ((await sbRest(env, 'group_seats?user_id=eq.' + uid + '&select=role,group_id').catch(excQuiet('partner_seat', []))) || [])[0];
+  if (!seat) return null;
+  const g = ((await sbRest(env, 'member_groups?id=eq.' + seat.group_id + '&select=id,name,plan,seats,status,owner_id').catch(excQuiet('partner_group', []))) || [])[0];
+  return g && PARTNER.PLANS.includes(g.plan) ? { group: g, owner: seat.role === 'owner' || g.owner_id === uid } : null;
+}
+async function partnerFrameOf(env, uid, prof) {
+  const p = await partnerOf(env, uid); if (!p) return prof;
+  const it = ((await sbRest(env, 'partner_intake?group_id=eq.' + p.group.id + '&select=brand,competitors,markets,audiences').catch(excQuiet('partner_frame', []))) || [])[0];
+  return partnerFrameJoin(prof, it || null);
+}
+async function partnerHome(env, g) {
+  const back = new Date(Date.now() - PARTNER.BACK_DAYS * 86400000).toISOString().slice(0, 10), period = planPeriod();
+  const [intake, delivered, ahead, hours] = await Promise.all([
+    sbRest(env, 'partner_intake?group_id=eq.' + g.id + '&select=brand,competitors,markets,audiences,channels,questions,notes,updated_at').catch(excQuiet('partner_intake', [])),
+    sbRest(env, 'partner_deliveries?group_id=eq.' + g.id + '&select=id,kind,title,summary,url,delivered_at&order=delivered_at.desc&limit=' + PARTNER.DELIVERED).catch(excQuiet('partner_delivered', [])),
+    sbRest(env, 'partner_schedule?group_id=eq.' + g.id + '&status=eq.planned&due=gte.' + back + '&select=id,kind,title,due,note&order=due.asc&limit=' + PARTNER.AHEAD).catch(excQuiet('partner_ahead', [])),
+    sbRest(env, 'partner_hours?group_id=eq.' + g.id + '&on_date=gte.' + period + '&select=minutes,kind,on_date').catch(excQuiet('partner_hours', []))]);
+  const used = (hours || []).reduce((a, h) => a + (Number(h && h.minutes) || 0), 0);
+  return { partner: { name: g.name, plan: g.plan, seats: g.seats }, intake: (intake || [])[0] || null, delivered: delivered || [], ahead: ahead || [],
+    hours: { used_min: used, included_min: PARTNER.HOURS_MIN[g.plan] || 0, period } };
+}
+async function partnerRoute(env, origin, user) {
+  const p = await partnerOf(env, user.id);
+  if (!p) return json({ ok: true, partner: null }, 200, origin, env);
+  return json(Object.assign({ ok: true, role: p.owner ? 'owner' : 'member' }, await partnerHome(env, p.group)), 200, origin, env);
+}
+async function partnerIntakeRoute(request, env, origin, user) {
+  const p = await partnerOf(env, user.id);
+  if (!p) return json({ ok: false, error: 'not_partner' }, 403, origin, env);
+  if (!p.owner) return json({ ok: false, error: 'owner_only', say: 'Your team’s owner sets the intake.' }, 403, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  const row = Object.assign({ group_id: p.group.id, updated_at: new Date().toISOString(), updated_by: user.id }, partnerIntakeClean(body));
+  const saved = await sbRest(env, 'partner_intake?on_conflict=group_id', { method: 'POST', headers: { Prefer: 'return=minimal,resolution=merge-duplicates' }, body: row }).then(() => true).catch(excQuiet('partner_intake_put', false));
+  if (!saved) return json({ ok: false, error: 'not_saved', say: 'It did not save. Try again in a moment.' }, 200, origin, env);
+  return json(Object.assign({ ok: true, role: 'owner' }, await partnerHome(env, p.group)), 200, origin, env);
+}
+async function partnerDesk(env, body) {   // {run:"partner"|"partner_deliver"|"partner_schedule"|"partner_hours", email, ...}
+  const which = String(body.run || 'partner');
+  const u = await planUser(env, body.email), p = u ? await partnerOf(env, u.id) : null, g = p ? p.group : null;
+  if (!g) return { ok: false, error: 'not_partner', say: 'name the email of anyone on a Partner or Retainer team: {run:"' + which + '", email:"..."}' };
+  const s = (v, n) => String(v == null ? '' : v).replace(/[<>`]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const put = (table, method, row, label) => sbRest(env, table, { method, headers: { Prefer: 'return=minimal' }, body: row }).then(() => true).catch(excQuiet(label, false));
+  const after = async okw => (okw ? Object.assign({ ok: true }, await partnerHome(env, g)) : { ok: false, error: 'not_saved' });
+  if (which === 'partner_deliver') {
+    const kind = String(body.kind || ''), title = s(body.title, 160), url = String(body.url || '').trim();
+    if (!PARTNER.DELIVER_KINDS.includes(kind) || title.length < 4) return { ok: false, error: 'bad_delivery', say: '{run:"partner_deliver", email, kind, title, summary, url}: kind is ' + PARTNER.DELIVER_KINDS.join(', ') + '; url is https and optional' };
+    if (url && !/^https:\/\/[^\s<>"'`]{4,600}$/.test(url)) return { ok: false, error: 'bad_url', say: 'the url is https only' };
+    return after(await put('partner_deliveries', 'POST', { group_id: g.id, kind, title, summary: s(body.summary, 600) || null, url: url || null, created_by: 'desk' }, 'partner_deliver'));
+  }
+  if (which === 'partner_schedule') {
+    if (body.id != null) {   // one entry's status: done, moved or cancelled
+      if (!/^[0-9a-f-]{36}$/.test(String(body.id)) || !PARTNER.STATUS.includes(String(body.status || ''))) return { ok: false, error: 'bad_status', say: '{run:"partner_schedule", email, id, status}: status is ' + PARTNER.STATUS.join(', ') };
+      const n = await sbRest(env, 'partner_schedule?id=eq.' + body.id + '&group_id=eq.' + g.id, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { status: String(body.status) } }).then(r => (Array.isArray(r) ? r.length : 0)).catch(excQuiet('partner_schedule_patch', -1));
+      if (n === 0) return { ok: false, error: 'not_found', say: 'no entry with that id on this team\u2019s schedule' };   // a PATCH that matched nothing is not a change
+      return after(n > 0);
+    }
+    const kind = String(body.kind || ''), title = s(body.title, 160), due = String(body.due || '');
+    if (!PARTNER.SCHEDULE_KINDS.includes(kind) || title.length < 4 || !/^\d{4}-\d{2}-\d{2}$/.test(due)) return { ok: false, error: 'bad_schedule', say: '{run:"partner_schedule", email, kind, title, due:"YYYY-MM-DD"}: kind is ' + PARTNER.SCHEDULE_KINDS.join(', ') };
+    return after(await put('partner_schedule', 'POST', { group_id: g.id, kind, title, due, note: s(body.note, 300) || null }, 'partner_schedule_put'));
+  }
+  if (which === 'partner_hours') {
+    const minutes = parseInt(body.minutes, 10), kind = PARTNER.HOUR_KINDS.includes(String(body.kind || '')) ? String(body.kind) : 'office_hours';
+    const on = /^\d{4}-\d{2}-\d{2}$/.test(String(body.on || '')) ? String(body.on) : new Date().toISOString().slice(0, 10);
+    if (!(minutes > 0 && minutes <= 1440)) return { ok: false, error: 'bad_minutes', say: '{run:"partner_hours", email, minutes, kind:"session"|"office_hours", note, on:"YYYY-MM-DD"}: minutes 1 to 1440' };
+    return after(await put('partner_hours', 'POST', { group_id: g.id, minutes, kind, on_date: on, note: s(body.note, 300) || null, created_by: 'desk' }, 'partner_hours_put'));
+  }
+  return Object.assign({ ok: true, role: p.owner ? 'owner' : 'member' }, await partnerHome(env, g));
+}
+/* ═══ end SEAM:PARTNER ═══ */
 async function doorRecordRoute(request, env, origin) {
   const set = await doorRecord(env);
-  return json(Object.assign({ ok: true }, set), 200, origin, env);
+  return json(Object.assign({ ok: true }, withoutMoves(set)), 200, origin, env);   // SEAM:HOUSE_STYLE (NT3c): the moves are for members
 }
 /* SEAM:RECORD_ROUTE: one insight, public and light: the claim, the move, the question, the dates, the watch and its grade, the measures,
  * the place. Never the evidence lines (those open with the read, signed in). */
@@ -11356,7 +11629,8 @@ async function doorInsightRoute(request, env, origin) {
   const id = String(new URL(request.url).searchParams.get('id') || '').slice(0, 40);
   const t = await doorInsightPublic(env, id);
   if (!t) return json({ ok: false, error: 'not_found' }, 200, origin, env);
-  return json({ ok: true, insight: t, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND }, 200, origin, env);
+  const pub = Object.assign({}, t); delete pub.move;   // SEAM:HOUSE_STYLE (NT3c): one insight, public, without its move
+  return json({ ok: true, insight: pub, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND }, 200, origin, env);
 }
 /* SEAM:RECORD_ROUTE: the permalink. /i/<id> is a small page with share tags that opens the reading on the site; links must not rot. */
 async function insightSharePage(path, env, embed) {
@@ -11365,12 +11639,12 @@ async function insightSharePage(path, env, embed) {
   const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
   if (embed) {   // SEAM:EVIDENCE_PACK: the embeddable card, for an intranet or a deck; it links back to the reading
     const f = (t && t.frame) || {}, who = [f.entity || f.category, f.audience].filter(Boolean).map(esc).join(' \u00b7 ');
-    const card = t ? '<div class="k">EXCAVATE \u00b7 DEPLOYED ' + esc(t.deployed || '') + (t.called && t.called.verdict ? ' \u00b7 ' + esc(String(t.called.verdict).toUpperCase()) : '') + '</div><div class="k">' + who + '</div><h1>' + esc(t.claim || t.title || '') + '</h1>' + (t.move ? '<p><b>The move:</b> ' + esc(t.move) + '</p>' : '') + '<a href="' + esc(base + '/i/' + id) + '" target="_top">Open the reading</a>' : '<h1>EXCAVATE by Unsurfaced</h1>';
+    const card = t ? '<div class="k">EXCAVATE \u00b7 DEPLOYED ' + esc(t.deployed || '') + (t.called && t.called.verdict ? ' \u00b7 ' + esc(String(t.called.verdict).toUpperCase()) : '') + '</div><div class="k">' + who + '</div><h1>' + esc(t.claim || t.title || '') + '</h1>' + (t.dek ? '<p>' + esc(t.dek) + '</p>' : '') + '<a href="' + esc(base + '/i/' + id) + '" target="_top">Open the reading</a>' : '<h1>EXCAVATE by Unsurfaced</h1>';
     return new Response('<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font-family:system-ui;background:#0c0c0c;color:#eee;padding:18px 20px}.k{font-size:10px;letter-spacing:.1em;color:#999;margin-bottom:4px}h1{font-size:19px;line-height:1.25;margin:6px 0 10px}p{font-size:13px;color:#ccc;margin:0 0 10px}a{color:#fff;font-size:12px}</style></head><body>' + card + '</body></html>', { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
   }
   const dest = base + '/intelligence/?insight=' + encodeURIComponent(t ? t.id : id);
   const title = t ? esc(t.claim || t.title || 'An insight') + ' \u00b7 EXCAVATE by Unsurfaced' : 'EXCAVATE by Unsurfaced';
-  const desc = t ? esc([t.move ? 'The move: ' + t.move : '', 'Deployed ' + t.deployed + (t.called && t.called.verdict ? ', ' + t.called.verdict : '')].filter(Boolean).join(' \u00b7 ').slice(0, 200)) : 'The intelligence the engine deployed, dated and kept.';
+  const desc = t ? esc([t.dek || '', 'Deployed ' + t.deployed + (t.called && t.called.verdict ? ', ' + t.called.verdict : '')].filter(Boolean).join(' \u00b7 ').slice(0, 200)) : 'The intelligence the engine deployed, dated and kept.';
   const img = t && t.photo && t.photo.src ? esc(t.photo.src) : 'https://api.unsurfaced-intelligence.com/media/og/study-default.png';
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="article"><meta property="og:image" content="${img}"><meta property="og:url" content="${esc(base + '/i/' + id)}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${esc(dest)}"><link rel="canonical" href="${esc(dest)}"></head><body style="font-family:system-ui;background:#0b0b0b;color:#eee;padding:40px"><p>${title}</p><p>${desc}</p><p><a style="color:#fff" href="${esc(dest)}">Open the reading</a></p></body></html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
@@ -12573,7 +12847,7 @@ async function excavateFeed(env, origin) {
   const field = out.field ? Object.assign({}, out.field, { states }) : { read: '', states };
   const door = await doorSet(env);   // SEAM:EXC_DOOR v2: the overnight tiles ride the same door
   const extras = await doorExtras(env, out.proposed, door);   // SEAM:EXC_DOOR_VOICE: what people are saying (SEAM:DOOR_VOICES: the board's own subjects first), and the track record
-  return json({ ok: true, proposed: tiles, field, trending, generated_at: out.generated_at || null, cached: !!out, door: door && door.tiles && door.tiles.length ? door : null, voices: extras.voices, record: extras.record }, 200, origin, env);
+  return json({ ok: true, proposed: tiles, field, trending, generated_at: out.generated_at || null, cached: !!out, door: door && door.tiles && door.tiles.length ? withoutMoves(door) : null, voices: extras.voices, record: extras.record }, 200, origin, env);
 }
 
 /* ═══ SEAM:TRACKS — the house's tracked entities as computed cards. ═══
@@ -13517,13 +13791,31 @@ async function spaceReadFor(env, id, user) {
 /* GET /excavate/space (signed in): with no id or key, the reader's own spaces and the ones granted to them; with ?id=<space id> or
  * ?key=<key>, one space's state and its readings, newest first: the house's readings for anyone signed in, the private ones for its
  * holder, a grantee or an admin. Never who else holds it. No model; outside the daily allowance. */
+/* SEAM:HOUSE_STYLE (NT3c): a seat's spaces, each with its latest reading: from the record, else from its holders' own readings. A read that fails leaves none. */
+async function spaceLatest(env, rows) {
+  const ids = [...new Set((rows || []).map(s => s && s.last_read_id).filter(id => /^[0-9a-f-]{36}$/.test(String(id || ''))))].slice(0, SPACES.IDS);
+  const out = new Map(); if (!ids.length) return out;
+  const SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta';
+  const pub = (await sbRest(env, 'door_reads?id=in.(' + ids.join(',') + ')&status=in.(ready,reused)&' + SEL).catch(excQuiet('space_latest_pub', []))) || [];
+  const own = (await sbRest(env, 'space_reads?id=in.(' + ids.join(',') + ')&status=in.(ready,reused)&' + SEL).catch(excQuiet('space_latest_own', []))) || [];
+  for (const r of pub) if (r && r.id && r.read) out.set(r.id, Object.assign(doorTile(r), { private: false }));
+  for (const r of own) if (r && r.id && r.read && !out.has(r.id)) out.set(r.id, Object.assign(doorTile(r), { private: true }));
+  return out;
+}
+function spaceWithLatest(s, latest) {   // PURE: a space's public row and its latest reading, without the voices' pool
+  const p = spacePublicRow(s); if (!p) return p;
+  const t = latest && p.last_read_id ? latest.get(p.last_read_id) : null;
+  if (t) { const c = Object.assign({}, t); delete c.voices; p.latest = c; } else p.latest = null;
+  return p;
+}
 async function spaceRoute(request, env, origin, user) {
   const u = new URL(request.url), id = String(u.searchParams.get('id') || '').slice(0, 40), key = String(u.searchParams.get('key') || '').slice(0, 120);
   if (!id && !key) {
     const held = (await sbRest(env, 'spaces?held_by=eq.' + user.id + '&status=eq.active&select=' + SPACES.SEL + '&order=name.asc&limit=100').catch(excQuiet('space_mine', []))) || [];
     const g = (await sbRest(env, 'space_grants?user_id=eq.' + user.id + '&select=space_id&limit=100').catch(excQuiet('space_granted', []))) || [];
     const granted = g.length ? (await sbRest(env, 'spaces?id=in.(' + g.map(x => x.space_id).join(',') + ')&select=' + SPACES.SEL + '&limit=100').catch(excQuiet('space_granted_rows', []))) || [] : [];
-    return json({ ok: true, held: held.map(spacePublicRow), granted: granted.map(spacePublicRow) }, 200, origin, env);
+    const latest = await spaceLatest(env, held.concat(granted));   // SEAM:HOUSE_STYLE (NT3c): each space's latest reading, for the seat's own band
+    return json({ ok: true, held: held.map(s => spaceWithLatest(s, latest)), granted: granted.map(s => spaceWithLatest(s, latest)) }, 200, origin, env);
   }
   if (id && !/^[0-9a-f-]{36}$/.test(id)) return json({ ok: false, error: 'bad_id' }, 200, origin, env);
   const rows = (await sbRest(env, 'spaces?' + (id ? 'id=eq.' + id : 'key=eq.' + encodeURIComponent(key)) + '&select=' + SPACES.SEL + '&limit=50').catch(excQuiet('space_rows', []))) || [];
@@ -19721,6 +20013,7 @@ async function readRoute(path, body, env, origin, user) {
   if (/^\/reads\/night-(?:publish|promote|pull|order|apply|pass)$/.test(path)) return netPassRoute(path, body, env, origin, user);   // SEAM:NET_PASS (NT2): the morning pass, admin only
   if (path === '/reads/day-frames') return dayFramesRoute(body, env, origin, user);   // SEAM:DAY_FRAMES (RD1b)   // SEAM:HOUSE (RD1a): the house's own shelves, the assets and the nights
   if (path === '/reads/score' || path === '/reads/scorecard') return scoreRoute(path, body, env, origin, user);   // SEAM:SCORECARD (EX54)
+  if (path === '/reads/searches' || path === '/reads/search') return searchesRoute(path, body, env, origin);   // SEAM:SEARCH_LEDGER (RD1e): admin, no model, no spend
   if (/^\/reads\/corpus(?:-doc|-extract|-position|-register)?$/.test(path)) return corpusRoute(path, body, env, origin, user);   // SEAM:HOUSE_POSITIONS (VX2): the corpus, a document, a reading, a position, a register line
   if (/^\/reads\/slots?(?:-brief|-make|-final|-video|-take|-clip)?$/.test(path)) return slotRoute(path, body, env, origin, user);   // SEAM:READ_SLOTS (ED1); SEAM:VIDEO_DOOR (RD1c): the day's slots and the takes
   if (/^\/reads\/(?:lines|edit|revert)$/.test(path)) return readEditRoute(path, body, env, origin, user);   // SEAM:EDIT_DESK (ED2)

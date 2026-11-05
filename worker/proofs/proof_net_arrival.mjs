@@ -80,12 +80,13 @@ const seen = { live: [], gate: [], toasts: [], opened: [], rooms: [], nav: [], t
 let RS = null;
 const TERR = { territories: [{ territory: 'finance-fintech', name: 'Finance', state: 'rising' }, { territory: 'music', name: 'Music', state: 'steady' }, { territory: 'luxury', name: 'Luxury', state: 'quiet' }] };
 const N = new Function('API_BASE', 'fetch', '_authHeader', '_isAdmin', '_currentUser', 'safe', 'safeAttr', '_recDay', '_renderScrollRow', '_drawPulses', 'document', 'window', 'navTo', '_openRoom', '_rooms', '_uuid',
-  'showToast', 'openFeaturedCard', 'runSearch', '_TERR', '_terrName', '_terrOpen', '_FI_CACHE_KEY', '_checkAndRefreshFeatured', 'localStorage', '_FI_LAKE', '_FI_RECORD', '_renderScroll', '_leadBuilt', '_gateForDoor', '_profileOpen', 'setTimeout',
+  'showToast', 'openFeaturedCard', 'runSearch', '_TERR', '_terrName', '_terrOpen', '_FI_CACHE_KEY', '_checkAndRefreshFeatured', 'localStorage', '_FI_LAKE', '_FI_RECORD', '_renderScroll', '_leadBuilt', '_gateForDoor', '_profileOpen', 'setTimeout', '_hsCard', '_hsLine', '_hsMoveOpen',
   nb + '; return { _gal, _GAL, _whoLoad, _pulseWho, _pulseGate, _pulseShow, _galFeed, _galPick, _galRender, _galCal, _galLensRender, _galDayRender, _galDayLoad, _mineLoad, _mineRender, _mineMove, _galMorningAt, _galNoteHtml, _houseNoteShow, _galRoomOf, _galRoom, _galBoot, _galFresh, _mineOpen };')(
   'https://api.example', fakeFetch, async () => (TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}), async () => ADMIN, U, esc, esc, d => (d ? String(d).slice(5, 10) : ''),
   (t, s) => `<article class="row rec" data-row="${t.id}">${esc(t.claim)}</article>`, () => {}, document, {}, s => seen.nav.push(s), (id, a, by) => seen.rooms.push([id, by || 'id']), { list: [], at: 0 },
   id => (/^[0-9a-f-]{36}$/.test(String(id)) ? String(id) : ''), m => seen.toasts.push(m), id => seen.opened.push(id), () => RS && RS(), TERR, s => s, s => seen.terr.push(s), 'fi_key',
-  () => { seen.refresh++; }, { getItem: () => null }, null, null, () => {}, 'x', d => seen.gate.push(d), () => seen.opened.push('profile'), f => f());
+  () => { seen.refresh++; }, { getItem: () => null }, null, null, () => {}, 'x', d => seen.gate.push(d), () => seen.opened.push('profile'), f => f(),
+  (t, s) => `<article class="hs-card" data-card="${t.id}">${esc(t.claim)}</article>`, t => 'Deployed ' + esc(t.deployed || ''), id => seen.opened.push('move:' + id));
 const who = async (tok, plan, admin) => { TOKEN = tok; PLAN = plan; ADMIN = !!admin; N._gal.who = null; fetched.length = 0; const x = await N._whoLoad(); return Object.assign({ fetched: fetched.map(f => f.p) }, x); };
 const out = await who(null, null), seat = await who('t', { ok: true, plan: 'engine', status: 'active', sell: true }), member = await who('t', { ok: true, plan: 'member', group: null, sell: true });
 const house = await who('t', { ok: true, plan: 'member', group: null }, true), paused = await who('t', { ok: true, plan: 'partner', status: 'paused' }), unknown = await who('t', 'fail');
@@ -133,8 +134,8 @@ ok(g2.rail[0].id === I3 && g2.rows.map(t => t.id).join() === [I2, I1].join() && 
 N._galFeed(door);
 N._galRender(N._galPick(rec));
 const rowsHtml = el('gal-rows').innerHTML;
-ok(el('gal-block').style.display === '' && (rowsHtml.match(/class="row rec"/g) || []).length === 2 && rowsHtml.indexOf('data-row="' + I3) < rowsHtml.indexOf('data-row="' + I1) && /The room/.test(rowsHtml) && el('gal-sub').textContent === 'After the lead, the night\'s readings in the house\'s order.',
-  'B9 the morning: the record\'s own row for each, in order, with its room');
+ok(el('gal-block').style.display === '' && (rowsHtml.match(/class="hs-card"/g) || []).length === 2 && rowsHtml.indexOf('data-card="' + I3) < rowsHtml.indexOf('data-card="' + I1) && !/The room/.test(rowsHtml) && el('gal-sub').textContent === 'After the lead, the night\u2019s readings. Each opens its move.',
+  'B9 the morning (NT3c): a card for each, in order; the note and the room open with its move');
 const lead = N._galPick(rec).rail[0];
 ok(/From the house, 10-31/.test(N._galNoteHtml(lead.house_note)) && /Bulk is the week, not the shelf/.test(N._galNoteHtml(lead.house_note)) && N._galNoteHtml(null) === '' && N._galNoteHtml({ text: '  ' }) === '',
   'B10 the house\'s note: its text and its date, never who; nothing when there is none');
@@ -155,15 +156,15 @@ ok(/READ BY TERRITORY/.test(lens) && /_terrOpen\(&#39;finance-fintech&#39;\)|_te
   'B16 the lenses are the state\'s territories, however many it names (a new one shows), and the block types none');
 
 // a seat's spaces
-SPACES = { ok: true, held: [{ id: 's1', key: 'brand:acme', kind: 'brand', name: 'Acme', status: 'active', cadence: 'nightly', last_compiled_at: '2026-10-30', last_read_id: 'r9', movement: { recent_7d: 9, velocity_pct: 40 } },
+SPACES = { ok: true, held: [{ id: 's1', key: 'brand:acme', kind: 'brand', name: 'Acme', status: 'active', cadence: 'nightly', last_compiled_at: '2026-10-30', last_read_id: 'r9', latest: { id: 'r9', claim: 'Acme owns the aisle', deployed: '2026-10-30', measures: {}, frame: { entity: 'Acme' } }, movement: { recent_7d: 9, velocity_pct: 40 } },
   { id: 's2', key: 'cat:smart-glasses', kind: 'category', name: 'smart glasses', status: 'active', cadence: 'every_2', movement: { night: '2026-10-30', measured: false }, last_considered: '2026-10-30' },
   { id: 's3', key: 'brand:old', kind: 'brand', name: 'Old', status: 'dormant' }], granted: [{ id: 's4', key: 'brand:nike', kind: 'brand', name: 'Nike', status: 'active', cadence: 'weekly', movement: { recent_7d: 1, velocity_pct: -50 } }] };
 await who('t', { ok: true, plan: 'engine', status: 'active' }); await N._mineLoad();
 const mine = el('my-spaces').innerHTML;
-ok(el('my-spaces').style.display === '' && /YOUR SPACES/.test(mine) && (mine.match(/class="ms-row"/g) || []).length === 3 && /9 stories this week, up 40%/.test(mine) && /read 10-30, nightly/.test(mine) && /read by its names/.test(mine) && /every two nights/.test(mine) && /Shared with you/.test(mine) && /1 story this week, down 50%/.test(mine) && !/Old/.test(mine),
-  'B17 a seat\'s spaces under the box: each with its week, its last read and its cadence; a granted one says so; a dormant one is not shown');
+ok(el('my-spaces').style.display === '' && /YOUR SPACES/.test(mine) && (mine.match(/class="ms-card"/g) || []).length === 3 && /Acme owns the aisle/.test(mine) && /data-id="r9"/.test(mine) && /Its first reading comes on its next night\./.test(mine) && /Shared with you/.test(mine) && !/Old/.test(mine) && !/stories this week|nightly|every two nights/.test(mine) && N._gal.mineLatest.length === 1 && N._gal.mineLatest[0].id === 'r9',
+  'B17 a seat\'s spaces lead (NT3c): each with its latest reading, or when its first comes; a granted one says so; a dormant one is not shown; no figures, no cadence');
 seen.opened.length = 0; N._mineOpen('s1'); N._mineOpen('s2');
-ok(seen.opened[0] === 'r9' && /reads smart glasses on its next night/.test(seen.toasts[seen.toasts.length - 1]), 'B18 opening a space opens its latest reading, or says when the house reads it');
+ok(seen.opened[0] === 'move:r9' && /smart glasses is read on its next night/.test(seen.toasts[seen.toasts.length - 1]), 'B18 opening a space opens its latest reading\'s move, or says when it is read');
 await who(null, null); fetched.length = 0; await N._mineLoad();
 ok(el('my-spaces').style.display === 'none' && !fetched.some(f => f.p === '/excavate/space'), 'B19 signed out: no spaces asked for, none shown');
 
@@ -186,17 +187,17 @@ ok(at('2026-10-31T10:00:00Z') === '2026-10-30T12:00:00.000Z' && at('2026-10-31T1
 
 // ── C: the page's wiring ────────────────────────────────────────────────────────────────────────────────────────────
 const iBox = page.indexOf('id="search-input"'), iInv = page.indexOf('id="pulse-invite"'), iMine = page.indexOf('id="my-spaces"'), iWeek = page.indexOf('id="week-block"'), iGal = page.indexOf('id="gal-block"'), iRec = page.indexOf('id="board-block"');
-ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && iBox > 0 && iBox < iInv && iInv < iMine && iMine < iWeek && iWeek < iGal && iGal < iRec && /<div class="ask-sticky" id="ask-sticky"/.test(page),
-  'C1 the box keeps its place at the top, the ask still follows; under the box the pulse\'s door, then a seat\'s spaces, then the rail; the morning before the record');
+ok(/<section class="hero">\s*<div class="hero-left">/.test(page) && iInv > 0 && iInv < iBox && iBox < iMine && iMine < iWeek && iWeek < iGal && iGal < iRec && /<div class="ask-sticky" id="ask-sticky"/.test(page),
+  'C1 the box keeps its place at the top, the ask still follows; the pulse\'s door beside the ask (NT3c), then a seat\'s spaces, then the spread; the morning before the record');
 const rs = between(page, 'function runSearch(){', '//  LIVE SEARCH');
 ok(/if\(!q\) return;\n  if \(typeof _pulseGate === 'function' && _pulseGate\(\)\) return;/.test(rs) && /runLiveSearch\(q\);   \/\/ SEAM:ONE_RAIL/.test(rs), 'C2 the door sits at the top of runSearch; the one rail is unchanged behind it');
 const lr = between(page, 'function _leadRender(rec) {', 'function _leadCards() {');
 ok(/const g = typeof _galPick === 'function' \? _galPick\(rec\) : null;/.test(lr) && /const pick = g \? g\.rail : rec\.tiles\.filter/.test(lr) && /window\._leadIds = new Set\(pick\.map\(t => t\.id\)\); if \(g\) g\.rows\.forEach\(t => window\._leadIds\.add\(t\.id\)\);/.test(lr)
-  && /rail\.insertAdjacentHTML\(g \? 'afterbegin' : 'beforeend'/.test(lr) && /\$\{g \? 'The lead · ' : ''\}Deployed/.test(lr) && /if \(typeof _galRender === 'function'\) _galRender\(g\);/.test(lr),
+  && /rail\.insertAdjacentHTML\('afterbegin'/.test(lr) && /\$\{g \? 'The lead · ' : ''\}Deployed/.test(lr) && /if \(typeof _galRender === 'function'\) _galRender\(g\);/.test(lr),
   'C3 the rail leads with the set\'s lead ahead of the week\'s read; the record leaves out the rail and the morning; with no set the rail is EX36b\'s');
 const sr = between(page, 'function _renderScrollRow(t, seen) {', '/* SEAM:ASK_RECORD:');
-ok(crypto.createHash('sha256').update(sr).digest('hex').slice(0, 16) === '01e5fde3071b50e8', 'C4 the record\'s row shape is untouched: the morning draws its rows with it');
-ok(/const sc = _scoreLine\(rec\.scorecard\); const onMorning = sc && typeof _galCal === 'function' \? _galCal\(sc\) : false; if \(sc && !onMorning\)/.test(page), 'C5 the scorecard moves to the morning while a set is passed, the record\'s head otherwise');
+ok(crypto.createHash('sha256').update(sr).digest('hex').slice(0, 16) === '01e5fde3071b50e8', 'C4 the record\'s row shape is kept as EX33 made it; the arrival draws its own lighter rows and cards (NT3c)');
+ok(!/_scoreLine\(rec\.scorecard\)/.test(between(page, 'function _renderScroll(rec, data) {', 'function _renderLakeGrid(data) {')) && /counts\.innerHTML = ''; counts\.style\.display = 'none';/.test(page), 'C5 no score on the arrival (NT3c): the record\'s head prints none; every reading\'s bet carries its grade');
 ok(/if \(typeof _galFeed === 'function'\) _galFeed\(data && data\.door\);/.test(between(page, 'function _renderLakeGrid(data) {', '// ── Background refresh logic'))
   && /if \(typeof _galBoot === 'function'\) _galBoot\(\);/.test(between(page, 'function initFeaturedInsights() {', 'renderTrendingNow();'))
   && /if \(typeof _houseNoteShow === 'function'\) _houseNoteShow\(j\.data\.house_note \|\| null\);/.test(between(page, 'async function _openDoorRead(t) {', '/* SEAM:CLIENT_PROFILE'))
@@ -207,6 +208,6 @@ ok(!/Twenty areas/.test(page) && /<div class="sub" id="terr-sub">/.test(page) &&
 const gets = [...nb.matchAll(/_galApi\('([^']+)'\)/g)].map(m => m[1]);
 ok(gets.length && gets.every(p => ['/plan', '/excavate/space', '/excavate/day-frames', '/excavate/rooms'].includes(p)) && !/method:\s*'POST'|excavate\/(interpret|gather|synthesize)|\bapi\(/.test(nb) && !/[—–]/.test(nb),
   'C8 the block asks GET routes only (the plan, the spaces, the day\'s frames, the rooms), no model, no dash');
-ok(/<section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The morning">/.test(page) && /<div class="gal-rows" id="gal-rows"><\/div>/.test(page) && /<div class="gal-day" id="gal-day"/.test(page) && /<div class="gal-cal" id="gal-cal"/.test(page) && /<div class="gal-lenses" id="gal-lenses"/.test(page),
-  'C9 the morning\'s markup: its rows, the day\'s frames, how our calls held, the lenses');
+ok(/<section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The morning">/.test(page) && /<div class="gal-rows" id="gal-rows"><\/div>/.test(page) && !/id="gal-day"|id="gal-cal"/.test(page) && /<section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses"/.test(page),
+  'C9 the morning\'s markup is its cards (NT3c); the lenses stand under the record; no day\'s frames and no score on the arrival');
 console.log(`\nproof_net_arrival: ${pass} checks PASS`);
