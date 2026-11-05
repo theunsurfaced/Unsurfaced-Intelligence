@@ -208,6 +208,6 @@ ok(!/Twenty areas/.test(page) && /<div class="sub" id="terr-sub">/.test(page) &&
 const gets = [...nb.matchAll(/_galApi\('([^']+)'\)/g)].map(m => m[1]);
 ok(gets.length && gets.every(p => ['/plan', '/excavate/space', '/excavate/day-frames', '/excavate/rooms'].includes(p)) && !/method:\s*'POST'|excavate\/(interpret|gather|synthesize)|\bapi\(/.test(nb) && !/[—–]/.test(nb),
   'C8 the block asks GET routes only (the plan, the spaces, the day\'s frames, the rooms), no model, no dash');
-ok(/<section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The morning">/.test(page) && /<div class="gal-rows" id="gal-rows"><\/div>/.test(page) && !/id="gal-day"|id="gal-cal"/.test(page) && /<section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses"/.test(page),
+ok(/<section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The readings">/.test(page) && /<div class="gal-rows" id="gal-rows"><\/div>/.test(page) && !/id="gal-day"|id="gal-cal"/.test(page) && /<section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses"/.test(page),
   'C9 the morning\'s markup is its cards (NT3c); the lenses stand under the record; no day\'s frames and no score on the arrival');
 console.log(`\nproof_net_arrival: ${pass} checks PASS`);

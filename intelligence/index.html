@@ -2223,6 +2223,36 @@ body.hs-pop-open{overflow:hidden}
 .in-fit .intent-chip.fit:hover,.in-fit .intent-chip.fit:focus-visible{border-style:solid;border-color:var(--hs-pink,#E8365A)}
 @media (max-width:640px){.hs-yours{display:block;margin:4px 0 0;white-space:normal}}
 </style>
+<style id="clean-arrival">/* SEAM:CLEAN_ARRIVAL (NT3e): the arrival without its labels; every voice once, more of them; the territories and the sign-off close the page; the ask follows an admin as a thin bar */
+#sec-explore #gal-block>.room-head,#sec-explore #gal-sub,#sec-explore #hs-invite,#sec-explore #board-block>.room-head.rec-head,#sec-explore #rec-ask{display:none!important}
+#sec-explore .room-voices .track>.quote:nth-child(n+4){display:block}
+#sec-explore .room-voices .track>.quote.vx-more,#sec-explore .room-voices.vx-open .vx-acts{display:none}
+#sec-explore .room-voices.vx-open .track>.quote.vx-more{display:block}
+#sec-explore .room-voices .vx-acts{margin-top:20px}
+#sec-explore .room-voices .vx-acts button{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;background:none;border:1px solid var(--room-rule);color:var(--room-ivory);padding:10px 16px;cursor:pointer}
+#sec-explore .room-voices .vx-acts button:hover{border-color:var(--room-ivory)}
+#sec-explore #hs-terr{margin-top:8px}
+#ask-sticky.ask-sticky{position:fixed;left:0;right:0;top:60px;margin:0;padding:0;background:rgba(10,10,15,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid #222;z-index:var(--z-sticky)}
+body:not(.ask-follows) #ask-sticky.ask-sticky{display:none!important}
+#ask-sticky .as-form{width:min(1160px,calc(100% - 40px));margin:0 auto;display:flex;align-items:center;gap:16px;height:36px}
+#ask-sticky .as-k{flex:none;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--hs-pink);white-space:nowrap}
+#ask-sticky .as-box{flex:1;display:flex;min-width:0;height:100%;border-left:1px solid #2a2a2a}
+#ask-sticky input{flex:1;min-width:0;height:100%;background:transparent;border:0;border-radius:0;outline:none;color:var(--room-ivory);font-family:'Syne',sans-serif;font-weight:500;font-size:14px;padding:0 14px;caret-color:var(--room-red)}
+#ask-sticky input::placeholder{color:#8A8478}
+#ask-sticky input:focus{background:rgba(255,255,255,.03)}
+#ask-sticky button{flex:none;width:auto;display:block;height:100%;background:none;border:0;border-left:1px solid #2a2a2a;color:var(--room-ivory);font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;padding:0 0 0 14px;cursor:pointer}
+#ask-sticky button:hover{color:var(--hs-pink)}
+#sec-explore .ex-foot{border-top:1px solid var(--room-rule);margin-top:calc(24px*var(--k));padding:calc(88px*var(--k)) 0 calc(64px*var(--k));display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+#sec-explore .ex-foot .ex-hh{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(72px*var(--k));line-height:.95;color:var(--room-ivory)}
+#sec-explore .ex-foot .ex-hh i{font-style:normal;color:var(--room-red)}
+#sec-explore .ex-foot .ex-sign{display:flex;flex-direction:column;align-items:flex-end;gap:10px;padding-bottom:10px}
+#sec-explore .ex-foot .ex-by{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.16em;color:#8A8478}
+#sec-explore .ex-foot .ex-by b{font-weight:700;color:var(--room-ivory)}
+#sec-explore .ex-foot .ex-by img{height:14px;width:auto;display:block;filter:invert(1) brightness(2);opacity:.9}
+#sec-explore .ex-foot .ex-url{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;color:#8A8478;text-decoration:none}
+#sec-explore .ex-foot .ex-url:hover{color:var(--room-ivory)}
+@media (max-width:760px){#ask-sticky .as-form{height:40px;width:calc(100% - 32px)}#ask-sticky .as-k{display:none}#ask-sticky .as-box{border-left:0}#ask-sticky input{font-size:16px;padding:0 12px 0 0}#ask-sticky button{padding:0 0 0 12px}#sec-explore .ex-foot{display:block;padding:64px 0 48px}#sec-explore .ex-foot .ex-hh{font-size:44px}#sec-explore .ex-foot .ex-sign{align-items:flex-start;padding:22px 0 0}}
+</style>
 <style id="partner">
 /* SEAM:PARTNER (EX51 THE PARTNER): the company's band at the top of its page, and the owner's intake */
 .pt-band{margin:0 0 calc(28px*var(--k));border:1px solid var(--room-rule);background:var(--room-card);padding:calc(26px*var(--k)) calc(28px*var(--k))}
@@ -2836,14 +2866,14 @@ body.hs-pop-open{overflow:hidden}
 
 <!-- MAIN DASHBOARD -->
 <div class="main" id="main-dashboard">
-  <div class="ask-sticky" id="ask-sticky" style="display:none"><button type="button" onclick="_askFocus()"><span class="as-k">ASK</span><span id="ask-sticky-q">Ask culture a question</span><kbd>/</kbd></button></div><!-- SEAM:ASK_FOLLOWS (EX36a) -->
+  <div class="ask-sticky" id="ask-sticky" style="display:none"><form class="as-form" role="search" onsubmit="return _askFollowGo(event)"><span class="as-k">Ask culture a question.</span><span class="as-box"><input id="ask-sticky-q" maxlength="400" autocomplete="off" aria-label="Ask culture a question" placeholder="A brand, a category, the people, or the question itself"><button type="submit">Search</button></span></form></div><!-- SEAM:ASK_FOLLOWS (EX36a); SEAM:CLEAN_ARRIVAL (NT3e): thin, with its own box, for admins (and Ultra once the tiers land) -->
   <!-- SEAM:HUB_FLOW — the front page is one column in the outline's order:
        pulse (ticker above), headline, search, featured 4x2, trending 3x2, insight builder.
        The sidebar is retired. Every renderer that fed it still mounts here by id. -->
 
   <div class="fi-field-read" id="fi-field-read" style="display:none"></div>
 
-  <section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The morning"><!-- SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the passed set after its lead, in the house's order; the day's frames; how our calls held; the territories as lenses -->
+  <section class="hub-block room-sec gal" id="gal-block" style="display:none" aria-label="The readings"><!-- SEAM:NET_ARRIVAL (NT3 THE ARRIVAL): the passed set after its lead, in the house's order; the day's frames; how our calls held; the territories as lenses -->
     <div class="room-head"><h2 id="gal-h2">The morning</h2><div class="room-dateline" id="gal-date"></div></div>
     <p class="gal-sub" id="gal-sub"></p>
     <div class="gal-rows" id="gal-rows"></div>
@@ -2881,8 +2911,6 @@ body.hs-pop-open{overflow:hidden}
     <div id="trending-now-list" style="display:none"></div>
   </section>
 
-  <section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses" style="display:none"></div></section><!-- SEAM:HOUSE_STYLE (NT3c): the territories as lenses, under the record -->
-
   <section class="hub-block room-sec" id="terr-block" style="display:none"><!-- SEAM:TERRITORIES (EX39): the twenty, each with its state, movers, readings and declared sources -->
     <div class="room-head"><h2>The territories</h2><div class="sub" id="terr-sub">The areas of culture the house reads. The state is the change in coverage on last week; open one for its readings.</div></div>
     <div class="terr-grid" id="terr-grid"></div>
@@ -2891,7 +2919,10 @@ body.hs-pop-open{overflow:hidden}
   <section class="hub-block room-sec room-voices" id="voices-block" style="display:none">
     <div class="room-head"><h2>What people are saying</h2><div class="sub">Comments quoted as written, about the subjects on the board and the month behind them.</div></div>
     <div class="track" id="voices-track"></div>
+    <div class="vx-acts" id="voices-more" style="display:none"><button type="button" onclick="_voicesMore()">More voices</button></div><!-- SEAM:CLEAN_ARRIVAL (NT3e) -->
   </section>
+
+  <section class="hub-block room-sec hs-terr" id="hs-terr" aria-label="Read by territory"><div class="gal-lenses" id="gal-lenses" style="display:none"></div></section><!-- SEAM:HOUSE_STYLE (NT3c); SEAM:CLEAN_ARRIVAL (NT3e): the territories as lenses, at the foot -->
 
   <section class="hub-block room-sec" id="record-block" style="display:none">
     <div class="room-head"><h2>Track record</h2><div class="sub">Every call we make on the board is checked 30, 60 and 90 days later against what the subject itself did, week by week: never on whether it stayed on our board.</div></div>
@@ -2903,6 +2934,11 @@ body.hs-pop-open{overflow:hidden}
     <p>Client partners sign in to a version of this page built around their brand, their competitors and their questions. Their weekly and monthly reports are delivered here.</p>
     <a href="mailto:hello@unsurfaced-intelligence.com?subject=Partnership">Talk to us about a partnership</a>
   </section>
+
+  <footer class="ex-foot" id="ex-foot"><!-- SEAM:CLEAN_ARRIVAL (NT3e): the page signs off -->
+    <p class="ex-hh">Your hidden hand<i>.</i></p>
+    <div class="ex-sign"><div class="ex-by"><b>EXCAVATE</b><span>by</span><img id="ex-foot-logo" alt="Unsurfaced™"></div><a class="ex-url" href="https://unsurfaced-intelligence.com/intelligence/">UNSURFACED-INTELLIGENCE.COM</a></div>
+  </footer>
 
   <section class="hub-block builder-panel">
     <div class="section-header" style="margin-bottom:6px">
@@ -7427,6 +7463,7 @@ function _navAuth() {   // SEAM:EXC_DOOR_VOICE: the nav offers Sign in to a visi
   if (typeof _hsMovesSync === 'function') _hsMovesSync();   // SEAM:HOUSE_STYLE (NT3c): a member takes the moves; a visitor holds none
   if (typeof _yoursSync === 'function') _yoursSync();   // SEAM:FRAME_FIT (NT3d): the reader's frame follows the sign-in
   if (typeof _ptSync === 'function') _ptSync();   // SEAM:PARTNER (EX51): the company's page follows the sign-in
+  if (typeof _askFollowSync === 'function') _askFollowSync();   // SEAM:CLEAN_ARRIVAL (NT3e): the ask follows an admin
   if (window._signedOut === false && !window._foBooted) { window._foBooted = true; _foBoot(); }   // SEAM:READ_FOLIO: the open folio's pill, for an admin
   if (window._signedOut === false) _cmAdmin().then(a => { const li = document.getElementById('nav-read-li'); if (li) li.style.display = a ? '' : 'none'; });   // SEAM:EXC_NAV: READ for admins
 }
@@ -7436,7 +7473,7 @@ const _NAV_NAMES = { explore: 'EXCAVATE', brands: 'Brands', audiences: 'Audience
 function navMenuToggle(e) { if (e) e.stopPropagation(); const m = document.getElementById('nav-menu'); if (!m) return; const open = !m.classList.contains('open'); m.classList.toggle('open', open); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
 function navMenuClose() { const m = document.getElementById('nav-menu'); if (m && m.classList.contains('open')) { m.classList.remove('open'); const b = document.getElementById('nav-menu-btn'); if (b) b.setAttribute('aria-expanded', 'false'); } }
 /* EX33b: Record is a door of its own: the record on EXCAVATE, scrolled to. */
-function _navRecord() { navTo('explore'); const nl = document.getElementById('nl-record'); if (nl) { document.querySelectorAll('.nav-list .nl').forEach(b => b.classList.remove('active')); nl.classList.add('active'); } setTimeout(() => { const h = document.getElementById('board-h2'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }
+function _navRecord() { navTo('explore'); const nl = document.getElementById('nl-record'); if (nl) { document.querySelectorAll('.nav-list .nl').forEach(b => b.classList.remove('active')); nl.classList.add('active'); } setTimeout(() => { const h = document.getElementById('board-block'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); }   // SEAM:CLEAN_ARRIVAL (NT3e): the record's head is hidden, so Record lands on the readings themselves
 function _navMenuName(section) { const c = document.getElementById('nav-menu-cur'); if (c && _NAV_NAMES[section]) c.textContent = _NAV_NAMES[section]; }
 document.addEventListener('click', e => { const m = document.getElementById('nav-menu'); if (m && !m.contains(e.target)) navMenuClose(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') navMenuClose(); });
@@ -11196,7 +11233,11 @@ function _renderDoorVoices(voices) {
   if (list.length < 3) { el.style.display = 'none'; return; }
   const who = v => { const s = v.self || {}, id = [s.generation, s.role ? (s.generation ? 'a ' : 'A ') + s.role : null].filter(Boolean); return (id.length ? id : ['Consumer']).concat(v.likes ? [Number(v.likes).toLocaleString('en-US') + (Number(v.likes) === 1 ? ' like' : ' likes')] : []).join(', '); };
   const card = v => `<figure class="quote">${v.on ? `<div class="q-on">${safe(v.on)}</div>` : ''}<p>“${safe(v.text)}”</p><cite>${safe(who(v))}</cite></figure>`;
-  track.innerHTML = list.concat(list).map(card).join('');
+  // SEAM:CLEAN_ARRIVAL (NT3e): every voice once, nine on a computer and four on a phone, then More voices opens the rest (the feed sends up to twelve)
+  const show = typeof matchMedia === 'function' && matchMedia('(max-width:900px)').matches ? 4 : 9, all = list.slice(0, 12);
+  track.innerHTML = all.map((v, i) => i < show ? card(v) : card(v).replace('<figure class="quote">', '<figure class="quote vx-more">')).join('');
+  const more = document.getElementById('voices-more'); if (more) more.style.display = all.length > show ? '' : 'none';
+  if (el.classList) el.classList.remove('vx-open');
   el.style.display = 'block';
 }
 /* SEAM:MEMORY: the record, graded on counts. Every call of the last 150 days at 30 days: held, faded, still open, each named with its
@@ -11430,12 +11471,12 @@ async function _askTeam(kind, ref) {
 }
 function _askClose() { const el = document.getElementById('ask-modal'); if (el) el.style.display = 'none'; }
 async function _askSend() {
-  const q = ((document.getElementById('ask-q') || {}).value || '').trim(), note = document.getElementById('ask-note'), btn = document.getElementById('ask-send');
+  const q = ((document.querySelector('#ask-modal #ask-q') || {}).value || '').trim(), note = document.getElementById('ask-note'), btn = document.getElementById('ask-send');
   if (q.length < 20) { if (note) note.textContent = 'Say a little more first.'; return; }
   if (btn) btn.disabled = true;
   let d = null; try { d = await api('asks', Object.assign({}, window._askRef || {}, { question: q })); } catch (e) { d = null; }
   if (btn) btn.disabled = false;
-  if (d && d.ok) { document.getElementById('ask-q').value = ''; if (note) note.textContent = d.say || 'Sent.'; showToast('Sent to the team'); _askList(); }
+  if (d && d.ok) { const t = document.querySelector('#ask-modal #ask-q'); if (t) t.value = ''; if (note) note.textContent = d.say || 'Sent.'; showToast('Sent to the team'); _askList(); }
   else if (note) note.textContent = (d && d.say) || 'It did not send. Try again in a minute.';
 }
 async function _askList() {
@@ -13441,9 +13482,9 @@ function _pulseShow(w, open) {
   const el = document.getElementById('pulse-invite'); if (!el) return;
   if (!w || w.pulses) { el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('open'); return; }
   const say = {
-    out: { k: 'LIVE PULSES · SIGN IN TO ACCESS', line: 'Ask it. Get the reading. Live pulses come with a subscription.', h: 'Ask it. Get the reading.', body: 'Live pulses come with a subscription, and an account opens the moves, the rooms, the full readings and your downloads. The morning below is open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },   // SEAM:ROOMS_INSIDE (NT3b): what an account opens, never how the engine works
-    member: { k: 'LIVE PULSES · WITH ENGINE', line: 'Ask it. Get the reading. Live pulses come with Engine.', h: 'Ask it. Get the reading.', body: 'Live pulses come with Engine: any brand, category or audience, read live for your team. The morning below is yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
-    paused: { k: 'LIVE PULSES · PAUSED', line: 'Your team\'s plan is paused, and its live pulses with it.', h: 'Your plan is paused.', body: 'Your team\'s plan is paused, and its live pulses with it. The morning below stays open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
+    out: { k: 'LIVE PULSES · SIGN IN TO ACCESS', line: 'Ask it. Get the reading. Live pulses come with a subscription.', h: 'Ask it. Get the reading.', body: 'Live pulses come with a subscription, and an account opens the moves, the rooms, the full readings and your downloads. The readings below are open to everyone.', go: `<button type="button" class="btn-go-deeper" onclick="_gateForDoor('excavate')">Sign in</button>` },   // SEAM:ROOMS_INSIDE (NT3b): what an account opens, never how the engine works
+    member: { k: 'LIVE PULSES · WITH ENGINE', line: 'Ask it. Get the reading. Live pulses come with Engine.', h: 'Ask it. Get the reading.', body: 'Live pulses come with Engine: any brand, category or audience, read live for your team. The readings below are yours either way.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">See what Engine adds</button>' },
+    paused: { k: 'LIVE PULSES · PAUSED', line: 'Your team\'s plan is paused, and its live pulses with it.', h: 'Your plan is paused.', body: 'Your team\'s plan is paused, and its live pulses with it. The readings below stay open.', go: '<button type="button" class="btn-go-deeper" onclick="_profileOpen()">Your plan</button>' }
   }[w.kind] || null;
   if (!say) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.innerHTML = open
@@ -13984,6 +14025,49 @@ async function _ptSave(e) {
 }
 try { _ptSync(); } catch (e) { /* the company's page comes with the next sign-in */ }
 /* ═══ end SEAM:PARTNER ═══ */
+/* ═══ SEAM:CLEAN_ARRIVAL (NT3e THE CLEAN ARRIVAL): once the hero's box has scrolled away, the ask follows an admin as a thin bar with its
+ * own box (the tiers add Ultra here); the two boxes share what is typed and Search runs the hero's search from the top. More voices
+ * opens the rest of the band. The sign-off takes the nav's own logo. ═══ */
+const _ASKF = { on: false, email: null };
+async function _askFollowSync() {
+  const email = window._signedOut === false && typeof _galEmail === 'function' ? _galEmail() : null;
+  if (!email) { _ASKF.on = false; _ASKF.email = null; document.body.classList.remove('ask-follows'); return false; }
+  if (_ASKF.email !== email) {
+    _ASKF.email = email; _ASKF.on = false; let a = false; try { a = typeof _isAdmin === 'function' ? await _isAdmin() : false; } catch (e) { a = false; }
+    if (_ASKF.email !== email || window._signedOut !== false) return false;   // another reader signed in while this one was asked
+    _ASKF.on = a === true;
+  }
+  document.body.classList.toggle('ask-follows', _ASKF.on); _askFollowTop(); return _ASKF.on;
+}
+function _askFollowTop() {
+  const nav = document.querySelector('nav'), bar = document.getElementById('ask-sticky');
+  if (nav && bar) bar.style.top = Math.max(0, Math.round(nav.getBoundingClientRect().bottom)) + 'px';
+}
+function _askFollowGo(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const q = document.getElementById('ask-sticky-q'), inp = document.getElementById('search-input'); if (!q || !inp) return false;
+  const v = String(q.value || '').trim(); if (!v) { q.focus(); return false; }
+  inp.value = v; window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if (typeof runSearch === 'function') runSearch();
+  return false;
+}
+function _voicesMore() {
+  const el = document.getElementById('voices-block'); if (!el) return;
+  el.classList.add('vx-open');
+  const f = el.querySelector('.quote.vx-more'); if (f) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }   // focus stays with the reader, on the first voice it opened
+}
+function _exFootLogo() { const a = document.querySelector('.nav-logo img'), b = document.getElementById('ex-foot-logo'); if (a && b && !b.getAttribute('src')) b.setAttribute('src', a.getAttribute('src')); }
+(function () {
+  const go = () => {
+    _exFootLogo(); _askFollowSync();
+    const inp = document.getElementById('search-input'), q = document.getElementById('ask-sticky-q');
+    if (inp && q) { inp.addEventListener('input', () => { q.value = inp.value; }); q.addEventListener('input', () => { inp.value = q.value; }); q.addEventListener('focus', () => { if (q.value !== inp.value) q.value = inp.value; }); }
+    if (q && typeof matchMedia === 'function' && matchMedia('(max-width:760px)').matches) q.setAttribute('placeholder', 'Ask culture a question.');   // a phone shows no label, so the box says it
+    window.addEventListener('resize', _askFollowTop, { passive: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+/* ═══ end SEAM:CLEAN_ARRIVAL ═══ */
 </script>
 <script>
 /* ═══ SEAM:OPEN_DOOR (NT3a THE OPEN DOOR): EXCAVATE opens to a visitor. The hub stays the signed-out ground state; choosing EXCAVATE
