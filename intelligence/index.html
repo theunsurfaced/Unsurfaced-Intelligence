@@ -506,6 +506,8 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .sp-marks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .sp-mark{font-family:'Space Mono',monospace;font-size:13px;width:40px;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text);cursor:pointer}
 .sp-mark.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.read-foryou{margin:4px 0 12px}.read-foryou:empty{display:none}.fy-k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}.fy-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.fy-form select,.fy-form input{font:13px 'Syne',sans-serif;padding:6px 8px;border:1px solid var(--border2);background:transparent;color:var(--text)}.fy-for{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);margin:10px 0 4px}.fy-for small{text-transform:none;letter-spacing:0}.fy-take{font-weight:600;margin:0 0 6px}.fy-read{margin:0 0 6px;color:var(--text2)}.fy-move{margin:0;padding-left:12px;border-left:2px solid var(--accent)}.fy-move b{color:var(--accent)}/* SEAM:FOR_YOU (IQ5) */
+.sp-mark{width:auto;min-width:40px;padding:0 8px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.1}.sp-mark small{font-size:9px;letter-spacing:.06em;text-transform:uppercase;opacity:.75}/* SEAM:THE_GRADE (IQ3) */
 .sp-note{width:100%;box-sizing:border-box;font:inherit;font-size:13px;padding:8px;background:transparent;color:var(--text);border:1px solid var(--border2)}
 .sp-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:10px}
 .sp-say{font-family:'Space Mono',monospace;font-size:11px;color:var(--text2)}
@@ -7012,11 +7014,13 @@ function _renderReadBlock(q, data, mode){
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${data.takeaway?`<p class="read-take">${safe(data.takeaway)}</p>`:''}${data.pushback&&data.pushback.text?`<p class="read-pushback"><b>The other side</b> ${safe(data.pushback.text)}</p>`:''}
+    <div class="read-foryou" id="read-foryou"></div>
     ${_rcHtml}
     ${_plateHtml}
     ${_betHtml}
     ${_lineHtml}`;
   el.style.display='block';
+  if (typeof _forYouMount === 'function') _forYouMount();   // SEAM:FOR_YOU (IQ5): the layer for a group, admins for now
   // EX33c: after the findings and the moves: the voices, the measures, the interpretation with its receipts, the receipts drawer, one action rail.
   const after=document.getElementById('read-after');
   if(after){
@@ -12020,12 +12024,44 @@ async function _scoreOpen() {
   let d = null; try { d = await _cmApi('/reads/score', t); } catch (e) { d = { ok: false, error: 'network' }; }
   _scoreDraw(el, t, d, null);
 }
+const _SCORE_WORDS = { 5: 'Sharp', 4: 'Solid', 2: 'Obvious', 1: 'Wrong' };   // SEAM:THE_GRADE (IQ3): the marks in the house's words; a 3 is a plain 3
+/* SEAM:FOR_YOU (IQ5): the reading for a group (a role and an industry, or a company), written once a group and reused. Admins for now:
+   the group named here, or the admin's own profile's. Who else sees it waits on the tiers (MB1). */
+const _FY_ROLES = ['brand', 'strategy', 'creative', 'media', 'product', 'insights', 'founder', 'other'];
+async function _forYouMount() {
+  const box = document.getElementById('read-foryou'); if (!box) return;
+  const L = window._liveLast, syn = L && L.synthesis, d = syn && syn.overnight && window._doorOpen && window._doorOpen.id ? window._doorOpen : null;
+  if (!d || window._signedOut !== false) { box.innerHTML = ''; return; }
+  const ok = await _cmAdmin().catch(() => false); if (!ok) { box.innerHTML = ''; return; }
+  let prof = window._profile || null;
+  if (!prof && typeof _profileGet === 'function') { prof = await _profileGet().catch(() => null); if (prof) window._profile = prof; }
+  prof = prof || {};
+  const inds = Array.isArray(prof.industries_all) ? prof.industries_all : [];
+  box.innerHTML = `<div class="fy-k">For you</div>
+    <div class="fy-form"><select id="fy-role" aria-label="Role"><option value="">a role</option>${_FY_ROLES.map(r => `<option value="${r}"${prof.role_title === r ? ' selected' : ''}>${r}</option>`).join('')}</select>
+    <select id="fy-ind" aria-label="Industry"><option value="">an industry</option>${inds.map(x => `<option value="${safe(x.id)}"${(prof.industries || [])[0] === x.id ? ' selected' : ''}>${safe(x.name)}</option>`).join('')}</select>
+    <input type="text" id="fy-co" maxlength="80" placeholder="or a company"><button type="button" class="btn-new-search" id="fy-go">Read it for them</button></div>
+    <div class="fy-out" id="fy-out"></div>`;
+  const go = box.querySelector('#fy-go');
+  if (go) go.onclick = async () => {
+    const out = box.querySelector('#fy-out'); go.disabled = true; out.innerHTML = '<p class="sp-say">Writing the layer.</p>';
+    const body = { id: d.id, role: (box.querySelector('#fy-role') || {}).value || null, industry: (box.querySelector('#fy-ind') || {}).value || null, company: (box.querySelector('#fy-co') || {}).value || null };
+    let r = null; try { r = await _cmApi('/reads/for-you', body); } catch (e) { r = { ok: false, error: 'network' }; }
+    go.disabled = false;
+    if (r && r.ok && r.text) {
+      out.innerHTML = `<div class="fy-for">${safe(r.group && r.group.label ? 'For ' + r.group.label : 'For you')}${r.stored ? ' <small>(kept; written once for this group)</small>' : ''}</div><p class="fy-take">${safe(r.text.takeaway)}</p><p class="fy-read">${safe(r.text.read)}</p>${r.text.move && r.text.move.headline ? `<p class="fy-move"><b>${safe(r.text.move.headline)}</b> ${safe(r.text.move.body || '')}</p>` : ''}`;
+    } else {
+      const why = r && r.error === 'failed_check' ? ({ restates: 'it said the general read again', ungrounded: 'it carried a figure the lines do not', measure: 'it named the measure', house_word: 'it used the house\u2019s words', same_move: 'it repeated the general move', unparsable: 'it did not come back whole' })[r.why] || r.why : (r && (r.say || r.detail || r.error)) || 'no answer';
+      out.innerHTML = `<p class="sp-say">Not kept: ${safe(why)}.</p>`;
+    }
+  };
+}
 function _scoreDraw(el, t, d, say) {
   if (!el) return;
   if (!d || !d.ok) { el.innerHTML = `<p class="sp-say">The score did not open: ${safe(String((d && d.error) || 'no answer'))}.</p>`; return; }
   const mine = d.mine || null, all = d.all || {}, cur = mine ? mine.score : 0;
   el.innerHTML = `<div class="sp-k">The house's score</div>
-    <div class="sp-marks" role="radiogroup" aria-label="Score this reading, 1 to 5">${[1, 2, 3, 4, 5].map(n => `<button type="button" class="sp-mark${n === cur ? ' on' : ''}" data-n="${n}" role="radio" aria-checked="${n === cur ? 'true' : 'false'}">${n}</button>`).join('')}</div>
+    <div class="sp-marks" role="radiogroup" aria-label="Score this reading, 1 to 5">${[1, 2, 3, 4, 5].map(n => `<button type="button" class="sp-mark${n === cur ? ' on' : ''}" data-n="${n}" role="radio" aria-checked="${n === cur ? 'true' : 'false'}"${_SCORE_WORDS[n] ? ` title="${_SCORE_WORDS[n]}"` : ''}>${n}${_SCORE_WORDS[n] ? `<small>${_SCORE_WORDS[n]}</small>` : ''}</button>`).join('')}</div>
     <textarea class="sp-note" id="sp-note" rows="2" maxlength="400" placeholder="What held the read up, or let it down. For the house only.">${safe((mine && mine.note) || '')}</textarea>
     <div class="sp-bar"><button type="button" class="btn-new-search" id="sp-save">Keep the score</button><span class="sp-say">${safe(say || (all.n ? `Scored ${all.n} ${all.n === 1 ? 'time' : 'times'}, a mean of ${all.mean}.` : 'Not scored yet.'))}</span></div>`;
   let pick = cur;
@@ -12036,7 +12072,8 @@ function _scoreDraw(el, t, d, say) {
     sv.disabled = true;
     const note = (el.querySelector('#sp-note') || {}).value || '';
     let r = null; try { r = await _cmApi('/reads/score', Object.assign({}, t, { score: pick, note })); } catch (e) { r = { ok: false, error: 'network' }; }
-    if (r && r.ok) _scoreDraw(el, t, r, 'Kept: ' + pick + ' of 5.'); else { sv.disabled = false; const s = el.querySelector('.sp-bar .sp-say'); if (s) s.textContent = 'Not kept: ' + String((r && r.error) || 'no answer') + '.'; }
+    // SEAM:THE_LOOP (IQ4): a Sharp mark proposes the reading as an example for the writer; the house approves it in THE CORPUS room
+    if (r && r.ok) _scoreDraw(el, t, r, 'Kept: ' + pick + ' of 5.' + (r.example === 'proposed' ? ' Proposed as an example for the writer; approve it in THE CORPUS room.' : r.example === 'approved' ? ' Already an example for the writer.' : '')); else { sv.disabled = false; const s = el.querySelector('.sp-bar .sp-say'); if (s) s.textContent = 'Not kept: ' + String((r && r.error) || 'no answer') + '.'; }
   };
 }
 function _renderScroll(rec, data) {

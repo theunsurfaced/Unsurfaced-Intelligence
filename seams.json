@@ -1857,6 +1857,47 @@
    "file": "worker/src/index.js",
    "purpose": "TK1 THE TAKEAWAY TEST (Nov 3, 2026): the desk run {run:\"takeaway_test\", n} writes the newest ready readings again on their kept evidence with a takeaway field (TAKEAWAY_TEST.LAW, spliced into excDoorPrompt's schema at its question line), returns them beside what was published with takeawayChecks, and writes nothing. The night writer is unchanged; adoption is its own cut with the bench."
   },
+  "SEAM:THE_REACH": {
+   "file": "worker/src/index.js",
+   "purpose": "IQ6 THE REACH (Nov 6, 2026), the READ writers' half: the level and its lens reach the WEEKLY, the MONTHLY, the Record and the RECON (and every other writer the Method instructs: the day's frames, the corpus extractor) through the Method (templates/CULTURAL_READ_METHOD.md 5.1, section The level and its lens after the nine questions: which of the nine bite hardest at each of the four levels, the six questions each, the line each owes, the failure each has, the eight tests; a RECON decides its one level before the thesis and the thesis says it in the reader's words; the Weekly Read, the monthly and the Record decide each pattern's level before its line). The two stamps voice: Method 5.1. READ_METHOD synced as tools/sync_method.py writes it. The contracts, the laws and the live search are untouched; the live half (the box's lens) is its own bench session. No hashed EXCAVATE slice moves; no spender; no SQL."
+  },
+  "SEAM:FOR_YOU": {
+   "file": "worker/src/index.js",
+   "purpose": "IQ5 FOR YOU (Nov 6, 2026): the reading for a group. FORYOU, FORYOU_LAW (the group layer changes only the read and the move and must say what the general read does not); forYouGroup (a role the profile knows, an industry the house's territories know, or a company; the key and the label); forYouPrompt (the reader first, then the reading as the page shows it, the evidence as the writer saw it, the people); forYouClean; forYouChecks (the swap test in code: the house's words, the measure, the general read again, a figure the lines do not carry, a general move again); forYouRoute (/reads/for-you, admins only through readRoute: the layer from for_you (0068) when it is there under this voice, else written once on the live tier with the night's voice and laws, kept only when it passes the checks; the group from the body or the admin's profile). Who else sees it waits on the tiers (MB1). No hashed slice moves; one new spender."
+  },
+  "SEAM:FOR_YOU@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:FOR_YOU",
+   "purpose": "IQ5 FOR YOU (Nov 6, 2026): the deep dive of an overnight reading shows an admin the layer for a group (_forYouMount: a role, an industry or a company, the admin's own profile's by default; Read it for them), kept once a group and reused; a layer that failed a check says why. Nothing here spends on its own; the route does."
+  },
+  "SEAM:THE_LOOP": {
+   "file": "worker/src/index.js",
+   "purpose": "IQ4 THE LOOP (Nov 6, 2026): stronger every day, as material in the prompt, never the system. LOOP; loopExampleText (a reading as the writer should see it as an example); loopPropose (a Sharp mark on a door reading proposes it to house_examples, 0067; scoreRoute answers example: proposed|approved|retired); loopExampleRoute (/reads/corpus-example: the list, and an admin's approve or retire); loopExamplesPick (the newest approved a level, four at most); loopStopList (the house's notes on readings marked 2 or 1, the last 30 days, ten at most, dated); loopBlockText and doorLoopBlock (read once a pass; the night's prompt, the record pass's and the dry run's carry it after the evidence and the people); loopBetsOf and loopBets (the bets graded in the last 60 days by the reading's level; the judge's criteria on readings whose bet held against those whose bet missed; the level missing most named) on /reads/scorecard as bets. Only the house's marks make an example or a line; the judge never does. No hashed slice moves; no new call: every nightly prompt grows by the block (a few thousand characters), nothing else is spent."
+  },
+  "SEAM:THE_LOOP@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:THE_LOOP",
+   "purpose": "IQ4 THE LOOP (Nov 6, 2026): the Score control says when a Sharp mark proposed the reading as an example for the writer. Nothing here spends."
+  },
+  "SEAM:THE_LOOP@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:THE_LOOP",
+   "purpose": "IQ4 THE LOOP (Nov 6, 2026): THE CORPUS room lists the examples (corpusExamples: proposed first, approve or retire); THE SCORE room shows the bets by level and the judge's criteria held against missed (scoreBetsHtml). Nothing here spends."
+  },
+  "SEAM:THE_GRADE": {
+   "file": "worker/src/index.js",
+   "purpose": "IQ3 THE GRADE (Nov 6, 2026): the judge and the last code check. JUDGE, JUDGE_LAW (the eight criteria, 0 to 2 each, weighted to 100 in judgeTotal, never taken from the model), judgePrompt (the reading as the page shows it, the lens answers, the evidence as the writer saw it, the people; blind: no mark rides), judgeSample (the readings the house marked in the last 7 days not judged this week, then readings at random from the record), judgeQueue (claudeBatchSubmit on the doc tier, kind judge; the desk's {run:\"judge\", n}), judgeWeekly (Sunday, after the night, in the 06:10 chain after the cross-currents), judgeLand (the drain lands the scores in reading_judgments, 0066; an answer not whole lands failed), judgeReportOf and judgeReport (by week: the mean, how many marked, the agreement on the Sharp/Obvious line where both took a side, where the house's Sharp and Obvious marks fall on the judge's scale; by level; by criterion with the weakest named; the newest readings with their marks and their weakest criterion), on /reads/scorecard as judge. doorCompileRead: a move with no read under it comes off (its finding carries a read, or a finding's read shares two of its content words, kept as tied, never shown as the finding's own); the read counts moves_off; the dry run and the pass page say it. judgeSample never spends when 0066 has not run (no_table) and never queues a reading whose judge job is still on the batch. No hashed slice moves; one new spender."
+  },
+  "SEAM:THE_GRADE@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:THE_GRADE",
+   "purpose": "IQ3 THE GRADE (Nov 6, 2026): the marks in the house's words on the Score control: 5 Sharp, 4 Solid, 2 Obvious, 1 Wrong (a 3 is a plain 3). Nothing here spends."
+  },
+  "SEAM:THE_GRADE@read": {
+   "file": "intelligence/read/index.html",
+   "tag": "SEAM:THE_GRADE",
+   "purpose": "IQ3 THE GRADE (Nov 6, 2026): the marks in the house's words on the Score control (SC_WORDS), and THE SCORE room's judge (scoreJudgeHtml): by week with the agreement, by level, by criterion, the newest readings judged. Nothing here spends."
+  },
   "SEAM:THE_HOLDS": {
    "file": "worker/src/index.js",
    "purpose": "IQ2d THE HOLDS (Nov 6, 2026): what the dry run and the record pass showed, fixed in the code that decides. excHouseWord: a read, a takeaway or a pushback carrying the house's own words (signal in every form, the lake) comes off at the compile (doorCompileRead, excLensParts); the finding stays. excMeasureRescue: a reading whose only claim about the measure is its dek keeps its headline and takes the first finding's fact that carries a figure and no claim as its dek (dek_from on the read), instead of being held; doorLand, recordPassLand, spaceLand and the dry run use it; a claim anywhere else still holds the reading. excLensParts: a takeaway past 28 words keeps its first sentence when that is one of 8 words or more, else comes off. The dry run (takeawayTest) writes TAKEAWAY_TEST.LANES readings at a time and tries a call the network dropped once more (retried on the answer). The pass: recordPassPage(rows, held) shows on the new side the bet publish carries (the old one, through recordPassMerge) and where a rescued dek came from, and lists the held readings with the check that held each (recordPassHeld); {status:true} answers with held: [{id, night, subject, why, at}]. No hashed slice moves; no new spender; no SQL."

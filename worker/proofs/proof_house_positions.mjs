@@ -207,9 +207,9 @@ ok(!/callClaude\(|claudeBatchSubmit\(/.test(block) && /claudeBatchSubmit\(env, C
   'W5 the block never calls Claude (the one request lives in the engine); the drain lands a reading; the public media route refuses corpus/');
 
 const rr = between(w, 'async function readRoute(path, body, env, origin, user) {', "  if (path === '/reads/list') {");
-ok(/case '\/reads\/corpus':\s+\/\/ SEAM:HOUSE_POSITIONS[^\n]*\n\s+case '\/reads\/corpus-doc':\n\s+case '\/reads\/corpus-extract':\n\s+case '\/reads\/corpus-position':\n\s+case '\/reads\/corpus-register':\n\s+case '\/reads\/night-note':/.test(w) &&
+ok(/case '\/reads\/corpus':\s+\/\/ SEAM:HOUSE_POSITIONS[^\n]*\n\s+case '\/reads\/corpus-doc':\n\s+case '\/reads\/corpus-extract':\n\s+case '\/reads\/corpus-position':\n\s+case '\/reads\/corpus-register':(?:\n[^\n]*case '\/reads\/[a-z-]+':[^\n]*)*\n\s+case '\/reads\/night-note':/.test(w) &&
   /case '\/reads\/corpus-upload': return corpusUpload\(request, env, origin, user\);/.test(w) && /path !== '\/reads\/corpus-upload' && path !== '\/reads\/slot-upload'\) \? await safeJson\(request\)/.test(w) &&
-  rr.indexOf('callerIsAdmin') < rr.indexOf('corpusRoute(') && /if \(\/\^\\\/reads\\\/corpus\(\?:-doc\|-extract\|-position\|-register\)\?\$\/\.test\(path\)\) return corpusRoute\(path, body, env, origin, user\);/.test(rr),
+  rr.indexOf('callerIsAdmin') < rr.indexOf('corpusRoute(') && /if \(\/\^\\\/reads\\\/corpus\(\?:-doc\|-extract\|-position\|-register\|-example\)\?\$\/\.test\(path\)\) return corpusRoute\(path, body, env, origin, user\);/.test(rr),
   'W6 the router carries the five paths to readRoute, after its admin check, and the upload to its own door with the raw body');
 // ── A: the routes on a fake store ────────────────────────────────────────────────────────────────────────────────────
 db.house_docs.length = 0; db.house_positions.length = 0; db.house_register.length = 0; kv = {}; env.RATE_LIMIT.get = async k => (k in kv ? kv[k] : null);
@@ -231,7 +231,7 @@ ok(x1.ok && x1.sent && x1.est_usd === 0.44 && db.house_docs[0].status === 'readi
 const job = { custom_id: 'cx-' + d1.id + '-1', model: 'claude-fable-5-1' };
 const l1 = await C.corpusLand(env, d1.id, { status: 'done', result: JSON.stringify(answer), cost_usd: 0.17, usage: { input_tokens: 1400, output_tokens: 1300 } }, job);
 const r1 = db.house_docs[0];
-ok(l1.ok && r1.status === 'extracted' && r1.extract.cost_usd === 0.17 && r1.extract.proposed.positions === 2 && r1.extract.proposed.register === 3 && r1.extract.voice === 'Method 5.0' && r1.extract.dropped.length === 3 &&
+ok(l1.ok && r1.status === 'extracted' && r1.extract.cost_usd === 0.17 && r1.extract.proposed.positions === 2 && r1.extract.proposed.register === 3 && r1.extract.voice === 'Method 5.1' && r1.extract.dropped.length === 3 &&
   db.house_positions.length === 2 && db.house_positions.every(p => p.status === 'proposed' && p.embedding) && kbEmbeds[0][0] === 'Legacy does not transfer on its own. (jordan brand, gen alpha, legacy)' && db.house_register.length === 3,
   'A4 the drain lands the reading: positions and lines proposed, the positions embedded with their topics, the receipt with its cost, what was set aside and why');
 const x3 = await route('/reads/corpus-extract', { id: d1.id });

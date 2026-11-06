@@ -20,7 +20,7 @@ const R = new Function('sbRest', 'claudeBatchSubmit', 'claudeBatchDrain', 'calle
   async () => [], async () => ({ ok: true }), async () => ({}), async () => true, (o, s) => Object.assign({ _status: s }, o), () => Promise.resolve(), callClaude);
 
 // ── M. The Method ──
-ok(/^# The Unsurfaced Cultural Read Method\n\nVersion 5\.0, the house style\./.test(R.READ_METHOD) && R.READ_METHOD === method, 'M1 Method 5.0 is the worker\'s standing instruction, word for word the file (SEAM:PROMPT_SYNC)');
+ok(/^# The Unsurfaced Cultural Read Method\n\nVersion 5\.1, the house style\./.test(R.READ_METHOD) && R.READ_METHOD === method, 'M1 Method 5.1 is the worker\'s standing instruction, word for word the file (SEAM:PROMPT_SYNC)');
 ok(!/\u2014/.test(R.READ_METHOD) && !/\u2013/.test(R.READ_METHOD), 'M2 the Method carries no em dash and no en dash');
 ok(/You were in the room\./.test(R.READ_METHOD) && /creative who is tapped into culture and into the cultures where people come together/.test(R.READ_METHOD), 'M3 the stance: a creative who was in the room, in Fresco\'s terms');
 ok(/no sentence runs past thirty words/.test(R.READ_METHOD) && /semicolon to carry a second clause is two sentences/.test(R.READ_METHOD), 'M4 the sentence: thirty words in a long field; the semicolon chain is two sentences');

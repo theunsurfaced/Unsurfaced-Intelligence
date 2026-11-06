@@ -83,7 +83,7 @@ const parsed = { level: 'brand', lens: ['a savings account (1, 2)', 'renewals he
     { category: 'culture', title: 'A fourth finding past the cap', fact: 'x', read: 'y', evidence: [1] }
   ],
   pushback: { line: 3, text: 'Sam\'s Club says its own renewals rose at the lower fee.' },
-  ideas: [{ type: 'Strategy', for: 'Sam\'s Club', headline: 'Make the card say something', body: 'b', because: 'c', proof: 'p', evidence: [3], from: 2 }],
+  ideas: [{ type: 'Strategy', for: 'Sam\'s Club', headline: 'Make the card say something', body: 'b', because: 'c', proof: 'p', evidence: [3], from: 0 }],   // from 0: the finding whose read holds (IQ3: a move whose finding lost its read comes off)
   watch: { claim: 'Costco renewals stay above 90% through March', by: '2027-03-01' }, brief: 'Where it is.' };
 const r = C.doorCompileRead(parsed, lines, { entity: 'Costco', competitors: ['Sam\'s Club'] }, null, '2026-11-04');
 ok(r.insights.length === 3 && r.insights[0].excerpt === 'Renewals held at 92% after the fee rose to $65.' && r.insights[0].implication === 'The fee is a test of trust the members passed, so the next adjacent move (a Costco credit product) is permitted.',
@@ -114,7 +114,7 @@ const pb = L.doorPeopleBlock([{ text: 'I  switched from\nthe Prime card   to Cos
 ok(pb.startsWith('\n\nPEOPLE (comments as written; what people say, never coverage):\nP1 "I switched from the Prime card to Costco" (Gen X, a nurse, 12 likes)\nP2 "' + 'x'.repeat(240) + '" (a consumer)\nP3 "voice 0" (a consumer, 1 likes)') && (pb.match(/\nP\d+ /g) || []).length === 8 && L.doorPeopleBlock([]) === '' && L.doorPeopleBlock(null) === '',
   'D2 the people\'s lines: numbered P1, P2 for a read to cite, as written (whitespace collapsed, 240 characters), who said it and the likes; at most eight; nothing when the night heard none');
 const dp = between(w, 'async function doorPass(env, opts) {', 'async function doorLand(');
-const iBar = dp.indexOf('if (!doorEvidenceBar(ev.merged)) {'), iUnmoved = dp.indexOf('out.unmoved = (out.unmoved || 0) + 1;'), iEv = dp.indexOf('const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join(\'\\n\') + doorPeopleBlock(base.meta.voices);');
+const iBar = dp.indexOf('if (!doorEvidenceBar(ev.merged)) {'), iUnmoved = dp.indexOf('out.unmoved = (out.unmoved || 0) + 1;'), iEv = dp.indexOf('const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join(\'\\n\') + doorPeopleBlock(base.meta.voices) + loop;');
 ok(iBar > iUnmoved && iEv > iBar && /if \(prev && prev\.read\) \{ out\.reused\+\+; rowsOut\.push\(Object\.assign\(base, \{ status: 'reused', stamp: doorReuseStamp\(prev, stamp\), read: prev\.read \}\)\); \} else \{ out\.thin\+\+; rowsOut\.push\(Object\.assign\(base, \{ status: 'failed', error: 'thin_evidence' \}\)\); \}\n        continue;/.test(dp)
   && (dp.match(/stamp: doorReuseStamp\(j\.prev, j\.base\.stamp\), read: j\.prev\.read/g) || []).length === 2,
   'D3 the night: after the reuse rules and before any spend, a subject under the bar keeps its last read (under its own voice) or waits (thin_evidence); a row kept past the cap or a seat\'s allowance keeps its read\'s voice too; the people\'s lines ride the evidence string, so the pinned prompt call stands');

@@ -408,6 +408,8 @@
   .sc-marks { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
   .sc-mark { font-family: var(--mono); font-size: 13px; width: 40px; height: 40px; border: 1px solid rgba(20,20,20,.45); background: transparent; color: #141414; cursor: pointer; }
   .sc-mark.on { background: #C41230; border-color: #C41230; color: #FAF7F2; }
+  .cp-ex { border-top: 1px solid rgba(20,20,20,.15); padding: 14px 0; } .cp-ex .d { font: 11px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #6b6b6b; margin-bottom: 6px; } .cp-ex-text { white-space: pre-wrap; font: 14px/1.5 inherit; margin: 0 0 8px; } .cp-ex-bar { display: flex; gap: 8px; } /* SEAM:THE_LOOP (IQ4) */
+  .sc-mark { width: auto; min-width: 40px; padding: 0 8px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; line-height: 1.1; } .sc-mark small { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; opacity: .75; } /* SEAM:THE_GRADE (IQ3) */
   .sc-panel textarea { width: 100%; box-sizing: border-box; padding: 8px; font: inherit; font-size: 13px; border: 1px solid rgba(20,20,20,.3); background: transparent; color: #141414; }
   .sc-bar { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .sc-say { font-family: var(--mono); font-size: 11px; color: #6B6455; }
@@ -924,6 +926,7 @@
      read and scorer. No model; two admin routes. */
   var SC_DIMS = [["category", "By category", "Category"], ["lens", "By lens", "Lens"], ["entity", "By subject", "Subject"], ["space", "By space", "Space"], ["month", "By month", "Month"]];
   var SC_WRITERS = { door: "The door, overnight", live: "Live reads", daily: "DAILY" };
+  var SC_WORDS = { 5: "Sharp", 4: "Solid", 2: "Obvious", 1: "Wrong" };   // SEAM:THE_GRADE (IQ3): the marks in the house's words; a 3 is a plain 3
   function scPct(r) { return r == null ? "" : Math.round(r * 100) + "%"; }
   function scCell(c) {
     if (!c || !c.n) return '<span class="sc-none">none</span>';
@@ -935,7 +938,7 @@
     houseShell("score", '<div class="hs-note">Reading the score.</div>');
     call("/reads/scorecard", {}).then(function (d) {
       if (!d || !d.ok) { houseShell("score", '<div class="hs-note">The score could not load: ' + esc((d && (d.detail || d.error)) || "no answer") + ".</div>"); return; }
-      houseShell("score", scoreCalHtml(d) + scoreScoresHtml(d.scores) + scoreVoiceHtml(d.voice));
+      houseShell("score", scoreCalHtml(d) + scoreScoresHtml(d.scores) + scoreJudgeHtml(d.judge) + scoreBetsHtml(d.bets) + scoreVoiceHtml(d.voice));   // SEAM:THE_GRADE (IQ3): the judge; SEAM:THE_LOOP (IQ4): the bets by level
     }).catch(function () { houseShell("score", '<div class="hs-note">The house did not answer.</div>'); });
   }
   function scoreCalHtml(d) {
@@ -970,6 +973,37 @@
       return '<div class="sc-note"><span>' + esc(hsDay(String(n.at || "").slice(0, 10)) + ", " + scKind(n.kind) + ", " + n.score + " of 5") + "</span><p>" + esc(n.note) + "</p></div>"; }).join("") : "";
     return head + t + notes;
   }
+  // SEAM:THE_GRADE (IQ3): the judge, once a week on about ten readings, set against the house's marks
+  function scoreJudgeHtml(j) {
+    var head = "<h2>The judge</h2>";
+    if (!j) return head + '<div class="hs-note">The judge could not be read. Has 0066_judgments.sql run in Supabase?</div>';
+    var note = '<div class="hs-note">Once a week, after Sunday\u2019s night, a second model reads about ten readings with their evidence and the writer\u2019s lens answers: the ones you marked this week and a few at random, blind. Eight criteria, 0 to 2 each, weighted to 100. ' +
+      'Agreement counts the readings where both you and the judge took a side of the line: Sharp (a 5, or ' + esc(String(j.line.sharp)) + ' and up) or Obvious (a 2 or 1, or ' + esc(String(j.line.obvious)) + ' and under). The desk runs it any time with {run:"judge"}.</div>';
+    if (!j.n) return head + note + '<div class="hs-note">Nothing judged in these weeks' + (j.failed ? " (" + esc(String(j.failed)) + " answer" + (j.failed === 1 ? "" : "s") + " did not land whole)" : "") + ".</div>";
+    var weeks = '<div class="hs-scroll"><table class="hs-table sc-t"><thead><tr><th>Week of</th><th>Judged</th><th>Mean of 100</th><th>Marked</th><th>Agreement</th><th>Your Sharp scored</th><th>Your Obvious scored</th></tr></thead><tbody>' +
+      (j.weeks || []).map(function (x) { return "<tr><td>" + esc(hsDay(x.week)) + "</td><td>" + esc(String(x.n)) + "</td><td>" + esc(String(x.mean)) + "</td><td>" + esc(String(x.marked)) + "</td><td>" + (x.pairs ? esc(x.agree + " of " + x.pairs) + " <b>" + esc(scPct(x.agreement)) + "</b>" + (x.agreement < 0.8 ? "<small>below 80%</small>" : "") : '<span class="sc-none">no pairs</span>') +
+        "</td><td>" + (x.sharp_mean == null ? '<span class="sc-none">none</span>' : esc(String(x.sharp_mean))) + "</td><td>" + (x.obvious_mean == null ? '<span class="sc-none">none</span>' : esc(String(x.obvious_mean))) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+    var levels = (j.levels || []).length ? '<h3 class="sc-h3">By level</h3><div class="hs-scroll"><table class="hs-table sc-t"><thead><tr><th>Level</th><th>Judged</th><th>Mean of 100</th></tr></thead><tbody>' +
+      j.levels.map(function (x) { return '<tr><td class="e">' + esc(x.level) + "</td><td>" + esc(String(x.n)) + "</td><td>" + esc(String(x.mean)) + "</td></tr>"; }).join("") + "</tbody></table></div>" : "";
+    var crit = '<h3 class="sc-h3">By criterion' + (j.weakest ? ": the weakest is " + esc(j.weakest.name.toLowerCase()) : "") + '</h3><div class="hs-scroll"><table class="hs-table sc-t"><thead><tr><th>Criterion</th><th>Weight</th><th>Mean of 2</th></tr></thead><tbody>' +
+      (j.criteria || []).map(function (c) { return '<tr><td class="e">' + esc(c.name) + "</td><td>" + esc(String(c.weight)) + "</td><td>" + (c.mean == null ? '<span class="sc-none">none</span>' : esc(String(c.mean))) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+    var rows = (j.rows || []).length ? '<h3 class="sc-h3">The newest readings judged</h3><div class="hs-scroll"><table class="hs-table sc-t"><thead><tr><th>Night</th><th>Subject</th><th>Level</th><th>Score</th><th>Your marks</th><th>Weakest</th></tr></thead><tbody>' +
+      j.rows.map(function (r) { return "<tr><td>" + esc(hsDay(String(r.night || "").slice(0, 10))) + '</td><td class="e">' + esc(r.subject || r.reading_id) + "</td><td>" + esc(r.level || "") + "</td><td><b>" + esc(String(r.total)) + "</b></td><td>" + ((r.marks || []).length ? esc(r.marks.join(", ")) : '<span class="sc-none">none</span>') + "</td><td>" + (r.weakest ? esc(r.weakest.name + " " + r.weakest.score + ": " + r.weakest.why) : "") + "</td></tr>"; }).join("") + "</tbody></table></div>" : "";
+    return head + note + weeks + levels + crit + rows;
+  }
+  // SEAM:THE_LOOP (IQ4): the bets by level, and the judge's criteria on readings whose bet held against those whose bet missed
+  function scoreBetsHtml(b) {
+    var head = "<h2>The bets by level</h2>";
+    if (!b) return head + '<div class="hs-note">The bets could not be counted.</div>';
+    var note = '<div class="hs-note">Every bet graded in the last ' + esc(String(b.days)) + ' days, by the reading\u2019s level. Where a level keeps missing, its lens gets a line: by hand, through the bench, never on the live writer.' + (b.worst ? " The level missing most, with five graded or more: " + esc(b.worst.level) + " at " + esc(scPct(b.worst.rate)) + " held." : "") + "</div>";
+    if (!b.graded) return head + note + '<div class="hs-note">No bet graded in these days.</div>';
+    var lv = '<div class="hs-scroll"><table class="hs-table sc-t"><thead><tr><th>Level</th><th>Graded</th><th>Held</th><th>Rate</th></tr></thead><tbody>' +
+      (b.levels || []).map(function (x) { return '<tr><td class="e">' + esc(x.level) + "</td><td>" + esc(String(x.n)) + "</td><td>" + esc(String(x.held)) + "</td><td>" + esc(scPct(x.rate)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+    var cr = b.judged_graded ? '<h3 class="sc-h3">The judge\u2019s criteria, held against missed</h3><div class="hs-note">On readings the judge scored and whose bet was graded (' + esc(String(b.judged_graded)) + '): the mean of 2 on readings whose bet held, beside those whose bet missed. A criterion that scores higher on held bets is one the world confirms.</div>' +
+      '<div class="hs-scroll"><table class="hs-table sc-t"><thead><tr><th>Criterion</th><th>Held</th><th>Missed</th></tr></thead><tbody>' +
+      (b.criteria || []).map(function (c) { return '<tr><td class="e">' + esc(c.name) + "</td><td>" + (c.held_mean == null ? '<span class="sc-none">none</span>' : esc(c.held_mean + " of 2 (" + c.held_n + ")")) + "</td><td>" + (c.missed_mean == null ? '<span class="sc-none">none</span>' : esc(c.missed_mean + " of 2 (" + c.missed_n + ")")) + "</td></tr>"; }).join("") + "</tbody></table></div>" : '<div class="hs-note">No reading both judged and graded yet; the judge\u2019s criteria against the world come when the two meet.</div>';
+    return head + note + lv + cr;
+  }
   function scoreVoiceHtml(v) {
     var head = '<h2>The voice</h2><div class="hs-note">The voice notes each writer left, by week: a house read\'s style notes, the readings\' voice notes, the editions\'. Notes, never holds; fewer a piece is the voice getting sharper.</div>';
     var rows = (v && v.weeks) || [];
@@ -991,7 +1025,7 @@
     if (!d || !d.ok) { scorePanel('<div class="pf-head">The score</div><div class="sc-say">The score did not open: ' + esc((d && (d.detail || d.error)) || "no answer") + '.</div><div class="sc-bar"><button class="btn" id="sc-close" style="color:#141414;border-color:rgba(20,20,20,.45)">Close</button></div>'); scoreClose(); return; }
     var mine = d.mine || null, all = d.all || {}, cur = mine ? mine.score : 0, pick = cur;
     scorePanel('<div class="pf-head">The score</div>' +
-      '<div class="sc-marks" role="radiogroup" aria-label="Score this read, 1 to 5">' + [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" class="sc-mark' + (n === cur ? " on" : "") + '" data-n="' + n + '" role="radio" aria-checked="' + (n === cur ? "true" : "false") + '">' + n + "</button>"; }).join("") + "</div>" +
+      '<div class="sc-marks" role="radiogroup" aria-label="Score this read, 1 to 5">' + [1, 2, 3, 4, 5].map(function (n) { var wd = SC_WORDS[n] || ""; return '<button type="button" class="sc-mark' + (n === cur ? " on" : "") + '" data-n="' + n + '" role="radio" aria-checked="' + (n === cur ? "true" : "false") + '"' + (wd ? ' title="' + wd + '"' : "") + ">" + n + (wd ? "<small>" + wd + "</small>" : "") + "</button>"; }).join("") + "</div>" +
       '<textarea id="sc-note" rows="2" maxlength="400" placeholder="What held the read up, or let it down. For the house only.">' + esc((mine && mine.note) || "") + "</textarea>" +
       '<div class="sc-bar"><button class="btn red" id="sc-save">Keep the score</button> <button class="btn" id="sc-close" style="color:#141414;border-color:rgba(20,20,20,.45)">Close</button> <span class="sc-say" id="sc-say">' +
       esc(say || (all.n ? "Scored " + all.n + (all.n === 1 ? " time" : " times") + ", a mean of " + all.mean + "." : "Not scored yet.")) + "</span></div>");
@@ -2706,10 +2740,29 @@
         '<div class="hs-note">' + docs.length + " document" + (docs.length === 1 ? "" : "s") + " · " + (tp.approved || 0) + " positions approved, " + (tp.proposed || 0) + " waiting · " + (tr.approved || 0) + " register lines kept. " +
         "A PDF, Word, OpenDocument, HTML or text file under 15 MB is kept in our store and never in the lake. Reading it is a click on its page, with the cost on the button: it proposes the positions the document holds, each on a quote from its page, and the lines that show how we write. Only what you approve reaches a read, as WHAT THE HOUSE BELIEVES, six at most, the nearest the read's subject.</div>" +
         "<h2>The documents</h2>" + rows +
+        '<h2>The examples</h2><div class="hs-note">A reading the house marked Sharp, proposed here for the writer. Approved, the newest a level rides the night\u2019s prompt as the shape and the depth to match, never the subject. Only the house\u2019s marks propose one; the judge never does.</div><div id="cp-examples"><div class="hs-note">Reading the examples.</div></div>' +   // SEAM:THE_LOOP (IQ4)
         "<h2>Try a subject</h2>" + '<div class="cp-probe"><input type="text" id="cp-q" placeholder="Jordan Brand, Gen Alpha, Chicago" aria-label="A subject"><button class="btn" id="cp-try">Which positions it meets</button></div><div class="hs-note" id="cp-hits">Every word you type counts as a subject. A read counts its frame and its stories.</div>' +
         "<h2>The register pool</h2>" + "<div class=\"hs-note\">The lines approved here, by the Method's exemplar they match: the pool the next Method revision draws from. The Method is unchanged until then.</div>" + poolHtml);
-      corpusBind();
+      corpusBind(); corpusExamples();   // SEAM:THE_LOOP (IQ4)
     }).catch(function () { houseShell("corpus", '<div class="hs-note">The house did not answer.</div>'); });
+  }
+  // SEAM:THE_LOOP (IQ4): the examples, proposed by a Sharp mark, approved or retired here
+  function corpusExamples(body, say) {
+    var el = document.getElementById("cp-examples"); if (!el) return;
+    call("/reads/corpus-example", body || {}).then(function (d) {
+      if (!d || !d.ok) { el.innerHTML = '<div class="hs-note">' + esc(d && d.error === "no_table" ? "The examples could not be read. Has 0067_examples.sql run in Supabase?" : "The examples could not load: " + ((d && (d.detail || d.error)) || "no answer") + ".") + "</div>"; return; }
+      var xs = d.examples || [], c = d.counts || {};
+      if (!xs.length) { el.innerHTML = '<div class="hs-note">No example yet. Mark a reading Sharp from its deep dive and it appears here.</div>'; return; }
+      var order = { proposed: 0, approved: 1, retired: 2 };
+      xs = xs.slice().sort(function (a, b) { return (order[a.status] || 0) - (order[b.status] || 0); });
+      el.innerHTML = '<div class="hs-note">' + esc((c.approved || 0) + " approved, " + (c.proposed || 0) + " waiting, " + (c.retired || 0) + " retired. The writer is given the newest approved a level.") + (say ? " " + esc(say) : "") + "</div>" +
+        xs.map(function (x) {
+          var btn = x.status === "approved" ? '<button class="btn" data-ex="' + esc(x.id) + '" data-st="retired">Retire</button>' : '<button class="btn red" data-ex="' + esc(x.id) + '" data-st="approved">Approve</button>' + (x.status === "proposed" ? ' <button class="btn" data-ex="' + esc(x.id) + '" data-st="retired">Retire</button>' : "");
+          return '<div class="cp-ex"><div class="d"><span class="status s-' + esc(x.status) + '">' + esc(x.status) + "</span> " + esc((x.level || "level not set") + (x.subject ? " \u00b7 " + x.subject : "") + (x.night ? " \u00b7 " + hsDay(String(x.night).slice(0, 10)) : "")) + "</div><pre class=\"cp-ex-text\">" + esc(x.text || "") + "</pre><div class=\"cp-ex-bar\">" + btn + "</div></div>";
+        }).join("");
+      var bs = el.querySelectorAll("button[data-ex]");
+      for (var i = 0; i < bs.length; i++) bs[i].onclick = function () { var id = this.getAttribute("data-ex"), st = this.getAttribute("data-st"); this.disabled = true; corpusExamples({ id: id, status: st }, st === "approved" ? "Approved: the writer sees it tonight." : "Retired."); };
+    }).catch(function () { el.innerHTML = '<div class="hs-note">The house did not answer.</div>'; });
   }
   function corpusBind() {
     var bt = document.getElementById("cp-up"); if (bt) bt.onclick = corpusUpload;

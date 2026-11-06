@@ -76,7 +76,7 @@ const wr = await D.dayFramesWrite({}, Object.assign({}, ED), ITEMS, 'cron');
 ok(wr.ok && wr.status === 'ready' && claude.length === 1 && claude[0].tier === 'doc' && claude[0].req.kind === 'daily_frames' && claude[0].req.cache === true && /^THE METHOD\n\nCONTRACT \(a DAILY day's frames\)/.test(claude[0].req.system) && claude[0].req.max_tokens === 2400,
   'C1 one call on the doc tier under the Method and the day\'s contract, cached, 2,400 tokens of room');
 const patch = sb.find(x => x.path === 'editions?id=eq.7' && x.opts.method === 'PATCH');
-ok(patch && patch.opts.body.frames.status === 'ready' && patch.opts.body.frames.frames.length === 3 && patch.opts.body.frames.cost_usd === 0.04 && patch.opts.body.frames.by === 'cron' && patch.opts.body.frames.voice === 'Method 5.0' && patch.opts.body.frames.model === 'claude-fable-5-1',
+ok(patch && patch.opts.body.frames.status === 'ready' && patch.opts.body.frames.frames.length === 3 && patch.opts.body.frames.cost_usd === 0.04 && patch.opts.body.frames.by === 'cron' && patch.opts.body.frames.voice === 'Method 5.1' && patch.opts.body.frames.model === 'claude-fable-5-1',
   'C2 the set is written on the edition row with its cost, its author and the Method\'s version');
 ok(events.some(e => e[1] === 'daily' && e[3] === 'day_frames' && e[5].status === 'ready'), 'C3 the day\'s frames are an event');
 reset(); reply = n => n === 1 ? JSON.stringify(Object.assign(JSON.parse(GOOD), { cover_line: 'Sales rose 40%' })) : GOOD;
