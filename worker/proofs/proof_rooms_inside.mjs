@@ -18,9 +18,9 @@ const at = p => w.indexOf("path === '" + p + "' && request.method === 'GET'");
 const inside = ['/excavate/tracks', '/excavate/brand', '/excavate/rooms', '/excavate/room', '/excavate/people', '/excavate/audiences', '/excavate/timeline'];
 ok(authAt > 0 && meterAt > authAt && inside.every(p => at(p) > authAt && at(p) < meterAt && w.indexOf("path === '" + p + "' && request.method === 'GET'", at(p) + 1) < 0),
   'A1 the brands, the brand and subject rooms, the people, the audiences and History are served only to a signed-in reader, once each, ahead of the AI meter');
-const open = ['/excavate/feed', '/excavate/record', '/excavate/state', '/excavate/day-frames', '/excavate/pulse', '/excavate/insight', '/daily/lake'];
-ok(open.every(p => at(p) > 0 && at(p) < authAt) && /path\.startsWith\('\/api\/weekly\/'\)/.test(w.slice(0, authAt)) && /path\.startsWith\('\/api\/report\/'\)/.test(w.slice(0, authAt)),
-  'A2 the main page and the Library stay open: the feed, the record, the state, the day\'s frames, the pulse, one insight, the lake, the stand and the Report');
+const closed = ['/excavate/feed', '/excavate/record', '/excavate/state', '/excavate/day-frames', '/excavate/pulse', '/excavate/insight'];
+ok(closed.every(p => at(p) > authAt && at(p) < meterAt) && at('/daily/lake') > 0 && at('/daily/lake') < authAt && /path\.startsWith\('\/api\/weekly\/'\)/.test(w.slice(0, authAt)) && /path\.startsWith\('\/api\/report\/'\)/.test(w.slice(0, authAt)),
+  'A2 the main page\'s reads are signed in too (SEAM:DOOR_CLOSED, AC1); DAILY\'s lake, the stand and the Report keep their own doors');
 ok(w.indexOf("case '/excavate/pdf':") > authAt && /SEAM:ROOMS_INSIDE \(NT3b\)/.test(w.slice(authAt, meterAt)), 'A3 a reading\'s PDF stays signed in; the move is marked where it lands');
 
 // ── B: the page asks those routes with the reader's session ─────────────────────────────────────────────────────────
@@ -53,8 +53,8 @@ const DL = new Function('window', 'document', 'Blob', 'URL', 'setTimeout', '_doo
   function () { blobs++; }, { createObjectURL: () => 'blob:x', revokeObjectURL() {} }, () => {}, d => dlAsked.push(d));
 DL('<p>x</p>', 'x.html'); dlWin._signedOut = false; DL('<p>x</p>', 'x.html');
 ok(dlAsked.length === 1 && dlAsked[0].kind === 'page' && blobs === 1, 'C4 a download raises the gate for a visitor and nothing is made; signed in, it downloads');
-ok(/enterSpace\('excavate'\);\n  if \(d\.room && window\._signedOut === true && typeof _roomRoute === 'function'\) setTimeout\(/.test(between(page, 'function _doorDeep() {', 'function _doorAsk(dest) {')),
-  'C5 a room\'s address read at the hub takes a visitor to the gate with the room kept');
+ok(/if \(window\._signedOut === true\) \{   \/\/ SEAM:DOOR_CLOSED \(AC1\)/.test(between(page, 'function _doorDeep() {', 'function _doorAsk(dest) {')) && /h && h\.id \? \{ kind: 'room', id: h\.id, by: h\.by \}/.test(between(page, 'function _doorDeep() {', 'function _doorAsk(dest) {')),
+  'C5 a room\'s address read at the hub takes a visitor to the gate with the room kept (SEAM:DOOR_CLOSED, AC1)');
 
 // ── D: once signed in, on to what was asked for ─────────────────────────────────────────────────────────────────────
 const nb = between(page, '/* ═══ SEAM:OPEN_DOOR (NT3a THE OPEN DOOR)', '/* ═══ end SEAM:OPEN_DOOR ═══ */');

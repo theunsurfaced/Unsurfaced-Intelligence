@@ -212,12 +212,7 @@ export default {
       if (path === '/excavate/interpret' && request.method === 'POST') return excavateInterpret(request, env, origin);
       if (path === '/excavate/reading' && request.method === 'POST') return excavateReading(request, env, origin);     // SEAM:EXC_PROBE (EX42): a reader takes another reading; the house learns   // SEAM:EXC_INTENT: the frame before the gather
       if (path === '/excavate/suggest' && request.method === 'POST') return excavateSuggest(request, env, origin);       // SEAM:EXC_INTENT: suggestions as the person types
-      if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK
-      if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED
       if (path === '/excavate/door/read' && request.method === 'GET') return doorReadRoute(request, env, origin);   // SEAM:EXC_DOOR v2 (signed in)
-      if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments, public
-      if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the territories, public
-      if (path === '/excavate/day-frames' && request.method === 'GET') return arrivalDayRoute(env, origin);            // SEAM:NET_ARRIVAL (NT3): the day's frames for the arrival, public; no model
       if (path === '/excavate/method' && request.method === 'GET') return excavateMethodRoute(request, env, origin);   // SEAM:TERRITORIES (EX39b): how the numbers are made, the house's own (desk key or admin)
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
@@ -230,7 +225,6 @@ export default {
       if (path === '/excavate/insight/panel' && request.method === 'GET') return insightPanelResults(request, env, origin);   // SEAM:INSIGHT_PANEL (signed in)
       if (path === '/client/evidence' && ['GET', 'POST', 'DELETE'].includes(request.method)) return clientEvidenceRoute(request, env, origin);   // SEAM:CLIENT_EVIDENCE (signed in)
       if (path === '/bench/freeze' && request.method === 'POST') return benchFreeze(request, env, origin);   // SEAM:BENCH (desk key)
-      if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, public and light
       if (path === '/excavate/track' && request.method === 'POST') return excavateTrackAdd(request, env, origin);    // SEAM:TRACKS (signed in)
       if (path === '/excavate/desk' && request.method === 'POST') return deskRunGuarded(request, env, origin);        // SEAM:DESK admin
       if (path === '/preview' && request.method === 'GET') return previewRoute(request, env, origin);
@@ -251,8 +245,16 @@ export default {
       // Everything below requires a signed-in user
       const user = await authenticate(request, env);
       if (!user) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+      // SEAM:DOOR_CLOSED (AC1): the main page's reads are for a signed-in reader too, ahead of the AI meter, so reading them never spends.
+      // NT3a had served them signed out; the Library's stands keep their own sign-in above the line.
+      if (path === '/excavate/pulse' && request.method === 'GET') return excavatePulse(env, origin);                 // SEAM:DESK (signed in: AC1)
+      if (path === '/excavate/feed' && request.method === 'GET') return excavateFeed(env, origin);                   // SEAM:HUB_FEED (signed in: AC1)
+      if (path === '/excavate/record' && request.method === 'GET') return doorRecordRoute(request, env, origin);     // SEAM:RECORD_ROUTE: the deployments (signed in: AC1)
+      if (path === '/excavate/state' && request.method === 'GET') return excavateStateRoute(env, origin);              // SEAM:ENGINE_STATE (EX36a): the territories (signed in: AC1)
+      if (path === '/excavate/day-frames' && request.method === 'GET') return arrivalDayRoute(env, origin);            // SEAM:NET_ARRIVAL (NT3): the day's frames for the arrival; no model (signed in: AC1)
+      if (path === '/excavate/insight' && request.method === 'GET') return doorInsightRoute(request, env, origin);   // SEAM:RECORD_ROUTE: one insight, light (signed in: AC1)
       // SEAM:ROOMS_INSIDE (NT3b): Brands, Audiences, a subject's room and its History are for a signed-in reader. Read here, ahead of
-      // the AI meter below, so reading them never spends. The main page's reads and the Library stay above the sign-in line.
+      // the AI meter below, so reading them never spends.
       if (path === '/excavate/tracks' && request.method === 'GET') return excavateTracks(env, origin);               // SEAM:TRACKS
       if (path === '/excavate/brand' && request.method === 'GET') return excavateBrand(request, env, origin);        // SEAM:BRAND_ROOM
       if (path === '/excavate/rooms' && request.method === 'GET') return excavateRooms(env, origin);                 // SEAM:ENTITY_ROOM (RM1): every entity on the links
@@ -12347,21 +12349,20 @@ async function doorInsightRoute(request, env, origin) {
   const pub = Object.assign({}, t); delete pub.move;   // SEAM:HOUSE_STYLE (NT3c): one insight, public, without its move
   return json({ ok: true, insight: pub, blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND }, 200, origin, env);
 }
-/* SEAM:RECORD_ROUTE: the permalink. /i/<id> is a small page with share tags that opens the reading on the site; links must not rot. */
+/* SEAM:RECORD_ROUTE: the permalink. /i/<id> is a small page with share tags that opens the reading on the site; links must not rot.
+ * SEAM:DOOR_CLOSED (AC1): the preview and the embed card carry nothing of the reading (no headline, no dek, no date, no photograph, and
+ * the reading is not read here at all); the site asks for a sign-in and opens the reading after it. */
 async function insightSharePage(path, env, embed) {
   const id = decodeURIComponent(path.slice('/i/'.length)).slice(0, 40);
-  const t = await doorInsightPublic(env, id).catch(excQuiet('insight_page', null));
   const base = (env.APP_URL || 'https://unsurfaced-intelligence.com').replace(/\/$/, '');
-  if (embed) {   // SEAM:EVIDENCE_PACK: the embeddable card, for an intranet or a deck; it links back to the reading
-    const f = (t && t.frame) || {}, who = [f.entity || f.category, f.audience].filter(Boolean).map(esc).join(' \u00b7 ');
-    const card = t ? '<div class="k">EXCAVATE \u00b7 DEPLOYED ' + esc(t.deployed || '') + (t.called && t.called.verdict ? ' \u00b7 ' + esc(String(t.called.verdict).toUpperCase()) : '') + '</div><div class="k">' + who + '</div><h1>' + esc(t.claim || t.title || '') + '</h1>' + (t.dek ? '<p>' + esc(t.dek) + '</p>' : '') + '<a href="' + esc(base + '/i/' + id) + '" target="_top">Open the reading</a>' : '<h1>EXCAVATE by Unsurfaced</h1>';
+  const dest = base + '/intelligence/?insight=' + encodeURIComponent(id);
+  if (embed) {   // SEAM:EVIDENCE_PACK: the embeddable card, for an intranet or a deck; it links to the sign-in and the reading after it
+    const card = '<div class="k">EXCAVATE \u00b7 A READING</div><h1>EXCAVATE by Unsurfaced</h1><p>The reading is for a signed-in reader.</p><a href="' + esc(dest) + '" target="_top">Sign in to read</a>';
     return new Response('<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font-family:system-ui;background:#0c0c0c;color:#eee;padding:18px 20px}.k{font-size:10px;letter-spacing:.1em;color:#999;margin-bottom:4px}h1{font-size:19px;line-height:1.25;margin:6px 0 10px}p{font-size:13px;color:#ccc;margin:0 0 10px}a{color:#fff;font-size:12px}</style></head><body>' + card + '</body></html>', { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
   }
-  const dest = base + '/intelligence/?insight=' + encodeURIComponent(t ? t.id : id);
-  const title = t ? esc(t.claim || t.title || 'An insight') + ' \u00b7 EXCAVATE by Unsurfaced' : 'EXCAVATE by Unsurfaced';
-  const desc = t ? esc([t.dek || '', 'Deployed ' + t.deployed + (t.called && t.called.verdict ? ', ' + t.called.verdict : '')].filter(Boolean).join(' \u00b7 ').slice(0, 200)) : 'The intelligence the engine deployed, dated and kept.';
-  const img = t && t.photo && t.photo.src ? esc(t.photo.src) : 'https://api.unsurfaced-intelligence.com/media/og/study-default.png';
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="article"><meta property="og:image" content="${img}"><meta property="og:url" content="${esc(base + '/i/' + id)}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${esc(dest)}"><link rel="canonical" href="${esc(dest)}"></head><body style="font-family:system-ui;background:#0b0b0b;color:#eee;padding:40px"><p>${title}</p><p>${desc}</p><p><a style="color:#fff" href="${esc(dest)}">Open the reading</a></p></body></html>`;
+  const title = 'EXCAVATE by Unsurfaced', desc = 'The intelligence the engine deployed, dated and kept. Sign in to read it.';
+  const img = 'https://api.unsurfaced-intelligence.com/media/og/study-default.png';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta property="og:title" content="${title}"><meta property="og:description" content="${desc}"><meta property="og:type" content="article"><meta property="og:image" content="${img}"><meta property="og:url" content="${esc(base + '/i/' + id)}"><meta name="twitter:card" content="summary_large_image"><meta http-equiv="refresh" content="0;url=${esc(dest)}"><link rel="canonical" href="${esc(dest)}"></head><body style="font-family:system-ui;background:#0b0b0b;color:#eee;padding:40px"><p>${title}</p><p>${desc}</p><p><a style="color:#fff" href="${esc(dest)}">Sign in to read</a></p></body></html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 /* ═══ SEAM:SCORECARD (EX54 THE SCORECARD): calibration as the engine's feedback loop and its public headline. A call is a claim the

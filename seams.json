@@ -1857,6 +1857,15 @@
    "file": "worker/src/index.js",
    "purpose": "TK1 THE TAKEAWAY TEST (Nov 3, 2026): the desk run {run:\"takeaway_test\", n} writes the newest ready readings again on their kept evidence with a takeaway field (TAKEAWAY_TEST.LAW, spliced into excDoorPrompt's schema at its question line), returns them beside what was published with takeawayChecks, and writes nothing. The night writer is unchanged; adoption is its own cut with the bench."
   },
+  "SEAM:DOOR_CLOSED": {
+   "file": "worker/src/index.js",
+   "purpose": "AC1 THE DOOR CLOSED (Nov 6, 2026): EXCAVATE is for a signed-in reader again. The six reads NT3a served signed out (the pulse, the feed, the record, the state, the day's frames, one insight) sit below the sign-in line, ahead of the AI meter (reading them never spends), once each. The permalink /i/<id> stays alive but reads nothing: its preview says EXCAVATE by Unsurfaced and lands on the sign-in; the embed card says Sign in to read. The Library's stands keep their own sign-in above the line; DAILY's doors are DAILY's. The writers, the laws and the night are untouched; no hashed slice moves."
+  },
+  "SEAM:DOOR_CLOSED@intelligence": {
+   "file": "intelligence/index.html",
+   "tag": "SEAM:DOOR_CLOSED",
+   "purpose": "AC1 THE DOOR CLOSED (Nov 6, 2026): the hub gates EXCAVATE as it gates PLAY and MINE (enterSpace). An address into EXCAVATE (?insight=, #room=, #record, #explore) keeps what it named (_doorDeep, _roomRoute through _doorAsk) and _doorResume opens it after the sign-in (the record too). The six reads carry the reader's session (_authHeader): the feed, the record, the state, the pulse, trending, the day's frames (a loader dormant since NT3c moved the frames to DAILY, carried along so no call without the session remains). A visitor's page loads nothing (the backup load skips it, the pulse waits for the sign-in and then runs on its minute); _enterPlatform loads it all on the sign-in."
+  },
   "SEAM:THE_REACH": {
    "file": "worker/src/index.js",
    "purpose": "IQ6 THE REACH (Nov 6, 2026), the READ writers' half: the level and its lens reach the WEEKLY, the MONTHLY, the Record and the RECON (and every other writer the Method instructs: the day's frames, the corpus extractor) through the Method (templates/CULTURAL_READ_METHOD.md 5.1, section The level and its lens after the nine questions: which of the nine bite hardest at each of the four levels, the six questions each, the line each owes, the failure each has, the eight tests; a RECON decides its one level before the thesis and the thesis says it in the reader's words; the Weekly Read, the monthly and the Record decide each pattern's level before its line). The two stamps voice: Method 5.1. READ_METHOD synced as tools/sync_method.py writes it. The contracts, the laws and the live search are untouched; the live half (the box's lens) is its own bench session. No hashed EXCAVATE slice moves; no spender; no SQL."

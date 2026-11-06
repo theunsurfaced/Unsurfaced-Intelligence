@@ -55,8 +55,8 @@ kv.clear(); calls.length = 0; ED = held;
 const r3 = await A.arrivalDayRoute(env, '');
 ok(r3.body.ok && r3.body.day === null && calls.length === 1, 'A6 a held day answers day null and reads no rights');
 ok(w.indexOf("if (path === '/excavate/day-frames' && request.method === 'GET') return arrivalDayRoute(env, origin);") > 0
-  && w.indexOf("if (path === '/excavate/day-frames' && request.method === 'GET')") < w.indexOf('// Everything below requires a signed-in user'),
-  'A7 GET /excavate/day-frames is public, beside the state');
+  && w.indexOf("if (path === '/excavate/day-frames' && request.method === 'GET')") > w.indexOf('// Everything below requires a signed-in user'),
+  'A7 GET /excavate/day-frames is signed in, beside the state (SEAM:DOOR_CLOSED, AC1)');
 ok(!/callClaude|callModel|claudeBatchSubmit|env\.AI\.run|fetch\(/.test(blk) && !/[—–]/.test(blk), 'A8 no model, no outside call, no dash');
 
 // ── B: the page's block, with fakes ─────────────────────────────────────────────────────────────────────────────────

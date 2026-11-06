@@ -5429,7 +5429,7 @@ async function initRoomsPage() {
   if (h) { if (_rooms.open !== h.id) _openRoom(h.id, true, h.by); } else _closeRoom(true);
 }
 function _roomRoute() {
-  if (window._signedOut && typeof _doorHubShown === 'function' && _doorHubShown()) { enterSpace('excavate'); return; }   // SEAM:OPEN_DOOR (NT3a): the rooms are public on the worker; a visitor's room address opens its room
+  if (window._signedOut === true) { const hv = _roomHash(); if (hv && hv.id && typeof _doorAsk === 'function') _doorAsk({ kind: 'room', id: hv.id, by: hv.by }); return; }   // SEAM:DOOR_CLOSED (AC1): a visitor's room address is kept and the gate rises; a hash with no room is nothing
   const h = _roomHash(), sec = document.getElementById('sec-brands');
   if (!sec || !sec.classList.contains('active')) { if (h) navTo('brands'); return; }
   if (h && h.id !== _rooms.open) _openRoom(h.id, true, h.by); else if (!h && _rooms.open) _closeRoom(true);
@@ -7516,7 +7516,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function () { try { _pendingStudyAfterAuth(0); } catch (e) {} }, 900);
   // Backup init: fire if _authShowApp didn't already queue it
   setTimeout(function() {
-    if (!_fiInitPending && typeof initFeaturedInsights === 'function') {
+    if (!_fiInitPending && window._signedOut !== true && typeof initFeaturedInsights === 'function') {   // SEAM:DOOR_CLOSED (AC1): a visitor's page loads nothing; _enterPlatform loads it on the sign-in
       initFeaturedInsights();
     }
   }, 200);
@@ -7579,7 +7579,7 @@ function _showHubSignedOut() {
   const g = document.getElementById('login-gate');
   if (g) g.classList.add('hidden');
   goHub();
-  if (typeof _doorDeep === 'function') _doorDeep();   // SEAM:OPEN_DOOR (NT3a): an address into EXCAVATE lands a visitor inside it; the hub stays the ground state
+  if (typeof _doorDeep === 'function') _doorDeep();   // SEAM:OPEN_DOOR (NT3a), SEAM:DOOR_CLOSED (AC1): an address into EXCAVATE is kept and the gate rises; the hub stays the ground state
   const b = document.getElementById('uai-authbtn');
   if (b) { b.textContent = 'Sign in \u2192'; b.onclick = function () { _gateForDoor(null); }; }
 }
@@ -7788,7 +7788,7 @@ function goHub(){
 function enterSpace(name){
   /* SEAM:DOOR_GATE — the turnstile. Signed out, the chosen door is stashed
      and the gate rises; sign-in resumes INTO this exact space. */
-  if (window._signedOut && name !== 'excavate') { _gateForDoor(name); return; }   // SEAM:OPEN_DOOR (NT3a): EXCAVATE opens to a visitor; PLAY and MINE keep their gate
+  if (window._signedOut) { _gateForDoor(name); return; }   // SEAM:DOOR_CLOSED (AC1): every space is signed in; EXCAVATE no longer opens to a visitor (NT3a had let it through)
   _uaiHide();
   if(name==='excavate'){
     document.body.style.overflow='';
@@ -10232,6 +10232,7 @@ function _enterPlatform() {
   _fiInitPending = true;
   initFeaturedInsights();
   window._signedOut = false; _navAuth();
+  if (typeof renderPulse === 'function') renderPulse();   // SEAM:DOOR_CLOSED (AC1): the pulse, now that it may be read
   const ab = document.getElementById('uai-authbtn');
   if (ab) { ab.textContent = 'Sign out'; ab.onclick = function () { lgSignOut(); }; }
   const gb = document.getElementById('uai-gate-back');
@@ -11078,7 +11079,7 @@ function _renderFeaturedCard(card, live, delay, showAsPending) {
 async function _fetchLakeField() {
   // SEAM:HUB_FEED — the public feed door first: same field, no session required.
   try {
-    const r0 = await Promise.race([fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store' }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 9000))]);
+    const r0 = await Promise.race([fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store', headers: await _authHeader() }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 9000))]);   // SEAM:DOOR_CLOSED (AC1): with the reader's session
     if (r0 && r0.ok) { const j0 = await r0.json(); if (j0 && j0.ok && ((Array.isArray(j0.proposed) && j0.proposed.length >= _FI_LAKE_MIN) || (j0.door && Array.isArray(j0.door.tiles) && j0.door.tiles.length >= 4))) { window._hubFeed = j0; return j0; } if (j0 && Array.isArray(j0.trending)) window._hubFeed = j0; }   // SEAM:EXC_DOOR v2
   } catch (e) {}
   try {
@@ -11749,7 +11750,7 @@ function _goDeeperLive() {
    first nights) the standing door tiles render as before. */
 let _FI_RECORD = null, _recLens = { kind: 'all', value: null };
 async function _recordLoad() {
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; if (typeof _hsMovesMerge === 'function') _hsMovesMerge(); return j; }   /* SEAM:HOUSE_STYLE (NT3c): a record loaded again keeps a member's moves */ } catch (e) {}
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/record', { cache: 'no-store', headers: await _authHeader() }); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.tiles)) { _FI_RECORD = j; if (typeof _hsMovesMerge === 'function') _hsMovesMerge(); return j; }   /* SEAM:HOUSE_STYLE (NT3c): a record loaded again keeps a member's moves */ } catch (e) {}
   return null;
 }
 /* SEAM:TERRITORIES (EX39): the twenty territories as a map, from GET /excavate/state: the state on last week, the movers, the
@@ -11757,7 +11758,7 @@ async function _recordLoad() {
 let _TERR = null;
 function _terrName(slug) { const s = _TERR && (_TERR.territories || []).find(x => x.territory === slug); return s && s.name ? s.name : String(slug || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
 async function _terrLoad() {
-  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/state'); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.territories) && j.territories.length) { _TERR = j; _terrRender(j); } } catch (e) {}
+  try { const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/state', { cache: 'no-store', headers: await _authHeader() }); const j = r.ok ? await r.json() : null; if (j && j.ok && Array.isArray(j.territories) && j.territories.length) { _TERR = j; _terrRender(j); } } catch (e) {}
 }
 function _terrRender(st) {
   const el = document.getElementById('terr-block'), grid = document.getElementById('terr-grid'); if (!el || !grid) return;
@@ -12344,8 +12345,9 @@ async function renderLakeTicker(){
 let _pulseEdition=null;
 async function renderPulse(){
   const track=document.getElementById('lake-ticker-track'); if(!track) return;
+  if(window._signedOut===true) return;   // SEAM:DOOR_CLOSED (AC1): the pulse is read signed in; a visitor's page asks for nothing
   try{
-    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/pulse',{cache:'no-store'}); const d=await r.json();
+    const r=await fetch(API_BASE.replace(/\/$/,'')+'/excavate/pulse',{cache:'no-store',headers:await _authHeader()}); const d=await r.json();
     if(!d||!d.ok||!Array.isArray(d.items)||!d.items.length){ return renderLakeTicker(); }
     _pulseEdition=d;
     const esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -12360,7 +12362,7 @@ async function renderPulse(){
     track.classList.remove('paused');
   }catch(e){ renderLakeTicker(); }
 }
-document.addEventListener('DOMContentLoaded',()=>{ renderPulse(); setInterval(renderPulse,60*1000); });
+document.addEventListener('DOMContentLoaded',()=>{ setInterval(renderPulse,60*1000); });   // SEAM:DOOR_CLOSED (AC1): the first read comes with the sign-in (_enterPlatform), never before the session is known
 
 function renderTrendingNow() {
   const list = document.getElementById('trending-now-list');
@@ -12381,7 +12383,7 @@ function renderTrendingNow() {
       </div>`; }).join('');
   };
   if (window._hubFeed) return paint(window._hubFeed);
-  fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) window._hubFeed = j; paint(j); }).catch(() => paint(null));
+  _authHeader().then(h => fetch(API_BASE.replace(/\/$/, '') + '/excavate/feed', { cache: 'no-store', headers: h })).then(r => r.ok ? r.json() : null).then(j => { if (j && j.ok) window._hubFeed = j; paint(j); }).catch(() => paint(null));   // SEAM:DOOR_CLOSED (AC1): with the reader's session
 }
 
 </script>
@@ -13778,7 +13780,8 @@ function _galLensRender() {
 async function _galDayLoad() {
   if (_gal.dayAt && Date.now() - _gal.dayAt < _GAL.DAY_MS) { _galDayRender(); return; }
   _gal.dayAt = Date.now();
-  let j = null; try { const r = await fetch(_galApi('/excavate/day-frames'), { cache: 'no-store' }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }
+  let j = null; try { const r = await fetch(_galApi('/excavate/day-frames'), { cache: 'no-store', headers: await _authHeader() }); j = r.ok ? await r.json() : null; } catch (e) { j = null; }   // SEAM:DOOR_CLOSED (AC1): with the reader's session
+  if (!j) _gal.dayAt = 0;   // SEAM:DOOR_CLOSED (AC1): nothing came (a visitor's page, or the worker away): the next load asks again rather than waiting out the day's window
   _gal.day = j && j.ok && j.day && Array.isArray(j.day.frames) && j.day.frames.length ? j.day : null;
   _galDayRender();
 }
@@ -14365,9 +14368,10 @@ function _youAsk(b) { const q = b && b.getAttribute('data-q'); if (!q) return; s
 /* ═══ end SEAM:THE_SCROLL ═══ */
 </script>
 <script>
-/* ═══ SEAM:OPEN_DOOR (NT3a THE OPEN DOOR): EXCAVATE opens to a visitor. The hub stays the signed-out ground state; choosing EXCAVATE
-   there, or arriving by an address into it (#explore, #record, ?insight=, a room's #room= or #brand=), lands a visitor inside it with no
-   gate. PLAY and MINE keep their gate. What the worker serves signed out shows as it is: the hero and the box with its LIVE PULSES
+/* ═══ SEAM:OPEN_DOOR (NT3a THE OPEN DOOR), closed again by SEAM:DOOR_CLOSED (AC1, Nov 6): EXCAVATE is for a signed-in reader. The hub
+   stays the signed-out ground state; choosing EXCAVATE there meets the gate as PLAY and MINE do, and an address into it (#explore,
+   #record, ?insight=, a room's #room= or #brand=) is kept for after the sign-in (_doorDeep, _doorAsk, _doorResume). What follows in
+   this comment describes NT3a's open door as it was, kept for the record of what each helper was built for. What the worker serves signed out shows as it is: the hero and the box with its LIVE PULSES
    line, the rail, the morning, the day's frames, the scorecard, the lenses, the record, History, the rooms, the people and the Library.
    What the worker keeps signed in, or what would spend or write, raises the gate instead, and what the visitor asked for is kept for
    after: a reading's deep dive (its links say "Sign in to open the reading"), Play it, Ask the record, Follow, Watch, the box (NT3's
@@ -14383,12 +14387,16 @@ const _doorAt = (function () {   // the address the page was opened at, read bef
   } catch (e) { return { done: true }; }
 })();
 function _doorHubShown() { const h = document.getElementById('uai-hub'); return !!(h && h.classList.contains('show')); }
-/* An address into EXCAVATE lands a visitor inside it, once; the hub stays the ground state for any other address. */
+/* An address into EXCAVATE: a visitor is kept what it named and meets the gate (SEAM:DOOR_CLOSED, AC1: nothing lands a visitor inside); the hub stays the ground state for any other address. */
 function _doorDeep() {
   const d = _doorAt; if (!d || d.done) return false; d.done = true;
   if (!(d.insight || d.room || d.record || d.explore)) return false;
+  if (window._signedOut === true) {   // SEAM:DOOR_CLOSED (AC1): the reading, the room, the record or the arrival asked for is kept, and the gate rises; _doorResume opens it after the sign-in
+    const h = d.room && typeof _roomHash === 'function' ? _roomHash() : null;
+    _doorAsk(d.insight ? { kind: 'reading', id: d.insight } : h && h.id ? { kind: 'room', id: h.id, by: h.by } : d.record ? { kind: 'record' } : { kind: 'explore' });
+    return true;
+  }
   enterSpace('excavate');
-  if (d.room && window._signedOut === true && typeof _roomRoute === 'function') setTimeout(function () { try { _roomRoute(); } catch (e) { /* the main page stands */ } }, 300);   // SEAM:ROOMS_INSIDE (NT3b): a room's address takes a visitor to the gate, the room kept
   if (d.record) setTimeout(function () { try { _navRecord(); } catch (e) { /* the arrival stands */ } }, 300);
   if (d.insight) window._doorDeepId = d.insight;
   return true;
@@ -14454,6 +14462,7 @@ function _doorResume() {
   else if (d.kind === 'room' && d.id) { navTo('brands'); _openRoom(d.id, false, d.by === 'track' ? 'track' : undefined); }
   else if (d.kind === 'history' && d.key) openTimeline(d.key);
   else if (d.kind === 'move' && d.id && typeof _hsMoveResume === 'function') _hsMoveResume(d.id, 0);   // SEAM:HOUSE_STYLE (NT3c): the move asked for opens
+  else if (d.kind === 'record' && typeof _navRecord === 'function') _navRecord();   // SEAM:DOOR_CLOSED (AC1): the record an address named, after the sign-in
 }
 /* PURE: a label as a visitor reads it, and back again once signed in. */
 function _doorLabelText(s, visitor) {

@@ -49,8 +49,8 @@ const sp = between(w, 'async function insightSharePage(path, env, embed) {', '/*
 const SP = new Function('doorInsightPublic', 'esc', 'excQuiet', sp + '; return insightSharePage;')(async () => tile('11111111-1111-4111-8111-111111111111', 'The secret move', { deployed: '2026-11-01', photo: null, frame: { entity: 'Acme' } }), s => esc(s), () => () => null);
 const share = await (await SP('/i/11111111-1111-4111-8111-111111111111', { APP_URL: 'https://u.example' }, false)).text();
 const embed = await (await SP('/i/11111111-1111-4111-8111-111111111111', { APP_URL: 'https://u.example' }, true)).text();
-ok(!/The secret move|The move:/.test(share) && !/The secret move|The move:/.test(embed) && /Copy 11111111/.test(share) && /Copy 11111111/.test(embed) && /Deployed 2026-11-01/.test(share) && !/t\.move/.test(sp),
-  'A7 a shared link\'s preview and its embed card carry the claim, the copy and the date, never the move');
+ok(!/The secret move|The move:|Copy 11111111|Deployed 2026-11-01|Acme/.test(share) && !/The secret move|The move:|Copy 11111111|Deployed|Acme/.test(embed) && /Sign in to read/.test(share) && /Sign in to read/.test(embed) && !/t\.move|doorInsightPublic/.test(sp),
+  'A7 a shared link\'s preview and its embed card carry nothing of the reading, not even its date, and ask for the sign-in (SEAM:DOOR_CLOSED, AC1)');
 const sl = between(w, "/* SEAM:HOUSE_STYLE (NT3c): a seat's spaces, each with its latest reading:", 'async function spaceRoute(request, env, origin, user) {');
 const asked = [];
 const SL = new Function('sbRest', 'excQuiet', 'doorTile', 'spacePublicRow', 'SPACES', sl + '; return { spaceLatest, spaceWithLatest };')(
