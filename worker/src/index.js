@@ -9528,8 +9528,14 @@ function doorReuseStamp(prev, stamp) {
 }
 /* SEAM:THE_LENS (IQ2) PURE: the people's own lines for the writer, numbered P1, P2 so a read can cite them; the comment as written, who
  * said it and its likes; at most DOOR_LAW.PEOPLE. Nothing when the night heard none. */
+/* SEAM:THE_VOICE_BEHIND (VX3) PURE: the people's lines in the order the writer numbers them (P1 is the first): what a finding's citation
+ * points at, on the page and in the preview. The row's voices, the ones with words, at most DOOR_LAW.PEOPLE. */
+function doorPeople(meta) {
+  const vs = meta && Array.isArray(meta.voices) ? meta.voices : (Array.isArray(meta) ? meta : []);
+  return vs.filter(v => v && v.text && !(typeof voiceBarred === 'function' && voiceBarred(v.text))).slice(0, DOOR_LAW.PEOPLE).map(v => ({ text: String(v.text), likes: Number(v.likes) || 0, when: v.when || null, self: v.self || null }));
+}
 function doorPeopleBlock(voices) {
-  const list = (Array.isArray(voices) ? voices : []).filter(v => v && v.text).slice(0, DOOR_LAW.PEOPLE);
+  const list = doorPeople(voices);
   if (!list.length) return '';
   const who = v => { const s = v.self || {}; return [s.generation, s.role].filter(Boolean).join(', ') || 'a consumer'; };
   return '\n\nPEOPLE (comments as written; what people say, never coverage):\n' + list.map((v, i) => 'P' + (i + 1) + ' "' + String(v.text).replace(/\s+/g, ' ').slice(0, 240) + '" (' + who(v) + (v.likes ? ', ' + v.likes + ' likes' : '') + ')').join('\n');
@@ -9642,7 +9648,7 @@ function excDoorPrompt(frame, evidence, measures, memory, night) {
     // SEAM:THE_LENS (IQ2): the takeaway is the read at the level, for the professional the frame serves; the findings carry a fact and a read; the pushback only where a line carries it
     '"takeaway":"one sentence under 28 words for the professional the frame serves: what changes, for whom and why now, at the level; never the headline or the dek again, never a figure the lines do not carry",' +
     '"question":"the question this read answers for the professional it serves, one sentence, plain",' +
-    '"insights":[2 to 3 of {"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon","fact":"what happened, one short sentence with the names in it, from the lines","read":"what it means at the level, one sentence the fact alone does not say, under THE EIGHT TESTS","evidence":[1-based numbers of the lines it stands on]}],' +
+    '"insights":[2 to 3 of {"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon","fact":"what happened, one short sentence with the names in it, from the lines","read":"what it means at the level, one sentence the fact alone does not say, under THE EIGHT TESTS","evidence":[1-based numbers of the lines it stands on],"people":[the P numbers of the PEOPLE lines it stands on, most important first, else an empty list]}],' +
     '"pushback":{"line":<1-based number of the line that argues the other side>,"text":"one sentence naming what it says against the read"} or null when no line pushes back; never by rule,' +
     '"ideas":[1 to 2 of {"type":"Positioning|Product|Campaign|Content|Partnership|Channel|Pricing","for":"brand|product|creative|media|retail|partnerships","headline":"verb-first action, at most 10 words","body":"one or two short sentences: exactly what a team would do on Monday, where, for whom","because":"1 sentence: the tension this move resolves","proof":"one plain sentence naming the evidence it stands on","evidence":[1-based numbers],"from":<0-based index of the insight it comes from>}],' +
     // SEAM:RECORD_WATCH: the one measurable thing this read bets on, so the record can grade it on the database's own counts
@@ -9678,7 +9684,7 @@ function doorCompileRead(parsed, merged, frame, measures, night, nowMs) {   // n
     const ground = excGround([x.title, fact].join(' '), ns.map(n => merged[n - 1]).concat(pool));
     return { checks: ground, category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', title: String(x.title || '').slice(0, 120), excerpt: fact, implication: readOf(x, ns, fact),
       confidence: ground.ungrounded.length ? 'Low' : excEarned(ns.map(n => merged[n - 1]), ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'), now),
-      evidence: ns, dated: datedOf(ns), source: String((first && first.source) || x.source || '').slice(0, 120), sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url : null, image: first && first.image && excTier(first) <= 2 ? first.image : null };   // SEAM:EXC_DOOR_VOICE (EX52a): a photograph only from a T0 to T2 source
+      evidence: ns, people: (Array.isArray(x.people) ? x.people : []).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= (typeof DOOR_LAW !== 'undefined' ? DOOR_LAW.PEOPLE : 8)).filter((n, i, a) => a.indexOf(n) === i).slice(0, 3), dated: datedOf(ns), source: String((first && first.source) || x.source || '').slice(0, 120), sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url : null, image: first && first.image && excTier(first) <= 2 ? first.image : null };   // SEAM:EXC_DOOR_VOICE (EX52a): a photograph only from a T0 to T2 source
   }).filter(x => x.title);
   const read = (Array.isArray(parsed.read) ? parsed.read : []).slice(0, 2).map(x => excClip(x, 420)).filter(Boolean);
   const ideas = (Array.isArray(parsed.ideas) ? parsed.ideas : []).slice(0, 2).map(x => ({ type: String(x.type || 'Strategy').slice(0, 40), for: excShort(x.for), headline: String(x.headline || '').slice(0, 120), body: String(x.body || '').slice(0, 400),
@@ -9841,6 +9847,7 @@ async function doorLand(env, id, text, cost, stopReason, pass) {
   if (!got) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('door_land_patch')); return { id, status: 'failed' }; }
   const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
   if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);   // SEAM:EXC_HOUSE_VOICE (VX1b): notes on the stored read, never a hold
+  read.people = doorPeople(row.meta);   // SEAM:THE_VOICE_BEHIND (VX3): the people's lines as the writer numbered them, kept with the read
   if (typeof calibAdjust === 'function') await calibAdjust(env, read.insights, row.frame && row.frame.category).catch(excQuiet('calib_adjust', 0));   // SEAM:SCORECARD (EX54): confidence learns, floor-gated
   if ((read.insights || []).length < 2) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: 'thin_read', updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch')); console.log('door_thin_read', id); return { id, status: 'failed', held: 'thin_read' }; }   // SEAM:THE_LENS (IQ2): a reading left with fewer than two findings waits for its next night
   const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];   // SEAM:EXC_MEASURE (EX52a): a reading whose claim is the instrument is held, the way a thin one is: off the board, the reason on the row, the next night tries again
@@ -9931,6 +9938,7 @@ async function recordPassLand(env, row, got, cost, stopReason, pass, merged) {
   if (!got) return keep(stopReason === 'max_tokens' ? 'truncated' : 'unparsable');
   const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night, Date.parse(String(row.night || '').slice(0, 10) + 'T06:00:00Z') || undefined);   // banded as of its night, as the writer saw it
   if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);
+  read.people = doorPeople(row.meta);   // SEAM:THE_VOICE_BEHIND (VX3)
   if ((read.insights || []).length < 2 || !read.read) return keep('thin_read');
   const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];
   if (named.length) return keep('measure_claim: ' + named[0].where);
@@ -9997,17 +10005,18 @@ async function recordPassDiscard(env) {
 /* PURE: the previews as one page, the published reading beside the new one; nothing on it spends or writes. */
 function recordPassPage(rows) {
   const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const side = (rd, isNew) => {
+  const side = (rd, isNew, people) => {
     if (!rd) return '<div class="side"><p class="q">nothing</p></div>';
-    const ins = (rd.insights || []).map(x => '<li><b>' + e(x.title) + '</b><br>' + e(x.excerpt) + (x.implication ? '<br><i>' + e(x.implication) + '</i>' : '') + '</li>').join('');
+    const said = x => (Array.isArray(x.people) ? x.people : []).filter(p => (people || [])[p - 1]).map(p => '<br><span class="pv">P' + p + ' \u201c' + e(people[p - 1].text) + '\u201d</span>').join('');   // SEAM:THE_VOICE_BEHIND (VX3)
+    const ins = (rd.insights || []).map(x => '<li><b>' + e(x.title) + '</b><br>' + e(x.excerpt) + (x.implication ? '<br><i>' + e(x.implication) + '</i>' : '') + said(x) + '</li>').join('');
     const mv = (rd.ideas || []).map(x => '<li><b>' + e(x.headline) + '</b> ' + e(x.body) + '</li>').join('');
     return '<div class="side ' + (isNew ? 'new' : 'old') + '"><div class="k">' + (isNew ? 'THE NEW READ' : 'ON THE RECORD') + (rd.level ? ' · ' + e(rd.level) : '') + '</div>'
       + '<h3>' + e(rd.read && rd.read[0]) + '</h3><p class="dek">' + e(rd.read && rd.read[1]) + '</p>' + (rd.takeaway ? '<p class="take">' + e(rd.takeaway) + '</p>' : '<p class="q">no takeaway</p>')
       + '<ol>' + ins + '</ol>' + (rd.pushback ? '<p class="pb">Pushback, line ' + e(rd.pushback.line) + ': ' + e(rd.pushback.text) + '</p>' : '') + '<div class="k">THE MOVES</div><ul>' + mv + '</ul>'
       + (rd.watch ? '<p class="q">The bet: ' + e(rd.watch.claim) + ' (carried)</p>' : '') + '<p class="q">' + e(rd.brief) + '</p></div>';
   };
-  const body = rows.map(r => '<section><div class="k">' + e(r.night) + ' · ' + e((r.frame && (r.frame.entity || r.frame.title || r.frame.category)) || r.frame_key) + ' · ' + e(r.id) + '</div><div class="pair">' + side(r.read, false) + side(r.meta.pass_read, true) + '</div></section>').join('');
-  return '<!doctype html><html><head><meta charset="utf-8"><title>The record pass</title><style>body{margin:0;background:#0a0a0f;color:#faf7f2;font:15px/1.5 Helvetica,Arial,sans-serif;padding:28px}h1{font-size:28px;margin:0 0 6px}.k{font:11px/1.4 Menlo,monospace;letter-spacing:.12em;color:#e8365a;text-transform:uppercase;margin:0 0 8px}section{border-top:1px solid #2a2a2a;padding:22px 0}.pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}.side{background:#141414;padding:18px}.side.new{outline:1px solid #c41230}h3{font-size:19px;margin:4px 0 6px}.dek{color:#b8b3aa;margin:0 0 8px}.take{font-weight:700;margin:0 0 10px}ol,ul{padding-left:18px;margin:0 0 10px}li{margin:0 0 8px}i{color:#b8b3aa}.pb{color:#e8365a}.q{color:#8a8478;font-size:13px}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style></head><body><h1>The record pass</h1><p class="q">'
+  const body = rows.map(r => { const people = typeof doorPeople === 'function' ? doorPeople(r.meta) : [], pr = r.meta.pass_read; return '<section><div class="k">' + e(r.night) + ' · ' + e((r.frame && (r.frame.entity || r.frame.title || r.frame.category)) || r.frame_key) + ' · ' + e(r.id) + '</div><div class="pair">' + side(r.read, false, (r.read && Array.isArray(r.read.people)) ? r.read.people : people) + side(pr, true, (pr && Array.isArray(pr.people)) ? pr.people : people) + '</div></section>'; }).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>The record pass</title><style>body{margin:0;background:#0a0a0f;color:#faf7f2;font:15px/1.5 Helvetica,Arial,sans-serif;padding:28px}h1{font-size:28px;margin:0 0 6px}.k{font:11px/1.4 Menlo,monospace;letter-spacing:.12em;color:#e8365a;text-transform:uppercase;margin:0 0 8px}section{border-top:1px solid #2a2a2a;padding:22px 0}.pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}.side{background:#141414;padding:18px}.side.new{outline:1px solid #c41230}h3{font-size:19px;margin:4px 0 6px}.dek{color:#b8b3aa;margin:0 0 8px}.take{font-weight:700;margin:0 0 10px}ol,ul{padding-left:18px;margin:0 0 10px}li{margin:0 0 8px}i{color:#b8b3aa}.pb{color:#e8365a}.q{color:#8a8478;font-size:13px}.pv{color:#d8d2c6;font-size:13px}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style></head><body><h1>The record pass</h1><p class="q">'
     + rows.length + ' reading' + (rows.length === 1 ? '' : 's') + ' in preview. Publish with {"apply":true}; drop with {"discard":true}.</p>' + (body || '<p class="q">Nothing in preview. Queue some with {"queue":6,"preview":true}, then collect.</p>') + '</body></html>';
 }
 async function doorFail(env, id, error) {
@@ -11796,7 +11805,7 @@ async function takeawayTest(env, body) {
     const c = doorCompileRead(got.read, merged, r.frame, r.measures || {}, r.night, nightMs), raw = Array.isArray(got.read.insights) ? got.read.insights : [];
     const held = (c.insights || []).length < 2 ? 'thin_read' : (typeof excMeasureClaims === 'function' && excMeasureClaims(c).length ? 'measure_claim' : null);   // what the night would do with it
     const now2 = { headline: (c.read && c.read[0]) || null, dek: (c.read && c.read[1]) || null, takeaway: c.takeaway || null, level: c.level || null, lens: c.lens || [], pushback: c.pushback || null,
-      findings: (c.insights || []).map(x => ({ title: x.title, fact: x.excerpt, read: x.implication || null })), reads_dropped: raw.filter(x => x && x.read).length - (c.insights || []).filter(x => x.implication).length,
+      findings: (c.insights || []).map(x => ({ title: x.title, fact: x.excerpt, read: x.implication || null, people: x.people || [] })), reads_dropped: raw.filter(x => x && x.read).length - (c.insights || []).filter(x => x.implication).length,
       bet: (c.watch && c.watch.claim) || null, moves: (c.ideas || []).map(x => x.headline), brief: c.brief || null, held };
     return { id: r.id, night: r.night, subject, was, now: now2, checks: takeawayChecks(now2.takeaway, now2.headline), usd: res.cost_usd || 0 };
   };
@@ -13118,6 +13127,7 @@ async function doorReadRoute(request, env, origin) {
   if (!r || !r.read) return json({ ok: false, error: 'not_ready' }, 200, origin, env);
   const f = r.frame || {}, rd = r.read;
   const data = Object.assign({}, rd, { frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null },
+    voices: Array.isArray(rd.people) ? rd.people : (typeof doorPeople === 'function' ? doorPeople(r.meta) : []),   // SEAM:THE_VOICE_BEHIND (VX3): the people's lines as the writer numbered them (kept with the read since VX3; the row's for an older reading), for the findings that cite them and the reading's own voices
     measures: r.measures || null, model: { lane: 'overnight', model: CLAUDE.TIERS.live.model, reason: r.status === 'reused' ? 'reused: evidence unchanged' : null, cached: false }, compiled_at: r.updated_at || null,
     overnight: { night: r.night, status: r.status, since: (r.meta && r.meta.since) || null, prev_night: (r.meta && r.meta.prev_night) || null, deployed: r.night, develops: (r.meta && r.meta.prev_id) || null, developed_by: (r.meta && r.meta.developed_by) || null, called: (r.meta && r.meta.called) || null, watch: rd.watch || null, place: doorPlaceOf(r.evidence) },   // SEAM:RECORD_LAW
     blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND
@@ -14048,6 +14058,7 @@ async function spaceLand(env, id, text, cost, stopReason) {
   if (!got) { await sbRest(env, 'space_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('space_land_patch')); return { id, status: 'failed', private: true }; }
   const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
   if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);
+  if (typeof doorPeople === 'function') read.people = doorPeople(row.meta);   // SEAM:THE_VOICE_BEHIND (VX3)
   if (typeof calibAdjust === 'function') await calibAdjust(env, read.insights, row.frame && row.frame.category).catch(excQuiet('calib_adjust', 0));   // SEAM:SCORECARD (EX54): confidence learns, floor-gated
   const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];
   if (named.length) { await sbRest(env, 'space_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: ('measure_claim: ' + named[0].where + ': ' + named[0].text).slice(0, 200), updated_at: new Date().toISOString() } }).catch(excQuiet('space_land_patch')); return { id, status: 'failed', held: 'measure_claim', private: true }; }

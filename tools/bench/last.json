@@ -1,10 +1,10 @@
 {
- "at": "2026-11-06T11:09:54.044Z",
- "base": "https://a3673f5e-unsurfaced-api.office-173.workers.dev",
- "writer_hash": "0df1a984b5ff169e57472c7b2dca862fca50e644794d915264e17c3175ee2ec7",
+ "at": "2026-11-06T11:56:23.417Z",
+ "base": "https://80252977-unsurfaced-api.office-173.workers.dev",
+ "writer_hash": "79c343cdc281930bd7392e2473078691e0a118ce7d2022a24c4a5b7e7c730ec8",
  "packs": 5,
  "ok": 5,
- "mean": 72,
+ "mean": 76,
  "human_mean": null,
  "floor": 70,
  "runs": [
@@ -18,10 +18,10 @@
    "human": null,
    "failed_checks": [],
    "notes": [
-    "Nostalgia cited twice (brief + finding 2) without distinguishing what Gen Z nostalgia means vs. older cohorts; 'Last Dance' (2011) predates Gen Z purchasing power by years, breaking exclude rule on re",
-    "87% awareness stat lacks Gen Z disaggregation—entire US consumer base cited, not the named audience; 41% liking rate unexplained and unconnected to Gen Z behavior specifically",
-    "Authenticity and community (finding 3) stated at medium confidence but no evidence shown; claim floats free of the read material provided",
-    "Moves prescribe nostalgia + celebrity drops without testing whether Gen Z values differ from older buyers on these levers; frame asks 'compared to competitors' but no competitor data appears in findin"
+    "Nostalgia appears in brief, findings, and moves without distinguishing how it operates differently across Gen Z vs. older cohorts—or whether it contradicts the frame's exclusion of '1980s history' and",
+    "87% awareness and 41% liking are stated as fact but sourced only to 'Statista, Networth News' with no date, methodology, or Gen Z-specific breakdown; confidence marked 'Low' but used to anchor the ent",
+    "Scarcity engineering is claimed as the mechanism three times (brief, finding 2, move 1) without evidence that Gen Z values scarcity differently than Nike or Adidas employ it, or that it outweighs sust",
+    "'Last Dance' campaign (2011, retro nostalgia) contradicts the frame's explicit exclusion of '1980s history' and 'retro nostalgia'; no evidence it moved Gen Z purchasing vs. older audiences"
    ],
    "read": [
     "Jordan Brand stays relevant with Gen Z through nostalgia and scarcity",
@@ -29,12 +29,88 @@
    ],
    "findings": 3,
    "moves": 2,
-   "ms": 272436,
+   "ms": 261197,
    "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
   },
   {
    "id": "q04",
    "query": "Gen Z and hair care",
+   "ok": true,
+   "score": 78,
+   "code": 100,
+   "reader": 46,
+   "human": null,
+   "failed_checks": [],
+   "notes": [
+    "Sustainability claim rated 'Low' confidence but treated as actionable strategy without hedging in moves; evidence gap not surfaced to decision-maker",
+    "Ursa Major, Nécessaire, Sienna Naturals cited twice across findings and moves as proof; repetition weakens rather than strengthens",
+    "No Gen Z voice, purchase data, or behavioral evidence provided—only brand examples and one Technavio stat (59% non-permanent color) disconnected from main claims",
+    "Frame excludes dermatology but findings discuss 'gentle formulations' and 'scalp health' (anchor) without dermatological grounding or Gen Z-specific validation"
+   ],
+   "read": [
+    "Gen Z prioritizes ingredient-focused, sustainable hair care routines.",
+    "59% of Gen Z prefer non-permanent hair color options, per Technavio."
+   ],
+   "findings": 3,
+   "moves": 2,
+   "ms": 262772,
+   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
+  },
+  {
+   "id": "q08",
+   "query": "luxury in Lagos",
+   "ok": true,
+   "score": 76,
+   "code": 90,
+   "reader": 56,
+   "human": null,
+   "failed_checks": [
+    "numbers_in_evidence"
+   ],
+   "notes": [
+    "Fashion dominance (64%) stated twice: in excerpt and in title 4—collapses into single finding",
+    "Polo Towers cited three times across findings 2, move 2, and proof—repetition masks whether evidence is one source or three",
+    "Confidence labels ('Medium,' 'Low,' 'Low,' 'Low,' 'Low') never explain why watch retail or bespoke tailoring rate lower than designer launches—hedging is present but reasoning is absent",
+    "Moves assume Oct. 10 pre-launch and Harrods window are still open; no date check against 'period:null' and no statement of how old the read is"
+   ],
+   "read": [
+    "Affluent Lagosians shop fashion first when they buy luxury",
+    "In Lagos, clothing stores make up 64% of listed luxury retail locations, per Exa Places."
+   ],
+   "findings": 5,
+   "moves": 4,
+   "ms": 119497,
+   "model": "claude-sonnet-5"
+  },
+  {
+   "id": "q13",
+   "query": "Formula 1 and American audiences",
+   "ok": true,
+   "score": 76,
+   "code": 90,
+   "reader": 56,
+   "human": null,
+   "failed_checks": [
+    "headline_pure"
+   ],
+   "notes": [
+    "Multiview move cites formula1.com but read contains no evidence formula1.com documented this feature for F1—only that Apple TV has Multiview technically",
+    "Migration numbers move asks F1 to publish data; no evidence shows F1 has published or will publish ESPN-to-Apple sign-up figures",
+    "Confidence ratings in findings don't match move certainty: Low-confidence findings (2, 3) anchor moves as if they were High-confidence facts",
+    "Brief claims 'push the seven-day free trial on NASCAR's off-weekends' but read shows only one trial mention (Azerbaijan); no pattern of recurring trials across weekends"
+   ],
+   "read": [
+    "American F1 fans must now pay to keep watching",
+    "Apple TV, F1's exclusive US broadcaster replacing ESPN, offers newcomers only a seven-day free trial, per GPFans."
+   ],
+   "findings": 5,
+   "moves": 4,
+   "ms": 234233,
+   "model": "claude-sonnet-5"
+  },
+  {
+   "id": "q17",
+   "query": "Erewhon and premium grocery",
    "ok": true,
    "score": 76,
    "code": 100,
@@ -42,98 +118,18 @@
    "human": null,
    "failed_checks": [],
    "notes": [
-    "Sustainability claim appears in finding 1, brief, and move 1 without new evidence each time; Technavio stat cited in read but not tied to any finding",
-    "Low/Medium confidence labels lack hedging language in sentences—findings state conclusions flatly despite weak evidence (e.g., 'Gen Z values' not 'some Gen Z may value')",
-    "No acknowledgment that brief cites three sources but findings show only two are traceable; Brillare and The Good Trade lack publication dates or sample sizes",
-    "J-Beauty/K-Beauty finding (4) drifts from frame's anchors (natural ingredients, sustainable packaging, scalp health) into regional trend category not named in question"
+    "Finding 1 repeats the $80 spring water claim twice in one read; brief repeats it again. Status positioning stated three times across findings and brief.",
+    "All six findings marked Low or Medium confidence but moves treat them as actionable fact. No hedge language in moves despite weak evidence base.",
+    "Read provides only two data points (spring water price, status motive) but brief and findings extrapolate to market strategy, growth drivers, and competitor positioning without stating what evidence c",
+    "Move 3 (museum collaborations as quarterly drops) invents a program from a single LACMA example; no evidence Erewhon intends to systematize this or that it drives positioning against named competitors"
    ],
    "read": [
-    "Gen Z prioritizes ingredient-focused, sustainable hair care routines.",
-    "59% of Gen Z prefer non-permanent hair color options, per Technavio."
-   ],
-   "findings": 4,
-   "moves": 2,
-   "ms": 283005,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q08",
-   "query": "luxury in Lagos",
-   "ok": true,
-   "score": 70,
-   "code": 90,
-   "reader": 40,
-   "human": null,
-   "failed_checks": [
-    "numbers_in_evidence"
-   ],
-   "notes": [
-    "Finding 6 (Ikoyi collapse) speaks to construction safety, not luxury consumption—outside frame entirely",
-    "Finding 5 (Harrods export) names a 2026 event as proof of Lagos market resonance, but proves only that African designers exist, not what Lagos HNWIs want",
-    "Confidence labels ('Low,' 'Medium') appear without thresholds; 'Low' findings anchor two of four moves, inverting the hierarchy",
-    "Findings 1–4 repeat 'Victoria Island,' 'fashion retail,' and 'Nigerian designers' across titles and excerpts without new specificity"
-   ],
-   "read": [
-    "Lagos's wealthy prove status through wardrobe and homegrown designers",
-    "Clothing stores make up 64% of listed Lagos luxury stores, per Exa Places"
+    "Shoppers choose Erewhon for status, not for savings.",
+    "Erewhon sells a 24-pack of spring water for about $80, per OSInsights, a price built for status, not thirst."
    ],
    "findings": 6,
    "moves": 4,
-   "ms": 237873,
-   "model": "claude-sonnet-5"
-  },
-  {
-   "id": "q13",
-   "query": "Formula 1 and American audiences",
-   "ok": true,
-   "score": 60,
-   "code": 70,
-   "reader": 44,
-   "human": null,
-   "failed_checks": [
-    "headline_pure",
-    "moves_follow",
-    "brief_present"
-   ],
-   "notes": [
-    "Apple TV repeated across all three findings and both moves—collapses distinct claims into one fact stated four times",
-    "No hedge on 'Medium' confidence despite sourcing only documentarytube.com (unverified); no acknowledgment that 2026 is future-tense or that trial conversion rates are unknown",
-    "Never states what the evidence cannot show: whether free trials convert to paid subs, whether American viewers actually prefer streaming, whether this addresses NASCAR/IndyCar competition named in fra",
-    "Moves assume Apple TV promotion grows F1 fandom among Americans, but read contains zero data on American attitudes, competitor comparison, or engagement barriers the frame asked for"
-   ],
-   "read": [
-    "American viewers tune into Apple TV for Formula 1",
-    "Apple TV became the official U.S. home of Formula 1 in 2026, replacing ESPN, per documentarytube.com."
-   ],
-   "findings": 3,
-   "moves": 2,
-   "ms": 281239,
-   "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
-  },
-  {
-   "id": "q17",
-   "query": "Erewhon and premium grocery",
-   "ok": true,
-   "score": 80,
-   "code": 90,
-   "reader": 66,
-   "human": null,
-   "failed_checks": [
-    "numbers_in_evidence"
-   ],
-   "notes": [
-    "Finding 2 repeats the Sprouts/Erewhon pairing across three findings (2, 3, 4) without new detail each time; consolidate.",
-    "Findings 3, 4, 6 all carry 'Low' confidence but brief treats them as settled fact ('now moves through apartment memberships'); hedge language in brief needed.",
-    "No evidence shown that status positioning *excludes* supermarket competition—only that Erewhon doesn't lead with it. Limits of the read (what we cannot claim about Whole Foods' or Sprouts' own status ",
-    "Move 1 assumes the Mercer deal succeeded and is replicable; no evidence of tenant uptake, retention, or ROI. State what the proof cannot show before recommending rollout."
-   ],
-   "read": [
-    "Affluent shoppers treat Erewhon runs as status rituals, not errands.",
-    "A 24-pack of its spring water sells for around $80, per osinsights.org, pricing a traditional supermarket could never justify."
-   ],
-   "findings": 6,
-   "moves": 4,
-   "ms": 245320,
+   "ms": 93561,
    "model": "claude-sonnet-5"
   }
  ]

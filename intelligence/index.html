@@ -2297,6 +2297,22 @@ body.uai-in.hs-you-on #sec-explore .hs-top .hero-sub{display:none}
 #sec-explore .room-voices .track{display:flex;grid-template-columns:none;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;margin:0;padding:0 0 6px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
 #sec-explore .room-voices .track:focus-visible{outline:2px solid var(--room-red);outline-offset:3px}
 #sec-explore .room-voices .track>.quote{flex:0 0 calc((100% - 42px)/4);scroll-snap-align:start;display:flex;flex-direction:column;gap:8px;min-width:0}
+/* SEAM:THE_VOICE_BEHIND (VX3): the band's groups, three a screen; the voice under a finding in the deep dive */
+#sec-explore .room-voices .track>.vx-group{flex:0 0 calc((100% - 28px)/3);scroll-snap-align:start;display:flex;flex-direction:column;gap:12px;min-width:0;margin:0;background:var(--room-card);padding:18px 18px 16px;border:1px solid var(--room-rule)}
+#sec-explore .vx-group .vx-g-head{display:flex;flex-direction:column;gap:6px}
+#sec-explore .vx-group .vx-g-head .q-on{margin:0;font-family:'Space Mono',monospace;font-size:calc(11px*var(--k));line-height:1.4;letter-spacing:.08em;text-transform:uppercase;color:var(--room-red)}
+@media (max-width:1000px){#sec-explore .room-voices .track>.vx-group{flex:0 0 calc((100% - 14px)/2)}}
+#sec-explore .vx-group.vx-yours .q-on::before{content:'';display:inline-block;width:6px;height:6px;margin:0 7px 1px 0;background:var(--hs-pink);vertical-align:middle}
+#sec-explore .vx-group .vx-g-claim{margin:0;font-family:'Syne',sans-serif;font-weight:800;text-transform:uppercase;font-size:calc(15px*var(--k));line-height:1.15;color:var(--room-ivory)}
+#sec-explore .vx-group .vx-g-quotes{display:flex;flex-direction:column;gap:10px}
+#sec-explore .vx-group .vx-q{margin:0;padding:10px 0 0;border-top:1px solid var(--room-rule);display:flex;flex-direction:column;gap:5px}
+#sec-explore .vx-group .vx-q p{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:calc(14.5px*var(--k));line-height:1.45;color:var(--room-ivory)}
+#sec-explore .vx-group .vx-q cite{font-style:normal;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--hs-quiet)}
+#sec-explore .vx-group .vx-g-foot{margin-top:auto;display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:4px}
+.card-voice{margin:10px 0 0;padding:10px 12px;border-left:2px solid var(--accent);background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:4px}
+.card-voice-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.card-voice p{margin:0;font-size:13.5px;line-height:1.5;color:var(--text)}
+.card-voice cite{font-style:normal;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
 #sec-explore .room-voices .quote p{font-size:calc(15.5px*var(--k));margin:0}
 #sec-explore .room-voices .quote cite{margin-top:auto}
 #sec-explore .room-voices .quote .q-on{margin:0}
@@ -2325,7 +2341,7 @@ body.uai-in.hs-you-on #sec-explore .hs-top .hero-sub{display:none}
 .vx-room .vx-on-read{margin-top:auto;padding-top:10px;border-top:1px solid #222;font-family:'Syne',sans-serif;font-size:13px;line-height:1.4;color:var(--hs-soft)}
 body.vx-room-open{overflow:hidden}
 @media (max-width:1000px){#sec-explore .hs-top{grid-template-columns:minmax(0,1fr);grid-template-areas:"ask" "box" "side";gap:14px 0}#sec-explore .hs-top h1.hero-title{font-size:clamp(38px,11vw,48px);white-space:normal}#sec-explore .hs-top .hs-side{padding-top:4px}#sec-explore .gal-rows{grid-template-columns:minmax(0,1fr)}#sec-explore #lead-week{grid-template-columns:minmax(0,1fr)}#sec-explore .lead-reading .photo{min-height:200px}#sec-explore .room-voices .track>.quote{flex-basis:calc((100% - 14px)/2)}.vx-room .vx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){#sec-explore .vx-band{grid-template-columns:minmax(0,1fr)}#sec-explore .vx-arrow{display:none}#sec-explore .room-voices .track>.quote{flex-basis:82%}#sec-explore .room-voices .room-head{display:block}#sec-explore .vx-all{display:inline-block;margin-top:14px}.vx-room-wrap{padding:0}.vx-room{max-height:100vh;padding:60px 18px 30px}.vx-room .vx-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){#sec-explore .vx-band{grid-template-columns:minmax(0,1fr)}#sec-explore .vx-arrow{display:none}#sec-explore .room-voices .track>.quote{flex-basis:82%}#sec-explore .room-voices .track>.vx-group{flex-basis:86%}#sec-explore .room-voices .room-head{display:block}#sec-explore .vx-all{display:inline-block;margin-top:14px}.vx-room-wrap{padding:0}.vx-room{max-height:100vh;padding:60px 18px 30px}.vx-room .vx-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
 <style id="the-lens">/* SEAM:THE_LENS (IQ2 THE LENS): the reading reads at its level. The takeaway where the dek stood (the dek under it on the lead, as proof); no bet on the card or the lead (it lives in the move); a member's move on the card; a finding's read in the deep dive */
 #sec-explore .lead-reading .text>p.lead-take{font-family:'Syne',sans-serif;font-weight:600;font-size:calc(16px*var(--k));line-height:1.45;color:var(--hs-ink);margin:0}
@@ -3005,7 +3021,7 @@ body.vx-room-open{overflow:hidden}
   </section>
 
   <section class="hub-block room-sec room-voices" id="voices-block" style="display:none">
-    <div class="room-head"><h2>What people are saying</h2><div class="sub">Comments quoted as written, about the subjects we read and the month behind them.</div><button type="button" class="vx-all" onclick="_vxRoomOpen()">All voices</button></div><!-- SEAM:THE_SCROLL (NT4): the room behind the band -->
+    <div class="room-head"><h2>What people are saying</h2><div class="sub">Comments quoted as written, about the subjects we read and the month behind them.</div><button type="button" class="vx-all" onclick="_vxRoomOpen()">All voices</button></div><!-- SEAM:THE_SCROLL (NT4): the room behind the band; SEAM:THE_VOICE_BEHIND (VX3): grouped by subject -->
     <div class="vx-band"><button type="button" class="vx-arrow" onclick="_vxStep(-1)" aria-label="Earlier voices">&larr;</button><div class="track" id="voices-track" tabindex="0" aria-label="What people are saying"></div><button type="button" class="vx-arrow" onclick="_vxStep(1)" aria-label="More voices">&rarr;</button></div><!-- SEAM:THE_SCROLL (NT4): the band scrolls; every voice rides it -->
   </section>
 
@@ -4033,7 +4049,7 @@ function _renderLive(q, data){
       confidence: ['High','Medium','Low'].includes(ins.confidence)?ins.confidence:'Low',
       source: ins.source||'Excavate analysis',
       sourceUrl: ins.sourceUrl||null,
-      dated: ins.dated||null, meaning: ins.meaning||null, implication: ins.implication||null, evidence: ins.evidence||[], checks: ins.checks||null,
+      dated: ins.dated||null, meaning: ins.meaning||null, implication: ins.implication||null, evidence: ins.evidence||[], checks: ins.checks||null, people: Array.isArray(ins.people)?ins.people:[],   // SEAM:THE_VOICE_BEHIND (VX3): the people's lines it stands on
       calibrated: ins.calibrated&&ins.calibrated.from?ins.calibrated:null,   // SEAM:SCORECARD (EX54): a finding the record moved one band lower says so
       image: ins.image||null   // EX52a: the door's per-finding photograph (a T0 to T2 source) rides to the card
     }));
@@ -4057,6 +4073,7 @@ function _renderLive(q, data){
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, moves_pass:syn&&syn.moves_pass||null, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
     takeaway:syn&&syn.takeaway||null, pushback:syn&&syn.pushback||null, level:syn&&syn.level||null,   // SEAM:THE_LENS (IQ2): the read at the level, and the line that argues the other side
+    voices:syn&&Array.isArray(syn.voices)?syn.voices:null,   // SEAM:THE_VOICE_BEHIND (VX3): the people's lines, P1 first
     measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null, client_lines:syn&&syn.client_lines||0},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
@@ -4662,6 +4679,8 @@ function renderResults(q, data, mode){
   lastMode=mode;
   lastSources=data.sources||[];
   window._lastInsights=data.insights||[];
+  window._lastVoices=Array.isArray(data.voices)?data.voices:null; window._voiceUsed=new Map();   // SEAM:THE_VOICE_BEHIND (VX3): which finding each voice stands under
+  if(window._lastVoices&&typeof _voiceKey==='function') (data.insights||[]).forEach(ins=>{ const c=(Array.isArray(ins.people)?ins.people:[]).map(p=>parseInt(p,10)-1).find(i=>i>=0&&i<window._lastVoices.length&&!window._voiceUsed.has(i)); if(c!=null) window._voiceUsed.set(c,_voiceKey(ins)); });   // a citation outranks a guess, whatever order the cards draw in
   window._lastSources=lastSources;
   const rc=_receiptOf(data);   // EX33c: one receipt
 
@@ -6687,6 +6706,29 @@ function _buildSignalTruth(q, lenses) {
    insight card is measured, so nothing draws. The modal opens the card you clicked, not the same index in
    a different list. */
 /* EXCAVATE_MEANING: a finding says what it means three ways; a move reads as a brief. */
+/* SEAM:THE_VOICE_BEHIND (VX3): the comment a finding stands on, as written, under its read. The writer cites the people's lines it used
+   (people: P numbers into the reading's voices, P1 first); a reading from before the citations shows the comment that speaks to the
+   finding's own words (_voiceMatch: three content words shared, the best one), each voice under one finding on a page (a finding drawn
+   twice, in its lens and in All findings, keeps its voice). Never a name, never a handle. */
+function _voicesRail(vs){ return { quotes:(vs||[]).filter(v=>v&&v.text).map(v=>({ text:String(v.text), likes:Number(v.likes)||0, when:v.when||null, self:v.self||null, src:'vx', on_frame:true })), sources:[{ id:'vx', source:'Quoted as written', title:null, url:null }] }; }
+function _voiceWords(s){ return new Set(String(s||'').toLowerCase().replace(/[^a-z\s'-]/g,' ').split(/\s+/).filter(w=>w.length>=5&&!/'/.test(w)&&!/^(?:their|there|these|those|which|while|where|about|after|before|being|other|still|would|could|should|because|people|brand|brands|really|thing|things)$/.test(w))); }
+function _voiceMatch(ins, voices){
+  const want=_voiceWords([ins&&ins.title, ins&&ins.excerpt, ins&&ins.implication].join(' ')); if(want.size<3) return -1;
+  let best=-1, score=2;
+  const key=_voiceKey(ins);
+  (voices||[]).forEach((v,i)=>{ if(!v||!v.text||(window._voiceUsed&&window._voiceUsed.has(i)&&window._voiceUsed.get(i)!==key)) return; let n=0; for(const w of _voiceWords(v.text)) if(want.has(w)) n++; if(n>score){ score=n; best=i; } });
+  return best;
+}
+function _voiceKey(ins){ return String((ins&&ins.title)||'')+'|'+String((ins&&ins.excerpt)||'').slice(0,40); }
+function _voiceBehind(ins){
+  const voices=window._lastVoices; if(!Array.isArray(voices)||!voices.length) return '';
+  const key=_voiceKey(ins), used=window._voiceUsed instanceof Map?window._voiceUsed:null, free=i=>!used||!used.has(i)||used.get(i)===key;
+  const cited=(Array.isArray(ins&&ins.people)?ins.people:[]).map(p=>parseInt(p,10)-1).filter(i=>i>=0&&i<voices.length&&voices[i]&&voices[i].text);
+  const fresh=cited.filter(free), i=fresh.length?fresh[0]:(cited.length?-1:_voiceMatch(ins, voices)); if(i<0) return '';   // a voice stands under one finding; a finding whose citations stand elsewhere matches nothing
+  if(used) used.set(i, key);
+  const v=voices[i];
+  return `<blockquote class="card-voice"><span class="card-voice-k">In their words</span><p>\u201c${safe(v.text)}\u201d</p><cite>${safe(typeof _vxWho==='function'?_vxWho(v):'Consumer')}</cite></blockquote>`;
+}
 function _meaningBlock(ins){
   const m=ins&&ins.meaning, f=window._lastFrame||{};
   if(!m) return ins&&ins.implication?`<p class="card-excerpt" style="color:var(--text);opacity:.9"><strong>So:</strong> ${safe(ins.implication)}</p>`:'';
@@ -6719,7 +6761,7 @@ function _fillLensPanels(lenses, truth){
         <span class="card-cat ${ins.category||cat}">● ${safe(CAT_LABELS[ins.category||cat]||'Insight')}</span>
         <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
-        ${_meaningBlock(ins)}
+        ${_meaningBlock(ins)}${_voiceBehind(ins)}
         <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(_cleanSource(ins.source))}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>${typeof _calibLine==='function'?_calibLine(ins.calibrated):''}
       </div>`;
   };
@@ -6792,7 +6834,7 @@ function _renderRailVoices(items){
   host.innerHTML=agg.map(it=>{ const n=(String(it.title).match(/(\d+)\s+(sampled|posts)/)||[])[1]||'0'; const all=String(it.text||'').replace(/^.*?Sample:\s*/,'').split(' | ').map(x=>x.trim()).filter(Boolean); const kept=all.filter(onFrame); const samples=(kept.length?kept:[]).slice(0,3); const aside=all.length-kept.length;
     const src=(it.source_name||it.source||'').toUpperCase(); const isYT=/YOUTUBE/.test(src);
     return `<div class="rail-voice"><div class="rail-voice-head">● CONSUMER VOICE · ${safe(src)} · ${isYT?'TOP VIDEOS':'PUBLIC TAG TIMELINE'}</div>
-      <div class="rail-voice-cut">${safe(n)} ${isYT?'comments sampled':'public posts in the window'}. ${anchors.length?(kept.length?kept.length+' on the frame'+(aside?', '+aside+' set aside as off-topic':'')+'.':'None of the sampled '+(isYT?'comments':'posts')+' names the frame; the conversation here is elsewhere, which is itself a finding.'):(isYT?'Ranked by the platform for relevance, not filtered for on-topic yet; read them as raw voice.':'Tag match, not topic match; a tag can carry a coincidence.')}</div>
+      <div class="rail-voice-cut">${safe(n)} ${isYT?'comments sampled':'public posts in the window'}. ${anchors.length?(kept.length?kept.length+' on the subject'+(aside?', '+aside+' set aside as off-topic':'')+'.':'None of the sampled '+(isYT?'comments':'posts')+' names the subject; the conversation here is elsewhere, which is itself a finding.'):(isYT?'Ranked by the platform for relevance, not filtered for on-topic yet; read them as raw voice.':'Tag match, not topic match; a tag can carry a coincidence.')}</div>
       ${samples.map(x=>`<div class="rail-voice-sample">${safe(x)}</div>`).join('')}
       <div class="rail-voice-note">${it.url?`<a href="${safeUrl(it.url)}" target="_blank" rel="noopener">open the source ↗</a>`:''}${it.published_at?' · newest '+safe(String(it.published_at).slice(0,10)):''}</div></div>`; }).join('');
 }
@@ -6869,15 +6911,15 @@ function _renderVoices(meta){
   const markers=[['Gen Alpha',q=>q.self&&q.self.generation==='Gen Alpha'],['Gen Z',q=>q.self&&q.self.generation==='Gen Z'],['Millennial',q=>q.self&&q.self.generation==='Millennial'],['Gen X',q=>q.self&&q.self.generation==='Gen X'],['Boomer',q=>q.self&&q.self.generation==='Boomer'],['women',q=>q.self&&q.self.gender==='woman'],['men',q=>q.self&&q.self.gender==='man'],['parents',q=>q.self&&q.self.role==='parent'],['stylists',q=>q.self&&q.self.role==='stylist'],['practitioners',q=>q.self&&q.self.role==='practitioner'],['students',q=>q.self&&q.self.role==='student']].map(m=>({label:m[0],pred:m[1],n:count(m[1])})).filter(m=>m.n);
   const traits=[...new Set(on.map(q=>q.self&&q.self.trait).filter(Boolean))].slice(0,6).map(t=>({label:t,pred:q=>q.self&&q.self.trait===t,n:count(q=>q.self&&q.self.trait===t)}));
   const places=[...new Set(on.map(q=>q.self&&q.self.place).filter(Boolean))].slice(0,6).map(t=>({label:t,pred:q=>q.self&&q.self.place===t,n:count(q=>q.self&&q.self.place===t)}));
-  const chips=(framed?[{label:'on the frame',key:'frame',n:on.length},{label:'everything sampled',key:'all',n:all.length}]:[{label:'everything sampled',key:'all',n:all.length}]).concat(markers.concat(traits,places).map(m=>Object.assign({key:'m:'+m.label},m)));
+  const chips=(framed?[{label:'on the subject',key:'frame',n:on.length},{label:'everything sampled',key:'all',n:all.length}]:[{label:'everything sampled',key:'all',n:all.length}]).concat(markers.concat(traits,places).map(m=>Object.assign({key:'m:'+m.label},m)));
   const f=window._voiceView.filter; const chip=chips.find(c=>c.key===f)||chips[0];
   const pool=(f==='all'?all:on).filter(q=>chip.pred?chip.pred(q):true).sort(_voiceSort);
   const shown=pool.slice(0,window._voiceView.shown);
-  const srcLine=(v.sources||[]).map(s=>`<a href="${safeUrl(s.url||'#')}" target="_blank" rel="noopener">${safe(s.source||'')}: ${safe(String(s.title||'').slice(0,50))}</a>${s.n?' ('+safe(String(s.n))+')':''}`).join(' · ');
+  const srcLine=(v.sources||[]).map(s=>s.url?`<a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${safe(s.source||'')}: ${safe(String(s.title||'').slice(0,50))}</a>${s.n?' ('+safe(String(s.n))+')':''}`:safe(s.source||'')).join(' · ');   // SEAM:THE_VOICE_BEHIND (VX3): a source without an address is a name, not a link
   host.innerHTML=`<section class="voices" aria-label="Consumer voice">
-    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comments and posts on ${safe(String((v.sources||[]).length))} sources${framed?', '+safe(String(on.length-unread))+' naming the frame'+(unread?' ('+safe(String(unread))+' not read through it; the frame arrived late)':''):', not read through a frame (it arrived late)'}. Verbatim; a speaker's own description beside the words; never a name.</span></div><div class="read-thin voices-blind">${safe((window._liveLast&&window._liveLast.synthesis&&window._liveLast.synthesis.blind)||EXC_BLIND_LINE)}</div><!-- SEAM:EXC_BLIND -->
+    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comment${all.length===1?'':'s'} on ${safe(String((v.sources||[]).length))} source${(v.sources||[]).length===1?'':'s'}${framed?', '+safe(String(on.length-unread))+' on the subject'+(unread?' ('+safe(String(unread))+' not yet read against it)':''):', not yet read against the subject'}. Quoted as written; a speaker's own description beside the words; never a name.</span></div><div class="read-thin voices-blind">${safe((window._liveLast&&window._liveLast.synthesis&&window._liveLast.synthesis.blind)||EXC_BLIND_LINE)}</div><!-- SEAM:EXC_BLIND -->
     <div class="voices-chips" onclick="var b=event.target.closest('.voices-chip');if(b)_voiceFilterSet(b.getAttribute('data-key'))">${chips.map(c=>`<button class="voices-chip${c.key===chip.key?' on':''}" data-key="${safeAttr(c.key)}">${safe(c.label)} <b>${safe(String(c.n))}</b></button>`).join('')}</div>
-    <div class="voices-list">${shown.map(q=>{ const s=srcBy.get(q.src)||{}; return `<div class="vq"><p class="vq-text">${safe(q.text)}</p><div class="vq-foot">${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${q.when?safe(q.when)+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+' ↗</a>':''}${q.on_frame===false?' · off the frame':''}</span></div></div>`; }).join('')||'<p class="voices-empty">None of the sampled voices names the frame. The conversation here is elsewhere, which is itself a finding.</p>'}</div>
+    <div class="voices-list">${shown.map(q=>{ const s=srcBy.get(q.src)||{}; return `<div class="vq"><p class="vq-text">${safe(q.text)}</p><div class="vq-foot">${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${q.when?safe(q.when)+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+' ↗</a>':''}${q.on_frame===false?' · off the subject':''}</span></div></div>`; }).join('')||'<p class="voices-empty">None of the sampled voices names the subject. The conversation here is elsewhere, which is itself a finding.</p>'}</div>
     ${pool.length>shown.length?`<button class="voices-more" onclick="_voiceMore()">Show ${safe(String(Math.min(24,pool.length-shown.length)))} more of ${safe(String(pool.length))}</button>`:''}
     <div class="voices-src">${srcLine}</div>
   </section>`;
@@ -7018,6 +7060,7 @@ function _sourcesGrouped(sources, lines){
   return `<div class="rb-sources">${Object.keys(groups).filter(g=>groups[g].length).map(g=>`<div class="rb-src-group"><div class="rb-src-k">${names[g]} <span>${groups[g].length}</span></div><ol>${groups[g].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(line).join('')}</ol></div>`).join('')}</div>`;
 }
 function _renderResultsV2(q, lenses, truth, mode) {
+  window._lastVoices=null; window._voiceUsed=new Map();   // SEAM:THE_VOICE_BEHIND (VX3): a read without voices carries none from the reading before it
   lastMode    = mode;
   lastSources = truth.allSources||[];
   window._lastInsights = truth.allInsights||[];
@@ -11321,8 +11364,14 @@ function _renderDoorVoices(voices) {
   const band = out.filter(v => String(v.text).trim().split(/\s+/).filter(Boolean).length >= 8 || v.likes >= 10);
   if (band.length < 3) { el.style.display = 'none'; return; }
   const who = v => { const s = v.self || {}, id = [s.generation, s.role ? (s.generation ? 'a ' : 'A ') + s.role : null].filter(Boolean); return (id.length ? id : ['Consumer']).concat(v.likes ? [Number(v.likes).toLocaleString('en-US') + (Number(v.likes) === 1 ? ' like' : ' likes')] : []).join(', '); };
-  const card = v => `<figure class="quote${v.yours ? ' vx-yours' : ''}">${v.on ? `<div class="q-on">${safe(v.on)}</div>` : ''}<p>“${safe(v.text)}”</p><cite>${safe(who(v))}</cite>${v.id ? `<button type="button" class="vx-open" onclick="openFeaturedCard('${safeAttr(v.id)}')">Open the reading</button>` : ''}</figure>`;
-  track.innerHTML = band.map(card).join('');
+  // SEAM:THE_VOICE_BEHIND (VX3): the band groups by subject, in the pool's order (the reader's own first): the subject and its reading's
+  // claim at the head, up to three voices under it, Open the reading; past three, All N voices opens the room on that subject. A voice
+  // without a subject (the month's) stands in a group of its own kind.
+  const groups = [], gBy = new Map();
+  for (const v of band) { const k = v.on || (v.id ? 'id:' + v.id : 'the month'); let g = gBy.get(k); if (!g) { const t = v.id ? byId.get(v.id) : null; g = { on: v.on || null, id: v.id || null, claim: t && (t.claim || t.title) ? String(t.claim || t.title) : null, yours: !!v.yours, voices: [], n: 0 }; gBy.set(k, g); groups.push(g); } g.n++; if (g.voices.length < 3) g.voices.push(v); }
+  const quote = v => `<blockquote class="vx-q"><p>“${safe(v.text)}”</p><cite>${safe(who(v))}</cite></blockquote>`;
+  const group = g => `<figure class="vx-group${g.yours ? ' vx-yours' : ''}"><div class="vx-g-head">${g.on ? `<div class="q-on">${safe(g.on)}</div>` : '<div class="q-on">This month</div>'}${g.claim ? `<p class="vx-g-claim">${safe(g.claim)}</p>` : ''}</div><div class="vx-g-quotes">${g.voices.map(quote).join('')}</div><div class="vx-g-foot">${g.id ? `<button type="button" class="vx-open" onclick="openFeaturedCard('${safeAttr(g.id)}')">Open the reading</button>` : ''}${g.n > 3 && g.on ? `<button type="button" class="vx-open vx-all-of" onclick="_vxRoomOpen(${safeAttr(JSON.stringify(String(g.on)))})">All ${g.n} voices</button>` : ''}</div></figure>`;
+  track.innerHTML = groups.map(group).join('');
   track.scrollLeft = 0;
   el.style.display = 'block';
 }
@@ -11353,7 +11402,7 @@ async function _openDoorRead(t) {
     const j = r.ok ? await r.json() : null;
     hideLoader();
     if (!j || !j.ok || !j.data) { showToast(j && j.error === 'auth_required' ? 'Sign in to open the read' : 'That read is still compiling'); return; }
-    window._gatherMeta = { cls: null, rails: [], meta: {}, frame: j.data.frame || null }; window._gatherItems = []; window._tileFrame = { _q: q, frame: j.data.frame || null };
+    window._gatherMeta = { cls: null, rails: [], meta: Array.isArray(j.data.voices) && j.data.voices.length ? { voices: _voicesRail(j.data.voices) } : {}, frame: j.data.frame || null }; window._gatherItems = []; window._tileFrame = { _q: q, frame: j.data.frame || null };   // SEAM:THE_VOICE_BEHIND (VX3): the reading's own voices, where a live read's would be
     window._doorOpen = { id: t.id, query: q, frame: j.data.frame || null };
     _dashShow(false); document.getElementById('error-banner').style.display = 'none';
     _renderLive(q, { items: [], synthesis: j.data, sources: [] });
@@ -14208,9 +14257,9 @@ function _vxStep(dir) {
 /* PURE: who a voice is, as the speaker said it: generation, role, else Consumer; the likes after. */
 function _vxWho(v) { const s = (v && v.self) || {}, id = [s.generation, s.role ? (s.generation ? 'a ' : 'A ') + s.role : null].filter(Boolean); return (id.length ? id : ['Consumer']).concat(v && v.likes ? [Number(v.likes).toLocaleString('en-US') + (Number(v.likes) === 1 ? ' like' : ' likes')] : []).join(', '); }
 /* The room: every voice the page holds, as written. Search, by subject, by who, most liked or newest; each opens its reading. */
-function _vxRoomOpen() {
+function _vxRoomOpen(on) {   // on: SEAM:THE_VOICE_BEHIND (VX3), the room opened on one subject from its group
   if (document.getElementById('vx-room')) return;
-  _vx.from = document.activeElement; _vx.room = { q: '', on: '', who: '', order: 'liked' };
+  _vx.from = document.activeElement; _vx.room = { q: '', on: typeof on === 'string' ? on : '', who: '', order: 'liked' };
   const wrap = document.createElement('div'); wrap.className = 'vx-room-wrap'; wrap.id = 'vx-room';
   wrap.innerHTML = `<div class="vx-room-back" onclick="_vxRoomClose()"></div><div class="vx-room" role="dialog" aria-modal="true" aria-labelledby="vx-room-h"><button type="button" class="vx-x" onclick="_vxRoomClose()" aria-label="Close">&times;</button>`
     + `<div class="hs-k">What people are saying</div><h2 id="vx-room-h">Every voice, as written.</h2><p class="vx-sub">Comments quoted as written, on the subjects we read. Pick a subject or a generation, or search for a word. Each voice opens the reading it belongs to.</p>`
@@ -14232,6 +14281,7 @@ function _vxRoomDraw() {
   const pool = _vx.pool || [], whoOf = v => { const s = (v && v.self) || {}; return s.generation || (s.role ? 'A ' + s.role : '') || ''; };
   const tally = f => { const n = new Map(); for (const v of pool) { const x = f(v); if (x) n.set(x, (n.get(x) || 0) + 1); } return [...n.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]); };
   const subjects = tally(v => v.on).slice(0, 12), whos = tally(whoOf).slice(0, 8);
+  if (R.on && !subjects.includes(R.on)) subjects.unshift(R.on);   // SEAM:THE_VOICE_BEHIND (VX3): the room opened on a subject shows that subject's chip, however few its voices
   const chip = (k, v, label, on) => `<button type="button" class="vx-chip${on ? ' on' : ''}" onclick="_vxRoomSet('${k}', ${safeAttr(JSON.stringify(String(v)))})" aria-pressed="${on ? 'true' : 'false'}">${safe(label)}</button>`;
   rows.innerHTML = `<div class="vx-row"><span class="vx-rk">Subject</span>${chip('on', '', 'All', !R.on)}${subjects.map(s => chip('on', s, s, R.on === s)).join('')}</div>`
     + (whos.length ? `<div class="vx-row"><span class="vx-rk">Who</span>${chip('who', '', 'Everyone', !R.who)}${whos.map(w => chip('who', w, w, R.who === w)).join('')}</div>` : '')

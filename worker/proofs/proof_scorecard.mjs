@@ -281,7 +281,7 @@ const SPM = /env\.AI\.run\(|env\.AI\.toMarkdown\(|callModel\(|callClaude\(|claud
 ok(!SPM.test(block) && !DASH.test(block) && !/space_reads/.test(block) && !/catch\s*(?:\([^)]*\))?\s*\{\s*\}/.test(block) && !/\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*(?:\{\s*\}|null|undefined|\[\]|''|false)\s*\)/.test(block),
   'J1 the block asks no model and spends nothing, carries no dash, names no private table and swallows nothing');
 const last = JSON.parse(fs.readFileSync('tools/bench/last.json', 'utf-8'));
-ok(writerHash(w).slice(0, 12) === String(last.writer_hash || '').slice(0, 12) && writerHash(w).slice(0, 12) === '0df1a984b5ff', 'J2 the EXCAVATE writer\'s hash is the bench\'s (' + writerHash(w).slice(0, 12) + '; IQ2 THE LENS and IQ2c moved it): the line, the law and the adjustment ride outside every hashed slice');
+ok(writerHash(w).slice(0, 12) === String(last.writer_hash || '').slice(0, 12) && writerHash(w).slice(0, 12) === '79c343cdc281', 'J2 the EXCAVATE writer\'s hash is the bench\'s (' + writerHash(w).slice(0, 12) + '; VX3 THE VOICE BEHIND moved it by one field): the line, the law and the adjustment ride outside every hashed slice');
 const reg = seams.registry;
 ok(reg['SEAM:SCORECARD'] && reg['SEAM:SCORECARD'].file === 'worker/src/index.js' && reg['SEAM:SCORECARD@intelligence'] && reg['SEAM:SCORECARD@intelligence'].tag === 'SEAM:SCORECARD' && reg['SEAM:SCORECARD@intelligence'].file === 'intelligence/index.html' && reg['SEAM:SCORECARD@read'] && reg['SEAM:SCORECARD@read'].file === 'intelligence/read/index.html' &&
   (w.match(/SEAM:SCORECARD/g) || []).length >= 14 && (page.match(/SEAM:SCORECARD/g) || []).length >= 6 && (rp.match(/SEAM:SCORECARD/g) || []).length >= 5,
