@@ -35,7 +35,7 @@ ok(/if \(o\.thinking\) req\.thinking = o\.thinking;/.test(comp) && /if \(!r\.ok 
 const law = between(w, 'const EXC_HEADLINE_LAW = ', 'const EXC_ROOM = ');
 ok(/6 to 14 words, present tense/.test(law) && /whole words and articles/.test(law) && /never the signal, the count, the coverage or the measure/.test(law) && /a number only when the number is the point, and then one number/.test(law) && /it never argues against them/.test(law) && /a market the frame did not name/.test(law) && /Every insight title obeys the same law at 6 to 13 words/.test(law),
   'C1 the headline law v2: a sentence about people, never about the dial, one number when it is the point, the move follows the findings, no off-frame market');
-ok(/EXC_MOVE_LAW \+ ' ' \+ EXC_HEADLINE_LAW : sys\)/.test(synth), 'C2 the law rides the report writer\'s system prompt');
+ok(/EXC_MOVE_LAW \+ ' ' \+ EXC_HEADLINE_LAW : sys\)/.test(synth) && !/EXC_LENS_LAW : sys\)/.test(synth), 'C2 the law rides the report writer\'s system prompt; the lens law rides the night\'s writer, not the box\'s (IQ2c: the bench decided)');
 ok(/"read":\["line 1, the headline: 6 to 12 words, present tense, one claim about the people in the question, no figure, no source name, no semicolon","line 2, the dek: one sentence under 30 words carrying the one figure that proves line 1 and naming its source in words"\]/.test(w),
   'C3 the contract\'s two lines are the headline and the dek, not a 40-word reframing');
 ok(!/—/.test(law), 'C4 no em dash in the law');

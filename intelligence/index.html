@@ -2229,10 +2229,11 @@ body:not(.ask-follows) #ask-sticky.ask-sticky{display:none!important}
 </style>
 <style id="the-scroll">/* SEAM:THE_SCROLL (NT4): one scroll of intelligence. The ask and its box in one column, the reader's side beside them; the lead a third shorter; the week's read under its cover line, without its numbers, its cross-currents under it; one dated scroll three to a row; every voice on a band that scrolls, and the room behind it */
 /* 1. the first section */
-#sec-explore .hs-top{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"ask side" "box side";gap:0 calc(56px*var(--k));align-items:start;margin:0 0 calc(22px*var(--k))}
-#sec-explore .hs-top h1.hero-title{grid-area:ask;font-size:clamp(40px,4.7vw,calc(68px*var(--k)));line-height:.94;letter-spacing:-.015em}
-#sec-explore .hs-top .hs-side{grid-area:side;min-width:0;display:flex;flex-direction:column;gap:14px;padding-top:calc(10px*var(--k))}
-#sec-explore .hs-top .search-shell{grid-area:box;margin-top:calc(14px*var(--k))}
+/* SEAM:THE_LENS (IQ2): the ask on one line across the section; the box and the reader's side under it, their tops on one line */
+#sec-explore .hs-top{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"ask ask" "box side";gap:calc(8px*var(--k)) calc(56px*var(--k));align-items:start;margin:0 0 calc(22px*var(--k))}
+#sec-explore .hs-top h1.hero-title,#sec-explore .hero.solo .hs-top h1.hero-title{grid-area:ask;font-size:clamp(40px,4.7vw,calc(68px*var(--k)));line-height:.94;letter-spacing:-.015em;white-space:nowrap;max-width:none}
+#sec-explore .hs-top .hs-side{grid-area:side;min-width:0;display:flex;flex-direction:column;gap:14px;padding-top:calc(18px*var(--k))}
+#sec-explore .hs-top .search-shell{grid-area:box;margin-top:calc(18px*var(--k))}
 #sec-explore .hs-top .search-wrapper{min-height:calc(58px*var(--k))}
 #sec-explore .hs-top .search-bar{font-size:calc(17px*var(--k))}
 #sec-explore .hs-top .hs-try{margin-top:calc(10px*var(--k))}
@@ -2323,8 +2324,19 @@ body.uai-in.hs-you-on #sec-explore .hs-top .hero-sub{display:none}
 .vx-room .quote .q-on{margin:0}
 .vx-room .vx-on-read{margin-top:auto;padding-top:10px;border-top:1px solid #222;font-family:'Syne',sans-serif;font-size:13px;line-height:1.4;color:var(--hs-soft)}
 body.vx-room-open{overflow:hidden}
-@media (max-width:1000px){#sec-explore .hs-top{grid-template-columns:minmax(0,1fr);grid-template-areas:"ask" "box" "side";gap:14px 0}#sec-explore .hs-top h1.hero-title{font-size:clamp(38px,11vw,48px)}#sec-explore .hs-top .hs-side{padding-top:4px}#sec-explore .gal-rows{grid-template-columns:minmax(0,1fr)}#sec-explore #lead-week{grid-template-columns:minmax(0,1fr)}#sec-explore .lead-reading .photo{min-height:200px}#sec-explore .room-voices .track>.quote{flex-basis:calc((100% - 14px)/2)}.vx-room .vx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1000px){#sec-explore .hs-top{grid-template-columns:minmax(0,1fr);grid-template-areas:"ask" "box" "side";gap:14px 0}#sec-explore .hs-top h1.hero-title{font-size:clamp(38px,11vw,48px);white-space:normal}#sec-explore .hs-top .hs-side{padding-top:4px}#sec-explore .gal-rows{grid-template-columns:minmax(0,1fr)}#sec-explore #lead-week{grid-template-columns:minmax(0,1fr)}#sec-explore .lead-reading .photo{min-height:200px}#sec-explore .room-voices .track>.quote{flex-basis:calc((100% - 14px)/2)}.vx-room .vx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){#sec-explore .vx-band{grid-template-columns:minmax(0,1fr)}#sec-explore .vx-arrow{display:none}#sec-explore .room-voices .track>.quote{flex-basis:82%}#sec-explore .room-voices .room-head{display:block}#sec-explore .vx-all{display:inline-block;margin-top:14px}.vx-room-wrap{padding:0}.vx-room{max-height:100vh;padding:60px 18px 30px}.vx-room .vx-grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+<style id="the-lens">/* SEAM:THE_LENS (IQ2 THE LENS): the reading reads at its level. The takeaway where the dek stood (the dek under it on the lead, as proof); no bet on the card or the lead (it lives in the move); a member's move on the card; a finding's read in the deep dive */
+#sec-explore .lead-reading .text>p.lead-take{font-family:'Syne',sans-serif;font-weight:600;font-size:calc(16px*var(--k));line-height:1.45;color:var(--hs-ink);margin:0}
+#sec-explore .lead-reading .text>p.lead-proof{font-size:calc(13px*var(--k));color:var(--hs-ink2);opacity:.78;margin:-4px 0 0}
+#sec-explore .hs-card .hs-cardmove{display:flex;flex-direction:column;gap:5px;margin-top:2px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12)}
+#sec-explore .hs-card .hs-cardmove .hs-move-text{font-size:calc(15px*var(--k));line-height:1.4;color:var(--room-ivory)}
+.hs-pop-take{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:14px;line-height:1.5;color:var(--hs-ink2)}
+.read-take{font-family:'Syne',sans-serif;font-weight:600;font-size:17px;line-height:1.45;color:var(--text);margin:2px 0 10px}
+.read-pushback{font-family:'Syne',sans-serif;font-size:13px;line-height:1.5;color:var(--text2);margin:0 0 10px;padding-left:12px;border-left:2px solid var(--accent)}
+.read-pushback b{color:var(--accent);font-weight:600}
+.modal-body.modal-read{color:var(--text);opacity:.92}
 </style>
 <style id="partner">
 /* SEAM:PARTNER (EX51 THE PARTNER): the company's band at the top of its page, and the owner's intake */
@@ -4044,6 +4056,7 @@ function _renderLive(q, data){
   renderResults(q,{insights,ideas,sources,brief,read:(syn&&Array.isArray(syn.read))?syn.read:null,mode:synthd?'live':'basic',depth:syn&&syn.depth||null,   // EX52a: depth rides, so a quick read says QUICK READ
     window:syn&&syn.window||null, model:syn&&syn.model||null, frame:syn&&syn.frame||null, moves_dropped:syn&&syn.moves_dropped||0, moves_pass:syn&&syn.moves_pass||null, compiled_at:syn&&syn.compiled_at||null,
     relevance:syn&&syn.relevance||null, timing:syn&&syn.timing||null, read_checks:syn&&syn.read_checks||null, evidence_n:syn&&syn.evidence_n||0,
+    takeaway:syn&&syn.takeaway||null, pushback:syn&&syn.pushback||null, level:syn&&syn.level||null,   // SEAM:THE_LENS (IQ2): the read at the level, and the line that argues the other side
     measures:syn&&syn.measures||null, harvest:syn&&syn.harvest||null, score:syn&&syn.score||null, overnight:syn&&syn.overnight||null, lines:syn&&syn.lines||null, look:syn&&syn.look||null, ahead:syn&&syn.ahead||null, client_lines:syn&&syn.client_lines||0},synthd?'live':'basic');   // SEAM:EXC_LOOK / SEAM:EXC_AHEAD   // SEAM:EXC_TIMELINE   // SEAM:EXC_HARVEST   // SEAM:ONE_RAIL — the label tells the truth about whether THE READ was compiled
   if(synthd){
     const pill=document.getElementById('results-mode-pill');
@@ -4703,7 +4716,7 @@ function openInsightModal(i){
     <h2 class="modal-title" style="font-size:22px">${safe(ins.title)}</h2>
     <div class="modal-sub">${safe(CAT_LABELS[ins.category]||'Insight')} · ${safe(ins.confidence)} Confidence · ${safe(ins.stat)}${ins.source?' · '+safe(ins.source):''}</div>
     ${ins.calibrated&&typeof _calibText==='function'?`<div class="modal-sub" style="margin-top:-10px">${safe(_calibText(ins.calibrated))}</div>`:''}
-    <p class="modal-body">${safe(ins.excerpt)}</p>
+    <p class="modal-body">${safe(ins.excerpt)}</p>${ins.implication?`<p class="modal-body modal-read"><strong>So:</strong> ${safe(ins.implication)}</p>`:''}
     ${renderSourcesBlock(window._lastSources,lastMode)}
     ${ins.sourceUrl?`<div style="margin-bottom:16px;"><a href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" class="source-link" style="font-size:12px;">↗ Open primary source: ${safe(ins.source)}</a></div>`:''}
     <div class="modal-options">
@@ -4859,7 +4872,7 @@ function _epSide(rec){
     ${d.brief?`<p class="ep-line">${safe(d.brief)}</p>`:''}
     ${d.score?`<div class="ep-k" style="color:var(--text)">HARVEST ${safe(String(d.score.score))}/100 · ${safe(String(d.score.lines))} lines · ${safe(String(d.score.fresh_share))}% fresh · ${safe(String(d.score.outlets))} outlets · ${safe(String(d.score.medium_plus))}/${safe(String(d.score.findings))} at Medium+ · ${safe(String(d.score.unverified))} unverified · ${safe(String(d.score.competitors_evidenced))}/${safe(String(d.score.competitors))} competitors evidenced${d.score.seconds!=null?' · '+safe(String(d.score.seconds))+'s':''}</div>`:''}
     <div class="ep-k">${(d.insights||[]).length} findings${d.frame?' · '+safe(d.frame.category||'')+' / '+safe(d.frame.audience||''):''}</div>
-    ${(d.insights||[]).map(x=>`<div class="ep-item"><b>${safe(x.title)}</b> <small>${safe(x.confidence||'')}</small> ${chip(x.dated)}<br>${safe(x.excerpt||'')}${x.meaning&&x.meaning.culture?`<br><small>CULTURE</small> ${safe(x.meaning.culture)}`:''}</div>`).join('')}
+    ${(d.insights||[]).map(x=>`<div class="ep-item"><b>${safe(x.title)}</b> <small>${safe(x.confidence||'')}</small> ${chip(x.dated)}<br>${safe(x.excerpt||'')}${x.implication?`<br><small>SO</small> ${safe(x.implication)}`:''}${x.meaning&&x.meaning.culture?`<br><small>CULTURE</small> ${safe(x.meaning.culture)}`:''}</div>`).join('')}
     <div class="ep-k">${(d.ideas||[]).length} moves${d.moves_dropped?' · '+d.moves_dropped+' dropped':''}</div>
     ${(d.ideas||[]).map(x=>`<div class="ep-item"><b>${safe(x.headline)}</b> ${chip(x.dated)}<br>${safe(x.body||'')}${x.because?`<br><small>WHY NOW</small> ${safe(x.because)}`:''}</div>`).join('')}
     <div class="ep-k">${d.evidence_n||0} evidence lines${w.NOW!=null?` · NOW ${w.NOW} · RECENT ${w.RECENT} · CURRENT ${w.CURRENT} · CONTEXT ${w.CONTEXT} · ARCHIVE ${w.ARCHIVE}`:' · undated read'}${w.widened?' · widened':''} · ${m.model?safe(m.model)+' ('+safe(m.lane||'')+')':'model unknown'} · ${Math.round((rec.ms||0)/1000)}s</div>`;
@@ -6956,6 +6969,7 @@ function _renderReadBlock(q, data, mode){
   el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ${data.depth==='quick'?' · QUICK':''}</div></div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
+    ${data.takeaway?`<p class="read-take">${safe(data.takeaway)}</p>`:''}${data.pushback&&data.pushback.text?`<p class="read-pushback"><b>The other side</b> ${safe(data.pushback.text)}</p>`:''}
     ${_rcHtml}
     ${_plateHtml}
     ${_betHtml}
@@ -11905,8 +11919,8 @@ function _leadRender(rec) {
     return `<article class="lead-card lead-reading" data-id="${safeAttr(t.id)}">
     ${t.photo && t.photo.src ? `<figure class="photo"><span class="hs-face-name" aria-hidden="true">${safe(f.entity || f.category || t.title || '')}</span><img src="${safeAttr(typeof _hsSrc === 'function' ? _hsSrc(t) : t.photo.src)}"${typeof _hsSrc === 'function' && _hsSrc(t) !== t.photo.src ? ` data-src="${safeAttr(t.photo.src)}"` : ''} alt="" loading="lazy" referrerpolicy="no-referrer" onerror="_hsImgFail(this)"><figcaption>${t.photo.credit ? 'Photo: ' + safe(t.photo.credit) : ''}</figcaption></figure>` : `<figure class="photo hs-face"><span class="hs-face-name" aria-hidden="true">${safe(f.entity || f.category || t.title || '')}</span></figure>`}
     <div class="text"><div class="room-dateline">${g ? 'The lead · ' : ''}Deployed ${safe(_recDay(t.deployed))}${m.territory ? ' · ' + safe(words(m.territory)) : ''}${f.entity ? ' · ' + safe(f.entity) : ''}</div>
-      <h2>${safe(t.claim || t.title)}</h2>${t.dek ? `<p>${safe(t.dek)}</p>` : ''}
-      ${_leadBet(t)}${g && typeof _galNoteHtml === 'function' ? _galNoteHtml(t.house_note) : ''}
+      <h2>${safe(t.claim || t.title)}</h2>${t.takeaway ? `<p class="lead-take">${safe(t.takeaway)}</p>` : ''}${t.dek ? `<p${t.takeaway ? ' class="lead-proof"' : ''}>${safe(t.dek)}</p>` : ''}
+      ${g && typeof _galNoteHtml === 'function' ? _galNoteHtml(t.house_note) : ''}
       ${typeof _hsMoveBlock === 'function' ? _hsMoveBlock(t) : ''}</div></article>`; }).join(''));   // NT3c: no measure line; the move, or the door to it
   if (typeof _galRender === 'function') _galRender(g);   // NT3: the morning under the hero, or nothing when no set was passed
   const sec = document.getElementById('week-block'); if (sec && pick.length) { sec.style.display = ''; window._weekReady = true; _heroSolo(); }   // EX52a: the readings' rail is something to show
@@ -13807,12 +13821,13 @@ function _hsMoveBlock(t) {
     + `<button type="button" class="hs-btn ink hs-member" onclick="openFeaturedCard('${id}')">Open the reading</button>`
     + (mv ? `<button type="button" class="hs-btn red hs-member" onclick="_playRecord('${id}')">Play it</button>` : '') + room + '</div></div>';
 }
-/* A morning card: the photograph, the line, the claim, its copy, the bet; the move behind its button. */
+/* A card on the scroll: the photograph, the line, the claim, the takeaway (else the dek); a member's move, a visitor's lock; the move's button. SEAM:THE_LENS (IQ2): no bet on the card, it lives in the move. */
 function _hsCard(t, seen) {
-  const id = safeAttr(t.id);
+  const id = safeAttr(t.id), mv = window._signedOut === false ? _hsMoveOf(t) : null;
   return `<article class="hs-card" data-id="${id}"><div class="hs-card-media">${_hsPhoto(t, seen, 'hs-photo')}</div>`
-    + `<div class="hs-card-text"><div class="hs-line">${_hsLine(t)}${typeof _yoursTag === 'function' ? _yoursTag(t) : ''}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.dek ? `<p class="hs-dek">${safe(t.dek)}</p>` : ''}${_leadBet(t)}`
-    + `<div class="hs-lockrow" aria-hidden="true"><span>The move</span><i></i><i></i></div><button type="button" class="hs-btn hs-movebtn" onclick="_hsMoveOpen('${id}')">Open the move</button></div></article>`;   // SEAM:THE_SCROLL (NT4): the move's button closes the card, after the bet
+    + `<div class="hs-card-text"><div class="hs-line">${_hsLine(t)}${typeof _yoursTag === 'function' ? _yoursTag(t) : ''}</div><h3>${safe(t.claim || t.title || '')}</h3>${t.takeaway || t.dek ? `<p class="hs-dek">${safe(t.takeaway || t.dek)}</p>` : ''}`
+    + (mv ? `<div class="hs-cardmove"><div class="hs-k">The move</div><p class="hs-move-text">${safe(mv)}</p></div>` : `<div class="hs-lockrow" aria-hidden="true"><span>The move</span><i></i><i></i></div>`)
+    + `<button type="button" class="hs-btn hs-movebtn" onclick="_hsMoveOpen('${id}')">Open the move</button></div></article>`;   // SEAM:THE_SCROLL (NT4): the move's button closes the card
 }
 /* A photograph appears once on the page (EX33b): this week's read, now beside the lead, does not repeat the lead's. When the loudest
    subject is the lead, the week takes the most covered of the set's other photographs, or none. */
@@ -13890,7 +13905,7 @@ function _hsMoveDraw(t, quiet) {   // quiet: the same reading drawn again with i
   const room = typeof _galRoomOf === 'function' && _galRoomOf(t) ? `<button type="button" class="hs-link" onclick="_hsMoveClose();_galRoom('${id}')">The room</button>` : '';
   el.innerHTML = `<div class="hs-pop-back" onclick="_hsMoveClose()"></div><div class="hs-pop" role="dialog" aria-modal="true" aria-labelledby="hs-pop-h">`
     + `<div class="hs-pop-photo">${_hsPhoto(t, null, 'hs-pop-fig')}<button type="button" class="hs-pop-x" aria-label="Close the move" onclick="_hsMoveClose()">&times;</button></div>`
-    + `<div class="hs-pop-body"><div class="hs-line">${_hsLine(t)}</div><p class="hs-pop-read">The read: ${safe(t.claim || t.title || '')}</p>`
+    + `<div class="hs-pop-body"><div class="hs-line">${_hsLine(t)}</div><p class="hs-pop-read">The read: ${safe(t.claim || t.title || '')}</p>${t.takeaway ? `<p class="hs-pop-take">${safe(t.takeaway)}</p>` : ''}`   // SEAM:THE_LENS (IQ2): the takeaway rides with the read
     + `<div class="hs-pop-move"><div class="hs-k">The move</div><h2 id="hs-pop-h">${safe(mv || _HS.NO_MOVE)}</h2></div>`
     + `<div class="hs-pop-role" id="hs-pop-role" data-id="${id}" style="display:none"></div>${t.watch ? `<div class="hs-pop-bet">${_leadBet(t)}</div>` : ''}${note}`
     + `<div class="hs-acts">${mv ? `<button type="button" class="hs-btn red" onclick="_hsMoveClose();_playRecord('${id}')">Play it</button>` : ''}`

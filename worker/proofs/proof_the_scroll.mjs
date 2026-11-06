@@ -23,9 +23,9 @@ ok(iH1 > 0 && iH1 < iShell && iShell < iBox && iBox < iTry && iTry < iSide && iS
   'A1 the first section: the ask, the box and the industries, then the reader\'s side (the words, the box\'s door, the reader\'s own), all inside one block; the keyboard reaches the box first');
 const css = between(page, '<style id="the-scroll">', '</style>');
 ok(page.indexOf('<style id="the-scroll">') > page.indexOf('<style id="clean-arrival">') && (page.match(/<style id="the-scroll">/g) || []).length === 1
-  && /#sec-explore \.hs-top\{grid-template-columns:minmax\(0,1\.3fr\) minmax\(0,1fr\);grid-template-areas:"ask side" "box side";/.test(css) && /h1\.hero-title\{grid-area:ask;/.test(css) && /\.hs-side\{grid-area:side;/.test(css) && /\.search-shell\{grid-area:box;/.test(css)
+  && /#sec-explore \.hs-top\{grid-template-columns:minmax\(0,1\.3fr\) minmax\(0,1fr\);grid-template-areas:"ask ask" "box side";/.test(css) && /h1\.hero-title\{grid-area:ask;/.test(css) && /\.hs-side\{grid-area:side;/.test(css) && /\.search-shell\{grid-area:box;/.test(css)
   && /@media \(max-width:1000px\)\{#sec-explore \.hs-top\{grid-template-columns:minmax\(0,1fr\);grid-template-areas:"ask" "box" "side";/.test(css) && /body\.uai-in\.hs-you-on #sec-explore \.hs-top \.hero-sub\{display:none\}/.test(css),
-  'A2 the style (after NT3e\'s, so it wins): the ask over the box in one column, the side beside them; one column on a phone, the side last; the words give way to the reader\'s own');
+  'A2 the style (after NT3e\'s, so it wins): the ask on one line across the section (IQ2), the box and the side under it; one column on a phone, the side last; the words give way to the reader\'s own');
 ok(/placeholder="A brand, a category, the people, or a question"/.test(top) && /<span class="hs-try-br" aria-hidden="true"><\/span>\n      <button type="button" class="tag hs-q" id="hs-q"/.test(top) && !/hs-try-sep|or the question itself" oninput/.test(page) && (page.match(/id="search-input"/g) || []).length === 1,
   'A3 the box says less (the ask is the headline over it); the example question takes its own line');
 const week = between(page, '<section class="week nophoto" id="week-block"', '</section>');

@@ -94,11 +94,11 @@ win._scrollDrawn = true;
 const withMove = tile('m1', 'The quiet move', { deployed: '2026-11-01', photo: { src: 'https://p.example/m.jpg', credit: 'BoF' }, frame: { entity: 'Acme' }, measures: { territory: 'fashion-beauty' } });
 const seenSet = new Set();
 const card = H._hsCard(withMove, seenSet), card2 = H._hsCard(Object.assign({}, withMove, { id: 'm2' }), seenSet);
-ok(/class="hs-card" data-id="m1"/.test(card) && /Claim m1/.test(card) && /Copy m1/.test(card) && /The bet/.test(card) && /onclick="_hsMoveOpen\('m1'\)">Open the move<\/button>/.test(card) && /class="hs-lockrow"/.test(card) && !/The quiet move/.test(card)
+ok(/class="hs-card" data-id="m1"/.test(card) && /Claim m1/.test(card) && /Copy m1/.test(card) && !/The bet/.test(card) && /onclick="_hsMoveOpen\('m1'\)">Open the move<\/button>/.test(card) && /class="hs-lockrow"/.test(card) && !/The quiet move/.test(card)
   && /<img src="https:\/\/p\.example\/m\.jpg"/.test(card) && /Photo: BoF/.test(card) && !/<img/.test(card2) && /hs-face/.test(card2) && /Acme/.test(card2) && /Deployed 11-01 · fashion beauty · Acme/.test(card),
-  'B1 a morning card: the photograph once and credited (else the subject set large, never a chart), the line, the claim, its copy, the bet, the lock and the move behind its button; the move\'s words never on the card');
+  'B1 a visitor\'s card: the photograph once and credited (else the subject set large, never a chart), the line, the claim, its copy, the lock and the move behind its button; the move\'s words never on a visitor\'s card, the bet never on a card (IQ2: it lives in the move)');
 ok(!/function _hsRow\(|function _hsGrade\(|\.hs-row\{|\.hs-grade\{/.test(page) && card.indexOf('class="hs-lockrow"') < card.indexOf('class="hs-btn hs-movebtn"'),
-  'B2 the record\'s row and the bet\'s word are gone (NT4: every reading is a card on the scroll); the move\'s button closes the card after the bet');
+  'B2 the record\'s row and the bet\'s word are gone (NT4: every reading is a card on the scroll); the move\'s button closes the card after the lock');
 win._signedOut = true; const blockVM = H._hsMoveBlock(withMove);
 win._signedOut = false; const blockV = H._hsMoveBlock(Object.assign({}, withMove, { move: null })), blockM = H._hsMoveBlock(withMove);
 ok(!/The quiet move/.test(blockVM) && /hs-lockwrap/.test(blockVM) && /hs-lockwrap/.test(blockV) && /Members get the move on every reading\./.test(blockV) && /hs-signin/.test(blockV) && !/Play it/.test(blockV) && /The quiet move/.test(blockM) && /Play it/.test(blockM) && /hs-member/.test(blockM) && /_galRoom\('m1'\)/.test(blockM),

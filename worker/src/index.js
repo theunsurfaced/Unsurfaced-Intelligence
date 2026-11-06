@@ -218,6 +218,7 @@ export default {
       if (path === '/excavate/method' && request.method === 'GET') return excavateMethodRoute(request, env, origin);   // SEAM:TERRITORIES (EX39b): how the numbers are made, the house's own (desk key or admin)
       if ((path === '/watch/line' && request.method === 'GET') || (path === '/watch/test' && request.method === 'POST')) return watchRoute(request, env, origin);   // SEAM:WATCH_LINE (desk key, admin or editor)
       if (path === '/bench/run' && request.method === 'POST') return benchRun(request, env, origin);   // SEAM:BENCH (desk key or admin)
+      if (path === '/reads/record-pass' && request.method === 'POST') return recordPassRoute(request, env, origin);   // SEAM:THE_LENS (IQ2): the record read again by the new writer (desk key or admin)
       if (path === '/client/profile' && (request.method === 'GET' || request.method === 'POST')) return profileRoute(request, env, origin);   // SEAM:CLIENT_PROFILE (signed in)
       if (path === '/excavate/insight/roles' && request.method === 'GET') return roleImplicationsRoute(request, env, origin);   // SEAM:ROLE_IMPLICATIONS (signed in)
       if (path === '/excavate/insight/pack' && request.method === 'GET') return insightPackRoute(request, env, origin);   // SEAM:EVIDENCE_PACK (signed in)
@@ -1000,6 +1001,7 @@ async function synthesize(body, env, origin, hooks) {
     const aheadLines = merged.filter(c => c && c.kind === 'ahead').length;
     const aheadLaw = aheadLines ? ' AHEAD: lines marked AHEAD are known moments coming inside sixty days; a move may anchor to one by name and date; never invent what the moment will bring. ' : '';   // SEAM:EXC_AHEAD
     const clientLaw = merged.some(c => c && c.client) ? ' ' + EXC_CLIENT_LAW : '';   // SEAM:CLIENT_EVIDENCE
+    // SEAM:THE_LENS (IQ2c): the full read keeps its own shape and system; the lens law rides the night's writer, whose shape is small enough for it (the bench of Nov 5 showed the full read citing thinner and writing fewer moves under it). The takeaway and the other side stay, in their own words.
     const base = { system: (isReport ? sys + ' ' + EXC_MOVE_LAW + ' ' + EXC_HEADLINE_LAW : sys) + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + depthLaw + thinLaw + disagreeLaw + aheadLaw + clientLaw, prompt: usr,
       max_tokens: quick ? EXC_ROOM.quick : (isReport ? EXC_ROOM.report : EXC_ROOM.plain), kind: isReport ? 'excavate_report' : 'excavate_read', reserve: isReport ? 't3' : 't1',
       onText: hooks.onText || null,
@@ -1143,7 +1145,9 @@ async function synthesize(body, env, origin, hooks) {
       if (readId && typeof claimsWrite === 'function') await claimsWrite(env, claimsOf('read', readId, { insights }, merged, frame0 || frame, new Date(now).toISOString(), measures, null, new Date(now).toISOString()));   // SEAM:CLAIMS (EX53): the read's findings as rows
       if (typeof searchLog === 'function') await searchLog(env, { user_id: body._uid, query, depth: quick ? 'quick' : 'full', mode: body.mode, status: partial ? 'partial' : 'compiled', read_id: readId, cost_usd: compiled.cost_usd, meta: { lane: compiled.lane || null } });   // SEAM:SEARCH_LEDGER (RD1e): compiled, kept
     } catch (e) {}
+    const lensParts = isReport && typeof excLensParts === 'function' ? excLensParts(parsed, merged, measures ? [{ text: excMeasureLine(measures) }] : [], read, [frame0 && frame0.entity].concat((frame0 && Array.isArray(frame0.competitors)) ? frame0.competitors : []).filter(Boolean)) : { takeaway: null, pushback: null, level: null, lens: [] };   // SEAM:THE_LENS (IQ2)
     const data = { insights, ideas, brief, read: read.length === 2 ? read : null, read_checks: readChecks, read_id: readId, voice, frame, moves_dropped: movesDropped, moves_pass: movesPass, partial,   // SEAM:EXC_STALL; SEAM:CLAIMS (EX53): the moves pass on the receipt
+      takeaway: lensParts.takeaway, pushback: lensParts.pushback, level: lensParts.level, lens: lensParts.lens,   // SEAM:THE_LENS (IQ2; IQ2c: the level and the lens are the night's; null and empty on the box's read)
       depth: quick ? 'quick' : 'full',   // SEAM:EXC_DEPTH
       thin: thin ? merged.length : null,   // SEAM:EXC_THIN: the page says the read is building
       blind: typeof excBlindLine === 'function' ? excBlindLine(env) : EXC_BLIND,   // SEAM:EXC_BLIND: computed from what is configured
@@ -1255,13 +1259,53 @@ const EXC_BLIND = 'This read does not see TikTok, Instagram or X. Its voices com
 /* SEAM:EXC_HEADLINE: the Method's headline law, for the live writer. Oct 8: a quick read opened on a 40-word line with three claims, a
  * parenthetical source, a semicolon and an off-market clause, and its move argued against its own findings. */
 const EXC_HEADLINE_LAW = 'HEADLINE LAW: the first line of "read" is the headline: a sentence a sharp editor would say out loud about people, 6 to 14 words, present tense, ' +
-  'whole words and articles; its subject is a person, a group or a named thing, never the signal, the count, the coverage or the measure; one claim, one consequence; ' +
+  'whole words and articles; its subject is people (buyers, members, fans, parents, the trade) or what they choose, do or pay, never the signal, the count, the coverage or the measure, ' +
+  'and never a company, a deal, a launch, a funding round or a figure: when the evidence is a company\'s news, the headline says what that news changes for the people it serves; one claim, one consequence; ' +   // SEAM:THE_LENS (IQ2)
   'a number only when the number is the point, and then one number; never a source name, a year, a share of coverage, a semicolon, a colon, a parenthesis or a list of brands. ' +
-  'The second line is the dek: one sentence under 30 words that carries the one figure that proves the headline and names its source in words. ' +
+  'The second line is the dek: one sentence under 30 words that carries the one figure that proves the headline and names its source in words; it is proof under the headline, never a second headline and never the news restated. ' +
   'Every insight title obeys the same law at 6 to 13 words; when the evidence is only a count, the title says what the count means in the world or the insight is not written. ' +
   'The move the dek implies follows the insights and the ideas; it never argues against them. Nothing in the read speaks of a market the frame did not name.';
 /* SEAM:EXC_DISAGREE: the law the writer reads when consensus lines are in the evidence. */
 const EXC_DISAGREE_LAW = 'WHERE THE HOUSE DISAGREES: lines whose title begins CONSENSUS are what published trend reports and outlooks claim, never evidence of what people do. When the dated evidence contradicts a consensus claim, one insight states the stronger reading as a plain sentence under the HEADLINE LAW (its title never begins with a label or a colon); its excerpt names the consensus claim it answers and the lines that contradict it, at the confidence those lines earn; it carries "stance":"counter". When nothing contradicts it, write nothing about it. Never adopt a consensus claim as a finding and never cite a CONSENSUS line as evidence for a figure.';
+/* SEAM:THE_LENS (IQ2 THE LENS): the writer thinks through the subject's level before it writes. The lenses and the eight tests are the
+ * intelligence pass's brief (claude/intelligence-pass-nov03.md), swapped into the night's system prompt, which is cached, so they add
+ * little to a reading's cost. The writer answers the level's six questions in "lens" from the evidence, then writes; a question the
+ * evidence cannot answer says so. The measures count press, never people, sales or sentiment, and exist only when the subject names a
+ * brand or a person. The examples are the pass's own, one per level, until Sharp readings take their place (IQ4). */
+const EXC_LENS_LAW = 'THE LEVEL AND ITS LENS: before you write, decide the subject\'s level from the frame and the evidence: INDUSTRY (one of the trade\'s areas), ' +
+  'CATEGORY (a kind of thing people buy or do), BRAND (a company or a product line) or TALENT (an artist, athlete, creator or personality). Answer the level\'s six questions ' +
+  'in "lens" from the evidence, each in a few words with the line numbers it stands on, or "no evidence"; a number comes from a cited line or MEASURES, never an estimate; ' +
+  'MEASURES count press, never people, sales or sentiment. Then every read you write answers that lens. ' +
+  'INDUSTRY, for a reader inside the trade who pays to learn which rule moved: (1) where the money is moving and whose hands it passes through now (wholesale to direct, primary to resale, ' +
+  'ownership to licensing), from figures the lines report; (2) which rule of the trade changed this period (a price convention, a calendar, a gatekeeper, a channel, a regulation), with its date; ' +
+  '(3) the industry or one company: separate companies on the same move, across outlets; (4) what the industry believes that its own evidence contradicts, the trend reports against the news and the counter view; ' +
+  '(5) which neighboring area is crossing in; (6) who loses when this wins, only the loser the evidence names. The read names a rule that changed and who it moves money toward or away from. ' +
+  'It fails when one company\'s news is read as the industry, the trade press\'s consensus is repeated, an economy-wide figure is stated as the industry\'s, or story volume is read as growth. ' +
+  'CATEGORY, for a reader who makes, prices or sells the thing and pays to learn what the buyer is really choosing between: (1) the job it does now in the buyer\'s words, from the voices and reviews, and whether the job changed; ' +
+  '(2) what people compare it against now, often outside the category ("vs", "instead of", "switched from" in voices): the named competitors are the seller\'s set, not the buyer\'s; (3) where the price ladder breaks, from prices in cited text; ' +
+  '(4) what stops the next buyer: cost, comfort, permission, trust, habit, from complaints and the counter view; (5) who is entering from outside and who left; (6) the stage: hobbyists, first mainstream buyers or commodity, never a growth rate or a market size. ' +
+  'The read names the job or the comparison as buyers see it and what that does to a price, a product or a channel. It fails when launch coverage is read as adoption, the leader\'s news as the category, a trend report as behavior, or the seller\'s competitors as the buyer\'s. ' +
+  'BRAND, for the brand, its agency or its rival, who know what it says and pay to learn what it means: (1) what it means to people now and how far that is from what it says: the voices against its statements; ' +
+  '(2) what happened and against whom: the measures and the set on the same scale, read as press attention, never as the headline; (3) where it wins and loses against its set by reported events (a store opened, a drop sold out, a recall): more stories is not a win; ' +
+  '(4) what it is doing that buyers did not ask for, and what buyers do that it has not caught; (5) what it has permission to do next: the adjacent move people would accept from it and reject from its rivals, from voices that use it outside its category; ' +
+  '(6) a moment or a structure: a spike is a moment, a staircase a build, read with what we said before. The read says what the brand means to a named group now, against a named rival, and what that permits or forbids next. ' +
+  'It fails when coverage is read as sentiment or sales, share of press as share of market, one post as what the brand means, a quiet week as decline, or when the sentence fits any brand. ' +
+  'TALENT, for the person\'s team or a brand deciding on them: press says who is talked about; they pay to learn who is followed: (1) the audience they hold and whether it is the one the coverage describes; with no audience measure, say so; ' +
+  '(2) where they are in the arc: arriving, peaking, reinventing, returning, by dated releases; (3) the talk is about the work or the person; (4) what fans trust them for in their own words, voices only; ' +
+  '(5) which brands the audience accepts from them and which read as a paycheck; (6) what is dated in the next 90 days. The read separates what the audience does from what the press says and names what that makes the person worth to a partner now. ' +
+  'It fails when press volume is read as audience size, a spike as career growth, followers as engagement, a deal called a fit with no audience evidence, or a generation guessed for the fans. ' +
+  'THE EXAMPLES, the explanation and the read it should have been. Industry: "Several luxury houses raised entry prices again this season" becomes "Luxury is pricing out the buyer who made it grow. ' +
+  'The entry bag stopped being the door. The door is now fragrance, eyewear and the hotel lobby, and whoever owns the object under the bag inherits that buyer this year." ' +
+  'Category: "Several tech companies launched smart glasses this quarter" becomes "People are buying smart glasses as a camera they do not have to hold up. Nobody is buying a screen. ' +
+  'The rival is the phone raised at the concert, so the brand that sells the hands-free shot wins this year and the display can wait." ' +
+  'Brand: "Costco drew coverage for selling gold bars and raising its fee" becomes "Members treat the Costco card like a savings account. They paid the higher fee and kept buying gold. ' +
+  'Sam\'s Club cannot win this on the price of the card. It has to make its card say something about the person who holds it, and renewal season is when that gets tested." ' +
+  'Talent: "A rapper\'s surprise album drew reviews, then a sneaker collaboration" becomes "The press is writing about the feud. The comments quote the third track. ' +
+  'The sneaker only works if it sells the world of that song, and a partner has the weeks the record stays in group chats, not the year." ' +
+  'THE EIGHT TESTS every read, the takeaway and every move must pass before you write it: EARNED, it stands on cited lines, and coverage is never read as what people do; INTERPRETS, it says what the fact alone does not; ' +
+  'AT THE LEVEL, it answers its lens and no other; NOT OBVIOUS, a practitioner learns something past what the trend reports in the evidence already say; CONSEQUENCE, it says what changes, for whom and why now; ' +
+  'SPECIFIC, names, places, prices, hours, so it could not describe another brand or another week; THE OTHER SIDE, the pushback is named where a line carries one and a thin finding is sized as thin; ' +
+  'MOVES FOLLOW, each move comes from a read and a team could start it Monday. PEOPLE lines (P1, P2) are what people said, as written: cite them for a job, a comparison, a trust or a permission; never as coverage.';
 const EXC_ROOM = { report: 16000, plain: 8000, quick: 9000, ceiling: 32000, MIN_SALVAGE: 3 };   // SEAM:EXC_DEPTH: a quick read's room.   // Oct 3: Sonnet 5 thinks inside max_tokens; 8000 was cut on every first pass (two passes, 143 s), the door's 2600 wrote nothing at all
 const EXC_SPEED = { WIRE_MS: 6000, STREAM_EVERY_MS: 700, DRAFT_TRIES: 4,   // SEAM:EXC_SPEED
   BEAT_MS: 15000, WRITE_MS: 165000, COMPLETE_MS: 60000, COMPLETE_TOKENS: 6000, PARTIAL_TTL: 900 };   // SEAM:EXC_STALL: the heartbeat, the writing's wall clock, the completion call, a partial read's short cache
@@ -1361,7 +1405,7 @@ function excFill(read, fill) {
  * theme reads to come) may spend only OVERNIGHT_SHARE of the cap, so a client
  * in the room always has the live lane. A read compiled on the live lane is
  * kept CACHE_TTL under its query, so a repeat costs nothing. */
-const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i4' };   // i4: the lines and the competitive set ride the read (EX5c); reads cached under i3 are not served
+const EXC_MODEL = { TIER: 'live', OVERNIGHT_SHARE: 0.6, CACHE_TTL: 86400, RETRY_MS: 1200, REV: 'i5' };   // i5: the read at the level (IQ2); reads cached under i4 are not served   // i4: the lines and the competitive set ride the read (EX5c); reads cached under i3 are not served
 const EXC_RESERVE_MAX = 4000;   // SEAM:EXC_PARSE: the reserve model's output room
 function excCacheKey(h) { return 'excr:' + EXC_MODEL.REV + ':' + h; }
 async function excCompile(env, o) {
@@ -1650,7 +1694,10 @@ function excReportPrompt(query, evidence) {
   return 'Topic: "' + query + '"\n\nEVIDENCE:\n' + evidence + '\n\n' +
     'Return JSON exactly shaped as:\n' +
     '{"frame":{"category":"the category this topic sits in, 1 to 3 words","audience":"the people that category serves here, 1 to 3 words"},' +
+    // SEAM:THE_LENS (IQ2c): the takeaway and the pushback, as the night's reading carries them; the level and the lens are the night's (the box's shape is too large to carry them: the bench of Nov 5)
     '"read":["line 1, the headline: 6 to 12 words, present tense, one claim about the people in the question, no figure, no source name, no semicolon","line 2, the dek: one sentence under 30 words carrying the one figure that proves line 1 and naming its source in words"],' +   // SEAM:EXC_HEADLINE
+    '"takeaway":"one sentence under 28 words for the professional the question serves: what changes, for whom and why now; never the headline or the dek again, never a figure the lines do not carry",' +
+    '"pushback":{"line":<1-based number of the line that argues the other side>,"text":"one sentence naming what it says against the read"} or null when no line pushes back; never by rule,' +
     '"insights":[{"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon",' +
     '"excerpt":"what happened, in one or two short sentences, naming the concrete thing from the evidence",' +
     '"evidence":[the 1-based numbers of the evidence items this insight stands on, most important first],' +
@@ -1669,7 +1716,7 @@ function excReportPrompt(query, evidence) {
     '"brief":"one verdict on where this is now, then the first move, in short sentences, four at most; name the evidence."}\n' +
     'Never restate source counts or citation totals as findings: say what the evidence MEANS. ' +
     'If evidence items disagree, make one insight name the disagreement plainly. ' +
-    'Give the findings the evidence earns, 4 to 8, across the lenses it supports, and 3 to 5 moves that obey the MOVE LAW; when the evidence earns fewer, write fewer and say so in the brief; never pad to a count. JSON only.';
+    'Give the findings the evidence earns, 4 to 8, across the lenses it supports, and 3 to 5 moves that obey the MOVE LAW; when the evidence earns fewer, write fewer and say so in the brief; never pad to a count. The takeaway and every meaning say what the fact alone does not, and nothing the lines do not carry. JSON only.';
 }
 function excShort(v) {
   const t = String(v || '').replace(/["“”]/g, '').replace(/\s+/g, ' ').trim();
@@ -2296,10 +2343,21 @@ function weekCoverOk(c) {
   const n = s.split(' ').length; if (n < 3 || n > 12 || /[:;]/.test(s) || s.includes(String.fromCharCode(8212)) || excMeasureClaim(s) || /\b(?:lake|signals?|mentions?|tracked|tracking|coverage|counts?|outlets?)\b/i.test(s)) return '';
   return s.slice(0, 120);
 }
-/* PURE: the lines of a compiled reading that name the measure: the two read lines, every finding's title, every move's headline. */
+/* SEAM:THE_LENS (IQ2) PURE: a read that is its fact again. The content words of the read (five letters or more, no numbers) that also sit
+ * in the fact, as a share of the read's own; past RESTATE_SHARE the read says nothing the fact did not. A short read is judged on what it has. */
+const RESTATE_SHARE = 0.6, RESTATE_MIN = 3;
+function excRestates(read, fact, names) {
+  const words = s => new Set(String(s || '').toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/).filter(w => w.length >= 5 && !/^(?:their|there|these|those|which|while|where|about|after|before|being|other|still|would|could|should|because|people|brand|brands)$/.test(w)));
+  const skip = words(Array.isArray(names) ? names.join(' ') : names);   // the subject's own names sit in every sentence about it; they say nothing about restatement
+  const r = new Set([...words(read)].filter(w => !skip.has(w))), f = words(fact); if (r.size < RESTATE_MIN) return false;
+  let same = 0; for (const w of r) if (f.has(w)) same++;
+  return same / r.size >= RESTATE_SHARE;
+}
+/* PURE: the lines of a compiled reading that name the measure: the two read lines, every finding's title, every move's headline, the takeaway (IQ2). */
 function excMeasureClaims(read) {
   const out = [];
   for (const l of ((read && read.read) || [])) if (excMeasureClaim(l)) out.push({ where: 'read', text: String(l).slice(0, 160) });
+  if (read && read.takeaway && excMeasureClaim(read.takeaway)) out.push({ where: 'takeaway', text: String(read.takeaway).slice(0, 160) });   // SEAM:THE_LENS (IQ2)
   ((read && read.insights) || []).forEach((x, i) => { if (x && excMeasureClaim(x.title)) out.push({ where: 'insight ' + (i + 1), text: String(x.title).slice(0, 160) }); });
   ((read && read.ideas) || []).forEach((x, i) => { if (x && excMeasureClaim(x.headline)) out.push({ where: 'move ' + (i + 1), text: String(x.headline).slice(0, 160) }); });
   return out;
@@ -2353,8 +2411,8 @@ const EXC_VOICE_SYS = 'You are Excavate, the reading desk of Unsurfaced Intellig
       'The same thought, written by a form and by a person. Form: "The remasters changed material this week where before they ' +
       'changed color." Person: "Nike\'s remasters used to mean a new colorway. This week they meant a new material: the Air Max 95 ' +
       'in leather, the Air Force 1 in GORE-TEX." ' +
-      'THE SHAPE: a finding\'s title is a sentence a person would say, with the names in it; its excerpt is what happened, short, ' +
-      'from the evidence. A move\'s headline is the action; its body is what a team would do on Monday, where and for whom; its ' +
+      'THE SHAPE: a finding\'s title is a sentence a person would say, with the names in it; its fact (the excerpt) is what happened, short, ' +
+      'from the evidence; its read (the implication, the meaning) is what that means at the subject\'s level, one sentence the fact alone does not say. A move\'s headline is the action; its body is what a team would do on Monday, where and for whom; its ' +
       'proof names the evidence plainly. The brief is one verdict on where this is now, then the first move, in short sentences. ' +
       'Our words, where they fit and never as decoration: proof, earned, show up, the room, the handoff, the field, the drop, ' +
       'ritual, insider, the loop. ' +
@@ -9447,13 +9505,35 @@ async function memoryRecord(env) {
  * Every read is kept in door_reads, so a tile says what changed since last
  * night. A visitor pays nothing: tiles come from KV, the read from the table.
  * ═══════════════════════════════════════════════════════════════════════════ */
-const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '5.0', FRAME_MS: 25000 };   // SEAM:EXC_FRAME (EX52a): FRAME_MS is the night's clock for a frame; a reader's wait keeps EXC_FRAME.TIMEOUT_MS. SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
+const DOOR = { WANT: 30, KEY: 'door:v2', EVIDENCE: 30, TOPUP: 6, PAGES: 4, MIN_EVIDENCE: 4, MAX_TOKENS: 16000, TTL: 72 * 3600, SINCE_D: 60, EVERY_D: 1, VOICE: '6.0', FRAME_MS: 25000 };   // SEAM:EXC_FRAME (EX52a): FRAME_MS is the night's clock for a frame; a reader's wait keeps EXC_FRAME.TIMEOUT_MS. SEAM:RECORD_LAW: WANT is the candidate pool, not a quota; EVERY_D 1, the earned law decides what is written; VOICE 3.3r carries the watch
 /* SEAM:RECORD_LAW: when a subject earns a read. New on the board: earned. Read before and the evidence changed: earned only when it
  * moved past the threshold since that read (stories this week up or down by MIN_DELTA, or velocity past MIN_VEL percent, or MIN_OUTLETS
  * new outlets); otherwise its last read stands (reused) and nothing is spent. At most CAP reads a night, the largest moves first; a
  * subject past the cap keeps its last read, or waits if it has none. A night that earned nothing writes nothing. The watch a read
  * carries is checked between WATCH_MIN_D and WATCH_MAX_D days out. */
-const DOOR_LAW = { CAP: 6, MIN_DELTA: 3, MIN_VEL: 40, MIN_OUTLETS: 2, WATCH_MIN_D: 14, WATCH_MAX_D: 45 };
+const DOOR_LAW = { CAP: 6, MIN_DELTA: 3, MIN_VEL: 40, MIN_OUTLETS: 2, WATCH_MIN_D: 14, WATCH_MAX_D: 45, BAR_OUTLETS: 2, PEOPLE: 8 };   // BAR_OUTLETS, PEOPLE: SEAM:THE_LENS (IQ2)
+/* SEAM:THE_LENS (IQ2) PURE: the evidence bar before any spend: two outlets or more. One outlet is a story, not a subject to interpret.
+ * The pass's other half (a voice or a line that pushes back) waits on the voices rail, which is time-boxed a night (DOOR_VOICES.PASS_MS)
+ * and reaches only the subjects read first; asked now, it would starve the record of subjects the lake covers well. */
+function doorEvidenceBar(merged) {
+  const key = typeof excOutletKey === 'function' ? excOutletKey : (c => String((c && c.source) || '').toLowerCase().replace(/unsurfaced lake\s*[\u00b7·]\s*/g, '').replace(/\(t\d\)/g, '').replace(/[^a-z0-9]+/g, '') || 'unknown');   // one outlet however it arrived (excOutletKey)
+  const outlets = new Set((merged || []).filter(Boolean).map(key).filter(k => k && k !== 'unknown'));
+  return outlets.size >= DOOR_LAW.BAR_OUTLETS;
+}
+/* SEAM:THE_LENS (IQ2) PURE: the stamp for a row that keeps an older read: the voice that read was written under, over tonight's evidence,
+ * so a read from an old voice is still read again the first night the subject clears the bar; the new voice on an old read would hide it. */
+function doorReuseStamp(prev, stamp) {
+  const ps = String((prev && prev.stamp) || ''), i = ps.indexOf('~'), st = String(stamp || ''), j = st.indexOf('~');
+  return (i > 0 ? ps.slice(0, i) : 'v' + DOOR.VOICE) + (j >= 0 ? st.slice(j) : '~');
+}
+/* SEAM:THE_LENS (IQ2) PURE: the people's own lines for the writer, numbered P1, P2 so a read can cite them; the comment as written, who
+ * said it and its likes; at most DOOR_LAW.PEOPLE. Nothing when the night heard none. */
+function doorPeopleBlock(voices) {
+  const list = (Array.isArray(voices) ? voices : []).filter(v => v && v.text).slice(0, DOOR_LAW.PEOPLE);
+  if (!list.length) return '';
+  const who = v => { const s = v.self || {}; return [s.generation, s.role].filter(Boolean).join(', ') || 'a consumer'; };
+  return '\n\nPEOPLE (comments as written; what people say, never coverage):\n' + list.map((v, i) => 'P' + (i + 1) + ' "' + String(v.text).replace(/\s+/g, ' ').slice(0, 240) + '" (' + who(v) + (v.likes ? ', ' + v.likes + ' likes' : '') + ')').join('\n');
+}
 // PURE: how far a subject moved since its last read, as one number the cap can rank on; 0 is unmoved.
 function doorMoveSize(prev, since, measures) {
   if (!prev || !prev.read) return Infinity;   // never read: always earned, ranked first
@@ -9552,30 +9632,51 @@ function excDoorPrompt(frame, evidence, measures, memory, night) {
     // SEAM:MEMORY: what we said before on this subject, with its exact weeks and how each call graded; never evidence
     (memory ? 'WHAT WE SAID BEFORE (our own earlier lines on this subject, its exact stories a week and how each call graded; build on what held; if the evidence now says otherwise, line 1 says so plainly; never cite it): ' + memory + '\n\n' : '') +
     'EVIDENCE:\n' + evidence + '\n\n' +
-    'Write the overnight read for this frame. Return JSON exactly shaped as:\n' +
+    'Write the overnight read for this frame. Decide its level and answer the level\'s lens first, then write. Return JSON exactly shaped as:\n' +
+    // SEAM:THE_LENS (IQ2): the level and the lens answers ride the reading (never shown; the checks and the judge read them)
+    '{"level":"industry|category|brand|talent","lens":["six short answers in the level\'s order, each with the line numbers it stands on, or no evidence"],' +
     // SEAM:EXC_DOOR_VOICE: the headline law and the question law. Line 1 is the headline: a sentence about people, never about the
     // signal or the coverage, with a number only when the number is the point. Line 2 is the dek: the one measured figure that proves
     // line 1, its source in words. Never "X, not Y", never a slogan. "question" is the question this read answers for the professional it serves.
-    '{"read":["line 1, the headline: a sentence about people (buyers, viewers, listeners, users: the audience named in the frame) under the HEADLINE LAW, 6 to 14 words, whole words and articles, a number only when the number is the point, never the signal, the count or the coverage as its subject, no slogan, no X-not-Y","line 2, the dek: one sentence under 30 words carrying the one measured figure that proves line 1, from MEASURES or a dated line, naming its source in words"],' +
+    '"read":["line 1, the headline: a sentence about people (buyers, viewers, listeners, users: the audience named in the frame) under the HEADLINE LAW, 6 to 14 words, whole words and articles, a number only when the number is the point, never the signal, the count or the coverage as its subject, no slogan, no X-not-Y","line 2, the dek: one sentence under 30 words carrying the one measured figure that proves line 1, from MEASURES or a dated line, naming its source in words"],' +
+    // SEAM:THE_LENS (IQ2): the takeaway is the read at the level, for the professional the frame serves; the findings carry a fact and a read; the pushback only where a line carries it
+    '"takeaway":"one sentence under 28 words for the professional the frame serves: what changes, for whom and why now, at the level; never the headline or the dek again, never a figure the lines do not carry",' +
     '"question":"the question this read answers for the professional it serves, one sentence, plain",' +
-    '"insights":[3 to 4 of {"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon","excerpt":"what happened, in one or two short sentences, naming the concrete thing from the evidence","evidence":[1-based numbers of the lines it stands on]}],' +
+    '"insights":[2 to 3 of {"category":"consumer|market|culture|brand","title":"one sentence about people under the HEADLINE LAW, 6 to 13 words, no figure unless it is the point, no colon","fact":"what happened, one short sentence with the names in it, from the lines","read":"what it means at the level, one sentence the fact alone does not say, under THE EIGHT TESTS","evidence":[1-based numbers of the lines it stands on]}],' +
+    '"pushback":{"line":<1-based number of the line that argues the other side>,"text":"one sentence naming what it says against the read"} or null when no line pushes back; never by rule,' +
     '"ideas":[1 to 2 of {"type":"Positioning|Product|Campaign|Content|Partnership|Channel|Pricing","for":"brand|product|creative|media|retail|partnerships","headline":"verb-first action, at most 10 words","body":"one or two short sentences: exactly what a team would do on Monday, where, for whom","because":"1 sentence: the tension this move resolves","proof":"one plain sentence naming the evidence it stands on","evidence":[1-based numbers],"from":<0-based index of the insight it comes from>}],' +
     // SEAM:RECORD_WATCH: the one measurable thing this read bets on, so the record can grade it on the database's own counts
     '"watch":{"claim":"one sentence, under 20 words, naming what will be true in the world by the date (a release, a price, a count of people, a public statement, a ranking); never the lake, the signal or the coverage as its subject","measure":"signals_7d|outlets|velocity_pct","op":"gte|lte","value":<a number the MEASURES line makes plausible: the proxy the record will grade>,"by":"a date between ' + day(DOOR_LAW.WATCH_MIN_D) + ' and ' + day(DOOR_LAW.WATCH_MAX_D) + '"},' +
     '"brief":"one verdict on where this frame is now, then the first move, in two or three short sentences"}\n' +
-    'Lead with what changed in the freshest bands. Never restate source counts as findings. If lines disagree, one finding names it. The watch is a bet the read is willing to lose in public. JSON only.';
+    'Lead with what changed in the freshest bands. Never restate source counts as findings. If lines disagree, one finding names it. The watch is a bet the read is willing to lose in public. Every read passes THE EIGHT TESTS before you write it. JSON only.';
 }
 // The compiled text becomes a read the page can render exactly as a live one.
-function doorCompileRead(parsed, merged, frame, measures, night) {
-  const now = Date.now();
+/* SEAM:THE_LENS (IQ2) PURE: what the lens law asks every writer for, kept under the checks: the takeaway when it is grounded, not the
+ * measure and not the two lines again; the pushback when it cites a line of the evidence; the level one of the four; the lens six short
+ * answers. Shared by the night's compile (doorCompileRead) and the live writer's (synthesize). */
+function excLensParts(parsed, merged, pool, read, names) {
+  const p = parsed && typeof parsed === 'object' ? parsed : {}, lines = Array.isArray(merged) ? merged : [], extra = Array.isArray(pool) ? pool : [];
+  const takeaway0 = String(p.takeaway || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+  const takeaway = takeaway0 && !(typeof excMeasureClaim === 'function' && excMeasureClaim(takeaway0)) && !excGround(takeaway0, lines.concat(extra)).ungrounded.length && !(typeof excRestates === 'function' && excRestates(takeaway0, (Array.isArray(read) ? read : []).join(' '), names)) ? takeaway0 : null;
+  const pb = p.pushback && typeof p.pushback === 'object' ? p.pushback : null, pbLine = pb ? parseInt(pb.line, 10) : 0;
+  const pushback = pb && pbLine >= 1 && pbLine <= lines.length && String(pb.text || '').trim() ? { line: pbLine, text: String(pb.text).replace(/\s+/g, ' ').trim().slice(0, 240) } : null;
+  const level = ['industry', 'category', 'brand', 'talent'].includes(p.level) ? p.level : null;
+  const lens = (Array.isArray(p.lens) ? p.lens : []).slice(0, 6).map(x => String(x == null ? '' : x).replace(/\s+/g, ' ').trim().slice(0, 200));
+  return { takeaway, pushback, level, lens };
+}
+function doorCompileRead(parsed, merged, frame, measures, night, nowMs) {   // nowMs: SEAM:THE_LENS (IQ2), the record pass compiles as of its night
+  const now = nowMs || Date.now();
   const cited = x => (Array.isArray(x.evidence) ? x.evidence : []).map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= merged.length).filter((n, i, a) => a.indexOf(n) === i).slice(0, 8);
   const bandOf = n => excBand(excWhen(merged[n - 1]), now);
   const datedOf = ns => { const ds = ns.map(n => excWhen(merged[n - 1])).filter(Boolean).sort((a, b) => b - a); const archiveOnly = ns.length > 0 && ns.every(n => bandOf(n) === 'ARCHIVE'); return { newest: ds[0] ? ds[0].toISOString().slice(0, 10) : null, oldest: ds.length ? ds[ds.length - 1].toISOString().slice(0, 10) : null, band: ds[0] ? excBand(ds[0], now) : 'ARCHIVE', dated: ds.length, archive_only: archiveOnly, record: archiveOnly && ns.some(n => excRecord(merged[n - 1], now)) }; };
   const pool = measures ? [{ text: excMeasureLine(measures) }] : [];
-  const insights = (Array.isArray(parsed.insights) ? parsed.insights : []).slice(0, 4).map(x => {
-    const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null;
-    const ground = excGround([x.title, x.excerpt].join(' '), ns.map(n => merged[n - 1]).concat(pool));
-    return { checks: ground, category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', title: String(x.title || '').slice(0, 120), excerpt: String(x.excerpt || '').slice(0, 400),
+  // SEAM:THE_LENS (IQ2): a finding is a fact and a read; the read comes off when it is the fact again or carries a figure the lines do not; three findings at most
+  const names = [frame && frame.entity].concat((frame && Array.isArray(frame.competitors)) ? frame.competitors : []).filter(Boolean);
+  const readOf = (x, ns, fact) => { const r = String(x.read || '').replace(/\s+/g, ' ').trim().slice(0, 300); if (!r || (typeof excRestates === 'function' && excRestates(r, fact + ' ' + (x.title || ''), names)) || excGround(r, ns.map(n => merged[n - 1]).concat(pool)).ungrounded.length || (typeof excMeasureClaim === 'function' && excMeasureClaim(r))) return null; return r; };
+  const insights = (Array.isArray(parsed.insights) ? parsed.insights : []).slice(0, 3).map(x => {
+    const ns = cited(x), first = ns.length ? merged[ns[0] - 1] : null, fact = String(x.fact || x.excerpt || '').slice(0, 400);
+    const ground = excGround([x.title, fact].join(' '), ns.map(n => merged[n - 1]).concat(pool));
+    return { checks: ground, category: ['consumer', 'market', 'culture', 'brand'].includes(x.category) ? x.category : 'consumer', title: String(x.title || '').slice(0, 120), excerpt: fact, implication: readOf(x, ns, fact),
       confidence: ground.ungrounded.length ? 'Low' : excEarned(ns.map(n => merged[n - 1]), ns.some(n => bandOf(n) !== 'ARCHIVE' && bandOf(n) !== 'CONTEXT'), now),
       evidence: ns, dated: datedOf(ns), source: String((first && first.source) || x.source || '').slice(0, 120), sourceUrl: first && /^https?:\/\//.test(String(first.url || '')) ? first.url : null, image: first && first.image && excTier(first) <= 2 ? first.image : null };   // SEAM:EXC_DOOR_VOICE (EX52a): a photograph only from a T0 to T2 source
   }).filter(x => x.title);
@@ -9585,7 +9686,9 @@ function doorCompileRead(parsed, merged, frame, measures, night) {
     checks: excGround([x.headline, x.body, x.proof].join(' '), (cited(x).length ? cited(x) : merged.map((c, i) => i + 1)).map(n => merged[n - 1]).concat(pool)) })).filter(x => x.headline);
   const brief = String(parsed.brief || '').slice(0, 900);
   const watch = doorWatchOf(parsed.watch, night);   // SEAM:RECORD_WATCH
-  return { read: read.length === 2 ? read : null, question: parsed && typeof parsed.question === 'string' ? parsed.question.replace(/\s+/g, ' ').trim().slice(0, 220) || null : null, insights, ideas, brief, watch, read_checks: excGround(read.concat([brief]).join(' '), merged.concat(pool)), window: excWindow(merged, now), evidence_n: merged.length };   // SEAM:EXC_DOOR_VOICE: the question rides with the read
+  // SEAM:THE_LENS (IQ2): the takeaway, the pushback, the level and the lens, under the checks (excLensParts, shared with the live writer)
+  const { takeaway, pushback, level, lens } = excLensParts(parsed, merged, pool, read, names);
+  return { read: read.length === 2 ? read : null, question: parsed && typeof parsed.question === 'string' ? parsed.question.replace(/\s+/g, ' ').trim().slice(0, 220) || null : null, insights, ideas, brief, watch, read_checks: excGround(read.concat([brief]).join(' '), merged.concat(pool)), window: excWindow(merged, now), evidence_n: merged.length, takeaway, pushback, level, lens };   // SEAM:EXC_DOOR_VOICE: the question rides with the read; SEAM:THE_LENS (IQ2): the takeaway, the pushback, the level and the lens
 }
 /* SEAM:TERRITORIES (EX39) · the text behind the row. The evidence a reading is written from used to be a headline and a dek. Now, for
  * the tier 1 and 2 lines of every subject that will be read, the article itself is pulled (Tavily extract first, the worker's own fetch
@@ -9677,8 +9780,12 @@ async function doorPass(env, opts) {
       const size = voiceChanged ? Infinity : doorMoveSize(prev, base.meta.since, measures);
       if (prev && prev.read && size === 0 && !cand.round) { out.reused++; out.unmoved = (out.unmoved || 0) + 1; rowsOut.push(Object.assign(base, { status: 'reused', stamp, read: prev.read })); continue; }
       const now = Date.now();
-      const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join('\n');
-      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), prev, size, round: !!cand.round, system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '', night) });
+      if (!doorEvidenceBar(ev.merged)) {   // SEAM:THE_LENS (IQ2): one outlet cannot be interpreted; a subject with a read keeps it (under the voice that wrote it), one without waits for a night with a second outlet
+        if (prev && prev.read) { out.reused++; rowsOut.push(Object.assign(base, { status: 'reused', stamp: doorReuseStamp(prev, stamp), read: prev.read })); } else { out.thin++; rowsOut.push(Object.assign(base, { status: 'failed', error: 'thin_evidence' })); }
+        continue;
+      }
+      const evidence = ev.merged.map((c, i) => excLine(c, i, now)).join('\n') + doorPeopleBlock(base.meta.voices);   // SEAM:THE_LENS (IQ2): what people said reaches the writer
+      jobs.push({ base: Object.assign(base, { status: 'queued', stamp }), prev, size, round: !!cand.round, system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW + ' ' + EXC_LENS_LAW, prompt: excDoorPrompt(frame, evidence, measures, memo.get(cand.key) || '', night) });
     } catch (e) { out.failed++; console.log('door_cand_error', cand.key, String(e && e.message).slice(0, 100)); }
   }
   const roundJobs = jobs.filter(j => j.round); jobs = jobs.filter(j => !j.round);   // SEAM:BREADTH (LK1): the round is the seventh, outside the six and the seats' allowances, and never ranked
@@ -9689,10 +9796,10 @@ async function doorPass(env, opts) {
   const spaceBy = new Map(cands.filter(c => c.space).map(c => [c.key, c.space]));
   if (typeof spacesCap === 'function' && jobs.some(j => { const s = spaceBy.get(j.base.frame_key); return !!(s && s.holders && s.holders.length); })) {   // SEAM:SPACES (NT1): the holders' spaces first, under their allowance; the house keeps its cap inside the night's
     const cut = spacesCap(jobs, typeof spacesAllowance === 'function' ? await spacesAllowance(env, spaceBy) : {}, DOOR_LAW.CAP, spaceBy);
-    for (const j of cut.rest) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }
+    for (const j of cut.rest) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', stamp: doorReuseStamp(j.prev, j.base.stamp), read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }   // SEAM:THE_LENS (IQ2): the old read keeps its voice
     jobs = cut.go; out.held = cut.held; out.charged = Object.keys(cut.charged).length;   // how many seats were charged, never who
   } else {
-  for (const j of jobs.slice(DOOR_LAW.CAP)) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }
+  for (const j of jobs.slice(DOOR_LAW.CAP)) { if (j.prev && j.prev.read) { out.reused++; rowsOut.push(Object.assign(j.base, { status: 'reused', stamp: doorReuseStamp(j.prev, j.base.stamp), read: j.prev.read })); } else out.waiting = (out.waiting || 0) + 1; }   // SEAM:THE_LENS (IQ2): the old read keeps its voice
   jobs = jobs.slice(0, DOOR_LAW.CAP);
   }
   out.earned = jobs.length; out.cap = DOOR_LAW.CAP;
@@ -9722,16 +9829,20 @@ async function doorPass(env, opts) {
   await logEvent(env, 'intelligence', 'door', 'door_pass', null, out);   // awaited: the record must land before the route answers or the chain closes
   return out;
 }
-/* Called by claudeBatchDrain when a door_read job lands. */
-async function doorLand(env, id, text, cost, stopReason) {
-  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,frame,measures,evidence,status,night,meta').catch(excQuiet('door_rows', []))) || [];
+/* Called by claudeBatchDrain when a door_read job lands. SEAM:THE_LENS (IQ2): `pass` is the record pass's note on the job (recordPassQueue):
+ * the reading already on the row is read again; its bet is carried, its stamp takes the new voice, and a new read that fails a check
+ * leaves the old one standing. In preview the new read waits on the row (meta.pass_read) for the house to judge (recordPassApply). */
+async function doorLand(env, id, text, cost, stopReason, pass) {
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,frame_key,frame,measures,evidence,status,night,meta,read,stamp,cost_usd').catch(excQuiet('door_rows', []))) || [];
   const row = rows[0]; if (!row) return typeof spaceLand === 'function' ? spaceLand(env, id, text, cost, stopReason) : { skipped: 'no_row' };   // SEAM:SPACES (NT1): a private reading lands in space_reads
   const merged = (row.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null }));   // the image survives the round trip, so a cited insight carries its photograph
   const got = excReadOf(text || '');
+  if (pass) return recordPassLand(env, row, got, cost, stopReason, pass, merged);   // SEAM:THE_LENS (IQ2): the pass never fails a reading that stands
   if (!got) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: stopReason === 'max_tokens' ? 'truncated' : 'unparsable', cost_usd: cost } }).catch(excQuiet('door_land_patch')); return { id, status: 'failed' }; }
   const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night);
   if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);   // SEAM:EXC_HOUSE_VOICE (VX1b): notes on the stored read, never a hold
   if (typeof calibAdjust === 'function') await calibAdjust(env, read.insights, row.frame && row.frame.category).catch(excQuiet('calib_adjust', 0));   // SEAM:SCORECARD (EX54): confidence learns, floor-gated
+  if ((read.insights || []).length < 2) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: 'thin_read', updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch')); console.log('door_thin_read', id); return { id, status: 'failed', held: 'thin_read' }; }   // SEAM:THE_LENS (IQ2): a reading left with fewer than two findings waits for its next night
   const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];   // SEAM:EXC_MEASURE (EX52a): a reading whose claim is the instrument is held, the way a thin one is: off the board, the reason on the row, the next night tries again
   if (named.length) { await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', read, cost_usd: cost, error: ('measure_claim: ' + named[0].where + ': ' + named[0].text).slice(0, 200), updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch')); console.log('door_measure_claim', id, named[0].text.slice(0, 80)); return { id, status: 'failed', held: 'measure_claim' }; }
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'ready', read, cost_usd: cost, error: null, updated_at: new Date().toISOString() } }).catch(excQuiet('door_land_patch'));
@@ -9745,6 +9856,160 @@ async function doorLand(env, id, text, cost, stopReason) {
   await doorPublish(env);
   return { id, status: 'ready' };
 }
+/* ═══ SEAM:THE_LENS (IQ2 THE LENS): the record pass. Fresco, Nov 5: "The whole reading." Every ready reading on the record is read again
+ * by the writer above from the evidence its row kept (nothing gathered, nothing new paid for but the writing), on the overnight batch at
+ * half price. What is carried: the bet (it is being checked; the record's grade would be corrupted by a new one), the night, the evidence,
+ * the voices, the row's id and address. What changes: the read (headline, dek, takeaway, findings with their reads, moves, brief), and the
+ * stamp, which takes the new voice so the night never reads the subject again for the voice alone. A new read that fails a check (fewer
+ * than two findings, a claim about the measure, nothing parsable) leaves the old read standing, the reason on the row. In preview the new
+ * read waits on the row for the house to judge side by side; publish moves it under the record. The desk key or an admin opens it.
+ *   POST /reads/record-pass {queue: N, preview: true}   queue the newest N readings not yet passed, as previews
+ *   POST /reads/record-pass {queue: N}                  queue them to land straight onto the record (after the first six are judged)
+ *   POST /reads/record-pass {show: true}                the previews, old beside new, as a page to open
+ *   POST /reads/record-pass {apply: true}               publish every preview (or {apply: true, ids: [...]})
+ *   POST /reads/record-pass {discard: true}             drop the previews, the readings stand as they were
+ *   POST /reads/record-pass {collect: true}             collect landed batches now instead of waiting for the half hour
+ *   POST /reads/record-pass {status: true}              where the pass stands ═══ */
+const RECORD_PASS = { MAX: 100, DEFAULT: 6, STALE_MS: 26 * 3600 * 1000 };   // STALE_MS: past the batch's own day, so a queued row is never written twice
+async function recordPassAllowed(request, env) {
+  const key = request.headers.get('x-desk-key') || '', deskKey = env.DESK_API_KEY || '';
+  if (deskKey && key === deskKey) return true;
+  const user = await authenticate(request, env).catch(excQuiet('pass_auth', null));
+  return !!(user && await callerIsAdmin(env, user.id).catch(excQuiet('pass_admin', false)));
+}
+async function recordPassRoute(request, env, origin) {
+  if (!(await recordPassAllowed(request, env))) return json({ ok: false, error: 'unauthorized' }, 401, origin, env);
+  let body = {}; try { body = await request.json(); } catch (e) { body = {}; }
+  if (body.collect) { const drain = await claudeBatchDrain(env).catch(e => ({ error: String(e && e.message).slice(0, 120) })); return json({ ok: true, drain, status: await recordPassStatus(env) }, 200, origin, env); }
+  if (body.show) return new Response(recordPassPage(await recordPassPreviews(env)), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+  if (body.apply) return json(await recordPassApply(env, Array.isArray(body.ids) ? body.ids : null), 200, origin, env);
+  if (body.discard) return json(await recordPassDiscard(env), 200, origin, env);
+  if (body.queue) return json(await recordPassQueue(env, parseInt(body.queue, 10) || RECORD_PASS.DEFAULT, !!body.preview), 200, origin, env);
+  return json(Object.assign({ ok: true }, await recordPassStatus(env)), 200, origin, env);
+}
+const PASS_SEL = 'select=id,frame_key,night,status,frame,measures,read,evidence,meta,stamp,cost_usd';
+/* PURE: what the pass has done with a row, from its meta. */
+function recordPassState(r) { const p = r && r.meta && r.meta.pass; return !p ? 'unread' : p.voice !== DOOR.VOICE ? 'unread' : p.status || 'unread'; }
+async function recordPassRows(env) {
+  return (await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&night=gte.' + RECORD.SINCE + '&' + PASS_SEL + '&order=night.desc,created_at.desc&limit=' + RECORD_PASS.MAX).catch(excQuiet('pass_rows', []))) || [];
+}
+async function recordPassStatus(env) {
+  const rows = await recordPassRows(env), by = {};
+  for (const r of rows) { const s = recordPassState(r); by[s] = (by[s] || 0) + 1; }
+  return { voice: DOOR.VOICE, readings: rows.length, unread: by.unread || 0, queued: by.queued || 0, previewed: by.previewed || 0, landed: by.landed || 0, kept: by.kept || 0 };
+}
+/* The newest readings not yet passed, written again from their kept evidence on the batch. */
+async function recordPassQueue(env, n, preview) {
+  const want = Math.max(1, Math.min(RECORD_PASS.MAX, n)), now = Date.now();
+  // unread; queued past the batch's own day (the drain marks a failed batch kept, so this is the row the drain never heard of); kept for a reason that is not the writer's judgment (a batch error, a truncation, a reply that did not parse)
+  const again = r => { const p = r.meta && r.meta.pass; return p && p.status === 'kept' && /^(?:batch:|truncated|unparsable)/.test(String(p.why || '')); };
+  const rows = (await recordPassRows(env)).filter(r => { const s = recordPassState(r); return s === 'unread' || (s === 'queued' && now - (Date.parse((r.meta.pass && r.meta.pass.at) || '') || 0) > RECORD_PASS.STALE_MS) || (s === 'kept' && again(r)); }).slice(0, want);
+  if (!rows.length) return { ok: true, queued: 0, status: await recordPassStatus(env) };
+  const items = rows.map(r => {
+    const nightMs = Date.parse(String(r.night || '').slice(0, 10) + 'T06:00:00Z') || now;
+    const merged = (r.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, read: e.quoted ? 'page' : undefined, country: e.place || null }));
+    const evidence = merged.map((c, i) => excLine(c, i, nightMs)).join('\n') + doorPeopleBlock(r.meta && r.meta.voices);
+    return { custom_id: 'pass-' + String(r.id).replace(/-/g, '').slice(0, 24) + '-' + String(now).slice(-8), system: EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW + ' ' + EXC_LENS_LAW, cache: true,
+      prompt: excDoorPrompt(r.frame, evidence, r.measures, '', r.night), max_tokens: DOOR.MAX_TOKENS, meta: { door_id: r.id, pass: { voice: DOOR.VOICE, preview: !!preview, at: new Date(now).toISOString() } } };
+  });
+  const sub = await claudeBatchSubmit(env, 'live', 'door_read', items);
+  if (!sub || !sub.ok) return { ok: false, error: String((sub && sub.error) || 'batch_failed').slice(0, 120) };
+  for (const r of rows) await sbRest(env, 'door_reads?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, r.meta || {}, { pass: { voice: DOOR.VOICE, status: 'queued', preview: !!preview, at: new Date(now).toISOString(), batch_id: sub.batch_id } }) } }).catch(excQuiet('pass_patch'));
+  await logEvent(env, 'intelligence', 'door', 'record_pass_queued', null, { n: rows.length, preview: !!preview, est_usd: sub.est_usd || 0 });
+  return { ok: true, queued: rows.length, preview: !!preview, est_usd: sub.est_usd || 0, ids: rows.map(r => r.id), status: await recordPassStatus(env) };
+}
+/* PURE: the new read with the old bet carried, and the stamp under the new voice. */
+function recordPassMerge(oldRead, newRead, stamp) {
+  const read = Object.assign({}, newRead, { watch: (oldRead && oldRead.watch) || null });   // never a new bet: it would be dated from an old night and graded at once
+  const st = String(stamp || ''), i = st.indexOf('~');
+  return { read, stamp: 'v' + DOOR.VOICE + (i >= 0 ? st.slice(i) : '~') };
+}
+/* The pass's landing: the new read compiled and checked; in preview it waits on the row, else it takes the record's place. A read that fails leaves the old one. */
+async function recordPassLand(env, row, got, cost, stopReason, pass, merged) {
+  const at = new Date().toISOString(), base = Object.assign({}, row.meta || {});
+  const keep = async (why) => { await sbRest(env, 'door_reads?id=eq.' + row.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign(base, { pass: { voice: DOOR.VOICE, status: 'kept', why, at, cost_usd: cost || 0 } }) } }).catch(excQuiet('pass_patch')); console.log('record_pass_kept', row.id, why); return { id: row.id, status: 'kept', why }; };
+  if (!got) return keep(stopReason === 'max_tokens' ? 'truncated' : 'unparsable');
+  const read = doorCompileRead(got.read, merged, row.frame, row.measures, row.night, Date.parse(String(row.night || '').slice(0, 10) + 'T06:00:00Z') || undefined);   // banded as of its night, as the writer saw it
+  if (typeof excVoiceNotes === 'function') read.voice = excVoiceNotes(read);
+  if ((read.insights || []).length < 2 || !read.read) return keep('thin_read');
+  const named = typeof excMeasureClaims === 'function' ? excMeasureClaims(read) : [];
+  if (named.length) return keep('measure_claim: ' + named[0].where);
+  if (pass.preview) {
+    await sbRest(env, 'door_reads?id=eq.' + row.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign(base, { pass: { voice: DOOR.VOICE, status: 'previewed', at, cost_usd: cost || 0 }, pass_read: read }) } }).catch(excQuiet('pass_patch'));
+    return { id: row.id, status: 'previewed' };
+  }
+  const m = recordPassMerge(row.read, read, row.stamp), oldHead = row.read && Array.isArray(row.read.read) ? row.read.read[0] : null;
+  await sbRest(env, 'door_reads?id=eq.' + row.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { read: m.read, stamp: m.stamp, cost_usd: (Number(row.cost_usd) || 0) + (cost || 0), updated_at: at, meta: Object.assign(base, { pass: { voice: DOOR.VOICE, status: 'landed', at, cost_usd: cost || 0 }, pass_read: null, pass_was: { read: (row.read && row.read.read) || null, takeaway: row.read ? row.read.takeaway || null : null } }) } }).catch(excQuiet('pass_patch'));
+  await recordPassAfter(env, row, m.read, merged, at, oldHead);
+  await recordPassFresh(env);
+  return { id: row.id, status: 'landed' };
+}
+/* After a landing or an apply: the reused rows that copied this reading forward (a night whose evidence did not move keeps the last read
+ * as a copy; the night's set and the next night's prev read the newest row) take the new read and the new voice on their stamp, stopping
+ * at the first copy that differs (a later reading took over); and the claims rows (EX53) are written again for the new findings, the
+ * reading's grade (from its carried bet) and marks kept by the upsert, a finding past the new count removed. */
+async function recordPassAfter(env, row, read, merged, at, oldHead) {
+  if (oldHead && row.frame_key) {
+    const copies = (await sbRest(env, 'door_reads?frame_key=eq.' + encodeURIComponent(row.frame_key) + '&status=eq.reused&night=gt.' + row.night + '&select=id,night,read,stamp&order=night.asc&limit=60').catch(excQuiet('pass_chain', []))) || [];
+    for (const x of copies) {
+      if (!(x.read && Array.isArray(x.read.read) && x.read.read[0] === oldHead)) break;
+      const st = String(x.stamp || ''), i = st.indexOf('~');
+      await sbRest(env, 'door_reads?id=eq.' + x.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { read, stamp: 'v' + DOOR.VOICE + (i >= 0 ? st.slice(i) : '~'), updated_at: at } }).catch(excQuiet('pass_chain_patch'));
+    }
+  }
+  if (typeof claimsWrite === 'function' && typeof claimsOf === 'function') {
+    await claimsWrite(env, claimsOf('door', row.id, read, merged, row.frame, row.night, row.measures, row.frame_key, at));
+    const n = (read && Array.isArray(read.insights) ? read.insights : []).length;
+    await sbRest(env, 'claims?src=eq.door&reading_id=eq.' + encodeURIComponent(String(row.id)) + '&idx=gte.' + n, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(excQuiet('pass_claims_trim'));
+  }
+}
+async function recordPassFail(env, id, error) {
+  const rows = (await sbRest(env, 'door_reads?id=eq.' + id + '&select=id,meta').catch(excQuiet('pass_rows', []))) || [];
+  if (!rows[0]) return;
+  await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, rows[0].meta || {}, { pass: { voice: DOOR.VOICE, status: 'kept', why: 'batch: ' + String(error || '').slice(0, 80), at: new Date().toISOString() } }) } }).catch(excQuiet('pass_patch'));
+}
+/* The record and the night's set are rebuilt on the next ask. */
+async function recordPassFresh(env) {
+  if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.delete(RECORD.KEY); } catch (e) { excQuiet('pass_fresh')(e); } }
+  await doorPublish(env).catch(excQuiet('pass_publish'));
+}
+async function recordPassPreviews(env) {
+  return (await recordPassRows(env)).filter(r => recordPassState(r) === 'previewed' && r.meta && r.meta.pass_read);
+}
+async function recordPassApply(env, ids) {
+  const rows = (await recordPassPreviews(env)).filter(r => !ids || ids.includes(r.id)), at = new Date().toISOString();
+  let n = 0;
+  for (const r of rows) {
+    const m = recordPassMerge(r.read, r.meta.pass_read, r.stamp), oldHead = r.read && Array.isArray(r.read.read) ? r.read.read[0] : null;
+    await sbRest(env, 'door_reads?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { read: m.read, stamp: m.stamp, cost_usd: (Number(r.cost_usd) || 0) + (Number(r.meta.pass && r.meta.pass.cost_usd) || 0), updated_at: at, meta: Object.assign({}, r.meta, { pass: Object.assign({}, r.meta.pass, { status: 'landed', applied_at: at }), pass_read: null, pass_was: { read: (r.read && r.read.read) || null, takeaway: r.read ? r.read.takeaway || null : null } }) } }).catch(excQuiet('pass_patch'));
+    await recordPassAfter(env, r, m.read, (r.evidence || []).map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, image: e.image || null })), at, oldHead);
+    n++;
+  }
+  if (n) await recordPassFresh(env);
+  await logEvent(env, 'intelligence', 'door', 'record_pass_applied', null, { n });
+  return { ok: true, applied: n, status: await recordPassStatus(env) };
+}
+async function recordPassDiscard(env) {
+  const rows = await recordPassPreviews(env);
+  for (const r of rows) await sbRest(env, 'door_reads?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: { meta: Object.assign({}, r.meta, { pass: null, pass_read: null }) } }).catch(excQuiet('pass_patch'));
+  return { ok: true, discarded: rows.length, status: await recordPassStatus(env) };
+}
+/* PURE: the previews as one page, the published reading beside the new one; nothing on it spends or writes. */
+function recordPassPage(rows) {
+  const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const side = (rd, isNew) => {
+    if (!rd) return '<div class="side"><p class="q">nothing</p></div>';
+    const ins = (rd.insights || []).map(x => '<li><b>' + e(x.title) + '</b><br>' + e(x.excerpt) + (x.implication ? '<br><i>' + e(x.implication) + '</i>' : '') + '</li>').join('');
+    const mv = (rd.ideas || []).map(x => '<li><b>' + e(x.headline) + '</b> ' + e(x.body) + '</li>').join('');
+    return '<div class="side ' + (isNew ? 'new' : 'old') + '"><div class="k">' + (isNew ? 'THE NEW READ' : 'ON THE RECORD') + (rd.level ? ' · ' + e(rd.level) : '') + '</div>'
+      + '<h3>' + e(rd.read && rd.read[0]) + '</h3><p class="dek">' + e(rd.read && rd.read[1]) + '</p>' + (rd.takeaway ? '<p class="take">' + e(rd.takeaway) + '</p>' : '<p class="q">no takeaway</p>')
+      + '<ol>' + ins + '</ol>' + (rd.pushback ? '<p class="pb">Pushback, line ' + e(rd.pushback.line) + ': ' + e(rd.pushback.text) + '</p>' : '') + '<div class="k">THE MOVES</div><ul>' + mv + '</ul>'
+      + (rd.watch ? '<p class="q">The bet: ' + e(rd.watch.claim) + ' (carried)</p>' : '') + '<p class="q">' + e(rd.brief) + '</p></div>';
+  };
+  const body = rows.map(r => '<section><div class="k">' + e(r.night) + ' · ' + e((r.frame && (r.frame.entity || r.frame.title || r.frame.category)) || r.frame_key) + ' · ' + e(r.id) + '</div><div class="pair">' + side(r.read, false) + side(r.meta.pass_read, true) + '</div></section>').join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>The record pass</title><style>body{margin:0;background:#0a0a0f;color:#faf7f2;font:15px/1.5 Helvetica,Arial,sans-serif;padding:28px}h1{font-size:28px;margin:0 0 6px}.k{font:11px/1.4 Menlo,monospace;letter-spacing:.12em;color:#e8365a;text-transform:uppercase;margin:0 0 8px}section{border-top:1px solid #2a2a2a;padding:22px 0}.pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}.side{background:#141414;padding:18px}.side.new{outline:1px solid #c41230}h3{font-size:19px;margin:4px 0 6px}.dek{color:#b8b3aa;margin:0 0 8px}.take{font-weight:700;margin:0 0 10px}ol,ul{padding-left:18px;margin:0 0 10px}li{margin:0 0 8px}i{color:#b8b3aa}.pb{color:#e8365a}.q{color:#8a8478;font-size:13px}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style></head><body><h1>The record pass</h1><p class="q">'
+    + rows.length + ' reading' + (rows.length === 1 ? '' : 's') + ' in preview. Publish with {"apply":true}; drop with {"discard":true}.</p>' + (body || '<p class="q">Nothing in preview. Queue some with {"queue":6,"preview":true}, then collect.</p>') + '</body></html>';
+}
 async function doorFail(env, id, error) {
   await sbRest(env, 'door_reads?id=eq.' + id, { method: 'PATCH', body: { status: 'failed', error: String(error || 'batch_failed').slice(0, 200) } }).catch(excQuiet('door_fail_patch'));
   if (typeof spaceFail === 'function') await spaceFail(env, id, error);   // SEAM:SPACES (NT1): a private row fails where it lives
@@ -9757,6 +10022,7 @@ function doorTile(r) {
     frame: { entity: f.entity || null, category: f.category || null, audience: f.audience || null, market: f.market || null, competitors: f.competitors || [], question: f.question || null, query: f.query || null },
     claim: rd && rd.read && rd.read[0] ? rd.read[0] : null, move: rd && rd.ideas && rd.ideas[0] ? rd.ideas[0].headline : null, findings: rd && rd.insights ? rd.insights.length : 0,
     question: (rd && rd.question) || f.question || null,   // SEAM:EXC_DOOR_VOICE: the question this reading answers
+    takeaway: rd && rd.takeaway && !(typeof excMeasureClaim === 'function' && excMeasureClaim(rd.takeaway)) ? rd.takeaway : null, level: (rd && rd.level) || null,   // SEAM:THE_LENS (IQ2): the read at the level, where the dek stood on the card
     dek: rd && rd.read && rd.read[1] && r.night >= '2026-10-10' && !(typeof excMeasureClaim === 'function' && excMeasureClaim(rd.read[1])) ? rd.read[1] : null,   // EX33a: the dek (the one figure, its source in words); before the 3.4 voice line 2 was the move, so older readings carry none. SEAM:THE_SCROLL (NT4): a dek about the measure or the lake never publishes, whenever it was written
     photo: doorPhoto(rd, r.evidence),   // the sources' own photograph, credited; null when none of the lines carries one
     measures: { series: m.series || [], recent_7d: m.recent_7d || 0, prior_7d: m.prior_7d || 0, velocity_pct: m.velocity_pct == null ? null : m.velocity_pct, outlets: m.outlets || 0, weeks_touched: m.weeks_touched || 0, weeks: m.weeks || 12, share_pct: m.share_pct == null ? null : m.share_pct, territory: m.territory || null, state: m.state || 'STEADY', shape: m.shape || null, newest: m.newest || null },
@@ -11497,7 +11763,9 @@ async function frameFit(env, query, sent) {   // the read's key ('' for the fram
  * serves, never the move. Nothing is written to the record, and the writer the night pass uses is unchanged (no hashed slice moves, so
  * no bench): the law rides this run only, appended to the night's own system and spliced into the reading's own schema. The readings are
  * written at once and returned beside what was published, for the house to judge. Admin or the desk key: {run:"takeaway_test", n} ═══ */
-const TAKEAWAY_TEST = { MAX: 8, DEFAULT: 6, MAX_TOKENS: 16000, TIMEOUT_MS: 150000, ANCHOR: '"question":"the question this read answers',
+/* SEAM:THE_LENS (IQ2): the run is the dry run of the night's writer itself: the same system (the lens law included), the same prompt from
+ * the reading's kept evidence and its people's lines, compiled under the same checks, returned beside what stands. Nothing is written. */
+const TAKEAWAY_TEST = { MAX: 12, DEFAULT: 6, MAX_TOKENS: 16000, TIMEOUT_MS: 150000, ANCHOR: '"question":"the question this read answers',
   LAW: 'TAKEAWAY LAW: "takeaway" is one sentence of 14 to 28 words for the professional this read serves: what the finding means for their business, said by an expert who has done the thinking and hands over the conclusion that sits just beneath the headline. It names the implication the headline and the dek leave unsaid: what it changes, for whom, and why now. It never restates the headline and never repeats the dek figure. It is never a move: no instruction, no imperative, no "should", "must" or "consider", no channel, product or campaign to build. Never the signal, the lake, the coverage or the house as its subject. No dash of any kind, no semicolon, no X-not-Y.',
   FIELD: '"takeaway":"one sentence under the TAKEAWAY LAW: what this reading means for the professional it serves, the conclusion beneath the headline, never a move",' };
 // PURE: what the takeaway law can check in code
@@ -11509,20 +11777,27 @@ function takeawayChecks(t, headline) {
 }
 async function takeawayTest(env, body) {
   const n = Math.max(1, Math.min(TAKEAWAY_TEST.MAX, parseInt(body && body.n, 10) || TAKEAWAY_TEST.DEFAULT));
-  const rows = await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&select=id,frame_key,night,frame,measures,read,evidence&order=night.desc,id.desc&limit=' + n).catch(excQuiet('takeaway_rows', null));
+  const rows = await sbRest(env, 'door_reads?status=eq.ready&read=not.is.null&select=id,frame_key,night,frame,measures,read,evidence,meta&order=night.desc,id.desc&limit=' + n).catch(excQuiet('takeaway_rows', null));
   if (!Array.isArray(rows)) return { ok: false, error: 'read_failed' };
-  const system = EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW + ' ' + TAKEAWAY_TEST.LAW;   // the night pass's own system, plus the law
+  const system = EXC_VOICE_SYS + ' ' + EXC_MOVE_LAW + ' ' + EXC_TIME_LAW + ' ' + EXC_NUMBER_LAW + ' ' + EXC_HEADLINE_LAW + ' ' + EXC_LENS_LAW;   // SEAM:THE_LENS (IQ2): the night's own system, nothing added
   const one = async r => {
     const ev = Array.isArray(r.evidence) ? r.evidence : [], rd = r.read || {};
     const was = { headline: (rd.read && rd.read[0]) || null, dek: (rd.read && rd.read[1]) || null, bet: (rd.watch && rd.watch.claim) || null, move: (rd.ideas && rd.ideas[0] && rd.ideas[0].headline) || null };
     const subject = (r.frame && (r.frame.entity || r.frame.title || r.frame.category)) || r.frame_key;
     if (!ev.length || !r.frame) return { id: r.id, night: r.night, subject, was, skipped: 'no_evidence' };
-    const now = Date.now(), base = excDoorPrompt(r.frame, ev.map((c, i) => excLine(c, i, now)).join('\n'), r.measures || {}, '', r.night);
-    if (base.indexOf(TAKEAWAY_TEST.ANCHOR) < 0) return { id: r.id, night: r.night, subject, was, error: 'schema_moved' };
-    const res = await callClaude(env, 'live', { system, prompt: base.replace(TAKEAWAY_TEST.ANCHOR, TAKEAWAY_TEST.FIELD + TAKEAWAY_TEST.ANCHOR), max_tokens: TAKEAWAY_TEST.MAX_TOKENS, kind: 'takeaway_test', timeout_ms: TAKEAWAY_TEST.TIMEOUT_MS, meta: { reading: r.id } });
+    // SEAM:THE_LENS (IQ2): the night's prompt from the kept evidence (banded as of the reading's night) and the people's lines; the reply compiled under the night's checks
+    const nightMs = Date.parse(String(r.night || '').slice(0, 10) + 'T06:00:00Z') || Date.now();
+    const merged = ev.map(e => ({ title: e.title, url: e.url, source: e.source, published_at: e.published_at, tier: e.tier, text: e.text, read: e.quoted ? 'page' : undefined, image: e.image || null }));
+    const base = excDoorPrompt(r.frame, merged.map((c, i) => excLine(c, i, nightMs)).join('\n') + (typeof doorPeopleBlock === 'function' ? doorPeopleBlock(r.meta && r.meta.voices) : ''), r.measures || {}, '', r.night);
+    const res = await callClaude(env, 'live', { system, prompt: base, max_tokens: TAKEAWAY_TEST.MAX_TOKENS, kind: 'takeaway_test', timeout_ms: TAKEAWAY_TEST.TIMEOUT_MS, meta: { reading: r.id } });
     if (!res.ok) return { id: r.id, night: r.night, subject, was, error: res.error || 'claude_failed' };
-    const j = extractJson(res.text || '') || {}, rl = Array.isArray(j.read) ? j.read : [];
-    const now2 = { headline: rl[0] || null, dek: rl[1] || null, takeaway: typeof j.takeaway === 'string' ? j.takeaway.trim() : null, bet: (j.watch && j.watch.claim) || null, move: (j.ideas && j.ideas[0] && j.ideas[0].headline) || null };
+    const got = typeof excReadOf === 'function' ? excReadOf(res.text || '') : null;
+    if (!got) return { id: r.id, night: r.night, subject, was, error: res.stop_reason === 'max_tokens' ? 'truncated' : 'unparsable', usd: res.cost_usd || 0 };
+    const c = doorCompileRead(got.read, merged, r.frame, r.measures || {}, r.night, nightMs), raw = Array.isArray(got.read.insights) ? got.read.insights : [];
+    const held = (c.insights || []).length < 2 ? 'thin_read' : (typeof excMeasureClaims === 'function' && excMeasureClaims(c).length ? 'measure_claim' : null);   // what the night would do with it
+    const now2 = { headline: (c.read && c.read[0]) || null, dek: (c.read && c.read[1]) || null, takeaway: c.takeaway || null, level: c.level || null, lens: c.lens || [], pushback: c.pushback || null,
+      findings: (c.insights || []).map(x => ({ title: x.title, fact: x.excerpt, read: x.implication || null })), reads_dropped: raw.filter(x => x && x.read).length - (c.insights || []).filter(x => x.implication).length,
+      bet: (c.watch && c.watch.claim) || null, moves: (c.ideas || []).map(x => x.headline), brief: c.brief || null, held };
     return { id: r.id, night: r.night, subject, was, now: now2, checks: takeawayChecks(now2.takeaway, now2.headline), usd: res.cost_usd || 0 };
   };
   const readings = await Promise.all(rows.map(one));
@@ -14762,7 +15037,8 @@ async function claudeBatchDrain(env) {
       if (row.kind === 'corpus_extract' && row.meta && row.meta.corpus_doc_id && typeof corpusLand === 'function')   // SEAM:HOUSE_POSITIONS (VX2): a reading of our own writing lands its proposals here
         await corpusLand(env, row.meta.corpus_doc_id, patch, row).catch(e => console.log('corpus_land_error', String(e && e.message)));
       if (row.kind === 'door_read' && row.meta && row.meta.door_id) {   // SEAM:EXC_DOOR v2 lands its reads here
-        if (patch.status === 'done') await doorLand(env, row.meta.door_id, patch.result, patch.cost_usd, patch.stop_reason).catch(e => console.log('door_land_error', String(e && e.message)));
+        if (patch.status === 'done') await doorLand(env, row.meta.door_id, patch.result, patch.cost_usd, patch.stop_reason, row.meta.pass || null).catch(e => console.log('door_land_error', String(e && e.message)));   // SEAM:THE_LENS (IQ2): the pass's jobs carry their note
+        else if (row.meta.pass) await recordPassFail(env, row.meta.door_id, patch.error).catch(e => console.log('pass_fail_error', String(e && e.message)));
         else await doorFail(env, row.meta.door_id, patch.error).catch(e => console.log('door_fail_error', String(e && e.message)));
       }
     }
