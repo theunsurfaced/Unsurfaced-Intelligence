@@ -102,7 +102,7 @@ ok(kvKeys.length >= 1 && JSON.parse(kv[kvKeys[0]]).owner === 'u1', 'C6 the row c
 // ── D: the EXCAVATE doors ──────────────────────────────────────────────────────────────────────────────────────────
 ok(!/\.\.\/play\/\?brief=/.test(page), 'D1 no door opens PLAY on a query string PLAY never read');
 ok(/onclick="return _playMove\(\$\{\(window\._playMoves=window\._playMoves\|\|\[\]\)\.push\(m\)-1\}\)"/.test(page) && /Picture this move in PLAY/.test(page), 'D2 a move\'s door carries the move itself');
-ok(/_playRead\(\[\.\.\.document\.querySelectorAll\('#read-block \.read-line'\)\]\.map\(e=>e\.innerText\)\.join\(' '\)\)">MAKE WITH PLAY<\/button>/.test(page), 'D3 MAKE WITH PLAY carries the two read lines');
+ok(/_playRead\(\[\.\.\.document\.querySelectorAll\('#read-block \.read-line'\)\]\.map\(e=>e\.innerText\)\.join\(' '\)\)">Make with PLAY<\/button>/.test(page), 'D3 Make with PLAY carries the two read lines (under More on the rail: RQ1)');
 ok(/onclick="return _playAsk\(\)">Make it in PLAY<\/a>/.test(page), 'D4 the interpreter\'s create door carries the question');
 const pk = between(page, 'function _playPkg(ask, move){', 'function _playMove(');
 ok(/frame:\{ entity:f\.entity\|\|null, category:f\.category\|\|null, audience:f\.audience\|\|null, market:f\.market\|\|null, task:f\.task\|\|null \}/.test(pk) && /voices\.quotes\)\)\?gm\.meta\.voices\.quotes\.filter\(q=>q&&q\.text&&!q\.share&&q\.on_frame!==false\)\.slice\(0,4\)/.test(pk)

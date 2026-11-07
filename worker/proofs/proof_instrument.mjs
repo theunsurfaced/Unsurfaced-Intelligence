@@ -68,7 +68,7 @@ ok(/mode:synthd\?'live':'basic',depth:syn&&syn\.depth\|\|null,/.test(rl), 'H4 de
 const rr = between(page, 'function renderResults(q, data, mode){', 'renderVoiceStrip(q);');
 ok(/const _ov=!!\(data\.model&&data\.model\.lane==='overnight'\);/.test(rr) && /\(_ov\?'OVERNIGHT READ':\(data\.depth==='quick'\?'QUICK READ':'FULL READ'\)\)/.test(rr) && /\(_ov&&data\.compiled_at\?_utcStamp\(data\.compiled_at\):new Date\(\)/.test(rr), 'H5 the meta line says OVERNIGHT READ with the compiled time, never the browser\'s clock for a stored reading');
 const od = between(page, 'async function _openDoorRead(t) {', '/* SEAM:CLIENT_PROFILE');
-ok(/if \(h && t\.title\) h\.textContent = t\.title;/.test(od) && /window\._doorOpen = \{ id: t\.id, query: q, frame: j\.data\.frame \|\| null \};/.test(od) && /showLoader\(t\.title \|\| q \|\| 'the subject', 'live', \[[^\]]+\], 'OPENING THE OVERNIGHT READ'\)/.test(od), 'H6 the overnight reading\'s heading is the subject\'s title; the rail\'s search string stays the question for Go deeper and the RECON; the loader names the door');
+ok(/if \(h && t\.title\) h\.textContent = t\.title;/.test(od) && /window\._doorOpen = \{ id: t\.id, query: q, frame: j\.data\.frame \|\| null \};/.test(od) && /showLoader\(t\.title \|\| q \|\| 'the subject', 'door', \[[^\]]+\], 'OPENING THE OVERNIGHT READ', t\.frame \|\| null\)/.test(od), 'H6 the overnight reading\'s heading is the subject\'s title; the rail\'s search string stays the question for Go deeper and the RECON; the loader names the door and steps on the timer with the reading\'s frame (RQ1)');
 
 // ── W: the watch sees the door and the marks ──────────────────────────
 const wl = between(w, 'function watchDoorLine(every, lastNight, today, skipped) {', 'async function watchHealth(env) {');
@@ -93,9 +93,9 @@ ok(R({ subjects: ['Nike in footwear'] }, tiles).faces[0].id === 'new' && R({ sub
 ok(/<img src="\$\{safeAttr\(typeof _hsSrc === 'function' \? _hsSrc\(\{ id: f\.id, photo: \{ src: f\.src \} \}\) : f\.src\)\}"/.test(page) && /const faces = img\.closest \? img\.closest\('\.rec-cur-faces'\) : null; f\.remove\(\); if \(faces && !faces\.children\.length\) faces\.remove\(\);/.test(page),
   'P4 (NT4) a face lands through the relay; a faces box whose last photograph fails goes with it; no empty box');
 const reach = between(page, 'async function _reachBlock(id) {', '/* SEAM:INSIGHT_PANEL');
-ok(/box\.insertAdjacentHTML\('beforebegin', `<div class="reach-role">/.test(reach) && /const old = el\.querySelector\('\.reach-role'\); if \(old\) old\.remove\(\);/.test(reach) && !/box\.innerHTML = `<div class="reach-role">/.test(reach), 'P5 the role line stands above the three-column grid, never in its first cell, and never twice');
-const loader = between(page, 'function showLoader(q,mode,steps,label){', 'function hideLoader(){');
-ok(/fl\.textContent='Gathering'/.test(loader) && /textContent=label\|\|\(mode==='live'\?'READING THE SOURCES':'GATHERING SOURCES'\)/.test(loader), 'P6 the loader starts clean every time: never the last read\'s "Complete." under a new one; a door read names itself');
+ok(/<span class="reach-role" id="reach-role"><\/span>/.test(reach) && /const rl = document\.getElementById\('reach-role'\); if \(rl\) rl\.textContent = /.test(reach) && !/box\.innerHTML = `<div class="reach-role">/.test(reach), 'P5 the role line stands beside the kicker, above the three-column grid, never in its first cell, and never twice (RQ1)');
+const loader = between(page, 'function showLoader(q,mode,steps,label,frame){', 'function hideLoader(){');
+ok(/dr\.style\.display='none'; dr\.innerHTML='';/.test(loader) && /k\.innerHTML=label\?safe\(String\(label\)\.toLowerCase\(\)\):mode==='live'\?'The read is being written/.test(loader) && !/Complete\./.test(between(page, 'function hideLoader(){', '\n}\n')), 'P6 the wait starts clean every time (the draft cleared, the stages drawn afresh); a door read names itself; nothing says Complete (RQ1)');
 
 // ── V: the voice law on the page ──────────────────────────────────────
 const scripts = [...page.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter(m => !/importmap|octet-stream|application\/json/.test(m[1]) && m[2].trim()).map(m => m[2]);

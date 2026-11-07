@@ -52,8 +52,8 @@ ok(fs.existsSync('supabase/migrations/0042_reach.sql') && /create table if not e
 
 // ── E: the page ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ok(/onclick="_profileOpen\(\)">Your profile<\/button>/.test(page) && /async function _profileOpen\(\)/.test(page) && /id="pm-role"/.test(page) && /id="pm-tracked"/.test(page) && /id="pm-slack"/.test(page) && /id="pm-day"/.test(page), 'E1 your profile under the user menu: role, tracked brands, follows, push, webhooks, brief day');
-ok(/_reachBlock\(t\.id\);   \/\/ SEAM:ROLE_IMPLICATIONS/.test(page) && /FOR YOUR ROLE/.test(page) && /\/excavate\/insight\/roles\?id=/.test(page) && /onclick="_packOpen\('\$\{safeAttr\(id\)\}'\)">Evidence pack<\/button>/.test(page) && /onclick="_embedCopy\('\$\{safeAttr\(id\)\}'\)">Embed<\/button>/.test(page),
-  'E2 opening a deployed reading adds the reach block: the implications for your role, the evidence pack, the embed');
+ok(/_reachBlock\(t\.id\);   \/\/ SEAM:ROLE_IMPLICATIONS/.test(page) && /<span class="reach-k">FOR YOU<\/span>/.test(page) && !/FOR YOUR ROLE/.test(page) && /\/excavate\/insight\/roles\?id=/.test(page) && /onclick="_packOpen\('\$\{safeAttr\(id\)\}'\)">Evidence pack<\/button>/.test(page) && !/>Embed<\/button>/.test(page),
+  'E2 opening a deployed reading adds the reach block, FOR YOU: the implications for your role, the evidence pack; no Embed since the card says sign in (AC1, RQ1)');
 ok(/\['held', 'useful', 'wrong'\]\.map\(m => `<button type="button" class="reach-mark/.test(page) && /api\('excavate\/mark', \{ id, mark \}\)/.test(page), 'E3 the three marks with their counts, posted signed in');
 ok(/onclick="_followLens\(\)">Follow \$\{safe\(_recLens\.value\)\}<\/button>/.test(page) && /async function _followLens\(\)/.test(page), 'E4 a lens on the record can be followed in one click');
 ok(/\.pm-wrap\{position:fixed;inset:0;[^}]*z-index:var\(--z-app-modal\)/.test(page), 'E5 the profile modal sits above the hub and the spaces (EX34: the first entry opens it over the hub)');

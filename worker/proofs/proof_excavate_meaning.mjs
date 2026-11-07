@@ -58,7 +58,7 @@ ok(plain.frame === null && plain.moves_dropped === 0 && !/MOVE LAW/.test(call.m[
 // ── the page ──────────────────────────────────────────────────────────────
 ok(/strip\.innerHTML='';/.test(page) && !/SOURCES USED:<\/span>`\+/.test(page), 'P1 no sources section: each finding carries its own source');
 ok(/_ideas\.filter\(x=>Number\.isInteger\(x\.from\)&&_ins\[x\.from\]/.test(page) && !/k%CATS\.length===ci/.test(page), 'P2 a lens shows the moves from its own findings, not a round-robin');
-ok(/insight-card\$\{ins\.image\?' has-img':''\}/.test(page), 'P0 a finding with a photo leads with it; the corner ornament steps aside');
+ok(/<div class="insight-card has-img"[^>]*>\s*\$\{_findFig\(ins,cat\)\}/.test(page), 'P0 every finding leads with its figure (the photograph, or the subject set large: RQ1); the corner ornament steps aside');
 ok(/function _meaningBlock\(ins\)/.test(page) && /\$\{_meaningBlock\(ins\)\}/.test(page), 'P3 every finding shows what it means');
 ok(/function _moveCard\(m, all\)/.test(page) && /\['Why now',m\.because\],\['Proof',m\.proof\],\['Watch',m\.measure\],\['Risk',m\.risk\]/.test(page), 'P4 each move reads as a brief: why now, proof, watch, risk');
 ok(/did not meet the bar/.test(page), 'P5 the page says how many moves did not meet the bar');

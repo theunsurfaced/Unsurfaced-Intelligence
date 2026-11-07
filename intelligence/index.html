@@ -561,6 +561,18 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rec-cur-subs button{cursor:pointer;color:var(--room-ivory,var(--text))}.rec-cur-subs button:hover{border-color:var(--accent);color:var(--accent)}
 /* SEAM:RECORD_FACE (EX40): a current with a face */
 .rec-cur-grid.n1{grid-template-columns:1fr}.rec-cur-grid.n2{grid-template-columns:repeat(2,minmax(0,1fr))}.rec-cur-grid.n3{grid-template-columns:repeat(3,minmax(0,1fr))}.rec-cur-grid.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rec-cur-grid.n5{grid-template-columns:repeat(5,minmax(0,1fr))}   /* SEAM:THE_CURRENTS (CC1): five on one line */
+.rec-cur-grid.n5 .rec-cur h3{font-size:16px}.rec-cur-grid.n5 .rec-cur p.body{-webkit-line-clamp:4}
+.rec-cur.rec-cur-door{cursor:pointer;border:1px solid transparent;margin:-1px;padding:1px;transition:border-color .2s}.rec-cur.rec-cur-door:hover,.rec-cur.rec-cur-door:has(.rec-cur-h:focus-visible){border-color:var(--accent)}   /* SEAM:THE_CURRENTS (CC1): the card is a door; the title is the button */
+.rec-cur-h{display:block;width:100%;margin:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.rec-cur-h:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media (max-width:1100px){.rec-cur-grid.n5,.rec-cur-grid.n4{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding:1px 1px 6px;scrollbar-width:thin}.rec-cur-grid.n5>.rec-cur,.rec-cur-grid.n4>.rec-cur{flex:0 0 min(78vw,272px);scroll-snap-align:start}}   /* SEAM:THE_CURRENTS (CC1): the row scrolls sideways, as the voices do; a pixel kept for the door's frame */
+.cur-pop-k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#C41230}
+.cur-pop-h{margin:0;font-family:'DM Serif Display',serif;font-weight:400;font-size:34px;line-height:1.1;color:var(--hs-ink)}
+.cur-pop-body{font-family:'Syne',sans-serif;font-weight:500;font-size:16px;line-height:1.55;margin:0;color:var(--hs-ink2)}
+.cur-pop-reads{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:4px}
+.cur-pop-read{display:flex;flex-direction:column;gap:8px;text-align:left;padding:0;border:1px solid rgba(0,0,0,.12);background:transparent;color:inherit;cursor:pointer;font:inherit;overflow:hidden}.cur-pop-read:hover,.cur-pop-read:focus-visible{border-color:#C41230;outline:none}
+.cur-pop-read .hs-thumb{aspect-ratio:16/9;border:0}.cur-pop-read .hs-face-name{font-size:18px;padding:10px}
+.cur-pop-read b{display:block;font-family:'DM Serif Display',serif;font-weight:400;font-size:17px;line-height:1.25;padding:0 12px;color:var(--hs-ink)}.cur-pop-read small{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--hs-meta);padding:0 12px 12px}
 .rec-cur{display:flex;flex-direction:column;min-width:0}
 .rec-cur-faces.big-pulse{display:flex;flex-direction:column;justify-content:center;padding:14px 14px 10px;border:1px solid var(--room-rule,var(--border))}.rec-cur-faces.big-pulse .pulse{flex:0 0 64px;position:relative;min-height:0}.rec-cur-faces.big-pulse .pulse svg{width:100%;height:100%;display:block;overflow:visible}.rec-cur-faces.big-pulse .pulse .pf{fill:var(--room-pulse);stroke:none}.rec-cur-faces.big-pulse .pulse .pl{fill:none;stroke:var(--room-red);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}.rec-cur-faces.big-pulse .pulse circle{fill:var(--room-red)}.rec-cur-faces.big-pulse small{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--room-fg3,var(--text3));margin-top:6px}
 .rec-cur-faces.names{display:flex;align-items:flex-end;padding:14px;border:1px solid var(--room-rule,var(--border));background:linear-gradient(160deg,var(--room-card) 0%,#0e0e12 100%)}.rec-cur-faces.names div{display:flex;flex-direction:column;gap:2px}.rec-cur-faces.names span{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(18px,1.7vw,26px);line-height:1.05;letter-spacing:-.02em;color:var(--room-ivory,var(--text))}.rec-cur-faces.names span:nth-child(n+2){color:var(--room-fg3,var(--text3))}
@@ -576,7 +588,7 @@ h1.hero-title em{font-style:italic;color:var(--accent);}
 .rec-cur-more{align-self:flex-start;background:none;border:0;padding:0 0 8px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--room-fg3,var(--text3));cursor:pointer}.rec-cur-more:hover{color:var(--accent)}
 .rec-cur .move{margin-top:auto;padding-top:8px}
 @media (max-width:1000px){.rec-cur-grid.n3,.rec-cur-grid.n4{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.rec-cur-grid.n2,.rec-cur-grid.n3,.rec-cur-grid.n4{grid-template-columns:1fr}.rec-currents{padding:14px}}
+@media (max-width:640px){.rec-cur-grid.n2,.rec-cur-grid.n3{grid-template-columns:1fr}.rec-currents{padding:14px}}   /* SEAM:THE_CURRENTS (CC1): four or five scroll sideways on a phone too */
 .rec-ahead{color:var(--room-fg2,var(--text2))}
 .rec-ask{margin:0 0 18px;padding:0}.rec-ask:has(#ask-thread:empty){display:none}   /* SEAM:ASK_RECORD; EX36a: the thread only, under the head */
 .room-head.rec-head{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(340px,40%);align-items:center;gap:calc(28px*var(--k))}
@@ -2351,6 +2363,67 @@ body.vx-room-open{overflow:hidden}
 #sec-explore .hs-card .hs-cardmove{display:flex;flex-direction:column;gap:5px;margin-top:2px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12)}
 #sec-explore .hs-card .hs-cardmove .hs-move-text{font-size:calc(15px*var(--k));line-height:1.4;color:var(--room-ivory)}
 .hs-pop-take{margin:0;font-family:'Syne',sans-serif;font-weight:500;font-size:14px;line-height:1.5;color:var(--hs-ink2)}
+/* ═══ SEAM:THE_WAIT / SEAM:THE_ARRIVAL (RQ1): the wait and the arrival in the scroll's language ═══ */
+.searching-state{text-align:left;padding:70px 40px 60px}
+.wait{max-width:1140px;margin:0 auto}
+.wait-k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}.wait-k i{font-style:normal;color:var(--text3)}
+.wait-q{font-family:'DM Serif Display',serif;font-size:40px;line-height:1.12;max-width:920px;margin:12px 0 32px;color:var(--text)}
+.wait-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.wait-stages .lstep{display:flex;gap:14px;align-items:baseline;padding:13px 0;border-top:1px solid var(--border);font-family:'Syne',sans-serif;font-size:15px;letter-spacing:0;color:var(--text3);transition:color .3s}
+.wait-stages .lstep:last-child{border-bottom:1px solid var(--border)}
+.wait-stages .lstep::before,.wait-stages .lstep.active::before,.wait-stages .lstep.done::before{content:none}
+.wait-stages .lstep .dot{width:10px;height:10px;border-radius:50%;border:1px solid var(--text3);flex:0 0 10px;position:relative;top:-1px}
+.wait-stages .lstep.done,.wait-stages .lstep.active{color:var(--text)}
+.wait-stages .lstep.done .dot{background:var(--accent);border-color:var(--accent)}
+.wait-stages .lstep.active .dot{border-color:var(--accent);box-shadow:0 0 0 4px rgba(255,59,59,.18)}
+.wait-stages .lstep .t{white-space:nowrap}.wait-stages .lstep .n{margin-left:auto;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--text2);text-align:right}
+.wait-draft{border-left:2px solid var(--accent);padding:2px 0 2px 22px;margin:0;animation:fadeIn .4s ease both}
+.wait-ak{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.wait-draft .ld-line{font-family:'DM Serif Display',serif;font-weight:400;font-size:28px;line-height:1.15;margin:0 0 10px;color:var(--text)}
+.wait-draft .ld-line.two{font-size:18px;line-height:1.35;color:var(--text2)}
+.wait-draft .ld-take{font-family:'Syne',sans-serif;font-size:15px;line-height:1.55;color:var(--text2);margin:0 0 10px}
+.wait-draft .ld-list{margin-top:12px;display:grid;gap:6px}.wait-draft .ld-item{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--text2);animation:fadeIn .3s ease both}
+.wait-draft .ld-item .card-cat{font-size:9px;padding:0;border:0;background:none;margin:0}.wait-draft .ld-list.moves{border-top:1px dashed var(--border);padding-top:10px}.wait-draft .ld-type{color:var(--accent);font-size:9px;letter-spacing:.12em}
+.wait-foot{margin-top:36px;display:flex;gap:40px;flex-wrap:wrap;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+@media (max-width:900px){.wait-grid{grid-template-columns:1fr}.wait-q{font-size:30px}.searching-state{padding:40px 16px}}
+.results-header{display:none}   /* the summary card: its ids stay for the scripts that set them; the reader sees THE READ */
+.rb-kick{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;font-size:11px;letter-spacing:.14em}.rb-kick .rb-kind{color:var(--accent)}.rb-kick i{font-style:normal;color:var(--text3)}
+.rb-frameline{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--text3);line-height:2;margin:14px 0 4px}.rb-frameline .rb-fk{text-transform:uppercase;margin-right:6px}.rb-frameline b{font-weight:400;color:var(--text2)}.rb-frameline em{font-style:normal}
+.read-block .rb-q{background:none;padding:0;font-size:17px;color:var(--text2);margin:0 0 6px}
+.rb-rail{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
+.rb-rail .rr{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:11px 16px;border:1px solid #3a3a3a;background:none;color:var(--text);cursor:pointer}
+.rb-rail .rr:hover{border-color:var(--text2)}.rb-rail .rr.red{background:var(--accent);border-color:var(--accent);color:#fff}.rb-rail .rr.more{color:var(--text3)}
+.rb-rail-more{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}.rb-rail-more[hidden]{display:none}.rb-rail-more .rr{color:var(--text2)}#read-rail-admin{display:contents}
+.read-doors:empty{display:none}.read-doors .intent-doors{margin:8px 0 0}
+.results-lens-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border:0;background:none;padding:30px 0 14px;overflow:visible}
+.results-lens-bar::before{content:'The findings';font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);margin-right:10px}
+.results-lens-bar .rlb{border:1px solid #333;padding:7px 11px;font-size:10.5px;letter-spacing:.1em;color:var(--text2);white-space:nowrap}.results-lens-bar .rlb:hover{color:var(--text)}
+.results-lens-bar .rlb.active,.results-lens-bar .rlb.active.cat-market,.results-lens-bar .rlb.active.cat-culture,.results-lens-bar .rlb.active.cat-brand,.results-lens-bar .rlb.active.cat-truth{border-color:var(--accent);color:var(--text)}
+.results-lens-bar .rlb .rlb-count,.results-lens-bar .rlb.active .rlb-count,.results-lens-bar .rlb.active.cat-market .rlb-count,.results-lens-bar .rlb.active.cat-culture .rlb-count,.results-lens-bar .rlb.active.cat-brand .rlb-count,.results-lens-bar .rlb.active.cat-truth .rlb-count{display:inline;width:auto;height:auto;border-radius:0;background:none;font-size:10.5px;font-weight:400;margin-left:4px;color:inherit}
+.read-block .read-line{font-size:36px;line-height:1.1;margin:0 0 10px}.read-block .read-line.two{font-size:22px;line-height:1.3;margin:0 0 14px}
+.insight-card .card-fig{display:block;aspect-ratio:16/9;width:calc(100% + 48px);margin:-24px -24px 16px;border:0;border-bottom:1px solid var(--border)}#sec-explore .insight-card .card-fig .hs-face-name{font-size:22px;padding:16px}.insight-card .card-fig figcaption{position:absolute;left:8px;bottom:8px;margin:0;background:rgba(10,10,10,.82);color:var(--text2);font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 7px;max-width:calc(100% - 16px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.card-read strong{font-family:'DM Serif Display',serif;font-weight:400;color:var(--accent);margin-right:6px}
+.reach{margin:18px 0}.reach-top{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}.reach-top .reach-k{margin:0}.reach-top .reach-role{margin:0;font-size:11px;color:var(--text3)}
+.reach .read-foryou{margin:14px 0 0;padding-top:14px;border-top:1px dashed #2c2c2c}
+.reach-marks-k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-right:8px}
+.read-acts-marks{margin-left:auto;display:inline-flex;align-items:center;gap:6px}.read-acts-marks:empty{display:none}
+.rb-voices-head{display:flex;align-items:baseline;gap:18px;margin:24px 0 6px}.rb-vh{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text)}
+.rb-vall{background:none;border:0;padding:0;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);cursor:pointer}.rb-vall:hover{color:var(--text)}
+.rb-voices-sub{font-size:14px;color:var(--text2);margin:0 0 16px;max-width:80ch}
+.rb-voices{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:0;padding:0;border:0}
+.rb-voice{border:1px solid var(--border);background:var(--surface);padding:18px 20px;border-left:1px solid var(--border)}
+.rb-voice-who{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:12px}
+.rb-voice p{font-family:'Syne',sans-serif;font-style:normal;font-size:15px;line-height:1.5;color:var(--text);margin:0 0 8px}
+#rail-voices.folded{display:none}#rail-voices.folded.open{display:block}
+.rb-measured-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:24px;align-items:stretch;margin-top:24px}
+.rb-measured-row .rb-measures{margin:0;padding:18px 22px;border:1px solid var(--border);background:var(--surface);grid-template-columns:1fr;align-items:start}
+.rb-measured-row .rb-receipts{border:1px solid var(--border);padding:18px 22px;font-size:13px;line-height:1.7}
+.rb-body-one{grid-template-columns:1fr}.rb-measured-row.one{grid-template-columns:1fr}
+.rb-sec-h{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);margin:28px 0 0}.rb-sec-h+.rb-measured-row{margin-top:14px}
+.rb-blind{margin:8px 0 14px}
+.read-acts .btn-go-deeper{font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 15px}   /* the foot's Track this stands the height of its neighbours */
+@media (max-width:900px){.rb-voices{grid-template-columns:1fr}.rb-measured-row{grid-template-columns:1fr}.results-lens-bar::before{flex-basis:100%}}
+@media (max-width:760px){.read-block .read-line{font-size:28px}.read-block .read-line.two{font-size:18px}.read-acts #read-acts-marks button{width:auto}.read-acts-marks{margin-left:0}}
 .read-take{font-family:'Syne',sans-serif;font-weight:600;font-size:17px;line-height:1.45;color:var(--text);margin:2px 0 10px}
 .read-pushback{font-family:'Syne',sans-serif;font-size:13px;line-height:1.5;color:var(--text2);margin:0 0 10px;padding-left:12px;border-left:2px solid var(--accent)}
 .read-pushback b{color:var(--accent);font-weight:600}
@@ -2952,20 +3025,16 @@ body.vx-room-open{overflow:hidden}
 
 <div class="error-banner" id="error-banner"></div>
 
-<!-- LOADER -->
+<!-- LOADER: SEAM:THE_WAIT (RQ1): the read is being written. The question is the headline; the stages are lit as they happen; the read's first lines land as they are written. -->
 <div class="searching-state" id="searching-state">
-  <div class="excavate-loader" id="loader-rings">
-    <div class="loader-ring r1"></div>
-    <div class="loader-ring r2"></div>
-    <div class="loader-ring r3"></div>
-  </div>
-  <div class="loader-label" id="loader-label">EXCAVATING OPEN DATA</div>
-  <div class="loader-query" id="loader-query"></div>
-  <div class="loader-steps" id="loader-steps"></div>
-  <div class="loader-draft" id="loader-draft" style="display:none"></div>
-  <div class="fetch-progress">
-    <div class="fetch-bar-track"><div class="fetch-bar-fill" id="fetch-bar"></div></div>
-    <div class="fetch-label" id="fetch-label">Initializing…</div>
+  <div class="wait">
+    <div class="wait-k" id="wait-k">The read is being written</div>
+    <div class="wait-q" id="loader-query"></div>
+    <div class="wait-grid">
+      <div class="wait-stages" id="loader-steps"></div>
+      <div class="wait-draft" id="loader-draft" style="display:none"></div>
+    </div>
+    <div class="wait-foot" id="wait-foot"></div>
   </div>
 </div>
 
@@ -3095,9 +3164,10 @@ body.vx-room-open{overflow:hidden}
       </div>
     </div>
   <!-- EX33c: one closing div fewer: THE READ, the findings and the moves live inside #live-results (the stray div hid the findings grid and clipped the read) -->
-  <div class="read-jump" id="read-jump" style="display:none" role="navigation" aria-label="On this read"><button type="button" onclick="_readJump('read-block')">The answer</button><button type="button" onclick="_readJump('rlp-findings')">Findings</button><button type="button" onclick="_readJump('moves-section')">Moves</button><button type="button" onclick="_readJump('read-voices')">Voices</button><button type="button" onclick="_readJump('read-measured')">Measured</button><button type="button" onclick="_readJump('read-interp')">Interpretation</button><button type="button" onclick="_readJump('read-receipts')">Receipts</button></div>
+  <div class="read-jump" id="read-jump" style="display:none" role="navigation" aria-label="On this read"><button type="button" onclick="_readJump('read-block')">The read</button><button type="button" onclick="_readJump('rlp-findings')">Findings</button><button type="button" onclick="_readJump('moves-section')">Moves</button><button type="button" onclick="_readJump('reach-block')">For you</button><button type="button" onclick="_readJump('read-voices')">Voices</button><button type="button" onclick="_readJump('read-measured')">Measured</button><button type="button" onclick="_readJump('read-receipts')">Receipts</button></div><!-- SEAM:THE_ARRIVAL (RQ1): the page's own words; the interpretation folds into the takeaway -->
   <!-- SEAM:READ_SURFACE — the first pass carries everything: THE READ, the interpretation, then findings with images, then sources. Nothing behind a dropdown. -->
   <div class="read-block" id="read-block" style="display:none"></div>
+  <div class="read-doors" id="read-doors"></div><!-- SEAM:THE_ARRIVAL (RQ1): the task's door (#intent-doors) lives here, under the read, since the summary card is hidden -->
   <div class="results-sources-strip" id="results-sources-strip"></div>
   <!-- 5-LENS TAB BAR -->
   <div class="results-lens-bar" id="results-lens-bar">
@@ -3453,22 +3523,27 @@ async function _synthesizePlainAfterCut(payload, heard) {
     return await r.json();
   } finally { clearTimeout(t); }
 }
+/* SEAM:THE_WAIT (RQ1): the worker's stages light the wait's stages. Stage 0 the sources, 1 the voices, 2 writing the read, 3 checking every
+   line is cited, 4 naming the moves. Nothing here reads a timer. */
 function _loaderStage(st) {
-  const lbl = document.getElementById('fetch-label'); if (!lbl) return;
-  if (st && (st.stage === 'reading' || st.stage === 'tabling') && st.note) { [0, 1].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; }); const c = document.getElementById('ls2'); if (c) c.className = 'lstep active'; lbl.textContent = st.note + '.'; return; }   // SEAM:EXC_HARVEST
-  if (st && st.stage === 'completing') { const part = { ideas: 'the remaining moves', brief: 'the brief', read: 'the two-line read' }; lbl.textContent = 'Finishing the read: ' + (st.findings || 0) + ' findings written, now writing ' + (st.missing || []).map(m => part[m] || m).join(' and ') + '.'; return; }   // SEAM:EXC_STALL
-  if (st && st.stage === 'writing') { [0, 1, 2].forEach(i => { const e = document.getElementById('ls' + i); if (e) e.className = 'lstep done'; });
-    const w = document.getElementById('ls3'); if (w) w.className = 'lstep active';
-    lbl.textContent = 'Reading ' + (st.evidence || 0) + ' lines of evidence' + (st.dropped ? ' (' + st.dropped + ' set aside as off-frame)' : '') + '. Writing.'; }
+  if (!st || typeof _lsSet !== 'function') return;
+  if (st.stage === 'reading' || st.stage === 'tabling') { _lsSet(0, 'done', null); _lsSet(1, 'done', null); _lsSet(2, 'active', st.stage === 'tabling' ? 'setting out what the lines say' : 'reading the lines'); return; }   // the stage in the reader's words; the worker's own note stays with the worker
+  if (st.stage === 'writing') { _lsSet(0, 'done', null); _lsSet(1, 'done', null); _lsSet(2, 'active', (st.evidence || 0) + ' line' + (st.evidence === 1 ? '' : 's') + ' in' + (st.dropped ? ', ' + st.dropped + ' set aside' : '')); return; }
+  if (st.stage === 'completing') { const part = { ideas: 'the moves', brief: 'the brief', read: 'the read' }; _lsSet(2, 'done', null); _lsSet(3, 'done', (st.findings || 0) + ' finding' + (st.findings === 1 ? '' : 's') + ' cited'); _lsSet(4, 'active', 'writing ' + (st.missing || []).map(m => part[m] || m).join(' and ')); }
 }
+/* The draft lands as the read's first lines: the headline, the dek, the takeaway when it has come, then the findings and the moves by name. */
 function _loaderDraft(d) {
   const el = document.getElementById('loader-draft'); if (!el || !d) return;
-  const w = document.getElementById('ls3'), v = document.getElementById('ls4'); if (w) w.className = 'lstep done'; if (v) v.className = 'lstep active';
-  const lbl = document.getElementById('fetch-label'); if (lbl) lbl.textContent = 'Writing: ' + (d.insights || []).length + ' finding' + ((d.insights || []).length === 1 ? '' : 's') + (d.ideas && d.ideas.length ? ', ' + d.ideas.length + ' move' + (d.ideas.length === 1 ? '' : 's') : '') + ' so far';
+  const nf = (d.insights || []).length, nm = (d.ideas || []).length;
+  if (typeof _lsSet === 'function') {
+    if (d.read && d.read[0]) _lsSet(2, 'done', 'the first lines are in');
+    if (nf) _lsSet(3, nm ? 'done' : 'active', nf + ' finding' + (nf === 1 ? '' : 's') + ' so far');
+    if (nm) _lsSet(4, 'active', nm + ' move' + (nm === 1 ? '' : 's') + ' so far');
+  }
   el.style.display = 'block';
-  el.innerHTML = (d.read && d.read[0] ? '<p class="ld-line">' + safe(d.read[0]) + '</p>' : '') + (d.read && d.read[1] ? '<p class="ld-line two">' + safe(d.read[1]) + '</p>' : '')
-    + ((d.insights || []).length ? '<div class="ld-list">' + d.insights.map(x => '<div class="ld-item"><span class="card-cat ' + safeAttr(['consumer','market','culture','brand'].includes(x.category) ? x.category : 'consumer') + '">●</span> ' + safe(x.title) + '</div>').join('') + '</div>' : '')
-    + ((d.ideas || []).length ? '<div class="ld-list moves">' + d.ideas.map(x => '<div class="ld-item"><span class="ld-type">' + safe(x.type || 'MOVE') + '</span> ' + safe(x.headline) + '</div>').join('') + '</div>' : '');
+  el.innerHTML = '<span class="wait-ak">As it lands</span>' + (d.read && d.read[0] ? '<h2 class="ld-line">' + safe(d.read[0]) + '</h2>' : '') + (d.read && d.read[1] ? '<p class="ld-line two">' + safe(d.read[1]) + '</p>' : '') + (d.takeaway ? '<p class="ld-take">' + safe(d.takeaway) + '</p>' : '')
+    + (nf ? '<div class="ld-list">' + d.insights.map(x => '<div class="ld-item"><span class="card-cat ' + safeAttr(['consumer','market','culture','brand'].includes(x.category) ? x.category : 'consumer') + '">●</span> ' + safe(x.title) + '</div>').join('') + '</div>' : '')
+    + (nm ? '<div class="ld-list moves">' + d.ideas.map(x => '<div class="ld-item"><span class="ld-type">' + safe(x.type || 'MOVE') + '</span> ' + safe(x.headline) + '</div>').join('') + '</div>' : '');
 }
 
 // GET a source through the proxy when configured, else fetch directly.
@@ -4182,15 +4257,16 @@ function goDeeper() {
 }
 async function runLiveSearch(q){
   _depthRender();   // SEAM:EXC_DEPTH
-  showLoader(q,'live',[
-    'Excavating open data: consumer, market, culture & brand',
-    'Reading research, community, news & innovation signal',
-    'Compiling the grounded evidence corpus',
-    'Fusing signals with Excavate AI (server-side)',
-    'Writing the cited, decision-ready read',
+  showLoader(q,'live',[   // SEAM:THE_WAIT (RQ1): the five stages the worker reports, in the reader's words
+    'Reading the sources',
+    'Reading what people say',
+    'Writing the read',
+    'Checking every line is cited',
+    'Naming the moves',
   ]);
   try {
     const g = await _excGather(q);
+    if (typeof _loaderGathered === 'function') _loaderGathered(g);   // SEAM:THE_WAIT (RQ1): the sources and the voices are in
     if(!g.items.length){
       hideLoader();
       showToast('No signals returned: showing open-source data');
@@ -4213,7 +4289,7 @@ async function runLiveSearch(q){
     } catch(e){ synthesis=null; }   // Worker down / 401 / unparsable → template read
     hideLoader();
     _inDoors(window._intent&&window._intent.frame);   // SEAM:EXC_INTENT: the task opens its door beside the read
-    { const gd=document.getElementById('intent-doors'); if(gd&&synthesis&&synthesis.depth==='quick'){ gd.insertAdjacentHTML('afterbegin','<button class="btn-go-deeper" type="button" onclick="goDeeper()">Go deeper: the full read</button>'); gd.style.display=''; }
+    { const gd=document.getElementById('intent-doors'); if(gd&&synthesis&&synthesis.depth==='quick'){ gd.style.display=''; }   // SEAM:THE_ARRIVAL (RQ1): a quick read's full read is The full read on the rail, not a second button here
       if(gd&&synthesis&&synthesis.thin){ gd.insertAdjacentHTML('afterbegin','<div class="read-thin">This read is building on '+safe(String(synthesis.thin))+' lines on the question. The findings are the few the evidence carries; '+(synthesis.depth==='quick'?'the full read widens the ground.':'a wider frame (the category, a competitor) would add to it.')+'</div>'); gd.style.display=''; } }   // SEAM:EXC_DEPTH; SEAM:EXC_THIN
     if(!synthesis) showToast('AI fusion unavailable: showing the structured signals');
     else if(synthesis.partial){ const _pn={ideas:'moves',brief:'brief',read:'two-line read'}; showToast('This read landed before its '+(synthesis.partial.missing||[]).map(m=>_pn[m]||m).join(' and ')+' finished. Run it again for the whole read.'); }   // SEAM:EXC_STALL
@@ -4226,46 +4302,47 @@ async function runLiveSearch(q){
 }
 
 // ════════════════════════════════════════════
-//  LOADER
+//  THE WAIT (SEAM:THE_WAIT, RQ1)
 // ════════════════════════════════════════════
-let stepTimer=null, progressVal=0, progressTimer=null;
+let stepTimer=null, progressVal=0, progressTimer=null;   // the names stay; the bar on a timer is gone
 
-function showLoader(q,mode,steps,label){
-  const ss=document.getElementById('searching-state');
+/* SEAM:THE_WAIT (RQ1): the wait is the question, the stages lit as they happen, and the read's first lines as they land. A live read's
+   stages wait for the worker's own events (_loaderGathered after the gather; _loaderStage and _loaderDraft from the stream); a door read
+   or a gather without a writer steps on the short timer, as before. No rings, no bar that climbs on a timer, none of the house's words. */
+function showLoader(q,mode,steps,label,frame){
+  const ss=document.getElementById('searching-state'); if(!ss) return;
   ss.style.display='block';
-  { const fl=document.getElementById('fetch-label'); if(fl) fl.textContent='Gathering'; }   // EX52a: never the last read's "Complete." under a new one
-  const rings=document.getElementById('loader-rings');
-  rings.innerHTML='<div class="loader-ring r1"></div><div class="loader-ring r2"></div><div class="loader-ring r3"></div>';
-  document.getElementById('loader-label').textContent=label||(mode==='live'?'READING THE SOURCES':'GATHERING SOURCES');   // EX52a: a door read names itself
-  const qEl=document.getElementById('loader-query');
-  qEl.textContent='"'+q+'"';
-  qEl.className='loader-query basic';
-  const stepsEl=document.getElementById('loader-steps');
-  stepsEl.innerHTML=steps.map((s,i)=>`<div class="lstep" id="ls${i}">${s}</div>`).join('');
+  const depth=mode==='live'?(window._depth||(typeof _depthGet==='function'?_depthGet():'full')):null;
+  const k=document.getElementById('wait-k'); if(k) k.innerHTML=label?safe(String(label).toLowerCase()):mode==='live'?'The read is being written <i>· '+(depth==='quick'?'quick · under a minute':'full · about a minute')+'</i>':mode==='basic'?'Gathering the sources <i>· nothing is written</i>':'Opening the read';
+  const qEl=document.getElementById('loader-query'); if(qEl) qEl.textContent=q;
+  const stepsEl=document.getElementById('loader-steps'); if(stepsEl) stepsEl.innerHTML=(steps||[]).map((s,i)=>`<div class="lstep${i===0?' active':''}" id="ls${i}"><span class="dot"></span><span class="t">${safe(s)}</span><span class="n" id="lsn${i}"></span></div>`).join('');
   const dr=document.getElementById('loader-draft'); if(dr){ dr.style.display='none'; dr.innerHTML=''; }
-  const bar=document.getElementById('fetch-bar');
-  bar.className='fetch-bar-fill';
-  bar.style.width='0%';
-  progressVal=0;
-  clearInterval(progressTimer);
-  progressTimer=setInterval(()=>{ progressVal=Math.min(progressVal+2,90); bar.style.width=progressVal+'%'; },200);
-  let si=0;
-  clearInterval(stepTimer);
-  stepTimer=setInterval(()=>{
-    if(si>0){ const p=document.getElementById('ls'+(si-1)); if(p)p.className='lstep done'; }
-    const c=document.getElementById('ls'+si);
-    if(c){ c.className='lstep active'; si++; }
-    else clearInterval(stepTimer);
-  }, 600);
+  // the frame at the foot, only when it is this question's: a tile's frame riding in, or the chips confirmed for this question; a new question waits for its own
+  _waitFoot(frame||((window._tileFrame&&window._tileFrame._q===q)?window._tileFrame.frame:(window._intent&&window._intent.q===q?window._intent.frame:null)));
+  clearInterval(stepTimer); clearInterval(progressTimer);
+  if(mode!=='live'){ let si=1; stepTimer=setInterval(()=>{ const p=document.getElementById('ls'+(si-1)); if(p) p.className='lstep done'; const c=document.getElementById('ls'+si); if(c){ c.className='lstep active'; si++; } else clearInterval(stepTimer); },600); }
 }
-
+/* The frame at the foot of the wait: market, category, audience, and who it is read against. */
+function _waitFoot(f){
+  const ft=document.getElementById('wait-foot'); if(!ft) return;
+  const parts=f?[f.market,f.category,f.audience].filter(Boolean):[], vs=f&&Array.isArray(f.competitors)&&f.competitors.length?'against '+f.competitors.slice(0,4).join(', '):'';
+  ft.innerHTML=(parts.length||vs)?`<span>${safe(parts.join(' · '))}</span>${vs?`<span>${safe(vs)}</span>`:''}`:'';
+}
+/* A stage is lit forward only: done stays done. A note beside it says what the stage found, in words. */
+function _lsSet(i,cls,note){ const e=document.getElementById('ls'+i); if(!e) return; if(cls==='done'||!/\bdone\b/.test(e.className)) e.className='lstep '+cls; if(note!=null){ const n=document.getElementById('lsn'+i); if(n) n.textContent=note; } }
+/* The gather came back: the sources read (lines, outlets, how far back) and the voices on the subject. */
+function _loaderGathered(g){
+  const items=(g&&g.items)||[], outlets=new Set(items.map(x=>String((x&&(x.source||x.source_name))||'').toLowerCase()).filter(Boolean)).size, oldest=items.map(x=>String((x&&(x.published_at||x.date||x.published||x.when))||'').slice(0,10)).filter(d=>/^\d{4}-\d\d-\d\d$/.test(d)).sort()[0];
+  _lsSet(0,'done',(items.length?items.length+' line'+(items.length===1?'':'s'):'nothing yet')+(outlets?' · '+outlets+' outlet'+(outlets===1?'':'s'):'')+(oldest?' · back to '+(typeof _recDay==='function'?_recDay(oldest):oldest):''));
+  const v=window._gatherMeta&&window._gatherMeta.meta&&window._gatherMeta.meta.voices, nq=v&&Array.isArray(v.quotes)?v.quotes.filter(x=>x&&x.text&&x.on_frame!==false).length:0;
+  _lsSet(1,'done',nq?nq+' voice'+(nq===1?'':'s')+' on the subject':'no voices on the subject yet');
+  _lsSet(2,'active','');
+  const ql=document.getElementById('loader-query'), qq=ql?ql.textContent:'', fr=(window._gatherMeta&&window._gatherMeta.frame)||(window._intent&&window._intent.q===qq?window._intent.frame:null); if(fr) _waitFoot(fr);   // the frame the gather read against, now that it is known
+}
 function hideLoader(){
   clearInterval(stepTimer); clearInterval(progressTimer);
   document.querySelectorAll('.lstep').forEach(s=>s.className='lstep done');
-  const bar=document.getElementById('fetch-bar');
-  bar.style.width='100%';
-  document.getElementById('fetch-label').textContent='Complete.';
-  setTimeout(()=>{ document.getElementById('searching-state').style.display='none'; },400);
+  setTimeout(()=>{ const ss=document.getElementById('searching-state'); if(ss) ss.style.display='none'; },400);
 }
 
 // ════════════════════════════════════════════
@@ -4679,6 +4756,7 @@ function _receiptOf(data){
 function _blindWords(t){ return String(t||'').replace(/the open web and the lake/g, "the open web and the house's own archive").replace(/\bthe lake\b/g, "the house's own archive"); }
 function renderResults(q, data, mode){
   lastMode=mode;
+  { const rb0=document.getElementById('reach-block'); if(rb0) rb0.remove(); window._voicesFresh=true; setTimeout(()=>{ if(typeof _jumpSync==='function') _jumpSync(); },0); }   // SEAM:THE_ARRIVAL (RQ1): a new read starts without the last reading's FOR YOU (and the form it took in; _reachBlock draws it again for a door reading) and with the voices grid folded
   lastSources=data.sources||[];
   window._lastInsights=data.insights||[];
   window._lastVoices=Array.isArray(data.voices)?data.voices:null; window._voiceUsed=new Map();   // SEAM:THE_VOICE_BEHIND (VX3): which finding each voice stands under
@@ -4737,7 +4815,7 @@ function openInsightModal(i){
     <h2 class="modal-title" style="font-size:22px">${safe(ins.title)}</h2>
     <div class="modal-sub">${safe(CAT_LABELS[ins.category]||'Insight')} · ${safe(ins.confidence)} Confidence · ${safe(ins.stat)}${ins.source?' · '+safe(ins.source):''}</div>
     ${ins.calibrated&&typeof _calibText==='function'?`<div class="modal-sub" style="margin-top:-10px">${safe(_calibText(ins.calibrated))}</div>`:''}
-    <p class="modal-body">${safe(ins.excerpt)}</p>${ins.implication?`<p class="modal-body modal-read"><strong>So:</strong> ${safe(ins.implication)}</p>`:''}
+    <p class="modal-body">${safe(ins.excerpt)}</p>${ins.implication?`<p class="modal-body modal-read"><strong>The read</strong> ${safe(ins.implication)}</p>`:''}
     ${renderSourcesBlock(window._lastSources,lastMode)}
     ${ins.sourceUrl?`<div style="margin-bottom:16px;"><a href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" class="source-link" style="font-size:12px;">↗ Open primary source: ${safe(ins.source)}</a></div>`:''}
     <div class="modal-options">
@@ -6160,12 +6238,12 @@ async function runBasicSearch(q) {
     window._lensResults = { consumer:null, market:null, culture:null, brand:null };
     document.getElementById('source-status-row').style.display = 'flex';
     ['wiki','openalex','arxiv','semscholar','crossref','pubmed','hn','reddit','guardian','gdelt','worldbank','patents','openlibrary','wikidata'].forEach(id => chipSet(id,'loading'));
-    showLoader(q,'basic',[
-      'Running Consumer Behavior pipeline',
-      'Running Market Dynamics pipeline',
-      'Running Cultural Signal pipeline',
-      'Running Brand Health pipeline',
-      'Synthesizing Signal Truth layer',
+    showLoader(q,'basic',[   // SEAM:THE_WAIT (RQ1): a gather without a writer, said plainly
+      'Asking the open sources',
+      'Reading what people say',
+      'Sorting what came back',
+      'Placing it by lens',
+      'Gathered, not read',
     ]);
 
     const [cR,mR,cuR,bR] = await Promise.allSettled([
@@ -6733,7 +6811,7 @@ function _voiceBehind(ins){
 }
 function _meaningBlock(ins){
   const m=ins&&ins.meaning, f=window._lastFrame||{};
-  if(!m) return ins&&ins.implication?`<p class="card-excerpt" style="color:var(--text);opacity:.9"><strong>So:</strong> ${safe(ins.implication)}</p>`:'';
+  if(!m) return ins&&ins.implication?`<p class="card-excerpt card-read"><strong>The read</strong> ${safe(ins.implication)}</p>`:'';   // SEAM:THE_ARRIVAL (RQ1): the second line is the read, as the landing says it
   const rows=[['Culture',m.culture],[f.category||'The category',m.category],[f.audience||'The consumer',m.consumer]].filter(r=>r[1]);
   return rows.length?`<div class="mean-block"><div class="mean-head">What it means</div>${rows.map(r=>`<div class="mean-row"><span class="mean-k">${safe(r[0])}</span><span class="mean-v">${safe(r[1])}</span></div>`).join('')}</div>`:'';
 }
@@ -6751,6 +6829,9 @@ function _moveCard(m, all){
 }
 // EXC_INTEL: the band and date a finding stands on. Archive-only says so; nothing is dressed as news.
 // SEAM:EXC_ACCURACY: a number the evidence does not carry is said out loud on the card that states it.
+/* SEAM:THE_ARRIVAL (RQ1): a finding's figure is the landing's (_hsPhoto): the photograph from a T0 to T2 source with its credit, through
+   _hsImgFail when it does not land; with none, the subject's name set large, so every card keeps the same slot. */
+function _findFig(ins,cat){ const fr=window._lastFrame||{}; return _hsPhoto({ photo: ins&&/^https?:\/\//.test(String(ins.image||''))?{ src: String(ins.image), credit: _cleanSource(ins.imageSource||ins.source||'') }:null, frame: { entity: fr.entity||fr.category||'', category: '' }, label: CAT_LABELS[(ins&&ins.category)||cat]||'' }, null, 'hs-thumb card-fig'); }
 function _checkChip(c){ return (c&&Array.isArray(c.ungrounded)&&c.ungrounded.length)?`<span class="card-when CHECK" title="This figure is not in the cited evidence as written">unverified: ${c.ungrounded.map(safe).join(', ')}</span>`:''; }
 function _whenChip(d){ if(!d) return ''; if(d.record) return `<span class="card-when RECORD" title="A strong older source: the baseline the fresh evidence moves against">FROM THE RECORD${d.newest?' · '+safe(String(d.newest).slice(0,4)):''}</span>`;   // SEAM:EXC_RECORD
   if(d.newest) return `<span class="card-when ${safe(d.band||'')}">${safe(d.band||'')} · ${safe(d.newest)}</span>`; return d.archive_only?`<span class="card-when ARCHIVE">ARCHIVE ONLY</span>`:''; }
@@ -6758,10 +6839,10 @@ function _fillLensPanels(lenses, truth){
   const all=truth.allInsights||[];
   const card=(ins,i,cat)=>{
     const gi=all.indexOf(ins); const idx=gi>=0?gi:i;
-    return `<div class="insight-card${ins.image?' has-img':''}" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
-        ${ins.image?`<img class="card-img" src="${safeUrl(ins.image)}" alt="" loading="lazy" onload="if(this.naturalWidth/this.naturalHeight>2.5)this.classList.add('wide')" onerror="var c=this.nextElementSibling;if(c&&c.classList.contains('card-img-src'))c.remove();this.remove()"><div class="card-img-src">IMAGE · ${safe(_cleanSource(ins.imageSource||ins.source||'source'))}</div>`:''}
+    return `<div class="insight-card has-img" style="animation:fadeIn 0.4s ease ${i*0.065}s both" onclick="openInsightModal(${idx})">
+        ${_findFig(ins,cat)}   <!-- SEAM:THE_ARRIVAL (RQ1): every finding the landing's figure: the photograph when there is one, the subject's name set large when there is not -->
         <span class="card-cat ${ins.category||cat}">● ${safe(CAT_LABELS[ins.category||cat]||'Insight')}</span>
-        <h3 class="card-title" style="font-size:16px;line-height:1.25">${safe(ins.title||'')}</h3>
+        <h3 class="card-title" style="font-size:21px;line-height:1.2">${safe(ins.title||'')}</h3>
         <p class="card-excerpt">${safe(ins.excerpt||'')}</p>
         ${_meaningBlock(ins)}${_voiceBehind(ins)}
         <div class="card-meta">${ins.stat?`<span class="card-stat">${safe(ins.stat)}</span>`:''}<span>${safe(ins.confidence||'')} Confidence</span>${_whenChip(ins.dated)}${_checkChip(ins.checks)}${ins.source?`<span style="color:var(--text3)">${safe(_cleanSource(ins.source))}</span>`:''}${ins.sourceUrl?`<a class="proof-link" href="${safeUrl(ins.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">source ↗</a>`:''}</div>${typeof _calibLine==='function'?_calibLine(ins.calibrated):''}
@@ -6829,6 +6910,7 @@ function _renderTruthClaims(items){
 function _renderRailVoices(items){
   let host=document.getElementById('rail-voices');
   if(!host){ const v=document.getElementById('voice-strip'); if(!v) return; host=document.createElement('div'); host.id='rail-voices'; v.insertAdjacentElement('afterend',host); }
+  _voicesFold(host);   // SEAM:THE_ARRIVAL (RQ1): as _renderVoices
   const agg=(items||[]).filter(it=>it&&it.kind==='discourse'&&/^(YouTube comments|Mastodon)$/i.test(it.source_name||it.source||'')&&/sampled|posts in window/i.test(it.title||''));
   // SEAM:EXC_RELEVANCE: the voice is read through the frame. A comment with none of the frame's anchors is set aside and counted.
   const fr=(window._gatherMeta&&window._gatherMeta.frame)||null; const anchors=fr?[].concat(fr.anchors||[],fr.entity?[String(fr.entity).toLowerCase()]:[],(fr.competitors||[]).map(x=>String(x).toLowerCase())).filter(Boolean):[];
@@ -6895,9 +6977,17 @@ function _voicesPull(voices, k){
   if(!voices||!Array.isArray(voices.quotes)) return '';
   const srcBy=new Map((voices.sources||[]).map(s=>[s.id,s]));
   const seen=new Set();
-  const picks=voices.quotes.filter(q=>q&&!q.share&&q.on_frame!==false&&q.text&&q.text.length>=40).sort(_voiceSort).filter(q=>{ const key=q.text.toLowerCase().slice(0,60); if(seen.has(key)) return false; seen.add(key); return true; }).slice(0,k||3);
-  if(!picks.length) return '';
-  return `<div class="rb-voices">${picks.map(q=>{ const s=srcBy.get(q.src)||{}; return `<blockquote class="rb-voice"><p>${safe(q.text)}</p><footer>${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+'</a>':''}</span></footer></blockquote>`; }).join('')}<div class="rb-voices-cap">What people say, in their words. Self-descriptions are theirs; nothing is inferred. <a href="#rail-voices">All voices ↓</a></div></div>`;
+  // SEAM:THE_ARRIVAL (RQ1): the band picks by relevance first: the voices a finding stands on (VX3), then the ones read on the subject, then
+  // the ones never read against it only to fill three; likes break the ties inside each tier. A voice read off the subject is never pulled.
+  const nk=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,40), stood=new Set();
+  if(window._voiceUsed instanceof Map&&Array.isArray(window._lastVoices)) window._voiceUsed.forEach((key,i)=>{ const v=window._lastVoices[i]; if(v&&v.text) stood.add(nk(v.text)); });   // a reading from the record: the voices its findings cite
+  if(!stood.size&&Array.isArray(window._lastInsights)&&typeof _voiceMatch==='function'){ const on=voices.quotes.filter(q=>q&&q.text&&!q.share&&q.on_frame!==false); window._lastInsights.forEach(ins=>{ const i=_voiceMatch(ins,on); if(i>=0) stood.add(nk(on[i].text)); }); }   // a live read: the voice a finding's own words meet (three words or more in common)
+  const tier=q=>stood.has(nk(q.text))?0:q.on_frame===true?1:2;
+  const pool=voices.quotes.filter(q=>q&&!q.share&&q.on_frame!==false&&q.text&&q.text.length>=40).sort((a,b)=>tier(a)-tier(b)||_voiceSort(a,b)).filter(q=>{ const key=q.text.toLowerCase().slice(0,60); if(seen.has(key)) return false; seen.add(key); return true; });
+  const firm=pool.filter(q=>tier(q)<2), picks=firm.slice(0,k||3).concat(firm.length<(k||3)?pool.filter(q=>tier(q)===2).slice(0,(k||3)-firm.length):[]);
+  if(!picks.length) return voices.quotes.length?`<div class="rb-voices-head"><span class="rb-vh">What people are saying</span><button type="button" class="rb-vall" aria-expanded="false" onclick="_voicesAll(this)">All voices →</button></div>`:'';   // SEAM:THE_ARRIVAL (RQ1): nothing long enough to pull, but the grid is still a click away
+  const who=q=>{ const s=q&&q.self, bits=s?[s.role,s.generation,s.gender,s.place].filter(Boolean):[]; return bits.length?bits.slice(0,2).join(' · '):'A reader'; };   // the speaker's own description, never a name
+  return `<div class="rb-voices-head"><span class="rb-vh">What people are saying</span><button type="button" class="rb-vall" aria-expanded="false" onclick="_voicesAll(this)">All voices →</button></div><p class="rb-voices-sub">Comments quoted as written, about the subjects this read stood on; a speaker’s own description beside the words, never a name.</p><div class="rb-voices">${picks.map(q=>{ const s=srcBy.get(q.src)||{}; return `<blockquote class="rb-voice"><div class="rb-voice-who">${safe(who(q))}</div><p>${safe(q.text)}</p><footer><span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${q.when?safe(q.when)+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+'</a>':''}</span></footer></blockquote>`; }).join('')}</div>`;   // SEAM:THE_ARRIVAL (RQ1): the voices once, as the landing's band; All voices opens the grid in place
 }
 window._voiceView={ filter:'frame', shown:12 };
 function _voiceFilterSet(f){ window._voiceView.filter=f; window._voiceView.shown=12; _renderVoices(window._gatherMeta&&window._gatherMeta.meta); }
@@ -6906,6 +6996,7 @@ function _renderVoices(meta){
   const v=meta&&meta.voices; const items=window._gatherItems||[];
   let host=document.getElementById('rail-voices');
   if(!host){ const vs=document.getElementById('voice-strip'); if(!vs) return; host=document.createElement('div'); host.id='rail-voices'; vs.insertAdjacentElement('afterend',host); }
+  _voicesFold(host);   // SEAM:THE_ARRIVAL (RQ1): the grid folds behind the band when there is one; a read with no band shows it whole
   if(!v||!Array.isArray(v.quotes)||!v.quotes.length){ _renderRailVoices(items); return; }   // an older gather: the aggregate lines
   const srcBy=new Map((v.sources||[]).map(s=>[s.id,s]));
   const all=v.quotes.filter(q=>q&&q.text&&!q.share), framed=all.some(q=>q.on_frame!==null&&q.on_frame!==undefined), on=framed?all.filter(q=>q.on_frame!==false):all, unread=framed?all.filter(q=>q.on_frame==null).length:0;
@@ -6919,7 +7010,7 @@ function _renderVoices(meta){
   const shown=pool.slice(0,window._voiceView.shown);
   const srcLine=(v.sources||[]).map(s=>s.url?`<a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${safe(s.source||'')}: ${safe(String(s.title||'').slice(0,50))}</a>${s.n?' ('+safe(String(s.n))+')':''}`:safe(s.source||'')).join(' · ');   // SEAM:THE_VOICE_BEHIND (VX3): a source without an address is a name, not a link
   host.innerHTML=`<section class="voices" aria-label="Consumer voice">
-    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comment${all.length===1?'':'s'} on ${safe(String((v.sources||[]).length))} source${(v.sources||[]).length===1?'':'s'}${framed?', '+safe(String(on.length-unread))+' on the subject'+(unread?' ('+safe(String(unread))+' not yet read against it)':''):', not yet read against the subject'}. Quoted as written; a speaker's own description beside the words; never a name.</span></div><div class="read-thin voices-blind">${safe((window._liveLast&&window._liveLast.synthesis&&window._liveLast.synthesis.blind)||EXC_BLIND_LINE)}</div><!-- SEAM:EXC_BLIND -->
+    <div class="voices-head"><span class="voices-title">Consumer voice</span><span class="voices-sub">${safe(String(all.length))} comment${all.length===1?'':'s'} on ${safe(String((v.sources||[]).length))} source${(v.sources||[]).length===1?'':'s'}${framed?', '+safe(String(on.length-unread))+' on the subject'+(unread?' ('+safe(String(unread))+' not yet read against it)':''):', not yet read against the subject'}. Quoted as written; a speaker's own description beside the words; never a name.</span></div><!-- SEAM:EXC_BLIND; SEAM:THE_ARRIVAL (RQ1): what this read does not see is said in the receipts, in the reader's words -->
     <div class="voices-chips" onclick="var b=event.target.closest('.voices-chip');if(b)_voiceFilterSet(b.getAttribute('data-key'))">${chips.map(c=>`<button class="voices-chip${c.key===chip.key?' on':''}" data-key="${safeAttr(c.key)}">${safe(c.label)} <b>${safe(String(c.n))}</b></button>`).join('')}</div>
     <div class="voices-list">${shown.map(q=>{ const s=srcBy.get(q.src)||{}; return `<div class="vq"><p class="vq-text">${safe(q.text)}</p><div class="vq-foot">${_voiceSelfLine(q)}<span class="vq-meta">${q.likes?'♥ '+safe(String(q.likes))+' · ':''}${q.when?safe(q.when)+' · ':''}${safe(s.source||'')}${s.title?' · <a href="'+safeUrl(s.url||'#')+'" target="_blank" rel="noopener">'+safe(String(s.title).slice(0,42))+(String(s.title).length>42?'…':'')+' ↗</a>':''}${q.on_frame===false?' · off the subject':''}</span></div></div>`; }).join('')||'<p class="voices-empty">None of the sampled voices names the subject. The conversation here is elsewhere, which is itself a finding.</p>'}</div>
     ${pool.length>shown.length?`<button class="voices-more" onclick="_voiceMore()">Show ${safe(String(Math.min(24,pool.length-shown.length)))} more of ${safe(String(pool.length))}</button>`:''}
@@ -6931,7 +7022,10 @@ const EXC_BLIND_LINE='This read does not see TikTok, Instagram or X. Its voices 
 function _rfFull(){ if(window._readFailed&&window._readFailed.q){ window._liveLast=Object.assign({},window._liveLast||{},{q:window._readFailed.q}); } goDeeper(); }   // SEAM:EXC_FALLBACK: the full read on the same question (goDeeper sets the depth and reruns)
 function _renderReadBlock(q, data, mode){
   const el=document.getElementById('read-block'); if(!el) return;
+  // SEAM:THE_ARRIVAL (RQ1): the summary card is hidden, so the task's door and the house's note move under the read, whatever the read turns out to be
+  { const host=document.getElementById('read-doors'); if(host){ const gd=document.getElementById('intent-doors'); if(gd&&gd.parentNode!==host) host.appendChild(gd); const hn=document.getElementById('results-house-note'); if(hn&&hn.parentNode!==host) host.insertBefore(hn, host.firstChild); } }
   const lines=Array.isArray(data.read)?data.read.filter(Boolean):[];
+  if(mode!=='live'){ const ra=document.getElementById('read-after'); if(ra){ ra.innerHTML=''; ra.style.display='none'; } }   // SEAM:THE_ARRIVAL (RQ1): a read that did not finish keeps nothing of the read before it
   if(mode!=='live'){   // SEAM:EXC_FALLBACK: the read did not finish; say so in the house's words, offer the full read, hide the lens machinery
     const n=(window._readFailed&&window._readFailed.items)||0;
     el.innerHTML=`<section class="read-failed"><div class="rf-k">THE READ</div><h2>The reading did not finish in this pass.</h2><p>The engine gathered ${safe(String(n))} signals on "${safe(q)}" and the writer did not complete a read on them. Nothing gathered is shown as a finding: the house prints only what its writer stood behind. The voices below are verbatim and on the question.</p><div class="rf-acts"><button type="button" class="btn-go-deeper" onclick="_rfFull()">Run the full read</button><button type="button" class="btn-new-search" onclick="runSearch()">Try again</button></div><div class="read-thin">${safe(_blindWords(EXC_BLIND_LINE))}</div></section>`;
@@ -7004,36 +7098,44 @@ function _renderReadBlock(q, data, mode){
   if(meta.meta&&meta.meta.reddit_off) rows.push(['reddit','asked, not configured']);   // SEAM:RAIL_REDDIT
   if(data.client_lines) rows.push(['your evidence',`<b>${n(String(data.client_lines))}</b> of your own lines, first-party`]);   // SEAM:CLIENT_EVIDENCE
   const _rcptHtml=rows.length?`<aside class="rb-receipts"><div class="rb-receipts-head">What this read stood on</div><dl>${rows.map(r=>`<div class="rb-row"><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl></aside>`:'';
-  const _ovHtml=ov?`<p class="rb-foot">Overnight read for the night of ${n(ov.night)}${ov.status==='reused'?', evidence unchanged since the last read':''}${ov.prev_night?', previous read '+n(ov.prev_night):''}. <button class="rb-go-live" onclick="_goDeeperLive()">Go deeper, live →</button></p>`:'';
+  const _ovHtml=ov?`<p class="rb-foot">Overnight read for the night of ${n(ov.night)}${ov.status==='reused'?', evidence unchanged since the last read':''}${ov.prev_night?', previous read '+n(ov.prev_night):''}.</p>`:'';   // SEAM:THE_ARRIVAL (RQ1): Go deeper, live sits on the rail
   // EX33c: the answer first. The claim, the dek, the frame and its question, the bet with its date, the figures in one line.
   const rcpt=_receiptOf(data);
   const w=data.watch||null;
   const _betHtml=w&&w.claim?`<p class="rb-bet"><i>Check by ${safe(_recDay(w.by))}</i> ${safe(String(w.claim).replace(/[\s.]+$/,''))}</p>`:'';
   const _lineHtml=ms&&ms.recent_7d!=null?`<p class="rb-measure-line">${_recMeasureLine(ms)}${rcpt.sources?` <span class="dot">&middot;</span> <b>${n(rcpt.sources)}</b> ${rcpt.sources===1?'source':'sources'} cited`:''}</p>`:'';
-  el.innerHTML=`<div class="rb-top"><div class="read-kicker">THE READ${data.depth==='quick'?' · QUICK':''}</div></div>
+  // SEAM:THE_ARRIVAL (RQ1): one header. The kicker line carries the kind of read, the night, the lines read and the outlets in words; the
+  // frame is one line with the question under it; one rail under the read, with More for the rest. The summary card above is hidden.
+  const _kick=`<span class="rb-kind">${ov?'● Overnight read':data.depth==='quick'?'Quick read':'The read'}</span>${ov&&ov.night?`<i>· the night of ${n(ov.night)}</i>`:''}${rcpt.lines?`<i>· ${n(rcpt.lines)} line${rcpt.lines===1?'':'s'} read</i>`:''}${rcpt.sources?`<i>· ${n(rcpt.sources)} outlet${rcpt.sources===1?'':'s'}</i>`:''}${ov&&data.depth==='quick'?'<i>· quick</i>':''}`;
+  const _qLine=(fr&&fr.question)||((q&&String(q).trim()!==String(lines[0]||'').trim())?q:'');   // the question asked, or what was typed when the frame carries none; never the headline twice
+  const _frameLine=`${cells.length?`<p class="rb-frameline"><span class="rb-fk">The frame</span> ${cells.map(c=>((c[0]==='against'||c[0]==='seen beside it')?`<em>${n(c[0])}</em> `:'')+`<b>${n(c[1])}</b>`).join(' <span class="dot">&middot;</span> ')}</p>`:''}${_qLine?`<p class="rb-q">${n(_qLine)}</p>`:''}`;
+  const _rail=`<div class="rb-rail" id="read-rail"><button type="button" class="rr red" onclick="trackThis(document.getElementById('search-input').value)">Track this</button>${ov?`<button type="button" class="rr" onclick="_goDeeperLive()">Go deeper, live</button>`:data.depth==='quick'?`<button type="button" class="rr" onclick="goDeeper()">The full read</button>`:''}<button type="button" class="rr" onclick="exportToPDF()">Download</button><button type="button" class="rr" onclick="openSourcesModal()">Every source</button><button type="button" class="rr" onclick="_askTeam('search', document.getElementById('search-input').value)">Ask the team</button><button type="button" class="rr more" aria-expanded="false" aria-controls="read-rail-more" onclick="_railMore(this)">More</button>`
+    +`<div class="rb-rail-more" id="read-rail-more" hidden><button type="button" class="rr" onclick="exportToPDF('client')" title="The same read as a client reads it: the strongest four findings, the limits on page two, the checks we run on ourselves left out">Client cut</button><button type="button" class="rr" onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">Make with PLAY</button><button type="button" class="rr" onclick="clearSearch()">New search</button><span id="read-rail-admin" style="display:none"><button type="button" class="rr" onclick="makeReconFromRead()">Make this a RECON</button><button type="button" class="rr" onclick="pinLiveRead()">Pin to folio</button><button type="button" class="rr" onclick="_scoreOpen()">Score</button></span></div></div>`;
+  el.innerHTML=`<div class="rb-top"><div class="read-kicker rb-kick">${_kick}</div></div>
     ${lines[0]?`<p class="read-line">${safe(lines[0])}</p>`:''}
     ${lines[1]?`<p class="read-line two">${safe(lines[1])}</p>`:''}
     ${data.takeaway?`<p class="read-take">${safe(data.takeaway)}</p>`:''}${data.pushback&&data.pushback.text?`<p class="read-pushback"><b>The other side</b> ${safe(data.pushback.text)}</p>`:''}
     <div class="read-foryou" id="read-foryou"></div>
     ${_rcHtml}
-    ${_plateHtml}
+    ${_frameLine}
     ${_betHtml}
-    ${_lineHtml}`;
+    ${_rail}`;
   el.style.display='block';
+  if(typeof _cmAdmin==='function') _cmAdmin().then(a=>{ const s=document.getElementById('read-rail-admin'); if(s) s.style.display=a?'':'none'; }).catch(()=>{});   // SEAM:THE_ARRIVAL (RQ1): the admin's three, under More
   if (typeof _forYouMount === 'function') _forYouMount();   // SEAM:FOR_YOU (IQ5): the layer for a group, admins for now
   // EX33c: after the findings and the moves: the voices, the measures, the interpretation with its receipts, the receipts drawer, one action rail.
   const after=document.getElementById('read-after');
   if(after){
     const srcs=Array.isArray(data.sources)?data.sources:[];
-    const _drawer=`<details class="rb-drawer" id="read-receipts"><summary>Receipts: every source, when it was published, what was set aside</summary>${_tlHtml}${_sourcesGrouped(srcs, evLines)}<p class="rb-foot rb-law">Time is a weight: now 24h, recent 30d, current 90d, context 2y, archive older or undated. A strong older source is the record: cited with its year, never as news.</p></details>`;
-    const _acts=`<div class="read-acts"><button type="button" class="btn-go-deeper" onclick="trackThis(document.getElementById('search-input').value)">Track this</button>${data.depth==='quick'?`<button type="button" class="read-act" onclick="goDeeper()">The full read</button>`:''}<button type="button" class="read-act" onclick="downloadReport()">Download</button><button type="button" class="read-act" onclick="openSourcesModal()">Every source</button><button type="button" class="read-act" onclick="_askTeam('search', document.getElementById('search-input').value)">Ask the team</button><button class="read-act" onclick="_playRead([...document.querySelectorAll('#read-block .read-line')].map(e=>e.innerText).join(' '))">MAKE WITH PLAY</button><!-- SEAM:PLAY_HANDOFF --></div>`;
+    const _blind=_readerBlind((data.blind)||(window._liveLast&&window._liveLast.synthesis&&window._liveLast.synthesis.blind)||EXC_BLIND_LINE);   // SEAM:THE_ARRIVAL (RQ1): what this read does not see, in the reader's words, in the receipts
+    const _drawer=`<details class="rb-drawer" id="read-receipts"><summary>Receipts: every source, when it was published, what was set aside, what this read does not see</summary>${_blind?`<p class="rb-foot rb-blind">${safe(_blind)}</p>`:''}${_tlHtml}${_sourcesGrouped(srcs, evLines)}<p class="rb-foot rb-law">Time is a weight: now 24h, recent 30d, current 90d, context 2y, archive older or undated. A strong older source is the record: cited with its year, never as news.</p></details>`;
+    const _acts=`<div class="read-acts"><button type="button" class="btn-go-deeper" onclick="trackThis(document.getElementById('search-input').value)">Track this</button><button type="button" class="read-act" onclick="openSourcesModal()">Every source</button><button type="button" class="read-act" onclick="_askTeam('search', document.getElementById('search-input').value)">Ask the team</button><span class="read-acts-marks" id="read-acts-marks"></span></div>`;   // SEAM:THE_ARRIVAL (RQ1): the foot: two quiet repeats of the rail and the reader's marks (Make with PLAY sits under More on the rail)
+    // SEAM:THE_ARRIVAL (RQ1): the interpretation is not said twice under a read that carries a takeaway; what this read stood on sits beside the measure.
+    const _interp=(data.brief&&!data.takeaway)?`<div class="rb-interp-head">The interpretation</div><p class="rb-interp">${safe(data.brief)}</p>`:'';
     after.innerHTML=`${_vqHtml?`<div id="read-voices">${_vqHtml}</div>`:''}
       ${_picHtml}
-      ${_msHtml}
-      <div class="rb-body" id="read-interp">
-        <div class="rb-prose">${data.brief?`<div class="rb-interp-head">The interpretation</div><p class="rb-interp">${safe(data.brief)}</p>`:''}${_pxHtml}${_ovHtml}</div>
-        ${_rcptHtml}
-      </div>
+      ${(_msHtml||_rcptHtml)?`${_msHtml?'<div class="rb-sec-h">Measured</div>':''}<div class="rb-measured-row${_msHtml&&_rcptHtml?'':' one'}" id="read-measured-row">${_msHtml}${_rcptHtml}</div>`:''}
+      ${(_interp||_pxHtml||_ovHtml)?`<div class="rb-body rb-body-one" id="read-interp"><div class="rb-prose">${_interp}${_pxHtml}${_ovHtml}</div></div>`:''}
       ${_drawer}
       ${_acts}`;
     after.querySelectorAll('.tl-g[data-url]').forEach(g=>{ g.style.cursor='pointer'; g.addEventListener('click',()=>window.open(g.getAttribute('data-url'),'_blank','noopener')); });
@@ -7042,6 +7144,16 @@ function _renderReadBlock(q, data, mode){
 }
 /* EX33c: the jump rail scrolls to a part of the read. */
 function _readJump(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+/* SEAM:THE_ARRIVAL (RQ1): More on the rail folds the rest of the actions out and back. */
+function _railMore(btn){ const m=document.getElementById('read-rail-more'); if(!m) return; const open=m.hasAttribute('hidden'); if(open) m.removeAttribute('hidden'); else m.setAttribute('hidden',''); btn.setAttribute('aria-expanded',open?'true':'false'); btn.textContent=open?'Less':'More'; }
+/* SEAM:THE_ARRIVAL (RQ1): what this read does not see, in the reader's words: the archive is ours, never the lake, never the house. */
+function _readerBlind(t){ return String(t||'').replace(/the open web and the lake/g,'the open web and our own archive').replace(/\bthe lake\b/g,'our own archive'); }
+/* SEAM:THE_ARRIVAL (RQ1): the jump rail shows only the parts this read has (FOR YOU is a reading's from the record). */
+function _jumpSync(){ document.querySelectorAll('#read-jump button').forEach(b=>{ const m=String(b.getAttribute('onclick')||'').match(/_readJump\('([^']+)'\)/); if(m) b.style.display=document.getElementById(m[1])?'':'none'; }); }
+/* SEAM:THE_ARRIVAL (RQ1): the grid folds behind the band when a band was drawn for this read; the chips and Show more redraw the grid and keep it as it was. */
+function _voicesFold(host){ const ra=document.getElementById('read-after'), band=ra&&ra.style.display!=='none'?document.querySelector('#read-voices .rb-vall'):null; if(window._voicesFresh){ host.classList.remove('open'); window._voicesFresh=false; } host.classList.toggle('folded', !!band); }
+/* SEAM:THE_ARRIVAL (RQ1): the voices band opens the whole grid in place. */
+function _voicesAll(btn){ const r=document.getElementById('rail-voices'); if(!r) return; const open=r.classList.toggle('open'); if(btn){ btn.setAttribute('aria-expanded',open?'true':'false'); btn.textContent=open?'Fewer voices':'All voices →'; } if(open) r.scrollIntoView({behavior:'smooth',block:'start'}); }
 /* EX33c: a source line in the reader's words: the outlet's name only, no tier, no rail label, no machinery prefix. */
 function _cleanSource(x){ return String(x||'').replace(/^Unsurfaced Lake\s*·\s*/i,'').replace(/\s*\(T[0-9?]\)\s*$/,'').trim(); }
 function _cleanTitle(t){ return String(t||'').replace(/^CONSENSUS:\s*/i,'').replace(/^Research signal:\s*/i,'').replace(/^\[PDF\]\s*/i,'').replace(/\s*[\u2014-]+\s*(Brand Health|Market Dynamics|Cultural|Consumer)[^\n]*Signal\s*$/i,'').replace(/^["\u201c]|["\u201d]$/g,'').trim(); }
@@ -7065,6 +7177,7 @@ function _sourcesGrouped(sources, lines){
 }
 function _renderResultsV2(q, lenses, truth, mode) {
   window._lastVoices=null; window._voiceUsed=new Map();   // SEAM:THE_VOICE_BEHIND (VX3): a read without voices carries none from the reading before it
+  window._lastFrame=null;   // SEAM:THE_ARRIVAL (RQ1): a gather's cards never wear the last read's subject
   lastMode    = mode;
   lastSources = truth.allSources||[];
   window._lastInsights = truth.allInsights||[];
@@ -11401,7 +11514,7 @@ async function _openDoorRead(t) {
   if (window._signedOut === true && typeof _doorRead === 'function') return _doorRead(t);   // SEAM:OPEN_DOOR (NT3a): a reading's deep dive is signed in on the worker
   const q = String((t.frame && t.frame.query) || t.title || '').trim();
   closeInsightDashboard(); closePDFPreview();
-  showLoader(t.title || q || 'the subject', 'live', ['Opening the reading', 'Placing its evidence', 'Rendering'], 'OPENING THE OVERNIGHT READ');   // EX52a
+  showLoader(t.title || q || 'the subject', 'door', ['Opening the reading', 'Placing its evidence', 'Rendering'], 'OPENING THE OVERNIGHT READ', t.frame || null);   // EX52a; SEAM:THE_WAIT (RQ1): a door read steps on the timer, with the reading's frame at the foot
   try {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/door/read?id=' + encodeURIComponent(t.id), { headers: await _authHeader() });
     const j = r.ok ? await r.json() : null;
@@ -11564,19 +11677,22 @@ async function _followLens() {
 async function _reachBlock(id) {
   const rb = document.getElementById('read-block'); if (!rb) return;
   let el = document.getElementById('reach-block');
-  if (!el) { el = document.createElement('section'); el.id = 'reach-block'; el.className = 'reach'; rb.insertAdjacentElement('afterend', el); }
-  el.innerHTML = `<div class="reach-k">FOR YOUR ROLE</div><div class="reach-imps" id="reach-imps"><span class="pm-none">Writing the implications for your role</span></div>
-    <div class="reach-row"><span class="reach-k">THIS READING</span><div class="reach-marks" id="reach-marks"></div>
-    <button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_embedCopy('${safeAttr(id)}')">Embed</button><button type="button" class="tl-open" onclick="_panelAsk('${safeAttr(id)}')">Ask the panel</button><button type="button" class="tl-open" onclick="_askTeam('insight','${safeAttr(id)}')">Ask the team</button><!-- SEAM:ASK_TEAM --></div>
+  if (!el) { el = document.createElement('section'); el.id = 'reach-block'; el.className = 'reach'; (document.getElementById('moves-section') || rb).insertAdjacentElement('afterend', el); }   // SEAM:THE_ARRIVAL (RQ1): FOR YOU reads after the moves
+  el.innerHTML = `<div class="reach-top"><span class="reach-k">FOR YOU</span><span class="reach-role" id="reach-role"></span></div><div class="reach-imps" id="reach-imps"><span class="pm-none">Writing the implications for your role</span></div>
+    <div class="reach-row"><button type="button" class="tl-open" onclick="_packOpen('${safeAttr(id)}')">Evidence pack</button><button type="button" class="tl-open" onclick="_panelAsk('${safeAttr(id)}')">Ask the panel</button><button type="button" class="tl-open" onclick="_askTeam('insight','${safeAttr(id)}')">Ask the team</button>
     <div class="reach-panel" id="reach-panel" style="display:none"></div>`;
   el.style.display = '';
+  { const fy = document.getElementById('read-foryou'); if (fy) el.appendChild(fy); }   // SEAM:THE_ARRIVAL (RQ1): IQ5's form, for an admin, under the role's lines
+  { let marks = document.getElementById('reach-marks'); if (!marks) { marks = document.createElement('div'); marks.id = 'reach-marks'; marks.className = 'reach-marks'; }
+    const foot = document.getElementById('read-acts-marks'); if (foot) { foot.innerHTML = '<span class="reach-marks-k">Was this read useful?</span>'; foot.appendChild(marks); } else el.appendChild(marks); }   // SEAM:THE_ARRIVAL (RQ1): the reader's marks at the foot
+  if (typeof _jumpSync === 'function') _jumpSync();   // SEAM:THE_ARRIVAL (RQ1): For you on the jump rail now that it is here
   _marksLoad(id);
   _panelLoad(id);   // SEAM:INSIGHT_PANEL
   try {
     const r = await fetch(API_BASE.replace(/\/$/, '') + '/excavate/insight/roles?id=' + encodeURIComponent(id), { headers: await _authHeader() });
     const j = r.ok ? await r.json() : null; const box = document.getElementById('reach-imps'); if (!box) return;
     if (!j || !j.ok || !(j.implications || []).length) { box.innerHTML = '<span class="pm-none">' + (j && j.error === 'auth_required' ? 'Sign in and set your role to read the implications for it.' : j && j.error === 'not_written' ? safe(j.say || 'The implications for your role are written overnight.') : 'No implications were written for this reading.') + '</span>'; return; }
-    { const old = el.querySelector('.reach-role'); if (old) old.remove(); box.insertAdjacentHTML('beforebegin', `<div class="reach-role">${j.fallback ? 'for every role' : 'for ' + safe(j.role)}</div>`); }   // EX52a: the role line stands above the three columns, not inside the first
+    { const rl = document.getElementById('reach-role'); if (rl) rl.textContent = (j.fallback ? 'for every role' : 'for ' + String(j.role)) + ' · from your profile'; }   // EX52a; SEAM:THE_ARRIVAL (RQ1): the role line beside the kicker
     box.innerHTML = j.implications.map(x => `<div class="reach-imp"><b>${safe(x.title)}</b><p>${safe(x.body)}</p></div>`).join('');   // SEAM:POPOUT
   } catch (e) { const box = document.getElementById('reach-imps'); if (box) box.innerHTML = '<span class="pm-none">The implications did not load.</span>'; }
 }
@@ -11924,6 +12040,31 @@ function _curToggle(btn) {
   const art = btn.closest('.rec-cur'); if (!art) return;
   const open = art.classList.toggle('open'); btn.textContent = open ? 'Less' : 'More'; btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
+/* SEAM:THE_CURRENTS (CC1): a current opens as a move does, in the house's ivory dialog: its faces, its title, its body whole, its move, and the
+   readings it runs through as cards, each opening its deep dive. The dialog is the move's (_hsMoveClose, _hsMoveKey), so Escape, Tab and the
+   way back are the same. A visitor never sees the landing (AC1); if one did, the gate rises with nothing kept. */
+function _curOpen(i) {
+  if (window._signedOut === true) { if (typeof _gateForDoor === 'function') _gateForDoor('excavate'); return; }
+  const L = window._curList, c = L && Array.isArray(L.list) ? L.list[i] : null; if (!c) return;
+  const r = _curResolve(c, L.tiles || []);
+  if (!document.getElementById('hs-pop')) { _hsPopFrom = document.activeElement; _hsPopFromId = 'current-' + i; }
+  let el = document.getElementById('hs-pop');
+  if (!el) { el = document.createElement('div'); el.id = 'hs-pop'; el.className = 'hs-pop-wrap'; document.body.appendChild(el); document.addEventListener('keydown', _hsMoveKey); }
+  el.setAttribute('data-id', 'current-' + i);
+  const lead = r.faces[0] ? (r.subs.find(s => s.tile && s.tile.id === r.faces[0].id) || {}).tile : null, first = r.subs.find(s => s.tile) || null;
+  const photo = typeof _hsPhoto === 'function' ? _hsPhoto(lead || (first && first.tile) || { title: c.title, frame: { entity: (r.subs[0] || {}).short || '' } }, null, 'hs-pop-fig') : '<figure class="hs-pop-fig"></figure>';   // the lead photograph through the relay; the subject's name set large when there is none
+  const reads = r.subs.filter(s => s.tile).map(s => { const t = s.tile;
+    return `<button type="button" class="cur-pop-read" onclick="_hsMoveClose();openFeaturedCard('${safeAttr(t.id)}')">${typeof _hsPhoto === 'function' ? _hsPhoto(t, null, 'hs-thumb') : '<figure class="hs-thumb"></figure>'}<b>${safe(t.claim || t.title || s.name)}</b><small>${safe(s.short)}${t.deployed ? ' \u00b7 ' + safe(_recDay(t.deployed)) : ''}</small></button>`; }).join('');
+  const named = r.subs.filter(s => !s.tile).map(s => `<span class="cur-pop-k">${safe(s.short)}</span>`).join(' ');
+  el.innerHTML = `<div class="hs-pop-back" onclick="_hsMoveClose()"></div><div class="hs-pop" role="dialog" aria-modal="true" aria-labelledby="hs-pop-h">`
+    + `<div class="hs-pop-photo">${photo}<button type="button" class="hs-pop-x" aria-label="Close the current" onclick="_hsMoveClose()">&times;</button></div>`
+    + `<div class="hs-pop-body"><div class="cur-pop-k">Cross-current \u00b7 named ${safe(_recDay(L.at))}</div><h2 id="hs-pop-h" class="cur-pop-h">${safe(c.title || '')}</h2><p class="cur-pop-body">${safe(c.body)}</p>`
+    + (c.move ? `<div class="hs-pop-move"><div class="hs-k">The move</div><p class="hs-pop-take">${safe(c.move)}</p></div>` : '')
+    + (reads ? `<div><div class="hs-k">The readings it runs through</div><div class="cur-pop-reads">${reads}</div>${named ? `<p class="cur-pop-body" style="margin-top:10px">Also runs through ${named}.</p>` : ''}</div>` : named ? `<div><div class="hs-k">It runs through</div><p class="cur-pop-body">${named}</p></div>` : '')
+    + '<div class="hs-acts"><button type="button" class="hs-link hs-close" onclick="_hsMoveClose()">Close</button></div></div></div>';
+  document.body.classList.add('hs-pop-open');
+  const x = el.querySelector('.hs-pop-x'); if (x) x.focus();
+}
 function _renderCurrents(cur, tilesIn) {
   let el = document.getElementById('rec-currents');
   const host = document.getElementById('rec-counts');
@@ -11932,17 +12073,18 @@ function _renderCurrents(cur, tilesIn) {
   const list = cur && Array.isArray(cur.currents) ? cur.currents : [];
   if (!list.length) { el.style.display = 'none'; return; }
   const tiles = tilesIn || (typeof _FI_RECORD !== 'undefined' && _FI_RECORD && _FI_RECORD.tiles) || [];   // SEAM:RECORD_FACE (EX40)
-  const face = (c) => {
+  const face = (c, i) => {
     const r = _curResolve(c, tiles);
     // every current has a face: the readings' photographs when they carry one; else their pulse drawn large; else the subjects' names set large
     const faces = r.faces.length ? `<div class="rec-cur-faces n${r.faces.length}">${r.faces.map(f => `<button type="button" class="face" onclick="event.stopPropagation();openFeaturedCard('${safeAttr(f.id)}')" title="${safeAttr(f.name + (f.credit ? ' · Photo: ' + f.credit : ''))}"><img src="${safeAttr(typeof _hsSrc === 'function' ? _hsSrc({ id: f.id, photo: { src: f.src } }) : f.src)}"${typeof _hsSrc === 'function' && _hsSrc({ id: f.id, photo: { src: f.src } }) !== f.src ? ` data-src="${safeAttr(f.src)}"` : ''} alt="" loading="lazy" referrerpolicy="no-referrer" onerror="_hsImgFail(this)"></button>`).join('')}</div>`
       : `<div class="rec-cur-faces names"><div>${r.subs.slice(0, 4).map(s => `<span>${safe(s.short)}</span>`).join('')}</div></div>`;
     const pulse = '';   // SEAM:HOUSE_STYLE (NT3c): insight over charts on the arrival
     const subs = r.subs.map(s => s.tile ? `<button type="button" onclick="openFeaturedCard('${safeAttr(s.tile.id)}')" title="${safeAttr(s.name)}">${safe(s.short)}</button>` : `<span title="${safeAttr(s.name)}">${safe(s.short)}</span>`).join('');
-    const long = String(c.body || '').length > 300;
-    return `<article class="rec-cur">${faces}${pulse}<h3>${safe(c.title)}</h3><p class="body">${safe(c.body)}</p>${long ? `<button type="button" class="rec-cur-more" aria-expanded="false" onclick="_curToggle(this)">More</button>` : ''}${c.move && window._signedOut === false ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : '<div class="hs-lockrow" aria-hidden="true"><span>The move</span><i></i><i></i></div>'}<div class="rec-cur-subs">${subs}</div></article>`;
+    const long = String(c.body || '').length > (list.length >= 5 ? 150 : 300);   // SEAM:THE_CURRENTS (CC1): five on a line fold sooner
+    return `<article class="rec-cur rec-cur-door" data-cur="${i}" onclick="_curOpen(${i})">${faces}${pulse}<h3><button type="button" class="rec-cur-h" aria-label="${safeAttr('Open the current: ' + String(c.title || ''))}" onclick="event.stopPropagation();_curOpen(${i})">${safe(c.title || '')}</button></h3><p class="body">${safe(c.body)}</p>${long ? `<button type="button" class="rec-cur-more" aria-expanded="false" onclick="event.stopPropagation();_curToggle(this)">More</button>` : ''}${c.move && window._signedOut === false ? `<div class="move"><i>The move</i><br>${safe(c.move)}</div>` : '<div class="hs-lockrow" aria-hidden="true"><span>The move</span><i></i><i></i></div>'}<div class="rec-cur-subs" onclick="event.stopPropagation()">${subs}</div></article>`;   // SEAM:THE_CURRENTS (CC1): the card is a door to the current's own pop-out (the title is the button a keyboard and a screen reader meet; a mouse opens it anywhere); the faces, More and the chips keep their own doors
   };
-  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))}</span></div><div class="rec-cur-grid n${Math.min(4, list.length)}">` + list.map(face).join('') + '</div>';
+  window._curList = { at: cur.at, list, tiles };   // SEAM:THE_CURRENTS (CC1): what the pop-out reads
+  el.innerHTML = `<div class="rec-cur-head"><span class="reach-k">CROSS-CURRENTS</span><span class="rec-cur-when">named ${safe(_recDay(cur.at))}</span></div><div class="rec-cur-grid n${Math.min(5, list.length)}">` + list.map(face).join('') + '</div>';   // SEAM:THE_CURRENTS (CC1): five on one line
   el.style.display = '';
   if (typeof _drawPulses === 'function') setTimeout(_drawPulses, 50);
 }
@@ -12018,8 +12160,8 @@ async function _scoreOpen() {
   const t = _scoreTarget();
   if (!t) { showToast('This reading was not kept, so there is nothing to score'); return; }
   if (!el) {
-    const h = document.querySelector('#live-results .results-header'); if (!h) return;
-    el = document.createElement('div'); el.id = 'score-panel'; el.className = 'score-panel'; h.insertAdjacentElement('afterend', el);
+    const h = document.getElementById('read-block') || document.querySelector('#live-results .results-header'); if (!h) return;   // SEAM:THE_ARRIVAL (RQ1): under the read, where Score now lives
+    el = document.createElement('div'); el.id = 'score-panel'; el.className = 'score-panel'; h.insertAdjacentElement('afterend', el); el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   el.innerHTML = '<p class="sp-say">Opening the score.</p>';
   let d = null; try { d = await _cmApi('/reads/score', t); } catch (e) { d = { ok: false, error: 'network' }; }
@@ -14014,6 +14156,8 @@ function _hsMoveClose() {
   if (f && typeof f.focus === 'function' && document.body.contains(f)) { f.focus(); return; }
   if (fid && /^[0-9a-f-]{36}$/.test(fid) && typeof document.querySelector === 'function') {   // the button that opened it was drawn again: its reading's own button takes focus
     const alt = document.querySelector('[data-id="' + fid + '"] .hs-movebtn, [data-id="' + fid + '"] .hs-link, [data-id="' + fid + '"] .hs-btn'); if (alt) alt.focus();
+  } else if (fid && /^current-\d+$/.test(fid) && typeof document.querySelector === 'function') {   // SEAM:THE_CURRENTS (CC1): the current's card was drawn again: its title takes focus
+    const alt = document.querySelector('.rec-cur[data-cur="' + fid.slice(8) + '"] .rec-cur-h'); if (alt) alt.focus();
   }
 }
 /* Escape closes the move; Tab stays inside it while it is open. */

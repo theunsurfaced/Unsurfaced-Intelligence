@@ -260,8 +260,8 @@ ok(/<p class="hs-pop-read">The read: \$\{safe\(t\.claim \|\| t\.title \|\| ''\)\
   'G10 the move\'s pop-out carries the takeaway with the read, and keeps the bet (the one place it shows beside the move it belongs to)');
 ok(/takeaway:syn&&syn\.takeaway\|\|null, pushback:syn&&syn\.pushback\|\|null, level:syn&&syn\.level\|\|null,/.test(page) && /\$\{data\.takeaway\?`<p class="read-take">\$\{safe\(data\.takeaway\)\}<\/p>`:''\}\$\{data\.pushback&&data\.pushback\.text\?`<p class="read-pushback"><b>The other side<\/b> \$\{safe\(data\.pushback\.text\)\}<\/p>`:''\}/.test(page),
   'G11 the deep dive: the takeaway and the other side under the two lines, from the stored read');
-ok(/<p class="modal-body">\$\{safe\(ins\.excerpt\)\}<\/p>\$\{ins\.implication\?`<p class="modal-body modal-read"><strong>So:<\/strong> \$\{safe\(ins\.implication\)\}<\/p>`:''\}/.test(page) && /implication: ins\.implication\|\|null/.test(page) && /\$\{_meaningBlock\(ins\)\}/.test(page) && /\$\{x\.implication\?`<br><small>SO<\/small> \$\{safe\(x\.implication\)\}`:''\}/.test(page),
-  'G12 a finding\'s detail shows its read (So:), as the card already did; the export carries it');
+ok(/<p class="modal-body">\$\{safe\(ins\.excerpt\)\}<\/p>\$\{ins\.implication\?`<p class="modal-body modal-read"><strong>The read<\/strong> \$\{safe\(ins\.implication\)\}<\/p>`:''\}/.test(page) && /implication: ins\.implication\|\|null/.test(page) && /\$\{_meaningBlock\(ins\)\}/.test(page) && /\$\{x\.implication\?`<br><small>SO<\/small> \$\{safe\(x\.implication\)\}`:''\}/.test(page),
+  'G12 a finding\'s detail shows its read (The read, as the card says it since RQ1); the export carries it');
 ok(!DASH.test(lensCss + lead + hs + pop) && !/\bAhni\b/i.test(page), 'G13 no em dash in the page\'s new code');
 
 // ── H: the seam and the gate ──────────────────────────────────────────────────────────────────────────────────────────────────

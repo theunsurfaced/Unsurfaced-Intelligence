@@ -56,8 +56,8 @@ ok(D._depthGet() === 'full' && D._depthLabel('quick') === 'Quick read' && /worth
 ok(/depth:\(window\._depth\|\|_depthGet\(\)\), cls:_gm\.cls\|\|null/.test(page), 'C4 the read sends its depth to the door');
 ok(/<span class="depth-switch" id="depth-switch"[^>]*><button type="button" data-depth="quick" onclick="setDepth\('quick'\)">Quick<\/button><button type="button" data-depth="full" class="on" onclick="setDepth\('full'\)">Full<\/button><\/span>/.test(page),
   'C5 the switch sits beside Search with Full on');
-ok(/synthesis\.depth==='quick'\)\{ gd\.insertAdjacentHTML\('afterbegin','<button class="btn-go-deeper" type="button" onclick="goDeeper\(\)">Go deeper: the full read<\/button>'\)/.test(page)
-  && /function goDeeper\(\) \{[\s\S]*setDepth\('full'\);[\s\S]*runSearch\(\);/.test(page), 'C6 a quick read ends with Go deeper, which runs the full read on the same frame');
+ok(/data\.depth==='quick'\?`<button type="button" class="rr" onclick="goDeeper\(\)">The full read<\/button>`/.test(page) && !/Go deeper: the full read/.test(page)
+  && /function goDeeper\(\) \{[\s\S]*setDepth\('full'\);[\s\S]*runSearch\(\);/.test(page), 'C6 a quick read carries The full read on its rail (once, RQ1), which runs the full read on the same frame');
 ok(/_inRender\(\) \{\n  const row = [^\n]*\n  if \(typeof _depthRender === 'function'\) _depthRender\(\);/.test(page), 'C7 the depth note reads the interpreter\'s task as soon as the chips land');
 
 // ── D: the nav (SEAM:EXC_NAV) ──────────────────────────────────────────────────────────────────────────────────────

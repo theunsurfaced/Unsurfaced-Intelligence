@@ -75,6 +75,6 @@ ok(fin.ok && fin.data.insights.length === 2 && heard.length === 2 && heard[0][0]
 const SS2 = new Function('_authHeader', '_withLake', 'API_BASE', 'fetch', 'window', ssSrc + '; return _synthesizeStream;')(
   async () => ({}), async p => p, 'https://api.example', async () => ({ ok: true, headers: { get: () => 'application/json' }, json: async () => ({ ok: true, data: { plain: true } }) }), {});
 ok((await SS2({ query: 'q' })).data.plain === true, 'P9 an older worker that answers plainly is still understood');
-ok(/<div class="loader-draft" id="loader-draft"/.test(page) && /function _loaderDraft\(d\)/.test(page) && /Open the read →/.test(page) && !/Click for full dashboard/.test(page), 'P10 the loader has a place for the draft; every tile says it opens the read');
+ok(/<div class="wait-draft" id="loader-draft"/.test(page) && /function _loaderDraft\(d\)/.test(page) && /Open the read →/.test(page) && !/Click for full dashboard/.test(page), 'P10 the wait has a place for the draft (RQ1); every tile says it opens the read');
 ok(!/—/.test(doorSrc), 'P11 no em dash in the door');
 console.log('\nproof_excavate_door: ' + pass + ' checks PASS');
